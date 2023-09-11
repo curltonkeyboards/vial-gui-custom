@@ -1,4 +1,4 @@
-### vial-gui
+###  vial-gui fork with MIDI CC and MIDI Program Change support
 
 # Docs and getting started
 
