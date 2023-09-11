@@ -160,6 +160,179 @@ class Keycode:
 
 K = Keycode
 
+BASIC_KEYCODES = {
+    "KC_NO",
+    "KC_TRNS",
+    "KC_A",
+    "KC_B",
+    "KC_C",
+    "KC_D",
+    "KC_E",
+    "KC_F",
+    "KC_G",
+    "KC_H",
+    "KC_I",
+    "KC_J",
+    "KC_K",
+    "KC_L",
+    "KC_M",
+    "KC_N",
+    "KC_O",
+    "KC_P",
+    "KC_Q",
+    "KC_R",
+    "KC_S",
+    "KC_T",
+    "KC_U",
+    "KC_V",
+    "KC_W",
+    "KC_X",
+    "KC_Y",
+    "KC_Z",
+    "KC_1",
+    "KC_2",
+    "KC_3",
+    "KC_4",
+    "KC_5",
+    "KC_6",
+    "KC_7",
+    "KC_8",
+    "KC_9",
+    "KC_0",
+    "KC_ENTER",
+    "KC_ESCAPE",
+    "KC_BSPACE",
+    "KC_TAB",
+    "KC_SPACE",
+    "KC_MINUS",
+    "KC_EQUAL",
+    "KC_LBRACKET",
+    "KC_RBRACKET",
+    "KC_BSLASH",
+    "KC_NONUS_HASH",
+    "KC_SCOLON",
+    "KC_QUOTE",
+    "KC_GRAVE",
+    "KC_COMMA",
+    "KC_DOT",
+    "KC_SLASH",
+    "KC_CAPSLOCK",
+    "KC_F1",
+    "KC_F2",
+    "KC_F3",
+    "KC_F4",
+    "KC_F5",
+    "KC_F6",
+    "KC_F7",
+    "KC_F8",
+    "KC_F9",
+    "KC_F10",
+    "KC_F11",
+    "KC_F12",
+    "KC_PSCREEN",
+    "KC_SCROLLLOCK",
+    "KC_PAUSE",
+    "KC_INSERT",
+    "KC_HOME",
+    "KC_PGUP",
+    "KC_DELETE",
+    "KC_END",
+    "KC_PGDOWN",
+    "KC_RIGHT",
+    "KC_LEFT",
+    "KC_DOWN",
+    "KC_UP",
+    "KC_NUMLOCK",
+    "KC_KP_SLASH",
+    "KC_KP_ASTERISK",
+    "KC_KP_MINUS",
+    "KC_KP_PLUS",
+    "KC_KP_ENTER",
+    "KC_KP_1",
+    "KC_KP_2",
+    "KC_KP_3",
+    "KC_KP_4",
+    "KC_KP_5",
+    "KC_KP_6",
+    "KC_KP_7",
+    "KC_KP_8",
+    "KC_KP_9",
+    "KC_KP_0",
+    "KC_KP_DOT",
+    "KC_NONUS_BSLASH",
+    "KC_APPLICATION",
+    "KC_KP_EQUAL",
+    "KC_F13",
+    "KC_F14",
+    "KC_F15",
+    "KC_F16",
+    "KC_F17",
+    "KC_F18",
+    "KC_F19",
+    "KC_F20",
+    "KC_F21",
+    "KC_F22",
+    "KC_F23",
+    "KC_F24",
+    "KC_EXEC",
+    "KC_HELP",
+    "KC_SLCT",
+    "KC_STOP",
+    "KC_AGIN",
+    "KC_UNDO",
+    "KC_CUT",
+    "KC_COPY",
+    "KC_PSTE",
+    "KC_FIND",
+    "KC__VOLUP",
+    "KC__VOLDOWN",
+    "KC_LCAP",
+    "KC_LNUM",
+    "KC_LSCR",
+    "KC_KP_COMMA",
+    "KC_RO",
+    "KC_KANA",
+    "KC_JYEN",
+    "KC_HENK",
+    "KC_MHEN",
+    "KC_LANG1",
+    "KC_LANG2",
+    "KC_PWR",
+    "KC_SLEP",
+    "KC_WAKE",
+    "KC_MUTE",
+    "KC_VOLU",
+    "KC_VOLD",
+    "KC_MNXT",
+    "KC_MPRV",
+    "KC_MSTP",
+    "KC_MPLY",
+    "KC_MSEL",
+    "KC_EJCT",
+    "KC_MAIL",
+    "KC_CALC",
+    "KC_MYCM",
+    "KC_WSCH",
+    "KC_WHOM",
+    "KC_WBAK",
+    "KC_WFWD",
+    "KC_WSTP",
+    "KC_WREF",
+    "KC_WFAV",
+    "KC_MFFD",
+    "KC_MRWD",
+    "KC_BRIU",
+    "KC_BRID",
+    "KC_LCTRL",
+    "KC_LSHIFT",
+    "KC_LALT",
+    "KC_LGUI",
+    "KC_RCTRL",
+    "KC_RSHIFT",
+    "KC_RALT",
+    "KC_RGUI",
+}
+
 KEYCODES_SPECIAL = [
     K("KC_NO", ""),
     K("KC_TRNS", "▽", alias=["KC_TRANSPARENT"]),
@@ -770,6 +943,56 @@ KEYCODES = []
 KEYCODES_MAP = dict()
 RAWCODES_MAP = dict()
 
+KEYCODES_MIDI_CC = []
+KEYCODES_MIDI_CC_FIXED = []
+
+for x in range (128):
+    KEYCODES_MIDI_CC.append(K("MI_CC_TOG_{}".format(x),
+                              "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
+                              "Midi CC{} toggle".format(x)))
+    KEYCODES_MIDI_CC.append(K("MI_CC_UP_{}".format(x),
+                              "ᴹᴵᴰᴵ\nCC{}ᵁᴾ".format(x),
+                              "Midi CC{} up".format(x)))
+    KEYCODES_MIDI_CC.append(K("MI_CC_DWN_{}".format(x),
+                              "ᴹᴵᴰᴵ\nCC{}ᴰᴺ".format(x),
+                              "Midi CC{} down".format(x)))
+
+
+for x in range(128):
+    for y in range(128):
+        KEYCODES_MIDI_CC_FIXED.append(K("MI_CC_{}_{}".format(x,y),
+                                    "CC{}\n{}".format(x,y),
+                                    "Midi CC{} = {}".format(x,y)))
+
+
+KEYCODES_MIDI_BANK = []
+KEYCODES_MIDI_PROG = []
+
+KEYCODES_MIDI_BANK.append(K("MI_BANK_UP",
+                            "UP\nᵇᵃⁿᵏ",
+                            "Bank up"))
+KEYCODES_MIDI_BANK.append(K("MI_BANK_DWN",
+                            "DOWN\nᵇᵃⁿᵏ",
+                            "Bank down"))
+KEYCODES_MIDI_PROG.append(K("MI_PROG_UP",
+                            "UP\nᵖʳᵒᵍʳᵃᵐ",
+                            "Program up"))
+KEYCODES_MIDI_PROG.append(K("MI_PROG_DWN",
+                            "DOWN\nᵖʳᵒᵍʳᵃᵐ",
+                            "Program down"))
+
+for x in range(128):
+    KEYCODES_MIDI_BANK.append(K("MI_BANK_MSB_{}".format(x),
+                              "MSB{}\nᵇᵃⁿᵏ".format(x),
+                              "Bank select MSB {}".format(x)))
+    KEYCODES_MIDI_BANK.append(K("MI_BANK_LSB_{}".format(x),
+                              "LSB{}\nᵇᵃⁿᵏ".format(x),
+                              "Bank select LSB {}".format(x)))
+    KEYCODES_MIDI_PROG.append(K("MI_PROG_{}".format(x),
+                              "{}\nᵖʳᵒᵍʳᵃᵐ".format(x),
+                              "Program change {}".format(x)))
+
+
 K = None
 
 
@@ -779,7 +1002,8 @@ def recreate_keycodes():
     KEYCODES.clear()
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
-                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI)
+                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
+                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_MIDI_PROG)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
@@ -861,7 +1085,7 @@ def recreate_keyboard_keycodes(keyboard):
         generate_keycodes_for_mask("TO",
                                    "Turns on layer and turns off all other layers, except the default layer"))
 
-    for x in range(min(layers, 16)):
+    for x in range(layers):
         KEYCODES_LAYERS.append(Keycode("LT{}(kc)".format(x), "LT {}\n(kc)".format(x),
                                        "kc on tap, switch to layer {} while held".format(x), masked=True))
 

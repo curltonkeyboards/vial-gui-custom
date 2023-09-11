@@ -554,10 +554,34 @@ class keycodes_v6:
         "FN_MO13": 0x7C77,
         "FN_MO23": 0x7C78,
 
-        "QK_KB": 0x7E00,
+        # "QK_KB": 0x7E00,
+        "MI_CC_TOG_0": 0x8000,  # start value for new keycodes
+        "MI_CC_UP_0": 0x8000 + 128,
+        "MI_CC_DWN_0": 0x8000 + 128 * 2,
+        "MI_CC_0_0": 0x8000 + 128 * 3,  # 128*128 keycodes for fixed CC values
+        "MI_BANK_MSB_0": (0x8000 + 128 * 3) + 128 * 128,
+        "MI_BANK_LSB_0": (0x8000 + 128 * 4) + 128 * 128,
+        "MI_PROG_0": (0x8000 + 128 * 5) + 128 * 128,
+        "MI_BANK_UP": (0x8000 + 128 * 6) + 128 * 128 + 1,
+        "MI_BANK_DWN": (0x8000 + 128 * 6) + 128 * 128 + 2,
+        "MI_PROG_UP": (0x8000 + 128 * 6) + 128 * 128 + 3,
+        "MI_PROG_DWN": (0x8000 + 128 * 6) + 128 * 128 + 4,
+        "QK_KB": (0x8000 + 128 * 6) + 128 * 128 + 5,  # custom keycodes safe range
     }
 
     masked = set()
+
+for x in range(128):
+    keycodes_v6.kc["MI_CC_TOG_{}".format(x)] = keycodes_v6.kc["MI_CC_TOG_0"] + x
+    keycodes_v6.kc["MI_CC_UP_{}".format(x)] = keycodes_v6.kc["MI_CC_UP_0"] + x
+    keycodes_v6.kc["MI_CC_DWN_{}".format(x)] = keycodes_v6.kc["MI_CC_DWN_0"] + x
+    keycodes_v6.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_MSB_0"] + x
+    keycodes_v6.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_LSB_0"] + x
+    keycodes_v6.kc["MI_PROG_{}".format(x)] = keycodes_v6.kc["MI_PROG_0"] + x
+
+for x in range(128):
+    for y in range(128):
+        keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 127) + y
 
 
 for x in range(256):
@@ -575,7 +599,7 @@ for x in range(32):
 for x in range(16):
     keycodes_v6.kc["LT{}(kc)".format(x)] = keycodes_v6.kc["QK_LAYER_TAP"] | (((x) & 0xF) << 8)
 
-for x in range(64):
+for x in range(32):
     keycodes_v6.kc["USER{:02}".format(x)] = keycodes_v6.kc["QK_KB"] + x
 
 for name, val in keycodes_v6.kc.items():
