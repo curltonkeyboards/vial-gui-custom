@@ -60,7 +60,8 @@ class VialApplicationContext(ApplicationContext):
     def app(self):
         # Override the app definition in order to set WM_CLASS.
         result = QtWidgets.QApplication(sys.argv)
-        result.setApplicationName(self.build_settings["app_name"])
+        #result.setApplicationName(self.build_settings["app_name"])
+        result.setApplicationName("Curlton Vial MIDI")
         result.setOrganizationDomain("vial.today")
 
         #TODO: Qt sets applicationVersion on non-Linux platforms if the exe/pkg metadata is correctly configured.
