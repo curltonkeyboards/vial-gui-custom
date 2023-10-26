@@ -566,10 +566,19 @@ class keycodes_v6:
         "MI_BANK_DWN": (0x8000 + 128 * 6) + 128 * 128 + 2,
         "MI_PROG_UP": (0x8000 + 128 * 6) + 128 * 128 + 3,
         "MI_PROG_DWN": (0x8000 + 128 * 6) + 128 * 128 + 4,
-        "QK_KB": (0x8000 + 128 * 6) + 128 * 128 + 5,  # custom keycodes safe range
+
+        "MI_VELOCITY_0": (0x8000 + 128 * 6) + 128 * 128 + 5,
+        "ENCODER_STEP_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
+        "QK_KB": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,  # custom keycodes safe range
+
     }
 
     masked = set()
+
+
+for x in range(16):
+    keycodes_v6.kc["ENCODER_STEP_{}".format(x+1)] = keycodes_v6.kc["ENCODER_STEP_1"] + x
+
 
 for x in range(128):
     keycodes_v6.kc["MI_CC_TOG_{}".format(x)] = keycodes_v6.kc["MI_CC_TOG_0"] + x
@@ -578,6 +587,7 @@ for x in range(128):
     keycodes_v6.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_MSB_0"] + x
     keycodes_v6.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_LSB_0"] + x
     keycodes_v6.kc["MI_PROG_{}".format(x)] = keycodes_v6.kc["MI_PROG_0"] + x
+    keycodes_v6.kc["MI_VELOCITY_{}".format(x)] = keycodes_v6.kc["MI_VELOCITY_0"] + x
 
 for x in range(128):
     for y in range(128):
