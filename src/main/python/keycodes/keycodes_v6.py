@@ -591,7 +591,7 @@ for x in range(128):
 
 for x in range(128):
     for y in range(128):
-        keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 127) + y
+        keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 128) + y
 
 
 for x in range(256):
