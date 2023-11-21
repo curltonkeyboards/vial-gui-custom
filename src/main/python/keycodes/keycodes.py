@@ -982,7 +982,7 @@ for x in range (1,17):
 
 
 KEYCODES_MIDI_BANK = []
-KEYCODES_MIDI_PROG = []
+KEYCODES_Program_Change = []
 
 KEYCODES_MIDI_BANK.append(K("MI_BANK_UP",
                             "UP\nᵇᵃⁿᵏ",
@@ -990,10 +990,10 @@ KEYCODES_MIDI_BANK.append(K("MI_BANK_UP",
 KEYCODES_MIDI_BANK.append(K("MI_BANK_DWN",
                             "DOWN\nᵇᵃⁿᵏ",
                             "Bank down"))
-KEYCODES_MIDI_PROG.append(K("MI_PROG_UP",
+KEYCODES_Program_Change.append(K("MI_PROG_UP",
                             "UP\nᵖʳᵒᵍʳᵃᵐ",
                             "Program up"))
-KEYCODES_MIDI_PROG.append(K("MI_PROG_DWN",
+KEYCODES_Program_Change.append(K("MI_PROG_DWN",
                             "DOWN\nᵖʳᵒᵍʳᵃᵐ",
                             "Program down"))
 
@@ -1004,7 +1004,7 @@ for x in range(128):
     KEYCODES_MIDI_BANK.append(K("MI_BANK_LSB_{}".format(x),
                               "LSB{}\nᵇᵃⁿᵏ".format(x),
                               "Bank select LSB {}".format(x)))
-    KEYCODES_MIDI_PROG.append(K("MI_PROG_{}".format(x),
+    KEYCODES_Program_Change.append(K("MI_PROG_{}".format(x),
                               "{}\nᵖʳᵒᵍʳᵃᵐ".format(x),
                               "Program change {}".format(x)))
 
@@ -1019,7 +1019,7 @@ def recreate_keycodes():
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
-                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_MIDI_PROG+
+                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_STEP)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()

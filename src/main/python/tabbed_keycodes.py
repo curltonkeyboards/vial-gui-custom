@@ -12,7 +12,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BOOT, KEYCODES_MODIFIERS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_MIDI_PROG, KEYCODES_ENCODER_STEP, KEYCODES_MIDI_VELOCITY
+    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_ENCODER_STEP, KEYCODES_MIDI_VELOCITY
 from widgets.square_button import SquareButton
 from util import tr, KeycodeDisplay
 
@@ -182,7 +182,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "MIDI", KEYCODES_MIDI),
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
             SimpleTab(self, "MIDI Bank", KEYCODES_MIDI_BANK),
-            SimpleTab(self, "MIDI Prog", KEYCODES_MIDI_PROG),
+            SimpleTab(self, "MIDI Prog", KEYCODES_Program_Change),
             SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITY),
             SimpleTab(self, "Encoder", KEYCODES_ENCODER_STEP),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
