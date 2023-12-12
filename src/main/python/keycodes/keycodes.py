@@ -973,10 +973,10 @@ for x in range (128):
                               "ᵛᵉˡᵒᶜⁱᵗʸ\n{}".format(x),
                               "velocity {}".format(x)))
 
-KEYCODES_ENCODER_STEP = []
+KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
-    KEYCODES_ENCODER_STEP.append(K("ENCODER_STEP_{}".format(x),
+    KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
                               "ᵉⁿᶜᵒᵈᵉʳ\nˢᵗᵉᵖ\n{}".format(x),
                               "Step size {}".format(x)))
 
@@ -1020,7 +1020,7 @@ def recreate_keycodes():
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
-                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_STEP)
+                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:

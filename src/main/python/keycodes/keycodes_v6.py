@@ -568,7 +568,7 @@ class keycodes_v6:
         "MI_PROG_DWN": (0x8000 + 128 * 6) + 128 * 128 + 4,
 
         "MI_VELOCITY_0": (0x8000 + 128 * 6) + 128 * 128 + 5,
-        "ENCODER_STEP_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
+        "ENCODER_SENSITIVITY_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
         "QK_KB": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,  # custom keycodes safe range
 
     }
@@ -577,7 +577,7 @@ class keycodes_v6:
 
 
 for x in range(16):
-    keycodes_v6.kc["ENCODER_STEP_{}".format(x+1)] = keycodes_v6.kc["ENCODER_STEP_1"] + x
+    keycodes_v6.kc["ENCODER_SENSITIVITY_{}".format(x+1)] = keycodes_v6.kc["ENCODER_SENSITIVITY_1"] + x
 
 
 for x in range(128):
