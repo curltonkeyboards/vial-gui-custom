@@ -179,7 +179,7 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
-            SimpleTab(self, "Macros", KEYCODES_MACRO),
+            SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "Basic MIDI", KEYCODES_MIDI),
             SimpleTab(self, "CC Up", KEYCODES_MIDI_CC_UP),
             SimpleTab(self, "CC Down", KEYCODES_MIDI_CC_DWN),
