@@ -977,7 +977,7 @@ KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
     KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "ᵉⁿᶜᵒᵈᵉʳ\nˢᵗᵉᵖ\n{}".format(x),
+                              "ᵉⁿᶜᵒᵈᵉʳ\ˢᵗᵉᵖ\n{}".format(x),
                               "Step size {}".format(x)))
 
 
