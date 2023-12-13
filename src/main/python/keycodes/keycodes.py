@@ -951,10 +951,10 @@ for x in range (128):
                               "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
                               "Midi CC{} toggle".format(x)))
     KEYCODES_MIDI_CC.append(K("MI_CC_UP_{}".format(x),
-                              "ᴹᴵᴰᴵ\nCC{}ᵁᴾ".format(x),
+                              "CC{}\nᵁᴾ".format(x),
                               "Midi CC{} up".format(x)))
     KEYCODES_MIDI_CC.append(K("MI_CC_DWN_{}".format(x),
-                              "ᴹᴵᴰᴵ\nCC{}ᴰᴺ".format(x),
+                              "CC{}\nᴰᴺ".format(x),
                               "Midi CC{} down".format(x)))
 
 
@@ -977,7 +977,7 @@ KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
     KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "ᵉⁿᶜᵒᵈᵉʳ\ˢᵗᵉᵖ\n{}".format(x),
+                              "ᵉⁿᶜᵒᵈᵉʳ\nˢᵗᵉᵖ\n{}".format(x),
                               "Step size {}".format(x)))
 
 

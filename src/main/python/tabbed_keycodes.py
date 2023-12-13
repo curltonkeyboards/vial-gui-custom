@@ -181,7 +181,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "Basic MIDI", KEYCODES_MIDI),
-            SimpleTab(self, "CC Up", KEYCODES_MIDI_CC),
+            SimpleTab(self, "CC", KEYCODES_MIDI_CC),
             SimpleTab(self, "Bank Change", KEYCODES_MIDI_BANK),
             SimpleTab(self, "Program Change", KEYCODES_Program_Change),
             SimpleTab(self, "Velocity", KEYCODES_MIDI_VELOCITY),
