@@ -922,7 +922,9 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_CH16", "ᴹᴵᴰᴵ\nCH₁₆", "Midi set channel to 16"),
     K("MI_CHD", "ᴹᴵᴰᴵ\nCHᴰᴺ", "Midi decrease channel"),
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
+]
 
+KEYCODES_MIDI_VERYADVANCED = [
     K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
     K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
     K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
