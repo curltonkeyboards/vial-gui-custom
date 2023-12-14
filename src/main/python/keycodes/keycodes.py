@@ -862,6 +862,19 @@ KEYCODES_MIDI_BASIC = [
 ]
 
 KEYCODES_MIDI_ADVANCED = [
+    K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
+    K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
+    K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
+    K("MI_SOFT", "ᴹᴵᴰᴵ\nSPedal", "Midi Soft Pedal"),
+    K("MI_LEG", "ᴹᴵᴰᴵ\nLegat", "Midi Legato"),
+    K("MI_MOD", "ᴹᴵᴰᴵ\nModul", "Midi Modulation"),
+    K("MI_MODSD", "ᴹᴵᴰᴵ\nModulᴰᴺ", "Midi decrease modulation speed"),
+    K("MI_MODSU", "ᴹᴵᴰᴵ\nModulᵁᴾ", "Midi increase modulation speed"),
+    K("MI_BENDD", "ᴹᴵᴰᴵ\nBendᴰᴺ", "Midi bend pitch down"),
+    K("MI_BENDU", "ᴹᴵᴰᴵ\nBendᵁᴾ", "Midi bend pitch up"),
+]
+
+KEYCODES_MIDI_TRANSPOSITION = [
     K("MI_OCT_N2", "ᴹᴵᴰᴵ\nOct₋₂", "Midi set octave to -2"),
     K("MI_OCT_N1", "ᴹᴵᴰᴵ\nOct₋₁", "Midi set octave to -1"),
     K("MI_OCT_0", "ᴹᴵᴰᴵ\nOct₀", "Midi set octave to 0"),
@@ -890,20 +903,13 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_TRNS_6", "ᴹᴵᴰᴵ\nTrans₊₆", "Midi set transposition to +6 semitones"),
     K("MI_TRNSD", "ᴹᴵᴰᴵ\nTransᴰᴺ", "Midi decrease transposition"),
     K("MI_TRNSU", "ᴹᴵᴰᴵ\nTransᵁᴾ", "Midi increase transposition"),
-
-    K("MI_VEL_1", "ᴹᴵᴰᴵ\nVel₁", "Midi set velocity to 0", alias=["MI_VEL_0"]),
-    K("MI_VEL_2", "ᴹᴵᴰᴵ\nVel₂", "Midi set velocity to 25"),
-    K("MI_VEL_3", "ᴹᴵᴰᴵ\nVel₃", "Midi set velocity to 38"),
-    K("MI_VEL_4", "ᴹᴵᴰᴵ\nVel₄", "Midi set velocity to 51"),
-    K("MI_VEL_5", "ᴹᴵᴰᴵ\nVel₅", "Midi set velocity to 64"),
-    K("MI_VEL_6", "ᴹᴵᴰᴵ\nVel₆", "Midi set velocity to 76"),
-    K("MI_VEL_7", "ᴹᴵᴰᴵ\nVel₇", "Midi set velocity to 89"),
-    K("MI_VEL_8", "ᴹᴵᴰᴵ\nVel₈", "Midi set velocity to 102"),
-    K("MI_VEL_9", "ᴹᴵᴰᴵ\nVel₉", "Midi set velocity to 114"),
-    K("MI_VEL_10", "ᴹᴵᴰᴵ\nVel₁₀", "Midi set velocity to 127"),
+]
+KEYCODES_MIDI_VELOCITYENCODER = [
     K("MI_VELD", "ᴹᴵᴰᴵ\nVelᴰᴺ", "Midi decrease velocity"),
     K("MI_VELU", "ᴹᴵᴰᴵ\nVelᵁᴾ", "Midi increase velocity"),
+]
 
+KEYCODES_MIDI_CHANNEL = [
     K("MI_CH1", "ᴹᴵᴰᴵ\nCH₁", "Midi set channel to 1"),
     K("MI_CH2", "ᴹᴵᴰᴵ\nCH₂", "Midi set channel to 2"),
     K("MI_CH3", "ᴹᴵᴰᴵ\nCH₃", "Midi set channel to 3"),
@@ -924,18 +930,7 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
 ]
 
-KEYCODES_MIDI_VERYADVANCED = [
-    K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
-    K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
-    K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
-    K("MI_SOFT", "ᴹᴵᴰᴵ\nSPedal", "Midi Soft Pedal"),
-    K("MI_LEG", "ᴹᴵᴰᴵ\nLegat", "Midi Legato"),
-    K("MI_MOD", "ᴹᴵᴰᴵ\nModul", "Midi Modulation"),
-    K("MI_MODSD", "ᴹᴵᴰᴵ\nModulᴰᴺ", "Midi decrease modulation speed"),
-    K("MI_MODSU", "ᴹᴵᴰᴵ\nModulᵁᴾ", "Midi increase modulation speed"),
-    K("MI_BENDD", "ᴹᴵᴰᴵ\nBendᴰᴺ", "Midi bend pitch down"),
-    K("MI_BENDU", "ᴹᴵᴰᴵ\nBendᵁᴾ", "Midi bend pitch up"),
-]
+
 
 KEYCODES_HIDDEN = []
 for x in range(256):
