@@ -779,7 +779,7 @@ KEYCODES_MACRO_BASE = [
 
 KEYCODES_MIDI = []
 
-KEYCODES_MIDI_BASIC = [
+KEYCODES_MIDI_NOTES = [
     K("MI_C", "ᴹᴵᴰᴵ\nC", "Midi send note C"),
     K("MI_Cs", "ᴹᴵᴰᴵ\nC#/Dᵇ", "Midi send note C#/Dᵇ", alias=["MI_Db"]),
     K("MI_D", "ᴹᴵᴰᴵ\nD", "Midi send note D"),
@@ -861,7 +861,8 @@ KEYCODES_MIDI_BASIC = [
     K("MI_ALLOFF", "ᴹᴵᴰᴵ\nNotesᵒᶠᶠ", "Midi send all notes OFF"),
 ]
 
-KEYCODES_MIDI_ADVANCED = [
+
+KEYCODES_MIDI_TRANSPOSE = [
     K("MI_OCT_N2", "ᴹᴵᴰᴵ\nOct₋₂", "Midi set octave to -2"),
     K("MI_OCT_N1", "ᴹᴵᴰᴵ\nOct₋₁", "Midi set octave to -1"),
     K("MI_OCT_0", "ᴹᴵᴰᴵ\nOct₀", "Midi set octave to 0"),
@@ -890,7 +891,8 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_TRNS_6", "ᴹᴵᴰᴵ\nTrans₊₆", "Midi set transposition to +6 semitones"),
     K("MI_TRNSD", "ᴹᴵᴰᴵ\nTransᴰᴺ", "Midi decrease transposition"),
     K("MI_TRNSU", "ᴹᴵᴰᴵ\nTransᵁᴾ", "Midi increase transposition"),
-
+]
+KEYCODES_MIDI_VELBASIC = [
     K("MI_VEL_1", "ᴹᴵᴰᴵ\nVel₁", "Midi set velocity to 0", alias=["MI_VEL_0"]),
     K("MI_VEL_2", "ᴹᴵᴰᴵ\nVel₂", "Midi set velocity to 25"),
     K("MI_VEL_3", "ᴹᴵᴰᴵ\nVel₃", "Midi set velocity to 38"),
@@ -901,9 +903,13 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_VEL_8", "ᴹᴵᴰᴵ\nVel₈", "Midi set velocity to 102"),
     K("MI_VEL_9", "ᴹᴵᴰᴵ\nVel₉", "Midi set velocity to 114"),
     K("MI_VEL_10", "ᴹᴵᴰᴵ\nVel₁₀", "Midi set velocity to 127"),
+]  
+KEYCODES_MIDI_VELENCODER = [ 
     K("MI_VELD", "ᴹᴵᴰᴵ\nVelᴰᴺ", "Midi decrease velocity"),
-    K("MI_VELU", "ᴹᴵᴰᴵ\nVelᵁᴾ", "Midi increase velocity"),
-
+    K("MI_VELU", "ᴹᴵᴰᴵ\nVelᵁᴾ", "Midi increase velocity"),  
+]
+    
+KEYCODES_MIDI_CHANNEL = [
     K("MI_CH1", "ᴹᴵᴰᴵ\nCH₁", "Midi set channel to 1"),
     K("MI_CH2", "ᴹᴵᴰᴵ\nCH₂", "Midi set channel to 2"),
     K("MI_CH3", "ᴹᴵᴰᴵ\nCH₃", "Midi set channel to 3"),
@@ -922,7 +928,8 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_CH16", "ᴹᴵᴰᴵ\nCH₁₆", "Midi set channel to 16"),
     K("MI_CHD", "ᴹᴵᴰᴵ\nCHᴰᴺ", "Midi decrease channel"),
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
-
+]
+KEYCODES_MIDI_MODULATION = [
     K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
     K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
     K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
