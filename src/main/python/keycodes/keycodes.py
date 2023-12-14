@@ -977,7 +977,7 @@ KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
     KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "ᵉⁿᶜᵒᵈᵉʳ\nˢᵗᵉᵖ\n{}".format(x),
+                              "Step\nSize\n+{}".format(x),
                               "Step size {}".format(x)))
 
 
@@ -1005,7 +1005,7 @@ for x in range(128):
                               "LSB{}\nᵇᵃⁿᵏ".format(x),
                               "Bank select LSB {}".format(x)))
     KEYCODES_Program_Change.append(K("MI_PROG_{}".format(x),
-                              "{}\nᵖʳᵒᵍʳᵃᵐ".format(x),
+                              "ᵖʳᵒᵍʳᵃᵐ\n{}".format(x),
                               "Program change {}".format(x)))
 
 

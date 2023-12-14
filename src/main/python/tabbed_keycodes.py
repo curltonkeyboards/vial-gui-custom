@@ -182,12 +182,12 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "Basic MIDI", KEYCODES_MIDI),
             SimpleTab(self, "CC", KEYCODES_MIDI_CC),
-            SimpleTab(self, "Bank Change", KEYCODES_MIDI_BANK),
             SimpleTab(self, "Program Change", KEYCODES_Program_Change),
             SimpleTab(self, "Velocity", KEYCODES_MIDI_VELOCITY),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
             SimpleTab(self, "User", KEYCODES_USER),
+            SimpleTab(self, "MIDI Advanced", KEYCODES_MIDI_BANK),
         ]
 
         for tab in self.tabs:
