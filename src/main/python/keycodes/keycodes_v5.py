@@ -554,9 +554,9 @@ class keycodes_v5:
         "FN_MO23": 0x5F11,
         "QK_MACRO": 0x5F12,
 
-        "MI_CC_TOG_0": 0x8000,  # start value for new keycodes
-        "MI_CC_UP_0": 0x8000 + 128,
-        "MI_CC_DWN_0": 0x8000 + 128 * 2,
+        "MI_CC_0_TOG": 0x8000,  # start value for new keycodes
+        "MI_CC_0_UP": 0x8000 + 128,
+        "MI_CC_0_DWN": 0x8000 + 128 * 2,
         "MI_CC_0_0": 0x8000 + 128 * 3,  # 128*128 keycodes for fixed CC values
         "MI_BANK_MSB_0": (0x8000 + 128 * 3) + 128 * 128,
         "MI_BANK_LSB_0": (0x8000 + 128 * 4) + 128 * 128,
@@ -581,9 +581,9 @@ for x in range(128):
     keycodes_v5.kc["MI_VELOCITY_{}".format(x)] = keycodes_v5.kc["MI_VELOCITY_0"] + x
 
 for x in range(128):
-    keycodes_v5.kc["MI_CC_TOG_{}".format(x)] = keycodes_v5.kc["MI_CC_TOG_0"] + x
-    keycodes_v5.kc["MI_CC_UP_{}".format(x)] = keycodes_v5.kc["MI_CC_UP_0"] + x
-    keycodes_v5.kc["MI_CC_DWN_{}".format(x)] = keycodes_v5.kc["MI_CC_DWN_0"] + x
+    keycodes_v5.kc["MI_CC_{}_TOG".format(x)] = keycodes_v5.kc["MI_CC_0_TOG"] + x
+    keycodes_v5.kc["MI_CC_{}_UP".format(x)] = keycodes_v5.kc["MI_CC_0_UP"] + x
+    keycodes_v5.kc["MI_CC_{}_DWN".format(x)] = keycodes_v5.kc["MI_CC_0_DWN"] + x
     keycodes_v5.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v5.kc["MI_BANK_MSB_0"] + x
     keycodes_v5.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v5.kc["MI_BANK_LSB_0"] + x
     keycodes_v5.kc["MI_PROG_{}".format(x)] = keycodes_v5.kc["MI_PROG_0"] + x

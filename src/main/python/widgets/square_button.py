@@ -8,7 +8,7 @@ class SquareButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.scale = 1.4
+        self.scale = 1.2
         self.label = None
         self.word_wrap = False
         self.text = ""
