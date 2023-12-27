@@ -123,4 +123,4 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: vial-win-installer
-        path: target\Curlton KeyStation.exe
+        path: target\Curlton KeyStationSetup.exe
