@@ -1,31 +1,41 @@
-# SPDX-License-Identifier: GPL-2.0-or-later
-
 from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtWidgets import QPushButton, QLabel, QHBoxLayout
+from PyQt5.QtGui import QPainter, QPolygonF
+from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
 
-class SquareButton(QPushButton):
-
+class PentagonButton(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        self.scale = 1.2
+        
         self.label = None
         self.word_wrap = False
         self.text = ""
-
-    def setRelSize(self, ratio):
-        self.scale = ratio
-        self.updateGeometry()
 
     def setWordWrap(self, state):
         self.word_wrap = state
         self.setText(self.text)
 
     def sizeHint(self):
-        size = int(round(self.fontMetrics().height() * self.scale))
-        return QSize(size, size)
+        return QSize(100, 100)  # Set an initial size
 
-    # Override setText to facilitate automatic word wrapping
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setBrush(self.palette().brush(self.backgroundRole()))
+        
+        # Define the points for a regular pentagon
+        side_length = 50
+        half_width = side_length / (2 * (1 + (5 ** 0.5) / 2))
+        points = [
+            (50, 0),
+            (50 + half_width, 50 - side_length / 2),
+            (50 + half_width / 2, 50 + side_length / 2),
+            (50 - half_width / 2, 50 + side_length / 2),
+            (50 - half_width, 50 - side_length / 2),
+        ]
+        polygon = QPolygonF([Qt.QPointF(*point) for point in points])
+        
+        painter.drawPolygon(polygon)
+
     def setText(self, text):
         self.text = text
         if self.word_wrap:
@@ -36,7 +46,7 @@ class SquareButton(QPushButton):
                 self.label.setAlignment(Qt.AlignCenter)
                 layout = QHBoxLayout(self)
                 layout.setContentsMargins(0, 0, 0, 0)
-                layout.addWidget(self.label,0,Qt.AlignCenter)
+                layout.addWidget(self.label, 0, Qt.AlignCenter)
             else:
                 self.label.setText(text)
         else:
