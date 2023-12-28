@@ -58,7 +58,7 @@ themes = [
         QPalette.Link: "#cfbda4",
         QPalette.Highlight: "#cfbda4",
         QPalette.HighlightedText: "#cc5200",
-        (QPalette.Active, QPalette.Button): "#cfbda4",
+        (QPalette.Active, QPalette.Button): "#cc5200",
         (QPalette.Disabled, QPalette.ButtonText): "#cc5200",
         (QPalette.Disabled, QPalette.WindowText): "#cc5200",
         (QPalette.Disabled, QPalette.Text): "#cfbda4",
