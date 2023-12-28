@@ -49,7 +49,7 @@ themes = [
         QPalette.WindowText: "#333333",
         QPalette.Base: "#333333",
         QPalette.AlternateBase: "#cfbda4",
-        QPalette.ToolTipBase: "#3e2308",
+        QPalette.ToolTipBase: "#ff6700",
         QPalette.ToolTipText: "#333333",
         QPalette.Text: "#ff6700",
         QPalette.Button: "#cfbda4",
