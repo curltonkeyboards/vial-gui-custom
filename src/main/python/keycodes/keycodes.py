@@ -899,8 +899,8 @@ KEYCODES_MIDI_TRANSPOSITION = [
     K("MI_TRNS_6", "Key\nF#major", "Midi set transposition to +6 semitones"),
     K("MI_TRNS_N5", "Key\nG major", "Midi set transposition to -5 semitones"),
     K("MI_TRNS_N4", "Key\nG#major", "Midi set transposition to -4 semitones"),
-    K("MI_TRNS_N3", "Key\nA major, "Midi set transposition to -3 semitones"),
-    K("MI_TRNS_N2", "Key\nA#major, "Midi set transposition to -2 semitones"),
+    K("MI_TRNS_N3", "Key\nA major", "Midi set transposition to -3 semitones"),
+    K("MI_TRNS_N2", "Key\nA#major", "Midi set transposition to -2 semitones"),
     K("MI_TRNS_N1", "Key\nB major", "Midi set transposition to -1 semitones"),
 
 
