@@ -1,6 +1,6 @@
 {
-    "app_name": "Curlton Vial MIDI",
-    "author": "xyz",
+    "app_name": "Curlton KeyStation",
+    "author": "Curlton Keyboards",
     "main_module": "src/main/python/main.py",
     "version": "0.7.1"
 }
