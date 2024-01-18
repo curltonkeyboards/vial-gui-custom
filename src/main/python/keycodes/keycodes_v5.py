@@ -576,13 +576,14 @@ class keycodes_v5:
     masked = set()
 
 for x in range(8):
-    keycodes_v5.kc["MIDI_INVERSION_{}".format(x)] = keycodes_v5.kc["MI_INVERSION_1"] + x
+    keycodes_v5.kc["MI_INVERSION_{}".format(x)] = keycodes_v5.kc["MI_INVERSION_1"] + x
 
 for x in range(16):
     keycodes_v5.kc["ENCODER_SENSITIVITY_{}".format(x+1)] = keycodes_v5.kc["ENCODER_SENSITIVITY_1"] + x
 
 for x in range(128):
     keycodes_v5.kc["MI_VELOCITY_{}".format(x)] = keycodes_v5.kc["MI_VELOCITY_0"] + x
+    keycodes_v5.kc["MI_CHORD_{}".format(x)] = keycodes_v5.kc["MI_CHORD_1"] + x
 
 for x in range(128):
     keycodes_v5.kc["MI_CC_{}_TOG".format(x)] = keycodes_v5.kc["MI_CC_0_TOG"] + x
@@ -591,7 +592,7 @@ for x in range(128):
     keycodes_v5.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v5.kc["MI_BANK_MSB_0"] + x
     keycodes_v5.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v5.kc["MI_BANK_LSB_0"] + x
     keycodes_v5.kc["MI_PROG_{}".format(x)] = keycodes_v5.kc["MI_PROG_0"] + x
-    keycodes_v5.kc["MI_CHORD_{}".format(x)] = keycodes_v5.kc["MI_CHORD_1"] + x
+
     
 
 for x in range(128):
