@@ -936,9 +936,16 @@ KEYCODES_MIDI_CHORD = []
 for x in range (128):
     KEYCODES_MIDI_CHORD.append(K("MI_CHORD_{}".format(x),
                               "CHORD\n{}".format(x),
-                              "CHORD {}".format(x)))
+                              "CHORD {}".format(x)))                            
     
+KEYCODES_MIDI_INVERSION = []
 
+for x in range (8):
+    KEYCODES_MIDI_INVERSION.append(K("MI_INVERSION_{}".format(x),
+                              "INVERSION\n{}".format(x),
+                              "INVERSION {}".format(x)))
+                              
+                              
 KEYCODES_HIDDEN = []
 for x in range(256):
     KEYCODES_HIDDEN.append(K("TD({})".format(x), "TD({})".format(x)))
@@ -1025,7 +1032,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD)
+                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
