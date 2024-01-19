@@ -931,35 +931,7 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
 ]
 
-KEYCODES_MIDI_CHORDS = [
-    K("MI_INVERSION_1", "Inversion\n1", "Inversion 1"),
-    K("MI_INVERSION_2", "Inversion\n2", "Inversion 2"),
-    K("MI_INVERSION_3", "Inversion\n3", "Inversion 3"),
-    K("MI_INVERSION_4", "Inversion\n4", "Inversion 4"),
-    K("MI_INVERSION_5", "Inversion\n5", "Inversion 5"),
-    K("MI_CHORD_1", "Major", "Major Chord"),
-    K("MI_CHORD_2", "Minor", "Minor Chord"),
-    K("MI_CHORD_3", "Maj\n7", "Major 7th Chord"),
-    K("MI_CHORD_4", "Min\n7", "Minor 7th Chord"),
-    K("MI_CHORD_5", "Dom\n7", "Dominant 7th Chord"),
-    K("MI_CHORD_6", "Dim7", "Diminished 7th Chord"), 
-    K("MI_CHORD_7", "Half Dim7", "Half Diminished (m7b5) Chord"), 
-    K("MI_CHORD_8", "Maj\n11", "Major 11th Chord"),   
-    K("MI_CHORD_9", "Min\n11", "Minor 11th Chord"),    
-    K("MI_CHORD_10", "Dom\n11", "Dominant 11th Chord"),    
-    K("MI_CHORD_11", "Sus2", "Sus2 Chord"),    
-    K("MI_CHORD_12", "Sus4", "Sus4 Chord"),   
-    K("MI_CHORD_13", "Add2", "Add2 Chord"),
-    K("MI_CHORD_14", "Add4", "Add4 Chord"),
-    K("MI_CHORD_15", "Diminish", "Diminished Chord"),
-    K("MI_CHORD_16", "Maj7no5", "Major7no5 Chord"),
-    K("MI_CHORD_17", "Min7no5", "Minor7no5 Chord"),
-    K("MI_CHORD_18", "7no5", "Major Chord"),   
-    K("MI_CHORD_19", "Min6", "Major Chord"),    
-    K("MI_CHORD_20", "Maj6", "Major Chord"),    
- 
-]
-    
+
 
 KEYCODES_HIDDEN = []
 for x in range(256):
@@ -1047,7 +1019,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_CHORDS+KEYCODES_MIDI_VELOCITYENCODER)
+                    KEYCODES_MIDI_VELOCITYENCODER)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
