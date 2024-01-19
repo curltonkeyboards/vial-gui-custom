@@ -931,21 +931,41 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
 ]
 
-KEYCODES_MIDI_CHORD = []
+KEYCODES_MIDI_CHORD = [
+K("MI_CHORD_0", "0\nᶜʰᵒʳᵈ", "0 Chord"),
+K("MI_CHORD_1", "1\nᶜʰᵒʳᵈ", "1 Chord"),
+K("MI_CHORD_2", "2\nᶜʰᵒʳᵈ", "2 Chord"),
+K("MI_CHORD_3", "3\nᶜʰᵒʳᵈ", "3 Chord"),
+K("MI_CHORD_4", "4\nᶜʰᵒʳᵈ", "4 Chord"),
+K("MI_CHORD_5", "5\nᶜʰᵒʳᵈ", "5 Chord"),
+K("MI_CHORD_6", "6\nᶜʰᵒʳᵈ", "6 Chord"),
+K("MI_CHORD_7", "7\nᶜʰᵒʳᵈ", "7 Chord"),
+K("MI_CHORD_8", "8\nᶜʰᵒʳᵈ", "8 Chord"),
+K("MI_CHORD_9", "9\nᶜʰᵒʳᵈ", "9 Chord"),
+K("MI_CHORD_10", "10\nᶜʰᵒʳᵈ", "10 Chord"),
+K("MI_CHORD_11", "11\nᶜʰᵒʳᵈ", "11 Chord"),
+K("MI_CHORD_12", "12\nᶜʰᵒʳᵈ", "12 Chord"),
+K("MI_CHORD_13", "13\nᶜʰᵒʳᵈ", "13 Chord"),
+K("MI_CHORD_14", "14\nᶜʰᵒʳᵈ", "14 Chord"),
+K("MI_CHORD_15", "15\nᶜʰᵒʳᵈ", "15 Chord"),
+K("MI_CHORD_16", "16\nᶜʰᵒʳᵈ", "16 Chord"),
+K("MI_CHORD_17", "17\nᶜʰᵒʳᵈ", "17 Chord"),
+K("MI_CHORD_18", "18\nᶜʰᵒʳᵈ", "18 Chord"),
+K("MI_CHORD_19", "19\nᶜʰᵒʳᵈ", "19 Chord"),
+K("MI_CHORD_20", "20\nᶜʰᵒʳᵈ", "20 Chord"),
+K("MI_CHORD_21", "21\nᶜʰᵒʳᵈ", "21 Chord"),
+K("MI_CHORD_22", "22\nᶜʰᵒʳᵈ", "22 Chord"),
+]
 
-for x in range (128):
-    KEYCODES_MIDI_CHORD.append(K("MI_CHORD_{}".format(x),
-                              "CHORD\n{}".format(x),
-                              "CHORD {}".format(x)))                            
     
-KEYCODES_MIDI_INVERSION = []
+KEYCODES_MIDI_INVERSION = [
+ K ("MI_INVERSION_DEF", "Root \nPᴏsɪᴛɪᴏɴ", "Root Position"),
+ K ("MI_INVERSION_1", "1st \nIɴᴠᴇʀsɪᴏɴ", "1st Inversion"),
+ K ("MI_INVERSION_2", "2nd \nIɴᴠᴇʀsɪᴏɴ", "2nd Inversion"),
+ K ("MI_INVERSION_3", "Def \nIɴᴠᴇʀsɪᴏɴ", "3rd Inversion"),
 
-for x in range (8):
-    KEYCODES_MIDI_INVERSION.append(K("MI_INVERSION_{}".format(x),
-                              "INVERSION\n{}".format(x),
-                              "INVERSION {}".format(x)))
-                              
-                              
+]
+
 KEYCODES_HIDDEN = []
 for x in range(256):
     KEYCODES_HIDDEN.append(K("TD({})".format(x), "TD({})".format(x)))
