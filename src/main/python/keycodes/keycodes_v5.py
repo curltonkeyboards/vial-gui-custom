@@ -569,8 +569,8 @@ class keycodes_v5:
         "MI_VELOCITY_0": (0x8000 + 128 * 6) + 128 * 128 + 5,
         "ENCODER_SENSITIVITY_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
         "MI_CHORD_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,
-        "MI_INVERSION_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17 + 128,        
-        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 17 + 128 + 8,  # custom keycodes safe range
+        "MI_INVERSION_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130,         
+        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130 + 8,  # custom keycodes safe range
     }
 
     masked = set()
