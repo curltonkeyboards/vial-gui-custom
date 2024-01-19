@@ -571,8 +571,8 @@ class keycodes_v6:
         "ENCODER_SENSITIVITY_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
         
         "MI_CHORD_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 25,
-        "MI_INVERSION_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 128, 
-        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 128 + 8,  # custom keycodes safe range
+        "MI_INVERSION_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 129, 
+        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 129 + 8,  # custom keycodes safe range
         
        
 
