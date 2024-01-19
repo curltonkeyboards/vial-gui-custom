@@ -931,10 +931,10 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
 ]
 
-KEYCODES_MIDI_CHORDS = []
+KEYCODES_MIDI_CHORD = []
 
 for x in range (128):
-    KEYCODES_MIDI_CHORDS.append(K("MI_CHORD_{}".format(x),
+    KEYCODES_MIDI_CHORD.append(K("MI_CHORD_{}".format(x),
                               "CHORD\n{}".format(x),
                               "CHORD {}".format(x)))
     
@@ -1025,7 +1025,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORDS)
+                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
