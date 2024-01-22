@@ -932,8 +932,8 @@ KEYCODES_MIDI_CHANNEL = [
 ]
 
 KEYCODES_MIDI_CHORD = [
-K("MI_CHORD_0", "0\nᶜʰᵒʳᵈ", "0 Chord"),
-K("MI_CHORD_1", "1\nᶜʰᵒʳᵈ", "1 Chord"),
+K("MI_CHORD_0", "Major\nᶜʰᵒʳᵈ", "Major Chord"),
+K("MI_CHORD_1", "Minor\nᶜʰᵒʳᵈ", "Minor Chord"),
 K("MI_CHORD_2", "2\nᶜʰᵒʳᵈ", "2 Chord"),
 K("MI_CHORD_3", "3\nᶜʰᵒʳᵈ", "3 Chord"),
 K("MI_CHORD_4", "4\nᶜʰᵒʳᵈ", "4 Chord"),
@@ -960,9 +960,9 @@ K("MI_CHORD_22", "22\nᶜʰᵒʳᵈ", "22 Chord"),
     
 KEYCODES_MIDI_INVERSION = [
  K ("MI_INVERSION_DEF", "Root \nPᴏsɪᴛɪᴏɴ", "Root Position"),
- K ("MI_INVERSION_1", "1st \nIɴᴠᴇʀsɪᴏɴ", "1st Inversion"),
- K ("MI_INVERSION_2", "2nd \nIɴᴠᴇʀsɪᴏɴ", "2nd Inversion"),
- K ("MI_INVERSION_3", "Def \nIɴᴠᴇʀsɪᴏɴ", "3rd Inversion"),
+ K ("MI_INVERSION_1", "1st \nᶦⁿᵛᵉʳˢᶦᵒⁿ", "1st Inversion"),
+ K ("MI_INVERSION_2", "2nd \nᶦⁿᵛᵉʳˢᶦᵒⁿ", "2nd Inversion"),
+ K ("MI_INVERSION_3", "Def \nᶦⁿᵛᵉʳˢᶦᵒⁿ", "3rd Inversion"),
 
 ]
 
