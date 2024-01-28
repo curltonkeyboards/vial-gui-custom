@@ -991,10 +991,12 @@ K("MI_CHORD_53", "7\nb11", "22 Chord"),
     
 KEYCODES_MIDI_INVERSION = [
  K ("MI_INVERSION_DEF", "Root \nPᴏsɪᴛɪᴏɴ", "Root Position"),
- K ("MI_INVERSION_1", "1st \nᶦⁿᵛᵉʳˢᶦᵒⁿ", "1st Inversion"),
- K ("MI_INVERSION_2", "2nd \nᶦⁿᵛᵉʳˢᶦᵒⁿ", "2nd Inversion"),
- K ("MI_INVERSION_3", "Def \nᶦⁿᵛᵉʳˢᶦᵒⁿ", "3rd Inversion"),
-
+ K ("MI_INVERSION_1", "1st \nPᴏsɪᴛɪᴏɴ", "1st Inversion"),
+ K ("MI_INVERSION_2", "2nd \nPᴏsɪᴛɪᴏɴ", "2nd Inversion"),
+ K ("MI_INVERSION_3", "3rd\nPᴏsɪᴛɪᴏɴ", "3rd Inversion"),
+ K ("MI_INVERSION_4", "4th \nPᴏsɪᴛɪᴏɴ", "3rd Inversion"),
+ K ("MI_INVERSION_5", "5th \nPᴏsɪᴛɪᴏɴ", "3rd Inversion"),
+ K ("MI_INVERSION_6", "6th \nPᴏsɪᴛɪᴏɴ", "3rd Inversion"),
 ]
 
 KEYCODES_HIDDEN = []
