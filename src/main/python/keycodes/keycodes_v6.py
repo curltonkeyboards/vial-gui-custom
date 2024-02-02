@@ -548,6 +548,9 @@ class keycodes_v6:
         "MI_MODSU": 0x718D,
         "MI_BENDD": 0x718E,
         "MI_BENDU": 0x718F,
+        
+
+
 
         "RESET": 0x7C00,
 
@@ -555,9 +558,9 @@ class keycodes_v6:
         "FN_MO23": 0x7C78,
 
         # "QK_KB": 0x7E00,
-        "MI_CC_TOG_0": 0x8000,  # start value for new keycodes
-        "MI_CC_UP_0": 0x8000 + 128,
-        "MI_CC_DWN_0": 0x8000 + 128 * 2,
+        "MI_CC_0_TOG": 0x8000,  # start value for new keycodes
+        "MI_CC_0_UP": 0x8000 + 128,
+        "MI_CC_0_DWN": 0x8000 + 128 * 2,
         "MI_CC_0_0": 0x8000 + 128 * 3,  # 128*128 keycodes for fixed CC values
         "MI_BANK_MSB_0": (0x8000 + 128 * 3) + 128 * 128,
         "MI_BANK_LSB_0": (0x8000 + 128 * 4) + 128 * 128,
@@ -568,22 +571,164 @@ class keycodes_v6:
         "MI_PROG_DWN": (0x8000 + 128 * 6) + 128 * 128 + 4,
 
         "MI_VELOCITY_0": (0x8000 + 128 * 6) + 128 * 128 + 5,
-        "ENCODER_STEP_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
-        "QK_KB": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,  # custom keycodes safe range
+        "ENCODER_SENSITIVITY_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
+        
+                # midi chords "MI_CHORD_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,
+        "MI_CHORD_0": 0xC396,
+        "MI_CHORD_1": 0xC397,
+        "MI_CHORD_2": 0xC398,
+        "MI_CHORD_3": 0xC39A,
+        "MI_CHORD_4": 0xC39B,
+        "MI_CHORD_5": 0xC39C,
+        "MI_CHORD_6": 0xC39D,
+        "MI_CHORD_7": 0xC39E,
+        "MI_CHORD_8": 0xC39F,
+        "MI_CHORD_9": 0xC3A0,
+        "MI_CHORD_10": 0xC3A1,
+        "MI_CHORD_11": 0xC3A2,
+        "MI_CHORD_12": 0xC3A3,
+        "MI_CHORD_13": 0xC3A4,
+        "MI_CHORD_14": 0xC3A5,
+        "MI_CHORD_15": 0xC3A6,
+        "MI_CHORD_16": 0xC3A7,
+        "MI_CHORD_17": 0xC3A8,
+        "MI_CHORD_18": 0xC3A9,
+        "MI_CHORD_19": 0xC3AA,
+        "MI_CHORD_20": 0xC3AB,
+        "MI_CHORD_21": 0xC3AC,
+        "MI_CHORD_22": 0xC3AD,
+        "MI_CHORD_23": 0xC3AE,
+        "MI_CHORD_24": 0xC3AF,
+        "MI_CHORD_25": 0xC3B0,
+        "MI_CHORD_26": 0xC3B1,
+        "MI_CHORD_27": 0xC3B2,
+        "MI_CHORD_28": 0xC3B3,
+        "MI_CHORD_29": 0xC3B4,
+        "MI_CHORD_30": 0xC3B5,
+        "MI_CHORD_31": 0xC3B6,
+        "MI_CHORD_32": 0xC3B7,
+        "MI_CHORD_33": 0xC3B8,
+        "MI_CHORD_34": 0xC3B9,
+        "MI_CHORD_35": 0xC3BA,
+        "MI_CHORD_36": 0xC3BB,
+        "MI_CHORD_37": 0xC3BC,
+        "MI_CHORD_38": 0xC3BD,
+        "MI_CHORD_39": 0xC3BE,
+        "MI_CHORD_40": 0xC3BF,
+        "MI_CHORD_41": 0xC3C0,
+        "MI_CHORD_42": 0xC3C1,
+        "MI_CHORD_43": 0xC3C2,
+        "MI_CHORD_44": 0xC3C3,
+        "MI_CHORD_45": 0xC3C4,
+        "MI_CHORD_46": 0xC3C5,
+        "MI_CHORD_47": 0xC3C6,
+        "MI_CHORD_48": 0xC3C7,
+        "MI_CHORD_49": 0xC3C8,
+        "MI_CHORD_50": 0xC3C9,
+        "MI_CHORD_51": 0xC3CA,
+        "MI_CHORD_52": 0xC3CB,
+        "MI_CHORD_53": 0xC3CC,
+        "MI_CHORD_54": 0xC3CD,
+        "MI_CHORD_55": 0xC3CE,
+        "MI_CHORD_56": 0xC3CF,
+        "MI_CHORD_57": 0xC3D0,
+        "MI_CHORD_58": 0xC3D1,
+        "MI_CHORD_59": 0xC3D2,
+        "MI_CHORD_60": 0xC3D3,
+        "MI_CHORD_61": 0xC3D4,
+        "MI_CHORD_62": 0xC3D5,
+        "MI_CHORD_63": 0xC3D6,
+        "MI_CHORD_64": 0xC3D7,
+        "MI_CHORD_65": 0xC3D8,
+        "MI_CHORD_66": 0xC3D9,
+        "MI_CHORD_67": 0xC3DA,
+        "MI_CHORD_68": 0xC3DB,
+        "MI_CHORD_69": 0xC3DC,
+        "MI_CHORD_70": 0xC3DD,
+        "MI_CHORD_71": 0xC3DE,
+        "MI_CHORD_72": 0xC3DF,
+        "MI_CHORD_73": 0xC3E0,
+        "MI_CHORD_74": 0xC3E1,
+        "MI_CHORD_75": 0xC3E2,
+        "MI_CHORD_76": 0xC3E3,
+        "MI_CHORD_77": 0xC3E4,
+        "MI_CHORD_78": 0xC3E5,
+        "MI_CHORD_79": 0xC3E6,
+        "MI_CHORD_80": 0xC3E7,
+        "MI_CHORD_81": 0xC3E8,
+        "MI_CHORD_82": 0xC3E9,
+        "MI_CHORD_83": 0xC3EA,
+        "MI_CHORD_84": 0xC3EB,
+        "MI_CHORD_85": 0xC3EC,
+        "MI_CHORD_86": 0xC3ED,
+        "MI_CHORD_87": 0xC3EE,
+        "MI_CHORD_88": 0xC3EF,
+        "MI_CHORD_89": 0xC3F0,
+        "MI_CHORD_90": 0xC3F1,
+        "MI_CHORD_91": 0xC3F2,
+        "MI_CHORD_92": 0xC3F3,
+        "MI_CHORD_93": 0xC3F4,
+        "MI_CHORD_94": 0xC3F5,
+        "MI_CHORD_95": 0xC3F6,
+        "MI_CHORD_96": 0xC3F7,
+        "MI_CHORD_97": 0xC3F8,
+        "MI_CHORD_98": 0xC3F9,
+        "MI_CHORD_99": 0xC3FA,
+        "MI_CHORD_100": 0xC3FB,
+        "MI_CHORD_101": 0xC3FC,
+        "MI_CHORD_102": 0xC3FD,
+        "MI_CHORD_103": 0xC3FE,
+        "MI_CHORD_104": 0xC3FF,
+        "MI_CHORD_105": 0xC400,
+        "MI_CHORD_106": 0xC401,
+        "MI_CHORD_107": 0xC402,
+        "MI_CHORD_108": 0xC403,
+        "MI_CHORD_109": 0xC404,
+        "MI_CHORD_110": 0xC405,
+        "MI_CHORD_111": 0xC406,
+        "MI_CHORD_112": 0xC407,
+        "MI_CHORD_113": 0xC408,
+        "MI_CHORD_114": 0xC409,
+        "MI_CHORD_115": 0xC40A,
+        "MI_CHORD_116": 0xC40B,
+        "MI_CHORD_117": 0xC40C,
+        "MI_CHORD_118": 0xC40D,
+        "MI_CHORD_119": 0xC40E,
+        "MI_CHORD_120": 0xC40F,
+        "MI_CHORD_121": 0xC410,
+        "MI_CHORD_122": 0xC411,
+        "MI_CHORD_123": 0xC412,
+        "MI_CHORD_124": 0xC413,
+        "MI_CHORD_125": 0xC414,
+        "MI_CHORD_126": 0xC415,
+        "MI_CHORD_127": 0xC416,
+        
+        #midi inversion (0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130,         
+        "MI_INVERSION_DEF" : 0xC420,
+        "MI_INVERSION_1" : 0xC421,
+        "MI_INVERSION_2" : 0xC423,
+        "MI_INVERSION_3" : 0xC424,
+        "MI_INVERSION_4" : 0xC425,
+        "MI_INVERSION_5" : 0xC426,
+        "MI_INVERSION_6" : 0xC427,
+        "MI_INVERSION_7" : 0xC428,
+
+        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130 + 8,  # custom keycodes safe range
+        
+       
 
     }
 
     masked = set()
 
-
 for x in range(16):
-    keycodes_v6.kc["ENCODER_STEP_{}".format(x+1)] = keycodes_v6.kc["ENCODER_STEP_1"] + x
+    keycodes_v6.kc["ENCODER_SENSITIVITY_{}".format(x+1)] = keycodes_v6.kc["ENCODER_SENSITIVITY_1"] + x
 
 
 for x in range(128):
-    keycodes_v6.kc["MI_CC_TOG_{}".format(x)] = keycodes_v6.kc["MI_CC_TOG_0"] + x
-    keycodes_v6.kc["MI_CC_UP_{}".format(x)] = keycodes_v6.kc["MI_CC_UP_0"] + x
-    keycodes_v6.kc["MI_CC_DWN_{}".format(x)] = keycodes_v6.kc["MI_CC_DWN_0"] + x
+    keycodes_v6.kc["MI_CC_{}_TOG".format(x)] = keycodes_v6.kc["MI_CC_0_TOG"] + x
+    keycodes_v6.kc["MI_CC_{}_UP".format(x)] = keycodes_v6.kc["MI_CC_0_UP"] + x
+    keycodes_v6.kc["MI_CC_{}_DWN".format(x)] = keycodes_v6.kc["MI_CC_0_DWN"] + x
     keycodes_v6.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_MSB_0"] + x
     keycodes_v6.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_LSB_0"] + x
     keycodes_v6.kc["MI_PROG_{}".format(x)] = keycodes_v6.kc["MI_PROG_0"] + x
@@ -594,9 +739,11 @@ for x in range(128):
         keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 128) + y
 
 
+
 for x in range(256):
     keycodes_v6.kc["M{}".format(x)] = keycodes_v6.kc["QK_MACRO"] + x
     keycodes_v6.kc["TD({})".format(x)] = keycodes_v6.kc["QK_TAP_DANCE"] + x
+
 
 for x in range(32):
     keycodes_v6.kc["MO({})".format(x)] = keycodes_v6.kc["QK_MOMENTARY"] + x

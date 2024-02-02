@@ -862,48 +862,55 @@ KEYCODES_MIDI_BASIC = [
 ]
 
 KEYCODES_MIDI_ADVANCED = [
-    K("MI_OCT_N2", "ᴹᴵᴰᴵ\nOct₋₂", "Midi set octave to -2"),
-    K("MI_OCT_N1", "ᴹᴵᴰᴵ\nOct₋₁", "Midi set octave to -1"),
-    K("MI_OCT_0", "ᴹᴵᴰᴵ\nOct₀", "Midi set octave to 0"),
-    K("MI_OCT_1", "ᴹᴵᴰᴵ\nOct₊₁", "Midi set octave to 1"),
-    K("MI_OCT_2", "ᴹᴵᴰᴵ\nOct₊₂", "Midi set octave to 2"),
-    K("MI_OCT_3", "ᴹᴵᴰᴵ\nOct₊₃", "Midi set octave to 3"),
-    K("MI_OCT_4", "ᴹᴵᴰᴵ\nOct₊₄", "Midi set octave to 4"),
-    K("MI_OCT_5", "ᴹᴵᴰᴵ\nOct₊₅", "Midi set octave to 5"),
-    K("MI_OCT_6", "ᴹᴵᴰᴵ\nOct₊₆", "Midi set octave to 6"),
-    K("MI_OCT_7", "ᴹᴵᴰᴵ\nOct₊₇", "Midi set octave to 7"),
-    K("MI_OCTD", "ᴹᴵᴰᴵ\nOctᴰᴺ", "Midi move down an octave"),
-    K("MI_OCTU", "ᴹᴵᴰᴵ\nOctᵁᴾ", "Midi move up an octave"),
+    K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
+    K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
+    K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
+    K("MI_SOFT", "ᴹᴵᴰᴵ\nSPedal", "Midi Soft Pedal"),
+    K("MI_LEG", "ᴹᴵᴰᴵ\nLegat", "Midi Legato"),
+    K("MI_MOD", "ᴹᴵᴰᴵ\nModul", "Midi Modulation"),
+    K("MI_MODSD", "ᴹᴵᴰᴵ\nModulᴰᴺ", "Midi decrease modulation speed"),
+    K("MI_MODSU", "ᴹᴵᴰᴵ\nModulᵁᴾ", "Midi increase modulation speed"),
+    K("MI_BENDD", "ᴹᴵᴰᴵ\nBendᴰᴺ", "Midi bend pitch down"),
+    K("MI_BENDU", "ᴹᴵᴰᴵ\nBendᵁᴾ", "Midi bend pitch up"),
+]
 
-    K("MI_TRNS_N6", "ᴹᴵᴰᴵ\nTrans₋₆", "Midi set transposition to -4 semitones"),
-    K("MI_TRNS_N5", "ᴹᴵᴰᴵ\nTrans₋₅", "Midi set transposition to -5 semitones"),
-    K("MI_TRNS_N4", "ᴹᴵᴰᴵ\nTrans₋₄", "Midi set transposition to -4 semitones"),
-    K("MI_TRNS_N3", "ᴹᴵᴰᴵ\nTrans₋₃", "Midi set transposition to -3 semitones"),
-    K("MI_TRNS_N2", "ᴹᴵᴰᴵ\nTrans₋₂", "Midi set transposition to -2 semitones"),
-    K("MI_TRNS_N1", "ᴹᴵᴰᴵ\nTrans₋₁", "Midi set transposition to -1 semitones"),
-    K("MI_TRNS_0", "ᴹᴵᴰᴵ\nTrans₀", "Midi set no transposition"),
-    K("MI_TRNS_1", "ᴹᴵᴰᴵ\nTrans₊₁", "Midi set transposition to +1 semitones"),
-    K("MI_TRNS_2", "ᴹᴵᴰᴵ\nTrans₊₂", "Midi set transposition to +2 semitones"),
-    K("MI_TRNS_3", "ᴹᴵᴰᴵ\nTrans₊₃", "Midi set transposition to +3 semitones"),
-    K("MI_TRNS_4", "ᴹᴵᴰᴵ\nTrans₊₄", "Midi set transposition to +4 semitones"),
-    K("MI_TRNS_5", "ᴹᴵᴰᴵ\nTrans₊₅", "Midi set transposition to +5 semitones"),
-    K("MI_TRNS_6", "ᴹᴵᴰᴵ\nTrans₊₆", "Midi set transposition to +6 semitones"),
-    K("MI_TRNSD", "ᴹᴵᴰᴵ\nTransᴰᴺ", "Midi decrease transposition"),
-    K("MI_TRNSU", "ᴹᴵᴰᴵ\nTransᵁᴾ", "Midi increase transposition"),
+KEYCODES_MIDI_TRANSPOSITION = [
+    K("MI_OCT_N2", "ᴼᶜᵗᵃᵛᵉ\n-2", "Midi set octave to -2"),
+    K("MI_OCT_N1", "ᴼᶜᵗᵃᵛᵉ\n-1", "Midi set octave to -1"),
+    K("MI_OCT_0", "ᴼᶜᵗᵃᵛᵉ\nᴰᵉᶠᵃᵘˡᵗ", "Midi set octave to 0"),
+    K("MI_OCT_1", "ᴼᶜᵗᵃᵛᵉ\n+1", "Midi set octave to 1"),
+    K("MI_OCT_2", "ᴼᶜᵗᵃᵛᵉ\n+2", "Midi set octave to 2"),
+    K("MI_OCT_3", "ᴼᶜᵗᵃᵛᵉ\n+3", "Midi set octave to 3"),
+    K("MI_OCT_4", "ᴼᶜᵗᵃᵛᵉ\n+4", "Midi set octave to 4"),
+    K("MI_OCT_5", "ᴼᶜᵗᵃᵛᵉ\n+5", "Midi set octave to 5"),
+    K("MI_OCT_6", "ᴼᶜᵗᵃᵛᵉ\n+6", "Midi set octave to 6"),
+    K("MI_OCT_7", "ᴼᶜᵗᵃᵛᵉ\n+7", "Midi set octave to 7"),
+    K("MI_OCTD", "ᴼᶜᵗᵃᵛᵉ\nDown", "Midi move down an octave"),
+    K("MI_OCTU", "ᴼᶜᵗᵃᵛᵉ\nUp", "Midi move up an octave"),
+    
+    K("MI_TRNSD", "ᵗʳᵃⁿˢᵖᵒˢᵉ\n-", "Midi decrease transposition"),
+    K("MI_TRNSU", "ᵗʳᵃⁿˢᵖᵒˢᵉ\n+", "Midi increase transposition"),
+    K("MI_TRNS_0", "Key\nCᵐᵃʲᵒʳ\nAᵐᶦⁿᵒʳ", "Midi set no transposition"),
+    K("MI_TRNS_1", "Key\nC#ᵐᵃʲᵒʳ\nA#ᵐᶦⁿᵒʳ", "Midi set transposition to +1 semitones"),
+    K("MI_TRNS_2", "Key\nDᵐᵃʲᵒʳ\nBᵐᶦⁿᵒʳ", "Midi set transposition to +2 semitones"),
+    K("MI_TRNS_3", "Key\nD#ᵐᵃʲᵒʳ\nCᵐᶦⁿᵒʳ", "Midi set transposition to +3 semitones"),
+    K("MI_TRNS_4", "Key\nEᵐᵃʲᵒʳ\nC#ᵐᶦⁿᵒʳ", "Midi set transposition to +4 semitones"),
+    K("MI_TRNS_5", "Key\nFᵐᵃʲᵒʳ\nDᵐᶦⁿᵒʳ", "Midi set transposition to +5 semitones"),
+    K("MI_TRNS_6", "Key\nF#ᵐᵃʲᵒʳ\nD#ᵐᶦⁿᵒʳ", "Midi set transposition to +6 semitones"),
+    K("MI_TRNS_N5", "Key\nGᵐᵃʲᵒʳ\nEᵐᶦⁿᵒʳ", "Midi set transposition to -5 semitones"),
+    K("MI_TRNS_N4", "Key\nG#ᵐᵃʲᵒʳ\nFᵐᶦⁿᵒʳ", "Midi set transposition to -4 semitones"),
+    K("MI_TRNS_N3", "Key\nAᵐᵃʲᵒʳ\nF#ᵐᶦⁿᵒʳ", "Midi set transposition to -3 semitones"),
+    K("MI_TRNS_N2", "Key\nA#ᵐᵃʲᵒʳ\nGᵐᶦⁿᵒʳ", "Midi set transposition to -2 semitones"),
+    K("MI_TRNS_N1", "Key\nBᵐᵃʲᵒʳ\nG#ᵐᶦⁿᵒʳ\n", "Midi set transposition to -1 semitones"),
 
-    K("MI_VEL_1", "ᴹᴵᴰᴵ\nVel₁", "Midi set velocity to 0", alias=["MI_VEL_0"]),
-    K("MI_VEL_2", "ᴹᴵᴰᴵ\nVel₂", "Midi set velocity to 25"),
-    K("MI_VEL_3", "ᴹᴵᴰᴵ\nVel₃", "Midi set velocity to 38"),
-    K("MI_VEL_4", "ᴹᴵᴰᴵ\nVel₄", "Midi set velocity to 51"),
-    K("MI_VEL_5", "ᴹᴵᴰᴵ\nVel₅", "Midi set velocity to 64"),
-    K("MI_VEL_6", "ᴹᴵᴰᴵ\nVel₆", "Midi set velocity to 76"),
-    K("MI_VEL_7", "ᴹᴵᴰᴵ\nVel₇", "Midi set velocity to 89"),
-    K("MI_VEL_8", "ᴹᴵᴰᴵ\nVel₈", "Midi set velocity to 102"),
-    K("MI_VEL_9", "ᴹᴵᴰᴵ\nVel₉", "Midi set velocity to 114"),
-    K("MI_VEL_10", "ᴹᴵᴰᴵ\nVel₁₀", "Midi set velocity to 127"),
-    K("MI_VELD", "ᴹᴵᴰᴵ\nVelᴰᴺ", "Midi decrease velocity"),
-    K("MI_VELU", "ᴹᴵᴰᴵ\nVelᵁᴾ", "Midi increase velocity"),
 
+]
+KEYCODES_MIDI_VELOCITYENCODER = [
+    K("MI_VELD", "ⱽᵉˡᵒᶜᶦᵗʸ\nDown", "Midi decrease velocity"),
+    K("MI_VELU", "ⱽᵉˡᵒᶜᶦᵗʸ\nUp", "Midi increase velocity"),
+]
+
+KEYCODES_MIDI_CHANNEL = [
     K("MI_CH1", "ᴹᴵᴰᴵ\nCH₁", "Midi set channel to 1"),
     K("MI_CH2", "ᴹᴵᴰᴵ\nCH₂", "Midi set channel to 2"),
     K("MI_CH3", "ᴹᴵᴰᴵ\nCH₃", "Midi set channel to 3"),
@@ -922,17 +929,73 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_CH16", "ᴹᴵᴰᴵ\nCH₁₆", "Midi set channel to 16"),
     K("MI_CHD", "ᴹᴵᴰᴵ\nCHᴰᴺ", "Midi decrease channel"),
     K("MI_CHU", "ᴹᴵᴰᴵ\nCHᵁᴾ", "Midi increase channel"),
+]
 
-    K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
-    K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
-    K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
-    K("MI_SOFT", "ᴹᴵᴰᴵ\nSPedal", "Midi Soft Pedal"),
-    K("MI_LEG", "ᴹᴵᴰᴵ\nLegat", "Midi Legato"),
-    K("MI_MOD", "ᴹᴵᴰᴵ\nModul", "Midi Modulation"),
-    K("MI_MODSD", "ᴹᴵᴰᴵ\nModulᴰᴺ", "Midi decrease modulation speed"),
-    K("MI_MODSU", "ᴹᴵᴰᴵ\nModulᵁᴾ", "Midi increase modulation speed"),
-    K("MI_BENDD", "ᴹᴵᴰᴵ\nBendᴰᴺ", "Midi bend pitch down"),
-    K("MI_BENDU", "ᴹᴵᴰᴵ\nBendᵁᴾ", "Midi bend pitch up"),
+KEYCODES_MIDI_CHORD = [
+K("MI_CHORD_0", "Major", "Major Chord"),
+K("MI_CHORD_1", "Minor", "Minor Chord"),
+K("MI_CHORD_2", "Dim\nᵒʳ\n°", "Diminished Chord"),
+K("MI_CHORD_3", "Aug\nᵒʳ\n+", "3 Chord"),
+K("MI_CHORD_4", "Sus2", "4 Chord"),
+K("MI_CHORD_5", "Sus4", "5 Chord"),
+K("MI_CHORD_6", "Major\n6", "6 Chord"),
+K("MI_CHORD_7", "Minor\n6", "7 Chord"),
+K("MI_CHORD_8", "Maj7", "8 Chord"),
+K("MI_CHORD_9", "min7", "9 Chord"),
+K("MI_CHORD_10", "7\nᶜʰᵒʳᵈ", "10 Chord"),
+K("MI_CHORD_11", "Dim7\nᵒʳ\nb7b5", "11 Chord"),
+K("MI_CHORD_12", "Half\nDim7\nm7b5", "12 Chord"),
+K("MI_CHORD_13", "Aug7\nᵒʳ\n7#5", "13 Chord"),
+K("MI_CHORD_14", "Maj9", "14 Chord"),
+K("MI_CHORD_15", "min9", "15 Chord"),
+K("MI_CHORD_16", "9\nᶜʰᵒʳᵈ", "16 Chord"),
+K("MI_CHORD_17", "Add2", "17 Chord"),
+K("MI_CHORD_18", "min\nAdd2", "18 Chord"),
+K("MI_CHORD_19", "Add4", "19 Chord"),
+K("MI_CHORD_20", "min\nAdd4", "20 Chord"),
+K("MI_CHORD_21", "6/9", "21 Chord"),
+K("MI_CHORD_22", "Minor\n6/9", "21 Chord"),
+K("MI_CHORD_23", "MinMaj7", "22 Chord"),
+K("MI_CHORD_24", "Maj7\nSus4", "22 Chord"),
+K("MI_CHORD_25", "7\nSus4", "22 Chord"),
+K("MI_CHORD_26", "Maj7\nSus2", "22 Chord"),
+K("MI_CHORD_27", "7\nSus2", "22 Chord"),
+K("MI_CHORD_28", "Maj7\n#5", "22 Chord"),
+K("MI_CHORD_29", "min7\n#5", "22 Chord"),
+K("MI_CHORD_30", "Maj7\nb5", "22 Chord"),
+K("MI_CHORD_31", "7\nb5", "22 Chord"),
+K("MI_CHORD_32", "Maj7\nno5", "22 Chord"),
+K("MI_CHORD_33", "min7\nno5", "22 Chord"),
+K("MI_CHORD_34", "7\nno5", "22 Chord"),
+K("MI_CHORD_35", "Add9", "22 Chord"),
+K("MI_CHORD_36", "min\nAdd9", "22 Chord"),
+K("MI_CHORD_37", "Dim9\nᵒʳ\nb7b5(9)", "22 Chord"),
+K("MI_CHORD_38", "Half\nDim9\nm7b5(9)", "22 Chord"),
+K("MI_CHORD_39", "Aug9", "22 Chord"),
+K("MI_CHORD_40", "Maj11", "22 Chord"),
+K("MI_CHORD_41", "min11", "22 Chord"),
+K("MI_CHORD_42", "11\nᶜʰᵒʳᵈ", "22 Chord"),
+K("MI_CHORD_43", "Add11", "22 Chord"),
+K("MI_CHORD_44", "min\nAdd11", "22 Chord"),
+K("MI_CHORD_45", "Maj7\nAdd11", "22 Chord"),
+K("MI_CHORD_46", "min7\nAdd11", "22 Chord"),
+K("MI_CHORD_47", "7\nAdd11", "22 Chord"),
+K("MI_CHORD_48", "Dim11\nᵒʳ\nb7b5(9/11)", "22 Chord"),
+K("MI_CHORD_49", "Half\nDim11\nm7b5(9/11)", "22 Chord"),
+K("MI_CHORD_50", "Maj7\n#11", "22 Chord"),
+K("MI_CHORD_51", "min7\n#11", "22 Chord"),
+K("MI_CHORD_52", "7\n#11", "22 Chord"),
+]
+
+    
+KEYCODES_MIDI_INVERSION = [
+ K ("MI_INVERSION_DEF", "Root \nᴾᵒˢᶦᵗᶦᵒⁿ", "Root Position"),
+ K ("MI_INVERSION_1", "1st \nᴾᵒˢᶦᵗᶦᵒⁿ", "1st Inversion"),
+ K ("MI_INVERSION_2", "2nd \nᴾᵒˢᶦᵗᶦᵒⁿ", "2nd Inversion"),
+ K ("MI_INVERSION_3", "3rd\nᴾᵒˢᶦᵗᶦᵒⁿ", "3rd Inversion"),
+ K ("MI_INVERSION_4", "4th \nᴾᵒˢᶦᵗᶦᵒⁿ", "3rd Inversion"),
+ K ("MI_INVERSION_5", "5th \nᴾᵒˢᶦᵗᶦᵒⁿ", "3rd Inversion"),
+ K ("MI_INVERSION_6", "6th \nᴾᵒˢᶦᵗᶦᵒⁿ", "3rd Inversion"),
 ]
 
 KEYCODES_HIDDEN = []
@@ -947,14 +1010,14 @@ KEYCODES_MIDI_CC = []
 KEYCODES_MIDI_CC_FIXED = []
 
 for x in range (128):
-    KEYCODES_MIDI_CC.append(K("MI_CC_TOG_{}".format(x),
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_TOG".format(x),
                               "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
                               "Midi CC{} toggle".format(x)))
-    KEYCODES_MIDI_CC.append(K("MI_CC_UP_{}".format(x),
-                              "ᴹᴵᴰᴵ\nCC{}ᵁᴾ".format(x),
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_UP".format(x),
+                              "CC{}\nᵁᴾ".format(x),
                               "Midi CC{} up".format(x)))
-    KEYCODES_MIDI_CC.append(K("MI_CC_DWN_{}".format(x),
-                              "ᴹᴵᴰᴵ\nCC{}ᴰᴺ".format(x),
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_DWN".format(x),
+                              "CC{}\nᴰᴺ".format(x),
                               "Midi CC{} down".format(x)))
 
 
@@ -973,11 +1036,11 @@ for x in range (128):
                               "ᵛᵉˡᵒᶜⁱᵗʸ\n{}".format(x),
                               "velocity {}".format(x)))
 
-KEYCODES_ENCODER_STEP = []
+KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
-    KEYCODES_ENCODER_STEP.append(K("ENCODER_STEP_{}".format(x),
-                              "ᵉⁿᶜᵒᵈᵉʳ\nˢᵗᵉᵖ\n{}".format(x),
+    KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
+                              "ˢᵗᵉᵖ ˢᶦᶻᵉ\n+{}".format(x),
                               "Step size {}".format(x)))
 
 
@@ -1005,7 +1068,7 @@ for x in range(128):
                               "LSB{}\nᵇᵃⁿᵏ".format(x),
                               "Bank select LSB {}".format(x)))
     KEYCODES_Program_Change.append(K("MI_PROG_{}".format(x),
-                              "{}\nᵖʳᵒᵍʳᵃᵐ".format(x),
+                              "ᵖʳᵒᵍʳᵃᵐ\n{}".format(x),
                               "Program change {}".format(x)))
 
 
@@ -1020,7 +1083,8 @@ def recreate_keycodes():
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
-                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_STEP)
+                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
+                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:

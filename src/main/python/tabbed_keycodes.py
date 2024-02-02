@@ -12,7 +12,8 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BOOT, KEYCODES_MODIFIERS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_ENCODER_STEP, KEYCODES_MIDI_VELOCITY
+    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_ENCODER_SENSITIVITY, KEYCODES_MIDI_VELOCITY, \
+    KEYCODES_MIDI_VELOCITYENCODER, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_TRANSPOSITION, KEYCODES_MIDI_CHORD, KEYCODES_MIDI_INVERSION
 from widgets.square_button import SquareButton
 from util import tr, KeycodeDisplay
 
@@ -179,15 +180,18 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
-            SimpleTab(self, "MIDI", KEYCODES_MIDI),
+            SimpleTab(self, "Macro", KEYCODES_MACRO),
+            SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
+            SimpleTab(self, "SmartChord", KEYCODES_MIDI_INVERSION + KEYCODES_MIDI_CHORD),
+            SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
+            SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
+            SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITYENCODER + KEYCODES_MIDI_VELOCITY),            
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
-            SimpleTab(self, "MIDI Bank", KEYCODES_MIDI_BANK),
-            SimpleTab(self, "Program Change", KEYCODES_Program_Change),
-            SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITY),
-            SimpleTab(self, "Encoder", KEYCODES_ENCODER_STEP),
+            SimpleTab(self, "MIDI Program Change", KEYCODES_Program_Change),
+            SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
             SimpleTab(self, "User", KEYCODES_USER),
-            SimpleTab(self, "Macro", KEYCODES_MACRO),
+            SimpleTab(self, "MIDI BANK", KEYCODES_MIDI_BANK),
         ]
 
         for tab in self.tabs:
