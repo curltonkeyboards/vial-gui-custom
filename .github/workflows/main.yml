@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build-linux:
-    runs-on: ubuntu-22.04  # Use the default runner without a custom Docker container
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
@@ -17,12 +17,15 @@ jobs:
         unzip *.zip
         sudo gem install --no-document fpm
 
-    - name: Set up Python 3.6
-      run: ./util/setup_python36.sh
+    - name: Install Python 3.6
+      run: |
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
+        sudo apt-get install -y python3.6 python3.6-venv python3.6-dev
 
     - name: Setup venv
       run: |
-        ./util/python36/prefix/bin/python3 -m venv venv
+        python3.6 -m venv venv
         . venv/bin/activate
         pip install -r requirements.txt
 
