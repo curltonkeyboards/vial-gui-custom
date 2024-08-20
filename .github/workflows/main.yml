@@ -5,16 +5,11 @@ on: [push, pull_request]
 jobs:
   build-linux:
     runs-on: ubuntu-22.04
-
     container:
       image: ubuntu:22.04
       options: --privileged
-      env:
-        LD_LIBRARY_PATH: /__w/vial-gui/vial-gui/util/python36/prefix/lib/
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Install dependencies
       run: |
         apt-get update
@@ -22,16 +17,13 @@ jobs:
         wget https://github.com/AppImage/pkg2appimage/archive/38603d92359a48189c35debad9005e8e902e6070.zip
         unzip *.zip
         gem install --no-document fpm
-
     - name: Set up Python 3.6
       run: ./util/setup_python36.sh
-
     - name: Setup venv
       run: |
         ./util/python36/prefix/bin/python3 -m venv venv
         . venv/bin/activate
         pip install -r requirements.txt
-
     - name: Build
       run: |
         . venv/bin/activate
@@ -40,11 +32,11 @@ jobs:
         deactivate
         ./pkg2appimage-*/pkg2appimage misc/Vial.yml
         mv out/Vial-*.AppImage out/Vial-x86_64.AppImage
-
     - uses: actions/upload-artifact@v4
       with:
         name: vial-linux
         path: out/Vial-x86_64.AppImage
+
 
   build-mac:
     runs-on: macos-11
