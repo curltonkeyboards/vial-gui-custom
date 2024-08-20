@@ -41,7 +41,7 @@ jobs:
         path: out/Vial-x86_64.AppImage
 
   build-mac:
-    runs-on: macos-12
+    runs-on: macos-11
     steps:
     - uses: actions/checkout@v4  # Updated to v4 for Node.js 20 support
     - name: Get Python
