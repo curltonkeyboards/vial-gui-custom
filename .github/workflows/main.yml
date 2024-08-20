@@ -17,11 +17,8 @@ jobs:
         unzip *.zip
         sudo gem install --no-document fpm
 
-    - name: Install Python 3.6
-      run: |
-        sudo add-apt-repository ppa:deadsnakes/ppa
-        sudo apt-get update
-        sudo apt-get install -y python3.6 python3.6-venv python3.6-dev
+    - name: Set up Python 3.6
+      run: ./util/setup_python36.sh
 
     - name: Setup venv
       run: |
