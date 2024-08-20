@@ -2,16 +2,9 @@ name: CI
 
 on: [push, pull_request]
 
-
 jobs:
   build-linux:
-    runs-on: ubuntu-22.04
-
-    container:
-      image: ubuntu:18.04
-      options: --privileged
-      env:
-        LD_LIBRARY_PATH: /__w/vial-gui/vial-gui/util/python36/prefix/lib/
+    runs-on: ubuntu-22.04  # Use the default runner without a custom Docker container
 
     steps:
     - uses: actions/checkout@v4
@@ -46,7 +39,6 @@ jobs:
       with:
         name: vial-linux
         path: out/Vial-x86_64.AppImage
-
 
   build-mac:
     runs-on: macos-11
