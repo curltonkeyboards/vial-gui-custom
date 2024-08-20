@@ -75,31 +75,38 @@ jobs:
         name: vial-linux
         path: out/Vial-x86_64.AppImage
 
-
   build-mac:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4  # Updated to v4 for Node.js 20 support
-    - name: Get Python
-      run: curl https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx${MACOSX_DEPLOYMENT_TARGET}.pkg -o "python.pkg"
-    - name: Verify download
-      run: shasum -a 256 -c <<< '4bcd53faffc98d193ef7cdccd5668de3829c702af4db45258819a84a2cab60d0 *python.pkg'
-    - name: Install Python
-      run: sudo installer -pkg python.pkg -target /
-    - name: Setup venv
-      run: |
-        python3 -m venv venv
-        source venv/bin/activate
-        pip install -r requirements.txt
-    - name: Build
-      run: |
-        source venv/bin/activate
-        fbs freeze
-        hdiutil create -volname Vial -srcfolder "target/Curlton KeyStation.app" -ov -format UDZO vial-mac.dmg
-    - uses: actions/upload-artifact@v4  # Updated to v4 for Node.js 20 support
-      with:
-        name: vial-mac
-        path: vial-mac.dmg
+  runs-on: macos-latest  # Use the latest macOS runner
+
+  steps:
+  - uses: actions/checkout@v4
+
+  - name: Get Python
+    run: curl -L https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx${MACOSX_DEPLOYMENT_TARGET}.pkg -o "python.pkg"
+
+  - name: Verify download
+    run: shasum -a 256 -c <<< '4bcd53faffc98d193ef7cdccd5668de3829c702af4db45258819a84a2cab60d0 *python.pkg'
+
+  - name: Install Python
+    run: sudo installer -pkg python.pkg -target /
+
+  - name: Setup venv
+    run: |
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install -r requirements.txt
+
+  - name: Build
+    run: |
+      source venv/bin/activate
+      fbs freeze
+      hdiutil create -volname Vial -srcfolder "target/Curlton KeyStation.app" -ov -format UDZO vial-mac.dmg
+
+  - uses: actions/upload-artifact@v4
+    with:
+      name: vial-mac
+      path: vial-mac.dmg
+
 
   build-win:
     runs-on: windows-2019
