@@ -1,14 +1,9 @@
 version: 2.1
 
-executors:
-  macos-executor:
-    macos:
-      version: "11"  # Specify macOS version here
-
 jobs:
   build-linux:
     docker:
-      - image: circleci/python:3.6  # Use an image that matches your requirements
+      - image: circleci/python:3.6  # Use a suitable image that matches your requirements
     steps:
       - checkout
       - run:
@@ -44,7 +39,7 @@ jobs:
 
   build-mac:
     macos:
-      version: "11"
+      version: "11"  # Specify the macOS version here
     steps:
       - checkout
       - run:
@@ -76,7 +71,7 @@ jobs:
 
   build-win:
     docker:
-      - image: circleci/python:3.6  # Use an image that matches your requirements
+      - image: circleci/python:3.6  # Use a suitable image that matches your requirements
     steps:
       - checkout
       - run:
