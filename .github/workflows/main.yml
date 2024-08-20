@@ -29,24 +29,38 @@ jobs:
           imagemagick \
           file \
           libfuse2 \
-          software-properties-common
+          libffi-dev \
+          libbz2-dev \
+          libreadline-dev \
+          libsqlite3-dev \
+          wget \
+          libncurses5-dev \
+          libncursesw5-dev \
+          xz-utils \
+          tk-dev \
+          liblzma-dev \
+          zlib1g-dev
 
-    - name: Add Python 3.6 repository
+    - name: Download and install Python 3.6
       run: |
-        sudo add-apt-repository ppa:deadsnakes/ppa
-        sudo apt-get update
+        wget https://www.python.org/ftp/python/3.6.15/Python-3.6.15.tgz
+        tar -xvf Python-3.6.15.tgz
+        cd Python-3.6.15
+        ./configure --enable-optimizations
+        make
+        sudo make altinstall
+        cd ..
+        rm -rf Python-3.6.15 Python-3.6.15.tgz
 
-    - name: Install Python 3.6
+    - name: Ensure pip is available
       run: |
-        sudo apt-get install -y python3.6 python3.6-venv python3.6-dev
-        curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-        sudo python3.6 get-pip.py
+        sudo /usr/local/bin/python3.6 -m ensurepip
+        sudo /usr/local/bin/python3.6 -m pip install --upgrade pip
 
     - name: Setup venv
       run: |
-        python3.6 -m venv venv
+        /usr/local/bin/python3.6 -m venv venv
         . venv/bin/activate
-        pip install --upgrade pip
         pip install -r requirements.txt
 
     - name: Build
@@ -62,7 +76,6 @@ jobs:
       with:
         name: vial-linux
         path: out/Vial-x86_64.AppImage
-
 
   build-mac:
     runs-on: macos-11
