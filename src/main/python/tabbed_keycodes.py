@@ -146,28 +146,34 @@ class SmartChordTab(QWidget):
         self.button_keycodes = button_keycodes
         self.dropdown_keycodes = dropdown_keycodes
 
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
+        # Main layout
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
 
-        # Create layout for buttons
+        # Layout for buttons
         self.button_layout = QHBoxLayout()
-        self.layout.addLayout(self.button_layout)
+        self.main_layout.addLayout(self.button_layout)
+
+        # Create header and dropdown layout
+        self.header_dropdown_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.header_dropdown_layout)
+
+        # Create buttons
+        self.recreate_buttons()  # Call without arguments initially
 
         # Create header
         self.header_label = QLabel(self.label)
         self.header_label.setStyleSheet("font-weight: bold;")  # Make header bold if desired
-        self.layout.addWidget(self.header_label)
+        self.header_dropdown_layout.addWidget(self.header_label)
 
         # Add a small spacer between the header and the dropdown
-        self.layout.addSpacing(5)  # Adjust the value as needed
+        self.header_dropdown_layout.addSpacing(5)  # Adjust the value as needed
 
         # Create dropdown
         self.dropdown = QComboBox()
         self.dropdown.setFixedWidth(200)
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.layout.addWidget(self.dropdown)
-
-        self.recreate_buttons()  # Call without arguments initially
+        self.header_dropdown_layout.addWidget(self.dropdown)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
@@ -182,7 +188,7 @@ class SmartChordTab(QWidget):
         for keycode in self.button_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedWidth(40)  # Set a fixed width for buttons
+                btn.setFixedWidth(100)  # Set a fixed width for buttons
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
