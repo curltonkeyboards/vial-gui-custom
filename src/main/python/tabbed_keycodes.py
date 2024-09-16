@@ -193,8 +193,23 @@ class SmartChordTab(QWidget):
         self.populate_buttons()
         self.populate_dropdown()
 
+    def relabel_buttons(self):
+        # Update button labels
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                btn_keycode = widget.keycode
+                widget.setText(Keycode.label(btn_keycode.qmk_id))
+
+        # Update dropdown items
+        for i in range(self.dropdown.count()):
+            item_data = self.dropdown.itemData(i)
+            if item_data:
+                self.dropdown.setItemText(i, Keycode.label(item_data))
+
     def has_buttons(self):
         return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
+
 
 
 
