@@ -135,7 +135,7 @@ class Tab(QScrollArea):
         super().resizeEvent(evt)
         self.select_alternative()
         
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QPushButton, QHBoxLayout
 
 class SmartChordTab(QWidget):
     keycode_changed = pyqtSignal(str)
@@ -146,61 +146,48 @@ class SmartChordTab(QWidget):
         self.button_keycodes = button_keycodes
         self.dropdown_keycodes = dropdown_keycodes
 
+        # Create layout
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        # Create layout for buttons
-        self.button_layout = QVBoxLayout()
-        self.layout.addLayout(self.button_layout)
-
-        # Create dropdown
+        # Create horizontal layout for buttons
+        self.button_layout = QHBoxLayout()
+        self.populate_buttons()
+        
+        # Create dropdown for dropdown_keycodes
         self.dropdown = QComboBox()
         self.dropdown.setFixedWidth(200)
+        self.populate_dropdown()
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
+
+        # Add widgets to main layout
+        self.layout.addLayout(self.button_layout)
         self.layout.addWidget(self.dropdown)
 
-        self.recreate_buttons()  # Call without arguments initially
-
-    def recreate_buttons(self, keycode_filter=None):
-        # Clear previous widgets
-        for i in reversed(range(self.button_layout.count())): 
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-        
-        self.dropdown.clear()
-
-        # Populate buttons
+    def populate_buttons(self):
         for keycode in self.button_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode  # Make sure keycode attribute is set
-                self.button_layout.addWidget(btn)
-        
-        # Populate dropdown
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            self.button_layout.addWidget(btn)
+
+    def populate_dropdown(self):
         for keycode in self.dropdown_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.dropdown.itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
-    def relabel_buttons(self):
-        # Handle relabeling only for buttons
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+    def recreate_buttons(self, keycode_filter):
+        self.button_layout.clear()
+        self.dropdown.clear()
+        self.populate_buttons()
+        self.populate_dropdown()
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
 
 
