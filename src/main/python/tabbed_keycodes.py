@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox
 from PyQt5.QtGui import QPalette
 
 from constants import KEYCODE_BTN_RATIO
@@ -149,9 +149,6 @@ class DropdownTab(QWidget):
 
         # Create the dropdown (QComboBox)
         self.dropdown = QComboBox()
-        
-         self.dropdown.setFixedWidth(200)
-        
         self.populate_dropdown()
 
         # Connect signal to emit keycode when selection changes
