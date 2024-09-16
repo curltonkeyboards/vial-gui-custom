@@ -146,17 +146,20 @@ class SmartChordTab(QWidget):
         self.button_keycodes = button_keycodes
         self.dropdown_keycodes = dropdown_keycodes
 
-        self.layout = QVBoxLayout()
+        self.layout = QHBoxLayout()
         self.setLayout(self.layout)
 
         # Create layout for buttons
-        self.button_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
         self.layout.addLayout(self.button_layout)
 
-        # Create heading for dropdown
-        self.heading = QLabel("SmartChord")
-        self.heading.setStyleSheet("font-weight: bold; font-size: 28px;")
-        self.layout.addWidget(self.heading)
+        # Create header
+        self.header_label = QLabel(self.label)
+        self.header_label.setStyleSheet("font-weight: bold;")  # Make header bold if desired
+        self.layout.addWidget(self.header_label)
+
+        # Add a small spacer between the header and the dropdown
+        self.layout.addSpacing(5)  # Adjust the value as needed
 
         # Create dropdown
         self.dropdown = QComboBox()
@@ -168,7 +171,7 @@ class SmartChordTab(QWidget):
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
-        for i in reversed(range(self.button_layout.count())): 
+        for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
@@ -179,9 +182,9 @@ class SmartChordTab(QWidget):
         for keycode in self.button_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
+                btn.setFixedWidth(40)  # Set a fixed width for buttons
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
-                btn.setFixedWidth(50)  # Set the fixed width for buttons
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
                 self.button_layout.addWidget(btn)
@@ -208,6 +211,7 @@ class SmartChordTab(QWidget):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
+
 
 
 
