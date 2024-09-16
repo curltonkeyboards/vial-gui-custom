@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QHBoxLayout, QPushButton
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy
 from PyQt5.QtGui import QPalette
 
 from constants import KEYCODE_BTN_RATIO
@@ -135,81 +135,31 @@ class Tab(QScrollArea):
         super().resizeEvent(evt)
         self.select_alternative()
         
-class DropdownTab(QWidget):
+class HybridTab(QWidget):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, keycodes):
+    def __init__(self, parent, label, dropdown_keycodes, button_keycodes):
         super().__init__(parent)
         self.label = label
-        self.keycodes = keycodes
-
-        # Create layout
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        # Create the dropdown (QComboBox)
-        self.dropdown = QComboBox()
-
-        # Set a fixed width for the dropdown
-        self.dropdown.setFixedWidth(200)  # Adjust this value to your desired width
-
-        self.populate_dropdown()
-
-        # Connect signal to emit keycode when selection changes
-        self.dropdown.currentIndexChanged.connect(self.on_selection_change)
-
-        # Add dropdown to layout
-        self.layout.addWidget(self.dropdown)
-
-    def populate_dropdown(self):
-        """Fill the dropdown with keycodes."""
-        for keycode in self.keycodes:
-            self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-    def on_selection_change(self, index):
-        """Handle when the user changes the selection."""
-        selected_qmk_id = self.dropdown.itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
-    def relabel_buttons(self):
-        """If labels need to be updated, like buttons."""
-        pass
-
-    def recreate_buttons(self, keycode_filter):
-        """Repopulate the dropdown based on a keycode filter."""
-        self.dropdown.clear()
-        for keycode in self.keycodes:
-            if keycode_filter(keycode.qmk_id):
-                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-    def has_buttons(self):
-        """Simulating the button check with the dropdown."""
-        return self.dropdown.count() > 0
-        
-class MixedTab(QWidget):
-    keycode_changed = pyqtSignal(str)
-
-    def __init__(self, parent, label, button_keycodes, dropdown_keycodes):
-        super().__init__(parent)
-        self.label = label
-        self.button_keycodes = button_keycodes
         self.dropdown_keycodes = dropdown_keycodes
+        self.button_keycodes = button_keycodes
 
         # Create layout
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        # Dropdown section
+        # Create dropdown
         self.dropdown = QComboBox()
-        self.dropdown.setFixedWidth(200)  # Adjust the dropdown width
+        self.dropdown.setFixedWidth(200)  # Adjust this value to your desired width
         self.populate_dropdown()
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.layout.addWidget(self.dropdown)
 
-        # Buttons section
-        self.button_layout = QHBoxLayout()  # Horizontal layout for buttons
+        # Create button section
+        self.button_layout = QVBoxLayout()
         self.populate_buttons()
+
+        # Add widgets to layout
+        self.layout.addWidget(self.dropdown)
         self.layout.addLayout(self.button_layout)
 
     def populate_dropdown(self):
@@ -218,35 +168,30 @@ class MixedTab(QWidget):
             self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
     def populate_buttons(self):
-        """Create buttons for keycodes."""
+        """Create buttons for the provided keycodes."""
         for keycode in self.button_keycodes:
-            btn = QPushButton(Keycode.label(keycode.qmk_id))
-            btn.setFixedWidth(100)  # Adjust button width if necessary
-            btn.setToolTip(Keycode.tooltip(keycode.qmk_id))
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             self.button_layout.addWidget(btn)
 
     def on_selection_change(self, index):
-        """Handle dropdown selection change."""
+        """Handle when the user changes the selection."""
         selected_qmk_id = self.dropdown.itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
     def recreate_buttons(self, keycode_filter):
         """Repopulate the dropdown and buttons based on a keycode filter."""
-        # Recreate dropdown
         self.dropdown.clear()
-        for keycode in self.dropdown_keycodes:
-            if keycode_filter(keycode.qmk_id):
-                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Recreate buttons
-        for i in reversed(range(self.button_layout.count())):
-            self.button_layout.itemAt(i).widget().deleteLater()
+        self.button_layout.clear()
+        self.populate_dropdown()
         self.populate_buttons()
 
     def has_buttons(self):
-        return self.button_layout.count() > 0 or self.dropdown.count() > 0
+        """Check if there are buttons or dropdown items."""
+        return self.dropdown.count() > 0 or self.button_layout.count() > 0
 
 class SimpleTab(Tab):
 
@@ -263,7 +208,6 @@ def keycode_filter_masked(kc):
 
 
 class FilteredTabbedKeycodes(QTabWidget):
-
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
 
@@ -282,8 +226,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             Tab(self, "ISO/JIS", [
                 (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
                 (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
-                 KEYCODES_ISO_KR),
+                (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
                 (None, KEYCODES_ISO),
             ], prefix_buttons=[("Any", -1)]),
             SimpleTab(self, "Layers", KEYCODES_LAYERS),
@@ -294,7 +237,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            DropdownTab(self, "SmartChord", KEYCODES_MIDI_INVERSION + KEYCODES_MIDI_CHORD),  # This is now a dropdown
+            HybridTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_INVERSION),  # Hybrid tab with dropdown and buttons
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
             SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITYENCODER + KEYCODES_MIDI_VELOCITY),            
@@ -348,7 +291,6 @@ class TabbedKeycodes(QWidget):
 
         self.layout = QVBoxLayout()
 
-        # Create FilteredTabbedKeycodes as before
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
         for opt in [self.all_keycodes, self.basic_keycodes]:
@@ -356,22 +298,8 @@ class TabbedKeycodes(QWidget):
             opt.anykey.connect(self.anykey)
             self.layout.addWidget(opt)
 
-        # Create a MixedTab for the "SmartChord" tab
-        button_keycodes = KEYCODES_MIDI_INVERSION
-        dropdown_keycodes = KEYCODES_MIDI_CHORD
-        self.smart_chord_tab = MixedTab(self, "SmartChord", button_keycodes, dropdown_keycodes)
-        self.smart_chord_tab.keycode_changed.connect(self.on_keycode_changed)
-        self.layout.addWidget(self.smart_chord_tab)  # Add the MixedTab to the layout
-
         self.setLayout(self.layout)
         self.set_keycode_filter(keycode_filter_any)
-
-    def on_keycode_changed(self, code):
-        """Handle keycode change from MixedTab and other tabs."""
-        if code == "Any":
-            self.anykey.emit()
-        else:
-            self.keycode_changed.emit(Keycode.normalize(code))
 
     @classmethod
     def set_tray(cls, tray):
@@ -410,8 +338,6 @@ class TabbedKeycodes(QWidget):
     def recreate_keycode_buttons(self):
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.recreate_keycode_buttons()
-        # Recreate buttons for the MixedTab (SmartChord)
-        self.smart_chord_tab.recreate_buttons(keycode_filter_any)
 
     def set_keycode_filter(self, keycode_filter):
         if keycode_filter == keycode_filter_masked:
