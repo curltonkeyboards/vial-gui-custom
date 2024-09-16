@@ -180,11 +180,20 @@ class SmartChordTab(QWidget):
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
-    def recreate_buttons(self, keycode_filter):
-        self.button_layout.clear()
-        self.dropdown.clear()
-        self.populate_buttons()
-        self.populate_dropdown()
+def recreate_buttons(self, keycode_filter):
+    # Remove all widgets from the button_layout
+    while self.button_layout.count() > 0:
+        item = self.button_layout.takeAt(0)
+        widget = item.widget()
+        if widget is not None:
+            widget.deleteLater()
+
+    # Remove all items from the dropdown
+    self.dropdown.clear()
+
+    # Recreate the buttons and dropdown
+    self.populate_buttons()
+    self.populate_dropdown()
 
     def has_buttons(self):
         return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
