@@ -159,9 +159,9 @@ class SmartChordTab(QWidget):
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
         self.layout.addWidget(self.dropdown)
 
-        self.recreate_buttons()
+        self.recreate_buttons()  # Call without arguments initially
 
-    def recreate_buttons(self):
+    def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
         for i in reversed(range(self.button_layout.count())): 
             widget = self.button_layout.itemAt(i).widget()
@@ -172,15 +172,18 @@ class SmartChordTab(QWidget):
 
         # Populate buttons
         for keycode in self.button_keycodes:
-            btn = SquareButton()
-            btn.setRelSize(KEYCODE_BTN_RATIO)
-            btn.setText(Keycode.label(keycode.qmk_id))
-            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-            self.button_layout.addWidget(btn)
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode  # Make sure keycode attribute is set
+                self.button_layout.addWidget(btn)
         
         # Populate dropdown
         for keycode in self.dropdown_keycodes:
-            self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.dropdown.itemData(index)
