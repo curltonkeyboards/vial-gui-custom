@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy
 from PyQt5.QtGui import QPalette
 
 from constants import KEYCODE_BTN_RATIO
@@ -149,6 +149,10 @@ class DropdownTab(QWidget):
 
         # Create the dropdown (QComboBox)
         self.dropdown = QComboBox()
+
+        # Set a fixed width for the dropdown
+        self.dropdown.setFixedWidth(200)  # Adjust this value to your desired width
+
         self.populate_dropdown()
 
         # Connect signal to emit keycode when selection changes
@@ -170,7 +174,6 @@ class DropdownTab(QWidget):
 
     def relabel_buttons(self):
         """If labels need to be updated, like buttons."""
-        # This method could be extended if you need to relabel the dropdown entries
         pass
 
     def recreate_buttons(self, keycode_filter):
@@ -183,7 +186,6 @@ class DropdownTab(QWidget):
     def has_buttons(self):
         """Simulating the button check with the dropdown."""
         return self.dropdown.count() > 0
-
 
 class SimpleTab(Tab):
 
