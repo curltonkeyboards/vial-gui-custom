@@ -706,12 +706,13 @@ class keycodes_v6:
         #midi inversion (0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130,         
         "MI_INVERSION_DEF" : 0xC420,
         "MI_INVERSION_1" : 0xC421,
-        "MI_INVERSION_2" : 0xC423,
-        "MI_INVERSION_3" : 0xC424,
-        "MI_INVERSION_4" : 0xC425,
-        "MI_INVERSION_5" : 0xC426,
-        "MI_INVERSION_6" : 0xC427,
-        "MI_INVERSION_7" : 0xC428,
+        "MI_INVERSION_2" : 0xC422,
+        "MI_INVERSION_3" : 0xC423,
+        "MI_INVERSION_4" : 0xC424,
+        "MI_INVERSION_5" : 0xC425,
+        "MI_INVERSION_6" : 0xC426,
+        "MI_INVERSION_7" : 0xC427,
+        "MI_INVERSION_8" : 0xC428,
 
         "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130 + 8,  # custom keycodes safe range
         
