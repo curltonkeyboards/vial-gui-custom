@@ -199,6 +199,10 @@ class SmartChordTab(QWidget):
                 if keycode:
                     widget.setText(Keycode.label(keycode.qmk_id))
 
+    def has_buttons(self):
+        """Check if there are buttons or dropdown items."""
+        return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
+
 
 
 
