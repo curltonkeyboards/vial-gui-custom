@@ -149,6 +149,9 @@ class DropdownTab(QWidget):
 
         # Create the dropdown (QComboBox)
         self.dropdown = QComboBox()
+        
+         self.dropdown.setFixedWidth(200)
+        
         self.populate_dropdown()
 
         # Connect signal to emit keycode when selection changes
