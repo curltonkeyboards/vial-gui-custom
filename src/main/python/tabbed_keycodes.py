@@ -156,7 +156,6 @@ class HybridTab(QWidget):
 
         # Create button section
         self.button_layout = QVBoxLayout()
-        self.populate_buttons()
 
         # Add widgets to layout
         self.layout.addWidget(self.dropdown)
@@ -164,6 +163,7 @@ class HybridTab(QWidget):
 
     def populate_dropdown(self):
         """Fill the dropdown with keycodes."""
+        self.dropdown.clear()  # Clear existing items
         for keycode in self.dropdown_keycodes:
             self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
@@ -184,14 +184,19 @@ class HybridTab(QWidget):
 
     def recreate_buttons(self, keycode_filter):
         """Repopulate the dropdown and buttons based on a keycode filter."""
-        self.dropdown.clear()
-        self.button_layout.clear()
+        # Remove all widgets from the button layout
+        while self.button_layout.count():
+            widget = self.button_layout.itemAt(0).widget()
+            if widget:
+                widget.deleteLater()
+
         self.populate_dropdown()
         self.populate_buttons()
 
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return self.dropdown.count() > 0 or self.button_layout.count() > 0
+
 
 class SimpleTab(Tab):
 
