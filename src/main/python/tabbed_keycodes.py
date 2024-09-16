@@ -135,7 +135,7 @@ class Tab(QScrollArea):
         super().resizeEvent(evt)
         self.select_alternative()
         
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QComboBox, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QPushButton
 
 class SmartChordTab(QWidget):
     keycode_changed = pyqtSignal(str)
@@ -146,11 +146,11 @@ class SmartChordTab(QWidget):
         self.button_keycodes = button_keycodes
         self.dropdown_keycodes = dropdown_keycodes
 
-        self.layout = QHBoxLayout()
+        self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
         # Create layout for buttons
-        self.button_layout = QHBoxLayout()
+        self.button_layout = QVBoxLayout()
         self.layout.addLayout(self.button_layout)
 
         # Create dropdown
@@ -176,6 +176,7 @@ class SmartChordTab(QWidget):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
+                btn.setFixedWidth(150)  # Set the fixed width for buttons
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
                 self.button_layout.addWidget(btn)
