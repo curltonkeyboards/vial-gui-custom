@@ -158,9 +158,6 @@ class SmartChordTab(QWidget):
         self.header_dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.header_dropdown_layout)
 
-        # Create buttons
-        self.recreate_buttons()  # Call without arguments initially
-
         # Create header
         self.header_label = QLabel(self.label)
         self.header_label.setStyleSheet("font-weight: bold;")  # Make header bold if desired
@@ -175,6 +172,9 @@ class SmartChordTab(QWidget):
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
         self.header_dropdown_layout.addWidget(self.dropdown)
 
+        # Call recreate_buttons after the dropdown is created
+        self.recreate_buttons()  # Call without arguments initially
+
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
@@ -182,7 +182,8 @@ class SmartChordTab(QWidget):
             if widget is not None:
                 widget.deleteLater()
         
-        self.dropdown.clear()
+        if self.dropdown is not None:
+            self.dropdown.clear()
 
         # Populate buttons
         for keycode in self.button_keycodes:
@@ -217,8 +218,6 @@ class SmartChordTab(QWidget):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
-
-
 
 
 
