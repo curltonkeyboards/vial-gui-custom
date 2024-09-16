@@ -197,6 +197,11 @@ class HybridTab(QWidget):
         """Check if there are buttons or dropdown items."""
         return self.dropdown.count() > 0 or self.button_layout.count() > 0
 
+    def relabel_buttons(self):
+        """Placeholder method to avoid AttributeError."""
+        pass
+
+
 
 class SimpleTab(Tab):
 
