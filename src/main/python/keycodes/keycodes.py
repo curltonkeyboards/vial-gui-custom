@@ -994,8 +994,8 @@ K("MI_CHORD_102", "Phrygian", "Phrygian Scale"),
 K("MI_CHORD_103", "Lydian", "Lydian Scale"),
 K("MI_CHORD_104", "Mixolydian", "Mixolydian Scale"),
 K("MI_CHORD_106", "Locrian", "Locrian Scale"),
-K("MI_CHORD_107", "Harmonic/nMinor", "Harmonic Minor"),
-K("MI_CHORD_108", "Melodic/nMinor", "Melodic Minor"),
+K("MI_CHORD_107", "Harmonic\nMinor", "Harmonic Minor"),
+K("MI_CHORD_108", "Melodic\nMinor", "Melodic Minor"),
 K("MI_CHORD_109", "Whole\nStep\nScale", "Whole Step Scale"),
 ]
 

@@ -134,6 +134,55 @@ class Tab(QScrollArea):
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
         self.select_alternative()
+        
+class DropdownTab(QWidget):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.keycodes = keycodes
+
+        # Create layout
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        # Create the dropdown (QComboBox)
+        self.dropdown = QComboBox()
+        self.populate_dropdown()
+
+        # Connect signal to emit keycode when selection changes
+        self.dropdown.currentIndexChanged.connect(self.on_selection_change)
+
+        # Add dropdown to layout
+        self.layout.addWidget(self.dropdown)
+
+    def populate_dropdown(self):
+        """Fill the dropdown with keycodes."""
+        for keycode in self.keycodes:
+            self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+    def on_selection_change(self, index):
+        """Handle when the user changes the selection."""
+        selected_qmk_id = self.dropdown.itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
+    def relabel_buttons(self):
+        """If labels need to be updated, like buttons."""
+        # This method could be extended if you need to relabel the dropdown entries
+        pass
+
+    def recreate_buttons(self, keycode_filter):
+        """Repopulate the dropdown based on a keycode filter."""
+        self.dropdown.clear()
+        for keycode in self.keycodes:
+            if keycode_filter(keycode.qmk_id):
+                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+    def has_buttons(self):
+        """Simulating the button check with the dropdown."""
+        return self.dropdown.count() > 0
 
 
 class SimpleTab(Tab):
@@ -182,7 +231,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            SimpleTab(self, "SmartChord", KEYCODES_MIDI_INVERSION + KEYCODES_MIDI_CHORD),
+            DropdownTab(self, "SmartChord", KEYCODES_MIDI_INVERSION + KEYCODES_MIDI_CHORD),  # This is now a dropdown
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
             SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITYENCODER + KEYCODES_MIDI_VELOCITY),            
