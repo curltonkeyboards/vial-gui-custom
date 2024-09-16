@@ -186,6 +186,67 @@ class DropdownTab(QWidget):
     def has_buttons(self):
         """Simulating the button check with the dropdown."""
         return self.dropdown.count() > 0
+        
+class MixedTab(QWidget):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, button_keycodes, dropdown_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.button_keycodes = button_keycodes
+        self.dropdown_keycodes = dropdown_keycodes
+
+        # Create layout
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        # Dropdown section
+        self.dropdown = QComboBox()
+        self.dropdown.setFixedWidth(200)  # Adjust the dropdown width
+        self.populate_dropdown()
+        self.dropdown.currentIndexChanged.connect(self.on_selection_change)
+        self.layout.addWidget(self.dropdown)
+
+        # Buttons section
+        self.button_layout = QHBoxLayout()  # Horizontal layout for buttons
+        self.populate_buttons()
+        self.layout.addLayout(self.button_layout)
+
+    def populate_dropdown(self):
+        """Fill the dropdown with keycodes."""
+        for keycode in self.dropdown_keycodes:
+            self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+    def populate_buttons(self):
+        """Create buttons for keycodes."""
+        for keycode in self.button_keycodes:
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
+            btn.setFixedWidth(100)  # Adjust button width if necessary
+            btn.setToolTip(Keycode.tooltip(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            self.button_layout.addWidget(btn)
+
+    def on_selection_change(self, index):
+        """Handle dropdown selection change."""
+        selected_qmk_id = self.dropdown.itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
+    def recreate_buttons(self, keycode_filter):
+        """Repopulate the dropdown and buttons based on a keycode filter."""
+        # Recreate dropdown
+        self.dropdown.clear()
+        for keycode in self.dropdown_keycodes:
+            if keycode_filter(keycode.qmk_id):
+                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Recreate buttons
+        for i in reversed(range(self.button_layout.count())):
+            self.button_layout.itemAt(i).widget().deleteLater()
+        self.populate_buttons()
+
+    def has_buttons(self):
+        return self.button_layout.count() > 0 or self.dropdown.count() > 0
 
 class SimpleTab(Tab):
 
@@ -287,6 +348,7 @@ class TabbedKeycodes(QWidget):
 
         self.layout = QVBoxLayout()
 
+        # Create FilteredTabbedKeycodes as before
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
         for opt in [self.all_keycodes, self.basic_keycodes]:
@@ -294,8 +356,22 @@ class TabbedKeycodes(QWidget):
             opt.anykey.connect(self.anykey)
             self.layout.addWidget(opt)
 
+        # Create a MixedTab for the "SmartChord" tab
+        button_keycodes = KEYCODES_MIDI_INVERSION
+        dropdown_keycodes = KEYCODES_MIDI_CHORD
+        self.smart_chord_tab = MixedTab(self, "SmartChord", button_keycodes, dropdown_keycodes)
+        self.smart_chord_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.layout.addWidget(self.smart_chord_tab)  # Add the MixedTab to the layout
+
         self.setLayout(self.layout)
         self.set_keycode_filter(keycode_filter_any)
+
+    def on_keycode_changed(self, code):
+        """Handle keycode change from MixedTab and other tabs."""
+        if code == "Any":
+            self.anykey.emit()
+        else:
+            self.keycode_changed.emit(Keycode.normalize(code))
 
     @classmethod
     def set_tray(cls, tray):
@@ -334,6 +410,8 @@ class TabbedKeycodes(QWidget):
     def recreate_keycode_buttons(self):
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.recreate_keycode_buttons()
+        # Recreate buttons for the MixedTab (SmartChord)
+        self.smart_chord_tab.recreate_buttons(keycode_filter_any)
 
     def set_keycode_filter(self, keycode_filter):
         if keycode_filter == keycode_filter_masked:
