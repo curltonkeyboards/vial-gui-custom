@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy
 from PyQt5.QtGui import QPalette
 
 from constants import KEYCODE_BTN_RATIO
@@ -151,17 +151,15 @@ class SmartChordTab(QWidget):
 
         # Create buttons for button_keycodes
         self.button_layout = QVBoxLayout()
-        self.populate_buttons()
-        
+        self.layout.addLayout(self.button_layout)
+
         # Create dropdown for dropdown_keycodes
         self.dropdown = QComboBox()
         self.dropdown.setFixedWidth(200)
-        self.populate_dropdown()
+        self.layout.addWidget(self.dropdown)
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
 
-        # Add widgets to layout
-        self.layout.addLayout(self.button_layout)
-        self.layout.addWidget(self.dropdown)
+        self.recreate_buttons(None)  # Initialize with the current keycodes
 
     def populate_buttons(self):
         for keycode in self.button_keycodes:
@@ -180,23 +178,24 @@ class SmartChordTab(QWidget):
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
-def recreate_buttons(self, keycode_filter):
-    # Remove all widgets from the button_layout
-    while self.button_layout.count() > 0:
-        item = self.button_layout.takeAt(0)
-        widget = item.widget()
-        if widget is not None:
-            widget.deleteLater()
+    def recreate_buttons(self, keycode_filter):
+        # Remove all widgets from button_layout
+        while self.button_layout.count() > 0:
+            item = self.button_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
 
-    # Remove all items from the dropdown
-    self.dropdown.clear()
+        # Remove all items from the dropdown
+        self.dropdown.clear()
 
-    # Recreate the buttons and dropdown
-    self.populate_buttons()
-    self.populate_dropdown()
+        # Recreate the buttons and dropdown
+        self.populate_buttons()
+        self.populate_dropdown()
 
     def has_buttons(self):
         return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
+
 
 
 class SimpleTab(Tab):
