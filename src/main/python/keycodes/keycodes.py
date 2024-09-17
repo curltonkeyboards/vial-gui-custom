@@ -888,7 +888,7 @@ KEYCODES_MIDI_TRANSPOSITION = [
     K("MI_OCTD", "ᴼᶜᵗᵃᵛᵉ\nDown", "Midi move down an octave"),
     K("MI_OCTU", "ᴼᶜᵗᵃᵛᵉ\nUp", "Midi move up an octave"),
     
-    K("MI_TRNSD", "ᵗʳᵃⁿˢᵖᵒˢᵉ\nDown", "Midi decrease transposition"),
+    K("MI_TRNSD", "Transpose\nDown", "Midi decrease transposition"),
     K("MI_TRNSU", "ᵗʳᵃⁿˢᵖᵒˢᵉ\nUp", "Midi increase transposition"),
     K("MI_TRNS_0", "Key\nCᵐᵃʲᵒʳ\nAᵐᶦⁿᵒʳ", "Midi set no transposition"),
     K("MI_TRNS_1", "Key\nC#ᵐᵃʲᵒʳ\nA#ᵐᶦⁿᵒʳ", "Midi set transposition to +1 semitones"),
