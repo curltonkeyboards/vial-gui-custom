@@ -353,8 +353,8 @@ class KeyboardWidget(QWidget):
             max_w = max(max_w, p.x() * self.scale)
             max_h = max(max_h, p.y() * self.scale)
 
-        self.width = round(max_w + 2 * self.padding)
-        self.height = round(max_h + 2 * self.padding)
+        self.width = round(max_w + 4 * self.padding)
+        self.height = round(max_h + 4 * self.padding)
 
         self.update()
         self.updateGeometry()
@@ -384,7 +384,7 @@ class KeyboardWidget(QWidget):
         # for currently selected keycap
         active_pen = qp.pen()
         active_pen.setColor(QApplication.palette().color(QPalette.Highlight))
-        active_pen.setWidthF(1.5)
+        active_pen.setWidthF(3)
 
         # for the encoder arrow
         extra_pen = regular_pen
