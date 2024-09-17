@@ -261,7 +261,7 @@ class KeyboardWidget(QWidget):
         self.enabled = True
         self.scale = 1
         self.padding = KEYBOARD_WIDGET_PADDING
-
+        self.word_wrap = True
         self.setMouseTracking(True)
 
         self.layout_editor = layout_editor

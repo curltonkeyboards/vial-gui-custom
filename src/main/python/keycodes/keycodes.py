@@ -996,18 +996,18 @@ K("MI_CHORD_52", "7\n#11", "7#11 Chord"),
 ]
 
 KEYCODES_MIDI_SCALES = [ 
-K("MI_CHORD_110", "Major\nPentatonic", "Pentatonic"),
-K("MI_CHORD_111", "Minor\nPentatonic", "Minor Pentatonic"),
-K("MI_CHORD_100", "Major\nScale\n/\nIonian", "Ionian/Major Scale"),
-K("MI_CHORD_105", "Minor\nScale\n/\nIonian", "Aeolian Scale"),
+K("MI_CHORD_110", "Major Pentatonic", "Pentatonic"),
+K("MI_CHORD_111", "Minor Pentatonic", "Minor Pentatonic"),
+K("MI_CHORD_100", "Major Scale / Ionian", "Ionian/Major Scale"),
+K("MI_CHORD_105", "Minor Scale / Aeolian", "Aeolian Scale"),
 K("MI_CHORD_101", "Dorian", "Dorian Scale"),
 K("MI_CHORD_102", "Phrygian", "Phrygian Scale"),
 K("MI_CHORD_103", "Lydian", "Lydian Scale"),
 K("MI_CHORD_104", "Mixolydian", "Mixolydian Scale"),
 K("MI_CHORD_106", "Locrian", "Locrian Scale"),
-K("MI_CHORD_107", "Harmonic\nMinor", "Harmonic Minor"),
-K("MI_CHORD_108", "Melodic\nMinor", "Melodic Minor"),
-K("MI_CHORD_109", "Whole\nStep\nScale", "Whole Step Scale"),
+K("MI_CHORD_107", "Harmonic Minor", "Harmonic Minor"),
+K("MI_CHORD_108", "Melodic Minor", "Melodic Minor"),
+K("MI_CHORD_109", "Whole Step Scale", "Whole Step Scale"),
 ]
 
     
