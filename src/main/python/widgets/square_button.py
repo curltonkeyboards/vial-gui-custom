@@ -10,7 +10,7 @@ class SquareButton(QPushButton):
 
         self.scale = 1.2
         self.label = None
-        self.word_wrap = True
+        self.word_wrap = False
         self.text = ""
 
     def setRelSize(self, ratio):
@@ -32,7 +32,7 @@ class SquareButton(QPushButton):
             super().setText("")
             if self.label is None:
                 self.label = QLabel(text, self)
-                self.label.setWordWrap(True)
+                self.label.setWordWrap(False)
                 self.label.setAlignment(Qt.AlignCenter)
                 layout = QHBoxLayout(self)
                 layout.setContentsMargins(0, 0, 0, 0)
