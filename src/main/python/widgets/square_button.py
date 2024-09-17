@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont, QFontMetrics
 from PyQt5.QtWidgets import QPushButton, QLabel, QHBoxLayout
@@ -12,10 +14,12 @@ class SquareButton(QPushButton):
         self.word_wrap = True
         self.text = ""
         self.adjust_font_size = True
+        self.setFixedSize(self.sizeHint())  # Set a fixed size for the button
 
     def setRelSize(self, ratio):
         self.scale = ratio
         self.updateGeometry()
+        self.setFixedSize(self.sizeHint())  # Ensure button size remains fixed
         self.update_text()
 
     def setWordWrap(self, state):
@@ -38,37 +42,31 @@ class SquareButton(QPushButton):
                 self.label.setAlignment(Qt.AlignCenter)
                 layout = QHBoxLayout(self)
                 layout.setContentsMargins(0, 0, 0, 0)
-                layout.addWidget(self.label)
-                self.setLayout(layout)
-            
+                layout.addWidget(self.label, 0, Qt.AlignCenter)
             self.adjust_font_size_if_needed()
             self.label.setText(self.text)
-            self.label.adjustSize()  # Ensure label size is updated
-            self.setFixedSize(self.label.sizeHint())  # Update button size to fit label
         else:
             if self.label is not None:
                 self.label.deleteLater()
-                self.label = None
             super().setText(self.text)
 
     def adjust_font_size_if_needed(self):
         if self.adjust_font_size:
-            font = QFont(self.font())
+            font = self.font()
             font_size = font.pointSize()
             fm = QFontMetrics(font)
+            text_width = fm.width(self.text)
+            text_height = fm.height()
             button_width = self.width()
             button_height = self.height()
 
-            while True:
-                text_rect = fm.boundingRect(self.text)
-                if text_rect.width() <= button_width and text_rect.height() <= button_height:
-                    break
+            while text_width > button_width or text_height > button_height:
                 font_size -= 1
                 if font_size <= 1:  # Avoid too small font sizes
                     break
                 font.setPointSize(font_size)
                 fm = QFontMetrics(font)
+                text_width = fm.width(self.text)
+                text_height = fm.height()
 
             self.label.setFont(font)
-            self.label.adjustSize()  # Ensure label size is updated
-            self.update()  # Trigger a repaint to apply the font size change
