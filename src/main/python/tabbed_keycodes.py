@@ -152,13 +152,13 @@ class SmartChordTab(QWidget):
         self.setLayout(self.main_layout)
 
         # 1. SmartChord Header and Dropdown
-        self.add_header_dropdown("SmartChord", self.smartchord_keycodes)
+        self.add_header_dropdown("Chords", self.smartchord_keycodes)
 
         # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
 
         # 3. Inversions Header
-        self.inversion_label = QLabel("Inversions")
+        self.inversion_label = QLabel("Chord Inversions")
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for buttons (Inversions)
@@ -179,7 +179,8 @@ class SmartChordTab(QWidget):
 
         # Create dropdown
         dropdown = QComboBox()
-        dropdown.setFixedWidth(200)
+        dropdown.setFixedWidth(300)  # Width stays at 200
+        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)

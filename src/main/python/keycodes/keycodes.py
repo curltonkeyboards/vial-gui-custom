@@ -1012,13 +1012,13 @@ K("MI_CHORD_109", "Whole\nStep\nScale", "Whole Step Scale"),
 
     
 KEYCODES_MIDI_INVERSION = [
- K ("MI_INVERSION_DEF", "Root \nᴾᵒˢᶦᵗᶦᵒⁿ", "Root Position"),
- K ("MI_INVERSION_1", "1st \nᴾᵒˢᶦᵗᶦᵒⁿ", "1st Inversion"),
- K ("MI_INVERSION_2", "2nd \nᴾᵒˢᶦᵗᶦᵒⁿ", "2nd Inversion"),
- K ("MI_INVERSION_3", "3rd\nᴾᵒˢᶦᵗᶦᵒⁿ", "3rd Inversion"),
- K ("MI_INVERSION_4", "4th \nᴾᵒˢᶦᵗᶦᵒⁿ", "4th Inversion"),
- K ("MI_INVERSION_5", "5th \nᴾᵒˢᶦᵗᶦᵒⁿ", "5th Inversion"),
- K ("MI_INVERSION_6", "6th \nᴾᵒˢᶦᵗᶦᵒⁿ", "6th Inversion"),
+ K ("MI_INVERSION_DEF", "Root \nPosition", "Root Position"),
+ K ("MI_INVERSION_1", "1st \nInversion", "1st Inversion"),
+ K ("MI_INVERSION_2", "2nd \nInversion", "2nd Inversion"),
+ K ("MI_INVERSION_3", "3rd\nᴾInversion", "3rd Inversion"),
+ K ("MI_INVERSION_4", "4th \nInversion", "4th Inversion"),
+ K ("MI_INVERSION_5", "5th \nInversion", "5th Inversion"),
+ K ("MI_INVERSION_6", "6th \nInversion", "6th Inversion"),
 ]
 
 KEYCODES_HIDDEN = []
@@ -1107,7 +1107,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION)
+                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
