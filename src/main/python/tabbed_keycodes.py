@@ -13,7 +13,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_ENCODER_SENSITIVITY, KEYCODES_MIDI_VELOCITY, \
-    KEYCODES_MIDI_VELOCITYENCODER, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_TRANSPOSITION, KEYCODES_MIDI_CHORD, KEYCODES_MIDI_INVERSION
+    KEYCODES_MIDI_VELOCITYENCODER, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_TRANSPOSITION, KEYCODES_MIDI_CHORD, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES
 from widgets.square_button import SquareButton
 from util import tr, KeycodeDisplay
 
@@ -140,45 +140,50 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QComboBox, QPushButton
 class SmartChordTab(QWidget):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, button_keycodes, dropdown_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
         super().__init__(parent)
         self.label = label
-        self.button_keycodes = button_keycodes
-        self.dropdown_keycodes = dropdown_keycodes
+        self.smartchord_keycodes = smartchord_keycodes
+        self.scales_modes_keycodes = scales_modes_keycodes
+        self.inversion_keycodes = inversion_keycodes
 
         # Main layout
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
-        # Layout for buttons (at the top)
+        # 1. SmartChord Header and Dropdown
+        self.add_header_dropdown("SmartChord", self.smartchord_keycodes)
+
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+
+        # 3. Inversions Header
+        self.inversion_label = QLabel("Inversions")
+        self.main_layout.addWidget(self.inversion_label)
+
+        # Layout for buttons (Inversions)
         self.button_layout = QHBoxLayout()
         self.main_layout.addLayout(self.button_layout)
 
-        # Add a minimal spacer between the buttons and the header
-        self.main_layout.addSpacing(2)  # Reduce space between buttons and header
+        # Populate the inversion buttons
+        self.recreate_buttons()  # Call without arguments initially
 
-        # Create header and dropdown layout
-        self.header_dropdown_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.header_dropdown_layout)
+        # 4. Spacer to push everything to the top
+        self.main_layout.addStretch()
 
-        # Create header (no bold style)
-        self.header_label = QLabel(self.label)
-        self.header_dropdown_layout.addWidget(self.header_label)
-
-        # Add a minimal spacer between the header and the dropdown
-        self.header_dropdown_layout.addSpacing(1)  # Minimal space between header and dropdown
+    def add_header_dropdown(self, header_text, keycodes):
+        """Helper method to add a header and dropdown."""
+        # Create header
+        header_label = QLabel(header_text)
+        self.main_layout.addWidget(header_label)
 
         # Create dropdown
-        self.dropdown = QComboBox()
-        self.dropdown.setFixedWidth(200)
-        self.dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.header_dropdown_layout.addWidget(self.dropdown)
-
-        # Add a vertical spacer after the dropdown to push everything up
-        self.main_layout.addStretch()  # This will force the layout to push up
-
-        # Call recreate_buttons after the dropdown is created
-        self.recreate_buttons()  # Call without arguments initially
+        dropdown = QComboBox()
+        dropdown.setFixedWidth(200)
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        self.main_layout.addWidget(dropdown)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
@@ -186,12 +191,9 @@ class SmartChordTab(QWidget):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
-        
-        if self.dropdown is not None:
-            self.dropdown.clear()
 
-        # Populate buttons
-        for keycode in self.button_keycodes:
+        # Populate inversion buttons
+        for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedWidth(100)  # Set a fixed width for buttons
@@ -200,14 +202,9 @@ class SmartChordTab(QWidget):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
                 self.button_layout.addWidget(btn)
-        
-        # Populate dropdown
-        for keycode in self.dropdown_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
     def on_selection_change(self, index):
-        selected_qmk_id = self.dropdown.itemData(index)
+        selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
@@ -222,7 +219,7 @@ class SmartChordTab(QWidget):
 
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0) or (self.dropdown.count() > 0)
+        return (self.button_layout.count() > 0)
 
 
 
@@ -273,7 +270,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_CHORD),  # Updated to SmartChordTab
+            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
             SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITYENCODER + KEYCODES_MIDI_VELOCITY),            
