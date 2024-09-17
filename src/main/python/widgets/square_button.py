@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont, QFontMetrics
 from PyQt5.QtWidgets import QPushButton, QLabel, QHBoxLayout
@@ -39,11 +38,13 @@ class SquareButton(QPushButton):
                 self.label.setAlignment(Qt.AlignCenter)
                 layout = QHBoxLayout(self)
                 layout.setContentsMargins(0, 0, 0, 0)
-                layout.addWidget(self.label, 0, Qt.AlignCenter)
+                layout.addWidget(self.label)
                 self.setLayout(layout)
+            
             self.adjust_font_size_if_needed()
             self.label.setText(self.text)
             self.label.adjustSize()  # Ensure label size is updated
+            self.setFixedSize(self.label.sizeHint())  # Update button size to fit label
         else:
             if self.label is not None:
                 self.label.deleteLater()
@@ -52,23 +53,22 @@ class SquareButton(QPushButton):
 
     def adjust_font_size_if_needed(self):
         if self.adjust_font_size:
-            font = self.font()
+            font = QFont(self.font())
             font_size = font.pointSize()
             fm = QFontMetrics(font)
             button_width = self.width()
             button_height = self.height()
 
-            # Adjust font size until it fits within the button
             while True:
                 text_rect = fm.boundingRect(self.text)
                 if text_rect.width() <= button_width and text_rect.height() <= button_height:
                     break
                 font_size -= 1
-                font.setPointSize(font_size)
-                fm = QFontMetrics(font)
                 if font_size <= 1:  # Avoid too small font sizes
                     break
+                font.setPointSize(font_size)
+                fm = QFontMetrics(font)
 
             self.label.setFont(font)
+            self.label.adjustSize()  # Ensure label size is updated
             self.update()  # Trigger a repaint to apply the font size change
-
