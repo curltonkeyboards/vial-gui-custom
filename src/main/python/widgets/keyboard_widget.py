@@ -359,69 +359,69 @@ class KeyboardWidget(QWidget):
         self.update()
         self.updateGeometry()
 
-def paintEvent(self, event):
-    qp = QPainter()
-    qp.begin(self)
-    qp.setRenderHint(QPainter.Antialiasing)
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        qp.setRenderHint(QPainter.Antialiasing)
 
-    # Set pen and brush styles
-    regular_pen = qp.pen()
-    regular_pen.setColor(QApplication.palette().color(QPalette.ButtonText))
-    qp.setPen(regular_pen)
+        # Set pen and brush styles
+        regular_pen = qp.pen()
+        regular_pen.setColor(QApplication.palette().color(QPalette.ButtonText))
+        qp.setPen(regular_pen)
 
-    background_brush = QBrush()
-    background_brush.setColor(QApplication.palette().color(QPalette.Button))
-    background_brush.setStyle(Qt.SolidPattern)
+        background_brush = QBrush()
+        background_brush.setColor(QApplication.palette().color(QPalette.Button))
+        background_brush.setStyle(Qt.SolidPattern)
 
-    # Setting for active pen (for selected keycap)
-    active_pen = qp.pen()
-    active_pen.setColor(QApplication.palette().color(QPalette.Highlight))
-    active_pen.setWidthF(1.5)
+        # Setting for active pen (for selected keycap)
+        active_pen = qp.pen()
+        active_pen.setColor(QApplication.palette().color(QPalette.Highlight))
+        active_pen.setWidthF(1.5)
 
-    mask_font = qp.font()
-    mask_font.setPointSize(round(mask_font.pointSize() * 0.8))
+        mask_font = qp.font()
+        mask_font.setPointSize(round(mask_font.pointSize() * 0.8))
 
-    for idx, key in enumerate(self.widgets):
-        qp.save()
+        for idx, key in enumerate(self.widgets):
+            qp.save()
 
-        qp.scale(self.scale, self.scale)
-        qp.translate(key.shift_x, key.shift_y)
-        qp.translate(key.rotation_x, key.rotation_y)
-        qp.rotate(key.rotation_angle)
-        qp.translate(-key.rotation_x, -key.rotation_y)
+            qp.scale(self.scale, self.scale)
+            qp.translate(key.shift_x, key.shift_y)
+            qp.translate(key.rotation_x, key.rotation_y)
+            qp.rotate(key.rotation_angle)
+            qp.translate(-key.rotation_x, -key.rotation_y)
 
-        # Draw keycap background
-        qp.setPen(active_pen if key.active else Qt.NoPen)
-        qp.setBrush(background_brush)
-        qp.drawPath(key.background_draw_path)
+            # Draw keycap background
+            qp.setPen(active_pen if key.active else Qt.NoPen)
+            qp.setBrush(background_brush)
+            qp.drawPath(key.background_draw_path)
 
-        # Draw keycap foreground
-        qp.setBrush(background_brush)  # You might want to modify this
-        qp.drawPath(key.foreground_draw_path)
+            # Draw keycap foreground
+            qp.setBrush(background_brush)  # You might want to modify this
+            qp.drawPath(key.foreground_draw_path)
 
-        # Draw the text on the key (with or without a mask)
-        if key.masked:
-            # Outer legend
-            qp.setFont(mask_font)
-            qp.setPen(key.color if key.color else regular_pen)
-            qp.drawText(key.nonmask_rect, Qt.AlignCenter | Qt.TextWordWrap, key.text)
+            # Draw the text on the key (with or without a mask)
+            if key.masked:
+                # Outer legend
+                qp.setFont(mask_font)
+                qp.setPen(key.color if key.color else regular_pen)
+                qp.drawText(key.nonmask_rect, Qt.AlignCenter | Qt.TextWordWrap, key.text)
 
-            # Inner highlight rect
-            qp.setPen(active_pen if self.active_key == key and self.active_mask else Qt.NoPen)
-            qp.setBrush(background_brush)  # Modify the brush based on style
-            qp.drawRoundedRect(key.mask_rect, key.corner, key.corner)
+                # Inner highlight rect
+                qp.setPen(active_pen if self.active_key == key and self.active_mask else Qt.NoPen)
+                qp.setBrush(background_brush)  # Modify the brush based on style
+                qp.drawRoundedRect(key.mask_rect, key.corner, key.corner)
 
-            # Inner legend
-            qp.setPen(key.mask_color if key.mask_color else regular_pen)
-            qp.drawText(key.mask_rect, Qt.AlignCenter | Qt.TextWordWrap, key.mask_text)
-        else:
-            # Non-masked text (word wrap enabled)
-            qp.setPen(key.color if key.color else regular_pen)
-            qp.drawText(key.text_rect, Qt.AlignCenter | Qt.TextWordWrap, key.text)
+                # Inner legend
+                qp.setPen(key.mask_color if key.mask_color else regular_pen)
+                qp.drawText(key.mask_rect, Qt.AlignCenter | Qt.TextWordWrap, key.mask_text)
+            else:
+                # Non-masked text (word wrap enabled)
+                qp.setPen(key.color if key.color else regular_pen)
+                qp.drawText(key.text_rect, Qt.AlignCenter | Qt.TextWordWrap, key.text)
 
-        qp.restore()
-    
-    qp.end()
+            qp.restore()
+        
+        qp.end()
 
     def minimumSizeHint(self):
         return QSize(self.width, self.height)
@@ -485,9 +485,9 @@ def paintEvent(self, event):
             self.anykey.emit()
         return super().event(ev)
 
-def set_enabled(self, val):
-    self.enabled = val
-    self.update()
+    def set_enabled(self, val):
+        self.enabled = val
+        self.update()
 
     def set_scale(self, scale):
         self.scale = scale
