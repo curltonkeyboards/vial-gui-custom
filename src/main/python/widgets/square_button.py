@@ -40,11 +40,14 @@ class SquareButton(QPushButton):
                 layout = QHBoxLayout(self)
                 layout.setContentsMargins(0, 0, 0, 0)
                 layout.addWidget(self.label, 0, Qt.AlignCenter)
+                self.setLayout(layout)
             self.adjust_font_size_if_needed()
             self.label.setText(self.text)
+            self.label.adjustSize()  # Ensure label size is updated
         else:
             if self.label is not None:
                 self.label.deleteLater()
+                self.label = None
             super().setText(self.text)
 
     def adjust_font_size_if_needed(self):
@@ -52,15 +55,20 @@ class SquareButton(QPushButton):
             font = self.font()
             font_size = font.pointSize()
             fm = QFontMetrics(font)
-            text_width = fm.width(self.text)
-            text_height = fm.height()
             button_width = self.width()
             button_height = self.height()
 
-            while text_width > button_width or text_height > button_height:
+            # Adjust font size until it fits within the button
+            while True:
+                text_rect = fm.boundingRect(self.text)
+                if text_rect.width() <= button_width and text_rect.height() <= button_height:
+                    break
                 font_size -= 1
                 font.setPointSize(font_size)
                 fm = QFontMetrics(font)
-                text_width = fm.width(self.text)
-                text_height = fm.height()              
+                if font_size <= 1:  # Avoid too small font sizes
+                    break
+
             self.label.setFont(font)
+            self.update()  # Trigger a repaint to apply the font size change
+
