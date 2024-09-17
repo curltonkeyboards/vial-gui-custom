@@ -901,7 +901,7 @@ KEYCODES_MIDI_TRANSPOSITION = [
     K("MI_TRNS_N4", "Key\nG#ᵐᵃʲᵒʳ\nFᵐᶦⁿᵒʳ", "Midi set transposition to -4 semitones"),
     K("MI_TRNS_N3", "Key\nAᵐᵃʲᵒʳ\nF#ᵐᶦⁿᵒʳ", "Midi set transposition to -3 semitones"),
     K("MI_TRNS_N2", "Key\nA#ᵐᵃʲᵒʳ\nGᵐᶦⁿᵒʳ", "Midi set transposition to -2 semitones"),
-    K("MI_TRNS_N1", "Key Bᵐᵃʲᵒʳ G#ᵐᶦⁿᵒʳ", "Midi set transposition to -1 semitones"),
+    K("MI_TRNS_N1", "Key Bᵐᵃʲᵒʳ G#ᵐᶦⁿᵒʳ Is this going to lessen the font", "Midi set transposition to -1 semitones"),
 
 
 ]
