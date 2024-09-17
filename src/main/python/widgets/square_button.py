@@ -10,7 +10,7 @@ class SquareButton(QPushButton):
 
         self.scale = 1.2
         self.label = None
-        self.word_wrap = False
+        self.word_wrap = True
         self.text = ""
 
     def setRelSize(self, ratio):
