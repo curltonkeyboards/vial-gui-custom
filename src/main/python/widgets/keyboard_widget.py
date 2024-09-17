@@ -485,8 +485,9 @@ def paintEvent(self, event):
             self.anykey.emit()
         return super().event(ev)
 
-    def set_enabled(self, val):
-        self.enabled = val
+def set_enabled(self, val):
+    self.enabled = val
+    self.update()
 
     def set_scale(self, scale):
         self.scale = scale
