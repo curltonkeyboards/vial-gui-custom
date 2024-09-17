@@ -50,24 +50,29 @@ class SquareButton(QPushButton):
                 self.label.deleteLater()
             super().setText(self.text)
 
-    def adjust_font_size_if_needed(self):
-        if self.adjust_font_size:
-            font = self.font()
-            font_size = font.pointSize()
+def adjust_font_size_if_needed(self):
+    if self.adjust_font_size:
+        font = self.font()
+        font_size = font.pointSize()
+        fm = QFontMetrics(font)
+        text_width = fm.width(self.text)
+        text_height = fm.height()
+        button_width = self.width()
+        button_height = self.height()
+
+        # Reduce the font size until the text fits within the button
+        while text_width > button_width or text_height > button_height:
+            font_size -= 1
+            font.setPointSize(font_size)
             fm = QFontMetrics(font)
             text_width = fm.width(self.text)
             text_height = fm.height()
-            button_width = self.width()
-            button_height = self.height()
-
-            while text_width > button_width or text_height > button_height:
-                font_size -= 1
-                if font_size <= 1:  # Avoid too small font sizes
-                    break
-                font_size += 4
-                font.setPointSize(font_size)
-                fm = QFontMetrics(font)
-                text_width = fm.width(self.text)
-                text_height = fm.height()
-
-            self.label.setFont(font)
+            if font_size <= 1:  # Avoid too small font sizes
+                break
+        
+        # Add 4 points to the final font size
+        font_size += 4
+        # Ensure the font size does not exceed the initial size
+        font_size = min(font_size, self.font().pointSize())
+        font.setPointSize(font_size)
+        self.label.setFont(font)
