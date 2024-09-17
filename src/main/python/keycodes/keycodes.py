@@ -1015,7 +1015,7 @@ KEYCODES_MIDI_INVERSION = [
  K ("MI_INVERSION_DEF", "Root \nPosition", "Root Position"),
  K ("MI_INVERSION_1", "1st \nInversion", "1st Inversion"),
  K ("MI_INVERSION_2", "2nd \nInversion", "2nd Inversion"),
- K ("MI_INVERSION_3", "3rd\nᴾInversion", "3rd Inversion"),
+ K ("MI_INVERSION_3", "3rd \nInversion", "3rd Inversion"),
  K ("MI_INVERSION_4", "4th \nInversion", "4th Inversion"),
  K ("MI_INVERSION_5", "5th \nInversion", "5th Inversion"),
  K ("MI_INVERSION_6", "6th \nInversion", "6th Inversion"),

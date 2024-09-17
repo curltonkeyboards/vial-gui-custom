@@ -8,9 +8,9 @@ class SquareButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.scale = 1.2
+        self.scale = 3.2
         self.label = None
-        self.word_wrap = True
+        self.word_wrap = False
         self.text = ""
 
     def setRelSize(self, ratio):
@@ -19,7 +19,7 @@ class SquareButton(QPushButton):
 
     def setWordWrap(self, state):
         self.word_wrap = state
-        self.setText(self.text)  # Ensure text is updated when word_wrap changes
+        self.setText(self.text)
 
     def sizeHint(self):
         size = int(round(self.fontMetrics().height() * self.scale))
@@ -29,32 +29,17 @@ class SquareButton(QPushButton):
     def setText(self, text):
         self.text = text
         if self.word_wrap:
-            super().setText("")  # Clear button text for custom QLabel wrapping
+            super().setText("")
             if self.label is None:
                 self.label = QLabel(text, self)
                 self.label.setWordWrap(True)
                 self.label.setAlignment(Qt.AlignCenter)
                 layout = QHBoxLayout(self)
-                layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-                layout.addWidget(self.label, 0, Qt.AlignCenter)
+                layout.setContentsMargins(0, 0, 0, 0)
+                layout.addWidget(self.label,0,Qt.AlignCenter)
             else:
                 self.label.setText(text)
-            self.update_label_size()  # Update label size to fit the button
         else:
             if self.label is not None:
-                self.label.deleteLater()  # Remove QLabel when word_wrap is off
-                self.label = None
+                self.label.deleteLater()
             super().setText(text)
-
-    def update_label_size(self):
-        """Ensure the label fits within the button size."""
-        if self.label is not None:
-            self.label.setFixedWidth(self.width())  # Match button width
-            self.label.adjustSize()  # Adjust size for word wrapping
-            self.updateGeometry()  # Update button geometry
-
-    def resizeEvent(self, event):
-        """Override resizeEvent to ensure the label resizes with the button."""
-        super().resizeEvent(event)
-        if self.label is not None:
-            self.update_label_size()
