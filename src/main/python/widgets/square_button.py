@@ -59,11 +59,10 @@ class SquareButton(QPushButton):
             button_width = self.width()
             button_height = self.height()
 
-            while text_width > button_width or text_height > button_height:
+            while text_width > (button_width+10) or text_height > (button_height+10):
                 font_size -= 1
                 if font_size <= 1:  # Avoid too small font sizes
                     break
-                font_size += 4
                 font.setPointSize(font_size)
                 fm = QFontMetrics(font)
                 text_width = fm.width(self.text)
