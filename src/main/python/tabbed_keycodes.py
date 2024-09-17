@@ -150,27 +150,32 @@ class SmartChordTab(QWidget):
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
-        # Layout for buttons
+        # Layout for buttons (at the top)
         self.button_layout = QHBoxLayout()
         self.main_layout.addLayout(self.button_layout)
+
+        # Add a minimal spacer between the buttons and the header
+        self.main_layout.addSpacing(2)  # Reduce space between buttons and header
 
         # Create header and dropdown layout
         self.header_dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.header_dropdown_layout)
 
-        # Create header
+        # Create header (no bold style)
         self.header_label = QLabel(self.label)
-        self.header_label.setStyleSheet("font-weight: bold;")  # Make header bold if desired
         self.header_dropdown_layout.addWidget(self.header_label)
 
-        # Add a small spacer between the header and the dropdown
-        self.header_dropdown_layout.addSpacing(5)  # Adjust the value as needed
+        # Add a minimal spacer between the header and the dropdown
+        self.header_dropdown_layout.addSpacing(1)  # Minimal space between header and dropdown
 
         # Create dropdown
         self.dropdown = QComboBox()
         self.dropdown.setFixedWidth(200)
         self.dropdown.currentIndexChanged.connect(self.on_selection_change)
         self.header_dropdown_layout.addWidget(self.dropdown)
+
+        # Add a vertical spacer after the dropdown to push everything up
+        self.main_layout.addStretch()  # This will force the layout to push up
 
         # Call recreate_buttons after the dropdown is created
         self.recreate_buttons()  # Call without arguments initially
