@@ -20,6 +20,12 @@ class SquareButton(QPushButton):
         self.updateGeometry()
         self.setFixedSize(self.sizeHint())  # Ensure button size remains fixed
         self.update_text()
+        
+    def update_size(self):
+        new_size = self.sizeHint()
+        new_size.setWidth(int(new_size.width() * 1.5))  # Increase width by 50%
+        new_size.setHeight(int(new_size.height() * 1.5))  # Increase height by 50%
+        self.setFixedSize(new_size)  # Set the new fixed size for the button
 
     def setWordWrap(self, state):
         self.word_wrap = state
