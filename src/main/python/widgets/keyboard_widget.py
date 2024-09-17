@@ -24,6 +24,7 @@ class KeyWidget:
         self.color = None
         self.mask_color = None
         self.scale = 0
+        self.word_wrap = True
 
         self.rotation_angle = desc.rotation_angle
 
