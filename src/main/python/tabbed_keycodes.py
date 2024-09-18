@@ -23,7 +23,7 @@ class AlternativeDisplay(QWidget):
 
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, kbdef, keycodes):
+    def __init__(self, kbdef, keycodes, prefix_buttons):
         super().__init__()
 
         self.kb_display = None
@@ -31,6 +31,14 @@ class AlternativeDisplay(QWidget):
         self.buttons = []
 
         self.key_layout = FlowLayout()
+
+        if prefix_buttons:
+            for title, code in prefix_buttons:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(title)
+                btn.clicked.connect(lambda st, k=code: self.keycode_changed.emit(title))
+                self.key_layout.addWidget(btn)
 
         layout = QVBoxLayout()
         if kbdef:
@@ -76,7 +84,7 @@ class Tab(QScrollArea):
 
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, alts):
+    def __init__(self, parent, label, alts, prefix_buttons=None):
         super().__init__(parent)
 
         self.label = label
@@ -85,7 +93,7 @@ class Tab(QScrollArea):
 
         self.alternatives = []
         for kb, keys in alts:
-            alt = AlternativeDisplay(kb, keys)
+            alt = AlternativeDisplay(kb, keys, prefix_buttons)
             alt.keycode_changed.connect(self.keycode_changed)
             self.layout.addWidget(alt)
             self.alternatives.append(alt)
@@ -132,7 +140,7 @@ class MidiTab(QScrollArea):
 
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, alts):
+    def __init__(self, parent, label, alts, prefix_buttons=None):
         super().__init__(parent)
 
         self.label = label
@@ -141,7 +149,7 @@ class MidiTab(QScrollArea):
 
         self.alternatives = []
         for kb, keys in alts:
-            alt = AlternativeDisplay(kb, keys)
+            alt = AlternativeDisplay(kb, keys, prefix_buttons)
             alt.keycode_changed.connect(self.keycode_changed)
             self.layout.addWidget(alt)
             self.alternatives.append(alt)
@@ -304,14 +312,14 @@ class FilteredTabbedKeycodes(QTabWidget):
                 (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
                 (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
                 (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
-            ])
+            ], prefix_buttons=[("Any", -1)]),
             Tab(self, "ISO/JIS", [
                 (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
                 (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
                 (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
                  KEYCODES_ISO_KR),
                 (None, KEYCODES_ISO),
-            ])
+            ], prefix_buttons=[("Any", -1)]),
             SimpleTab(self, "Layers", KEYCODES_LAYERS),
             Tab(self, "Quantum", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
@@ -322,7 +330,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
             MidiTab(self, "MIDI", [
                 (midi_layout, KEYCODES_MIDI_CHANNEL),                
-            ])
+            ], prefix_buttons=None),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
