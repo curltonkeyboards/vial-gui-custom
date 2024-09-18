@@ -274,8 +274,6 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
             Tab(self, "MIDI", [
                 (midi_layout, KEYCODES_MIDI_CHANNEL),
-                (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
-                (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
                 (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
             ], prefix_buttons=[("Any", -1)]),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
