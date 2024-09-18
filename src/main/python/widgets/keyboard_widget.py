@@ -294,70 +294,72 @@ class KeyboardWidget(QWidget):
             else:
                 self.widgets_for_layout.append(cls(key, scale_factor))
 
-    def place_widgets(self):
-        scale_factor = self.fontMetrics().height()
+   def place_widgets(self):
+    scale_factor = self.fontMetrics().height() * 1.5  # Apply 1.5x scaling to the font
 
-        self.widgets = []
+    self.widgets = []
 
-        # place common widgets, that is, ones which are always displayed and require no extra transforms
-        for widget in self.common_widgets:
-            widget.update_position(scale_factor)
+    # place common widgets, always displayed
+    for widget in self.common_widgets:
+        widget.update_position(scale_factor)
+        self.widgets.append(widget)
+
+    # top-left position for specific layout
+    layout_x = defaultdict(lambda: defaultdict(lambda: 1e6))
+    layout_y = defaultdict(lambda: defaultdict(lambda: 1e6))
+
+    # determine top-left position for every layout option
+    for widget in self.widgets_for_layout:
+        widget.update_position(scale_factor)
+        idx, opt = widget.desc.layout_index, widget.desc.layout_option
+        p = widget.polygon.boundingRect().topLeft()
+        layout_x[idx][opt] = min(layout_x[idx][opt], p.x())
+        layout_y[idx][opt] = min(layout_y[idx][opt], p.y())
+
+    # obtain widgets for all layout options
+    for widget in self.widgets_for_layout:
+        idx, opt = widget.desc.layout_index, widget.desc.layout_option
+        if opt == self.layout_editor.get_choice(idx):
+            shift_x = layout_x[idx][opt] - layout_x[idx][0]
+            shift_y = layout_y[idx][opt] - layout_y[idx][0]
+            widget.update_position(scale_factor, -shift_x, -shift_y)
             self.widgets.append(widget)
 
-        # top-left position for specific layout
-        layout_x = defaultdict(lambda: defaultdict(lambda: 1e6))
-        layout_y = defaultdict(lambda: defaultdict(lambda: 1e6))
-
-        # determine top-left position for every layout option
-        for widget in self.widgets_for_layout:
-            widget.update_position(scale_factor)
-            idx, opt = widget.desc.layout_index, widget.desc.layout_option
+    # shift widgets to avoid cutoff
+    top_x = top_y = 1e6
+    for widget in self.widgets:
+        if not widget.desc.decal:
             p = widget.polygon.boundingRect().topLeft()
-            layout_x[idx][opt] = min(layout_x[idx][opt], p.x())
-            layout_y[idx][opt] = min(layout_y[idx][opt], p.y())
+            top_x = min(top_x, p.x())
+            top_y = min(top_y, p.y())
+    for widget in self.widgets:
+        widget.update_position(widget.scale, widget.shift_x - top_x + self.padding,
+                               widget.shift_y - top_y + self.padding)
 
-        # obtain widgets for all layout options now that we know how to shift them
-        for widget in self.widgets_for_layout:
-            idx, opt = widget.desc.layout_index, widget.desc.layout_option
-            if opt == self.layout_editor.get_choice(idx):
-                shift_x = layout_x[idx][opt] - layout_x[idx][0]
-                shift_y = layout_y[idx][opt] - layout_y[idx][0]
-                widget.update_position(scale_factor, -shift_x, -shift_y)
-                self.widgets.append(widget)
 
-        # at this point some widgets on left side might be cutoff, or there may be too much empty space
-        # calculate top left position of visible widgets and shift everything around
-        top_x = top_y = 1e6
-        for widget in self.widgets:
-            if not widget.desc.decal:
-                p = widget.polygon.boundingRect().topLeft()
-                top_x = min(top_x, p.x())
-                top_y = min(top_y, p.y())
-        for widget in self.widgets:
-            widget.update_position(widget.scale, widget.shift_x - top_x + self.padding,
-                                   widget.shift_y - top_y + self.padding)
+def update_layout(self):
+    """ Updates self.widgets for the currently active layout """
 
-    def update_layout(self):
-        """ Updates self.widgets for the currently active layout """
+    # determine widgets for current layout
+    self.place_widgets()
+    self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-        # determine widgets for current layout
-        self.place_widgets()
-        self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
+    self.widgets.sort(key=lambda w: (w.y, w.x))
 
-        self.widgets.sort(key=lambda w: (w.y, w.x))
+    # determine maximum width and height of container
+    max_w = max_h = 0
+    for key in self.widgets:
+        p = key.polygon.boundingRect().bottomRight()
+        max_w = max(max_w, p.x())
+        max_h = max(max_h, p.y())
 
-        # determine maximum width and height of container
-        max_w = max_h = 0
-        for key in self.widgets:
-            p = key.polygon.boundingRect().bottomRight()
-            max_w = max(max_w, p.x() * self.scale)
-            max_h = max(max_h, p.y() * self.scale)
+    # Multiply by scale (including the 1.5x scale increase)
+    self.width = round(max_w * self.scale * 1.5 + 2 * self.padding)
+    self.height = round(max_h * self.scale * 1.5 + 2 * self.padding)
 
-        self.width = round(max_w + 2 * self.padding)
-        self.height = round(max_h + 2 * self.padding)
+    self.update()
+    self.updateGeometry()
 
-        self.update()
-        self.updateGeometry()
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -415,7 +417,7 @@ class KeyboardWidget(QWidget):
         for idx, key in enumerate(self.widgets):
             qp.save()
 
-            qp.scale(self.scale, self.scale)
+            qp.scale(self.scale * 1.5, self.scale * 1.5)  # Apply 1.5x scaling here
             qp.translate(key.shift_x, key.shift_y)
             qp.translate(key.rotation_x, key.rotation_y)
             qp.rotate(key.rotation_angle)
