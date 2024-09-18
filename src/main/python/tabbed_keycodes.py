@@ -252,7 +252,7 @@ class FilteredTabbedKeycodes(QTabWidget):
 
         self.tabs = [
             Tab(self, "Basic", [
-                (midi_layout, KEYCODES_MIDI),
+                (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
                 (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
                 (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
                 (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
@@ -271,7 +271,12 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
-            SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
+            Tab(self, "MIDI", [
+                (midi_layout),
+                (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
+                (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
+                (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
+            ], prefix_buttons=[("Any", -1)]),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
