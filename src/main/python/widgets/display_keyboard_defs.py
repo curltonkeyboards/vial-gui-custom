@@ -34,7 +34,7 @@ mods_narrow = r"""
 
 midi_layout = r"""
 [
-    [{"x": 0.5}, "MI_Cs", "MI_Ds", {"x": 1}, "MI_Fs", "MI_Gs", "MI_As", {"x": 2}, {"x": 1}, {"x": 0.5},
+    [{"x": 0.5}, "MI_Cs", "MI_Ds", {"x": 1}, "MI_Fs", "MI_Gs", "MI_As", {"x": 2}, {"x": 1}, {"x": 1},
      "MI_Cs_1", "MI_Ds_1", {"x": 1}, "MI_Fs_1", "MI_Gs_1", "MI_As_1", {"x": 1.5}, {"x": 0.5}, 
      "MI_Cs_2", "MI_Ds_2", {"x": 1}, "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
      
@@ -42,7 +42,7 @@ midi_layout = r"""
      "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1", {"x": 0.5}, {"x": 0.5}, 
      "MI_C_2", "MI_D_2", "MI_E_2", "MI_F_2", "MI_G_2", "MI_A_2", "MI_B_2"],
 
-    [{"x": 0.5}, "MI_Cs_3", "MI_Ds_3", {"x": 1}, "MI_Fs_3", "MI_Gs_3", "MI_As_3", {"x": 2}, {"x": 0.5}, {"x": 0.5}, {"x": 0.5},
+    [{"x": 0.5}, "MI_Cs_3", "MI_Ds_3", {"x": 1}, "MI_Fs_3", "MI_Gs_3", "MI_As_3", {"x": 2}, {"x": 0.5}, {"x": 0.5}, {"x": 1},
      "MI_Cs_4", "MI_Ds_4", {"x": 1}, "MI_Fs_4", "MI_Gs_4", "MI_As_4", {"x": 2}, 
      "MI_Cs_5", "MI_Ds_5", {"x": 1}, "MI_Fs_5", "MI_Gs_5", "MI_As_5"],
 
