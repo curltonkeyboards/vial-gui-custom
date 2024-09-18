@@ -477,11 +477,11 @@ class KeyboardWidget(QWidget):
 
     def hit_test(self, pos):
         """ Returns key, hit_masked_part """
-        scaled_pos = pos * 1.3
+
         for key in self.widgets:
-            if key.masked and key.mask_polygon.containsPoint(pos/self.scale, Qt.OddEvenFill):
+            if key.masked and key.mask_polygon.containsPoint(pos/(self.scale * 1.3), Qt.OddEvenFill):
                 return key, True
-            if key.polygon.containsPoint(pos/self.scale, Qt.OddEvenFill):
+            if key.polygon.containsPoint(pos/(self.scale * 1.3), Qt.OddEvenFill):
                 return key, False
 
         return None, False
