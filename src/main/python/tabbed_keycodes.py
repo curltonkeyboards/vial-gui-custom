@@ -328,7 +328,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            Tab(self, "MIDI", [
+            MidiTab(self, "MIDI", [
                 (midi_layout, KEYCODES_MIDI_CHANNEL),                
             ], prefix_buttons=[("Any", -1)]),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
@@ -348,6 +348,12 @@ class FilteredTabbedKeycodes(QTabWidget):
 
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
+        
+        for miditab in self.tabs:
+            tab.keycode_changed.connect(self.on_keycode_changed)
+
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
 
     def on_keycode_changed(self, code):
         if code == "Any":
@@ -361,6 +367,13 @@ class FilteredTabbedKeycodes(QTabWidget):
             self.removeTab(0)
 
         for tab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for miditab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
