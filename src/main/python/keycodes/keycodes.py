@@ -161,7 +161,7 @@ class Keycode:
 K = Keycode
 
 BASIC_KEYCODES = {
-    "KC_NO",
+    K("KC_NO"," ", " "),
     "KC_TRNS",
     "KC_A",
     "KC_B",
