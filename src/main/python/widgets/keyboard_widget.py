@@ -446,6 +446,7 @@ class KeyboardWidget(QWidget):
             # draw key text
             if key.masked:
                 # draw the outer legend
+                mask_font.setPointSize(3)
                 qp.setFont(mask_font)
                 qp.setPen(key.color if key.color else regular_pen)
                 qp.drawText(key.nonmask_rect, Qt.AlignCenter, key.text)
