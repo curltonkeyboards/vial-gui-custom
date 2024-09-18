@@ -136,11 +136,11 @@ class Tab(QScrollArea):
         super().resizeEvent(evt)
         self.select_alternative()
         
-class MIDITab(QScrollArea):
+class MidiTab(QScrollArea):
 
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, alts):
+    def __init__(self, parent, label, alts, prefix_buttons=None):
         super().__init__(parent)
 
         self.label = label
@@ -149,7 +149,7 @@ class MIDITab(QScrollArea):
 
         self.alternatives = []
         for kb, keys in alts:
-            alt = AlternativeDisplay(kb, keys)
+            alt = AlternativeDisplay(kb, keys, prefix_buttons)
             alt.keycode_changed.connect(self.keycode_changed)
             self.layout.addWidget(alt)
             self.alternatives.append(alt)
@@ -328,9 +328,9 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            MIDITabTab(self, "MIDI", [
+            MidiTab(self, "MIDI", [
                 (midi_layout, KEYCODES_MIDI_CHANNEL),                
-         ])
+            ], prefix_buttons=[("Any", -1)]),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
