@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QFont, QFontMetrics
 from PyQt5.QtWidgets import QPushButton, QLabel, QHBoxLayout
@@ -13,14 +15,13 @@ class SquareButton(QPushButton):
         self.word_wrap = True
         self.text = ""
         self.adjust_font_size = True
-        self.setFixedSize(self.sizeHint())  # Set a fixed size for the button
+        self.update_size()  # Set the initial size for the button
 
     def setRelSize(self, ratio):
         self.scale = ratio
-        self.updateGeometry()
-        self.setFixedSize(self.sizeHint())  # Ensure button size remains fixed
+        self.update_size()  # Update the size based on the new ratio
         self.update_text()
-        
+
     def update_size(self):
         new_size = self.sizeHint()
         new_size.setWidth(int(new_size.width() * 1.5))  # Increase width by 50%
@@ -33,7 +34,7 @@ class SquareButton(QPushButton):
 
     def sizeHint(self):
         size = int(round(self.fontMetrics().height() * self.scale))
-        return QSize(size, size)
+        return QSize(size, size)  # Return the size of the button
 
     def setText(self, text):
         self.text = text
@@ -65,9 +66,9 @@ class SquareButton(QPushButton):
             button_width = self.width()
             button_height = self.height()
 
-            while text_width > (button_width+20) or text_height > (button_height+20):
+            while text_width > (button_width + 20) or text_height > (button_height + 20):
                 font_size -= 1
-                if font_size <= 10:  # Avoid too small font sizes
+                if font_size <= 6:  # Avoid too small font sizes
                     break
                 font.setPointSize(font_size)
                 fm = QFontMetrics(font)
@@ -75,3 +76,4 @@ class SquareButton(QPushButton):
                 text_height = fm.height()
 
             self.label.setFont(font)
+
