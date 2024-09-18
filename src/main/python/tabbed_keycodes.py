@@ -273,7 +273,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
             Tab(self, "MIDI", [
-                (midi_layout, KEYCODES_MIDI),
+                (midi_layout),
                 (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
                 (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
                 (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
