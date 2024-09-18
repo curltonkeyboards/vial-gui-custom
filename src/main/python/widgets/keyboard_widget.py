@@ -410,6 +410,7 @@ class KeyboardWidget(QWidget):
         foreground_on_brush.setStyle(Qt.SolidPattern)
 
         mask_font = qp.font()
+        #doesnt seem to change font size
         mask_font.setPointSize(round(mask_font.pointSize() * 1.8))
 
         for idx, key in enumerate(self.widgets):
@@ -444,25 +445,7 @@ class KeyboardWidget(QWidget):
             qp.drawPath(key.foreground_draw_path)
 
             # draw key text
-            if key.masked:
-                # draw the outer legend
-                mask_font.setPointSize(3)
-                qp.setFont(mask_font)
-                qp.setPen(key.color if key.color else regular_pen)
-                qp.drawText(key.nonmask_rect, Qt.AlignCenter, key.text)
-
-                # draw the inner highlight rect
-                qp.setPen(active_pen if self.active_key == key and self.active_mask else Qt.NoPen)
-                qp.setBrush(mask_brush)
-                qp.drawRoundedRect(key.mask_rect, key.corner, key.corner)
-
-                # draw the inner legend
-                qp.setPen(key.mask_color if key.mask_color else regular_pen)
-                qp.drawText(key.mask_rect, Qt.AlignCenter, key.mask_text)
-            else:
-                # draw the legend
-                qp.setPen(key.color if key.color else regular_pen)
-                qp.drawText(key.text_rect, Qt.AlignCenter, key.text)
+          
 
             # draw the extra shape (encoder arrow)
             qp.setPen(extra_pen)
