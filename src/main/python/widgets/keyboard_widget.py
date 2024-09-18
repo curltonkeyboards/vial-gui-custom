@@ -350,8 +350,8 @@ class KeyboardWidget(QWidget):
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
-            max_w = max(max_w, p.x() * self.scale)
-            max_h = max(max_h, p.y() * self.scale)
+            max_w = max(max_w, p.x() * (self.scale * 1.3, self.scale * 1.3))
+            max_h = max(max_h, p.y() * (self.scale * 1.3, self.scale * 1.3))
 
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
@@ -414,8 +414,8 @@ class KeyboardWidget(QWidget):
 
         for idx, key in enumerate(self.widgets):
             qp.save()
-
-            qp.scale(self.scale * 1.5, self.scale * 1.5)
+            #responsible for scaling everything including encoders etc. does not scale the hitbox of the button however
+            qp.scale(self.scale * 1.3, self.scale * 1.3)        
             qp.translate(key.shift_x, key.shift_y)
             qp.translate(key.rotation_x, key.rotation_y)
             qp.rotate(key.rotation_angle)
