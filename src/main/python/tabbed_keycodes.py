@@ -328,7 +328,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            MidiTab(self, "MIDI", [
+            Tab(self, "MIDI", [
                 (midi_layout, KEYCODES_MIDI_CHANNEL),                
             ], prefix_buttons=[("Any", -1)]),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
