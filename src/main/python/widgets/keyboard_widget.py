@@ -24,7 +24,6 @@ class KeyWidget:
         self.color = None
         self.mask_color = None
         self.scale = 0
-        self.word_wrap = True
 
         self.rotation_angle = desc.rotation_angle
 
@@ -261,7 +260,7 @@ class KeyboardWidget(QWidget):
         self.enabled = True
         self.scale = 1
         self.padding = KEYBOARD_WIDGET_PADDING
-        self.word_wrap = True
+
         self.setMouseTracking(True)
 
         self.layout_editor = layout_editor
@@ -539,7 +538,8 @@ class KeyboardWidget(QWidget):
         self.enabled = val
 
     def set_scale(self, scale):
-        self.scale = scale
+        self.scale = scale * 1.5
+        self.update_layout()  # Recalculate layout based on the new scale
 
     def get_scale(self):
         return self.scale
