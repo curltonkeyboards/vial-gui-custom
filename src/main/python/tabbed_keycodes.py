@@ -15,6 +15,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_ENCODER_SENSITIVITY, KEYCODES_MIDI_VELOCITY, \
     KEYCODES_MIDI_VELOCITYENCODER, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_TRANSPOSITION, KEYCODES_MIDI_CHORD, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES
 from widgets.square_button import SquareButton
+from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
 
 
@@ -196,7 +197,7 @@ class SmartChordTab(QWidget):
         # Populate inversion buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
+                btn = BigSquareButton()
                 btn.setFixedWidth(100)  # Set a fixed width for buttons
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
