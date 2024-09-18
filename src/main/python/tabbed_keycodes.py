@@ -140,7 +140,7 @@ class MidiTab(QScrollArea):
 
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, alts, prefix_buttons=None):
+    def __init__(self, parent, label, alts, smartchord_keycodes, scales_modes_keycodes, prefix_buttons=None):
         super().__init__(parent)
 
         self.label = label
@@ -154,6 +154,10 @@ class MidiTab(QScrollArea):
             self.layout.addWidget(alt)
             self.alternatives.append(alt)
 
+        # Add the two dropdowns in the same format as SmartChordTab
+        self.add_header_dropdown("Chords", smartchord_keycodes)
+        self.add_header_dropdown("Scales/Modes", scales_modes_keycodes)
+
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidgetResizable(True)
@@ -161,6 +165,26 @@ class MidiTab(QScrollArea):
         w = QWidget()
         w.setLayout(self.layout)
         self.setWidget(w)
+
+    def add_header_dropdown(self, header_text, keycodes):
+        """Helper method to add a header and dropdown like in SmartChordTab."""
+        # Create header
+        header_label = QLabel(header_text)
+        self.layout.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = QComboBox()
+        dropdown.setFixedWidth(300)  # Match the width and height from SmartChordTab
+        dropdown.setFixedHeight(40)
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        self.layout.addWidget(dropdown)
+
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
 
     def recreate_buttons(self, keycode_filter):
         for alt in self.alternatives:
@@ -191,6 +215,7 @@ class MidiTab(QScrollArea):
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
         self.select_alternative()
+
         
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QComboBox, QPushButton
 
