@@ -415,7 +415,7 @@ class KeyboardWidget(QWidget):
         for idx, key in enumerate(self.widgets):
             qp.save()
 
-            qp.scale(self.scale, self.scale)
+            qp.scale(self.scale * 1.5, self.scale * 1.5)
             qp.translate(key.shift_x, key.shift_y)
             qp.translate(key.rotation_x, key.rotation_y)
             qp.rotate(key.rotation_angle)
@@ -538,7 +538,7 @@ class KeyboardWidget(QWidget):
         self.enabled = val
 
     def set_scale(self, scale):
-        self.scale = scale * 1.5
+        self.scale = scale
 
     def get_scale(self):
-        return (self.scale * 1.5)
+        return self.scale
