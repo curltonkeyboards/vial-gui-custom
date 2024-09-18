@@ -458,25 +458,17 @@ class KeyboardWidget(QWidget):
 
                 # draw the inner legend
                 qp.setPen(key.mask_color if key.mask_color else regular_pen)
-
-                # Set a smaller font for the inner legend (masked text)
-                mask_font = qp.font()  # Get the current font
-                mask_font.setPointSize(mask_font.pointSize() - 4)  # Reduce font size by 4 points
-                qp.setFont(mask_font)  # Apply the smaller font
-
+                smaller_font = qp.font()
+                smaller_font.setPointSize(smaller_font.pointSize() - 2)
+                qp.setFont(smaller_font)
                 qp.drawText(key.mask_rect, Qt.AlignCenter, key.mask_text)
-            
-                else:
+            else:
                 # draw the legend
                 qp.setPen(key.color if key.color else regular_pen)
-
-                # Set a smaller font for the regular legend (non-masked text)
-                regular_font = qp.font()  # Get the current font
-                regular_font.setPointSize(regular_font.pointSize() - 4)  # Reduce font size by 4 points
-                qp.setFont(regular_font)  # Apply the smaller font
-
+                smaller_font = qp.font()
+                smaller_font.setPointSize(smaller_font.pointSize() - 2)
+                qp.setFont(smaller_font)
                 qp.drawText(key.text_rect, Qt.AlignCenter, key.text)
-
 
             # draw the extra shape (encoder arrow)
             qp.setPen(extra_pen)
