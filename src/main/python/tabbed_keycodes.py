@@ -136,6 +136,62 @@ class Tab(QScrollArea):
         super().resizeEvent(evt)
         self.select_alternative()
         
+class MIDITab(QScrollArea):
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, alts):
+        super().__init__(parent)
+
+        self.label = label
+        self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.alternatives = []
+        for kb, keys in alts:
+            alt = AlternativeDisplay(kb, keys)
+            alt.keycode_changed.connect(self.keycode_changed)
+            self.layout.addWidget(alt)
+            self.alternatives.append(alt)
+
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setWidgetResizable(True)
+
+        w = QWidget()
+        w.setLayout(self.layout)
+        self.setWidget(w)
+
+    def recreate_buttons(self, keycode_filter):
+        for alt in self.alternatives:
+            alt.recreate_buttons(keycode_filter)
+        self.setVisible(self.has_buttons())
+
+    def relabel_buttons(self):
+        for alt in self.alternatives:
+            alt.relabel_buttons()
+
+    def has_buttons(self):
+        for alt in self.alternatives:
+            if alt.has_buttons():
+                return True
+        return False
+
+    def select_alternative(self):
+        # hide everything first
+        for alt in self.alternatives:
+            alt.hide()
+
+        # then display first alternative which fits on screen w/o horizontal scroll
+        for alt in self.alternatives:
+            if self.width() - self.verticalScrollBar().width() > alt.required_width():
+                alt.show()
+                break
+
+    def resizeEvent(self, evt):
+        super().resizeEvent(evt)
+        self.select_alternative()
+        
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QComboBox, QPushButton
 
 class SmartChordTab(QWidget):
@@ -272,7 +328,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            Tab(self, "MIDI", [
+            MIDITabTab(self, "MIDI", [
                 (midi_layout, KEYCODES_MIDI_CHANNEL),                
          ])
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
