@@ -410,7 +410,7 @@ class KeyboardWidget(QWidget):
         foreground_on_brush.setStyle(Qt.SolidPattern)
 
         mask_font = qp.font()
-        mask_font.setPointSize(round(mask_font.pointSize() * 0.4))
+        mask_font.setPointSize(round(mask_font.pointSize() * 1.8))
 
         for idx, key in enumerate(self.widgets):
             qp.save()
