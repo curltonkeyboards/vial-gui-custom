@@ -274,7 +274,8 @@ class SmartChordTab(QWidget):
         self.main_layout.addWidget(midi_container)
 
         # Parse and add buttons based on midi_layout2
-        self.create_midi_buttons(layout, midi_container_layout)
+        self.create_midi_buttons(layout, midi_container)  # Pass midi_container as the container_widget here
+
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
