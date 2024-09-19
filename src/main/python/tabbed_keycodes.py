@@ -370,12 +370,12 @@ class SmartChordTab(QWidget):
                 elif isinstance(item, dict):
                     if "x" in item:
                         x = item.get("x", 0)
-                        spacer_width = int(x * 100)  # Adjust width as needed
+                        spacer_width = int(x * 1)  # Adjust width as needed
                         spacer = QSpacerItem(spacer_width, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
                         container_layout.addItem(spacer, row_index, col_index)
                     if "y" in item:
                         y = item.get("y", 0)
-                        spacer_height = int(y * 150)  # Adjust height as needed
+                        spacer_height = int(y * 1)  # Adjust height as needed
                         spacer = QSpacerItem(0, spacer_height, QSizePolicy.Minimum, QSizePolicy.Expanding)
                         container_layout.addItem(spacer, row_index, col_index)
 
