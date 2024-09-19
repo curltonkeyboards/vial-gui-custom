@@ -242,6 +242,17 @@ class SmartChordTab(QWidget):
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         self.main_layout.addWidget(dropdown)
+        
+        def add_midi_layout(self, layout):
+        """Helper method to add a predefined MIDI layout."""
+        # Create MIDI Layout Header
+        header_label = QLabel("MIDI Layout")
+        self.main_layout.addWidget(header_label)
+
+        # Create layout display for MIDI
+        midi_display = AlternativeDisplay(None, layout, prefix_buttons=none)  # No prefix buttons for MIDI
+        midi_display.keycode_changed.connect(self.keycode_changed)
+        self.main_layout.addWidget(midi_display)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
