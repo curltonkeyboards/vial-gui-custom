@@ -139,6 +139,14 @@ class Tab(QScrollArea):
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
+class LimitedComboBox(QComboBox):
+    def showPopup(self):
+        # Limit the size of the popup
+        popup = self.view()
+        popup.setMinimumWidth(self.width())  # Match the width of the dropdown
+        popup.setMaximumHeight(200)  # Limit the popup height to 200px
+        super(LimitedComboBox, self).showPopup()
+
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -191,14 +199,14 @@ class SmartChordTab(QScrollArea):
         header_label = QLabel(header_text)
         vbox.addWidget(header_label)
 
-        # Create dropdown
-        dropdown = QComboBox()
+        # Create dropdown using the custom LimitedComboBox
+        dropdown = LimitedComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 300
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.setStyleSheet("QComboBox QAbstractItemView {max-height: 200px;}")  # Adjust height for visible items
+
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the horizontal layout
@@ -239,6 +247,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 
 class midiTab(QScrollArea):
