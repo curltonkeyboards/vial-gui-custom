@@ -365,13 +365,16 @@ class SmartChordTab(QWidget):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
+                        else:
+                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                        
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         hbox.addSpacing(20)
                         
                     if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        hbox.addSpacing(60)
+                        hbox.addSpacing(40)
                         
                     if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
@@ -381,10 +384,10 @@ class SmartChordTab(QWidget):
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                         hbox.addSpacing(20)
 
-                    else:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    
 
                     button.setFixedHeight(30)  # Set size as needed
+                    button.setFixedWidth(40)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
