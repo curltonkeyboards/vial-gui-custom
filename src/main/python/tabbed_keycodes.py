@@ -367,7 +367,7 @@ class SmartChordTab(QWidget):
                     readable_name = name_mapping.get(item, item)
                     button = BigSquareButton()
                     button.setText(readable_name)
-                    if "#" in button_text:  # Sharp keys have # in their name
+                    if "#" in readable_name:  # Sharp keys have # in their name
                         button.setStyleSheet("background-color: black; color: white;")
                     else:
                         button.setStyleSheet("background-color: white; color: black;")
