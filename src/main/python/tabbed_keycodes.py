@@ -267,14 +267,14 @@ class SmartChordTab(QWidget):
         self.main_layout.addWidget(dropdown)
 
     def add_midi_layout2(self, layout):
-        """Helper method to add buttons based on MIDI layout."""
+        """Helper method to add staggered buttons based on MIDI layout."""
         midi_container = QWidget()
-        midi_container_layout = QGridLayout()
+        midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
         midi_container.setLayout(midi_container_layout)
         self.main_layout.addWidget(midi_container)
 
-        # Parse and add buttons based on midi_layout2
-        self.create_midi_buttons(layout, midi_container_layout)
+        # Parse and add staggered buttons for black and white keys
+        self.create_staggered_midi_buttons(layout, midi_container_layout)
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
@@ -354,19 +354,26 @@ class SmartChordTab(QWidget):
         }
 
         for row_index, row in enumerate(layout):
+            hbox = QHBoxLayout()  # New horizontal row layout
             for col_index, item in enumerate(row):
                 if isinstance(item, str):
                     readable_name = name_mapping.get(item, item)
                     button = SquareButton()
                     button.setText(readable_name)
+
                     if "#" in readable_name:  # Sharp keys have # in their name
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        # Add an empty space before the black keys to stagger
+                        hbox.addSpacing(15)
+
                     else:
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
-                    
+
                     button.setFixedHeight(30)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    container_layout.addWidget(button, row_index, col_index)               
+                    hbox.addWidget(button)  # Add button to horizontal layout
+
+            container_layout.addLayout(hbox)  # Add row to vertical layout            
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
