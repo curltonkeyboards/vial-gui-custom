@@ -361,6 +361,8 @@ class SmartChordTab(QWidget):
                     button = SquareButton()
                     button.setText(readable_name)
                     button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+                    hbox.setSpacing(0)    # Set spacing between widgets in this layout to 0
+                    hbox.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
                     if "#" in readable_name:  # Sharp keys have # in their name
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
@@ -392,7 +394,9 @@ class SmartChordTab(QWidget):
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
-            container_layout.addLayout(hbox)  # Add row to vertical layout            
+            container_layout.addLayout(hbox)  # Add row to vertical layout    
+            container_layout.setRowStretch(row_index, 0)
+            container_layout.setColumnStretch(0, 0)            
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
