@@ -278,7 +278,7 @@ class SmartChordTab(QWidget):
         self.create_midi_buttons(layout, midi_container_layout)
 
 def create_midi_buttons(self, layout, container_layout):
-    """Create buttons based on MIDI layout coordinates using BigsquareButton."""
+    """Create buttons based on MIDI layout coordinates using PianoSquareButton."""
     
     # Define a mapping for more readable names
 name_mapping = {
@@ -350,27 +350,21 @@ name_mapping = {
 }
 
 
- for row_index, row in enumerate(layout):
+    for row_index, row in enumerate(layout):
         for col_index, item in enumerate(row):
             if isinstance(item, str):
-                button_text = self.name_mapping.get(item, item)  # Map MIDI key to display name
-                button = BigSquareButton() if "MI_" in item else BigSquareButton()  # Use BigSquareButton for MIDI keys
+                # Get the readable name or fallback to the original item if not found in the mapping
+                readable_name = name_mapping.get(item, item)
                 
-                button.setText(button_text)  # Set text to MIDI label
-
-                # Check if the key is sharp (black) or not
-                if "#" in button_text:  # Sharp keys have # in their name
-                    button.setStyleSheet("background-color: black; color: white;")
-                else:
-                    button.setStyleSheet("background-color: white; color: black;")
-                
-                button.setFixedSize(40, 80)  # Set size as needed
-                button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
+                button = BigSquareButton()  # Use PianoSquareButton here
+                button.setText(readable_name)  # Set text to the mapped name or original if no mapping
+                button.setFixedSize(30, 50)  # Set size as needed
+                button.clicked.connect(lambda _, text=readable_name: self.keycode_changed.emit(text))
                 container_layout.addWidget(button, row_index, col_index)
             elif isinstance(item, dict):
                 x = item.get("x", 0)
                 y = item.get("y", 0)
-                # Define the widget placement or handling based on x, y coordinates
+                # Handle coordinates if needed
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
