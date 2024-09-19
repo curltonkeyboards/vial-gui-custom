@@ -155,11 +155,17 @@ class SmartChordTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setLayout(self.main_layout)
 
-        # 1. SmartChord Header and Dropdown
+        # Create a horizontal layout for the dropdowns
+        self.dropdown_layout = QHBoxLayout()
+
+        # 1. SmartChord Header and Dropdown (added to the horizontal layout)
         self.add_header_dropdown("Chords", self.smartchord_keycodes)
 
-        # 2. Scales/Modes Header and Dropdown
+        # 2. Scales/Modes Header and Dropdown (added to the horizontal layout)
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+
+        # Add the horizontal layout to the main layout
+        self.main_layout.addLayout(self.dropdown_layout)
 
         # 3. Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
@@ -176,19 +182,25 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes):
-        """Helper method to add a header and dropdown."""
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
         # Create header
         header_label = QLabel(header_text)
-        self.main_layout.addWidget(header_label)
+        vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = QComboBox()
-        dropdown.setFixedWidth(300)  # Width stays at 200
+        dropdown.setFixedWidth(300)  # Width stays at 300
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.main_layout.addWidget(dropdown)
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the horizontal layout
+        self.dropdown_layout.addLayout(vbox)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
@@ -225,6 +237,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
