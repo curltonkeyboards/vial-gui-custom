@@ -355,6 +355,7 @@ class SmartChordTab(QWidget):
 
         for row_index, row in enumerate(layout):
             hbox = QHBoxLayout()  # New horizontal row layout
+            hbox.setAlignment(Qt.AlignCenter)
             for col_index, item in enumerate(row):
                 if isinstance(item, str):
                     readable_name = name_mapping.get(item, item)
