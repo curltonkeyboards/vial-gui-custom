@@ -134,68 +134,97 @@ class Tab(QScrollArea):
 
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
-        self.select_alternative()
-        
-class MidiTab(QScrollArea):
-
-    keycode_changed = pyqtSignal(str)
-
-    def __init__(self, parent, label, alts, prefix_buttons=None):
-        super().__init__(parent)
-
-        self.label = label
-        self.layout = QVBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.alternatives = []
-        for kb, keys in alts:
-            alt = AlternativeDisplay(kb, keys, prefix_buttons)
-            alt.keycode_changed.connect(self.keycode_changed)
-            self.layout.addWidget(alt)
-            self.alternatives.append(alt)
-
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setWidgetResizable(True)
-
-        w = QWidget()
-        w.setLayout(self.layout)
-        self.setWidget(w)
-
-    def recreate_buttons(self, keycode_filter):
-        for alt in self.alternatives:
-            alt.recreate_buttons(keycode_filter)
-        self.setVisible(self.has_buttons())
-
-    def relabel_buttons(self):
-        for alt in self.alternatives:
-            alt.relabel_buttons()
-
-    def has_buttons(self):
-        for alt in self.alternatives:
-            if alt.has_buttons():
-                return True
-        return False
-
-    def select_alternative(self):
-        # hide everything first
-        for alt in self.alternatives:
-            alt.hide()
-
-        # then display first alternative which fits on screen w/o horizontal scroll
-        for alt in self.alternatives:
-            if self.width() - self.verticalScrollBar().width() > alt.required_width():
-                alt.show()
-                break
-
-    def resizeEvent(self, evt):
-        super().resizeEvent(evt)
-        self.select_alternative()
+        self.select_alternative()        
         
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
 class SmartChordTab(QWidget):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.smartchord_keycodes = smartchord_keycodes
+        self.scales_modes_keycodes = scales_modes_keycodes
+        self.inversion_keycodes = inversion_keycodes
+
+        # Main layout
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
+
+        # 1. SmartChord Header and Dropdown
+        self.add_header_dropdown("Chords", self.smartchord_keycodes)
+
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+
+        # 3. Inversions Header
+        self.inversion_label = QLabel("Chord Inversions")
+        self.main_layout.addWidget(self.inversion_label)
+
+        # Layout for buttons (Inversions)
+        self.button_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.button_layout)
+
+        # Populate the inversion buttons
+        self.recreate_buttons()  # Call without arguments initially
+
+        # 4. Spacer to push everything to the top
+        self.main_layout.addStretch()
+
+    def add_header_dropdown(self, header_text, keycodes):
+        """Helper method to add a header and dropdown."""
+        # Create header
+        header_label = QLabel(header_text)
+        self.main_layout.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = QComboBox()
+        dropdown.setFixedWidth(300)  # Width stays at 200
+        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        self.main_layout.addWidget(dropdown)
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear previous widgets
+        for i in reversed(range(self.button_layout.count())):
+            widget = self.button_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Populate inversion buttons
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = BigSquareButton()
+                btn.setFixedWidth(100)  # Set a fixed width for buttons
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode  # Make sure keycode attribute is set
+                self.button_layout.addWidget(btn)
+
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
+    def relabel_buttons(self):
+        # Handle relabeling only for buttons
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
+
+    def has_buttons(self):
+        """Check if there are buttons or dropdown items."""
+        return (self.button_layout.count() > 0)
+
+class midiTab(QWidget):
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
@@ -386,7 +415,7 @@ class SmartChordTab(QWidget):
 
                     
 
-                    button.setFixedHeight(30)  # Set size as needed
+                    button.setFixedHeight(40)  # Set size as needed
                     button.setFixedWidth(40)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
@@ -475,10 +504,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
-            SimpleTab(self, "MIDI Notes", KEYCODES_MIDI),
-            MidiTab(self, "MIDI", [
-                (midi_layout, KEYCODES_MIDI_CHANNEL),                
-            ], prefix_buttons=None),
+            SmartChordTab(self, "MIDI", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
