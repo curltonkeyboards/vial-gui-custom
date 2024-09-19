@@ -367,6 +367,11 @@ class SmartChordTab(QWidget):
                     readable_name = name_mapping.get(item, item)
                     button = BigSquareButton()
                     button.setText(readable_name)
+                    if "#" in button_text:  # Sharp keys have # in their name
+                        button.setStyleSheet("background-color: black; color: white;")
+                    else:
+                        button.setStyleSheet("background-color: white; color: black;")
+                    
                     button.setFixedSize(40, 55)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     container_layout.addWidget(button, row_index, col_index)
