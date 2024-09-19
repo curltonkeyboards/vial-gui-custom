@@ -274,7 +274,7 @@ class SmartChordTab(QWidget):
         self.main_layout.addWidget(midi_container)
 
         # Parse and add staggered buttons for black and white keys
-        #self.create_staggered_midi_buttons(layout, midi_container_layout)
+        self.create_midi_buttons(layout, midi_container_layout)
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
