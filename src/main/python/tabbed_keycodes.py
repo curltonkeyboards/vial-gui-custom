@@ -197,8 +197,7 @@ class SmartChordTab(QScrollArea):
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown_view = dropdown.view()
-        dropdown_view.setFixedHeight(200) 
+        dropdown.setStyleSheet("QComboBox QAbstractItemView {max-height: 200px;}")  # Adjust height for visible items
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the horizontal layout
