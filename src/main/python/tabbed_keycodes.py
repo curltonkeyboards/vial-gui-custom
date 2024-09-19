@@ -277,7 +277,7 @@ class SmartChordTab(QWidget):
         # Parse and add buttons based on midi_layout2
         self.create_midi_buttons(layout, midi_container_layout)
 
-def create_midi_buttons(self, layout, container_layout):
+    def create_midi_buttons(self, layout, container_layout):
     """Create buttons based on MIDI layout coordinates using PianoSquareButton."""
     
     # Define a mapping for more readable names
@@ -357,7 +357,7 @@ def create_midi_buttons(self, layout, container_layout):
                 
                 button = BigSquareButton()  # Use PianoSquareButton here
                 button.setText(readable_name)  # Set text to the mapped name or original if no mapping
-                button.setFixedSize(80, 40)  # Set size as needed
+                button.setFixedSize(30, 50)  # Set size as needed
                 button.clicked.connect(lambda _, text=readable_name: self.keycode_changed.emit(text))
                 container_layout.addWidget(button, row_index, col_index)
             elif isinstance(item, dict):
