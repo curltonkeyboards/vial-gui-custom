@@ -153,6 +153,7 @@ class SmartChordTab(QScrollArea):
         self.main_layout = QVBoxLayout()
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setWidgetResizable(True)
         self.setLayout(self.main_layout)
 
         # Create a horizontal layout for the dropdowns
