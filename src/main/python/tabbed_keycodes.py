@@ -393,9 +393,11 @@ class SmartChordTab(QWidget):
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
-            container_layout.addLayout(hbox)  # Add row to vertical layout    
-            container_layout.setRowStretch(row_index, 0)
-            container_layout.setColumnStretch(0, 0)            
+                    # Add the horizontal layout to the container's layout
+                    container_layout.addLayout(hbox, row_index, 0)
+
+                        # Prevent stretching by setting the row stretch to 0
+                    container_layout.setRowStretch(row_index, 0)          
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
