@@ -195,9 +195,6 @@ class MidiTab(QScrollArea):
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy
-from PyQt5.QtCore import pyqtSignal
-
 class SmartChordTab(QWidget):
     keycode_changed = pyqtSignal(str)
 
@@ -373,12 +370,12 @@ class SmartChordTab(QWidget):
                 elif isinstance(item, dict):
                     if "x" in item:
                         x = item.get("x", 0)
-                        spacer_width = int(x * 30)  # Adjust width as needed
+                        spacer_width = int(x * 100)  # Adjust width as needed
                         spacer = QSpacerItem(spacer_width, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
                         container_layout.addItem(spacer, row_index, col_index)
                     if "y" in item:
                         y = item.get("y", 0)
-                        spacer_height = int(y * 15)  # Adjust height as needed
+                        spacer_height = int(y * 150)  # Adjust height as needed
                         spacer = QSpacerItem(0, spacer_height, QSizePolicy.Minimum, QSizePolicy.Expanding)
                         container_layout.addItem(spacer, row_index, col_index)
 
@@ -417,7 +414,6 @@ class SmartChordTab(QWidget):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
-
 
 
 class SimpleTab(Tab):
