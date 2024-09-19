@@ -277,21 +277,93 @@ class SmartChordTab(QWidget):
         # Parse and add buttons based on midi_layout2
         self.create_midi_buttons(layout, midi_container_layout)
 
-    def create_midi_buttons(self, layout, container_layout):
-        """Create buttons based on MIDI layout coordinates."""
-        for row_index, row in enumerate(layout):
-            for col_index, item in enumerate(row):
-                if isinstance(item, str):
-                    button = BigSquareButton()
-                    button.setText(item)  # Set text to MIDI label
-                    button.setFixedSize(30, 70)  # Set size as needed
-                    button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    container_layout.addWidget(button, row_index, col_index)
-                elif isinstance(item, dict):
-                    x = item.get("x", 0)
-                    y = item.get("y", 0)
-                    # Define the widget placement or handling based on x, y coordinates
-                    # Placeholder: you can add any specific widget or handle coordinates accordingly
+def create_midi_buttons(self, layout, container_layout):
+    """Create buttons based on MIDI layout coordinates using PianoSquareButton."""
+    
+    # Define a mapping for more readable names
+name_mapping = {
+    "MI_Cs": "C#",
+    "MI_Ds": "D#",
+    "MI_Fs": "F#",
+    "MI_Gs": "G#",
+    "MI_As": "A#",
+    "MI_Cs_1": "C#1",
+    "MI_Ds_1": "D#1",
+    "MI_Fs_1": "F#1",
+    "MI_Gs_1": "G#1",
+    "MI_As_1": "A#1",
+    "MI_Cs_2": "C#2",
+    "MI_Ds_2": "D#2",
+    "MI_Fs_2": "F#2",
+    "MI_Gs_2": "G#2",
+    "MI_As_2": "A#2",
+    "MI_C_1": "C1",
+    "MI_D_1": "D1",
+    "MI_E_1": "E1",
+    "MI_F_1": "F1",
+    "MI_G_1": "G1",
+    "MI_A_1": "A1",
+    "MI_B_1": "B1",
+    "MI_Cs_3": "C#3",
+    "MI_Ds_3": "D#3",
+    "MI_Fs_3": "F#3",
+    "MI_Gs_3": "G#3",
+    "MI_As_3": "A#3",
+    "MI_Cs_4": "C#4",
+    "MI_Ds_4": "D#4",
+    "MI_Fs_4": "F#4",
+    "MI_Gs_4": "G#4",
+    "MI_As_4": "A#4",
+    "MI_Cs_5": "C#5",
+    "MI_Ds_5": "D#5",
+    "MI_Fs_5": "F#5",
+    "MI_Gs_5": "G#5",
+    "MI_As_5": "A#5",
+    "MI_C_3": "C3",
+    "MI_D_3": "D3",
+    "MI_E_3": "E3",
+    "MI_F_3": "F3",
+    "MI_G_3": "G3",
+    "MI_A_3": "A3",
+    "MI_B_3": "B3",
+    "MI_C_4": "C4",
+    "MI_D_4": "D4",
+    "MI_E_4": "E4",
+    "MI_F_4": "F4",
+    "MI_G_4": "G4",
+    "MI_A_4": "A4",
+    "MI_B_4": "B4",
+    "MI_C_5": "C5",
+    "MI_D_5": "D5",
+    "MI_E_5": "E5",
+    "MI_F_5": "F5",
+    "MI_G_5": "G5",
+    "MI_A_5": "A5",
+    "MI_B_5": "B5",
+    "MI_C": "C",
+    "MI_D": "D",
+    "MI_E": "E",
+    "MI_F": "F",
+    "MI_G": "G",
+    "MI_A": "A",
+    "MI_B": "B"
+}
+
+    for row_index, row in enumerate(layout):
+        for col_index, item in enumerate(row):
+            if isinstance(item, str):
+                # Get the readable name or fallback to the original item if not found in the mapping
+                readable_name = name_mapping.get(item, item)
+                
+                button = BigSquareButton()  # Use PianoSquareButton here
+                button.setText(readable_name)  # Set text to the mapped name or original if no mapping
+                button.setFixedSize(80, 40)  # Set size as needed
+                button.clicked.connect(lambda _, text=readable_name: self.keycode_changed.emit(text))
+                container_layout.addWidget(button, row_index, col_index)
+            elif isinstance(item, dict):
+                x = item.get("x", 0)
+                y = item.get("y", 0)
+                # Handle coordinates if needed
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
