@@ -378,7 +378,6 @@ class SmartChordTab(QWidget):
                         hbox.addSpacing(40)
                         
                     if readable_name in ["C1", "C2", "C4", "C5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                         hbox.addSpacing(20)
 
