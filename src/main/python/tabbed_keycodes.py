@@ -365,7 +365,7 @@ class SmartChordTab(QWidget):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                        else:
+                    else:
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                         
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
