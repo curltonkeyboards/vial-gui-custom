@@ -207,7 +207,7 @@ class SmartChordTab(QWidget):
 
         # Define MIDI layout
         self.midi_layout2 = [
-            ["MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
+            [{"x": 50}, "MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
              "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
              "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
 
@@ -364,7 +364,7 @@ class SmartChordTab(QWidget):
                     else:
                         button.setStyleSheet("background-color: rgba(145, 145, 145, 1); color: rgba(70, 70, 70, 1);")
                     
-                    button.setFixedHeight(40)  # Set size as needed
+                    button.setFixedHeight(30)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     container_layout.addWidget(button, row_index, col_index)               
 
