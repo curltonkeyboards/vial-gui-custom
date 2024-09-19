@@ -193,7 +193,8 @@ class SmartChordTab(QScrollArea):
         # Create dropdown
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.setFixedHeight(30)  # Increase the height to 40 pixels
+        dropdown.setMaxVisibleItems(20)  # Limit the dropdown to show only 5 items at a time
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
