@@ -387,6 +387,7 @@ class SmartChordTab(QWidget):
                     
 
                     button.setFixedHeight(30)  # Set size as needed
+                    button.setFixedWidth(60)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
