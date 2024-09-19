@@ -207,7 +207,7 @@ class SmartChordTab(QWidget):
 
         # Define MIDI layout
         self.midi_layout2 = [
-            [{"x": 25}, "MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
+            [{"x": 50}, "MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
              "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
              "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
 
