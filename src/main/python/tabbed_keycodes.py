@@ -214,7 +214,7 @@ class SmartChordTab(QWidget):
              "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1", {"x": 1.0},
              "MI_C_2", "MI_D_2", "MI_E_2", "MI_F_2", "MI_G_2", "MI_A_2", "MI_B_2"],
 
-            [{"y": 0}, {"y": 1}, {"x": 0}, {"x": 0.5}, "MI_Cs_3", "MI_Ds_3", {"x": 1}, "MI_Fs_3", "MI_Gs_3", "MI_As_3", {"x": 2},
+            [{"y": 0}, {"y": 1}, {"x": 0}, {"x": 0.25}, "MI_Cs_3", "MI_Ds_3", {"x": 1}, "MI_Fs_3", "MI_Gs_3", "MI_As_3", {"x": 2},
              "MI_Cs_4", "MI_Ds_4", {"x": 1}, "MI_Fs_4", "MI_Gs_4", "MI_As_4", {"x": 2},
              "MI_Cs_5", "MI_Ds_5", {"x": 1}, "MI_Fs_5", "MI_Gs_5", "MI_As_5"],
 
@@ -368,9 +368,9 @@ class SmartChordTab(QWidget):
                     button = BigSquareButton()
                     button.setText(readable_name)
                     if "#" in readable_name:  # Sharp keys have # in their name
-                         button.setStyleSheet("background-color: rgba(0, 0, 0, 0.7); color: rgba(255, 255, 255, 0.9);")
+                         button.setStyleSheet("background-color: rgba(70, 70, 70, 0.7); color: rgba(255, 255, 255, 0.9);")
                     else:
-                         button.setStyleSheet("background-color: rgba(255, 255, 255, 0.9); color: rgba(0, 0, 0, 0.7);")
+                         button.setStyleSheet("background-color: rgba(145, 145, 145, 0.9); color: rgba(0, 0, 0, 0.7);")
                     
                     button.setFixedSize(40, 55)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
