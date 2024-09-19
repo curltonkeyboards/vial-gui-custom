@@ -396,7 +396,7 @@ class SmartChordTab(QWidget):
                     
             hbox.addStretch()  # Spacer on the right
 
-            container_layout.addLayout(hbox)  # Add row to vertical layout            
+            container_layout.addLayout(hbox, row_index, 0)           
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
