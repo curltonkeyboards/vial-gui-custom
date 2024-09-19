@@ -356,12 +356,13 @@ class SmartChordTab(QWidget):
         for row_index, row in enumerate(layout):
             hbox = QHBoxLayout()  # New horizontal row layout
             for col_index, item in enumerate(row):
+            hbox.setSpacing(0)  # Set spacing between widgets in this layout to 0
+            hbox.setContentsMargins(0, 0, 0, 0)  # Remove margins
+            hbox.addStretch()  # Spacer on the left
                 if isinstance(item, str):
                     readable_name = name_mapping.get(item, item)
                     button = SquareButton()
                     button.setText(readable_name)
-                    hbox.setSpacing(0)    # Set spacing between widgets in this layout to 0
-                    hbox.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
                     if "#" in readable_name:  # Sharp keys have # in their name
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
@@ -380,7 +381,7 @@ class SmartChordTab(QWidget):
                         
                     if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        hbox.addSpacing(50)
+                        hbox.addSpacing(40)
                         
                     if readable_name in ["C1", "C2", "C4", "C5"]:
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
@@ -389,15 +390,13 @@ class SmartChordTab(QWidget):
                     
 
                     button.setFixedHeight(30)  # Set size as needed
-                    button.setFixedWidth(40)  # Set size as needed
+                    button.setFixedWidth(30)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
+                    
+            hbox.addStretch()  # Spacer on the right
 
-                    # Add the horizontal layout to the container's layout
-                    container_layout.addLayout(hbox, row_index, 0)
-
-                        # Prevent stretching by setting the row stretch to 0
-                    container_layout.setRowStretch(row_index, 0)          
+            container_layout.addLayout(hbox)  # Add row to vertical layout            
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
