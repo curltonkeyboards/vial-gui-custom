@@ -16,6 +16,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_MIDI_VELOCITYENCODER, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_TRANSPOSITION, KEYCODES_MIDI_CHORD, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
+from widgets.piano_square_button import PianoSquareButton
 from util import tr, KeycodeDisplay
 
 
@@ -282,9 +283,9 @@ class SmartChordTab(QWidget):
         for row_index, row in enumerate(layout):
             for col_index, item in enumerate(row):
                 if isinstance(item, str):
-                    button = BigSquareButton()
+                    button = PianoSquareButton()
                     button.setText(item)  # Set text to MIDI label
-                    button.setFixedSize(80, 40)  # Set size as needed
+                    button.setFixedSize(30, 70)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     container_layout.addWidget(button, row_index, col_index)
                 elif isinstance(item, dict):
