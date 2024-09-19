@@ -360,9 +360,9 @@ class SmartChordTab(QWidget):
                     button = SquareButton()
                     button.setText(readable_name)
                     if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(70, 70, 70, 1); color: rgba(145, 145, 145, 1);")
+                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                     else:
-                        button.setStyleSheet("background-color: rgba(145, 145, 145, 1); color: rgba(70, 70, 70, 1);")
+                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                     
                     button.setFixedHeight(30)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
