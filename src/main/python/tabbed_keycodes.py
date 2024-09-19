@@ -151,7 +151,6 @@ class SmartChordTab(QScrollArea):
 
         # Main layout
         self.main_layout = QVBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setLayout(self.main_layout)
