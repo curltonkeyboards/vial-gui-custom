@@ -211,8 +211,8 @@ class SmartChordTab(QWidget):
              "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
              "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
 
-            [{"y": 0}, {"y": 0.5}, {"x": 0}, "MI_C", "MI_D", "MI_E", "MI_F", "MI_G", "MI_A", "MI_B", {"x": 1.0},
-             "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1", {"x": 1.0},
+            ["MI_C", "MI_D", "MI_E", "MI_F", "MI_G", "MI_A", "MI_B",
+             "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1",
              "MI_C_2", "MI_D_2", "MI_E_2", "MI_F_2", "MI_G_2", "MI_A_2", "MI_B_2"],
 
             [{"y": 0}, {"y": 1}, {"x": 0}, {"x": 0.5}, "MI_Cs_3", "MI_Ds_3", {"x": 1}, "MI_Fs_3", "MI_Gs_3", "MI_As_3", {"x": 2},
@@ -370,12 +370,12 @@ class SmartChordTab(QWidget):
                 elif isinstance(item, dict):
                     if "x" in item:
                         x = item.get("x", 0)
-                        spacer_width = int(x * 1)  # Adjust width as needed
+                        spacer_width = int(x * 100)  # Adjust width as needed
                         spacer = QSpacerItem(spacer_width, 0, QSizePolicy.Expanding, QSizePolicy.Minimum)
                         container_layout.addItem(spacer, row_index, col_index)
                     if "y" in item:
                         y = item.get("y", 0)
-                        spacer_height = int(y * 1)  # Adjust height as needed
+                        spacer_height = int(y * 150)  # Adjust height as needed
                         spacer = QSpacerItem(0, spacer_height, QSizePolicy.Minimum, QSizePolicy.Expanding)
                         container_layout.addItem(spacer, row_index, col_index)
 
