@@ -345,7 +345,7 @@ class SmartChordTab(QWidget):
             "MI_G_5": "G5",
             "MI_A_5": "A5",
             "MI_B_5": "B5"
-        }
+            }
 
         for row_index, row in enumerate(layout):
             for col_index, item in enumerate(row):
