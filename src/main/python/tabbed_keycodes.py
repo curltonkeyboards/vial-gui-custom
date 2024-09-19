@@ -274,8 +274,7 @@ class SmartChordTab(QWidget):
         self.main_layout.addWidget(midi_container)
 
         # Parse and add buttons based on midi_layout2
-        self.create_midi_buttons(layout, midi_container)  # Pass midi_container as the container_widget here
-
+        self.create_midi_buttons(layout, midi_container_layout)
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
@@ -354,38 +353,20 @@ class SmartChordTab(QWidget):
             "MI_B": "B"
         }
 
- button_width = 100
-    button_height = 30
-    x_offset = 0  # Keep track of the x-position
-    y_offset = 0  # Keep track of the y-position
-    gap = 20  # Half button gap for staggering
-
-    for row_index, row in enumerate(layout):
-        x_offset = 0  # Reset x for each new row
-        for item in row:
-            if isinstance(item, str):
-                readable_name = name_mapping.get(item, item)
-                button = SquareButton()  # Ensure buttons are children of container_widget
-                button.setText(readable_name)
-                
-                # Apply style for sharp keys
-                if "#" in readable_name:
-                    button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                else:
-                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
-                
-                button.setFixedSize(button_width, button_height)
-                button.move(x_offset, y_offset)
-
-                # Increment x position based on button size
-                x_offset += button_width
-
-                # Add gap for staggered black keys
-                if item in ["MI_Cs", "MI_Cs_3"]:
-                    x_offset += gap
-
-        # Increment y position for the next row
-        y_offset += button_height + 10  # Adjust 10 for row spacing
+        for row_index, row in enumerate(layout):
+            for col_index, item in enumerate(row):
+                if isinstance(item, str):
+                    readable_name = name_mapping.get(item, item)
+                    button = SquareButton()
+                    button.setText(readable_name)
+                    if "#" in readable_name:  # Sharp keys have # in their name
+                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    else:
+                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    
+                    button.setFixedHeight(30)  # Set size as needed
+                    button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
+                    container_layout.addWidget(button, row_index, col_index)               
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
