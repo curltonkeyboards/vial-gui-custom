@@ -226,7 +226,7 @@ class SmartChordTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
 
-class midiTab(QWidget):
+class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
@@ -258,6 +258,8 @@ class midiTab(QWidget):
         # Main layout
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # 3. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
