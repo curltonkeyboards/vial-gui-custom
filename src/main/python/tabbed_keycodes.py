@@ -140,7 +140,7 @@ class MidiTab(QScrollArea):
 
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, alts, smartchord_keycodes, scales_modes_keycodes, prefix_buttons=None):
+    def __init__(self, parent, label, alts, prefix_buttons=None, smartchord_keycodes, scales_modes_keycodes):
         super().__init__(parent)
 
         self.label = label
