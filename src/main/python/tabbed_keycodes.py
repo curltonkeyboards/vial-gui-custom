@@ -356,7 +356,7 @@ name_mapping = {
                 # Get the readable name or fallback to the original item if not found in the mapping
                 readable_name = name_mapping.get(item, item)
                 
-                button = PianoSquareButton()  # Use PianoSquareButton here
+                button = BigSquareButton()  # Use PianoSquareButton here
                 button.setText(readable_name)  # Set text to the mapped name or original if no mapping
                 button.setFixedSize(30, 50)  # Set size as needed
                 button.clicked.connect(lambda _, text=readable_name: self.keycode_changed.emit(text))
