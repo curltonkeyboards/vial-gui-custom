@@ -356,9 +356,6 @@ class SmartChordTab(QWidget):
         for row_index, row in enumerate(layout):
             hbox = QHBoxLayout()  # New horizontal row layout
             for col_index, item in enumerate(row):
-            hbox.setSpacing(0)  # Set spacing between widgets in this layout to 0
-            hbox.setContentsMargins(0, 0, 0, 0)  # Remove margins
-            hbox.addStretch()  # Spacer on the left
                 if isinstance(item, str):
                     readable_name = name_mapping.get(item, item)
                     button = SquareButton()
@@ -393,10 +390,8 @@ class SmartChordTab(QWidget):
                     button.setFixedWidth(30)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
-                    
-            hbox.addStretch()  # Spacer on the right
 
-            container_layout.addLayout(hbox, row_index, 0)           
+            container_layout.addLayout(hbox)  # Add row to vertical layout            
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
