@@ -139,7 +139,7 @@ class Tab(QScrollArea):
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
-class SmartChordTab(QWidget):
+class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
@@ -151,6 +151,9 @@ class SmartChordTab(QWidget):
 
         # Main layout
         self.main_layout = QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setLayout(self.main_layout)
 
         # 1. SmartChord Header and Dropdown
