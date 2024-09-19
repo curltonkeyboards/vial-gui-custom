@@ -353,9 +353,17 @@ class SmartChordTab(QWidget):
             "MI_B": "B"
         }
 
+        button_width = 100  # Assuming your buttons are 100 pixels wide
+
         for row_index, row in enumerate(layout):
             for col_index, item in enumerate(row):
                 if isinstance(item, str):
+                    # Add half-button spacer before "C#" and "C#3"
+                    if item in ["MI_Cs", "MI_Cs_3"]:
+                        spacer = QSpacerItem(button_width // 2, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+                        container_layout.addItem(spacer, row_index, col_index)
+                        col_index += 1  # Move to the next column after spacer
+
                     readable_name = name_mapping.get(item, item)
                     button = SquareButton()
                     button.setText(readable_name)
@@ -363,10 +371,10 @@ class SmartChordTab(QWidget):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                     else:
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
-                    
+
                     button.setFixedHeight(30)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    container_layout.addWidget(button, row_index, col_index)               
+                    container_layout.addWidget(button, row_index, col_index)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
