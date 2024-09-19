@@ -357,13 +357,13 @@ class SmartChordTab(QWidget):
 
         for row_index, row in enumerate(layout):
             for col_index, item in enumerate(row):
-                if isinstance(item, str):
-                    # Add half-button spacer before "C#" and "C#3"
-                    if item in ["MI_Cs", "MI_Cs_3"]:
-                        spacer = QSpacerItem(button_width // 2, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
-                        container_layout.addItem(spacer, row_index, col_index)
-                        col_index += 1  # Move to the next column after spacer
+                # Add half-button spacer before "C#" and "C#3"
+                if item in ["MI_Cs", "MI_Cs_3"]:
+                    spacer = QSpacerItem(button_width // 2, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
+                    container_layout.addItem(spacer, row_index, col_index)
+                    col_index += 1  # Move to the next column after spacer
 
+                if isinstance(item, str):
                     readable_name = name_mapping.get(item, item)
                     button = SquareButton()
                     button.setText(readable_name)
