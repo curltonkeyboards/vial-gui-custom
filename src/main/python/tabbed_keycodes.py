@@ -371,7 +371,7 @@ class SmartChordTab(QWidget):
                         
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        hbox.addSpacing(20)
+                        hbox.addSpacing(0)
                         
                     if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
