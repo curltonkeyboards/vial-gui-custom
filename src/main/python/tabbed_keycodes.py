@@ -361,7 +361,7 @@ class SmartChordTab(QWidget):
                 if item in ["MI_Cs", "MI_Cs_3"]:
                     spacer = QSpacerItem(button_width // 2, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
                     container_layout.addItem(spacer, row_index, col_index)
-                    col_index += 1  # Move to the next column after spacer
+                   
 
                 if isinstance(item, str):
                     readable_name = name_mapping.get(item, item)
