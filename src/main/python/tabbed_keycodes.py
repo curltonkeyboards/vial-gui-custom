@@ -354,38 +354,38 @@ class SmartChordTab(QWidget):
             "MI_B": "B"
         }
 
-        button_width = 100
-        button_height = 30
-        x_offset = 0  # Keep track of the x-position
-        y_offset = 0  # Keep track of the y-position
-        gap = 20  # Half button gap for staggering
+ button_width = 100
+    button_height = 30
+    x_offset = 0  # Keep track of the x-position
+    y_offset = 0  # Keep track of the y-position
+    gap = 20  # Half button gap for staggering
 
-        for row_index, row in enumerate(layout):
-            x_offset = 0  # Reset x for each new row
-            for item in row:
-                if isinstance(item, str):
-                    readable_name = name_mapping.get(item, item)
-                    button = SquareButton(container_widget)
-                    button.setText(readable_name)
+    for row_index, row in enumerate(layout):
+        x_offset = 0  # Reset x for each new row
+        for item in row:
+            if isinstance(item, str):
+                readable_name = name_mapping.get(item, item)
+                button = SquareButton()  # Ensure buttons are children of container_widget
+                button.setText(readable_name)
                 
-                    # Apply style for sharp keys
-                    if "#" in readable_name:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                    else:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                # Apply style for sharp keys
+                if "#" in readable_name:
+                    button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                else:
+                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                 
-                    button.setFixedSize(button_width, button_height)
-                    button.move(x_offset, y_offset)
+                button.setFixedSize(button_width, button_height)
+                button.move(x_offset, y_offset)
 
-                    # Increment x position based on button size
-                    x_offset += button_width
-    
-                    # Add gap for staggered black keys
-                    if item in ["MI_Cs", "MI_Cs_3"]:
-                        x_offset += gap
+                # Increment x position based on button size
+                x_offset += button_width
 
-            # Increment y position for the next row
-            y_offset += button_height + 10  # Adjust 10 for row spacing
+                # Add gap for staggered black keys
+                if item in ["MI_Cs", "MI_Cs_3"]:
+                    x_offset += gap
+
+        # Increment y position for the next row
+        y_offset += button_height + 10  # Adjust 10 for row spacing
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
