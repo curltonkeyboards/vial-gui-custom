@@ -360,7 +360,6 @@ class SmartChordTab(QWidget):
                     readable_name = name_mapping.get(item, item)
                     button = SquareButton()
                     button.setText(readable_name)
-                    button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
                     hbox.setSpacing(0)    # Set spacing between widgets in this layout to 0
                     hbox.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
