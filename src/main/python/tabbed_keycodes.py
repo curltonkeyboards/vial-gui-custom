@@ -206,7 +206,7 @@ class SmartChordTab(QWidget):
 
         # Define MIDI layout
         self.midi_layout2 = [
-            [{"x": 0.5}, "MI_Cs", "MI_Ds", {"x": 1}, "MI_Fs", "MI_Gs", "MI_As", {"x": 2},
+            [{"x": 2.5}, "MI_Cs", "MI_Ds", {"x": 1}, "MI_Fs", "MI_Gs", "MI_As", {"x": 2},
              "MI_Cs_1", "MI_Ds_1", {"x": 1}, "MI_Fs_1", "MI_Gs_1", "MI_As_1", {"x": 2},
              "MI_Cs_2", "MI_Ds_2", {"x": 1}, "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
 
@@ -368,9 +368,9 @@ class SmartChordTab(QWidget):
                     button = BigSquareButton()
                     button.setText(readable_name)
                     if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: black; color: white;")
+                         button.setStyleSheet("background-color: rgba(0, 0, 0, 0.7); color: rgba(255, 255, 255, 0.9);")
                     else:
-                        button.setStyleSheet("background-color: white; color: black;")
+                         button.setStyleSheet("background-color: rgba(255, 255, 255, 0.9); color: rgba(0, 0, 0, 0.7);")
                     
                     button.setFixedSize(40, 55)  # Set size as needed
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
