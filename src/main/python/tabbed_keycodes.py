@@ -252,6 +252,7 @@ class midiTab(QScrollArea):
         self.smartchord_keycodes = smartchord_keycodes
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
+        self.scroll_content = QWidget()
 
         # Define MIDI layout
         self.midi_layout2 = [
@@ -273,7 +274,6 @@ class midiTab(QScrollArea):
         ]
 
         # Main layout for the scroll area
-        self.scroll_content = QWidget()
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
