@@ -1032,24 +1032,29 @@ RAWCODES_MAP = dict()
 
 KEYCODES_MIDI_CC = []
 KEYCODES_MIDI_CC_FIXED = []
+KEYCODES_MIDI_CC_UP = []
+KEYCODES_MIDI_CC_DWN = []
 
 for x in range (128):
     KEYCODES_MIDI_CC.append(K("MI_CC_{}_TOG".format(x),
                               "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
                               "Midi CC{} toggle".format(x)))
-    KEYCODES_MIDI_CC.append(K("MI_CC_{}_UP".format(x),
-                              "CC{}\nᵁᴾ".format(x),
-                              "Midi CC{} up".format(x)))
-    KEYCODES_MIDI_CC.append(K("MI_CC_{}_DWN".format(x),
-                              "CC{}\nᴰᴺ".format(x),
-                              "Midi CC{} down".format(x)))
-
 
 for x in range(128):
     for y in range(128):
         KEYCODES_MIDI_CC_FIXED.append(K("MI_CC_{}_{}".format(x,y),
                                     "CC{}\n{}".format(x,y),
                                     "Midi CC{} = {}".format(x,y)))
+                                    
+for x in range (128):
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_UP".format(x),
+                              "CC{}\nᵁᴾ".format(x),
+                              "Midi CC{} up".format(x)))
+
+for x in range (128):
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_DWN".format(x),
+                              "CC{}\nᴰᴺ".format(x),
+                              "Midi CC{} down".format(x)))                              
 
 
 
@@ -1106,7 +1111,7 @@ def recreate_keycodes():
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
-                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
+                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_CC_DWN+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
                     KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY)
     KEYCODES_MAP.clear()
