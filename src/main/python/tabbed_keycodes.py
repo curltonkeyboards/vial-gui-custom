@@ -281,6 +281,10 @@ class midiTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
 
+        # Add a horizontal layout for the dropdowns
+        self.dropdown_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.dropdown_layout)
+
         # 3. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
 
@@ -294,8 +298,8 @@ class midiTab(QScrollArea):
         self.inversion_label = QLabel("Transpose")
         self.main_layout.addWidget(self.inversion_label)
 
-        # Layout for buttons (Inversions)
-        self.button_layout = QHBoxLayout()
+        # Layout for buttons (Inversions) using QGridLayout
+        self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
@@ -308,7 +312,7 @@ class midiTab(QScrollArea):
         """Helper method to add a header and dropdown."""
         # Create header
         header_label = QLabel(header_text)
-        self.main_layout.addWidget(header_label)
+        self.dropdown_layout.addWidget(header_label)  # Add header to dropdown layout
 
         # Create dropdown
         dropdown = QComboBox()
@@ -317,7 +321,7 @@ class midiTab(QScrollArea):
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.main_layout.addWidget(dropdown)
+        self.dropdown_layout.addWidget(dropdown)  # Add dropdown to dropdown layout
 
     def add_midi_layout2(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
@@ -328,7 +332,7 @@ class midiTab(QScrollArea):
         # Parse and add staggered buttons for black and white keys
         self.create_midi_buttons(layout, midi_container_layout)
 
-        self.main_layout.addWidget(midi_container) 
+        self.main_layout.addWidget(midi_container)
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
@@ -455,15 +459,24 @@ class midiTab(QScrollArea):
                 widget.deleteLater()
 
         # Populate inversion buttons
+        row = 0
+        col = 0
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedWidth(100)  # Set a fixed width for buttons
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
-                self.button_layout.addWidget(btn)
+
+                # Add button to the grid layout
+                self.button_layout.addWidget(btn, row, col)
+
+                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
+                col += 1
+                if col >= 5:  # Adjust the number of columns as needed
+                    col = 0
+                    row += 1
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
