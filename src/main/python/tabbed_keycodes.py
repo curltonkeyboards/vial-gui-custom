@@ -294,7 +294,7 @@ class midiTab(QScrollArea):
         self.add_midi_layout2(self.midi_layout2)
         
         # 2. Dropdowns and Headers (Horizontal Layout)
-        self.dropdown_layout = QHBoxLayout()
+        self.dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.dropdown_layout)
 
         # Create a horizontal layout for the dropdowns
@@ -322,10 +322,13 @@ class midiTab(QScrollArea):
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown next to it."""
+        """Helper method to add a header and dropdown above it."""
+        # Create a vertical layout for the header and dropdown
+        header_dropdown_layout = QVBoxLayout()
+    
         # Create header
         header_label = QLabel(header_text)
-        layout.addWidget(header_label)
+        header_dropdown_layout.addWidget(header_label)
 
         # Create dropdown
         dropdown = QComboBox()
@@ -334,7 +337,10 @@ class midiTab(QScrollArea):
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        layout.addWidget(dropdown)
+        header_dropdown_layout.addWidget(dropdown)
+
+        # Add the vertical layout to the main horizontal layout
+        layout.addLayout(header_dropdown_layout)
 
 
     def add_midi_layout2(self, layout):
