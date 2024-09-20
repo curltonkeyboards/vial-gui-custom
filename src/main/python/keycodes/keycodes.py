@@ -891,7 +891,9 @@ KEYCODES_MIDI_TRANSPOSITION = [
     K("MI_TRNSD", "Transpose\n-1", "Midi decrease transposition"),
     K("MI_TRNSU", "Transpose\n+1", "Midi increase transposition"),
     K("MI_OCTD", "Octave\nDown", "Midi move down an octave"),
-    K("MI_OCTU", "ᴼᶜᵗᵃᵛᵉ\nUp", "Midi move up an octave"),
+    K("MI_OCTU", "Octave\nUp", "Midi move up an octave"),
+    K("MI_CHD", "Channel\nDown", "Midi decrease channel"),
+    K("MI_CHU", "Channel\nUp", "Midi increase channel"),
 ]    
 
 KEYCODES_MIDI_KEY = [
@@ -930,8 +932,6 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CH14", "Channel\n14", "Midi set channel to 14"),
     K("MI_CH15", "Channel\n15", "Midi set channel to 15"),
     K("MI_CH16", "Channel\n16", "Midi set channel to 16"),
-    K("MI_CHD", "Channel\nDown", "Midi decrease channel"),
-    K("MI_CHU", "Channel\nUp", "Midi increase channel"),
 ]
 
 KEYCODES_MIDI_CHORD = [
@@ -1059,42 +1059,42 @@ KEYCODES_MIDI_VELOCITY = []
 
 for x in range (128):
     KEYCODES_MIDI_VELOCITY.append(K("MI_VELOCITY_{}".format(x),
-                              "ᵛᵉˡᵒᶜⁱᵗʸ\n{}".format(x),
-                              "velocity {}".format(x)))
+                              "Velocity\n{}".format(x),
+                              "Velocity {}".format(x)))
 
 KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
     KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "ˢᵗᵉᵖ ˢᶦᶻᵉ\n+{}".format(x),
-                              "Step size {}".format(x)))
+                              "Knob\nSens\n{}".format(x),
+                              "Knob Sens {}".format(x)))
 
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_Program_Change = []
 
 KEYCODES_MIDI_BANK.append(K("MI_BANK_UP",
-                            "UP\nᵇᵃⁿᵏ",
+                            "Bank\nUp",
                             "Bank up"))
 KEYCODES_MIDI_BANK.append(K("MI_BANK_DWN",
-                            "DOWN\nᵇᵃⁿᵏ",
+                            "Bank\nDown",
                             "Bank down"))
 KEYCODES_Program_Change.append(K("MI_PROG_UP",
-                            "UP\nᵖʳᵒᵍʳᵃᵐ",
+                            "Program\nUp",
                             "Program up"))
 KEYCODES_Program_Change.append(K("MI_PROG_DWN",
-                            "DOWN\nᵖʳᵒᵍʳᵃᵐ",
+                            "Program\nDown",
                             "Program down"))
 
 for x in range(128):
     KEYCODES_MIDI_BANK.append(K("MI_BANK_MSB_{}".format(x),
-                              "MSB{}\nᵇᵃⁿᵏ".format(x),
+                              "Bank\nMSB\n{}".format(x),
                               "Bank select MSB {}".format(x)))
     KEYCODES_MIDI_BANK.append(K("MI_BANK_LSB_{}".format(x),
-                              "LSB{}\nᵇᵃⁿᵏ".format(x),
+                              "Bank\nLSB\n{}".format(x),
                               "Bank select LSB {}".format(x)))
     KEYCODES_Program_Change.append(K("MI_PROG_{}".format(x),
-                              "ᵖʳᵒᵍʳᵃᵐ\n{}".format(x),
+                              "Program\n{}".format(x),
                               "Program change {}".format(x)))
 
 
@@ -1110,7 +1110,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES)
+                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
