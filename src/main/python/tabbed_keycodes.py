@@ -279,7 +279,11 @@ class midiTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        self.main_layout = QVBoxLayout(scroll_content)
+        self.main_layout = QVBoxLayout(self.scroll_content)
+
+        # Add a horizontal layout for the dropdowns
+        self.dropdown_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.dropdown_layout)
 
         # 3. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
@@ -308,7 +312,7 @@ class midiTab(QScrollArea):
         """Helper method to add a header and dropdown."""
         # Create header
         header_label = QLabel(header_text)
-        self.main_layout.addWidget(header_label)
+        self.dropdown_layout.addWidget(header_label)  # Add header to dropdown layout
 
         # Create dropdown
         dropdown = QComboBox()
@@ -317,7 +321,7 @@ class midiTab(QScrollArea):
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.main_layout.addWidget(dropdown)
+        self.dropdown_layout.addWidget(dropdown)  # Add dropdown to dropdown layout
 
     def add_midi_layout2(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
@@ -328,7 +332,7 @@ class midiTab(QScrollArea):
         # Parse and add staggered buttons for black and white keys
         self.create_midi_buttons(layout, midi_container_layout)
 
-        self.main_layout.addWidget(midi_container)  # Add the midi container to the main layout
+        self.main_layout.addWidget(midi_container) 
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
