@@ -256,7 +256,21 @@ class midiTab(QScrollArea):
 
         # Define MIDI layout
         self.midi_layout2 = [
-            # ... (your existing MIDI layout)
+            ["MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
+             "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
+             "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
+
+            ["MI_C", "MI_D", "MI_E", "MI_F", "MI_G", "MI_A", "MI_B",
+             "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1",
+             "MI_C_2", "MI_D_2", "MI_E_2", "MI_F_2", "MI_G_2", "MI_A_2", "MI_B_2"],
+
+            ["MI_Cs_3", "MI_Ds_3", "MI_Fs_3", "MI_Gs_3", "MI_As_3",
+             "MI_Cs_4", "MI_Ds_4", "MI_Fs_4", "MI_Gs_4", "MI_As_4",
+             "MI_Cs_5", "MI_Ds_5", "MI_Fs_5", "MI_Gs_5", "MI_As_5"],
+
+            ["MI_C_3", "MI_D_3", "MI_E_3", "MI_F_3", "MI_G_3", "MI_A_3", "MI_B_3",
+             "MI_C_4", "MI_D_4", "MI_E_4", "MI_F_4", "MI_G_4", "MI_A_4", "MI_B_4",
+             "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"]
         ]
 
         # Main layout for the scroll area
@@ -289,7 +303,7 @@ class midiTab(QScrollArea):
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
-        self.recreate_buttons()  # Call without arguments initially
+        self.recreate_buttons()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -298,16 +312,16 @@ class midiTab(QScrollArea):
         """Helper method to add a header and dropdown above it."""
         # Create header
         header_label = QLabel(header_text)
-        layout.addWidget(header_label)  # Add header to the specified layout
+        layout.addWidget(header_label)
 
         # Create dropdown
         dropdown = QComboBox()
-        dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.setFixedWidth(300)
+        dropdown.setFixedHeight(40)
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        layout.addWidget(dropdown)  # Add dropdown to the specified layout
+        layout.addWidget(dropdown)
 
     def add_midi_layout2(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
@@ -315,9 +329,10 @@ class midiTab(QScrollArea):
         midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
         midi_container.setLayout(midi_container_layout)
 
-        # Parse and add staggered buttons for black and white keys
+        # Create the MIDI buttons
         self.create_midi_buttons(layout, midi_container_layout)
 
+        # Add MIDI container to the main layout
         self.main_layout.addWidget(midi_container)
 
     def create_midi_buttons(self, layout, container_layout):
