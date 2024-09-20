@@ -231,7 +231,7 @@ class SmartChordTab(QScrollArea):
         vbox.addWidget(header_label)
 
         # Create dropdown
-        dropdown = QCenteredComboBox()
+        dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
