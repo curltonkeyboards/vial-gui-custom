@@ -250,6 +250,18 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+        
+class CenteredComboBox(QComboBox):
+    def paintEvent(self, event):
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+
+        painter = QPainter(self)
+        self.style().drawComplexControl(self.style().CC_ComboBox, opt, painter, self)
+
+        # Center the text horizontally
+        text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
+        painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
 
 
 class midiTab(QScrollArea):
@@ -333,17 +345,10 @@ class midiTab(QScrollArea):
         header_dropdown_layout.addWidget(header_label)
 
         # Create dropdown
-        dropdown = QComboBox()
+        dropdown = CenteredComboBox()
         dropdown.setFixedWidth(300)
         dropdown.setFixedHeight(40)
-        dropdown.setStyleSheet("""
-            QComboBox {
-                text-align: center;
-            }
-            QComboBox QAbstractItemView {
-                text-align: left;  /* This ensures that items in the dropdown list remain left-aligned */
-            }
-        """)
+        
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
@@ -518,7 +523,7 @@ class midiTab(QScrollArea):
 
     def add_cc_dropdown(self, row, cc_keycodes):
         """Helper method to add a dropdown with the given MIDI CC keycodes."""
-        dropdown = QComboBox()
+        dropdown = CenteredComboBox()
         dropdown.setFixedWidth(100)  # Adjust size as necessary
         dropdown.setFixedHeight(40)
         dropdown.setStyleSheet("""
