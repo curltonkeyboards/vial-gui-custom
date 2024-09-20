@@ -1073,6 +1073,7 @@ for x in range (1,17):
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_Program_Change = []
+KEYCODES_Program_Change_UPDOWN = []
 
 KEYCODES_MIDI_BANK_UPDOWN.append(K("MI_BANK_UP",
                             "Bank\nUp",
