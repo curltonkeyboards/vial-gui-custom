@@ -292,6 +292,10 @@ class midiTab(QScrollArea):
 
         # 1. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
+        
+        # 2. Dropdowns and Headers (Horizontal Layout)
+        self.dropdown_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.dropdown_layout)
 
         # Create a horizontal layout for the dropdowns
         self.horizontal_dropdown_layout = QHBoxLayout()
