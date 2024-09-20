@@ -255,12 +255,14 @@ class SmartChordTab(QScrollArea):
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes, midi_cc_up_keycodes, midi_cc_down_keycodes):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes = smartchord_keycodes
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
+        self.midi_cc_up_keycodes = midi_cc_up_keycodes
+        self.midi_cc_down_keycodes = midi_cc_down_keycodes
         self.scroll_content = QWidget()
 
         # Define MIDI layout
@@ -473,31 +475,54 @@ class midiTab(QScrollArea):
             container_layout.addLayout(hbox)  # Add row to vertical layout            
 
     def recreate_buttons(self, keycode_filter=None):
+        """Recreate inversion buttons and add MIDI_CC dropdowns."""
         # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Populate inversion buttons
         row = 0
         col = 0
+        max_columns = 4  # Maximum number of columns before dropdown
+
+        # Add inversion buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode  # Make sure keycode attribute is set
+                btn.keycode = keycode
 
-                # Add button to the grid layout
                 self.button_layout.addWidget(btn, row, col)
 
-                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
                 col += 1
-                if col >= 4:  # Adjust the number of columns as needed
+                if col >= max_columns:
                     col = 0
                     row += 1
+
+        # Add dropdown for MIDI_CC_UP keycodes after first row of inversion buttons
+        self.add_cc_dropdown(row=0, cc_keycodes=self.midi_cc_up_keycodes)
+
+        # Add dropdown for MIDI_CC_DOWN keycodes after second row of inversion buttons
+        self.add_cc_dropdown(row=1, cc_keycodes=self.midi_cc_down_keycodes)
+
+    def add_cc_dropdown(self, row, cc_keycodes):
+        """Helper method to add a dropdown with the given MIDI CC keycodes."""
+        dropdown = QComboBox()
+        dropdown.setFixedWidth(100)  # Adjust size as necessary
+        dropdown.setFixedHeight(40)
+
+        # Populate dropdown with MIDI CC keycodes
+        for keycode in cc_keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Connect the dropdown selection change to an event
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+
+        # Add dropdown to button layout in the specified row, at the 5th column
+        self.button_layout.addWidget(dropdown, row, 4)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -563,13 +588,11 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
-            midiTab(self, "MIDI", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_TRANSPOSITION),   # Updated to SmartChordTab
+            midiTab(self, "MIDI", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_TRANSPOSITION, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_OCTAVE + KEYCODES_MIDI_KEY),          
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
-            SimpleTab(self, "MIDI CCUP", KEYCODES_MIDI_CC_UP),
-            SimpleTab(self, "MIDI CCDOWN", KEYCODES_MIDI_CC_DOWN),
             SimpleTab(self, "MIDI Program Change", KEYCODES_Program_Change),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
