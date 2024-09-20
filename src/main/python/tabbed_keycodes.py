@@ -189,13 +189,13 @@ class SmartChordTab(QScrollArea):
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes, self.smartchord_dropdown_layout)
         self.main_layout.addLayout(self.smartchord_dropdown_layout)
         
-          # Create a vertical layout for the Octave, Key, and Program Change dropdowns
+        # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
-        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)       
+        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
-        # 2. Inversions Header
+        # Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
         self.main_layout.addWidget(self.inversion_label)
 
@@ -204,9 +204,9 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
-        self.recreate_buttons()  # Call without arguments initially
+        self.recreate_buttons()
 
-        # Create a vertical layout for the Octave, Key, and Program Change dropdowns
+        # Create a horizontal layout for the additional dropdowns
         self.additional_dropdown_layout2 = QHBoxLayout()
         self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
         self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
@@ -219,7 +219,7 @@ class SmartChordTab(QScrollArea):
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
-           # Create a vertical layout to hold header and dropdown
+        # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
 
         # Create header
@@ -235,7 +235,7 @@ class SmartChordTab(QScrollArea):
 
         # Add the keycodes as options
         for keycode in keycodes:
-        dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
         # Prevent the first item from being selected again
         dropdown.model().item(0).setEnabled(False)
@@ -248,7 +248,7 @@ class SmartChordTab(QScrollArea):
         
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
-           # Create a vertical layout to hold header and dropdown
+        # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
 
         # Create header
@@ -258,14 +258,14 @@ class SmartChordTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
-        dropdown.setFixedWidth(100)  # Set height of dropdown
+        dropdown.setFixedWidth(100)  # Set width of dropdown
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
 
         # Add the keycodes as options
         for keycode in keycodes:
-        dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
         # Prevent the first item from being selected again
         dropdown.model().item(0).setEnabled(False)
@@ -320,6 +320,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 
 
