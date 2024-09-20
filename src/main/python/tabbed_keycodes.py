@@ -270,15 +270,15 @@ class midiTab(QScrollArea):
         # 1. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
 
-        # 2. Dropdowns and Headers
-        self.dropdown_layout = QHBoxLayout()
+        # 2. Dropdowns and Headers (Vertical Layout)
+        self.dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.dropdown_layout)
 
         # SmartChord Header and Dropdown
-        self.add_header_dropdown("MIDI Channel", self.smartchord_keycodes)
+        self.add_header_dropdown("MIDI Channel", self.smartchord_keycodes, self.dropdown_layout)
 
         # Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Velocity", self.scales_modes_keycodes)
+        self.add_header_dropdown("Velocity", self.scales_modes_keycodes, self.dropdown_layout)
 
         # 3. Inversions Header
         self.inversion_label = QLabel("Transpose")
@@ -294,20 +294,20 @@ class midiTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_header_dropdown(self, header_text, keycodes):
-        """Helper method to add a header and dropdown."""
+    def add_header_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown above it."""
         # Create header
         header_label = QLabel(header_text)
-        self.dropdown_layout.addWidget(header_label)  # Add header to dropdown layout
+        layout.addWidget(header_label)  # Add header to the specified layout
 
         # Create dropdown
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(30)  # Increase the height to 40 pixels
+        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.dropdown_layout.addWidget(dropdown)  # Add dropdown to dropdown layout
+        layout.addWidget(dropdown)  # Add dropdown to the specified layout
 
     def add_midi_layout2(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
