@@ -286,6 +286,7 @@ class midiTab(QScrollArea):
         self.main_layout.addLayout(self.dropdown_layout)
 
         # 3. MIDI Layout
+        self.midi_layout2 = QVBoxLayout()
         self.add_midi_layout2(self.midi_layout2)
 
         # 1. SmartChord Header and Dropdown
