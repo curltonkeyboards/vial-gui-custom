@@ -524,6 +524,7 @@ class midiTab(QScrollArea):
     def add_cc_dropdown(self, row, cc_keycodes):
         """Helper method to add a dropdown with the given MIDI CC keycodes."""
         dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)
         dropdown.setStyleSheet("""
             QComboBox {
                 text-align: center;
