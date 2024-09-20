@@ -858,26 +858,33 @@ KEYCODES_MIDI_BASIC = [
     K("MI_As_5", "ᴹᴵᴰᴵ\nA#₅/Bᵇ₅", "Midi send note A#₅/Bᵇ₅", alias=["MI_Bb_5"]),
     K("MI_B_5", "ᴹᴵᴰᴵ\nB₅", "Midi send note B₅"),
 
-    K("MI_ALLOFF", "ᴹᴵᴰᴵ\nNotesᵒᶠᶠ", "Midi send all notes OFF"),
+    K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
+    K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
 ]
 
 KEYCODES_MIDI_ADVANCED = [
-    K("MI_SUS", "ᴹᴵᴰᴵ\nSust", "Midi Sustain"),
-    K("MI_PORT", "ᴹᴵᴰᴵ\nPort", "Midi Portmento"),
-    K("MI_SOST", "ᴹᴵᴰᴵ\nSost", "Midi Sostenuto"),
-    K("MI_SOFT", "ᴹᴵᴰᴵ\nSPedal", "Midi Soft Pedal"),
-    K("MI_LEG", "ᴹᴵᴰᴵ\nLegat", "Midi Legato"),
-    K("MI_MOD", "ᴹᴵᴰᴵ\nModul", "Midi Modulation"),
-    K("MI_MODSD", "ᴹᴵᴰᴵ\nModulᴰᴺ", "Midi decrease modulation speed"),
-    K("MI_MODSU", "ᴹᴵᴰᴵ\nModulᵁᴾ", "Midi increase modulation speed"),
-    K("MI_BENDD", "ᴹᴵᴰᴵ\nBendᴰᴺ", "Midi bend pitch down"),
-    K("MI_BENDU", "ᴹᴵᴰᴵ\nBendᵁᴾ", "Midi bend pitch up"),
+    K("MI_ALLOFF", "ᴹᴵᴰᴵ\nNotesᵒᶠᶠ", "Midi send all notes OFF"),
+    K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
+    K("MI_PORT", "Portmento", "Midi Portmento"),
+    K("MI_SOST", "Sostenuto", "Midi Sostenuto"),
+    K("MI_SOFT", "Soft\nSPedal", "Midi Soft Pedal"),
+    K("MI_LEG", "Legato", "Midi Legato"),
+    K("MI_MOD", "Modulation", "Midi Modulation"),
+    K("MI_MODSD", "Mod\nSpeed ▼", "Midi decrease modulation speed"),
+    K("MI_MODSU", "Mod\nSpeed ▲", "Midi increase modulation speed"),
+    K("MI_BENDD", "Pitch\nBend ▼", "Midi bend pitch down"),
+    K("MI_BENDU", "Pitch\nBend ▲", "Midi bend pitch up"),
+]
+
+KEYCODES_MIDI_PEDAL = [
+    K("MI_ALLOFF", "ᴹᴵᴰᴵ\nNotesᵒᶠᶠ", "Midi send all notes OFF"),
+    K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
 ]
 
 KEYCODES_MIDI_OCTAVE = [
     K("MI_OCT_N2", "Octave\n-2", "Midi set octave to -2"),
     K("MI_OCT_N1", "Octave\n-1", "Midi set octave to -1"),
-    K("MI_OCT_0", "Octave\nᴰᵉᶠᵃᵘˡᵗ", "Midi set octave to 0"),
+    K("MI_OCT_0", "Octave\nDefault", "Midi set octave to 0"),
     K("MI_OCT_1", "Octave\n+1", "Midi set octave to 1"),
     K("MI_OCT_2", "Octave\n+2", "Midi set octave to 2"),
     K("MI_OCT_3", "Octave\n+3", "Midi set octave to 3"),
@@ -1038,7 +1045,7 @@ KEYCODES_MIDI_CC_FIXED = []
 
 for x in range (128):
     KEYCODES_MIDI_CC.append(K("MI_CC_{}_TOG".format(x),
-                              "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
+                              "CC{}\nOn/Off".format(x),
                               "Midi CC{} toggle".format(x)))
     KEYCODES_MIDI_CC_UP.append(K("MI_CC_{}_UP".format(x),
                               "CC{}\n▲".format(x),
@@ -1114,7 +1121,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
-                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB)
+                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
