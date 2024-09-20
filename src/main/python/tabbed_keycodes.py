@@ -176,7 +176,7 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for buttons (Inversions)
-        self.button_layout = QHBoxLayout()
+        self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
@@ -214,15 +214,24 @@ class SmartChordTab(QScrollArea):
                 widget.deleteLater()
 
         # Populate inversion buttons
+        row = 0
+        col = 0
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = BigSquareButton()
-                btn.setFixedWidth(100)  # Set a fixed width for buttons
+                btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
-                self.button_layout.addWidget(btn)
+
+                # Add button to the grid layout
+                self.button_layout.addWidget(btn, row, col)
+
+                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
+                col += 1
+                if col >= 15:  # Adjust the number of columns as needed
+                    col = 0
+                    row += 1
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
