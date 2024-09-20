@@ -887,7 +887,7 @@ KEYCODES_MIDI_OCTAVE = [
     K("MI_OCT_7", "Octave\n+7", "Midi set octave to 7"),
 ] 
 
-KEYCODES_MIDI_TRANSPOSITION = [  
+KEYCODES_MIDI_UPDOWN = [  
     K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),    
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),   
     K("MI_CHU", "Channel\n▲", "Midi increase channel"),    
@@ -932,68 +932,69 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CH16", "Channel\n16", "Midi set channel to 16"),
 ]
 
-KEYCODES_MIDI_CHORD = [
-K("MI_CHORD_99", "Basic", "Basic"),
-K("MI_CHORD_95", "--------------------", "Basic"),
+KEYCODES_MIDI_CHORD_1 = [
 K("MI_CHORD_0", "Major", "Major Chord"),
 K("MI_CHORD_1", "Minor", "Minor Chord"),
 K("MI_CHORD_2", "Dim\nᵒʳ\n°", "Diminished Chord"),
 K("MI_CHORD_3", "Aug\nᵒʳ\n+", "Aug Chord"),
 K("MI_CHORD_4", "Sus2", "Sus2 Chord"),
 K("MI_CHORD_5", "Sus4", "Sus4 Chord"),
+K("MI_CHORD_32", "Maj7\nno5", "Maj7no5 Chord"),
+K("MI_CHORD_33", "min7\nno5", "Min7no5 Chord"),
+K("MI_CHORD_34", "7\nno5", "7no5 Chord"),
+]
+
+KEYCODES_MIDI_CHORD_2 = [
+K("MI_CHORD_17", "Add2", "Add2 Chord"),
+K("MI_CHORD_18", "min\nAdd2", "mAdd2 Chord"),
+K("MI_CHORD_19", "Add4", "Add4 Chord"),
+K("MI_CHORD_20", "min\nAdd4", "mAdd4 Chord"),
 K("MI_CHORD_6", "Major\n6", "Major 6 Chord"),
 K("MI_CHORD_7", "Minor\n6", "Minor 6 Chord"),
 K("MI_CHORD_8", "Maj7", "Maj7 Chord"),
 K("MI_CHORD_9", "min7", "min7 Chord"),
 K("MI_CHORD_10", "7\nᶜʰᵒʳᵈ", "7 Chord"),
-K("MI_CHORD_32", "Maj7\nno5", "Maj7no5 Chord"),
-K("MI_CHORD_33", "min7\nno5", "Min7no5 Chord"),
-K("MI_CHORD_34", "7\nno5", "7no5 Chord"),
-K("MI_CHORD_95", "--------------------", "Basic"),
-K("MI_CHORD_98", "Intermediate", "Intermediate"),
-K("MI_CHORD_95", "--------------------", "Basic"),
-K("MI_CHORD_17", "Add2", "Add2 Chord"),
-K("MI_CHORD_18", "min\nAdd2", "mAdd2 Chord"),
-K("MI_CHORD_19", "Add4", "Add4 Chord"),
-K("MI_CHORD_20", "min\nAdd4", "mAdd4 Chord"),
 K("MI_CHORD_11", "Dim7\nᵒʳ\nb7b5", "Dim7 Chord"),
 K("MI_CHORD_12", "Half\nDim7\nᵒʳ\nm7b5", "Half Dim7 Chord"),
-K("MI_CHORD_13", "Aug7\nᵒʳ\n7#5", "Aug7 Chord"),
+K("MI_CHORD_35", "Add9", "Add9 Chord"),
+K("MI_CHORD_36", "min\nAdd9", "minAdd9 Chord"),
+K("MI_CHORD_43", "Add11", "Add11 Chord"),
+K("MI_CHORD_44", "min\nAdd11", "minAdd11 Chord"),
+]
+
+KEYCODES_MIDI_CHORD_3 = [
+K("MI_CHORD_21", "6/9", "6/9 Chord"),
+K("MI_CHORD_22", "Minor\n6/9", "Minor 6/9 Chord"),
 K("MI_CHORD_14", "Maj9", "Maj9 Chord"),
 K("MI_CHORD_15", "min9", "min9 Chord"),
 K("MI_CHORD_16", "9\nᶜʰᵒʳᵈ", "9 Chord"),
-K("MI_CHORD_21", "6/9", "6/9 Chord"),
-K("MI_CHORD_22", "Minor\n6/9", "Minor 6/9 Chord"),
-K("MI_CHORD_23", "MinMaj7", "MinMaj7 Chord"),
-K("MI_CHORD_95", "--------------------", "Basic"),
-K("MI_CHORD_97", "Advanced", "Advanced"),
-K("MI_CHORD_95", "--------------------", "Basic"),
-K("MI_CHORD_24", "Maj7\nSus4", "Maj7sus4 Chord"),
-K("MI_CHORD_25", "7\nSus4", "7sus4 Chord"),
-K("MI_CHORD_26", "Maj7\nSus2", "Maj7sus2 Chord"),
-K("MI_CHORD_27", "7\nSus2", "7sus2 Chord"),
-K("MI_CHORD_28", "Maj7\n#5", "Maj7#5 Chord"),
-K("MI_CHORD_29", "min7\n#5", "Min7#5 Chord"),
-K("MI_CHORD_30", "Maj7\nb5", "Maj7b5 Chord"),
-K("MI_CHORD_31", "7\nb5", "7b5 Chord"),
-K("MI_CHORD_35", "Add9", "Add9 Chord"),
-K("MI_CHORD_36", "min\nAdd9", "minAdd9 Chord"),
 K("MI_CHORD_37", "Dim9\nᵒʳ\nb7b5(9)", "Dim9 Chord"),
 K("MI_CHORD_38", "Half\nDim9\nᵒʳ\nm7b5(9)", "Half Dim9 Chord"),
 K("MI_CHORD_39", "Aug9", "Aug9 Chord"),
 K("MI_CHORD_40", "Maj11", "Maj11 Chord"),
 K("MI_CHORD_41", "min11", "min11 Chord"),
 K("MI_CHORD_42", "11\nᶜʰᵒʳᵈ", "11 Chord"),
-K("MI_CHORD_43", "Add11", "Add11 Chord"),
-K("MI_CHORD_44", "min\nAdd11", "minAdd11 Chord"),
+]
+
+KEYCODES_MIDI_CHORD_4 = [
+K("MI_CHORD_23", "MinMaj7", "MinMaj7 Chord"),
+K("MI_CHORD_24", "Maj7\nSus4", "Maj7sus4 Chord"),
+K("MI_CHORD_25", "7\nSus4", "7sus4 Chord"),
+K("MI_CHORD_26", "Maj7\nSus2", "Maj7sus2 Chord"),
+K("MI_CHORD_27", "7\nSus2", "7sus2 Chord"),
+K("MI_CHORD_28", "Maj7\n#5", "Maj7#5 Chord"),
+K("MI_CHORD_29", "min7\n#5", "Min7#5 Chord"),
+K("MI_CHORD_13", "Aug7\nᵒʳ\n7#5", "Aug7 Chord"),
+K("MI_CHORD_30", "Maj7\nb5", "Maj7b5 Chord"),
+K("MI_CHORD_31", "7\nb5", "7b5 Chord"),
 K("MI_CHORD_45", "Maj7\nAdd11", "Maj7Add11 Chord"),
 K("MI_CHORD_46", "min7\nAdd11", "min7Add11 Chord"),
 K("MI_CHORD_47", "7\nAdd11", "7Add11 Chord"),
-K("MI_CHORD_48", "Dim11\nᵒʳ\nb7b5(9/11)", "Dim11 Chord"),
-K("MI_CHORD_49", "Half\nDim11\nᵒʳ\nm7b5(9/11)", "HalfDim11 Chord"),
 K("MI_CHORD_50", "Maj7\n#11", "Maj7#11 Chord"),
 K("MI_CHORD_51", "min7\n#11", "min7#11 Chord"),
 K("MI_CHORD_52", "7\n#11", "7#11 Chord"),
+K("MI_CHORD_48", "Dim11\nᵒʳ\nb7b5(9/11)", "Dim11 Chord"),
+K("MI_CHORD_49", "Half\nDim11\nᵒʳ\nm7b5(9/11)", "HalfDim11 Chord"),
 ]
 
 KEYCODES_MIDI_SCALES = [ 
@@ -1066,31 +1067,31 @@ KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
     KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "Knob\nSens\n{}".format(x),
-                              "Knob Sens {}".format(x)))
+                              "Up/Down\nMultiplier\nx{}".format(x),
+                              "Up/Down\nMultiplier\nx{}".format(x)))
 
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_Program_Change = []
 
-KEYCODES_MIDI_BANK.append(K("MI_BANK_UP",
+KEYCODES_MIDI_BANK_UPDOWN.append(K("MI_BANK_UP",
                             "Bank\nUp",
                             "Bank up"))
-KEYCODES_MIDI_BANK.append(K("MI_BANK_DWN",
+KEYCODES_MIDI_BANK_UPDOWN.append(K("MI_BANK_DWN",
                             "Bank\nDown",
                             "Bank down"))
-KEYCODES_Program_Change.append(K("MI_PROG_UP",
+KEYCODES_Program_Change_UPDOWN.append(K("MI_PROG_UP",
                             "Program\nUp",
                             "Program up"))
-KEYCODES_Program_Change.append(K("MI_PROG_DWN",
+KEYCODES_Program_Change_UPDOWN.append(K("MI_PROG_DWN",
                             "Program\nDown",
                             "Program down"))
 
 for x in range(128):
-    KEYCODES_MIDI_BANK.append(K("MI_BANK_MSB_{}".format(x),
+    KEYCODES_MIDI_BANK_MSB.append(K("MI_BANK_MSB_{}".format(x),
                               "Bank\nMSB\n{}".format(x),
                               "Bank select MSB {}".format(x)))
-    KEYCODES_MIDI_BANK.append(K("MI_BANK_LSB_{}".format(x),
+    KEYCODES_MIDI_BANK_LSB.append(K("MI_BANK_LSB_{}".format(x),
                               "Bank\nLSB\n{}".format(x),
                               "Bank select LSB {}".format(x)))
     KEYCODES_Program_Change.append(K("MI_PROG_{}".format(x),
@@ -1109,8 +1110,8 @@ def recreate_keycodes():
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
-                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY)
+                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
+                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
