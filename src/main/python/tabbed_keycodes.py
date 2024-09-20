@@ -142,7 +142,7 @@ from PyQt5.QtCore import pyqtSignal
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave, smartchord_key, smartchord_program_change, inversion_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, smartchord_program_change, inversion_keycodes):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes_1 = smartchord_keycodes_1
@@ -181,13 +181,13 @@ class SmartChordTab(QScrollArea):
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
         
         # 2. Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Octave Selector", self.smartchord_octave)
+        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1)
         
         # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Key Selector", self.smartchord_key)
         
         # 2. Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Key Selector", self.smartchord_program_change)
+        self.add_header_dropdown("Program Change", self.smartchord_program_change)
 
         # Add the horizontal layout to the main layout
         self.main_layout.addLayout(self.dropdown_layout)
