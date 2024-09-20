@@ -227,6 +227,7 @@ class SmartChordTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
+        dropdown.setPlaceholderText(f"Select {header_text}")
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
