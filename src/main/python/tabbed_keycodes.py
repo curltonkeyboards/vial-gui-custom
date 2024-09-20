@@ -157,20 +157,25 @@ class SmartChordTab(QScrollArea):
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
 
-        # Main layout
-        self.main_layout = QVBoxLayout()
+        # Set the scroll area properties
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidgetResizable(True)
-        self.setLayout(self.main_layout)
+
+        # Create a container widget for the scroll area
+        self.container_widget = QWidget()
+        self.setWidget(self.container_widget)
+
+        # Main layout for the container
+        self.main_layout = QVBoxLayout(self.container_widget)
 
         # Create a horizontal layout for the dropdowns
         self.dropdown_layout = QHBoxLayout()
 
-        # 1. SmartChord Header and Dropdown (added to the horizontal layout)
+        # 1. SmartChord Header and Dropdown
         self.add_header_dropdown("Chords", self.smartchord_keycodes)
 
-        # 2. Scales/Modes Header and Dropdown (added to the horizontal layout)
+        # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
 
         # Add the horizontal layout to the main layout
@@ -190,6 +195,9 @@ class SmartChordTab(QScrollArea):
         # 4. Spacer to push everything to the top
         self.main_layout.addStretch()
 
+        # Set a maximum height for the scroll area to ensure it doesn't exceed 200px
+        self.setFixedHeight(200)
+
     def add_header_dropdown(self, header_text, keycodes):
         """Helper method to add a header and dropdown side by side."""
         # Create a vertical layout to hold header and dropdown
@@ -202,7 +210,7 @@ class SmartChordTab(QScrollArea):
         # Create dropdown using the custom LimitedComboBox
         dropdown = LimitedComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.setFixedHeight(40)  # Height stays at 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
