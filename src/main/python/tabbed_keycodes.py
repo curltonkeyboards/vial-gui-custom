@@ -336,6 +336,15 @@ class midiTab(QScrollArea):
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)
         dropdown.setFixedHeight(40)
+        dropdown.setStyleSheet("""
+            QComboBox {
+                text-align: center;  /* Center the text in the dropdown */
+                padding: 10px;       /* Add some padding to look nicer */
+            }
+            QComboBox::drop-down {
+                width: 30px;  /* Adjust the size of the dropdown arrow */
+            }
+        """)
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
@@ -514,14 +523,14 @@ class midiTab(QScrollArea):
         dropdown.setFixedWidth(100)  # Adjust size as necessary
         dropdown.setFixedHeight(40)
         dropdown.setStyleSheet("""
-        QComboBox {
-            text-align: center;  /* Center the text in the dropdown */
-            padding: 10px;       /* Add some padding to look nicer */
-        }
-        QComboBox::drop-down {
-            width: 30px;  /* Adjust the size of the dropdown arrow */
-        }
-    """)
+            QComboBox {
+                text-align: center;  /* Center the text in the dropdown */
+                padding: 10px;       /* Add some padding to look nicer */
+            }
+            QComboBox::drop-down {
+                width: 30px;  /* Adjust the size of the dropdown arrow */
+            }
+        """)
 
         # Populate dropdown with MIDI CC keycodes
         for keycode in cc_keycodes:
