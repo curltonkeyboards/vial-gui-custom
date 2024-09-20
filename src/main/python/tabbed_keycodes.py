@@ -268,13 +268,13 @@ class midiTab(QScrollArea):
         self.add_midi_layout2(self.midi_layout2)
 
         # 1. SmartChord Header and Dropdown
-        self.add_header_dropdown("Chords", self.smartchord_keycodes)
+        self.add_header_dropdown("MIDI Channel", self.smartchord_keycodes)
 
         # 2. Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+        self.add_header_dropdown("Velocity", self.scales_modes_keycodes)
 
         # 4. Inversions Header
-        self.inversion_label = QLabel("Chord Inversions")
+        self.inversion_label = QLabel("Transpose")
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for buttons (Inversions)
@@ -512,7 +512,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
-            midiTab(self, "MIDI", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
+            midiTab(self, "MIDI", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_TRANSPOSITION),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
             SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
