@@ -177,39 +177,45 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # Create a horizontal layout for the dropdowns
-        self.dropdown_layout = QHBoxLayout()
+        # Create a horizontal layout for the Smart Chord dropdowns
+        self.smartchord_dropdown_layout = QHBoxLayout()
 
-        # 1. SmartChord Header and Dropdown
-        self.add_header_dropdown("3 Note Chords", self.smartchord_keycodes_1)
-        self.add_header_dropdown("4 Note Chords", self.smartchord_keycodes_2)
-        self.add_header_dropdown("5 Note Chords", self.smartchord_keycodes_3)
-        self.add_header_dropdown("Advanced Chords", self.smartchord_keycodes_4)
-        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+        # 1. Add SmartChord dropdowns
+        self.add_header_dropdown("3 Note Chords", self.smartchord_keycodes_1, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("4 Note Chords", self.smartchord_keycodes_2, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("5 Note Chords", self.smartchord_keycodes_3, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("Advanced Chords", self.smartchord_keycodes_4, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes, self.smartchord_dropdown_layout)
         
-        # Add the horizontal layout to the main layout
-        self.main_layout.addLayout(self.dropdown_layout)
+        # Add the SmartChord dropdowns to the main layout
+        self.main_layout.addLayout(self.smartchord_dropdown_layout)
 
         # 2. Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
         self.main_layout.addWidget(self.inversion_label)
 
-        # Layout for buttons (Inversions)
+        # Layout for inversion buttons
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()  # Call without arguments initially
 
-        # Add the dropdowns after the inversion buttons
-        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1)
-        self.add_header_dropdown("Key Selector", self.smartchord_key)
-        self.add_header_dropdown("Program Change", self.smartchord_program_change)
+        # Create a vertical layout for the Octave, Key, and Program Change dropdowns
+        self.additional_dropdown_layout = QVBoxLayout()
+
+        # 3. Add Octave, Key, and Program Change dropdowns below the inversion buttons
+        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
+        self.add_header_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
+        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout)
+
+        # Add the additional dropdowns layout to the main layout below inversion buttons
+        self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_header_dropdown(self, header_text, keycodes):
+    def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
         # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
@@ -220,14 +226,14 @@ class SmartChordTab(QScrollArea):
 
         # Create dropdown
         dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.setFixedHeight(40)  # Set height of dropdown
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         vbox.addWidget(dropdown)
 
-        # Add the vertical box (header + dropdown) to the horizontal layout
-        self.dropdown_layout.addLayout(vbox)
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
