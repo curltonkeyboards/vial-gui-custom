@@ -566,8 +566,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             midiTab(self, "MIDI", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_TRANSPOSITION),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
             SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
-            SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_TRANSPOSITION),
-            SimpleTab(self, "MIDI Velocity", KEYCODES_MIDI_VELOCITYENCODER + KEYCODES_MIDI_VELOCITY),            
+            SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_OCTAVE + KEYCODES_MIDI_KEY),          
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
             SimpleTab(self, "MIDI Program Change", KEYCODES_Program_Change),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
