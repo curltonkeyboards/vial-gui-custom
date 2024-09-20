@@ -1032,22 +1032,17 @@ RAWCODES_MAP = dict()
 
 KEYCODES_MIDI_CC = []
 KEYCODES_MIDI_CC_FIXED = []
-KEYCODES_MIDI_CC_UP = []
-KEYCODES_MIDI_CC_DOWN = []
 
-for x in range(128):
+for x in range (128):
     KEYCODES_MIDI_CC.append(K("MI_CC_{}_TOG".format(x),
                               "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
                               "Midi CC{} toggle".format(x)))
-    KEYCODES_MIDI_CC_FIXED.append(K("MI_CC_{}_TOG_FIXED".format(x),
-                                    "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
-                                    "Midi CC{} toggle fixed".format(x)))
-    KEYCODES_MIDI_CC_UP.append(K("MI_CC_{}_UP".format(x),
-                                  "CC{}\nᵁᴾ".format(x),
-                                  "Midi CC{} up".format(x)))
-    KEYCODES_MIDI_CC_DOWN.append(K("MI_CC_{}_DWN".format(x),
-                                    "CC{}\nᴰᴺ".format(x),
-                                    "Midi CC{} down".format(x)))
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_UP".format(x),
+                              "CC{}\nᵁᴾ".format(x),
+                              "Midi CC{} up".format(x)))
+    KEYCODES_MIDI_CC.append(K("MI_CC_{}_DWN".format(x),
+                              "CC{}\nᴰᴺ".format(x),
+                              "Midi CC{} down".format(x)))
 
 
 for x in range(128):
@@ -1113,7 +1108,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_CC_DOWN)
+                    KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
