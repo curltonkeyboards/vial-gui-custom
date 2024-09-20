@@ -182,23 +182,15 @@ class SmartChordTab(QScrollArea):
 
         # 1. SmartChord Header and Dropdown
         self.add_header_dropdown("3 Note Chords", self.smartchord_keycodes_1)
-        
-        # 1. SmartChord Header and Dropdown
         self.add_header_dropdown("4 Note Chords", self.smartchord_keycodes_2)
-        
-        # 1. SmartChord Header and Dropdown
         self.add_header_dropdown("5 Note Chords", self.smartchord_keycodes_3)
-        
-        # 1. SmartChord Header and Dropdown
         self.add_header_dropdown("Advanced Chords", self.smartchord_keycodes_4)
-
-        # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
         
         # Add the horizontal layout to the main layout
         self.main_layout.addLayout(self.dropdown_layout)
 
-        # 3. Inversions Header
+        # 2. Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
         self.main_layout.addWidget(self.inversion_label)
 
@@ -208,17 +200,13 @@ class SmartChordTab(QScrollArea):
 
         # Populate the inversion buttons
         self.recreate_buttons()  # Call without arguments initially
-        
-        # 2. Scales/Modes Header and Dropdown
+
+        # Add the dropdowns after the inversion buttons
         self.add_header_dropdown("Octave Selector", self.smartchord_octave_1)
-        
-        # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Key Selector", self.smartchord_key)
-        
-        # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Program Change", self.smartchord_program_change)
 
-        # 4. Spacer to push everything to the top
+        # Spacer to push everything to the top
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes):
@@ -631,7 +619,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
-            midiTab(self, "MIDI", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
+            midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab         
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
