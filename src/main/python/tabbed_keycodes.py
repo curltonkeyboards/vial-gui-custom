@@ -259,6 +259,7 @@ class midiTab(QScrollArea):
 
         # Main layout for the scroll area
         self.setWidgetResizable(True)  # Make the scroll area widget resizable
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_content = QWidget()
         self.setWidget(scroll_content)
 
@@ -440,7 +441,7 @@ class midiTab(QScrollArea):
         # Populate inversion buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = BigSquareButton()
+                btn = SquareButton()
                 btn.setFixedWidth(100)  # Set a fixed width for buttons
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
