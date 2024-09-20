@@ -197,7 +197,7 @@ class SmartChordTab(QScrollArea):
         # Create dropdown
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.setFixedHeight(30)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
@@ -303,7 +303,7 @@ class midiTab(QScrollArea):
         # Create dropdown
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.setFixedHeight(30)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
@@ -460,7 +460,7 @@ class midiTab(QScrollArea):
 
                 # Move to the next column; if the limit is reached, reset to column 0 and increment the row
                 col += 1
-                if col >= 5:  # Adjust the number of columns as needed
+                if col >= 15:  # Adjust the number of columns as needed
                     col = 0
                     row += 1
 
