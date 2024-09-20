@@ -1040,10 +1040,10 @@ for x in range (128):
                               "CC{}\nᵗᵒᵍᵍˡᵉ".format(x),
                               "Midi CC{} toggle".format(x)))
     KEYCODES_MIDI_CC_UP.append(K("MI_CC_{}_UP".format(x),
-                              "CC{}\nᵁᴾ".format(x),
+                              "CC{}\n▲".format(x),
                               "Midi CC{} up".format(x)))
     KEYCODES_MIDI_CC_DOWN.append(K("MI_CC_{}_DWN".format(x),
-                              "CC{}\nᴰᴺ".format(x),
+                              "CC{}\n▼".format(x),
                               "Midi CC{} down".format(x)))
 
 
