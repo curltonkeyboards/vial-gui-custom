@@ -263,8 +263,8 @@ class midiTab(QScrollArea):
         # Define MIDI layout
         self.midi_layout2 = [
             ["MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
-            "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
-            "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
+             "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
+             "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
 
             ["MI_C", "MI_D", "MI_E", "MI_F", "MI_G", "MI_A", "MI_B",
              "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1",
@@ -279,11 +279,12 @@ class midiTab(QScrollArea):
              "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"]
         ]
 
-        # Main layout
-        self.main_layout = QVBoxLayout()
-        self.setLayout(self.main_layout)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Main layout for the scroll area
+        self.setWidgetResizable(True)  # Make the scroll area widget resizable
+        scroll_content = QWidget()
+        self.setWidget(scroll_content)
+
+        self.main_layout = QVBoxLayout(scroll_content)
 
         # 3. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
@@ -328,10 +329,11 @@ class midiTab(QScrollArea):
         midi_container = QWidget()
         midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
         midi_container.setLayout(midi_container_layout)
-        self.main_layout.addWidget(midi_container)
 
         # Parse and add staggered buttons for black and white keys
         self.create_midi_buttons(layout, midi_container_layout)
+
+        self.main_layout.addWidget(midi_container)  # Add the midi container to the main layout
 
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
