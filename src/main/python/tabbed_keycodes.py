@@ -139,6 +139,18 @@ class Tab(QScrollArea):
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
+class CenteredComboBox(QComboBox):
+    def paintEvent(self, event):
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+
+        painter = QPainter(self)
+        self.style().drawComplexControl(self.style().CC_ComboBox, opt, painter, self)
+
+        # Center the text horizontally
+        text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
+        painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
+
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -183,15 +195,6 @@ class SmartChordTab(QScrollArea):
         # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
         
-        # 2. Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1)
-        
-        # 2. Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Key Selector", self.smartchord_key)
-        
-        # 2. Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Program Change", self.smartchord_program_change)
-
         # Add the horizontal layout to the main layout
         self.main_layout.addLayout(self.dropdown_layout)
 
@@ -205,6 +208,15 @@ class SmartChordTab(QScrollArea):
 
         # Populate the inversion buttons
         self.recreate_buttons()  # Call without arguments initially
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1)
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Key Selector", self.smartchord_key)
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Program Change", self.smartchord_program_change)
 
         # 4. Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -219,9 +231,8 @@ class SmartChordTab(QScrollArea):
         vbox.addWidget(header_label)
 
         # Create dropdown
-        dropdown = QComboBox()
-        dropdown.setFixedWidth(300)  # Width stays at 300
-        dropdown.setFixedHeight(30)  # Increase the height to 40 pixels
+        dropdown = QCenteredComboBox()
+        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
@@ -274,18 +285,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
-        
-class CenteredComboBox(QComboBox):
-    def paintEvent(self, event):
-        opt = QStyleOptionComboBox()
-        self.initStyleOption(opt)
 
-        painter = QPainter(self)
-        self.style().drawComplexControl(self.style().CC_ComboBox, opt, painter, self)
-
-        # Center the text horizontally
-        text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
-        painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
 
 
 class midiTab(QScrollArea):
