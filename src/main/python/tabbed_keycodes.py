@@ -217,7 +217,7 @@ class SmartChordTab(QScrollArea):
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
+           # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
 
         # Create header
@@ -227,9 +227,17 @@ class SmartChordTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
-        dropdown.setPlaceholderText(f"Select {header_text}")
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+
+        # Add the keycodes as options
         for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+        dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         vbox.addWidget(dropdown)
 
