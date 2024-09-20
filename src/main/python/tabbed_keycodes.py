@@ -150,6 +150,9 @@ class SmartChordTab(QScrollArea):
         self.smartchord_keycodes_3 = smartchord_keycodes_3
         self.smartchord_keycodes_4 = smartchord_keycodes_4
         self.scales_modes_keycodes = scales_modes_keycodes
+        self.smartchord_octave_1 = smartchord_octave_1
+        self.smartchord_key = smartchord_key
+        self.smartchord_program_change = smartchord_program_change
         self.inversion_keycodes = inversion_keycodes
 
         # Create a widget for the scroll area content
