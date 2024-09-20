@@ -154,7 +154,7 @@ class CenteredComboBox(QComboBox):
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, smartchord_program_change, inversion_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, smartchord_program_change, inversion_keycodes, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes_1 = smartchord_keycodes_1
@@ -166,6 +166,9 @@ class SmartChordTab(QScrollArea):
         self.smartchord_key = smartchord_key
         self.smartchord_program_change = smartchord_program_change
         self.inversion_keycodes = inversion_keycodes
+        self.smartchord_LSB = smartchord_LSB
+        self.smartchord_MSB = smartchord_MSB
+        self.smartchord_CC_toggle = smartchord_CC_toggle
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -189,6 +192,15 @@ class SmartChordTab(QScrollArea):
         
         # Add the SmartChord dropdowns to the main layout
         self.main_layout.addLayout(self.smartchord_dropdown_layout)
+        
+          # Create a vertical layout for the Octave, Key, and Program Change dropdowns
+        self.additional_dropdown_layout = QHBoxLayout()
+
+        # 3. Add Octave, Key, and Program Change dropdowns below the inversion buttons
+        self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
+        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
+        
+        self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # 2. Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
@@ -202,15 +214,16 @@ class SmartChordTab(QScrollArea):
         self.recreate_buttons()  # Call without arguments initially
 
         # Create a vertical layout for the Octave, Key, and Program Change dropdowns
-        self.additional_dropdown_layout = QHBoxLayout()
-
-        # 3. Add Octave, Key, and Program Change dropdowns below the inversion buttons
-        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
-        self.add_header_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
-        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout)
+        self.additional_dropdown_layout2 = QHBoxLayout()
+        self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
+        
+        
 
         # Add the additional dropdowns layout to the main layout below inversion buttons
-        self.main_layout.addLayout(self.additional_dropdown_layout)
+        self.main_layout.addLayout(self.additional_dropdown_layout2)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -227,6 +240,36 @@ class SmartChordTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+        dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+        
+    def add_smallheader_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+           # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
+        dropdown.setFixedWidth(100)  # Set height of dropdown
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
@@ -635,7 +678,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab         
+            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),   # Updated to SmartChordTab         
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
