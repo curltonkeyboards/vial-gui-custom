@@ -182,24 +182,17 @@ class SmartChordTab(QScrollArea):
 
         # Create a horizontal layout for the Smart Chord dropdowns
         self.smartchord_dropdown_layout = QHBoxLayout()
-
-        # 1. Add SmartChord dropdowns
         self.add_header_dropdown("3 Note Chords", self.smartchord_keycodes_1, self.smartchord_dropdown_layout)
         self.add_header_dropdown("4 Note Chords", self.smartchord_keycodes_2, self.smartchord_dropdown_layout)
         self.add_header_dropdown("5 Note Chords", self.smartchord_keycodes_3, self.smartchord_dropdown_layout)
         self.add_header_dropdown("Advanced Chords", self.smartchord_keycodes_4, self.smartchord_dropdown_layout)
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes, self.smartchord_dropdown_layout)
-        
-        # Add the SmartChord dropdowns to the main layout
         self.main_layout.addLayout(self.smartchord_dropdown_layout)
         
           # Create a vertical layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
-
-        # 3. Add Octave, Key, and Program Change dropdowns below the inversion buttons
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
-        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
-        
+        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)       
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # 2. Inversions Header
@@ -219,10 +212,6 @@ class SmartChordTab(QScrollArea):
         self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
-        
-        
-
-        # Add the additional dropdowns layout to the main layout below inversion buttons
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
         # Spacer to push everything to the top
@@ -679,7 +668,6 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),   # Updated to SmartChordTab         
-            SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
             SimpleTab(self, "User", KEYCODES_USER),
