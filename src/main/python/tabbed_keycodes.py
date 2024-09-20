@@ -148,20 +148,28 @@ class SmartChordTab(QScrollArea):
         self.smartchord_keycodes = smartchord_keycodes
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
-        # Main layout for the scroll area
-        self.setWidgetResizable(True)  # Make the scroll area widget resizable
-        scroll_content = QWidget()
-        self.setWidget(scroll_content)
-        self.main_layout = QVBoxLayout()
+
+        # Create a widget for the scroll area content
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        
+        # Set the scroll area properties
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setLayout(self.main_layout)
+
+        # Create a horizontal layout for the dropdowns
+        self.dropdown_layout = QHBoxLayout()
 
         # 1. SmartChord Header and Dropdown
         self.add_header_dropdown("Chords", self.smartchord_keycodes)
 
         # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+
+        # Add the horizontal layout to the main layout
+        self.main_layout.addLayout(self.dropdown_layout)
 
         # 3. Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
@@ -178,19 +186,25 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes):
-        """Helper method to add a header and dropdown."""
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
         # Create header
         header_label = QLabel(header_text)
-        self.main_layout.addWidget(header_label)
+        vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = QComboBox()
-        dropdown.setFixedWidth(300)  # Width stays at 200
+        dropdown.setFixedWidth(300)  # Width stays at 300
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.main_layout.addWidget(dropdown)
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the horizontal layout
+        self.dropdown_layout.addLayout(vbox)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
@@ -228,6 +242,7 @@ class SmartChordTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
 
+
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -258,10 +273,10 @@ class midiTab(QScrollArea):
         ]
 
         # Main layout for the scroll area
-        self.setWidgetResizable(True)  # Make the scroll area widget resizable
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll_content = QWidget()
-        self.setWidget(scroll_content)
 
         self.main_layout = QVBoxLayout(scroll_content)
 
