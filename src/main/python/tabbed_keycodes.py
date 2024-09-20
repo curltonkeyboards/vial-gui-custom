@@ -202,7 +202,7 @@ class SmartChordTab(QScrollArea):
         self.recreate_buttons()  # Call without arguments initially
 
         # Create a vertical layout for the Octave, Key, and Program Change dropdowns
-        self.additional_dropdown_layout = QVBoxLayout()
+        self.additional_dropdown_layout = QHBoxLayout()
 
         # 3. Add Octave, Key, and Program Change dropdowns below the inversion buttons
         self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
