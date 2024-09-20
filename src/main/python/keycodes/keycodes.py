@@ -874,36 +874,39 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_BENDU", "ᴹᴵᴰᴵ\nBendᵁᴾ", "Midi bend pitch up"),
 ]
 
-KEYCODES_MIDI_TRANSPOSITION = [
-    K("MI_OCT_N2", "ᴼᶜᵗᵃᵛᵉ\n-2", "Midi set octave to -2"),
-    K("MI_OCT_N1", "ᴼᶜᵗᵃᵛᵉ\n-1", "Midi set octave to -1"),
-    K("MI_OCT_0", "ᴼᶜᵗᵃᵛᵉ\nᴰᵉᶠᵃᵘˡᵗ", "Midi set octave to 0"),
-    K("MI_OCT_1", "ᴼᶜᵗᵃᵛᵉ\n+1", "Midi set octave to 1"),
-    K("MI_OCT_2", "ᴼᶜᵗᵃᵛᵉ\n+2", "Midi set octave to 2"),
-    K("MI_OCT_3", "ᴼᶜᵗᵃᵛᵉ\n+3", "Midi set octave to 3"),
-    K("MI_OCT_4", "ᴼᶜᵗᵃᵛᵉ\n+4", "Midi set octave to 4"),
-    K("MI_OCT_5", "ᴼᶜᵗᵃᵛᵉ\n+5", "Midi set octave to 5"),
-    K("MI_OCT_6", "ᴼᶜᵗᵃᵛᵉ\n+6", "Midi set octave to 6"),
-    K("MI_OCT_7", "ᴼᶜᵗᵃᵛᵉ\n+7", "Midi set octave to 7"),
-    K("MI_OCTD", "ᴼᶜᵗᵃᵛᵉ\nDown", "Midi move down an octave"),
+KEYCODES_MIDI_OCTAVE = [
+    K("MI_OCT_N2", "Octave\n-2", "Midi set octave to -2"),
+    K("MI_OCT_N1", "Octave\n-1", "Midi set octave to -1"),
+    K("MI_OCT_0", "Octave\nᴰᵉᶠᵃᵘˡᵗ", "Midi set octave to 0"),
+    K("MI_OCT_1", "Octave\n+1", "Midi set octave to 1"),
+    K("MI_OCT_2", "Octave\n+2", "Midi set octave to 2"),
+    K("MI_OCT_3", "Octave\n+3", "Midi set octave to 3"),
+    K("MI_OCT_4", "Octave\n+4", "Midi set octave to 4"),
+    K("MI_OCT_5", "Octave\n+5", "Midi set octave to 5"),
+    K("MI_OCT_6", "Octave\n+6", "Midi set octave to 6"),
+    K("MI_OCT_7", "Octave\n+7", "Midi set octave to 7"),
+] 
+
+KEYCODES_MIDI_TRANSPOSITION = [   
+    K("MI_TRNSD", "Transpose\n-1", "Midi decrease transposition"),
+    K("MI_TRNSU", "Transpose\n+1", "Midi increase transposition"),
+    K("MI_OCTD", "Octave\nDown", "Midi move down an octave"),
     K("MI_OCTU", "ᴼᶜᵗᵃᵛᵉ\nUp", "Midi move up an octave"),
-    
-    K("MI_TRNSD", "Transpose\nDown", "Midi decrease transposition"),
-    K("MI_TRNSU", "ᵗʳᵃⁿˢᵖᵒˢᵉ\nUp", "Midi increase transposition"),
-    K("MI_TRNS_0", "Key\nCᵐᵃʲᵒʳ\nAᵐᶦⁿᵒʳ", "Midi set no transposition"),
-    K("MI_TRNS_1", "Key\nC#ᵐᵃʲᵒʳ\nA#ᵐᶦⁿᵒʳ", "Midi set transposition to +1 semitones"),
-    K("MI_TRNS_2", "Key\nDᵐᵃʲᵒʳ\nBᵐᶦⁿᵒʳ", "Midi set transposition to +2 semitones"),
-    K("MI_TRNS_3", "Key\nD#ᵐᵃʲᵒʳ\nCᵐᶦⁿᵒʳ", "Midi set transposition to +3 semitones"),
-    K("MI_TRNS_4", "Key\nEᵐᵃʲᵒʳ\nC#ᵐᶦⁿᵒʳ", "Midi set transposition to +4 semitones"),
-    K("MI_TRNS_5", "Key\nFᵐᵃʲᵒʳ\nDᵐᶦⁿᵒʳ", "Midi set transposition to +5 semitones"),
-    K("MI_TRNS_6", "Key\nF#ᵐᵃʲᵒʳ\nD#ᵐᶦⁿᵒʳ", "Midi set transposition to +6 semitones"),
-    K("MI_TRNS_N5", "Key\nGᵐᵃʲᵒʳ\nEᵐᶦⁿᵒʳ", "Midi set transposition to -5 semitones"),
-    K("MI_TRNS_N4", "Key\nG#ᵐᵃʲᵒʳ\nFᵐᶦⁿᵒʳ", "Midi set transposition to -4 semitones"),
+]    
+
+KEYCODES_MIDI_KEY = [
+    K("MI_TRNS_0", "Key\nC maj\nA min", "Midi set no transposition"),
+    K("MI_TRNS_1", "Key\nC# maj\nA#ᵐᶦⁿᵒʳ", "Midi set transposition to +1 semitones"),
+    K("MI_TRNS_2", "Key\nD maj\nBᵐᶦⁿᵒʳ", "Midi set transposition to +2 semitones"),
+    K("MI_TRNS_3", "Key\nD# maj\nCᵐᶦⁿᵒʳ", "Midi set transposition to +3 semitones"),
+    K("MI_TRNS_4", "Key\nE maj\nC#ᵐᶦⁿᵒʳ", "Midi set transposition to +4 semitones"),
+    K("MI_TRNS_5", "Key\nF maj\nDᵐᶦⁿᵒʳ", "Midi set transposition to +5 semitones"),
+    K("MI_TRNS_6", "Key\nF# maj\nD#ᵐᶦⁿᵒʳ", "Midi set transposition to +6 semitones"),
+    K("MI_TRNS_N5", "Key\nG maj\nEᵐᶦⁿᵒʳ", "Midi set transposition to -5 semitones"),
+    K("MI_TRNS_N4", "Key\nG# maj\nFᵐᶦⁿᵒʳ", "Midi set transposition to -4 semitones"),
     K("MI_TRNS_N3", "Key\nAᵐᵃʲᵒʳ\nF#ᵐᶦⁿᵒʳ", "Midi set transposition to -3 semitones"),
     K("MI_TRNS_N2", "Key\nA#ᵐᵃʲᵒʳ\nGᵐᶦⁿᵒʳ", "Midi set transposition to -2 semitones"),
     K("MI_TRNS_N1", "Key B Major\n G# Minor", "Midi set transposition to -1 semitones"),
-
-
 ]
 KEYCODES_MIDI_VELOCITYENCODER = [
     K("MI_VELD", "ⱽᵉˡᵒᶜᶦᵗʸ\nDown", "Midi decrease velocity"),
