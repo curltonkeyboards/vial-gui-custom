@@ -887,13 +887,15 @@ KEYCODES_MIDI_OCTAVE = [
     K("MI_OCT_7", "Octave\n+7", "Midi set octave to 7"),
 ] 
 
-KEYCODES_MIDI_TRANSPOSITION = [   
-    K("MI_TRNSD", "Transpose\n-1", "Midi decrease transposition"),
-    K("MI_TRNSU", "Transpose\n+1", "Midi increase transposition"),
-    K("MI_OCTD", "Octave\nDown", "Midi move down an octave"),
-    K("MI_OCTU", "Octave\nUp", "Midi move up an octave"),
-    K("MI_CHD", "Channel\nDown", "Midi decrease channel"),
-    K("MI_CHU", "Channel\nUp", "Midi increase channel"),
+KEYCODES_MIDI_TRANSPOSITION = [  
+    K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),    
+    K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),   
+    K("MI_CHU", "Channel\n▲", "Midi increase channel"),    
+    K("MI_VELU", "Velocity\n▲", "Midi increase velocity"),
+    K("MI_VELD", "Velocity\n▼", "Midi decrease velocity"), 
+    K("MI_TRNSD", "Transpose\n▼", "Midi decrease transposition"),
+    K("MI_OCTD", "Octave\n▼", "Midi move down an octave"),
+    K("MI_CHD", "Channel\n▼", "Midi decrease channel"),
 ]    
 
 KEYCODES_MIDI_KEY = [
@@ -909,10 +911,6 @@ KEYCODES_MIDI_KEY = [
     K("MI_TRNS_N3", "Key\nAᵐᵃʲᵒʳ\nF#ᵐᶦⁿᵒʳ", "Midi set transposition to -3 semitones"),
     K("MI_TRNS_N2", "Key\nA#ᵐᵃʲᵒʳ\nGᵐᶦⁿᵒʳ", "Midi set transposition to -2 semitones"),
     K("MI_TRNS_N1", "Key B Major\n G# Minor", "Midi set transposition to -1 semitones"),
-]
-KEYCODES_MIDI_VELOCITYENCODER = [
-    K("MI_VELD", "ⱽᵉˡᵒᶜᶦᵗʸ\nDown", "Midi decrease velocity"),
-    K("MI_VELU", "ⱽᵉˡᵒᶜᶦᵗʸ\nUp", "Midi increase velocity"),
 ]
 
 KEYCODES_MIDI_CHANNEL = [
@@ -1110,7 +1108,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_TRANSPOSITION+
-                    KEYCODES_MIDI_VELOCITYENCODER+KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY)
+                    KEYCODES_MIDI_CHORD+KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
