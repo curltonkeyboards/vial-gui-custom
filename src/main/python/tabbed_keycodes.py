@@ -338,11 +338,10 @@ class midiTab(QScrollArea):
         dropdown.setFixedHeight(40)
         dropdown.setStyleSheet("""
             QComboBox {
-                text-align: center;  /* Center the text in the dropdown */
-                padding: 10px;       /* Add some padding to look nicer */
+                text-align: center;
             }
-            QComboBox::drop-down {
-                width: 30px;  /* Adjust the size of the dropdown arrow */
+            QComboBox QAbstractItemView {
+                text-align: left;  /* This ensures that items in the dropdown list remain left-aligned */
             }
         """)
         for keycode in keycodes:
@@ -524,14 +523,12 @@ class midiTab(QScrollArea):
         dropdown.setFixedHeight(40)
         dropdown.setStyleSheet("""
             QComboBox {
-                text-align: center;  /* Center the text in the dropdown */
-                padding: 10px;       /* Add some padding to look nicer */
+                text-align: center;
             }
-            QComboBox::drop-down {
-                width: 30px;  /* Adjust the size of the dropdown arrow */
+            QComboBox QAbstractItemView {
+                text-align: left;  /* This ensures that items in the dropdown list remain left-aligned */
             }
         """)
-
         # Populate dropdown with MIDI CC keycodes
         for keycode in cc_keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
