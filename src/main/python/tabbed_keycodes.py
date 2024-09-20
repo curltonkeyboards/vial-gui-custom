@@ -142,7 +142,7 @@ from PyQt5.QtCore import pyqtSignal
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, inversion_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave, smartchord_key, smartchord_program_change, inversion_keycodes):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes_1 = smartchord_keycodes_1
@@ -179,6 +179,15 @@ class SmartChordTab(QScrollArea):
 
         # 2. Scales/Modes Header and Dropdown
         self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes)
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Octave Selector", self.smartchord_octave)
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Key Selector", self.smartchord_key)
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Key Selector", self.smartchord_program_change)
 
         # Add the horizontal layout to the main layout
         self.main_layout.addLayout(self.dropdown_layout)
@@ -620,11 +629,8 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             SimpleTab(self, "Macro", KEYCODES_MACRO),
             midiTab(self, "MIDI", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab
-            SimpleTab(self, "MIDI Channel", KEYCODES_MIDI_CHANNEL),
-            SimpleTab(self, "MIDI Transpose", KEYCODES_MIDI_OCTAVE + KEYCODES_MIDI_KEY),          
+            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION),   # Updated to SmartChordTab         
             SimpleTab(self, "MIDI CC", KEYCODES_MIDI_CC),
-            SimpleTab(self, "MIDI Program Change", KEYCODES_Program_Change),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
             SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
             SimpleTab(self, "User", KEYCODES_USER),
