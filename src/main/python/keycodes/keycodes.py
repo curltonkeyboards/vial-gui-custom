@@ -802,20 +802,6 @@ KEYCODES_TAP_DANCE = [
     K("TD(31)", "TapDance\n31", "TapDance31"),
 ]
 
-KEYCODES_LAYER_MO = [
-    K("MO(0)", "MO\n0", "TapDance0"),
-    K("MO(1)", "MO\n1", "TapDance1"),
-    K("MO(2)", "MO\n2", "TapDance2"),
-    K("MO(3)", "MO\n3", "TapDance3"),
-    K("MO(4)", "MO\n4", "TapDance4"),
-    K("MO(5)", "MO\n5", "TapDance5"),
-    K("MO(6)", "MO\n6", "TapDance6"),
-    K("MO(7)", "MO\n7", "TapDance7"),
-    K("MO(8)", "MO\n8", "TapDance8"),
-    K("MO(9)", "MO\n9", "TapDance9"),
-    K("MO(10)", "MO\n10", "TapDance10"),
-    K("MO(11)", "MO\n11", "TapDance11"),
-
 KEYCODES_USER = [
     K("USER00", "USER00", "USER00"),
     K("USER01", "USER01", "USER01"),
