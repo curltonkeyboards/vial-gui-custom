@@ -154,7 +154,7 @@ class CenteredComboBox(QComboBox):
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, smartchord_program_change, inversion_keycodes, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle):
+    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, inversion_keycodes):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes_1 = smartchord_keycodes_1
@@ -164,11 +164,7 @@ class SmartChordTab(QScrollArea):
         self.scales_modes_keycodes = scales_modes_keycodes
         self.smartchord_octave_1 = smartchord_octave_1
         self.smartchord_key = smartchord_key
-        self.smartchord_program_change = smartchord_program_change
         self.inversion_keycodes = inversion_keycodes
-        self.smartchord_LSB = smartchord_LSB
-        self.smartchord_MSB = smartchord_MSB
-        self.smartchord_CC_toggle = smartchord_CC_toggle
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -205,14 +201,6 @@ class SmartChordTab(QScrollArea):
 
         # Populate the inversion buttons
         self.recreate_buttons()
-
-        # Create a horizontal layout for the additional dropdowns
-        self.additional_dropdown_layout2 = QHBoxLayout()
-        self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
-        self.main_layout.addLayout(self.additional_dropdown_layout2)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -901,16 +889,16 @@ class FilteredTabbedKeycodes(QTabWidget):
                  KEYCODES_ISO_KR),
                 (None, KEYCODES_ISO),
             ], prefix_buttons=[("Any", -1)]),
+            midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
+            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),
+            midiadvancedTab(self, "Advanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),       
             SimpleTab(self, "Layers", KEYCODES_LAYERS),
             Tab(self, "Quantum", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
-            SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
+            SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             MacroTab(self, "Macro", KEYCODES_MACRO, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
-            midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),
-            midiadvancedTab(self, "Advanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),       
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
         ]
 
