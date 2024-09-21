@@ -212,6 +212,7 @@ class SmartChordTab(QScrollArea):
 
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header_label)
 
         # Create dropdown
@@ -241,6 +242,7 @@ class SmartChordTab(QScrollArea):
 
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header_label)
 
         # Create dropdown
@@ -360,6 +362,7 @@ class midiadvancedTab(QScrollArea):
 
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header_label)
 
         # Create dropdown
@@ -389,6 +392,7 @@ class midiadvancedTab(QScrollArea):
 
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header_label)
 
         # Create dropdown
@@ -514,6 +518,7 @@ class LayerTab(QScrollArea):
 
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header_label)
 
         # Create dropdown
@@ -526,6 +531,12 @@ class LayerTab(QScrollArea):
         # Add the keycodes as options
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        for i, keycode in enumerate(keycodes):
+            # Set the item text and its tooltip
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            item = dropdown.model().item(i + 1)  # i + 1 to skip the placeholder
+            item.setToolTip(keycode.description)
 
         # Prevent the first item from being selected again
         dropdown.model().item(0).setEnabled(False)
@@ -543,6 +554,7 @@ class LayerTab(QScrollArea):
 
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(header_label)
 
         # Create dropdown
@@ -652,6 +664,7 @@ class MacroTab(QScrollArea):
         """Helper method to add a header and dropdown."""
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         self.main_layout.addWidget(header_label)
 
         # Create dropdown
@@ -779,6 +792,7 @@ class midiTab(QScrollArea):
     
         # Create header
         header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
         header_dropdown_layout.addWidget(header_label)
 
         # Create dropdown
