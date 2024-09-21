@@ -528,11 +528,6 @@ class LayerTab(QScrollArea):
         # Add a placeholder item as the first item
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
 
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-            # Add the keycodes as options
         for keycode in keycodes:
             label = Keycode.label(keycode.qmk_id)
             tooltip = Keycode.description(keycode.qmk_id)  # Get the description
