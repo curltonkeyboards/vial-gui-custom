@@ -349,38 +349,43 @@ class MacroUserTapdanceTab(QScrollArea):
         self.add_header_dropdown("Tapdance", self.tapdance_keycodes, self.dropdown_layout)
         self.main_layout.addLayout(self.dropdown_layout)
 
-        # Spacer to push everything to the top
+        # Add header for Macro Recording
+        self.macro_recording_label = QLabel("Macro Recording")
+        self.main_layout.addWidget(self.macro_recording_label)
+
+        # Layout for macro recording buttons
+        self.button_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.button_layout)
+
+        # Populate buttons initially
         self.recreate_buttons()
+
+        # Spacer to push everything to the top
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
+        # Existing code...
 
-        # Create header
-        header_label = QLabel(header_text)
-        vbox.addWidget(header_label)
+    def recreate_buttons(self):
+        """Recreate macro buttons based on the current macro_keycodes."""
+        # Clear existing buttons
+        for i in reversed(range(self.button_layout.count())):
+            widget = self.button_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
 
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
+        # Populate buttons for each macro keycode
+        for keycode in self.macro_keycodes:
+            button = SquareButton()  # Replace with your button class
+            button.setText(Keycode.label(keycode.qmk_id))  # Use the keycode label
+            button.clicked.connect(lambda _, k=keycode.qmk_id: self.record_macro(k))
+            self.button_layout.addWidget(button)
 
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
+    def record_macro(self, macro_keycode):
+        """Handle recording macro action."""
+        print(f"Recording Macro for keycode: {macro_keycode}")
+        self.keycode_changed.emit(macro_keycode)  # Emit the keycode if needed
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -394,6 +399,7 @@ class MacroUserTapdanceTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return False  # Adjust if needed
+
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
