@@ -764,57 +764,11 @@ KEYCODES_MEDIA = [
 ]
 
 KEYCODES_TAP_DANCE = [
-    K("TD(0)", "TapDance\n0", "TapDance0"),
-    K("TD(1)", "TapDance\n1", "TapDance1"),
-    K("TD(2)", "TapDance\n2", "TapDance2"),
-    K("TD(3)", "TapDance\n3", "TapDance3"),
-    K("TD(4)", "TapDance\n4", "TapDance4"),
-    K("TD(5)", "TapDance\n5", "TapDance5"),
-    K("TD(6)", "TapDance\n6", "TapDance6"),
-    K("TD(7)", "TapDance\n7", "TapDance7"),
-    K("TD(8)", "TapDance\n8", "TapDance8"),
-    K("TD(9)", "TapDance\n9", "TapDance9"),
-    K("TD(10)", "TapDance\n10", "TapDance10"),
-    K("TD(11)", "TapDance\n11", "TapDance11"),
-    K("TD(12)", "TapDance\n12", "TapDance12"),
-    K("TD(13)", "TapDance\n13", "TapDance13"),
-    K("TD(14)", "TapDance\n14", "TapDance14"),
-    K("TD(15)", "TapDance\n15", "TapDance15"),
-    K("TD(16)", "TapDance\n16", "TapDance16"),
-    K("TD(17)", "TapDance\n17", "TapDance17"),
-    K("TD(18)", "TapDance\n18", "TapDance18"),
-    K("TD(19)", "TapDance\n19", "TapDance19"),
-    K("TD(20)", "TapDance\n20", "TapDance20"),
-    K("TD(21)", "TapDance\n21", "TapDance21"),
-    K("TD(22)", "TapDance\n22", "TapDance22"),
-    K("TD(23)", "TapDance\n23", "TapDance23"),
-    K("TD(24)", "TapDance\n24", "TapDance24"),
-    K("TD(25)", "TapDance\n25", "TapDance25"),
-    K("TD(26)", "TapDance\n26", "TapDance26"),
-    K("TD(27)", "TapDance\n27", "TapDance27"),
-    K("TD(28)", "TapDance\n28", "TapDance28"),
-    K("TD(29)", "TapDance\n29", "TapDance29"),
-    K("TD(30)", "TapDance\n30", "TapDance30"),
-    K("TD(31)", "TapDance\n31", "TapDance31"),
+
 ]
 
 KEYCODES_USER = [
-    K("User00", "User\n0", "User 0"),
-    K("User01", "User\n1", "User 1"),
-    K("User02", "User\n2", "User 2"),
-    K("User03", "User\n3", "User 3"),
-    K("User04", "User\n4", "User 4"),
-    K("User05", "User\n5", "User 5"),
-    K("User06", "User\n6", "User 6"),
-    K("User07", "User\n7", "User 7"),
-    K("User08", "User\n8", "User 8"),
-    K("User09", "User\n9", "User 9"),
-    K("User10", "User\n10", "User 10"),
-    K("User11", "User\n11", "User 11"),
-    K("User12", "User\n12", "User 12"),
-    K("User13", "User\n13", "User 13"),
-    K("User14", "User\n14", "User 14"),
-    K("User15", "User\n15", "User 15"),
+
 ]
 
 KEYCODES_MACRO = [
