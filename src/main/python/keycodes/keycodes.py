@@ -1338,8 +1338,8 @@ for x in range (128):
                               "Midi CC{} down".format(x)))
 
 
-for x in range(12):
-    for y in range(12):
+for x in range(128):
+    for y in range(128):
         KEYCODES_MIDI_CC_FIXED.append(K("MI_CC_{}_{}".format(x,y),
                                     "CC{}\n{}".format(x,y),
                                     "Midi CC{} = {}".format(x,y)))
