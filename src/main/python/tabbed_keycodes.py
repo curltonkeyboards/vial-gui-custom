@@ -349,7 +349,7 @@ class MacroTab(QScrollArea):
         self.add_header_dropdown("Tapdance", self.tapdance_keycodes)
 
         # 3. Inversions Header
-        self.base_macro_label = QLabel("Chord Inversions")
+        self.base_macro_label = QLabel("Macro Recording")
         self.main_layout.addWidget(self.base_macro_label)
 
         # Layout for buttons (Inversions)
@@ -385,7 +385,7 @@ class MacroTab(QScrollArea):
                 widget.deleteLater()
 
         # Populate inversion buttons
-        for keycode in self.inversion_keycodes:
+        for keycode in self.base_macro_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedWidth(40)  # Set a fixed width for buttons
