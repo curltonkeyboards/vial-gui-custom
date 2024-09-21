@@ -350,6 +350,7 @@ class MacroUserTapdanceTab(QScrollArea):
         self.main_layout.addLayout(self.dropdown_layout)
 
         # Spacer to push everything to the top
+        self.recreate_buttons()
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes, layout):
