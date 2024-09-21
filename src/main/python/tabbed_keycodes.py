@@ -376,22 +376,43 @@ class midiadvancedTab(QScrollArea):
         # Create a menu to be attached to the button
         self.cc_menu = QMenu(self.cc_button)
 
+        # Create a QWidget to hold the scroll area
+        self.cc_scroll_widget = QWidget()
+        self.cc_scroll_layout = QVBoxLayout(self.cc_scroll_widget)
+
+        # Set the height of the scroll area
+        self.cc_scroll_widget.setFixedHeight(200)
+
         # Populate the menu with CC X items
         for x in range(128):
             # Create a submenu for each CC X value
             cc_x_submenu = QMenu(f"CC X {x}", self.cc_menu)
 
+            # Create a scroll area for CC Y values
+            cc_y_scroll_area = QScrollArea()
+            cc_y_scroll_area.setWidgetResizable(True)
+            cc_y_scroll_area.setFixedHeight(150)  # Set height for scroll area
+
+            # Create a widget for the scroll area content
+            cc_y_content_widget = QWidget()
+            cc_y_content_layout = QVBoxLayout(cc_y_content_widget)
+
             # Populate the submenu with CC Y values based on CCfixed
             for keycode in self.CCfixed:
-                # Assuming keycode.qmk_id has the format 'MI_CC_x_y', split to extract x and y
                 try:
                     x_value, y_value = map(int, keycode.qmk_id.split('_')[2:])  # Extract x and y
                     if x_value == x:  # Only add CC Y if it matches the CC X value
-                        action = QAction(f"CC Y {y_value}", cc_x_submenu)
+                        action = QAction(f"CC Y {y_value}", cc_y_content_widget)
                         action.triggered.connect(lambda _, x=x, y=y_value: self.on_cc_selection(x, y))
-                        cc_x_submenu.addAction(action)
+                        cc_y_content_layout.addWidget(action)
                 except ValueError:
                     continue  # Skip if the format is unexpected
+
+            cc_y_content_widget.setLayout(cc_y_content_layout)
+            cc_y_scroll_area.setWidget(cc_y_content_widget)
+
+            # Add the scroll area to the CC X submenu
+            cc_x_submenu.setMenu(cc_y_scroll_area)
 
             # Add the CC X submenu to the main CC menu
             self.cc_menu.addMenu(cc_x_submenu)
