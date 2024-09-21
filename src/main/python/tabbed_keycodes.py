@@ -315,7 +315,7 @@ class SmartChordTab(QScrollArea):
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CC_fixed):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
