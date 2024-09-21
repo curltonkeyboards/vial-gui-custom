@@ -468,9 +468,9 @@ class LayerTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_CC_toggle = smartchord_CC_toggle
-        self.smartchord_LSB = smartchord_LSB2
-        self.smartchord_MSB = smartchord_MSB2
-        self.smartchord_CC_toggle = smartchord_CC_toggle2
+        self.smartchord_LSB2 = smartchord_LSB2
+        self.smartchord_MSB2 = smartchord_MSB2
+        self.smartchord_CC_toggle2 = smartchord_CC_toggle2
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
