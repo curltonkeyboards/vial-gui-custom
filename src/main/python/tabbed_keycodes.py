@@ -183,6 +183,11 @@ class CCTab(QScrollArea):
 
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
+
+    def recreate_buttons(self, keycode_filter=None):
+        """Placeholder for compatibility, but no actual buttons to recreate."""
+        pass
+
         
         
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
