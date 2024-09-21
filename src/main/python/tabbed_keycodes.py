@@ -579,7 +579,8 @@ class LayerTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setFixedWidth(40)
+                btn.setFixedHeight(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
