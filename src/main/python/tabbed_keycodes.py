@@ -331,7 +331,7 @@ class MacroUserTapdanceTab(QScrollArea):
         self.macro_keycodes = macro_keycodes
         self.user_keycodes = user_keycodes
         self.tapdance_keycodes = tapdance_keycodes
-        self.macro_record_keycodes = macro_record_keycodes  # Store macro recording keycodes
+        self.macro_record_keycodes = macro_record_keycodes
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -363,33 +363,7 @@ class MacroUserTapdanceTab(QScrollArea):
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        vbox.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
+        # Existing code...
 
     def populate_macro_buttons(self):
         """Populate the macro recording buttons."""
@@ -416,6 +390,18 @@ class MacroUserTapdanceTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return False  # Adjust if needed
+
+    def recreate_buttons(self):
+        """Recreate macro recording buttons based on the current keycodes."""
+        # Clear existing buttons
+        for i in reversed(range(self.button_layout.count())):
+            widget = self.button_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+        
+        # Repopulate buttons
+        self.populate_macro_buttons()
+
 
 
 class midiTab(QScrollArea):
