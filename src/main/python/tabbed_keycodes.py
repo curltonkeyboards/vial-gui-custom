@@ -384,7 +384,7 @@ class midiTab(QScrollArea):
         self.add_header_dropdown("Velocity", self.scales_modes_keycodes, self.horizontal_dropdown_layout)
 
         # 3. Inversions Header
-        self.inversion_label = QLabel("Transpose")
+        self.inversion_label = QLabel(" ")
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for buttons (Inversions) using QGridLayout
