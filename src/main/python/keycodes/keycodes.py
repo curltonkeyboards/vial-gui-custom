@@ -508,18 +508,18 @@ KEYCODES_ISO.extend(KEYCODES_ISO_KR)
 KEYCODES_LAYERS = []
 
 KEYCODES_LAYERS_MO = [
-    K("MO(0)", "Layer\nHold\n0", "Momentarily turn on layer when pressed"),
-    K("MO(1)", "Layer\nHold\n1", "Momentarily turn on layer when pressed"),
-    K("MO(2)", "Layer\nHold\n2", "Momentarily turn on layer when pressed"),
-    K("MO(3)", "Layer\nHold\n3", "Momentarily turn on layer when pressed"),
-    K("MO(4)", "Layer\nHold\n4", "Momentarily turn on layer when pressed"),
-    K("MO(5)", "Layer\nHold\n5", "Momentarily turn on layer when pressed"),
-    K("MO(6)", "Layer\nHold\n6", "Momentarily turn on layer when pressed"),
-    K("MO(7)", "Layer\nHold\n7", "Momentarily turn on layer when pressed"),
-    K("MO(8)", "Layer\nHold\n8", "Momentarily turn on layer when pressed"),
-    K("MO(9)", "Layer\nHold\n9", "Momentarily turn on layer when pressed"),
-    K("MO(10)", "Layer\nHold\n10", "Momentarily turn on layer when pressed"),
-    K("MO(11)", "Layer\nHold\n11", "Momentarily turn on layer when pressed"),
+    K("MO(0)", "Hold\nLayer\n0", "Momentarily turn on layer when pressed"),
+    K("MO(1)", "Hold\nLayer\n1", "Momentarily turn on layer when pressed"),
+    K("MO(2)", "Hold\nLayer\n2", "Momentarily turn on layer when pressed"),
+    K("MO(3)", "Hold\nLayer\n3", "Momentarily turn on layer when pressed"),
+    K("MO(4)", "Hold\nLayer\n4", "Momentarily turn on layer when pressed"),
+    K("MO(5)", "Hold\nLayer\n5", "Momentarily turn on layer when pressed"),
+    K("MO(6)", "Hold\nLayer\n6", "Momentarily turn on layer when pressed"),
+    K("MO(7)", "Hold\nLayer\n7", "Momentarily turn on layer when pressed"),
+    K("MO(8)", "Hold\nLayer\n8", "Momentarily turn on layer when pressed"),
+    K("MO(9)", "Hold\nLayer\n9", "Momentarily turn on layer when pressed"),
+    K("MO(10)", "Hold\nLayer\n10", "Momentarily turn on layer when pressed"),
+    K("MO(11)", "Hold\nLayer\n11", "Momentarily turn on layer when pressed"),
 ]
 
 KEYCODES_LAYERS_DF = [
@@ -1468,19 +1468,19 @@ def recreate_keyboard_keycodes(keyboard):
         KEYCODES_LAYERS.append(Keycode("FN_MO23", "Fn2\n(Fn3)"))
 
     KEYCODES_LAYERS_MO.extend(
-        generate_keycodes_for_mask("MO",
+        generate_keycodes_for_mask("Hold",
                                    "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"))
     KEYCODES_LAYERS_DF.extend(
-        generate_keycodes_for_mask("DF",
+        generate_keycodes_for_mask("Default",
                                    "Set the base (default) layer"))
     KEYCODES_LAYERS_TG.extend(
-        generate_keycodes_for_mask("TG",
+        generate_keycodes_for_mask("Toggle",
                                    "Toggle layer on or off"))
     KEYCODES_LAYERS_TT.extend(
         generate_keycodes_for_mask("TT",
                                    "Normally acts like MO unless it's tapped multiple times, which toggles layer on"))
     KEYCODES_LAYERS_OSL.extend(
-        generate_keycodes_for_mask("OSL",
+        generate_keycodes_for_mask("One Shot",
                                    "Momentarily activates layer until a key is pressed"))
     KEYCODES_LAYERS_TO.extend(
         generate_keycodes_for_mask("TO",

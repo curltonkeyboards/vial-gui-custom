@@ -500,7 +500,7 @@ class LayerTab(QScrollArea):
         # Create a horizontal layout for the additional dropdowns
         self.additional_dropdown_layout2 = QHBoxLayout()
         self.add_header_dropdown("Active/Default Layer", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Momentary Layer", self.smartchord_program_change, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Layer Hold", self.smartchord_program_change, self.additional_dropdown_layout2)
         self.add_header_dropdown("Toggle Layer", self.smartchord_LSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("Tap-Toggle Layer", self.smartchord_MSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("One Shot Layer", self.smartchord_LSB2, self.additional_dropdown_layout2)
