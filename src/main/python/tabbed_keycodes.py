@@ -367,58 +367,69 @@ class midiadvancedTab(QScrollArea):
     def add_cc_x_y_menu(self):
         """Add a button that opens a CC X -> CC Y submenu."""
         self.cc_layout = QHBoxLayout()
-    
+
         # Create a button to represent the CC X -> CC Y dropdown
         self.cc_button = QPushButton("Select CC X -> CC Y")
         self.cc_button.setFixedHeight(40)
         self.cc_button.setFixedWidth(200)
-
-        # Create a menu to be attached to the button
-        self.cc_menu = QMenu(self.cc_button)
-
-        # Populate the menu with CC X items
-        for x in range(128):
-            # Create a submenu for each CC X value
-            cc_x_submenu = QMenu(f"CC X {x}", self.cc_menu)
-
-            # Create a scroll area for CC Y values
-            cc_y_scroll_area = QScrollArea()
-            cc_y_scroll_area.setWidgetResizable(True)
-            cc_y_scroll_area.setFixedHeight(150)  # Set height for scroll area
-
-            # Create a widget for the scroll area content
-            cc_y_content_widget = QWidget()
-            cc_y_content_layout = QVBoxLayout(cc_y_content_widget)
-
-            # Populate the submenu with CC Y values based on CCfixed
-            for keycode in self.CCfixed:
-                try:
-                    x_value, y_value = map(int, keycode.qmk_id.split('_')[2:])  # Extract x and y
-                    if x_value == x:  # Only add CC Y if it matches the CC X value
-                        action = QAction(f"CC Y {y_value}", cc_y_content_widget)
-                        action.triggered.connect(lambda _, x=x, y=y_value: self.on_cc_selection(x, y))
-                        # Create a button instead of directly using QAction
-                        button = QPushButton(f"CC Y {y_value}")
-                        button.clicked.connect(lambda _, x=x, y=y_value: self.on_cc_selection(x, y))
-                        cc_y_content_layout.addWidget(button)
-                except ValueError:
-                    continue  # Skip if the format is unexpected
-
-            cc_y_content_widget.setLayout(cc_y_content_layout)
-            cc_y_scroll_area.setWidget(cc_y_content_widget)
-
-            # Add the scroll area to the CC X submenu
-            cc_x_submenu.setMenu(cc_y_scroll_area)
-
-            # Add the CC X submenu to the main CC menu
-            self.cc_menu.addMenu(cc_x_submenu)
-
-        # Attach the menu to the button
-        self.cc_button.setMenu(self.cc_menu)
+        self.cc_button.clicked.connect(self.open_cc_xy_dialog)
 
         # Add the button to the layout
         self.cc_layout.addWidget(self.cc_button)
         self.main_layout.addLayout(self.cc_layout)
+
+    def open_cc_xy_dialog(self):
+        """Open a dialog to select CC Y based on CC X."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("CC X -> CC Y Selection")
+        dialog.setFixedHeight(300)  # Set fixed height for the dialog
+
+        layout = QVBoxLayout(dialog)
+
+        for x in range(128):
+            # Create a button for each CC X value
+            cc_x_button = QPushButton(f"CC X {x}", dialog)
+            cc_x_button.clicked.connect(lambda _, x=x: self.open_cc_y_submenu(x))
+            layout.addWidget(cc_x_button)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def open_cc_y_submenu(self, selected_x):
+        """Open a submenu dialog for selecting CC Y values based on selected CC X."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"CC X {selected_x} -> CC Y Selection")
+        dialog.setFixedHeight(300)  # Set fixed height for the dialog
+
+        layout = QVBoxLayout(dialog)
+
+        # Create a scroll area for CC Y values
+        cc_y_scroll_area = QScrollArea()
+        cc_y_scroll_area.setWidgetResizable(True)
+
+        # Create a widget for the scroll area content
+        cc_y_content_widget = QWidget()
+        cc_y_content_layout = QVBoxLayout(cc_y_content_widget)
+
+        # Populate the CC Y buttons based on CCfixed
+        for keycode in self.CCfixed:
+            try:
+                x_value, y_value = map(int, keycode.qmk_id.split('_')[2:])  # Extract x and y
+                if x_value == selected_x:  # Only add CC Y if it matches the CC X value
+                    button = QPushButton(f"CC Y {y_value}")
+                    button.clicked.connect(lambda _, x=selected_x, y=y_value: self.on_cc_selection(x, y))
+                    cc_y_content_layout.addWidget(button)
+            except ValueError:
+                continue  # Skip if the format is unexpected
+
+        cc_y_content_widget.setLayout(cc_y_content_layout)
+        cc_y_scroll_area.setWidget(cc_y_content_widget)
+
+        # Add the scroll area to the main layout of the dialog
+        layout.addWidget(cc_y_scroll_area)
+        dialog.setLayout(layout)
+        dialog.exec_()
+
 
 
     def on_cc_selection(self, x, y):
