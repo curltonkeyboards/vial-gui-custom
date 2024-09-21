@@ -877,7 +877,7 @@ KEYCODES_MIDI_ADVANCED = [
 ]
 
 KEYCODES_MIDI_PEDAL = [
-    K("MI_ALLOFF", "ᴹᴵᴰᴵ\nNotesᵒᶠᶠ", "Midi send all notes OFF"),
+    K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
     K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
 ]
 

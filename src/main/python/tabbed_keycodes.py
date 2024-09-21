@@ -524,6 +524,12 @@ class midiTab(QScrollArea):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
+                    if "notees" in readable_name:
+                        button.setStyleSheet("")
+                        
+                    if "sustain" in readable_name:
+                        button.setStyleSheet("")
+                        
                     else:
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                         
