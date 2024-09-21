@@ -772,6 +772,7 @@ KEYCODES_USER = [
 ]
 
 KEYCODES_MACRO = [
+    K("M0", "M0", "MACRO 0"),
     K("M1", "M1", "MACRO 1"),
     K("M2", "M2", "MACRO 2"),
     K("M3", "M3", "MACRO 3"),
@@ -899,7 +900,6 @@ KEYCODES_MACRO = [
     K("M125", "M125", "MACRO 125"),
     K("M126", "M126", "MACRO 126"),
     K("M127", "M127", "MACRO 127"),
-    K("M128", "M128", "MACRO 128"),
 ]
 
 KEYCODES_MACRO_BASE = [
