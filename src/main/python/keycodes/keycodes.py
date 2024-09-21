@@ -767,7 +767,10 @@ KEYCODES_TAP_DANCE = []
 
 KEYCODES_USER = []
 
-KEYCODES_MACRO = []
+KEYCODES_MACRO = [
+K("M1", "M1", "MACRO 1"),
+
+]
 
 KEYCODES_MACRO_BASE = [
     K("DYN_REC_START1", "DM1\nRec", "Dynamic Macro 1 Rec Start", alias=["DM_REC1"]),
