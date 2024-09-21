@@ -321,7 +321,7 @@ class SmartChordTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
 
-class midiadvancedtab(QScrollArea):
+class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle):
