@@ -809,6 +809,12 @@ KEYCODES_USER = [
     K("USER07", "USER07", "USER07"),
     K("USER08", "USER08", "USER08"),
     K("USER09", "USER09", "USER09"),
+    K("USER10", "USER10", "USER10"),
+    K("USER11", "USER11", "USER11"),
+    K("USER12", "USER12", "USER12"),
+    K("USER13", "USER13", "USER13"),
+    K("USER14", "USER14", "USER14"),
+    K("USER15", "USER15", "USER15"),
 
 ]
 
@@ -1385,12 +1391,6 @@ def recreate_keyboard_keycodes(keyboard):
     for x in range(keyboard.macro_count):
         lbl = "M{}".format(x)
         KEYCODES_MACRO.append(Keycode(lbl, lbl))
-
-
-    KEYCODES_TAP_DANCE.clear()
-    for x in range(keyboard.tap_dance_count):
-        lbl = "TD({})".format(x)
-        KEYCODES_TAP_DANCE.append(Keycode(lbl, lbl, "Tap dance keycode"))
 
     # Check if custom keycodes are defined in keyboard, and if so add them to user keycodes
     if keyboard.custom_keycodes is not None and len(keyboard.custom_keycodes) > 0:
