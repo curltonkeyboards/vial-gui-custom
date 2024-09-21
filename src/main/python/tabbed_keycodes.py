@@ -134,7 +134,56 @@ class Tab(QScrollArea):
 
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
-        self.select_alternative()        
+        self.select_alternative()     
+
+class CCTab(QScrollArea):
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label):
+        super().__init__(parent)
+
+        self.label = label
+        self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add the dropdown for x (MIDI CC number)
+        self.dropdown = QComboBox()
+        self.layout.addWidget(self.dropdown)
+
+        # Add the placeholder item
+        self.dropdown.addItem("Select MIDI CC")
+
+        # Populate the dropdown with 128 MIDI CC options
+        for x in range(128):
+            label = f"CC{x}"
+            tooltip = f"Hover for CC{x} options"
+            self.dropdown.addItem(label)
+            item = self.dropdown.model().item(self.dropdown.count() - 1)
+            item.setToolTip(tooltip)  # Set the tooltip for hovering
+
+        # Connect the dropdown selection change
+        self.dropdown.currentIndexChanged.connect(self.on_selection_change)
+
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setWidgetResizable(True)
+
+        # Set up the widget
+        w = QWidget()
+        w.setLayout(self.layout)
+        self.setWidget(w)
+
+    def on_selection_change(self, index):
+        """Handle what happens when a MIDI CC is selected."""
+        selected_cc = self.dropdown.itemText(index)
+        # Signal the selected keycode
+        if selected_cc.startswith("CC"):
+            self.keycode_changed.emit(selected_cc)
+
+    def resizeEvent(self, evt):
+        super().resizeEvent(evt)
+        
         
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
@@ -1069,7 +1118,7 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT),
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
-            SimpleTab(self, "CC Fixed", KEYCODES_MIDI_CC_FIXED),
+            CCTab(self, "CC Fixed", KEYCODES_MIDI_CC_FIXED),
         ]
 
         for tab in self.tabs:
