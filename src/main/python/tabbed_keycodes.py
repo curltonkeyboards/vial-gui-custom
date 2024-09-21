@@ -358,40 +358,17 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.addStretch()
         
     def add_cc_xy_dropdowns(self):
-        """Add the CC X and CC Y dropdowns."""
-        # Create a layout for the CC X and Y dropdowns
-        cc_layout = QHBoxLayout()
+        """Add dropdowns for CC X and CC Y at the end."""
+        self.cc_layout = QHBoxLayout()
 
-        # CC X Dropdown
-        self.cc_x_dropdown = QComboBox()
-        self.cc_x_dropdown.setFixedHeight(40)
-        self.cc_x_dropdown.addItem("Select CC X")
-        for x in range(12):
-            self.cc_x_dropdown.addItem(f"CC X {x}")
-        self.cc_x_dropdown.currentIndexChanged.connect(self.on_cc_x_selected)
-        cc_layout.addWidget(self.cc_x_dropdown)
+        # Dropdown for CC X
+        self.add_smallheader_dropdown("CC X", self.CCfixed, self.cc_layout)
 
-        # CC Y Dropdown (initially disabled until CC X is selected)
-        self.cc_y_dropdown = QComboBox()
-        self.cc_y_dropdown.setFixedHeight(40)
-        self.cc_y_dropdown.addItem("Select CC Y")
-        self.cc_y_dropdown.setEnabled(False)  # Disable initially
-        cc_layout.addWidget(self.cc_y_dropdown)
+        # Dropdown for CC Y
+        self.add_smallheader_dropdown("CC Y", self.CCfixed, self.cc_layout)
 
-        # Add the CC layout to the main layout
-        self.main_layout.addLayout(cc_layout)
-
-    def on_cc_x_selected(self, index):
-        """Populate the CC Y dropdown based on the selected CC X."""
-        if index > 0:  # Ignore the placeholder item
-            self.cc_y_dropdown.setEnabled(True)
-            self.cc_y_dropdown.clear()
-            self.cc_y_dropdown.addItem("Select CC Y")
-            x_value = index - 1  # Adjust since the first item is "Select CC X"
-            for y in range(12):
-                self.cc_y_dropdown.addItem(f"CC X {x_value} Y {y}")
-        else:
-            self.cc_y_dropdown.setEnabled(False)
+        # Add the layout to the main layout
+        self.main_layout.addLayout(self.cc_layout)
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
