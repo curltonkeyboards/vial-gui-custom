@@ -1468,19 +1468,19 @@ def recreate_keyboard_keycodes(keyboard):
         KEYCODES_LAYERS.append(Keycode("FN_MO23", "Fn2\n(Fn3)"))
 
     KEYCODES_LAYERS_MO.extend(
-        generate_keycodes_for_mask("Hold",
+        generate_keycodes_for_mask("MO",
                                    "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"))
     KEYCODES_LAYERS_DF.extend(
-        generate_keycodes_for_mask("Default",
+        generate_keycodes_for_mask("DF",
                                    "Set the base (default) layer"))
     KEYCODES_LAYERS_TG.extend(
-        generate_keycodes_for_mask("Toggle",
+        generate_keycodes_for_mask("TG",
                                    "Toggle layer on or off"))
     KEYCODES_LAYERS_TT.extend(
         generate_keycodes_for_mask("TT",
                                    "Normally acts like MO unless it's tapped multiple times, which toggles layer on"))
     KEYCODES_LAYERS_OSL.extend(
-        generate_keycodes_for_mask("One Shot",
+        generate_keycodes_for_mask("OSL",
                                    "Momentarily activates layer until a key is pressed"))
     KEYCODES_LAYERS_TO.extend(
         generate_keycodes_for_mask("TO",
