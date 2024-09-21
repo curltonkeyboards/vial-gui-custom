@@ -533,12 +533,14 @@ class LayerTab(QScrollArea):
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
             # Add the keycodes as options
-        for i, keycode in enumerate(keycodes):
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-    
-            # Set the tooltip for each dropdown item
-            item = dropdown.model().item(i + 1)  # i + 1 to skip the placeholder
-            item.setToolTip(keycode.description)  # Set tooltip to the description
+        for keycode in keycodes:
+            label = Keycode.label(keycode.qmk_id)
+            tooltip = Keycode.description(keycode.qmk_id)  # Get the description
+            dropdown.addItem(label, keycode.qmk_id)
+
+            # Set the tooltip for the item
+            item = dropdown.model().item(dropdown.count() - 1)
+            item.setToolTip(tooltip)
 
 
         # Prevent the first item from being selected again
