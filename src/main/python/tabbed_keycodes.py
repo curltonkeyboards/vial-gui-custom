@@ -321,6 +321,153 @@ class SmartChordTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
 
+class midiadvancedtab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle):
+        super().__init__(parent)
+        self.label = label     
+        self.inversion_keycodes = inversion_keycodes
+        self.smartchord_program_change = smartchord_program_change
+        self.smartchord_LSB = smartchord_LSB
+        self.smartchord_MSB = smartchord_MSB
+        self.smartchord_CC_toggle = smartchord_CC_toggle
+
+        # Create a widget for the scroll area content
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        
+        # Set the scroll area properties
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Inversions Header
+        self.inversion_label = QLabel("Advanced Midi Settings")
+        self.main_layout.addWidget(self.inversion_label)
+
+        # Layout for inversion buttons
+        self.button_layout = QGridLayout()
+        self.main_layout.addLayout(self.button_layout)
+
+        # Populate the inversion buttons
+        self.recreate_buttons()
+
+        # Create a horizontal layout for the additional dropdowns
+        self.additional_dropdown_layout2 = QHBoxLayout()
+        self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
+        self.main_layout.addLayout(self.additional_dropdown_layout2)
+
+        # Spacer to push everything to the top
+        self.main_layout.addStretch()
+
+    def add_header_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+        
+    def add_smallheader_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
+        dropdown.setFixedWidth(150)  # Set width of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear previous widgets
+        for i in reversed(range(self.button_layout.count())):
+            widget = self.button_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Populate inversion buttons
+        row = 0
+        col = 0
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode  # Make sure keycode attribute is set
+
+                # Add button to the grid layout
+                self.button_layout.addWidget(btn, row, col)
+
+                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
+                col += 1
+                if col >= 15:  # Adjust the number of columns as needed
+                    col = 0
+                    row += 1
+
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
+    def relabel_buttons(self):
+        # Handle relabeling only for buttons
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
+
+    def has_buttons(self):
+        """Check if there are buttons or dropdown items."""
+        return (self.button_layout.count() > 0)
 
 class MacroTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -463,10 +610,10 @@ class midiTab(QScrollArea):
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
 
         # SmartChord Header and Dropdown
-        self.add_header_dropdown("MIDI Channel", self.smartchord_keycodes, self.horizontal_dropdown_layout)
+        self.add_header_dropdown(" ", self.smartchord_keycodes, self.horizontal_dropdown_layout)
 
         # Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Velocity", self.scales_modes_keycodes, self.horizontal_dropdown_layout)
+        self.add_header_dropdown(" ", self.scales_modes_keycodes, self.horizontal_dropdown_layout)
 
         # 3. Inversions Header
         self.inversion_label = QLabel(" ")
