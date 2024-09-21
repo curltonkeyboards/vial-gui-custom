@@ -520,16 +520,15 @@ class midiTab(QScrollArea):
                     button = SquareButton()
                     button.setText(readable_name)
 
+                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    
                     if "#" in readable_name:  # Sharp keys have # in their name
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
                     if "Pedal" in readable_name or "All" in readable_name:
                         button.setStyleSheet("")
-                        
-                    else:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
-                        
+  
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         
