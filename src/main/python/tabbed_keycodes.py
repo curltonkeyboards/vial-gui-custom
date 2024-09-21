@@ -524,10 +524,10 @@ class midiTab(QScrollArea):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "notees" in readable_name:
+                    if "Notes" in readable_name:
                         button.setStyleSheet("")
                         
-                    if "sustain" in readable_name:
+                    if "Pedal" in readable_name:
                         button.setStyleSheet("")
                         
                     else:
@@ -551,7 +551,9 @@ class midiTab(QScrollArea):
                     
 
                     button.setFixedHeight(40)  # Set size as needed
-                    if "al" in readable_name:
+                    if "Pedal" in readable_name:
+                        button.setFixedWidth(80)  # Set fixed width of 80 for buttons with 'al' in readable_name
+                    if "All" in readable_name:
                         button.setFixedWidth(80)  # Set fixed width of 80 for buttons with 'al' in readable_name
                     else:
                         button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
