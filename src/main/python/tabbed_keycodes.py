@@ -806,6 +806,12 @@ class FilteredTabbedKeycodes(QTabWidget):
 
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
+        
+        for MacroUserTapdanceTab in self.tabs:
+            tab.keycode_changed.connect(self.on_keycode_changed)
+
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
 
     def on_keycode_changed(self, code):
         if code == "Any":
@@ -826,6 +832,13 @@ class FilteredTabbedKeycodes(QTabWidget):
                     self.setCurrentIndex(self.count() - 1)
                     
         for miditab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for MacroUserTapdanceTab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
