@@ -325,12 +325,12 @@ class SmartChordTab(QScrollArea):
 class MacroUserTapdanceTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-     def __init__(self, parent, title, macro_keycodes, user_keycodes, tapdance_keycodes, macro_record_keycodes):
+    def __init__(self, parent, title, macro_keycodes, user_keycodes, tapdance_keycodes):
         super().__init__(parent)
         self.title = title
         self.macro_keycodes = macro_keycodes
         self.user_keycodes = user_keycodes
-        self.tapdance_keycodes = tapdance_keycodes
+        self.tapdance_keycodes = tapdance_keycodes        
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
