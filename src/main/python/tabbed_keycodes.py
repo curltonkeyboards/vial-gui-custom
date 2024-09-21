@@ -322,83 +322,6 @@ class SmartChordTab(QScrollArea):
         return (self.button_layout.count() > 0)
 
 
-class MacroUserTapdanceTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)
-
-    def __init__(self, parent, title, macro_keycodes, user_keycodes, tapdance_keycodes):
-        super().__init__(parent)
-        self.title = title
-        self.macro_keycodes = macro_keycodes
-        self.user_keycodes = user_keycodes
-        self.tapdance_keycodes = tapdance_keycodes        
-
-        # Create a widget for the scroll area content
-        self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout(self.scroll_content)
-        
-        # Set the scroll area properties
-        self.setWidget(self.scroll_content)
-        self.setWidgetResizable(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        # Create a horizontal layout for the Macro, User, and Tapdance dropdowns
-        self.dropdown_layout = QHBoxLayout()
-        self.add_header_dropdown("Macro", self.macro_keycodes, self.dropdown_layout)
-        self.add_header_dropdown("User", self.user_keycodes, self.dropdown_layout)
-        self.add_header_dropdown("Tapdance", self.tapdance_keycodes, self.dropdown_layout)
-        self.main_layout.addLayout(self.dropdown_layout)
-
-        # Add header for Macro Recording
-        self.macro_recording_label = QLabel("Macro Recording")
-        self.main_layout.addWidget(self.macro_recording_label)
-
-        # Layout for macro recording buttons
-        self.button_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.button_layout)
-
-        # Populate buttons initially
-        self.recreate_buttons()
-
-        # Spacer to push everything to the top
-        self.main_layout.addStretch()
-
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Existing code...
-
-    def recreate_buttons(self):
-        """Recreate macro buttons based on the current macro_keycodes."""
-        # Clear existing buttons
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        # Populate buttons for each macro keycode
-        for keycode in self.macro_keycodes:
-            button = SquareButton()  # Replace with your button class
-            button.setText(Keycode.label(keycode.qmk_id))  # Use the keycode label
-            button.clicked.connect(lambda _, k=keycode.qmk_id: self.record_macro(k))
-            self.button_layout.addWidget(button)
-
-    def record_macro(self, macro_keycode):
-        """Handle recording macro action."""
-        print(f"Recording Macro for keycode: {macro_keycode}")
-        self.keycode_changed.emit(macro_keycode)  # Emit the keycode if needed
-
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
-    def relabel_buttons(self):
-        # Implement relabeling if needed
-        pass
-
-    def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return False  # Adjust if needed
 
 
 class midiTab(QScrollArea):
@@ -752,7 +675,6 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
-            MacroUserTapdanceTab(self, "Macros/Presets", KEYCODES_MACRO, KEYCODES_USER, KEYCODES_TAP_DANCE),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),   # Updated to SmartChordTab         
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
