@@ -319,7 +319,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
@@ -327,6 +327,7 @@ class midiadvancedTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_CC_toggle = smartchord_CC_toggle
+        self.CCfixed = CCfixed
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -357,7 +358,7 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
-        # Add CC X -> CC Y dropdown menu
+        # Add CC X and CC Y menu
         self.add_cc_x_y_menu()
 
         # Spacer to push everything to the top
@@ -380,11 +381,17 @@ class midiadvancedTab(QScrollArea):
             # Create a submenu for each CC X value
             cc_x_submenu = QMenu(f"CC X {x}", self.cc_menu)
 
-            # Populate the submenu with CC Y values
-            for y in range(128):
-                action = QAction(f"CC Y {y}", cc_x_submenu)
-                action.triggered.connect(lambda _, x=x, y=y: self.on_cc_selection(x, y))
-                cc_x_submenu.addAction(action)
+            # Populate the submenu with CC Y values based on CCfixed
+            for keycode in self.CCfixed:
+                # Assuming keycode.qmk_id has the format 'MI_CC_x_y', split to extract x and y
+                try:
+                    x_value, y_value = map(int, keycode.qmk_id.split('_')[2:])  # Extract x and y
+                    if x_value == x:  # Only add CC Y if it matches the CC X value
+                        action = QAction(f"CC Y {y_value}", cc_x_submenu)
+                        action.triggered.connect(lambda _, x=x, y=y_value: self.on_cc_selection(x, y))
+                        cc_x_submenu.addAction(action)
+                except ValueError:
+                    continue  # Skip if the format is unexpected
 
             # Add the CC X submenu to the main CC menu
             self.cc_menu.addMenu(cc_x_submenu)
@@ -397,10 +404,10 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.addLayout(self.cc_layout)
 
     def on_cc_selection(self, x, y):
-        """Handle the selection of a CC X -> CC Y value."""
-        selected_keycode = f"CC X {x} -> CC Y {y}"
-        print(f"Selected: {selected_keycode}")
-        self.keycode_changed.emit(selected_keycode)
+        """Handle CC X and CC Y selection."""
+        print(f"Selected CC X: {x}, CC Y: {y}")
+        # Emit a signal or perform any additional action here
+        self.keycode_changed.emit(f"MI_CC_{x}_{y}")
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -1080,7 +1087,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_LT, KEYCODES_LAYERS_TO),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION),
-            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),                   
+            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED),                   
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
