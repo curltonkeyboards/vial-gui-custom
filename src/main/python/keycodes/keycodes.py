@@ -591,18 +591,18 @@ KEYCODES_LAYERS_TO = [
 ]
 
 KEYCODES_LAYERS_LT = [
-    K("LT(0)", "LT\n0", "kc on tap, switch to specified layer while held)"),
-    K("LT(1)", "LT\n1", "kc on tap, switch to specified layer while held)"),
-    K("LT(2)", "LT\n2", "kc on tap, switch to specified layer while held)"),
-    K("LT(3)", "LT\n3", "kc on tap, switch to specified layer while held)"),
-    K("LT(4)", "LT\n4", "kc on tap, switch to specified layer while held)"),
-    K("LT(5)", "LT\n5", "kc on tap, switch to specified layer while held)"),
-    K("LT(6)", "LT\n6", "kc on tap, switch to specified layer while held)"),
-    K("LT(7)", "LT\n7", "kc on tap, switch to specified layer while held)"),
-    K("LT(8)", "LT\n8", "kc on tap, switch to specified layer while held)"),
-    K("LT(9)", "LT\n9", "kc on tap, switch to specified layer while held)"),
-    K("LT(10)", "LT\n10", "kc on tap, switch to specified layer while held)"),
-    K("LT(11)", "LT\n11", "kc on tap, switch to specified layer while held)"),
+    K("LT1(kc)", "LT\n0", "kc on tap, switch to specified layer while held)"),
+    K("LT1(kc)", "LT\n1", "kc on tap, switch to specified layer while held)"),
+    K("LT2(kc)", "LT\n2", "kc on tap, switch to specified layer while held)"),
+    K("LT3(kc)", "LT\n3", "kc on tap, switch to specified layer while held)"),
+    K("LT4(kc)", "LT\n4", "kc on tap, switch to specified layer while held)"),
+    K("LT5(kc)", "LT\n5", "kc on tap, switch to specified layer while held)"),
+    K("LT6(kc)", "LT\n6", "kc on tap, switch to specified layer while held)"),
+    K("LT7(kc)", "LT\n7", "kc on tap, switch to specified layer while held)"),
+    K("LT8(kc)", "LT\n8", "kc on tap, switch to specified layer while held)"),
+    K("LT9(kc)", "LT\n9", "kc on tap, switch to specified layer while held)"),
+    K("LT10(kc)", "LT\n10", "kc on tap, switch to specified layer while held)"),
+    K("LT11(kc)", "LT\n11", "kc on tap, switch to specified layer while held)"),
 ]
 
 
