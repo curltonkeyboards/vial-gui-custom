@@ -551,7 +551,10 @@ class midiTab(QScrollArea):
                     
 
                     button.setFixedHeight(40)  # Set size as needed
-                    button.setFixedWidth(40)  # Set size as needed
+                    if "al" in readable_name:
+                        button.setFixedWidth(80)  # Set fixed width of 80 for buttons with 'al' in readable_name
+                    else:
+                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
