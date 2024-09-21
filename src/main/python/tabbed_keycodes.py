@@ -353,7 +353,7 @@ class midiTab(QScrollArea):
 
             ["MI_C_3", "MI_D_3", "MI_E_3", "MI_F_3", "MI_G_3", "MI_A_3", "MI_B_3",
              "MI_C_4", "MI_D_4", "MI_E_4", "MI_F_4", "MI_G_4", "MI_A_4", "MI_B_4",
-             "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"]
+             "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"],
             
             ["MI_ALLOFF", "MI_SUS"]
         ]
@@ -506,7 +506,9 @@ class midiTab(QScrollArea):
             "MI_F": "F",
             "MI_G": "G",
             "MI_A": "A",
-            "MI_B": "B"
+            "MI_B": "B",
+            "MI_ALLOFF": "All\nNotes\nOff", 
+            "MI_SUS" : "Sustain\nPedal"
         }
 
         for row_index, row in enumerate(layout):
