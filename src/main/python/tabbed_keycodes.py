@@ -8,12 +8,12 @@ from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
 from widgets.display_keyboard_defs import ansi_100, ansi_80, ansi_70, iso_100, iso_80, iso_70, mods, mods_narrow, midi_layout
 from widgets.flowlayout import FlowLayout
-from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
+from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_ENCODER_SENSITIVITY, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, \
-    KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MACRO_BASE, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
+    KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
@@ -322,102 +322,78 @@ class SmartChordTab(QScrollArea):
         return (self.button_layout.count() > 0)
 
 
-class MacroUserTapdanceTab(QScrollArea):
+class MacroTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, macro_keycodes, user_keycodes, tapdance_keycodes, record_keycodes):
+    def __init__(self, parent, label, macro_keycodes, user_keycodes, tapdance_keycodes, base_macro_keycodes):
         super().__init__(parent)
         self.label = label
         self.macro_keycodes = macro_keycodes
         self.user_keycodes = user_keycodes
         self.tapdance_keycodes = tapdance_keycodes
-        self.record_keycodes = record_keycodes
+        self.base_macro_keycodes = base_macro_keycodes
 
-        # Create a widget for the scroll area content
-        self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout(self.scroll_content)
-
-        # Set the scroll area properties
-        self.setWidget(self.scroll_content)
-        self.setWidgetResizable(True)
+        # Main layout
+        self.main_layout = QVBoxLayout()
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setLayout(self.main_layout)
 
-        # Create a horizontal layout for the dropdowns
-        self.dropdown_layout = QHBoxLayout()
-        self.add_header_dropdown("Macros", self.macro_keycodes, self.dropdown_layout)
-        self.add_header_dropdown("User", self.user_keycodes, self.dropdown_layout)
-        self.add_header_dropdown("Tapdance", self.tapdance_keycodes, self.dropdown_layout)
-        self.main_layout.addLayout(self.dropdown_layout)
+        # 1. SmartChord Header and Dropdown
+        self.add_header_dropdown("Macros", self.macro_keycodes)
 
-        # Record Header
-        self.record_label = QLabel("Record")
-        self.main_layout.addWidget(self.record_label)
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("User Profiles", self.user_keycodes)
+        
+        # 2. Scales/Modes Header and Dropdown
+        self.add_header_dropdown("Tapdance", self.tapdance_keycodes)
 
-        # Layout for record buttons
-        self.button_layout = QGridLayout()
+        # 3. Inversions Header
+        self.base_macro_label = QLabel("Chord Inversions")
+        self.main_layout.addWidget(self.base_macro_label)
+
+        # Layout for buttons (Inversions)
+        self.button_layout = QHBoxLayout()
         self.main_layout.addLayout(self.button_layout)
 
-        # Populate the record buttons
-        self.recreate_buttons()
+        # Populate the inversion buttons
+        self.recreate_buttons()  # Call without arguments initially
 
-        # Spacer to push everything to the top
+        # 4. Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
+    def add_header_dropdown(self, header_text, keycodes):
+        """Helper method to add a header and dropdown."""
         # Create header
         header_label = QLabel(header_text)
-        vbox.addWidget(header_label)
+        self.main_layout.addWidget(header_label)
 
         # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-
-        # Add the keycodes as options
+        dropdown = QComboBox()
+        dropdown.setFixedWidth(300)  # Width stays at 200
+        dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        vbox.addWidget(dropdown)
+        self.main_layout.addWidget(dropdown)
 
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-
-    def recreate_buttons(self):
-        """Recreate record buttons based on the current record_keycodes."""
+    def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Populate record buttons
-        row = 0
-        col = 0
-        for keycode in self.record_keycodes:
-            btn = SquareButton()  # Replace with your button class
-            btn.setText(Keycode.label(keycode.qmk_id))
-            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-            btn.keycode = keycode  # Make sure keycode attribute is set
-
-            # Add button to the grid layout
-            self.button_layout.addWidget(btn, row, col)
-
-            # Move to the next column; if the limit is reached, reset to column 0 and increment the row
-            col += 1
-            if col >= 5:  # Adjust the number of columns as needed
-                col = 0
-                row += 1
+        # Populate inversion buttons
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setFixedWidth(40)  # Set a fixed width for buttons
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode  # Make sure keycode attribute is set
+                self.button_layout.addWidget(btn)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -425,7 +401,7 @@ class MacroUserTapdanceTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        """Update button labels if necessary."""
+        # Handle relabeling only for buttons
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
@@ -788,10 +764,12 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
-            MacroUserTapdanceTab(self, "Macros/Presets", KEYCODES_MACRO, KEYCODES_USER, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
+            MacroTab(self, "Macro", KEYCODES_MACRO, KEYCODES_USER, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),   # Updated to SmartChordTab         
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
+            SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
+            SimpleTab(self, "User", KEYCODES_USER),
             SimpleTab(self, "MIDI BANK", KEYCODES_MIDI_BANK),
         ]
 
@@ -802,12 +780,6 @@ class FilteredTabbedKeycodes(QTabWidget):
         KeycodeDisplay.notify_keymap_override(self)
         
         for miditab in self.tabs:
-            tab.keycode_changed.connect(self.on_keycode_changed)
-
-        self.recreate_keycode_buttons()
-        KeycodeDisplay.notify_keymap_override(self)
-        
-        for MacroUserTapdanceTab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
 
         self.recreate_keycode_buttons()
@@ -832,13 +804,6 @@ class FilteredTabbedKeycodes(QTabWidget):
                     self.setCurrentIndex(self.count() - 1)
                     
         for miditab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for MacroUserTapdanceTab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
