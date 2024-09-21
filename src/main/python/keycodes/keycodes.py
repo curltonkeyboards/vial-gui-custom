@@ -500,19 +500,110 @@ KEYCODES_ISO.extend(KEYCODES_ISO_KR)
 
 KEYCODES_LAYERS = []
 
-KEYCODES_LAYERS_MO = []
+KEYCODES_LAYERS_MO = [
+    K("MO(0)", "MO\n0", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(1)", "MO\n1", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(2)", "MO\n2", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(3)", "MO\n3", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(4)", "MO\n4", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(5)", "MO\n5", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(6)", "MO\n6", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(7)", "MO\n7", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(8)", "MO\n8", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(9)", "MO\n9", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(10)", "MO\n10", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+    K("MO(11)", "MO\n11", "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"),
+]
 
-KEYCODES_LAYERS_DF = []
+KEYCODES_LAYERS_DF = [
+    K("DF(0)", "DF\n0", "Set to default (active) layer)"),
+    K("DF(1)", "DF\n1", "Set to default (active) layer)"),
+    K("DF(2)", "DF\n2", "Set to default (active) layer)"),
+    K("DF(3)", "DF\n3", "Set to default (active) layer)"),
+    K("DF(4)", "DF\n4", "Set to default (active) layer)"),
+    K("DF(5)", "DF\n5", "Set to default (active) layer)"),
+    K("DF(6)", "DF\n6", "Set to default (active) layer)"),
+    K("DF(7)", "DF\n7", "Set to default (active) layer)"),
+    K("DF(8)", "DF\n8", "Set to default (active) layer)"),
+    K("DF(9)", "DF\n9", "Set to default (active) layer)"),
+    K("DF(10)", "DF\n10", "Set to default (active) layer)"),
+    K("DF(11)", "DF\n11", "Set to default (active) layer)"),
+]
 
-KEYCODES_LAYERS_TG = []
+KEYCODES_LAYERS_TG = [
+    K("TG(0)", "TG\n0", "Toggle layer on or off)"),
+    K("TG(1)", "TG\n1", "Toggle layer on or off)"),
+    K("TG(2)", "TG\n2", "Toggle layer on or off)"),
+    K("TG(3)", "TG\n3", "Toggle layer on or off)"),
+    K("TG(4)", "TG\n4", "Toggle layer on or off)"),
+    K("TG(5)", "TG\n5", "Toggle layer on or off)"),
+    K("TG(6)", "TG\n6", "Toggle layer on or off)"),
+    K("TG(7)", "TG\n7", "Toggle layer on or off)"),
+    K("TG(8)", "TG\n8", "Toggle layer on or off)"),
+    K("TG(9)", "TG\n9", "Toggle layer on or off)"),
+    K("TG(10)", "TG\n10", "Toggle layer on or off)"),
+    K("TG(11)", "TG\n11", "Toggle layer on or off)"),
+]
 
-KEYCODES_LAYERS_TT = []
+KEYCODES_LAYERS_TT = [
+    K("TT(0)", "TT\n0", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(1)", "TT\n1", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(2)", "TT\n2", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(3)", "TT\n3", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(4)", "TT\n4", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(5)", "TT\n5", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(6)", "TT\n6", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(7)", "TT\n7", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(8)", "TT\n8", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(9)", "TT\n9", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(10)", "TT\n10", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+    K("TT(11)", "TT\n11", "Normally acts like MO unless it's tapped multiple times, which toggles layer on)"),
+]
 
-KEYCODES_LAYERS_OSL = []
+KEYCODES_LAYERS_OSL = [
+    K("OSL(0)", "OSL\n0", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(1)", "OSL\n1", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(2)", "OSL\n2", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(3)", "OSL\n3", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(4)", "OSL\n4", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(5)", "OSL\n5", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(6)", "OSL\n6", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(7)", "OSL\n7", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(8)", "OSL\n8", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(9)", "OSL\n9", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(10)", "OSL\n10", "Momentarily activates layer until a key is pressed)"),
+    K("OSL(11)", "OSL\n11", "Momentarily activates layer until a key is pressed)"),
+]
 
-KEYCODES_LAYERS_TO = []
+KEYCODES_LAYERS_TO = [
+    K("TO(0)", "TO\n0", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(1)", "TO\n1", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(2)", "TO\n2", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(3)", "TO\n3", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(4)", "TO\n4", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(5)", "TO\n5", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(6)", "TO\n6", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(7)", "TO\n7", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(8)", "TO\n8", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(9)", "TO\n9", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(10)", "TO\n10", "Turns on layer and turns off all other layers, except the default layer)"),
+    K("TO(11)", "TO\n11", "Turns on layer and turns off all other layers, except the default layer)"),
+]
 
-KEYCODES_LAYERS_LT = []
+KEYCODES_LAYERS_LT = [
+    K("LT(0)", "LT\n0", "kc on tap, switch to specified layer while held)"),
+    K("LT(1)", "LT\n1", "kc on tap, switch to specified layer while held)"),
+    K("LT(2)", "LT\n2", "kc on tap, switch to specified layer while held)"),
+    K("LT(3)", "LT\n3", "kc on tap, switch to specified layer while held)"),
+    K("LT(4)", "LT\n4", "kc on tap, switch to specified layer while held)"),
+    K("LT(5)", "LT\n5", "kc on tap, switch to specified layer while held)"),
+    K("LT(6)", "LT\n6", "kc on tap, switch to specified layer while held)"),
+    K("LT(7)", "LT\n7", "kc on tap, switch to specified layer while held)"),
+    K("LT(8)", "LT\n8", "kc on tap, switch to specified layer while held)"),
+    K("LT(9)", "LT\n9", "kc on tap, switch to specified layer while held)"),
+    K("LT(10)", "LT\n10", "kc on tap, switch to specified layer while held)"),
+    K("LT(11)", "LT\n11", "kc on tap, switch to specified layer while held)"),
+]
 
 
 
