@@ -322,7 +322,76 @@ class SmartChordTab(QScrollArea):
         return (self.button_layout.count() > 0)
 
 
+class MacroUserTapdanceTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
 
+    def __init__(self, parent, macro_keycodes, user_keycodes, tapdance_keycodes):
+        super().__init__(parent)
+        self.macro_keycodes = macro_keycodes
+        self.user_keycodes = user_keycodes
+        self.tapdance_keycodes = tapdance_keycodes
+
+        # Create a widget for the scroll area content
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        
+        # Set the scroll area properties
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Create a horizontal layout for the Macro, User, and Tapdance dropdowns
+        self.dropdown_layout = QHBoxLayout()
+        self.add_header_dropdown("Macro", self.macro_keycodes, self.dropdown_layout)
+        self.add_header_dropdown("User", self.user_keycodes, self.dropdown_layout)
+        self.add_header_dropdown("Tapdance", self.tapdance_keycodes, self.dropdown_layout)
+        self.main_layout.addLayout(self.dropdown_layout)
+
+        # Spacer to push everything to the top
+        self.main_layout.addStretch()
+
+    def add_header_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
+    def relabel_buttons(self):
+        # Implement relabeling if needed
+        pass
+
+    def has_buttons(self):
+        """Check if there are buttons or dropdown items."""
+        return False  # Adjust if needed
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -675,12 +744,10 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
-            SimpleTab(self, "Macro", KEYCODES_MACRO),
+            MacroUserTapdanceTab(self, "Macros/Presets", KEYCODES_MACRO, KEYCODES_USER, KEYCODES_TAP_DANCE),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),   # Updated to SmartChordTab         
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
-            SimpleTab(self, "Tap Dance", KEYCODES_TAP_DANCE),
-            SimpleTab(self, "User", KEYCODES_USER),
             SimpleTab(self, "MIDI BANK", KEYCODES_MIDI_BANK),
         ]
 
