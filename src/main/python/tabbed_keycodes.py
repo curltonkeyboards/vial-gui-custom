@@ -8,7 +8,7 @@ from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
 from widgets.display_keyboard_defs import ansi_100, ansi_80, ansi_70, iso_100, iso_80, iso_70, mods, mods_narrow, midi_layout
 from widgets.flowlayout import FlowLayout
-from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
+from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
@@ -325,8 +325,9 @@ class SmartChordTab(QScrollArea):
 class MacroUserTapdanceTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, macro_keycodes, user_keycodes, tapdance_keycodes):
+    def __init__(self, parent, title, macro_keycodes, user_keycodes, tapdance_keycodes):
         super().__init__(parent)
+        self.title = title  # Store the title if needed
         self.macro_keycodes = macro_keycodes
         self.user_keycodes = user_keycodes
         self.tapdance_keycodes = tapdance_keycodes
