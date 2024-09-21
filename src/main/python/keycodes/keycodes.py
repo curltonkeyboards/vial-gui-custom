@@ -1392,6 +1392,12 @@ def recreate_keyboard_keycodes(keyboard):
         lbl = "M{}".format(x)
         KEYCODES_MACRO.append(Keycode(lbl, lbl))
 
+
+    KEYCODES_TAP_DANCE.clear()
+    for x in range(keyboard.tap_dance_count):
+        lbl = "TD({})".format(x)
+        KEYCODES_TAP_DANCE.append(Keycode(lbl, lbl, "Tap dance keycode"))
+
     # Check if custom keycodes are defined in keyboard, and if so add them to user keycodes
     if keyboard.custom_keycodes is not None and len(keyboard.custom_keycodes) > 0:
         create_custom_user_keycodes(keyboard.custom_keycodes)
