@@ -764,7 +764,38 @@ KEYCODES_MEDIA = [
 ]
 
 KEYCODES_TAP_DANCE = [
-
+    K("TD(0)", "TapDance\n0", "TapDance0"),
+    K("TD(1)", "TapDance\n1", "TapDance1"),
+    K("TD(2)", "TapDance\n2", "TapDance2"),
+    K("TD(3)", "TapDance\n3", "TapDance3"),
+    K("TD(4)", "TapDance\n4", "TapDance4"),
+    K("TD(5)", "TapDance\n5", "TapDance5"),
+    K("TD(6)", "TapDance\n6", "TapDance6"),
+    K("TD(7)", "TapDance\n7", "TapDance7"),
+    K("TD(8)", "TapDance\n8", "TapDance8"),
+    K("TD(9)", "TapDance\n9", "TapDance9"),
+    K("TD(10)", "TapDance\n10", "TapDance10"),
+    K("TD(11)", "TapDance\n11", "TapDance11"),
+    K("TD(12)", "TapDance\n12", "TapDance12"),
+    K("TD(13)", "TapDance\n13", "TapDance13"),
+    K("TD(14)", "TapDance\n14", "TapDance14"),
+    K("TD(15)", "TapDance\n15", "TapDance15"),
+    K("TD(16)", "TapDance\n16", "TapDance16"),
+    K("TD(17)", "TapDance\n17", "TapDance17"),
+    K("TD(18)", "TapDance\n18", "TapDance18"),
+    K("TD(19)", "TapDance\n19", "TapDance19"),
+    K("TD(20)", "TapDance\n20", "TapDance20"),
+    K("TD(21)", "TapDance\n21", "TapDance21"),
+    K("TD(22)", "TapDance\n22", "TapDance22"),
+    K("TD(23)", "TapDance\n23", "TapDance23"),
+    K("TD(24)", "TapDance\n24", "TapDance24"),
+    K("TD(25)", "TapDance\n25", "TapDance25"),
+    K("TD(26)", "TapDance\n26", "TapDance26"),
+    K("TD(27)", "TapDance\n27", "TapDance27"),
+    K("TD(28)", "TapDance\n28", "TapDance28"),
+    K("TD(29)", "TapDance\n29", "TapDance29"),
+    K("TD(30)", "TapDance\n30", "TapDance30"),
+    K("TD(31)", "TapDance\n31", "TapDance31"),
 ]
 
 KEYCODES_USER = [
@@ -772,7 +803,6 @@ KEYCODES_USER = [
 ]
 
 KEYCODES_MACRO = [
-    K("M0", "M0", "MACRO 0"),
     K("M1", "M1", "MACRO 1"),
     K("M2", "M2", "MACRO 2"),
     K("M3", "M3", "MACRO 3"),
@@ -900,6 +930,7 @@ KEYCODES_MACRO = [
     K("M125", "M125", "MACRO 125"),
     K("M126", "M126", "MACRO 126"),
     K("M127", "M127", "MACRO 127"),
+    K("M128", "M128", "MACRO 128"),
 ]
 
 KEYCODES_MACRO_BASE = [
