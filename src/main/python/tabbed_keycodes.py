@@ -367,7 +367,7 @@ class midiadvancedTab(QScrollArea):
     def add_cc_x_y_menu(self):
         """Add a button that opens a CC X -> CC Y submenu."""
         self.cc_layout = QHBoxLayout()
-
+    
         # Create a button to represent the CC X -> CC Y dropdown
         self.cc_button = QPushButton("Select CC X -> CC Y")
         self.cc_button.setFixedHeight(40)
@@ -375,13 +375,6 @@ class midiadvancedTab(QScrollArea):
 
         # Create a menu to be attached to the button
         self.cc_menu = QMenu(self.cc_button)
-
-        # Create a QWidget to hold the scroll area
-        self.cc_scroll_widget = QWidget()
-        self.cc_scroll_layout = QVBoxLayout(self.cc_scroll_widget)
-
-        # Set the height of the scroll area
-        self.cc_scroll_widget.setFixedHeight(200)
 
         # Populate the menu with CC X items
         for x in range(128):
@@ -404,7 +397,10 @@ class midiadvancedTab(QScrollArea):
                     if x_value == x:  # Only add CC Y if it matches the CC X value
                         action = QAction(f"CC Y {y_value}", cc_y_content_widget)
                         action.triggered.connect(lambda _, x=x, y=y_value: self.on_cc_selection(x, y))
-                        cc_y_content_layout.addWidget(action)
+                        # Create a button instead of directly using QAction
+                        button = QPushButton(f"CC Y {y_value}")
+                        button.clicked.connect(lambda _, x=x, y=y_value: self.on_cc_selection(x, y))
+                        cc_y_content_layout.addWidget(button)
                 except ValueError:
                     continue  # Skip if the format is unexpected
 
@@ -423,6 +419,7 @@ class midiadvancedTab(QScrollArea):
         # Add the button to the layout
         self.cc_layout.addWidget(self.cc_button)
         self.main_layout.addLayout(self.cc_layout)
+
 
     def on_cc_selection(self, x, y):
         """Handle CC X and CC Y selection."""
