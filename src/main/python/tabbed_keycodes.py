@@ -460,7 +460,7 @@ class midiadvancedTab(QScrollArea):
 class LayerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, smartchord_LSB2, smartchord_MSB2, smartchord_CC_toggle2):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_CC_toggle, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_LSB2, smartchord_MSB2, smartchord_CC_toggle2):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
@@ -483,7 +483,7 @@ class LayerTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # Inversions Header
-        self.inversion_label = QLabel("Advanced Midi Settings")
+        self.inversion_label = QLabel("Function Buttons")
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for inversion buttons
