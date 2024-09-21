@@ -325,17 +325,18 @@ class SmartChordTab(QScrollArea):
 class MacroUserTapdanceTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, title, macro_keycodes, user_keycodes, tapdance_keycodes):
+    def __init__(self, parent, title, macro_keycodes, user_keycodes, tapdance_keycodes, macro_record_keycodes):
         super().__init__(parent)
-        self.title = title  # Store the title if needed
+        self.title = title
         self.macro_keycodes = macro_keycodes
         self.user_keycodes = user_keycodes
         self.tapdance_keycodes = tapdance_keycodes
+        self.macro_record_keycodes = macro_record_keycodes  # Store macro recording keycodes
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        
+
         # Set the scroll area properties
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -348,6 +349,15 @@ class MacroUserTapdanceTab(QScrollArea):
         self.add_header_dropdown("User", self.user_keycodes, self.dropdown_layout)
         self.add_header_dropdown("Tapdance", self.tapdance_keycodes, self.dropdown_layout)
         self.main_layout.addLayout(self.dropdown_layout)
+
+        # Add header for Macro Recording
+        self.macro_recording_label = QLabel("Macro Recording")
+        self.main_layout.addWidget(self.macro_recording_label)
+
+        # Layout for macro recording buttons
+        self.button_layout = QVBoxLayout()
+        self.populate_macro_buttons()  # Populate the buttons
+        self.main_layout.addLayout(self.button_layout)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -381,6 +391,19 @@ class MacroUserTapdanceTab(QScrollArea):
         # Add the vertical box (header + dropdown) to the provided layout
         layout.addLayout(vbox)
 
+    def populate_macro_buttons(self):
+        """Populate the macro recording buttons."""
+        for keycode in self.macro_record_keycodes:
+            button = SquareButton()  # Replace with your button class
+            button.setText(Keycode.label(keycode.qmk_id))  # Use the keycode label
+            button.clicked.connect(lambda _, k=keycode.qmk_id: self.record_macro(k))
+            self.button_layout.addWidget(button)
+
+    def record_macro(self, macro_keycode):
+        """Handle recording macro action."""
+        print(f"Recording Macro for keycode: {macro_keycode}")
+        self.keycode_changed.emit(macro_keycode)  # Emit the keycode if needed
+
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
@@ -393,6 +416,7 @@ class MacroUserTapdanceTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return False  # Adjust if needed
+
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -745,7 +769,7 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Backlight", KEYCODES_BACKLIGHT),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
-            MacroUserTapdanceTab(self, "Macros/Presets", KEYCODES_MACRO, KEYCODES_USER, KEYCODES_TAP_DANCE),
+            MacroUserTapdanceTab(self, "Macros/Presets", KEYCODES_MACRO, KEYCODES_USER, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_Program_Change, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),   # Updated to SmartChordTab         
             SimpleTab(self, "Encoder Sensitivity", KEYCODES_ENCODER_SENSITIVITY),
