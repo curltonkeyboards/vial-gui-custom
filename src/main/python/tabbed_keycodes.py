@@ -386,12 +386,25 @@ class midiadvancedTab(QScrollArea):
 
         layout = QVBoxLayout(dialog)
 
+        # Create a scroll area for CC X values
+        cc_x_scroll_area = QScrollArea()
+        cc_x_scroll_area.setWidgetResizable(True)
+
+        # Create a widget for the scroll area content
+        cc_x_content_widget = QWidget()
+        cc_x_content_layout = QVBoxLayout(cc_x_content_widget)
+
         for x in range(128):
             # Create a button for each CC X value
             cc_x_button = QPushButton(f"CC X {x}", dialog)
             cc_x_button.clicked.connect(lambda _, x=x: self.open_cc_y_submenu(x))
-            layout.addWidget(cc_x_button)
+            cc_x_content_layout.addWidget(cc_x_button)
 
+        cc_x_content_widget.setLayout(cc_x_content_layout)
+        cc_x_scroll_area.setWidget(cc_x_content_widget)
+
+        # Add the scroll area to the main layout of the dialog
+        layout.addWidget(cc_x_scroll_area)
         dialog.setLayout(layout)
         dialog.exec_()
 
