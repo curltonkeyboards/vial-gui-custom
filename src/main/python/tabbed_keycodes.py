@@ -134,8 +134,7 @@ class Tab(QScrollArea):
 
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
-        self.select_alternative()     
-
+        self.select_alternative()        
         
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
@@ -312,10 +311,15 @@ class SmartChordTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
 
+from PyQt5.QtWidgets import (
+    QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction
+)
+from PyQt5.QtCore import pyqtSignal, Qt
+
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
@@ -323,7 +327,7 @@ class midiadvancedTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_CC_toggle = smartchord_CC_toggle
-        self.CCfixed = CCfixed
+
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -352,23 +356,51 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
         self.main_layout.addLayout(self.additional_dropdown_layout2)
-        self.add_cc_xy_dropdowns()
+
+        # Add CC X -> CC Y dropdown menu
+        self.add_cc_x_y_menu()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
-        
-    def add_cc_xy_dropdowns(self):
-        """Add dropdowns for CC X and CC Y at the end."""
+
+    def add_cc_x_y_menu(self):
+        """Add a button that opens a CC X -> CC Y submenu."""
         self.cc_layout = QHBoxLayout()
 
-        # Dropdown for CC X
-        self.add_smallheader_dropdown("CC X", self.CCfixed, self.cc_layout)
+        # Create a button to represent the CC X -> CC Y dropdown
+        self.cc_button = QPushButton("Select CC X -> CC Y")
+        self.cc_button.setFixedHeight(40)
+        self.cc_button.setFixedWidth(200)
 
-        # Dropdown for CC Y
-        self.add_smallheader_dropdown("CC Y", self.CCfixed, self.cc_layout)
+        # Create a menu to be attached to the button
+        self.cc_menu = QMenu(self.cc_button)
 
-        # Add the layout to the main layout
+        # Populate the menu with CC X items
+        for x in range(128):
+            # Create a submenu for each CC X value
+            cc_x_submenu = QMenu(f"CC X {x}", self.cc_menu)
+
+            # Populate the submenu with CC Y values
+            for y in range(128):
+                action = QAction(f"CC Y {y}", cc_x_submenu)
+                action.triggered.connect(lambda _, x=x, y=y: self.on_cc_selection(x, y))
+                cc_x_submenu.addAction(action)
+
+            # Add the CC X submenu to the main CC menu
+            self.cc_menu.addMenu(cc_x_submenu)
+
+        # Attach the menu to the button
+        self.cc_button.setMenu(self.cc_menu)
+
+        # Add the button to the layout
+        self.cc_layout.addWidget(self.cc_button)
         self.main_layout.addLayout(self.cc_layout)
+
+    def on_cc_selection(self, x, y):
+        """Handle the selection of a CC X -> CC Y value."""
+        selected_keycode = f"CC X {x} -> CC Y {y}"
+        print(f"Selected: {selected_keycode}")
+        self.keycode_changed.emit(selected_keycode)
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -383,37 +415,6 @@ class midiadvancedTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-        
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-        dropdown.setFixedWidth(150)  # Set width of dropdown
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
@@ -475,6 +476,7 @@ class midiadvancedTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 class LayerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -1078,7 +1080,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_LT, KEYCODES_LAYERS_TO),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION),
-            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED),                   
+            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC),                   
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
