@@ -499,6 +499,24 @@ KEYCODES_ISO_KR = [
 KEYCODES_ISO.extend(KEYCODES_ISO_KR)
 
 KEYCODES_LAYERS = []
+
+KEYCODES_LAYERS_MO = []
+
+KEYCODES_LAYERS_DF = []
+
+KEYCODES_LAYERS_TG = []
+
+KEYCODES_LAYERS_TT = []
+
+KEYCODES_LAYERS_OSL = []
+
+KEYCODES_LAYERS_TO = []
+
+KEYCODES_LAYERS_LT = []
+
+
+
+
 RESET_KEYCODE = "RESET"
 
 KEYCODES_BOOT = [
@@ -783,6 +801,20 @@ KEYCODES_TAP_DANCE = [
     K("TD(30)", "TapDance\n30", "TapDance30"),
     K("TD(31)", "TapDance\n31", "TapDance31"),
 ]
+
+KEYCODES_LAYER_MO = [
+    K("MO(0)", "MO\n0", "TapDance0"),
+    K("MO(1)", "MO\n1", "TapDance1"),
+    K("MO(2)", "MO\n2", "TapDance2"),
+    K("MO(3)", "MO\n3", "TapDance3"),
+    K("MO(4)", "MO\n4", "TapDance4"),
+    K("MO(5)", "MO\n5", "TapDance5"),
+    K("MO(6)", "MO\n6", "TapDance6"),
+    K("MO(7)", "MO\n7", "TapDance7"),
+    K("MO(8)", "MO\n8", "TapDance8"),
+    K("MO(9)", "MO\n9", "TapDance9"),
+    K("MO(10)", "MO\n10", "TapDance10"),
+    K("MO(11)", "MO\n11", "TapDance11"),
 
 KEYCODES_USER = [
     K("USER00", "USER00", "USER00"),
@@ -1283,9 +1315,9 @@ def recreate_keycodes():
     """ Regenerates global KEYCODES array """
 
     KEYCODES.clear()
-    KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS +
+    KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
-                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+
+                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ 
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)
@@ -1351,27 +1383,27 @@ def recreate_keyboard_keycodes(keyboard):
         KEYCODES_LAYERS.append(Keycode("FN_MO13", "Fn1\n(Fn3)"))
         KEYCODES_LAYERS.append(Keycode("FN_MO23", "Fn2\n(Fn3)"))
 
-    KEYCODES_LAYERS.extend(
+    KEYCODES_LAYERS_MO.extend(
         generate_keycodes_for_mask("MO",
                                    "Momentarily turn on layer when pressed (requires KC_TRNS on destination layer)"))
-    KEYCODES_LAYERS.extend(
+    KEYCODES_LAYERS_DF.extend(
         generate_keycodes_for_mask("DF",
                                    "Set the base (default) layer"))
-    KEYCODES_LAYERS.extend(
+    KEYCODES_LAYERS_TG.extend(
         generate_keycodes_for_mask("TG",
                                    "Toggle layer on or off"))
-    KEYCODES_LAYERS.extend(
+    KEYCODES_LAYERS_TT.extend(
         generate_keycodes_for_mask("TT",
                                    "Normally acts like MO unless it's tapped multiple times, which toggles layer on"))
-    KEYCODES_LAYERS.extend(
+    KEYCODES_LAYERS_OSL.extend(
         generate_keycodes_for_mask("OSL",
                                    "Momentarily activates layer until a key is pressed"))
-    KEYCODES_LAYERS.extend(
+    KEYCODES_LAYERS_TO.extend(
         generate_keycodes_for_mask("TO",
                                    "Turns on layer and turns off all other layers, except the default layer"))
 
     for x in range(layers):
-        KEYCODES_LAYERS.append(Keycode("LT{}(kc)".format(x), "LT {}\n(kc)".format(x),
+        KEYCODES_LAYERS_LT.append(Keycode("LT{}(kc)".format(x), "LT {}\n(kc)".format(x),
                                        "kc on tap, switch to layer {} while held".format(x), masked=True))
 
     KEYCODES_MACRO.clear()
