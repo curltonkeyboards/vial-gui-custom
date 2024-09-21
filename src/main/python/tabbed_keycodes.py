@@ -19,17 +19,6 @@ from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
 
 
-class keycode:
-    def __init__(self, qmk_id, label, description):
-        self.qmk_id = qmk_id
-        self.label = label
-        self.description = description
-
-    @staticmethod
-    def label(qmk_id):
-        # Return the label associated with the qmk_id
-        pass
-
 class AlternativeDisplay(QWidget):
 
     keycode_changed = pyqtSignal(str)

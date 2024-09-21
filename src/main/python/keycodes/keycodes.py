@@ -156,6 +156,13 @@ class Keycode:
         if qmk_constant not in kc:
             raise RuntimeError("unable to resolve qmk_id={}".format(qmk_constant))
         return kc[qmk_constant]
+        
+    @classmethod
+    def description(cls, qmk_id):
+        keycode = cls.find_outer_keycode(qmk_id)
+        if keycode is None or keycode.tooltip is None:
+            return ""
+        return keycode.tooltip
 
 
 K = Keycode
