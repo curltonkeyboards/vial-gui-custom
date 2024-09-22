@@ -382,7 +382,7 @@ class midiadvancedTab(QScrollArea):
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
 
         # Add the button to the layout
-        self.cc_layout.addWidget(self.cc_button)
+        self.cc_layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
 
         # Add the layout to the main layout
         self.main_layout.addLayout(self.cc_layout)
