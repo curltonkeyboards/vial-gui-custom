@@ -339,7 +339,13 @@ class midiadvancedTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        
+        # Inversions Header
+        self.inversion_label = QLabel("Advanced Midi Settings")
+        self.main_layout.addWidget(self.inversion_label)
+
+        # Layout for inversion buttons
+        self.button_layout = QGridLayout()
+        self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
@@ -353,13 +359,7 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
-        # Inversions Header
-        self.inversion_label = QLabel("Advanced Midi Settings")
-        self.main_layout.addWidget(self.inversion_label)
-
-        # Layout for inversion buttons
-        self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
+        # Add CC X and CC Y menu
         
 
         # Spacer to push everything to the top
