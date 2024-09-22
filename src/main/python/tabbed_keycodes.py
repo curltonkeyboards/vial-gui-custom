@@ -630,7 +630,9 @@ class LayerTab(QScrollArea):
 
         # Inversions Header
         self.inversion_label = QLabel("Function Buttons")
-        self.main_layout.addWidget(self.inversion_label)
+        self.inversion_label.setAlignment(Qt.AlignCenter)  # Center the label text
+        self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add to layout with center alignment
+
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -827,6 +829,7 @@ class MacroTab(QScrollArea):
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 200
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
