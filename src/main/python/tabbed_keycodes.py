@@ -193,7 +193,8 @@ class SmartChordTab(QScrollArea):
 
         # Inversions Header
         self.inversion_label = QLabel("Chord Inversions")
-        self.main_layout.addWidget(self.inversion_label)
+        self.inversion_label.setAlignment(Qt.AlignCenter)  # Center the label text
+        self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add with center alignment
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -371,7 +372,9 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
         self.inversion_label = QLabel("Advanced Midi Settings")
-        self.main_layout.addWidget(self.inversion_label)
+        self.inversion_label.setAlignment(Qt.AlignCenter)  # Center the label text
+        self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add with center alignment
+
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -881,14 +884,12 @@ class MacroTab(QScrollArea):
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes, midi_cc_up_keycodes, midi_cc_down_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes = smartchord_keycodes
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
-        self.midi_cc_up_keycodes = midi_cc_up_keycodes
-        self.midi_cc_down_keycodes = midi_cc_down_keycodes
         self.scroll_content = QWidget()
 
         # Define MIDI layout
@@ -1153,36 +1154,6 @@ class midiTab(QScrollArea):
                     col = 0
                     row += 1
 
-        # Add dropdown for MIDI_CC_UP keycodes after first row of inversion buttons
-        self.add_cc_dropdown(row=0, cc_keycodes=self.midi_cc_up_keycodes)
-
-        # Add dropdown for MIDI_CC_DOWN keycodes after second row of inversion buttons
-        self.add_cc_dropdown(row=1, cc_keycodes=self.midi_cc_down_keycodes)
-
-    def add_cc_dropdown(self, row, cc_keycodes):
-        """Helper method to add a dropdown with the given MIDI CC keycodes."""
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)
-        dropdown.setStyleSheet("""
-            QComboBox {
-                text-align: center;
-            }
-            QComboBox QAbstractItemView {
-                text-align: left;  /* This ensures that items in the dropdown list remain left-aligned */
-            }
-        """)
-        # Populate dropdown with MIDI CC keycodes
-        for keycode in cc_keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Connect the dropdown selection change to an event
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-
-        # Add dropdown to button layout in the specified row, at the 5th column
-        self.button_layout.addWidget(dropdown, row, 4)
-
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
@@ -1243,7 +1214,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             MacroTab(self, "Macro", KEYCODES_MACRO, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_LT, KEYCODES_LAYERS_TO),
-            midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
+            midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION),
             midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK + KEYCODES_Program_Change_UPDOWN, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),                   
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
