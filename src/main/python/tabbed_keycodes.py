@@ -1000,8 +1000,8 @@ class midiTab(QScrollArea):
             "MI_A": "A",
             "MI_B": "B",
             "MI_ALLOFF": "All\nNotes\nOff", 
-            "MI_SUS" : "Sustain\nPedal"
-            "KC_NO" : "None"
+            "MI_SUS" : "Sustain\nPedal",
+            "KC_NO" : " "
         }
 
         for row_index, row in enumerate(layout):
@@ -1019,7 +1019,7 @@ class midiTab(QScrollArea):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "Pedal" in readable_name or "All" in readable_name or "None" in readable_name:
+                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name:
                         button.setStyleSheet("")
   
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
