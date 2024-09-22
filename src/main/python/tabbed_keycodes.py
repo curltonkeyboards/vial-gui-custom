@@ -359,21 +359,14 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
         # Add CC X and CC Y menu
-        self.add_cc_x_y_menu("CC Fixed")
+        self.add_cc_x_y_menu()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_cc_x_y_menu(self, header_text):
+    def add_cc_x_y_menu(self):
         """Add a button that opens a CC X -> CC Y submenu."""
         self.cc_layout = QVBoxLayout()
-
-        # Create and configure a header label
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-
-        # Add the header label to the layout
-        self.cc_layout.addWidget(header_label)
 
         # Create a button to represent the CC X -> CC Y dropdown
         self.cc_button = QPushButton("CC Value")
@@ -382,7 +375,7 @@ class midiadvancedTab(QScrollArea):
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
 
         # Add the button to the layout
-        self.cc_layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
+        self.cc_layout.addWidget(self.cc_button)
 
         # Add the layout to the main layout
         self.main_layout.addLayout(self.cc_layout)
