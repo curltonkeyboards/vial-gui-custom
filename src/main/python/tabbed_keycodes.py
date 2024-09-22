@@ -434,7 +434,7 @@ class midiadvancedTab(QScrollArea):
         if cc_x_value and cc_y_value:
             # Emit the values or handle them as needed
             self.on_cc_selection(int(cc_x_value), int(cc_y_value))
-        self.cc_dialog.accept()
+        self.cc_xy_dialog.accept()
 
 
     def open_cc_y_submenu(self, selected_x):
