@@ -312,7 +312,7 @@ class SmartChordTab(QScrollArea):
         return (self.button_layout.count() > 0)
 
 from PyQt5.QtWidgets import (
-    QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction
+    QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction, QIntValidator
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 
