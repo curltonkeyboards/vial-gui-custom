@@ -1183,11 +1183,11 @@ KEYCODES_MIDI_UPDOWN = [
     K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),    
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),   
     K("MI_CHU", "Channel\n▲", "Midi increase channel"),    
-    K("MI_VELU", "Velocity\n▲", "Midi increase velocity"),    
+    K("MI_VELOCITY_UP", "Velocity\n▲", "Midi increase velocity"),    
     K("MI_TRNSD", "Transpose\n▼", "Midi decrease transposition"),
     K("MI_OCTD", "Octave\n▼", "Midi move down an octave"),
     K("MI_CHD", "Channel\n▼", "Midi decrease channel"),
-    K("MI_VELD", "Velocity\n▼", "Midi decrease velocity"), 
+    K("MI_VELOCITY_DOWN", "Velocity\n▼", "Midi decrease velocity"), 
 ]    
 
 KEYCODES_MIDI_KEY = [
@@ -1222,6 +1222,50 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CH14", "Channel\n14", "Midi set channel to 14"),
     K("MI_CH15", "Channel\n15", "Midi set channel to 15"),
     K("MI_CH16", "Channel\n16", "Midi set channel to 16"),
+]
+
+KEYCODES_CC_SENSITIVITY = [
+    K("CC_SENSITIVITY_1", "CC\nUp/Down\nx1", "SET CC Up/Down TO X1"),
+    K("CC_SENSITIVITY_2", "CC\nUp/Down\nx2", "SET CC Up/Down TO X2"),
+    K("CC_SENSITIVITY_3", "CC\nUp/Down\nx3", "SET CC Up/Down TO X3"),
+    K("CC_SENSITIVITY_4", "CC\nUp/Down\nx4", "SET CC Up/Down TO X4"),
+    K("CC_SENSITIVITY_5", "CC\nUp/Down\nx5", "SET CC Up/Down TO X5"),
+    K("CC_SENSITIVITY_6", "CC\nUp/Down\nx6", "SET CC Up/Down TO X6"),
+    K("CC_SENSITIVITY_7", "CC\nUp/Down\nx7", "SET CC Up/Down TO X7"),
+    K("CC_SENSITIVITY_8", "CC\nUp/Down\nx8", "SET CC Up/Down TO X8"),
+    K("CC_SENSITIVITY_9", "CC\nUp/Down\nx9", "SET CC Up/Down TO X9"),
+    K("CC_SENSITIVITY_10", "CC\nUp/Down\nx10", "SET CC Up/Down TO X10"),
+    K("CC_SENSITIVITY_11", "CC\nUp/Down\nx11", "SET CC Up/Down TO X11"),
+    K("CC_SENSITIVITY_12", "CC\nUp/Down\nx12", "SET CC Up/Down TO X12"),
+    K("CC_SENSITIVITY_13", "CC\nUp/Down\nx13", "SET CC Up/Down TO X13"),
+    K("CC_SENSITIVITY_14", "CC\nUp/Down\nx14", "SET CC Up/Down TO X14"),
+    K("CC_SENSITIVITY_15", "CC\nUp/Down\nx15", "SET CC Up/Down TO X15"),
+    K("CC_SENSITIVITY_16", "CC\nUp/Down\nx16", "SET CC Up/Down TO X16"),
+]
+
+KEYCODES_VELOCITY_MULTIPLIER = [
+    K("VELOCITY_MULTIPLIER_1", "Velocity\nUp/Down\nx1", "SET Velocity MULTIPLIER TO X1"),
+    K("VELOCITY_MULTIPLIER_2", "Velocity\nUp/Down\nx2", "SET Velocity MULTIPLIER TO X2"),
+    K("VELOCITY_MULTIPLIER_3", "Velocity\nUp/Down\nx3", "SET Velocity MULTIPLIER TO X3"),
+    K("VELOCITY_MULTIPLIER_4", "Velocity\nUp/Down\nx4", "SET Velocity MULTIPLIER TO X4"),
+    K("VELOCITY_MULTIPLIER_5", "Velocity\nUp/Down\nx5", "SET Velocity MULTIPLIER TO X5"),
+    K("VELOCITY_MULTIPLIER_6", "Velocity\nUp/Down\nx6", "SET Velocity MULTIPLIER TO X6"),
+    K("VELOCITY_MULTIPLIER_7", "Velocity\nUp/Down\nx7", "SET Velocity MULTIPLIER TO X7"),
+    K("VELOCITY_MULTIPLIER_8", "Velocity\nUp/Down\nx8", "SET Velocity MULTIPLIER TO X8"),
+    K("VELOCITY_MULTIPLIER_9", "Velocity\nUp/Down\nx9", "SET Velocity MULTIPLIER TO X9"),
+    K("VELOCITY_MULTIPLIER_10", "Velocity\nUp/Down\nx10", "SET Velocity MULTIPLIER TO X10"),
+    K("VELOCITY_MULTIPLIER_11", "Velocity\nUp/Down\nx11", "SET Velocity MULTIPLIER TO X11"),
+    K("VELOCITY_MULTIPLIER_12", "Velocity\nUp/Down\nx12", "SET Velocity MULTIPLIER TO X12"),
+    K("VELOCITY_MULTIPLIER_13", "Velocity\nUp/Down\nx13", "SET Velocity MULTIPLIER TO X13"),
+    K("VELOCITY_MULTIPLIER_14", "Velocity\nUp/Down\nx14", "SET Velocity MULTIPLIER TO X14"),
+    K("VELOCITY_MULTIPLIER_15", "Velocity\nUp/Down\nx15", "SET Velocity MULTIPLIER TO X15"),
+    K("VELOCITY_MULTIPLIER_16", "Velocity\nUp/Down\nx16", "SET Velocity MULTIPLIER TO X16"),
+]
+
+KEYCODES_MIDI_SMARTCHORDBUTTONS = [
+    K("MI_SMARTCHORD_PRESS", "Smartchord", "Press Smartchord"),
+    K("MI_SMARTCHORD_UP", "Smartchord\n▲", "Smartchord Up"),
+    K("MI_SMARTCHORD_DOWN", "Smartchord\n▼", "Smartchord Down"),
 ]
 
 KEYCODES_MIDI_CHORD_1 = [
@@ -1355,14 +1399,6 @@ for x in range (128):
                               "Velocity\n{}".format(x),
                               "Velocity {}".format(x)))
 
-KEYCODES_ENCODER_SENSITIVITY = []
-
-for x in range (1,17):
-    KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "Encoder\nSens{}".format(x),
-                              "Encoder\nSens{}".format(x)))
-
-
 KEYCODES_MIDI_BANK = []
 KEYCODES_MIDI_BANK_MSB = []
 KEYCODES_MIDI_BANK_LSB = []
@@ -1404,8 +1440,8 @@ def recreate_keycodes():
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ 
-                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+
-                    KEYCODES_MIDI_VELOCITY+KEYCODES_ENCODER_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
+                    KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_MULTIPLIER+
+                    KEYCODES_MIDI_VELOCITY+KEYCODES_CC_SENSITIVITY+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()

@@ -571,7 +571,25 @@ class keycodes_v6:
         "MI_PROG_DWN": (0x8000 + 128 * 6) + 128 * 128 + 4,
 
         "MI_VELOCITY_0": (0x8000 + 128 * 6) + 128 * 128 + 5,
-        "ENCODER_SENSITIVITY_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
+        
+        
+        "CC_SENSITIVITY_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
+        "CC_SENSITIVITY_2": (0x8000 + 128 * 7) + 128 * 128 + 6,
+        "CC_SENSITIVITY_3": (0x8000 + 128 * 7) + 128 * 128 + 7,
+        "CC_SENSITIVITY_4": (0x8000 + 128 * 7) + 128 * 128 + 8,
+        "CC_SENSITIVITY_5": (0x8000 + 128 * 7) + 128 * 128 + 9,
+        "CC_SENSITIVITY_6": (0x8000 + 128 * 7) + 128 * 128 + 10,
+        "CC_SENSITIVITY_7": (0x8000 + 128 * 7) + 128 * 128 + 11,
+        "CC_SENSITIVITY_8": (0x8000 + 128 * 7) + 128 * 128 + 12,
+        "CC_SENSITIVITY_9": (0x8000 + 128 * 7) + 128 * 128 + 13,
+        "CC_SENSITIVITY_10": (0x8000 + 128 * 7) + 128 * 128 + 14,
+        "CC_SENSITIVITY_11": (0x8000 + 128 * 7) + 128 * 128 + 15,
+        "CC_SENSITIVITY_12": (0x8000 + 128 * 7) + 128 * 128 + 16,
+        "CC_SENSITIVITY_13": (0x8000 + 128 * 7) + 128 * 128 + 17,
+        "CC_SENSITIVITY_14": (0x8000 + 128 * 7) + 128 * 128 + 18,
+        "CC_SENSITIVITY_15": (0x8000 + 128 * 7) + 128 * 128 + 19,
+        "CC_SENSITIVITY_16": (0x8000 + 128 * 7) + 128 * 128 + 20,
+        
         
                 # midi chords "MI_CHORD_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,
         "MI_CHORD_0": 0xC396,
@@ -713,17 +731,34 @@ class keycodes_v6:
         "MI_INVERSION_6" : 0xC426,
         "MI_INVERSION_7" : 0xC427,
         "MI_INVERSION_8" : 0xC428,
+        
+        "MI_SMARTCHORD_PRESS" : 0xC429,
+        "MI_SMARTCHORD_UP" : 0xC42A,
+        "MI_SMARTCHORD_DOWN" : 0xC42B,
+        
+        "MI_VELOCITY_MULTIPLIER_1": 0xC42C,
+        "MI_VELOCITY_MULTIPLIER_2": 0xC42D,
+        "MI_VELOCITY_MULTIPLIER_3": 0xC42E,
+        "MI_VELOCITY_MULTIPLIER_4": 0xC42F,
+        "MI_VELOCITY_MULTIPLIER_5": 0xC430,
+        "MI_VELOCITY_MULTIPLIER_6": 0xC431,
+        "MI_VELOCITY_MULTIPLIER_7": 0xC432,
+        "MI_VELOCITY_MULTIPLIER_8": 0xC433,
+        "MI_VELOCITY_MULTIPLIER_9": 0xC434,
+        "MI_VELOCITY_MULTIPLIER_10": 0xC435,
+        
+        "MI_VELOCITY_UP": 0xC436,
+        "MI_VELOCITY_DOWN": 0xC437,
+        
 
-        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130 + 8,  # custom keycodes safe range
+
+        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130 + 24,  # custom keycodes safe range
         
        
 
     }
 
     masked = set()
-
-for x in range(16):
-    keycodes_v6.kc["ENCODER_SENSITIVITY_{}".format(x+1)] = keycodes_v6.kc["ENCODER_SENSITIVITY_1"] + x
 
 
 for x in range(128):
