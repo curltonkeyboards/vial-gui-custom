@@ -366,7 +366,7 @@ class midiadvancedTab(QScrollArea):
 
     def add_cc_x_y_menu(self, header_text):
         """Add a button that opens a CC X -> CC Y submenu."""
-        self.cc_layout = QHBoxLayout()
+        self.cc_layout = QVBoxLayout()
 
         # Create and configure a header label
         header_label = QLabel(header_text)
@@ -376,7 +376,7 @@ class midiadvancedTab(QScrollArea):
         self.cc_layout.addWidget(header_label)
 
         # Create a button to represent the CC X -> CC Y dropdown
-        self.cc_button = QPushButton("Select CC X -> CC Y")
+        self.cc_button = QPushButton("CC Value")
         self.cc_button.setFixedHeight(40)
         self.cc_button.setFixedWidth(200)
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
@@ -390,8 +390,8 @@ class midiadvancedTab(QScrollArea):
     def open_cc_xy_dialog(self):
         """Open a dialog to input CC values."""
         dialog = QDialog(self)  # Create a local dialog instance
-        dialog.setWindowTitle("CC Fixed")
-        dialog.setFixedHeight(150)  # Set fixed height for the dialog
+        dialog.setWindowTitle("Enter CC Value")
+        dialog.setFixedHeight(170)  # Set fixed height for the dialog
 
         layout = QVBoxLayout(dialog)
 
