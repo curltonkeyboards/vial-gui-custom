@@ -382,7 +382,7 @@ class midiadvancedTab(QScrollArea):
         """Open a dialog to input CC values."""
         dialog = QDialog(self)  # Create a local dialog instance
         dialog.setWindowTitle("CC X -> CC Y Selection")
-        dialog.setFixedHeight(300)  # Set fixed height for the dialog
+        dialog.setFixedHeight(150)  # Set fixed height for the dialog
 
         layout = QVBoxLayout(dialog)
 
@@ -395,14 +395,14 @@ class midiadvancedTab(QScrollArea):
         cc_x_content_layout = QVBoxLayout(cc_x_content_widget)
 
         # Add a label and text box for CC X input
-        cc_x_label = QLabel("Enter CC X (0-127):")
+        cc_x_label = QLabel("CC(0-127):")
         self.cc_x_input = QLineEdit()
         self.cc_x_input.textChanged.connect(self.validate_cc_x_input)
         cc_x_content_layout.addWidget(cc_x_label)
         cc_x_content_layout.addWidget(self.cc_x_input)
 
         # Add a label and text box for CC Y input
-        cc_y_label = QLabel("Enter CC Y (0-127):")
+        cc_y_label = QLabel("Value(0-127):")
         self.cc_y_input = QLineEdit()
         self.cc_y_input.textChanged.connect(self.validate_cc_y_input)
         cc_x_content_layout.addWidget(cc_y_label)
