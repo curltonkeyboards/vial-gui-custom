@@ -933,10 +933,10 @@ class midiTab(QScrollArea):
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
 
         # SmartChord Header and Dropdown
-        self.add_header_dropdown(" ", self.smartchord_keycodes, self.horizontal_dropdown_layout)
+        self.add_header_dropdown("Channel", self.smartchord_keycodes, self.horizontal_dropdown_layout)
 
         # Scales/Modes Header and Dropdown
-        self.add_header_dropdown(" ", self.scales_modes_keycodes, self.horizontal_dropdown_layout)
+        self.add_header_dropdown("Velocity", self.scales_modes_keycodes, self.horizontal_dropdown_layout)
 
         # 3. Inversions Header
         self.inversion_label = QLabel(" ")
@@ -966,6 +966,9 @@ class midiTab(QScrollArea):
         dropdown = CenteredComboBox()
         dropdown.setFixedWidth(300)
         dropdown.setFixedHeight(40)
+        
+         # Add a placeholder item as the first item
+        dropdown.addItem(f"Select {header_text}")  # Placeholder item
         
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
