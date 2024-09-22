@@ -919,7 +919,6 @@ KEYCODES_USER = [
     K("USER13", "USER13", "USER13"),
     K("USER14", "USER14", "USER14"),
     K("USER15", "USER15", "USER15"),
-
 ]
 
 KEYCODES_MACRO = [
@@ -1360,8 +1359,8 @@ KEYCODES_ENCODER_SENSITIVITY = []
 
 for x in range (1,17):
     KEYCODES_ENCODER_SENSITIVITY.append(K("ENCODER_SENSITIVITY_{}".format(x),
-                              "Up/Down\nMultiplier\nx{}".format(x),
-                              "Up/Down\nMultiplier\nx{}".format(x)))
+                              "Encoder\nSens{}".format(x),
+                              "Encoder\nSens{}".format(x)))
 
 
 KEYCODES_MIDI_BANK = []
