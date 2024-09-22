@@ -1244,16 +1244,16 @@ KEYCODES_CC_STEPSIZE = [
 ]
 
 KEYCODES_VELOCITY_STEPSIZE = [
-    K("MI_VELOCITY_STEPSIZE_1", "Velocity\nUp/Down\n1", "SET Velocity MULTIPLIER TO 1"),
-    K("MI_VELOCITY_STEPSIZE_2", "Velocity\nUp/Down\n2", "SET Velocity MULTIPLIER TO 2"),
-    K("MI_VELOCITY_STEPSIZE_3", "Velocity\nUp/Down\n3", "SET Velocity MULTIPLIER TO 3"),
-    K("MI_VELOCITY_STEPSIZE_4", "Velocity\nUp/Down\n4", "SET Velocity MULTIPLIER TO 4"),
-    K("MI_VELOCITY_STEPSIZE_5", "Velocity\nUp/Down\n5", "SET Velocity MULTIPLIER TO 5"),
-    K("MI_VELOCITY_STEPSIZE_6", "Velocity\nUp/Down\n6", "SET Velocity MULTIPLIER TO 6"),
-    K("MI_VELOCITY_STEPSIZE_7", "Velocity\nUp/Down\n7", "SET Velocity MULTIPLIER TO 7"),
-    K("MI_VELOCITY_STEPSIZE_8", "Velocity\nUp/Down\n8", "SET Velocity MULTIPLIER TO 8"),
-    K("MI_VELOCITY_STEPSIZE_9", "Velocity\nUp/Down\n9", "SET Velocity MULTIPLIER TO 9"),
-    K("MI_VELOCITY_STEPSIZE_10", "Velocity\nUp/Down\n10", "SET Velocity MULTIPLIER TO 10"),
+    K("MI_VELOCITY_STEPSIZE_1", "Velocity\nUp/Down\n1", "SET Velocity Up/Down 1"),
+    K("MI_VELOCITY_STEPSIZE_2", "Velocity\nUp/Down\n2", "SET Velocity Up/Down TO 2"),
+    K("MI_VELOCITY_STEPSIZE_3", "Velocity\nUp/Down\n3", "SET Velocity Up/Down TO 3"),
+    K("MI_VELOCITY_STEPSIZE_4", "Velocity\nUp/Down\n4", "SET Velocity Up/Down TO 4"),
+    K("MI_VELOCITY_STEPSIZE_5", "Velocity\nUp/Down\n5", "SET Velocity Up/Down TO 5"),
+    K("MI_VELOCITY_STEPSIZE_6", "Velocity\nUp/Down\n6", "SET Velocity Up/Down TO 6"),
+    K("MI_VELOCITY_STEPSIZE_7", "Velocity\nUp/Down\n7", "SET Velocity Up/Down TO 7"),
+    K("MI_VELOCITY_STEPSIZE_8", "Velocity\nUp/Down\n8", "SET Velocity Up/Down TO 8"),
+    K("MI_VELOCITY_STEPSIZE_9", "Velocity\nUp/Down\n9", "SET Velocity Up/Down TO 9"),
+    K("MI_VELOCITY_STEPSIZE_10", "Velocity\nUp/Down\n10", "SET Velocity Up/Down TO 10"),
 ]
 
 KEYCODES_MIDI_SMARTCHORDBUTTONS = [
