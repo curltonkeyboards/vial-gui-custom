@@ -187,8 +187,8 @@ class SmartChordTab(QScrollArea):
         
         # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
-        self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
-        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
+        self.add_smallheader_dropdown("Octave", self.smartchord_octave_1, self.additional_dropdown_layout)
+        self.add_smallheader_dropdown("Key", self.smartchord_key, self.additional_dropdown_layout)
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # Inversions Header
@@ -213,7 +213,7 @@ class SmartChordTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header_label)
+        #vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
@@ -257,7 +257,7 @@ class SmartChordTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header_label)
+        #vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
@@ -514,7 +514,7 @@ class midiadvancedTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header_label)
+        #vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
@@ -658,7 +658,7 @@ class LayerTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header_label)
+        #vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
@@ -707,7 +707,7 @@ class LayerTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        vbox.addWidget(header_label)
+            #vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
