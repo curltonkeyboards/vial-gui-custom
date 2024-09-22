@@ -830,6 +830,7 @@ class MacroTab(QScrollArea):
         dropdown.setFixedWidth(300)  # Width stays at 200
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
+        dropdown.model().item(0).setEnabled(False)
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
@@ -972,6 +973,7 @@ class midiTab(QScrollArea):
         
          # Add a placeholder item as the first item
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
+        dropdown.model().item(0).setEnabled(False)
         
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
