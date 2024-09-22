@@ -339,7 +339,17 @@ class midiadvancedTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # Inversions Header
+        # Add CC X and CC Y menu
+        self.add_cc_x_y_menu()
+
+        # Create a horizontal layout for the additional dropdowns
+        self.additional_dropdown_layout2 = QHBoxLayout()
+        self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
+        self.main_layout.addLayout(self.additional_dropdown_layout2)
+
         self.inversion_label = QLabel("Advanced Midi Settings")
         self.main_layout.addWidget(self.inversion_label)
 
@@ -349,18 +359,6 @@ class midiadvancedTab(QScrollArea):
 
         # Populate the inversion buttons
         self.recreate_buttons()
-
-        # Create a horizontal layout for the additional dropdowns
-        self.additional_dropdown_layout2 = QHBoxLayout()
-        self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
-        self.add_cc_x_y_menu()
-        self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
-        self.main_layout.addLayout(self.additional_dropdown_layout2)
-
-        # Add CC X and CC Y menu
-        
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -376,7 +374,7 @@ class midiadvancedTab(QScrollArea):
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
 
         # Add the button to the layout
-        self.cc_layout.addWidget(self.cc_button)
+        self.cc_layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
 
         # Add the layout to the main layout
         self.main_layout.addLayout(self.cc_layout)
