@@ -1229,6 +1229,7 @@ class FilteredTabbedKeycodes(QTabWidget):
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
             SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT),
+            SimpleTab(self, "Sensitivity", KEYCODES_CC_SENSITIVITY + KEYCODES_VELOCITY_MULTIPLIER),
         ]
 
         for tab in self.tabs:
