@@ -359,15 +359,18 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
         # Add CC X and CC Y menu
-        self.add_cc_x_y_menu()
+        self.add_cc_x_y_menu("CC Fixed")
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_cc_x_y_menu(self):
+    def add_cc_x_y_menu(self, header_text):
         """Add a button that opens a CC X -> CC Y submenu."""
         self.cc_layout = QHBoxLayout()
 
+        header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
+        vbox.addWidget(header_label)
         # Create a button to represent the CC X -> CC Y dropdown
         self.cc_button = QPushButton("Select CC X -> CC Y")
         self.cc_button.setFixedHeight(40)
