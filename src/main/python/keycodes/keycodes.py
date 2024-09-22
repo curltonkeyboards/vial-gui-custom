@@ -1235,6 +1235,12 @@ KEYCODES_CC_STEPSIZE = [
     K("CC_STEPSIZE_8", "CC\nUp/Down\nx8", "SET CC Up/Down TO X8"),
     K("CC_STEPSIZE_9", "CC\nUp/Down\nx9", "SET CC Up/Down TO X9"),
     K("CC_STEPSIZE_10", "CC\nUp/Down\nx10", "SET CC Up/Down TO X10"),
+    K("CC_STEPSIZE_11", "CC\nUp/Down\nx11", "SET CC Up/Down TO X1"),
+    K("CC_STEPSIZE_12", "CC\nUp/Down\nx12", "SET CC Up/Down TO X2"),
+    K("CC_STEPSIZE_13", "CC\nUp/Down\nx13", "SET CC Up/Down TO X3"),
+    K("CC_STEPSIZE_14", "CC\nUp/Down\nx14", "SET CC Up/Down TO X4"),
+    K("CC_STEPSIZE_15", "CC\nUp/Down\nx15", "SET CC Up/Down TO X5"),
+    K("CC_STEPSIZE_16", "CC\nUp/Down\nx16", "SET CC Up/Down TO X6"),
 ]
 
 KEYCODES_VELOCITY_STEPSIZE = [
