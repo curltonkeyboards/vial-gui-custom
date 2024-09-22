@@ -336,9 +336,9 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options):
         super().__init__(parent)
-        self.label = label     
+        self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
@@ -347,11 +347,15 @@ class midiadvancedTab(QScrollArea):
         self.CCfixed = CCfixed
         self.CCup = CCup
         self.CCdown = CCdown
+        self.velocity_multiplier_options = velocity_multiplier_options  # Dropdown options for Velocity Multiplier
+        self.cc_multiplier_options = cc_multiplier_options  # Dropdown options for CC Multiplier
+        self.channel_options = channel_options  # Dropdown options for Channel
+        self.velocity_options = velocity_options  # Dropdown options for Velocity
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        
+
         # Set the scroll area properties
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -360,8 +364,14 @@ class midiadvancedTab(QScrollArea):
 
         # Add CC X and CC Y menu
         self.add_cc_x_y_menu()
-
-        # Create a horizontal layout for the additional dropdowns
+        
+        # Add Channel and Velocity dropdowns in the second row
+        self.additional_dropdown_layout4 = QHBoxLayout()
+        self.add_header_dropdown("Channel", self.channel_options, self.additional_dropdown_layout4)
+        self.add_header_dropdown("Velocity", self.velocity_options, self.additional_dropdown_layout4)
+        self.main_layout.addLayout(self.additional_dropdown_layout4)
+        
+        # Create a horizontal layout for the additional dropdowns (second row)
         self.additional_dropdown_layout2 = QHBoxLayout()
         self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
         self.add_header_dropdown("CC ▲", self.CCup, self.additional_dropdown_layout2)
@@ -371,10 +381,15 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
         self.main_layout.addLayout(self.additional_dropdown_layout2)
 
+        # Add Channel and Velocity dropdowns in the second row
+        self.additional_dropdown_layout3 = QHBoxLayout()
+        self.add_header_dropdown("Velocity Multiplier", self.velocity_multiplier_options, self.additional_dropdown_layout3)
+        self.add_header_dropdown("CC Multiplier", self.cc_multiplier_options, self.additional_dropdown_layout3)
+        self.main_layout.addLayout(self.additional_dropdown_layout3)
+
         self.inversion_label = QLabel("Advanced Midi Settings")
         self.inversion_label.setAlignment(Qt.AlignCenter)  # Center the label text
         self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add with center alignment
-
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -385,6 +400,15 @@ class midiadvancedTab(QScrollArea):
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
+
+
+    def add_header_dropdown(self, label_text, items, layout):
+        dropdown = QComboBox()
+        dropdown.addItems(items)
+        label = QLabel(label_text)
+        layout.addWidget(label)
+        layout.addWidget(dropdown)
+
 
     def add_cc_x_y_menu(self):
         """Add a button that opens a CC X -> CC Y submenu."""
@@ -888,11 +912,9 @@ class MacroTab(QScrollArea):
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes, scales_modes_keycodes, inversion_keycodes):
+    def __init__(self, parent, label, inversion_keycodes):
         super().__init__(parent)
         self.label = label
-        self.smartchord_keycodes = smartchord_keycodes
-        self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
 
@@ -935,13 +957,6 @@ class midiTab(QScrollArea):
         # Create a horizontal layout for the dropdowns
         self.horizontal_dropdown_layout = QHBoxLayout()
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
-
-        # SmartChord Header and Dropdown
-        self.add_header_dropdown("Channel", self.smartchord_keycodes, self.horizontal_dropdown_layout)
-
-        # Scales/Modes Header and Dropdown
-        self.add_header_dropdown("Velocity", self.scales_modes_keycodes, self.horizontal_dropdown_layout)
-
         # 3. Inversions Header
         self.inversion_label = QLabel(" ")
         self.main_layout.addWidget(self.inversion_label)
@@ -1222,9 +1237,9 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
             MacroTab(self, "Macro", KEYCODES_MACRO, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_LT, KEYCODES_LAYERS_TO),
-            midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
+            midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION),
-            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK + KEYCODES_Program_Change_UPDOWN, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),                   
+            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK + KEYCODES_Program_Change_UPDOWN, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY),                   
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
