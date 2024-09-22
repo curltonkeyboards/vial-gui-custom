@@ -752,7 +752,7 @@ class keycodes_v6:
         
 
 
-        "QK_KB":(0x8000 + 128 * 7) + 128 * 128 + 5 + 25 + 130 + 24,  # custom keycodes safe range
+        "QK_KB":0xC460,  # custom keycodes safe range
         
        
 
@@ -792,8 +792,8 @@ for x in range(32):
 for x in range(16):
     keycodes_v6.kc["LT{}(kc)".format(x)] = keycodes_v6.kc["QK_LAYER_TAP"] | (((x) & 0xF) << 8)
 
-#for x in range(32):
-   # keycodes_v6.kc["USER{:02}".format(x)] = keycodes_v6.kc["QK_KB"] + x
+for x in range(32):
+   keycodes_v6.kc["USER{:02}".format(x)] = keycodes_v6.kc["QK_KB"] + x
 
 for name, val in keycodes_v6.kc.items():
     if name.endswith("(kc)"):
