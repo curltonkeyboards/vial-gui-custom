@@ -1,4 +1,4 @@
-class keycodes_v6:
+class keycodes_v5:
     kc = {
         "QK_LAYER_TAP": 0x4000,
         "MOD_LCTL": 0x01,
@@ -762,39 +762,39 @@ class keycodes_v6:
 
 
 for x in range(128):
-    keycodes_v6.kc["MI_CC_{}_TOG".format(x)] = keycodes_v6.kc["MI_CC_0_TOG"] + x
-    keycodes_v6.kc["MI_CC_{}_UP".format(x)] = keycodes_v6.kc["MI_CC_0_UP"] + x
-    keycodes_v6.kc["MI_CC_{}_DWN".format(x)] = keycodes_v6.kc["MI_CC_0_DWN"] + x
-    keycodes_v6.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_MSB_0"] + x
-    keycodes_v6.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v6.kc["MI_BANK_LSB_0"] + x
-    keycodes_v6.kc["MI_PROG_{}".format(x)] = keycodes_v6.kc["MI_PROG_0"] + x
-    keycodes_v6.kc["MI_VELOCITY_{}".format(x)] = keycodes_v6.kc["MI_VELOCITY_0"] + x
+    keycodes_v5.kc["MI_CC_{}_TOG".format(x)] = keycodes_v5.kc["MI_CC_0_TOG"] + x
+    keycodes_v5.kc["MI_CC_{}_UP".format(x)] = keycodes_v5.kc["MI_CC_0_UP"] + x
+    keycodes_v5.kc["MI_CC_{}_DWN".format(x)] = keycodes_v5.kc["MI_CC_0_DWN"] + x
+    keycodes_v5.kc["MI_BANK_MSB_{}".format(x)] = keycodes_v5.kc["MI_BANK_MSB_0"] + x
+    keycodes_v5.kc["MI_BANK_LSB_{}".format(x)] = keycodes_v5.kc["MI_BANK_LSB_0"] + x
+    keycodes_v5.kc["MI_PROG_{}".format(x)] = keycodes_v5.kc["MI_PROG_0"] + x
+    keycodes_v5.kc["MI_VELOCITY_{}".format(x)] = keycodes_v5.kc["MI_VELOCITY_0"] + x
 
 for x in range(128):
     for y in range(128):
-        keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 128) + y
+        keycodes_v5.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v5.kc["MI_CC_0_0"] + (x * 128) + y
 
 
 
 for x in range(256):
-    keycodes_v6.kc["M{}".format(x)] = keycodes_v6.kc["QK_MACRO"] + x
-    keycodes_v6.kc["TD({})".format(x)] = keycodes_v6.kc["QK_TAP_DANCE"] + x
+    keycodes_v5.kc["M{}".format(x)] = keycodes_v5.kc["QK_MACRO"] + x
+    keycodes_v5.kc["TD({})".format(x)] = keycodes_v5.kc["QK_TAP_DANCE"] + x
 
 
 for x in range(32):
-    keycodes_v6.kc["MO({})".format(x)] = keycodes_v6.kc["QK_MOMENTARY"] + x
-    keycodes_v6.kc["DF({})".format(x)] = keycodes_v6.kc["QK_DEF_LAYER"] + x
-    keycodes_v6.kc["TG({})".format(x)] = keycodes_v6.kc["QK_TOGGLE_LAYER"] + x
-    keycodes_v6.kc["TT({})".format(x)] = keycodes_v6.kc["QK_LAYER_TAP_TOGGLE"] + x
-    keycodes_v6.kc["OSL({})".format(x)] = keycodes_v6.kc["QK_ONE_SHOT_LAYER"] + x
-    keycodes_v6.kc["TO({})".format(x)] = keycodes_v6.kc["QK_TO"] + x
+    keycodes_v5.kc["MO({})".format(x)] = keycodes_v5.kc["QK_MOMENTARY"] + x
+    keycodes_v5.kc["DF({})".format(x)] = keycodes_v5.kc["QK_DEF_LAYER"] + x
+    keycodes_v5.kc["TG({})".format(x)] = keycodes_v5.kc["QK_TOGGLE_LAYER"] + x
+    keycodes_v5.kc["TT({})".format(x)] = keycodes_v5.kc["QK_LAYER_TAP_TOGGLE"] + x
+    keycodes_v5.kc["OSL({})".format(x)] = keycodes_v5.kc["QK_ONE_SHOT_LAYER"] + x
+    keycodes_v5.kc["TO({})".format(x)] = keycodes_v5.kc["QK_TO"] + x
 
 for x in range(16):
-    keycodes_v6.kc["LT{}(kc)".format(x)] = keycodes_v6.kc["QK_LAYER_TAP"] | (((x) & 0xF) << 8)
+    keycodes_v5.kc["LT{}(kc)".format(x)] = keycodes_v5.kc["QK_LAYER_TAP"] | (((x) & 0xF) << 8)
 
 for x in range(32):
-   keycodes_v6.kc["USER{:02}".format(x)] = keycodes_v6.kc["QK_KB"] + x
+   keycodes_v5.kc["USER{:02}".format(x)] = keycodes_v5.kc["QK_KB"] + x
 
-for name, val in keycodes_v6.kc.items():
+for name, val in keycodes_v5.kc.items():
     if name.endswith("(kc)"):
-        keycodes_v6.masked.add(val)
+        keycodes_v5.masked.add(val)
