@@ -380,7 +380,7 @@ class midiadvancedTab(QScrollArea):
 
     def open_cc_xy_dialog(self):
         """Open a dialog to input CC values."""
-        dialog = QDialog(self)
+        dialog = QDialog(self)  # Create a local dialog instance
         dialog.setWindowTitle("CC X -> CC Y Selection")
         dialog.setFixedHeight(300)  # Set fixed height for the dialog
 
@@ -404,7 +404,7 @@ class midiadvancedTab(QScrollArea):
         # Add a label and text box for CC Y input
         cc_y_label = QLabel("Enter CC Y (0-127):")
         self.cc_y_input = QLineEdit()
-        self.cc_y_input.textChanged.connect(self.validate_cc_x_input)
+        self.cc_y_input.textChanged.connect(self.validate_cc_y_input)
         cc_x_content_layout.addWidget(cc_y_label)
         cc_x_content_layout.addWidget(self.cc_y_input)
 
@@ -417,24 +417,29 @@ class midiadvancedTab(QScrollArea):
 
         # Optional: Add a button to confirm the selection
         confirm_button = QPushButton("Confirm")
-        confirm_button.clicked.connect(self.confirm_cc_values)
+        confirm_button.clicked.connect(lambda: self.confirm_cc_values(dialog))  # Pass dialog instance
         layout.addWidget(confirm_button)
 
         dialog.exec_()
-        
-    def validate_cc_x_input(self, text):
-        if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
-            # If the input is not a digit or is out of the range, clear the input
-            self.cc_x_input.clear()
 
-    def confirm_cc_values(self):
-        """Handle the confirmation of CC values."""
+    def confirm_cc_values(self, dialog):
+        """Handle the confirmation of CC values and close the dialog."""
         cc_x_value = self.cc_x_input.text()
         cc_y_value = self.cc_y_input.text()
         if cc_x_value and cc_y_value:
             # Emit the values or handle them as needed
             self.on_cc_selection(int(cc_x_value), int(cc_y_value))
-            self.dialog.accept()  # Close the dialog
+            dialog.accept()  # Close the dialog
+        
+    def validate_cc_x_input(self, text):
+        if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
+            # If the input is not a digit or is out of the range, clear the input
+            self.cc_x_input.clear()
+            
+    def validate_cc_y_input(self, text):
+        if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
+            # If the input is not a digit or is out of the range, clear the input
+            self.cc_y_input.clear()
 
 
     def open_cc_y_submenu(self, selected_x):
