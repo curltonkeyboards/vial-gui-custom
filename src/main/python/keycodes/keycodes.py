@@ -1382,7 +1382,7 @@ K("MI_CHORD_109", "Whole Step Scale", "Whole Step Scale"),
 
     
 KEYCODES_MIDI_INVERSION = [
- K ("MI_INVERSION_DEF", "Root \nPosition\n(Default)", "Root Position"),
+ K ("MI_INVERSION_DEF", "Root \nPosition", "Root Position"),
  K ("MI_INVERSION_1", "1st \nInversion", "1st Inversion"),
  K ("MI_INVERSION_2", "2nd \nInversion", "2nd Inversion"),
  K ("MI_INVERSION_3", "3rd \nInversion", "3rd Inversion"),
