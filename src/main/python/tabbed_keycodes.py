@@ -381,7 +381,7 @@ class midiadvancedTab(QScrollArea):
     def open_cc_xy_dialog(self):
         """Open a dialog to input CC values."""
         dialog = QDialog(self)  # Create a local dialog instance
-        dialog.setWindowTitle("CC X -> CC Y Selection")
+        dialog.setWindowTitle("CC Fixed")
         dialog.setFixedHeight(150)  # Set fixed height for the dialog
 
         layout = QVBoxLayout(dialog)
@@ -843,7 +843,7 @@ class midiTab(QScrollArea):
              "MI_C_4", "MI_D_4", "MI_E_4", "MI_F_4", "MI_G_4", "MI_A_4", "MI_B_4",
              "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"],
             
-            ["MI_ALLOFF", "MI_SUS"]
+            ["MI_ALLOFF", "MI_SUS", "KC_NO"]
         ]
 
         # Main layout for the scroll area
@@ -998,6 +998,7 @@ class midiTab(QScrollArea):
             "MI_B": "B",
             "MI_ALLOFF": "All\nNotes\nOff", 
             "MI_SUS" : "Sustain\nPedal"
+            "KC_NO" : " "
         }
 
         for row_index, row in enumerate(layout):
@@ -1015,7 +1016,7 @@ class midiTab(QScrollArea):
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "Pedal" in readable_name or "All" in readable_name:
+                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name:
                         button.setStyleSheet("")
   
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
