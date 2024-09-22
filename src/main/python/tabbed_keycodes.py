@@ -319,7 +319,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
@@ -328,6 +328,8 @@ class midiadvancedTab(QScrollArea):
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_CC_toggle = smartchord_CC_toggle
         self.CCfixed = CCfixed
+        self.CCup = CCup
+        self.CCdown = CCdown
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -345,6 +347,8 @@ class midiadvancedTab(QScrollArea):
         # Create a horizontal layout for the additional dropdowns
         self.additional_dropdown_layout2 = QHBoxLayout()
         self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
+        self.add_header_dropdown("CC Up", self.smartchord_CC_up, self.additional_dropdown_layout2)
+        self.add_header_dropdown("CC Down", self.smartchord_CC_down, self.additional_dropdown_layout2)
         self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
@@ -844,7 +848,7 @@ class midiTab(QScrollArea):
              "MI_C_4", "MI_D_4", "MI_E_4", "MI_F_4", "MI_G_4", "MI_A_4", "MI_B_4",
              "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"],
             
-            ["MI_ALLOFF", "MI_SUS", "KC_NO"]
+            ["KC_NO", "MI_ALLOFF", "MI_SUS", "KC_NO"]
         ]
 
         # Main layout for the scroll area
@@ -1165,7 +1169,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_LT, KEYCODES_LAYERS_TO),
             midiTab(self, "Instrument", KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION),
-            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED),                   
+            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK + KEYCODES_Program_Change_UPDOWN, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN),                   
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
