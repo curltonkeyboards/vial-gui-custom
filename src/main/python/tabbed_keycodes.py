@@ -823,7 +823,7 @@ class MacroTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        self.main_layout.addWidget(header_label)
+        #self.main_layout.addWidget(header_label)
 
         # Create dropdown
         dropdown = QComboBox()
@@ -964,7 +964,7 @@ class midiTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        header_dropdown_layout.addWidget(header_label)
+        #header_dropdown_layout.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
