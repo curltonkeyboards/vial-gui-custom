@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
 from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
@@ -379,7 +379,7 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.addLayout(self.cc_layout)
 
     def open_cc_xy_dialog(self):
-        """Open a dialog to select CC Y based on CC X."""
+        """Open a dialog to input CC values."""
         dialog = QDialog(self)
         dialog.setWindowTitle("CC X -> CC Y Selection")
         dialog.setFixedHeight(300)  # Set fixed height for the dialog
@@ -394,11 +394,19 @@ class midiadvancedTab(QScrollArea):
         cc_x_content_widget = QWidget()
         cc_x_content_layout = QVBoxLayout(cc_x_content_widget)
 
-        for x in range(128):
-            # Create a button for each CC X value
-            cc_x_button = QPushButton(f"CC X {x}", dialog)
-            cc_x_button.clicked.connect(lambda _, x=x: self.open_cc_y_submenu(x))
-            cc_x_content_layout.addWidget(cc_x_button)
+        # Add a label and text box for CC X input
+        cc_x_label = QLabel("Enter CC X (0-127):")
+        self.cc_x_input = QLineEdit()
+        self.cc_x_input.setValidator(QIntValidator(0, 127))  # Restrict input to 0-127
+        cc_x_content_layout.addWidget(cc_x_label)
+        cc_x_content_layout.addWidget(self.cc_x_input)
+
+        # Add a label and text box for CC Y input
+        cc_y_label = QLabel("Enter CC Y (0-127):")
+        self.cc_y_input = QLineEdit()
+        self.cc_y_input.setValidator(QIntValidator(0, 127))  # Restrict input to 0-127
+        cc_x_content_layout.addWidget(cc_y_label)
+        cc_x_content_layout.addWidget(self.cc_y_input)
 
         cc_x_content_widget.setLayout(cc_x_content_layout)
         cc_x_scroll_area.setWidget(cc_x_content_widget)
@@ -406,7 +414,22 @@ class midiadvancedTab(QScrollArea):
         # Add the scroll area to the main layout of the dialog
         layout.addWidget(cc_x_scroll_area)
         dialog.setLayout(layout)
+
+        # Optional: Add a button to confirm the selection
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.confirm_cc_values)
+        layout.addWidget(confirm_button)
+
         dialog.exec_()
+
+    def confirm_cc_values(self):
+        """Handle the confirmation of CC values."""
+        cc_x_value = self.cc_x_input.text()
+        cc_y_value = self.cc_y_input.text()
+        if cc_x_value and cc_y_value:
+            # Emit the values or handle them as needed
+            self.on_cc_selection(int(cc_x_value), int(cc_y_value))
+
 
     def open_cc_y_submenu(self, selected_x):
         """Open a submenu dialog for selecting CC Y values based on selected CC X."""
