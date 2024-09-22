@@ -258,12 +258,12 @@ class SmartChordTab(QScrollArea):
         # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        #vbox.addWidget(header_label)
+        vbox.addWidget(header_label)
 
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
-        dropdown.setFixedWidth(150)  # Set width of dropdown
+        dropdown.setFixedWidth(300)  # Set width of dropdown
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"Select {header_text}")  # Placeholder item
@@ -364,8 +364,8 @@ class midiadvancedTab(QScrollArea):
         # Create a horizontal layout for the additional dropdowns
         self.additional_dropdown_layout2 = QHBoxLayout()
         self.add_header_dropdown("CC Toggle", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
-        self.add_header_dropdown("CC Up", self.CCup, self.additional_dropdown_layout2)
-        self.add_header_dropdown("CC Down", self.CCdown, self.additional_dropdown_layout2)
+        self.add_header_dropdown("CC ▲", self.CCup, self.additional_dropdown_layout2)
+        self.add_header_dropdown("CC ▼", self.CCdown, self.additional_dropdown_layout2)
         self.add_header_dropdown("Program Change", self.smartchord_program_change, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank LSB", self.smartchord_LSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("Bank MSB", self.smartchord_MSB, self.additional_dropdown_layout2)
@@ -524,7 +524,7 @@ class midiadvancedTab(QScrollArea):
         dropdown.setFixedHeight(40)  # Set height of dropdown
 
         # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
 
         # Add the keycodes as options
         for keycode in keycodes:
@@ -644,7 +644,7 @@ class LayerTab(QScrollArea):
         # Create a horizontal layout for the additional dropdowns
         self.additional_dropdown_layout2 = QHBoxLayout()
         self.add_header_dropdown("Active/Default Layer", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Layer Hold", self.smartchord_program_change, self.additional_dropdown_layout2)
+        self.add_header_dropdown("Hold Layer", self.smartchord_program_change, self.additional_dropdown_layout2)
         self.add_header_dropdown("Toggle Layer", self.smartchord_LSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("Tap-Toggle Layer", self.smartchord_MSB, self.additional_dropdown_layout2)
         self.add_header_dropdown("One Shot Layer", self.smartchord_LSB2, self.additional_dropdown_layout2)
@@ -670,7 +670,7 @@ class LayerTab(QScrollArea):
         dropdown.setFixedHeight(40)  # Set height of dropdown
 
         # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
 
         for keycode in keycodes:
             label = Keycode.label(keycode.qmk_id)
@@ -829,7 +829,7 @@ class MacroTab(QScrollArea):
         dropdown = QComboBox()
         dropdown.setFixedWidth(300)  # Width stays at 200
         dropdown.setFixedHeight(40)  # Increase the height to 40 pixels
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
         dropdown.model().item(0).setEnabled(False)
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
