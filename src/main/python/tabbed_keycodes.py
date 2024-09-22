@@ -1243,7 +1243,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
-            SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT + KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD),
+            SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT + KEYCODES_VELOCITY_STEPSIZE),
         ]
 
         for tab in self.tabs:
