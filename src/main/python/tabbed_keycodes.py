@@ -230,10 +230,24 @@ class SmartChordTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
+
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the provided layout
         layout.addLayout(vbox)
+        
+    def reset_dropdown(self, dropdown, default_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
         
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -261,6 +275,8 @@ class SmartChordTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
+
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the provided layout
@@ -515,11 +531,29 @@ class midiadvancedTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the provided layout
         layout.addLayout(vbox)
+        
+    def update_header_label(self, dropdown, header_label):
+        """Update the header label based on the selected dropdown item."""
+        selected_item = dropdown.currentText()
+        header_label.setText(selected_item)
+        
+    def reset_dropdown(self, dropdown, default_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
 
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
+        
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
@@ -647,10 +681,23 @@ class LayerTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the provided layout
         layout.addLayout(vbox)
+        
+    def reset_dropdown(self, dropdown, default_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
         
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -678,6 +725,7 @@ class LayerTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
         vbox.addWidget(dropdown)
 
         # Add the vertical box (header + dropdown) to the provided layout
@@ -779,7 +827,20 @@ class MacroTab(QScrollArea):
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
         self.main_layout.addWidget(dropdown)
+        
+    def reset_dropdown(self, dropdown, default_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
@@ -908,10 +969,23 @@ class midiTab(QScrollArea):
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
         header_dropdown_layout.addWidget(dropdown)
 
         # Add the vertical layout to the main horizontal layout
         layout.addLayout(header_dropdown_layout)
+        
+    def reset_dropdown(self, dropdown, default_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
 
 
     def add_midi_layout2(self, layout):
@@ -1103,6 +1177,8 @@ class midiTab(QScrollArea):
 
         # Connect the dropdown selection change to an event
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, default_text))
+
 
         # Add dropdown to button layout in the specified row, at the 5th column
         self.button_layout.addWidget(dropdown, row, 4)
