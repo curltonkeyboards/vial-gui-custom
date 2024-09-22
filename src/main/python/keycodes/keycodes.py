@@ -1191,17 +1191,17 @@ KEYCODES_MIDI_UPDOWN = [
 ]    
 
 KEYCODES_MIDI_KEY = [
-    K("MI_TRNS_0", "Key\nC maj\nA min", "Midi set no transposition"),
-    K("MI_TRNS_1", "Key\nC# maj\nA#ᵐᶦⁿᵒʳ", "Midi set transposition to +1 semitones"),
-    K("MI_TRNS_2", "Key\nD maj\nBᵐᶦⁿᵒʳ", "Midi set transposition to +2 semitones"),
-    K("MI_TRNS_3", "Key\nD# maj\nCᵐᶦⁿᵒʳ", "Midi set transposition to +3 semitones"),
-    K("MI_TRNS_4", "Key\nE maj\nC#ᵐᶦⁿᵒʳ", "Midi set transposition to +4 semitones"),
-    K("MI_TRNS_5", "Key\nF maj\nDᵐᶦⁿᵒʳ", "Midi set transposition to +5 semitones"),
-    K("MI_TRNS_6", "Key\nF# maj\nD#ᵐᶦⁿᵒʳ", "Midi set transposition to +6 semitones"),
-    K("MI_TRNS_N5", "Key\nG maj\nEᵐᶦⁿᵒʳ", "Midi set transposition to -5 semitones"),
-    K("MI_TRNS_N4", "Key\nG# maj\nFᵐᶦⁿᵒʳ", "Midi set transposition to -4 semitones"),
-    K("MI_TRNS_N3", "Key\nAᵐᵃʲᵒʳ\nF#ᵐᶦⁿᵒʳ", "Midi set transposition to -3 semitones"),
-    K("MI_TRNS_N2", "Key\nA#ᵐᵃʲᵒʳ\nGᵐᶦⁿᵒʳ", "Midi set transposition to -2 semitones"),
+    K("MI_TRNS_0", "Key\nC Major\nA minor", "Midi set no transposition"),
+    K("MI_TRNS_1", "Key\nC# Major\nA# minor", "Midi set transposition to +1 semitones"),
+    K("MI_TRNS_2", "Key\nD Major\nB minor", "Midi set transposition to +2 semitones"),
+    K("MI_TRNS_3", "Key\nD# Major\nC minor", "Midi set transposition to +3 semitones"),
+    K("MI_TRNS_4", "Key\nE Major\nC# minor", "Midi set transposition to +4 semitones"),
+    K("MI_TRNS_5", "Key\nF Major\nD minor", "Midi set transposition to +5 semitones"),
+    K("MI_TRNS_6", "Key\nF# Major\nD# minor", "Midi set transposition to +6 semitones"),
+    K("MI_TRNS_N5", "Key\nG Major\nE minor", "Midi set transposition to -5 semitones"),
+    K("MI_TRNS_N4", "Key\nG# Major\nF minor", "Midi set transposition to -4 semitones"),
+    K("MI_TRNS_N3", "Key\nA Major\nF# minor", "Midi set transposition to -3 semitones"),
+    K("MI_TRNS_N2", "Key\nA# Major\nG minor", "Midi set transposition to -2 semitones"),
     K("MI_TRNS_N1", "Key B Major\n G# Minor", "Midi set transposition to -1 semitones"),
 ]
 
@@ -1235,31 +1235,63 @@ KEYCODES_CC_STEPSIZE = [
     K("CC_STEPSIZE_8", "CC\nUp/Down\nx8", "SET CC Up/Down TO X8"),
     K("CC_STEPSIZE_9", "CC\nUp/Down\nx9", "SET CC Up/Down TO X9"),
     K("CC_STEPSIZE_10", "CC\nUp/Down\nx10", "SET CC Up/Down TO X10"),
-    K("CC_STEPSIZE_11", "CC\nUp/Down\nx11", "SET CC Up/Down TO X11"),
-    K("CC_STEPSIZE_12", "CC\nUp/Down\nx12", "SET CC Up/Down TO X12"),
-    K("CC_STEPSIZE_13", "CC\nUp/Down\nx13", "SET CC Up/Down TO X13"),
-    K("CC_STEPSIZE_14", "CC\nUp/Down\nx14", "SET CC Up/Down TO X14"),
-    K("CC_STEPSIZE_15", "CC\nUp/Down\nx15", "SET CC Up/Down TO X15"),
-    K("CC_STEPSIZE_16", "CC\nUp/Down\nx16", "SET CC Up/Down TO X16"),
 ]
 
 KEYCODES_VELOCITY_STEPSIZE = [
-    K("MI_VELOCITY_STEPSIZE_1", "Velocity\nUp/Down\n1", "SET Velocity Up/Down 1"),
-    K("MI_VELOCITY_STEPSIZE_2", "Velocity\nUp/Down\n2", "SET Velocity Up/Down TO 2"),
-    K("MI_VELOCITY_STEPSIZE_3", "Velocity\nUp/Down\n3", "SET Velocity Up/Down TO 3"),
-    K("MI_VELOCITY_STEPSIZE_4", "Velocity\nUp/Down\n4", "SET Velocity Up/Down TO 4"),
-    K("MI_VELOCITY_STEPSIZE_5", "Velocity\nUp/Down\n5", "SET Velocity Up/Down TO 5"),
-    K("MI_VELOCITY_STEPSIZE_6", "Velocity\nUp/Down\n6", "SET Velocity Up/Down TO 6"),
-    K("MI_VELOCITY_STEPSIZE_7", "Velocity\nUp/Down\n7", "SET Velocity Up/Down TO 7"),
-    K("MI_VELOCITY_STEPSIZE_8", "Velocity\nUp/Down\n8", "SET Velocity Up/Down TO 8"),
-    K("MI_VELOCITY_STEPSIZE_9", "Velocity\nUp/Down\n9", "SET Velocity Up/Down TO 9"),
-    K("MI_VELOCITY_STEPSIZE_10", "Velocity\nUp/Down\n10", "SET Velocity Up/Down TO 10"),
+    K("MI_VELOCITY_STEPSIZE_1", "Velocity\nUp/Down\nx1", "SET Velocity Up/Down x1"),
+    K("MI_VELOCITY_STEPSIZE_2", "Velocity\nUp/Down\nx2", "SET Velocity Up/Down TO x2"),
+    K("MI_VELOCITY_STEPSIZE_3", "Velocity\nUp/Down\nx3", "SET Velocity Up/Down TO x3"),
+    K("MI_VELOCITY_STEPSIZE_4", "Velocity\nUp/Down\nx4", "SET Velocity Up/Down TO x4"),
+    K("MI_VELOCITY_STEPSIZE_5", "Velocity\nUp/Down\nx5", "SET Velocity Up/Down TO x5"),
+    K("MI_VELOCITY_STEPSIZE_6", "Velocity\nUp/Down\nx6", "SET Velocity Up/Down TO x6"),
+    K("MI_VELOCITY_STEPSIZE_7", "Velocity\nUp/Down\nx7", "SET Velocity Up/Down TO x7"),
+    K("MI_VELOCITY_STEPSIZE_8", "Velocity\nUp/Down\nx8", "SET Velocity Up/Down TO x8"),
+    K("MI_VELOCITY_STEPSIZE_9", "Velocity\nUp/Down\nx9", "SET Velocity Up/Down TO x9"),
+    K("MI_VELOCITY_STEPSIZE_10", "Velocity\nUp/Down\nx10", "SET Velocity Up/Down TO x10"),
 ]
 
 KEYCODES_MIDI_SMARTCHORDBUTTONS = [
     K("MI_SMARTCHORD_PRESS", "Smartchord", "Press Smartchord"),
     K("MI_SMARTCHORD_UP", "Smartchord\n▲", "Smartchord Up"),
     K("MI_SMARTCHORD_DOWN", "Smartchord\n▼", "Smartchord Down"),
+]
+
+KEYCODES_MIDI_CHANNEL_HOLD = [
+    K("MI_CHANNEL_HOLD_1", "HOLD\nChannel\n1", "Hold for MIDI channel 1, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_2", "HOLD\nChannel\n2", "Hold for MIDI channel 2, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_3", "HOLD\nChannel\n3", "Hold for MIDI channel 3, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_4", "HOLD\nChannel\n4", "Hold for MIDI channel 4, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_5", "HOLD\nChannel\n5", "Hold for MIDI channel 5, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_6", "HOLD\nChannel\n6", "Hold for MIDI channel 6, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_7", "HOLD\nChannel\n7", "Hold for MIDI channel 7, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_8", "HOLD\nChannel\n8", "Hold for MIDI channel 8, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_9", "HOLD\nChannel\n9", "Hold for MIDI channel 9, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_10", "HOLD\nChannel\n10", "Hold for MIDI channel 10, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_11", "HOLD\nChannel\n11", "Hold for MIDI channel 11, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_12", "HOLD\nChannel\n12", "Hold for MIDI channel 12, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_13", "HOLD\nChannel\n13", "Hold for MIDI channel 13, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_14", "HOLD\nChannel\n14", "Hold for MIDI channel 14, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_15", "HOLD\nChannel\n15", "Hold for MIDI channel 15, release for default MIDI channel"),
+    K("MI_CHANNEL_HOLD_16", "HOLD\nChannel\n16", "Hold for MIDI channel 16, release for default MIDI channel")
+]
+
+KEYCODES_MIDI_CHANNEL_OS = [
+    K("MI_CHANNEL_OS_1", "OS\nChannel\n1", "OSorary switch to MIDI channel 1"),
+    K("MI_CHANNEL_OS_2", "OS\nChannel\n2", "OSorary switch to MIDI channel 2"),
+    K("MI_CHANNEL_OS_3", "OS\nChannel\n3", "OSorary switch to MIDI channel 3"),
+    K("MI_CHANNEL_OS_4", "OS\nChannel\n4", "OSorary switch to MIDI channel 4"),
+    K("MI_CHANNEL_OS_5", "OS\nChannel\n5", "OSorary switch to MIDI channel 5"),
+    K("MI_CHANNEL_OS_6", "OS\nChannel\n6", "OSorary switch to MIDI channel 6"),
+    K("MI_CHANNEL_OS_7", "OS\nChannel\n7", "OSorary switch to MIDI channel 7"),
+    K("MI_CHANNEL_OS_8", "OS\nChannel\n8", "OSorary switch to MIDI channel 8"),
+    K("MI_CHANNEL_OS_9", "OS\nChannel\n9", "OSorary switch to MIDI channel 9"),
+    K("MI_CHANNEL_OS_10", "OS\nChannel\n10", "OSorary switch to MIDI channel 10"),
+    K("MI_CHANNEL_OS_11", "OS\nChannel\n11", "OSorary switch to MIDI channel 11"),
+    K("MI_CHANNEL_OS_12", "OS\nChannel\n12", "OSorary switch to MIDI channel 12"),
+    K("MI_CHANNEL_OS_13", "OS\nChannel\n13", "OSorary switch to MIDI channel 13"),
+    K("MI_CHANNEL_OS_14", "OS\nChannel\n14", "OSorary switch to MIDI channel 14"),
+    K("MI_CHANNEL_OS_15", "OS\nChannel\n15", "OSorary switch to MIDI channel 15"),
+    K("MI_CHANNEL_OS_16", "OS\nChannel\n16", "OSorary switch to MIDI channel 16")
 ]
 
 KEYCODES_MIDI_CHORD_1 = [
@@ -1433,7 +1465,7 @@ def recreate_keycodes():
     KEYCODES.clear()
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA +
-                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ 
+                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+KEYCODES_MIDI_CHANNEL_OS+KEYCODES_MIDI_CHANNEL_HOLD+ 
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)
