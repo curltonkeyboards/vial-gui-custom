@@ -1244,16 +1244,16 @@ KEYCODES_CC_SENSITIVITY = [
 ]
 
 KEYCODES_VELOCITY_MULTIPLIER = [
-    K("MI_VELOCITY_MULTIPLIER_1", "Velocity\nUp/Down\nx1", "SET Velocity MULTIPLIER TO X1"),
-    K("MI_VELOCITY_MULTIPLIER_2", "Velocity\nUp/Down\nx2", "SET Velocity MULTIPLIER TO X2"),
-    K("MI_VELOCITY_MULTIPLIER_3", "Velocity\nUp/Down\nx3", "SET Velocity MULTIPLIER TO X3"),
-    K("MI_VELOCITY_MULTIPLIER_4", "Velocity\nUp/Down\nx4", "SET Velocity MULTIPLIER TO X4"),
-    K("MI_VELOCITY_MULTIPLIER_5", "Velocity\nUp/Down\nx5", "SET Velocity MULTIPLIER TO X5"),
-    K("MI_VELOCITY_MULTIPLIER_6", "Velocity\nUp/Down\nx6", "SET Velocity MULTIPLIER TO X6"),
-    K("MI_VELOCITY_MULTIPLIER_7", "Velocity\nUp/Down\nx7", "SET Velocity MULTIPLIER TO X7"),
-    K("MI_VELOCITY_MULTIPLIER_8", "Velocity\nUp/Down\nx8", "SET Velocity MULTIPLIER TO X8"),
-    K("MI_VELOCITY_MULTIPLIER_9", "Velocity\nUp/Down\nx9", "SET Velocity MULTIPLIER TO X9"),
-    K("MI_VELOCITY_MULTIPLIER_10", "Velocity\nUp/Down\nx10", "SET Velocity MULTIPLIER TO X10"),
+    K("MI_VELOCITY_MULTIPLIER_1", "Velocity\nUp/Down\n1", "SET Velocity MULTIPLIER TO 1"),
+    K("MI_VELOCITY_MULTIPLIER_2", "Velocity\nUp/Down\n2", "SET Velocity MULTIPLIER TO 2"),
+    K("MI_VELOCITY_MULTIPLIER_3", "Velocity\nUp/Down\n3", "SET Velocity MULTIPLIER TO 3"),
+    K("MI_VELOCITY_MULTIPLIER_4", "Velocity\nUp/Down\n4", "SET Velocity MULTIPLIER TO 4"),
+    K("MI_VELOCITY_MULTIPLIER_5", "Velocity\nUp/Down\n5", "SET Velocity MULTIPLIER TO 5"),
+    K("MI_VELOCITY_MULTIPLIER_6", "Velocity\nUp/Down\n6", "SET Velocity MULTIPLIER TO 6"),
+    K("MI_VELOCITY_MULTIPLIER_7", "Velocity\nUp/Down\n7", "SET Velocity MULTIPLIER TO 7"),
+    K("MI_VELOCITY_MULTIPLIER_8", "Velocity\nUp/Down\n8", "SET Velocity MULTIPLIER TO 8"),
+    K("MI_VELOCITY_MULTIPLIER_9", "Velocity\nUp/Down\n9", "SET Velocity MULTIPLIER TO 9"),
+    K("MI_VELOCITY_MULTIPLIER_10", "Velocity\nUp/Down\n10", "SET Velocity MULTIPLIER TO 10"),
 ]
 
 KEYCODES_MIDI_SMARTCHORDBUTTONS = [
