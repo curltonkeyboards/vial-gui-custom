@@ -312,7 +312,7 @@ class SmartChordTab(QScrollArea):
         return (self.button_layout.count() > 0)
 
 from PyQt5.QtWidgets import (
-    QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction, QIntValidator
+    QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 
@@ -397,14 +397,14 @@ class midiadvancedTab(QScrollArea):
         # Add a label and text box for CC X input
         cc_x_label = QLabel("Enter CC X (0-127):")
         self.cc_x_input = QLineEdit()
-        self.cc_x_input.setValidator(QIntValidator(0, 127))  # Restrict input to 0-127
+        self.cc_x_input.textChanged.connect(self.validate_cc_x_input)
         cc_x_content_layout.addWidget(cc_x_label)
         cc_x_content_layout.addWidget(self.cc_x_input)
 
         # Add a label and text box for CC Y input
         cc_y_label = QLabel("Enter CC Y (0-127):")
         self.cc_y_input = QLineEdit()
-        self.cc_y_input.setValidator(QIntValidator(0, 127))  # Restrict input to 0-127
+        self.cc_y_input.textChanged.connect(self.validate_cc_x_input)
         cc_x_content_layout.addWidget(cc_y_label)
         cc_x_content_layout.addWidget(self.cc_y_input)
 
@@ -421,6 +421,11 @@ class midiadvancedTab(QScrollArea):
         layout.addWidget(confirm_button)
 
         dialog.exec_()
+        
+    def validate_cc_x_input(self, text):
+        if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
+            # If the input is not a digit or is out of the range, clear the input
+            self.cc_x_input.clear()
 
     def confirm_cc_values(self):
         """Handle the confirmation of CC values."""
