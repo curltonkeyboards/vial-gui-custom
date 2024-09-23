@@ -150,6 +150,10 @@ class CenteredComboBox(QComboBox):
         # Center the text horizontally
         text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
         painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
+        
+     def wheelEvent(self, event):
+        # Ignore the wheel event to prevent changing selection
+        event.ignore()
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
