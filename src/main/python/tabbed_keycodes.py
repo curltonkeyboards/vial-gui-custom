@@ -140,6 +140,10 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel
 from PyQt5.QtCore import pyqtSignal
 
 class CenteredComboBox(QComboBox):
+    def wheelEvent(self, event):
+        # Ignore the wheel event to prevent changing selection
+        event.ignore()
+        
     def paintEvent(self, event):
         opt = QStyleOptionComboBox()
         self.initStyleOption(opt)
@@ -151,9 +155,7 @@ class CenteredComboBox(QComboBox):
         text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
         painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
         
-    def wheelEvent(self, event):
-        # Ignore the wheel event to prevent changing selection
-        event.ignore()
+
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
