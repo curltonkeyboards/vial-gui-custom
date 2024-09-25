@@ -12,7 +12,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BOOT, KEYCODES_MODIFIERS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
-    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, \
+    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, \
     KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
@@ -140,10 +140,6 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel
 from PyQt5.QtCore import pyqtSignal
 
 class CenteredComboBox(QComboBox):
-    def wheelEvent(self, event):
-        # Ignore the wheel event to prevent changing selection
-        event.ignore()
-        
     def paintEvent(self, event):
         opt = QStyleOptionComboBox()
         self.initStyleOption(opt)
@@ -155,7 +151,9 @@ class CenteredComboBox(QComboBox):
         text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
         painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
         
-
+    def wheelEvent(self, event):
+        # Ignore the wheel event to prevent changing selection
+        event.ignore()
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -342,7 +340,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold):
         super().__init__(parent)
         self.label = label
         self.inversion_keycodes = inversion_keycodes
@@ -357,6 +355,8 @@ class midiadvancedTab(QScrollArea):
         self.cc_multiplier_options = cc_multiplier_options  # Dropdown options for CC Multiplier
         self.channel_options = channel_options  # Dropdown options for Channel
         self.velocity_options = velocity_options  # Dropdown options for Velocity
+        self.channel_oneshot = channel_oneshot  # Dropdown options for Channel
+        self.channel_hold = channel_hold  # Dropdown options for Velocity
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -373,7 +373,9 @@ class midiadvancedTab(QScrollArea):
         
         # Add Channel and Velocity dropdowns in the second row
         self.additional_dropdown_layout4 = QHBoxLayout()
-        self.add_header_dropdown("Channel", self.channel_options, self.additional_dropdown_layout4)
+        self.add_header_dropdown("Default Channel", self.channel_options, self.additional_dropdown_layout4)
+        self.add_header_dropdown("One Shot Channel", self.channel_oneshot, self.additional_dropdown_layout4)
+        self.add_header_dropdown("Hold Channel", self.channel_hold, self.additional_dropdown_layout4)
         self.add_header_dropdown("Velocity", self.velocity_options, self.additional_dropdown_layout4)
         self.main_layout.addLayout(self.additional_dropdown_layout4)
         
@@ -389,8 +391,8 @@ class midiadvancedTab(QScrollArea):
 
         # Add Channel and Velocity dropdowns in the second row
         self.additional_dropdown_layout3 = QHBoxLayout()
-        self.add_header_dropdown("Velocity Multiplier", self.velocity_multiplier_options, self.additional_dropdown_layout3)
-        self.add_header_dropdown("CC Multiplier", self.cc_multiplier_options, self.additional_dropdown_layout3)
+        self.add_header_dropdown("Velocity ▲▼ Multiplier", self.velocity_multiplier_options, self.additional_dropdown_layout3)
+        self.add_header_dropdown("CC ▲▼ Multiplier", self.cc_multiplier_options, self.additional_dropdown_layout3)
         self.main_layout.addLayout(self.additional_dropdown_layout3)
 
         self.inversion_label = QLabel("Advanced Midi Settings")
@@ -1241,15 +1243,16 @@ class FilteredTabbedKeycodes(QTabWidget):
                 (None, KEYCODES_ISO),
             ], prefix_buttons=[("Any", -1)]),
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
+            SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT),
             MacroTab(self, "Macro", KEYCODES_MACRO, KEYCODES_TAP_DANCE, KEYCODES_MACRO_BASE),
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_LT, KEYCODES_LAYERS_TO),
             midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION),
-            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK + KEYCODES_Program_Change_UPDOWN, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY),                   
+            midiadvancedTab(self, "InstrumentAdvanced",  KEYCODES_MIDI_ADVANCED + KEYCODES_MIDI_BANK + KEYCODES_Program_Change_UPDOWN + KEYCODES_OLED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD),                   
             Tab(self, "Keyboard Advanced", [(mods, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (mods_narrow, (KEYCODES_BOOT + KEYCODES_QUANTUM)),
                                   (None, (KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM))]),
-            SimpleTab(self, "Lighting", KEYCODES_BACKLIGHT + KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD),
+            
         ]
 
         for tab in self.tabs:

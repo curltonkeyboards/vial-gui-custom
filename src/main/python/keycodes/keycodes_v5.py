@@ -784,6 +784,13 @@ class keycodes_v5:
         "MI_CHANNEL_HOLD_15": 0xC456,
         "MI_CHANNEL_HOLD_16": 0xC457,  
         
+        "OLED_1": 0xC458,
+        "OLED_2": 0xC459,
+        "OLED_3": 0xC45A,
+        "OLED_4": 0xC45B,
+        "OLED_5": 0xC45C,
+        "OLED_6": 0xC45D,    
+        
 
 
         "QK_KB":0xC460,  # custom keycodes safe range
