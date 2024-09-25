@@ -1156,7 +1156,7 @@ KEYCODES_MIDI_BASIC = [
 ]
 
 KEYCODES_MIDI_ADVANCED = [
-    K("MI_ALLOFF", "ᴹᴵᴰᴵ\nNotesᵒᶠᶠ", "Midi send all notes OFF"),
+    K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
     K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
     K("MI_PORT", "Portmento", "Midi Portmento"),
     K("MI_SOST", "Sostenuto", "Midi Sostenuto"),
@@ -1290,22 +1290,22 @@ KEYCODES_MIDI_CHANNEL_HOLD = [
 ]
 
 KEYCODES_MIDI_CHANNEL_OS = [
-    K("MI_CHANNEL_OS_1", "OS\nChannel\n1", "OSorary switch to MIDI channel 1"),
-    K("MI_CHANNEL_OS_2", "OS\nChannel\n2", "OSorary switch to MIDI channel 2"),
-    K("MI_CHANNEL_OS_3", "OS\nChannel\n3", "OSorary switch to MIDI channel 3"),
-    K("MI_CHANNEL_OS_4", "OS\nChannel\n4", "OSorary switch to MIDI channel 4"),
-    K("MI_CHANNEL_OS_5", "OS\nChannel\n5", "OSorary switch to MIDI channel 5"),
-    K("MI_CHANNEL_OS_6", "OS\nChannel\n6", "OSorary switch to MIDI channel 6"),
-    K("MI_CHANNEL_OS_7", "OS\nChannel\n7", "OSorary switch to MIDI channel 7"),
-    K("MI_CHANNEL_OS_8", "OS\nChannel\n8", "OSorary switch to MIDI channel 8"),
-    K("MI_CHANNEL_OS_9", "OS\nChannel\n9", "OSorary switch to MIDI channel 9"),
-    K("MI_CHANNEL_OS_10", "OS\nChannel\n10", "OSorary switch to MIDI channel 10"),
-    K("MI_CHANNEL_OS_11", "OS\nChannel\n11", "OSorary switch to MIDI channel 11"),
-    K("MI_CHANNEL_OS_12", "OS\nChannel\n12", "OSorary switch to MIDI channel 12"),
-    K("MI_CHANNEL_OS_13", "OS\nChannel\n13", "OSorary switch to MIDI channel 13"),
-    K("MI_CHANNEL_OS_14", "OS\nChannel\n14", "OSorary switch to MIDI channel 14"),
-    K("MI_CHANNEL_OS_15", "OS\nChannel\n15", "OSorary switch to MIDI channel 15"),
-    K("MI_CHANNEL_OS_16", "OS\nChannel\n16", "OSorary switch to MIDI channel 16"),
+    K("MI_CHANNEL_OS_1", "Next\nKey\nChannel\n1", "OSorary switch to MIDI channel 1"),
+    K("MI_CHANNEL_OS_2", "Next\nKey\nChannel\n2", "OSorary switch to MIDI channel 2"),
+    K("MI_CHANNEL_OS_3", "Next\nKey\nChannel\n3", "OSorary switch to MIDI channel 3"),
+    K("MI_CHANNEL_OS_4", "Next\nKey\nChannel\n4", "OSorary switch to MIDI channel 4"),
+    K("MI_CHANNEL_OS_5", "Next\nKey\nChannel\n5", "OSorary switch to MIDI channel 5"),
+    K("MI_CHANNEL_OS_6", "Next\nKey\nChannel\n6", "OSorary switch to MIDI channel 6"),
+    K("MI_CHANNEL_OS_7", "Next\nKey\nChannel\n7", "OSorary switch to MIDI channel 7"),
+    K("MI_CHANNEL_OS_8", "Next\nKey\nChannel\n8", "OSorary switch to MIDI channel 8"),
+    K("MI_CHANNEL_OS_9", "Next\nKey\nChannel\n9", "OSorary switch to MIDI channel 9"),
+    K("MI_CHANNEL_OS_10", "Next\nKey\nChannel\n10", "OSorary switch to MIDI channel 10"),
+    K("MI_CHANNEL_OS_11", "Next\nKey\nChannel\n11", "OSorary switch to MIDI channel 11"),
+    K("MI_CHANNEL_OS_12", "Next\nKey\nChannel\n12", "OSorary switch to MIDI channel 12"),
+    K("MI_CHANNEL_OS_13", "Next\nKey\nChannel\n13", "OSorary switch to MIDI channel 13"),
+    K("MI_CHANNEL_OS_14", "Next\nKey\nChannel\n14", "OSorary switch to MIDI channel 14"),
+    K("MI_CHANNEL_OS_15", "Next\nKey\nChannel\n15", "OSorary switch to MIDI channel 15"),
+    K("MI_CHANNEL_OS_16", "Next\nKey\nChannel\n16", "OSorary switch to MIDI channel 16"),
 ]
 
 KEYCODES_MIDI_CHORD_1 = [
