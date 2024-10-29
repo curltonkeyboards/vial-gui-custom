@@ -1674,9 +1674,6 @@ class FilteredTabbedKeycodes(QWidget):
         # Set the layout's spacing to 5 pixels
         self.nav_buttons.setSpacing(5)
 
-        # Set margins around the layout to control button position within the window
-        self.nav_buttons.setContentsMargins(5, 5, 5, 5)
-
         self.main_layout.addWidget(self.stacked_widget)
         
         # Set up tabs
