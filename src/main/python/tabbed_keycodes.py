@@ -2,7 +2,7 @@
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
-from PyQt5.QtGui import QPalette, QPainter,
+from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
