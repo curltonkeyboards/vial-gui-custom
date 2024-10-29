@@ -1653,27 +1653,21 @@ class FilteredTabbedKeycodes(QWidget):
             SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
         
-# Create navigation buttons for each tab and add them to the nav_buttons layout
+        # Create navigation buttons for each tab and add them to the nav_buttons layout
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
             button.setStyleSheet("""
-                border: 1px solid transparent;
+            border: 1px solid transparent;
                 border-radius: 0px;
-                background-color: rgba(0, 0, 0, 20);  /* 99% transparent black */
+                background-color: rgba(0, 0, 0, 20);  /* 70% transparent black */
                 color: white;
-                padding: 10px;
-            """)  # Makes the button background nearly transparent black
+                padding: 5px;
+            """)  # Makes the button background semi-transparent black
             button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
-    
-            # Set size policy to grow with the window while keeping the padding constant
-            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    
-            # Add button to the layout with fixed spacing
             self.nav_buttons.addWidget(button)
-
-        # Set the layout's spacing to 5 pixels
-        self.nav_buttons.setSpacing(5)
-
+        
+        # Add navigation layout and stacked widget to the main layout
+        self.main_layout.addLayout(self.nav_buttons)
         self.main_layout.addWidget(self.stacked_widget)
         
         # Set up tabs
