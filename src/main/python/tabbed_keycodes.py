@@ -1609,6 +1609,7 @@ from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, Q
 from PyQt5.QtCore import pyqtSignal
 
 class FilteredTabbedKeycodes(QWidget):
+
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
 
@@ -1617,109 +1618,66 @@ class FilteredTabbedKeycodes(QWidget):
         
         # Create main layout
         self.main_layout = QHBoxLayout(self)
-
-        # Create a frame to contain both navigation and stacked widget
-        self.container_frame = QFrame()
-        self.container_frame.setStyleSheet("""
-            border: 1px solid rgba(255, 255, 255, 0.1);  /* Border with 90% transparency */
-            border-radius: 4px;  /* Optional: round corners */
+        
+        # Create a frame to hold both the navigation and the content box
+        self.main_frame = QFrame()
+        self.main_frame.setFrameShape(QFrame.StyledPanel)  # Frame around both sections
+        self.main_frame.setStyleSheet("""
+            QFrame {
+                border: 1px solid rgba(255, 255, 255, 0.7);  /* 90% transparent white border */
+            }
         """)
         
-        # Create layout for the container frame
-        self.container_layout = QHBoxLayout(self.container_frame)
+        # Inner layout to organize nav buttons and stacked widget within the frame
+        self.inner_layout = QHBoxLayout(self.main_frame)
         
         # Create navigation layout (stacked vertically)
         self.nav_buttons = QVBoxLayout()
-        self.nav_buttons.setSpacing(2)  # Adjust spacing to reduce gap between buttons
-        self.nav_buttons.setContentsMargins(0, 0, 0, 0)  # Remove margins for a tighter fit
+        self.nav_buttons.setSpacing(2)
+        self.nav_buttons.setContentsMargins(0, 0, 0, 0)
         
         # Create stacked widget for tab content
-        self.stacked_widget = QStackedWidget(self)
-
-        self.keycode_filter = keycode_filter
-        self.tabs = [
-            Tab(self, "Basic", [
-                (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
-                (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
-                (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
-                (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
-            ], prefix_buttons=[("Any", -1)]),
-            Tab(self, "ISO/JIS", [
-                (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (None, KEYCODES_ISO),
-            ], prefix_buttons=[("Any", -1)]),   
-            SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
-            SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
-            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
-            midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
-            midiadvancedTab(self, "MIDI",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD),
-            MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            SimpleTab(self, " ", KEYCODES_CLEAR),     
-        ]
+        self.stacked_widget = QStackedWidget(self.main_frame)
         
-        # Create navigation buttons for each tab and add them to the nav_buttons layout
-        # Inside the __init__ method of FilteredTabbedKeycodes class, after creating each button:
+        # Populate navigation buttons with transparent and selected styling
+        self.nav_buttons_group = []
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
-            button.setCheckable(True)  # Allow button to be toggled
+            button.setCheckable(True)
             button.setStyleSheet("""
                 QPushButton {
-                    border: none;  /* No border initially */
-                    background-color: transparent;  /* Fully transparent */
-                    color: white;  /* White text */
+                    border: none;
+                    background-color: transparent;
+                    color: white;
                 }
                 QPushButton:checked {
-                    border: 1px solid white;  /* White outline when selected */
-                    background-color: rgba(255, 255, 255, 0.2);  /* 20% transparency */
+                    border: 1px solid white;
+                    background-color: rgba(255, 255, 255, 0.2);
                 }
             """)
             button.clicked.connect(lambda _, idx=i: self.on_nav_button_clicked(idx))
             self.nav_buttons.addWidget(button)
-
-        # Add this helper function to handle button selection
-        self.nav_buttons_group = []
-        self.nav_buttons_group.append(button)
-    
-        # Connect this helper function
-        def on_nav_button_clicked(self, idx):
-            # Deselect all buttons in the group except the selected one
-            for i, button in enumerate(self.nav_buttons_group):
-                button.setChecked(i == idx)  # Only the selected button gets the "checked" style
-    
-            # Switch the stacked widget page to the corresponding tab
-            self.stacked_widget.setCurrentIndex(idx)
-
-
-    def on_keycode_changed(self, code):
-        if code == "Any":
-            self.anykey.emit()
-        else:
-            self.keycode_changed.emit(Keycode.normalize(code))
-
-    def recreate_keycode_buttons(self):
-        prev_tab_index = self.stacked_widget.currentIndex()
+            self.nav_buttons_group.append(button)
         
-        # Clear current stacked widget
-        while self.stacked_widget.count() > 0:
-            self.stacked_widget.removeWidget(self.stacked_widget.widget(0))
+        # Add navigation layout and stacked widget to the inner layout
+        self.inner_layout.addLayout(self.nav_buttons)
+        self.inner_layout.addWidget(self.stacked_widget)
         
-        # Recreate each tab’s buttons and add to the stacked widget
+        # Add the main frame to the main layout
+        self.main_layout.addWidget(self.main_frame)
+        
+        # Set up tabs in the stacked widget
         for tab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.stacked_widget.addWidget(tab)
-        
-        # Restore the previously selected tab, if possible
-        if prev_tab_index < self.stacked_widget.count():
-            self.stacked_widget.setCurrentIndex(prev_tab_index)
+            tab.keycode_changed.connect(self.on_keycode_changed)
+            self.stacked_widget.addWidget(tab)
 
-    def on_keymap_override(self):
-        for tab in self.tabs:
-            tab.relabel_buttons()
+    def on_nav_button_clicked(self, idx):
+        # Set only the clicked button as checked
+        for i, button in enumerate(self.nav_buttons_group):
+            button.setChecked(i == idx)
+        # Update the stacked widget to display the selected tab
+        self.stacked_widget.setCurrentIndex(idx)
+
 
 
 class TabbedKeycodes(QWidget):
