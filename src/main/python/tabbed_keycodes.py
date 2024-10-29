@@ -1621,8 +1621,8 @@ class FilteredTabbedKeycodes(QWidget):
         
         # Create navigation layout (stacked vertically)
         self.nav_buttons = QVBoxLayout()
-        self.nav_buttons.setSpacing(2)  # Adjust spacing to reduce gap between buttons
-        self.nav_buttons.setContentsMargins(0, 0, 0, 0)  # Remove margins for a tighter fit
+        self.nav_buttons.setSpacing(2)
+        self.nav_buttons.setContentsMargins(0, 0, 0, 0)
         
         # Create stacked widget for tab content
         self.stacked_widget = QStackedWidget(self)
@@ -1654,17 +1654,19 @@ class FilteredTabbedKeycodes(QWidget):
         ]
         
         # Create navigation buttons for each tab and add them to the nav_buttons layout
+        self.buttons = []  # Store references to buttons for later access
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
             button.setStyleSheet("""
-            border: 1px solid transparent;
+                border: 1px solid transparent;
                 border-radius: 0px;
-                background-color: rgba(0, 0, 0, 20);  /* 70% transparent black */
+                background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
                 color: white;
                 padding: 5px;
-            """)  # Makes the button background semi-transparent black
-            button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
+            """)
+            button.clicked.connect(lambda _, idx=i: self.select_tab(idx))
             self.nav_buttons.addWidget(button)
+            self.buttons.append(button)  # Add button to list
         
         # Add navigation layout and stacked widget to the main layout
         self.main_layout.addLayout(self.nav_buttons)
@@ -1677,6 +1679,32 @@ class FilteredTabbedKeycodes(QWidget):
 
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
+
+        # Initialize the first button as selected
+        self.set_active_button(0)
+
+    def select_tab(self, index):
+        self.stacked_widget.setCurrentIndex(index)
+        self.set_active_button(index)
+
+    def set_active_button(self, index):
+        # Reset all buttons to default style
+        for button in self.buttons:
+            button.setStyleSheet("""
+                border: 1px solid transparent;
+                border-radius: 0px;
+                background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
+                color: white;
+                padding: 5px;
+            """)
+        
+        # Highlight the selected button
+        self.buttons[index].setStyleSheet("""
+            border: 1px solid #4CAF50;  /* Green border for selected button */
+            background-color: rgba(0, 128, 0, 100);  /* Slightly opaque green */
+            color: white;
+            padding: 5px;
+        """)
 
     def on_keycode_changed(self, code):
         if code == "Any":
@@ -1704,8 +1732,6 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
-
-
 
 
 
