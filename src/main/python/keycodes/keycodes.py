@@ -340,6 +340,9 @@ BASIC_KEYCODES = {
     "KC_RGUI",
 }
 
+KEYCODES_CLEAR = [
+]
+
 KEYCODES_SPECIAL = [
     K("KC_NO", ""),
     K("KC_TRNS", "▽", alias=["KC_TRANSPARENT"]),
@@ -663,6 +666,17 @@ KEYCODES_MODIFIERS = [
     K("OSM(MOD_RCTL|MOD_RSFT|MOD_RALT)", "OSM\nRMeh", "Enable Right Control, Shift, and Alt for one keypress"),
     K("OSM(MOD_RCTL|MOD_RSFT|MOD_RALT|MOD_RGUI)", "OSM\nRHyp", "Enable Right Control, Shift, Alt, and GUI for one keypress"),
 
+    K("KC_GESC", "~\nEsc", "Esc normally, but ~ when Shift or GUI is pressed"),
+    K("KC_LSPO", "LS\n(", "Left Shift when held, ( when tapped"),
+    K("KC_RSPC", "RS\n)", "Right Shift when held, ) when tapped"),
+    K("KC_LCPO", "LC\n(", "Left Control when held, ( when tapped"),
+    K("KC_RCPC", "RC\n)", "Right Control when held, ) when tapped"),
+    K("KC_LAPO", "LA\n(", "Left Alt when held, ( when tapped"),
+    K("KC_RAPC", "RA\n)", "Right Alt when held, ) when tapped"),
+    K("KC_SFTENT", "RS\nEnter", "Right Shift when held, Enter when tapped"),
+]
+
+KEYCODES_KC = [
     K("LSFT(kc)", "LSft\n(kc)", masked=True),
     K("LCTL(kc)", "LCtl\n(kc)", masked=True),
     K("LALT(kc)", "LAlt\n(kc)", masked=True),
@@ -699,15 +713,6 @@ KEYCODES_MODIFIERS = [
     K("RCAG_T(kc)", "RCAG_T\n(kc)", "RCTL + RALT + RGUI when held, kc when tapped", masked=True),
     K("MEH_T(kc)", "Meh_T\n(kc)", "LCTL + LSFT + LALT when held, kc when tapped", masked=True),
     K("ALL_T(kc)", "ALL_T\n(kc)", "LCTL + LSFT + LALT + LGUI when held, kc when tapped", masked=True),
-
-    K("KC_GESC", "~\nEsc", "Esc normally, but ~ when Shift or GUI is pressed"),
-    K("KC_LSPO", "LS\n(", "Left Shift when held, ( when tapped"),
-    K("KC_RSPC", "RS\n)", "Right Shift when held, ) when tapped"),
-    K("KC_LCPO", "LC\n(", "Left Control when held, ( when tapped"),
-    K("KC_RCPC", "RC\n)", "Right Control when held, ) when tapped"),
-    K("KC_LAPO", "LA\n(", "Left Alt when held, ( when tapped"),
-    K("KC_RAPC", "RA\n)", "Right Alt when held, ) when tapped"),
-    K("KC_SFTENT", "RS\nEnter", "Right Shift when held, Enter when tapped"),
 ]
 
 KEYCODES_QUANTUM = [
@@ -793,9 +798,6 @@ KEYCODES_BACKLIGHT = [
     K("RGB_VAD", "Bright -", "Decrease value"),
     K("RGB_SPI", "Speed +", "Increase RGB effect speed"),
     K("RGB_SPD", "Speed -", "Decrease RGB effect speed"),
-    K("RGB_M_P", "RGB\nMode P", "RGB Mode: Plain"),
-    K("RGB_M_B", "RGB\nMode B", "RGB Mode: Breathe"),
-    K("RGB_M_R", "RGB\nMode R", "RGB Mode: Rainbow"),
 ]
 
 KEYCODES_MEDIA = [
@@ -1153,20 +1155,34 @@ KEYCODES_MIDI_BASIC = [
     K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
     K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
     K("KC_NO", "", "None"),
+    K("MI_CHORD_99", "Smart\nChord", "Press QuickChord"),  
 ]
 
 KEYCODES_MIDI_ADVANCED = [
-    K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
-    K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
+    K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"), 
+    K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),  
+    K("MI_VELOCITY_UP", "Velocity\n▲", "Midi increase velocity"),  
+    K("MI_CHU", "Channel\n▲", "Midi increase channel"),   
+    K("MI_BENDU", "Pitch\nBend ▲", "Midi bend pitch up"),   
+    K("MI_MODSU", "Mod\nSpeed ▲", "Midi increase modulation speed"), 
+    K("MI_PROG_UP", "Program\n▲", "Program up")  ,  
+    K("MI_BANK_UP", "Bank\n▲", "Bank up"),
+    K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),    
     K("MI_PORT", "Portmento", "Midi Portmento"),
     K("MI_SOST", "Sostenuto", "Midi Sostenuto"),
-    K("MI_SOFT", "Soft\nSPedal", "Midi Soft Pedal"),
-    K("MI_LEG", "Legato", "Midi Legato"),
-    K("MI_MOD", "Modulation", "Midi Modulation"),
-    K("MI_MODSD", "Mod\nSpeed ▼", "Midi decrease modulation speed"),
-    K("MI_MODSU", "Mod\nSpeed ▲", "Midi increase modulation speed"),
+    K("MI_LEG", "Legato", "Midi Legato"),         
+    K("MI_TRNSD", "Transpose\n▼", "Midi decrease transposition"),  
+    K("MI_OCTD", "Octave\n▼", "Midi move down an octave"),
+    K("MI_VELOCITY_DOWN", "Velocity\n▼", "Midi decrease velocity"), 
+    K("MI_CHD", "Channel\n▼", "Midi decrease channel"),
     K("MI_BENDD", "Pitch\nBend ▼", "Midi bend pitch down"),
-    K("MI_BENDU", "Pitch\nBend ▲", "Midi bend pitch up"),
+    K("MI_MODSD", "Mod\nSpeed ▼", "Midi decrease modulation speed"), 
+    K("MI_PROG_DWN", "Program\n▼", "Program down"),
+    K("MI_BANK_DWN", "Bank\n▼", "Bank down"),
+    K("MI_MOD", "Modulation", "Midi Modulation"),
+    K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
+    K("MI_SOFT", "Soft\nSPedal", "Midi Soft Pedal"),
+    K("OLED_1", "Screen\nKeyboard\nShift", "Momentarily turn on layer when pressed"),
 ]
 
 KEYCODES_MIDI_PEDAL = [
@@ -1191,11 +1207,14 @@ KEYCODES_MIDI_UPDOWN = [
     K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),    
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),   
     K("MI_CHU", "Channel\n▲", "Midi increase channel"),    
-    K("MI_VELOCITY_UP", "Velocity\n▲", "Midi increase velocity"),    
+    K("MI_VELOCITY_UP", "Velocity\n▲", "Midi increase velocity"),  
+    K("SMARTCHORD_UP", "Smart\nChord\n▲", "QuickChord Up"),    
     K("MI_TRNSD", "Transpose\n▼", "Midi decrease transposition"),
     K("MI_OCTD", "Octave\n▼", "Midi move down an octave"),
     K("MI_CHD", "Channel\n▼", "Midi decrease channel"),
     K("MI_VELOCITY_DOWN", "Velocity\n▼", "Midi decrease velocity"), 
+    K("SMARTCHORD_DOWN", "Smart\nChord\n▼", "QuickChord Down"),
+   
 ]    
 
 KEYCODES_MIDI_KEY = [
@@ -1243,12 +1262,6 @@ KEYCODES_CC_STEPSIZE = [
     K("CC_STEPSIZE_8", "CC\nUp/Down\nx8", "SET CC Up/Down TO X8"),
     K("CC_STEPSIZE_9", "CC\nUp/Down\nx9", "SET CC Up/Down TO X9"),
     K("CC_STEPSIZE_10", "CC\nUp/Down\nx10", "SET CC Up/Down TO X10"),
-    K("CC_STEPSIZE_11", "CC\nUp/Down\nx11", "SET CC Up/Down TO X1"),
-    K("CC_STEPSIZE_12", "CC\nUp/Down\nx12", "SET CC Up/Down TO X2"),
-    K("CC_STEPSIZE_13", "CC\nUp/Down\nx13", "SET CC Up/Down TO X3"),
-    K("CC_STEPSIZE_14", "CC\nUp/Down\nx14", "SET CC Up/Down TO X4"),
-    K("CC_STEPSIZE_15", "CC\nUp/Down\nx15", "SET CC Up/Down TO X5"),
-    K("CC_STEPSIZE_16", "CC\nUp/Down\nx16", "SET CC Up/Down TO X6"),
 ]
 
 KEYCODES_VELOCITY_STEPSIZE = [
@@ -1265,9 +1278,13 @@ KEYCODES_VELOCITY_STEPSIZE = [
 ]
 
 KEYCODES_MIDI_SMARTCHORDBUTTONS = [
-    K("MI_SMARTCHORD_PRESS", "Smartchord", "Press Smartchord"),
-    K("MI_SMARTCHORD_UP", "Smartchord\n▲", "Smartchord Up"),
-    K("MI_SMARTCHORD_DOWN", "Smartchord\n▼", "Smartchord Down"),
+    K("SMARTCHORD_DOWN", "Smart\nChord\n▼", "QuickChord Down"),
+    K("MI_CHORD_99", "Smart\nChord", "Press QuickChord"),
+    K("SMARTCHORD_UP", "Smart\nChord\n▲", "QuickChord Up"),
+    K("COLORBLIND_TOGGLE", "Colorblind\nMode\nOn/Off", "Colorblind"),
+    K("SMARTCHORDCOLOR_TOGGLE", "Smart\nchord\nRGB", "Smartchord LEDs Toggle"),
+    K("OLED_1", "Screen\nKeyboard\nShift", "Momentarily turn on layer when pressed"),
+    
 ]
 
 KEYCODES_MIDI_CHANNEL_HOLD = [
@@ -1290,29 +1307,31 @@ KEYCODES_MIDI_CHANNEL_HOLD = [
 ]
 
 KEYCODES_MIDI_CHANNEL_OS = [
-    K("MI_CHANNEL_OS_1", "Next Key\nChannel\n1", "OSorary switch to MIDI channel 1"),
-    K("MI_CHANNEL_OS_2", "Next Key\nChannel\n2", "OSorary switch to MIDI channel 2"),
-    K("MI_CHANNEL_OS_3", "Next Key\nChannel\n3", "OSorary switch to MIDI channel 3"),
-    K("MI_CHANNEL_OS_4", "Next Key\nChannel\n4", "OSorary switch to MIDI channel 4"),
-    K("MI_CHANNEL_OS_5", "Next Key\nChannel\n5", "OSorary switch to MIDI channel 5"),
-    K("MI_CHANNEL_OS_6", "Next Key\nChannel\n6", "OSorary switch to MIDI channel 6"),
-    K("MI_CHANNEL_OS_7", "Next Key\nChannel\n7", "OSorary switch to MIDI channel 7"),
-    K("MI_CHANNEL_OS_8", "Next Key\nChannel\n8", "OSorary switch to MIDI channel 8"),
-    K("MI_CHANNEL_OS_9", "Next Key\nChannel\n9", "OSorary switch to MIDI channel 9"),
-    K("MI_CHANNEL_OS_10", "Next Key\nChannel\n10", "OSorary switch to MIDI channel 10"),
-    K("MI_CHANNEL_OS_11", "Next Key\nChannel\n11", "OSorary switch to MIDI channel 11"),
-    K("MI_CHANNEL_OS_12", "Next Key\nChannel\n12", "OSorary switch to MIDI channel 12"),
-    K("MI_CHANNEL_OS_13", "Next Key\nChannel\n13", "OSorary switch to MIDI channel 13"),
-    K("MI_CHANNEL_OS_14", "Next Key\nChannel\n14", "OSorary switch to MIDI channel 14"),
-    K("MI_CHANNEL_OS_15", "Next Key\nChannel\n15", "OSorary switch to MIDI channel 15"),
-    K("MI_CHANNEL_OS_16", "Next Key\nChannel\n16", "OSorary switch to MIDI channel 16"),
+    K("MI_CHANNEL_OS_1", "Next Key\nChannel\n1", "Temporary switch to MIDI channel 1"),
+    K("MI_CHANNEL_OS_2", "Next Key\nChannel\n2", "Temporary switch to MIDI channel 2"),
+    K("MI_CHANNEL_OS_3", "Next Key\nChannel\n3", "Temporary switch to MIDI channel 3"),
+    K("MI_CHANNEL_OS_4", "Next Key\nChannel\n4", "Temporary switch to MIDI channel 4"),
+    K("MI_CHANNEL_OS_5", "Next Key\nChannel\n5", "Temporary switch to MIDI channel 5"),
+    K("MI_CHANNEL_OS_6", "Next Key\nChannel\n6", "Temporary switch to MIDI channel 6"),
+    K("MI_CHANNEL_OS_7", "Next Key\nChannel\n7", "Temporary switch to MIDI channel 7"),
+    K("MI_CHANNEL_OS_8", "Next Key\nChannel\n8", "Temporary switch to MIDI channel 8"),
+    K("MI_CHANNEL_OS_9", "Next Key\nChannel\n9", "Temporary switch to MIDI channel 9"),
+    K("MI_CHANNEL_OS_10", "Next Key\nChannel\n10", "Temporary switch to MIDI channel 10"),
+    K("MI_CHANNEL_OS_11", "Next Key\nChannel\n11", "Temporary switch to MIDI channel 11"),
+    K("MI_CHANNEL_OS_12", "Next Key\nChannel\n12", "Temporary switch to MIDI channel 12"),
+    K("MI_CHANNEL_OS_13", "Next Key\nChannel\n13", "Temporary switch to MIDI channel 13"),
+    K("MI_CHANNEL_OS_14", "Next Key\nChannel\n14", "Temporary switch to MIDI channel 14"),
+    K("MI_CHANNEL_OS_15", "Next Key\nChannel\n15", "Temporary switch to MIDI channel 15"),
+    K("MI_CHANNEL_OS_16", "Next Key\nChannel\n16", "Temporary switch to MIDI channel 16"),
 ]
+
 
 KEYCODES_MIDI_CHORD_1 = [
 K("MI_CHORD_0", "Major", "Major Chord"),
 K("MI_CHORD_1", "Minor", "Minor Chord"),
-K("MI_CHORD_2", "Dim\nOr\n°", "Diminished Chord"),
-K("MI_CHORD_3", "Aug\nOr\n+", "Aug Chord"),
+K("MI_CHORD_2", "Dim\n/\n°", "Diminished Chord"),
+K("MI_CHORD_128", "Aug\n/\n+", "Aug Chord"),
+K("MI_CHORD_3", "b5", "b5 Chord"),
 K("MI_CHORD_4", "Sus2", "Sus2 Chord"),
 K("MI_CHORD_5", "Sus4", "Sus4 Chord"),
 K("MI_CHORD_32", "Maj7\nno5", "Maj7no5 Chord"),
@@ -1330,8 +1349,8 @@ K("MI_CHORD_7", "Minor\n6", "Minor 6 Chord"),
 K("MI_CHORD_8", "Maj7", "Maj7 Chord"),
 K("MI_CHORD_9", "min7", "min7 Chord"),
 K("MI_CHORD_10", "7\nChord", "7 Chord"),
-K("MI_CHORD_11", "Dim7\nOr\nb7b5", "Dim7 Chord"),
-K("MI_CHORD_12", "Half\nDim7\nOr\nm7b5", "Half Dim7 Chord"),
+K("MI_CHORD_11", "Dim7\n/\nb7b5", "Dim7 Chord"),
+K("MI_CHORD_12", "HalfDim7\n/\nm7b5", "Half Dim7 Chord"),
 K("MI_CHORD_35", "Add9", "Add9 Chord"),
 K("MI_CHORD_36", "min\nAdd9", "minAdd9 Chord"),
 K("MI_CHORD_43", "Add11", "Add11 Chord"),
@@ -1344,8 +1363,8 @@ K("MI_CHORD_22", "Minor\n6/9", "Minor 6/9 Chord"),
 K("MI_CHORD_14", "Maj9", "Maj9 Chord"),
 K("MI_CHORD_15", "min9", "min9 Chord"),
 K("MI_CHORD_16", "9\nChord", "9 Chord"),
-K("MI_CHORD_37", "Dim9\nOr\nb7b5(9)", "Dim9 Chord"),
-K("MI_CHORD_38", "Half\nDim9\nOr\nm7b5(9)", "Half Dim9 Chord"),
+K("MI_CHORD_37", "Dim9\n/\nb7b5(9)", "Dim9 Chord"),
+K("MI_CHORD_38", "HalfDim9\n/\nm7b5(9)", "Half Dim9 Chord"),
 K("MI_CHORD_39", "Aug9", "Aug9 Chord"),
 K("MI_CHORD_40", "Maj11", "Maj11 Chord"),
 K("MI_CHORD_41", "min11", "min11 Chord"),
@@ -1360,7 +1379,7 @@ K("MI_CHORD_26", "Maj7\nSus2", "Maj7sus2 Chord"),
 K("MI_CHORD_27", "7\nSus2", "7sus2 Chord"),
 K("MI_CHORD_28", "Maj7\n#5", "Maj7#5 Chord"),
 K("MI_CHORD_29", "min7\n#5", "Min7#5 Chord"),
-K("MI_CHORD_13", "Aug7\nOr\n7#5", "Aug7 Chord"),
+K("MI_CHORD_13", "Aug7\n/\n7#5", "Aug7 Chord"),
 K("MI_CHORD_30", "Maj7\nb5", "Maj7b5 Chord"),
 K("MI_CHORD_31", "7\nb5", "7b5 Chord"),
 K("MI_CHORD_45", "Maj7\nAdd11", "Maj7Add11 Chord"),
@@ -1369,8 +1388,8 @@ K("MI_CHORD_47", "7\nAdd11", "7Add11 Chord"),
 K("MI_CHORD_50", "Maj7\n#11", "Maj7#11 Chord"),
 K("MI_CHORD_51", "min7\n#11", "min7#11 Chord"),
 K("MI_CHORD_52", "7\n#11", "7#11 Chord"),
-K("MI_CHORD_48", "Dim11\nOr\nb7b5(9/11)", "Dim11 Chord"),
-K("MI_CHORD_49", "Half\nDim11\nOr\nm7b5(9/11)", "HalfDim11 Chord"),
+K("MI_CHORD_48", "Dim11\n/\nb7b5(9/11)", "Dim11 Chord"),
+K("MI_CHORD_49", "HalfDim11\n/\nm7b5(9/11)", "HalfDim11 Chord"),
 ]
 
 KEYCODES_MIDI_SCALES = [ 
@@ -1398,6 +1417,77 @@ KEYCODES_MIDI_INVERSION = [
  K ("MI_INVERSION_5", "5th \nInversion", "5th Inversion"),
  K ("MI_INVERSION_6", "6th \nInversion", "6th Inversion"),
 ]
+
+KEYCODES_RGB_KC_CUSTOM = [
+    K("RGB_KC_1", "None", "RGB Mode: None"),
+    K("RGB_KC_2", "Solid\nColor", "RGB Mode: Solid Color"),
+    K("RGB_KC_3", "Alphas\nMods", "RGB Mode: Alphas Mods"),
+    K("RGB_KC_4", "Gradient\nUp Down", "RGB Mode: Gradient Up Down"),
+    K("RGB_KC_5", "Gradient\nLeft Right", "RGB Mode: Gradient Left Right"),
+    K("RGB_KC_6", "Breathing", "RGB Mode: Breathing"),
+    K("RGB_KC_7", "Band SAT", "RGB Mode: Band Saturation"),
+    K("RGB_KC_8", "Band VAL", "RGB Mode: Band Brightness"),
+    K("RGB_KC_9", "Band\nPinwheel SAT", "RGB Mode: Band Pinwheel Saturation"),
+    K("RGB_KC_10", "Band\nPinwheel VAL", "RGB Mode: Band Pinwheel Brightness"),
+    K("RGB_KC_11", "Band\nSpiral SAT", "RGB Mode: Band Spiral Saturation"),
+    K("RGB_KC_12", "Band\nSpiral VAL", "RGB Mode: Band Spiral Brightness"),
+    K("RGB_KC_13", "Cycle\nAll", "RGB Mode: Cycle All"),
+    K("RGB_KC_14", "Cycle\nLeft Right", "RGB Mode: Cycle Left Right"),
+    K("RGB_KC_15", "Cycle\nUp Down", "RGB Mode: Cycle Up Down"),
+    K("RGB_KC_16", "Cycle\nOut In", "RGB Mode: Cycle Out In"),
+    K("RGB_KC_17", "Cycle\nOut In Dual", "RGB Mode: Cycle Out In Dual"),
+    K("RGB_KC_18", "Rainbow\nMoving\nChevron", "RGB Mode: Rainbow Moving Chevron"),
+    K("RGB_KC_19", "Cycle\nPinwheel", "RGB Mode: Cycle Pinwheel"),
+    K("RGB_KC_20", "Cycle\nSpiral", "RGB Mode: Cycle Spiral"),
+    K("RGB_KC_21", "Dual\nBeacon", "RGB Mode: Dual Beacon"),
+    K("RGB_KC_22", "Rainbow\nBeacon", "RGB Mode: Rainbow Beacon"),
+    K("RGB_KC_23", "Rainbow\nPinwheels", "RGB Mode: Rainbow Pinwheels"),
+    K("RGB_KC_24", "Raindrops", "RGB Mode: Raindrops"),
+    K("RGB_KC_25", "Jellybean\nRaindrops", "RGB Mode: Jellybean Raindrops"),
+    K("RGB_KC_26", "Hue\nBreathing", "RGB Mode: Hue Breathing"),
+    K("RGB_KC_27", "Hue\nPendulum", "RGB Mode: Hue Pendulum"),
+    K("RGB_KC_28", "Hue\nWave", "RGB Mode: Hue Wave"),
+    K("RGB_KC_29", "Pixel\nFractal", "RGB Mode: Pixel Fractal"),
+    K("RGB_KC_30", "Pixel\nFlow", "RGB Mode: Pixel Flow"),
+    K("RGB_KC_31", "Pixel\nRain", "RGB Mode: Pixel Rain"),
+    K("RGB_KC_32", "Typing\nHeatmap", "RGB Mode: Typing Heatmap"),
+    K("RGB_KC_33", "Digital\nRain", "RGB Mode: Digital Rain"),
+    K("RGB_KC_34", "Solid\nReactive\nSimple", "RGB Mode: Solid Reactive Simple"),
+    K("RGB_KC_35", "Solid\nReactive", "RGB Mode: Solid Reactive"),
+    K("RGB_KC_36", "Solid\nReactive\nWide", "RGB Mode: Solid Reactive Wide"),
+    K("RGB_KC_37", "Solid\nReactive\nMultiWide", "RGB Mode: Solid Reactive MultiWide"),
+    K("RGB_KC_38", "Solid\nReactive\nCross", "RGB Mode: Solid Reactive Cross"),
+    K("RGB_KC_39", "Solid\nReactive\nMultiCross", "RGB Mode: Solid Reactive MultiCross"),
+    K("RGB_KC_40", "Solid\nReactive\nNexus", "RGB Mode: Solid Reactive Nexus"),
+    K("RGB_KC_41", "Solid\nReactive\nMultiNexus", "RGB Mode: Solid Reactive MultiNexus"),
+    K("RGB_KC_42", "Splash", "RGB Mode: Splash"),
+    K("RGB_KC_43", "MultiSplash", "RGB Mode: MultiSplash"),
+    K("RGB_KC_44", "Solid\nSplash", "RGB Mode: Solid Splash"),
+    K("RGB_KC_45", "Solid\nMultiSplash", "RGB Mode: Solid MultiSplash"),
+]
+
+KEYCODES_RGB_KC_COLOR = [
+    K("RGB_KC_COLOR_1", "Azure", "RGB Color: Azure"),
+    K("RGB_KC_COLOR_2", "Black", "RGB Color: Black/Off"),
+    K("RGB_KC_COLOR_3", "Blue", "RGB Color: Blue"),
+    K("RGB_KC_COLOR_4", "Chartreuse", "RGB Color: Chartreuse"),
+    K("RGB_KC_COLOR_5", "Coral", "RGB Color: Coral"),
+    K("RGB_KC_COLOR_6", "Cyan", "RGB Color: Cyan"),
+    K("RGB_KC_COLOR_7", "Gold", "RGB Color: Gold"),
+    K("RGB_KC_COLOR_8", "Goldenrod", "RGB Color: Goldenrod"),
+    K("RGB_KC_COLOR_9", "Green", "RGB Color: Green"),
+    K("RGB_KC_COLOR_10", "Magenta", "RGB Color: Magenta"),
+    K("RGB_KC_COLOR_11", "Orange", "RGB Color: Orange"),
+    K("RGB_KC_COLOR_12", "Pink", "RGB Color: Pink"),
+    K("RGB_KC_COLOR_13", "Purple", "RGB Color: Purple"),
+    K("RGB_KC_COLOR_14", "Red", "RGB Color: Red"),
+    K("RGB_KC_COLOR_15", "Spring Green", "RGB Color: Spring Green"),
+    K("RGB_KC_COLOR_16", "Teal", "RGB Color: Teal"),
+    K("RGB_KC_COLOR_17", "Turquoise", "RGB Color: Turquoise"),
+    K("RGB_KC_COLOR_18", "White", "RGB Color: White"),
+    K("RGB_KC_COLOR_19", "Yellow", "RGB Color: Yellow")
+]
+
 
 KEYCODES_HIDDEN = []
 for x in range(256):
@@ -1452,10 +1542,10 @@ KEYCODES_MIDI_BANK.append(K("MI_BANK_DWN",
                             "Bank\nDown",
                             "Bank down"))
 KEYCODES_Program_Change_UPDOWN.append(K("MI_PROG_UP",
-                            "Program\nUp",
+                            "Program\n▲",
                             "Program up"))
 KEYCODES_Program_Change_UPDOWN.append(K("MI_PROG_DWN",
-                            "Program\nDown",
+                            "Program\n▼",
                             "Program down"))
 
 for x in range(128):
@@ -1478,8 +1568,8 @@ def recreate_keycodes():
 
     KEYCODES.clear()
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
-                    KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA + KEYCODES_OLED +
-                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + 
+                    KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA + KEYCODES_OLED + KEYCODES_CLEAR + KEYCODES_RGB_KC_COLOR +
+                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)

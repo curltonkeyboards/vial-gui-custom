@@ -153,15 +153,6 @@ class MainWindow(QMainWindow):
         layout_save_act.setShortcut("Ctrl+S")
         layout_save_act.triggered.connect(self.on_layout_save)
 
-        sideload_json_act = QAction(tr("MenuFile", "Sideload VIA JSON..."), self)
-        sideload_json_act.triggered.connect(self.on_sideload_json)
-
-        download_via_stack_act = QAction(tr("MenuFile", "Download VIA definitions"), self)
-        download_via_stack_act.triggered.connect(self.load_via_stack_json)
-
-        load_dummy_act = QAction(tr("MenuFile", "Load dummy JSON..."), self)
-        load_dummy_act.triggered.connect(self.on_load_dummy)
-
         exit_act = QAction(tr("MenuFile", "Exit"), self)
         exit_act.setShortcut("Ctrl+Q")
         exit_act.triggered.connect(self.close)
@@ -170,12 +161,6 @@ class MainWindow(QMainWindow):
             file_menu = self.menuBar().addMenu(tr("Menu", "File"))
             file_menu.addAction(layout_load_act)
             file_menu.addAction(layout_save_act)
-            file_menu.addSeparator()
-            file_menu.addAction(sideload_json_act)
-            file_menu.addAction(download_via_stack_act)
-            file_menu.addAction(load_dummy_act)
-            file_menu.addSeparator()
-            file_menu.addAction(exit_act)
 
         keyboard_unlock_act = QAction(tr("MenuSecurity", "Unlock"), self)
         keyboard_unlock_act.setShortcut("Ctrl+U")
@@ -184,10 +169,6 @@ class MainWindow(QMainWindow):
         keyboard_lock_act = QAction(tr("MenuSecurity", "Lock"), self)
         keyboard_lock_act.setShortcut("Ctrl+L")
         keyboard_lock_act.triggered.connect(self.lock_keyboard)
-
-        keyboard_reset_act = QAction(tr("MenuSecurity", "Reboot to bootloader"), self)
-        keyboard_reset_act.setShortcut("Ctrl+B")
-        keyboard_reset_act.triggered.connect(self.reboot_to_bootloader)
 
         keyboard_layout_menu = self.menuBar().addMenu(tr("Menu", "Keyboard layout"))
         keymap_group = QActionGroup(self)
@@ -208,8 +189,6 @@ class MainWindow(QMainWindow):
         self.security_menu = self.menuBar().addMenu(tr("Menu", "Security"))
         self.security_menu.addAction(keyboard_unlock_act)
         self.security_menu.addAction(keyboard_lock_act)
-        self.security_menu.addSeparator()
-        self.security_menu.addAction(keyboard_reset_act)
 
         if sys.platform != "emscripten":
             self.theme_menu = self.menuBar().addMenu(tr("Menu", "Theme"))
@@ -226,7 +205,7 @@ class MainWindow(QMainWindow):
             if theme_group.checkedAction() is None:
                 theme_group.actions()[0].setChecked(True)
 
-        about_vial_act = QAction(tr("MenuAbout", "About Vial..."), self)
+        about_vial_act = QAction(tr("MenuAbout", "About SwitchStation..."), self)
         about_vial_act.triggered.connect(self.about_vial)
         self.about_keyboard_act = QAction("", self)
         self.about_keyboard_act.triggered.connect(self.about_keyboard)
@@ -332,16 +311,6 @@ class MainWindow(QMainWindow):
         with open(os.path.join(self.cache_path, "via_keyboards.json"), "wb") as cf:
             cf.write(data)
 
-    def on_sideload_json(self):
-        dialog = QFileDialog()
-        dialog.setDefaultSuffix("json")
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        dialog.setNameFilters(["VIA layout JSON (*.json)"])
-        if dialog.exec_() == QDialog.Accepted:
-            with open(dialog.selectedFiles()[0], "rb") as inf:
-                data = inf.read()
-            self.autorefresh.sideload_via_json(data)
-
     def on_load_dummy(self):
         dialog = QFileDialog()
         dialog.setDefaultSuffix("json")
@@ -410,12 +379,14 @@ class MainWindow(QMainWindow):
         self.current_tab = new_tab
 
     def about_vial(self):
-        title = "About Vial"
-        text = 'Vial {}<br><br>Python {}<br>Qt {}<br><br>' \
-               'Licensed under the terms of the<br>GNU General Public License (version 2 or later)<br><br>' \
-               '<a href="https://get.vial.today/">https://get.vial.today/</a>' \
-               .format(qApp.applicationVersion(),
-                       platform.python_version(), QT_VERSION_STR)
+        title = "About SwitchStation"
+        text = 'SwitchStation ver {}<br>Python {}<br>Qt {}<br>' \
+                'Licensed under the terms of the<br>GNU General Public License (version 2 or later)<br><br>' \
+                '<a href="https://www.MIDIswitch.com">https://www.MIDIswitch.com</a><br><br><br>' \
+                'Only made possible by all the amazing contributors to Vial!<br>' \
+                .format(qApp.applicationVersion(), platform.python_version(), QT_VERSION_STR)
+    
+
 
         if sys.platform == "emscripten":
             self.msg_about = QMessageBox()
