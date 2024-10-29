@@ -1616,13 +1616,14 @@ class FilteredTabbedKeycodes(QWidget):
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
 
-        # Create main frame to enclose everything in a rectangle
+        # Create main frame to enclose everything in a rectangle without the right border
         self.main_frame = QFrame(self)
         self.main_frame.setFrameShape(QFrame.Box)
         self.main_frame.setStyleSheet("""
             QFrame {
-                border: 3px solid black;  /* Rectangle border color and thickness */
-                border-radius: 8px;       /* Rounded corners for the rectangle */
+                border: 3px solid black;        /* General border color and thickness */
+                border-right: none;             /* Remove the right border */
+                border-radius: 8px;             /* Rounded corners for the rectangle */
                 background-color: rgba(255, 255, 255, 10);  /* Slightly transparent background */
             }
         """)
@@ -1697,12 +1698,6 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
-
-
-
-
-
-
 
 class TabbedKeycodes(QWidget):
 
