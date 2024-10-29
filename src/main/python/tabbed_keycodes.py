@@ -1683,9 +1683,9 @@ class FilteredTabbedKeycodes(QWidget):
         # Add this helper function to handle button selection
         self.nav_buttons_group = []
         self.nav_buttons_group.append(button)
-
+    
         # Connect this helper function
-     def on_nav_button_clicked(self, idx):
+        def on_nav_button_clicked(self, idx):
             # Deselect all buttons in the group except the selected one
             for i, button in enumerate(self.nav_buttons_group):
                 button.setChecked(i == idx)  # Only the selected button gets the "checked" style
