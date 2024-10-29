@@ -1611,7 +1611,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt5.QtCore import pyqtSignal
 
-class FilteredStackedKeycodes(QWidget):
+class FilteredTabbedKeycodes(QWidget):
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
