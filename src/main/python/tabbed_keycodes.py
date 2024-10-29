@@ -1618,6 +1618,16 @@ class FilteredTabbedKeycodes(QWidget):
         # Create main layout
         self.main_layout = QHBoxLayout(self)
 
+        # Create a frame to contain both navigation and stacked widget
+        self.container_frame = QFrame()
+        self.container_frame.setStyleSheet("""
+            border: 1px solid rgba(255, 255, 255, 0.1);  /* Border with 90% transparency */
+            border-radius: 4px;  /* Optional: round corners */
+        """)
+        
+        # Create layout for the container frame
+        self.container_layout = QHBoxLayout(self.container_frame)
+
         # Create navigation layout (stacked vertically)
         self.nav_buttons = QVBoxLayout()
         self.nav_buttons.setSpacing(2)  # Adjust spacing to reduce gap between buttons
@@ -1626,21 +1636,11 @@ class FilteredTabbedKeycodes(QWidget):
         # Create stacked widget for tab content
         self.stacked_widget = QStackedWidget(self)
 
-        # Create a frame for the navigation buttons
-        self.nav_frame = QFrame()
-        self.nav_frame.setLayout(self.nav_buttons)
-        self.nav_frame.setStyleSheet("""
-            border: 1px solid rgba(255, 255, 255, 0.1);  /* White border with 90% transparency */
-            border-left: none;  /* Remove the right border */
-            border-radius: 4px;  /* Optional: round corners */
-        """)
-
-        # Set keycode filter and tabs (same as before)
         self.keycode_filter = keycode_filter
         self.tabs = [
             # ... your existing tab definitions ...
         ]
-
+        
         # Create navigation buttons for each tab and add them to the nav_buttons layout
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
@@ -1654,9 +1654,12 @@ class FilteredTabbedKeycodes(QWidget):
             button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
             self.nav_buttons.addWidget(button)
         
-        # Add navigation frame and stacked widget to the main layout
-        self.main_layout.addWidget(self.nav_frame)  # Add the frame instead of the layout
-        self.main_layout.addWidget(self.stacked_widget)
+        # Add navigation layout and stacked widget to the container layout
+        self.container_layout.addLayout(self.nav_buttons)
+        self.container_layout.addWidget(self.stacked_widget)
+
+        # Add the container frame to the main layout
+        self.main_layout.addWidget(self.container_frame)
 
         # Set up tabs
         for tab in self.tabs:
@@ -1674,7 +1677,7 @@ class FilteredTabbedKeycodes(QWidget):
 
     def recreate_keycode_buttons(self):
         prev_tab_index = self.stacked_widget.currentIndex()
-
+        
         # Clear current stacked widget
         while self.stacked_widget.count() > 0:
             self.stacked_widget.removeWidget(self.stacked_widget.widget(0))
@@ -1692,6 +1695,8 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
+
+
 
 
 
