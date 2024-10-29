@@ -1608,9 +1608,6 @@ def keycode_filter_masked(kc):
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt5.QtCore import pyqtSignal
 
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
-from PyQt5.QtCore import pyqtSignal
-
 class FilteredTabbedKeycodes(QWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -1624,6 +1621,8 @@ class FilteredTabbedKeycodes(QWidget):
         
         # Create navigation layout (stacked vertically)
         self.nav_buttons = QVBoxLayout()
+        self.nav_buttons.setSpacing(2)  # Adjust spacing to reduce gap between buttons
+        self.nav_buttons.setContentsMargins(0, 0, 0, 0)  # Remove margins for a tighter fit
         
         # Create stacked widget for tab content
         self.stacked_widget = QStackedWidget(self)
@@ -1657,6 +1656,7 @@ class FilteredTabbedKeycodes(QWidget):
         # Create navigation buttons for each tab and add them to the nav_buttons layout
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
+            button.setStyleSheet("border-radius: 0px;")  # Remove rounding for sharp edges
             button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
             self.nav_buttons.addWidget(button)
         
@@ -1698,6 +1698,7 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
+
 
 
 
