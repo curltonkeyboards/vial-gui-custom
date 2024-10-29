@@ -1609,101 +1609,94 @@ from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, Q
 from PyQt5.QtCore import pyqtSignal
 
 class FilteredTabbedKeycodes(QWidget):
-
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
 
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
         
-        # Initialize tabs before using it
-        self.keycode_filter = keycode_filter
-        self.tabs = [
-            Tab(self, "Basic", [
-                (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
-                (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
-                (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
-                (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
-            ], prefix_buttons=[("Any", -1)]),
-            Tab(self, "ISO/JIS", [
-                (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
-                 KEYCODES_ISO_KR),
-                (None, KEYCODES_ISO),
-            ], prefix_buttons=[("Any", -1)]),   
-            SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
-            SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
-            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
-            midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
-            midiadvancedTab(self, "MIDI",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD),
-            MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            SimpleTab(self, " ", KEYCODES_CLEAR),     
-        ]
-        
         # Create main layout
         self.main_layout = QHBoxLayout(self)
-        
-        # Create a frame to hold both the navigation and the content box
-        self.main_frame = QFrame()
-        self.main_frame.setFrameShape(QFrame.StyledPanel)  # Frame around both sections
-        self.main_frame.setStyleSheet("""
-            QFrame {
-                border: 1px solid rgba(255, 255, 255, 0.7);  /* 90% transparent white border */
-            }
+
+        # Create a frame to contain both navigation and stacked widget
+        self.container_frame = QFrame()
+        self.container_frame.setStyleSheet("""
+            border: 1px solid rgba(255, 255, 255, 0.1);  /* Border with 90% transparency */
+            border-radius: 4px;  /* Optional: round corners */
         """)
         
-        # Inner layout to organize nav buttons and stacked widget within the frame
-        self.inner_layout = QHBoxLayout(self.main_frame)
-        
+        # Create layout for the container frame
+        self.container_layout = QHBoxLayout(self.container_frame)
+
         # Create navigation layout (stacked vertically)
         self.nav_buttons = QVBoxLayout()
-        self.nav_buttons.setSpacing(2)
-        self.nav_buttons.setContentsMargins(0, 0, 0, 0)
+        self.nav_buttons.setSpacing(2)  # Adjust spacing to reduce gap between buttons
+        self.nav_buttons.setContentsMargins(0, 0, 0, 0)  # Remove margins for a tighter fit
         
         # Create stacked widget for tab content
-        self.stacked_widget = QStackedWidget(self.main_frame)
+        self.stacked_widget = QStackedWidget(self)
+
+        self.keycode_filter = keycode_filter
+        self.tabs = [
+            # ... your existing tab definitions ...
+        ]
         
-        # Populate navigation buttons with transparent and selected styling
-        self.nav_buttons_group = []
+        # Create navigation buttons for each tab and add them to the nav_buttons layout
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
-            button.setCheckable(True)
             button.setStyleSheet("""
-                QPushButton {
-                    border: none;
-                    background-color: transparent;
-                    color: white;
-                }
-                QPushButton:checked {
-                    border: 1px solid white;
-                    background-color: rgba(255, 255, 255, 0.2);
-                }
-            """)
-            button.clicked.connect(lambda _, idx=i: self.on_nav_button_clicked(idx))
+                border: 1px solid transparent;
+                border-radius: 0px;
+                background-color: rgba(0, 0, 0, 0.2);  /* 80% transparent black */
+                color: white;
+                padding: 5px;
+            """)  # Makes the button background semi-transparent black
+            button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
             self.nav_buttons.addWidget(button)
-            self.nav_buttons_group.append(button)
         
-        # Add navigation layout and stacked widget to the inner layout
-        self.inner_layout.addLayout(self.nav_buttons)
-        self.inner_layout.addWidget(self.stacked_widget)
-        
-        # Add the main frame to the main layout
-        self.main_layout.addWidget(self.main_frame)
-        
-        # Set up tabs in the stacked widget
+        # Add navigation layout and stacked widget to the container layout
+        self.container_layout.addLayout(self.nav_buttons)
+        self.container_layout.addWidget(self.stacked_widget)
+
+        # Add the container frame to the main layout
+        self.main_layout.addWidget(self.container_frame)
+
+        # Set up tabs
         for tab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
             self.stacked_widget.addWidget(tab)
 
-    def on_nav_button_clicked(self, idx):
-        # Set only the clicked button as checked
-        for i, button in enumerate(self.nav_buttons_group):
-            button.setChecked(i == idx)
-        # Update the stacked widget to display the selected tab
-        self.stacked_widget.setCurrentIndex(idx)
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
+
+    def on_keycode_changed(self, code):
+        if code == "Any":
+            self.anykey.emit()
+        else:
+            self.keycode_changed.emit(Keycode.normalize(code))
+
+    def recreate_keycode_buttons(self):
+        prev_tab_index = self.stacked_widget.currentIndex()
+        
+        # Clear current stacked widget
+        while self.stacked_widget.count() > 0:
+            self.stacked_widget.removeWidget(self.stacked_widget.widget(0))
+        
+        # Recreate each tab’s buttons and add to the stacked widget
+        for tab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.stacked_widget.addWidget(tab)
+        
+        # Restore the previously selected tab, if possible
+        if prev_tab_index < self.stacked_widget.count():
+            self.stacked_widget.setCurrentIndex(prev_tab_index)
+
+    def on_keymap_override(self):
+        for tab in self.tabs:
+            tab.relabel_buttons()
+
+
 
 
 
