@@ -1656,7 +1656,11 @@ class FilteredTabbedKeycodes(QWidget):
         # Create navigation buttons for each tab and add them to the nav_buttons layout
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
-            button.setStyleSheet("border-radius: 0px;")  # Remove rounding for sharp edges
+            button.setStyleSheet("""
+                border: 1px solid black;
+                border-radius: 0px;
+                padding: 5px;
+            """)  # Adds a square border to each button
             button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
             self.nav_buttons.addWidget(button)
         
@@ -1698,6 +1702,7 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
+
 
 
 
