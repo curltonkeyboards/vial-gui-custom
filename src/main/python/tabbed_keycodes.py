@@ -1657,10 +1657,12 @@ class FilteredTabbedKeycodes(QWidget):
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
             button.setStyleSheet("""
-                border: 1px solid black;
+            border: 1px solid transparent;
                 border-radius: 0px;
+                background-color: rgba(0, 0, 0, 179);  /* 70% transparent black */
+                color: white;
                 padding: 5px;
-            """)  # Adds a square border to each button
+            """)  # Makes the button background semi-transparent black
             button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
             self.nav_buttons.addWidget(button)
         
