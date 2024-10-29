@@ -1608,7 +1608,10 @@ def keycode_filter_masked(kc):
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt5.QtCore import pyqtSignal
 
-class FilteredTabbedKeycodes(QWidget):
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt5.QtCore import pyqtSignal
+
+class FilteredStackedKeycodes(QWidget):
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
@@ -1616,8 +1619,13 @@ class FilteredTabbedKeycodes(QWidget):
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
         
-        # Create main layout and stacked widget
-        self.layout = QVBoxLayout(self)
+        # Create main layout
+        self.main_layout = QHBoxLayout(self)
+        
+        # Create navigation layout (stacked vertically)
+        self.nav_buttons = QVBoxLayout()
+        
+        # Create stacked widget for tab content
         self.stacked_widget = QStackedWidget(self)
         
         self.keycode_filter = keycode_filter
@@ -1646,16 +1654,15 @@ class FilteredTabbedKeycodes(QWidget):
             SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
         
-        # Navigation bar for switching between tabs
-        self.nav_buttons = QHBoxLayout()
+        # Create navigation buttons for each tab and add them to the nav_buttons layout
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
             button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
             self.nav_buttons.addWidget(button)
         
-        # Add navigation bar and stacked widget to main layout
-        self.layout.addLayout(self.nav_buttons)
-        self.layout.addWidget(self.stacked_widget)
+        # Add navigation layout and stacked widget to the main layout
+        self.main_layout.addLayout(self.nav_buttons)
+        self.main_layout.addWidget(self.stacked_widget)
         
         # Set up tabs
         for tab in self.tabs:
@@ -1691,6 +1698,7 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
+
 
 
 
