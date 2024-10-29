@@ -1662,32 +1662,37 @@ class FilteredTabbedKeycodes(QWidget):
         ]
         
         # Create navigation buttons for each tab and add them to the nav_buttons layout
+        # Inside the __init__ method of FilteredTabbedKeycodes class, after creating each button:
         for i, tab in enumerate(self.tabs):
             button = QPushButton(tab.label)
+            button.setCheckable(True)  # Allow button to be toggled
             button.setStyleSheet("""
-                border: 1px solid transparent;
-                border-radius: 0px;
-                background-color: rgba(0, 0, 0, 0.2);  /* 80% transparent black */
-                color: white;
-                padding: 5px;
-            """)  # Makes the button background semi-transparent black
-            button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
+                QPushButton {
+                    border: none;  /* No border initially */
+                    background-color: transparent;  /* Fully transparent */
+                    color: white;  /* White text */
+                }
+                QPushButton:checked {
+                    border: 1px solid white;  /* White outline when selected */
+                    background-color: rgba(255, 255, 255, 0.2);  /* 20% transparency */
+                }
+            """)
+            button.clicked.connect(lambda _, idx=i: self.on_nav_button_clicked(idx))
             self.nav_buttons.addWidget(button)
-        
-        # Add navigation layout and stacked widget to the container layout
-        self.container_layout.addLayout(self.nav_buttons)
-        self.container_layout.addWidget(self.stacked_widget)
 
-        # Add the container frame to the main layout
-        self.main_layout.addWidget(self.container_frame)
+        # Add this helper function to handle button selection
+        self.nav_buttons_group = []
+        self.nav_buttons_group.append(button)
 
-        # Set up tabs
-        for tab in self.tabs:
-            tab.keycode_changed.connect(self.on_keycode_changed)
-            self.stacked_widget.addWidget(tab)
+        # Connect this helper function
+     def on_nav_button_clicked(self, idx):
+            # Deselect all buttons in the group except the selected one
+            for i, button in enumerate(self.nav_buttons_group):
+                button.setChecked(i == idx)  # Only the selected button gets the "checked" style
+    
+            # Switch the stacked widget page to the corresponding tab
+            self.stacked_widget.setCurrentIndex(idx)
 
-        self.recreate_keycode_buttons()
-        KeycodeDisplay.notify_keymap_override(self)
 
     def on_keycode_changed(self, code):
         if code == "Any":
