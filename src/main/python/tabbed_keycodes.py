@@ -1605,16 +1605,22 @@ def keycode_filter_masked(kc):
     return Keycode.is_basic(kc)
 
 
-class FilteredTabbedKeycodes(QTabWidget):
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt5.QtCore import pyqtSignal
+
+class FilteredStackedKeycodes(QWidget):
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
 
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
-
+        
+        # Create main layout and stacked widget
+        self.layout = QVBoxLayout(self)
+        self.stacked_widget = QStackedWidget(self)
+        
         self.keycode_filter = keycode_filter
-
         self.tabs = [
             Tab(self, "Basic", [
                 (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
@@ -1639,15 +1645,22 @@ class FilteredTabbedKeycodes(QTabWidget):
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
-
+        
+        # Navigation bar for switching between tabs
+        self.nav_buttons = QHBoxLayout()
+        for i, tab in enumerate(self.tabs):
+            button = QPushButton(tab.label)
+            button.clicked.connect(lambda _, idx=i: self.stacked_widget.setCurrentIndex(idx))
+            self.nav_buttons.addWidget(button)
+        
+        # Add navigation bar and stacked widget to main layout
+        self.layout.addLayout(self.nav_buttons)
+        self.layout.addWidget(self.stacked_widget)
+        
+        # Set up tabs
         for tab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
-
-        self.recreate_keycode_buttons()
-        KeycodeDisplay.notify_keymap_override(self)
-        
-        for miditab in self.tabs:
-            tab.keycode_changed.connect(self.on_keycode_changed)
+            self.stacked_widget.addWidget(tab)
 
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
@@ -1659,34 +1672,26 @@ class FilteredTabbedKeycodes(QTabWidget):
             self.keycode_changed.emit(Keycode.normalize(code))
 
     def recreate_keycode_buttons(self):
-        prev_tab = self.tabText(self.currentIndex()) if self.currentIndex() >= 0 else ""
-        while self.count() > 0:
-            self.removeTab(0)
-
+        prev_tab_index = self.stacked_widget.currentIndex()
+        
+        # Clear current stacked widget
+        while self.stacked_widget.count() > 0:
+            self.stacked_widget.removeWidget(self.stacked_widget.widget(0))
+        
+        # Recreate each tab’s buttons and add to the stacked widget
         for tab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for miditab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for midiadvancedTab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
+                self.stacked_widget.addWidget(tab)
+        
+        # Restore the previously selected tab, if possible
+        if prev_tab_index < self.stacked_widget.count():
+            self.stacked_widget.setCurrentIndex(prev_tab_index)
 
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
+
 
 
 class TabbedKeycodes(QWidget):
