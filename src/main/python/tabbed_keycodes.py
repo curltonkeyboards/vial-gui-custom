@@ -361,11 +361,11 @@ class SmartChordTab(QScrollArea):
 
                     
 
-                    button.setFixedHeight(40)  # Set size as needed
+                    button.setFixedHeight(60)  # Set size as needed
                     if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
                         button.setFixedWidth(100)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
-                        button.setFixedWidth(100)  # Set fixed width of 40 for other buttons
+                        button.setFixedWidth(60)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
@@ -1534,11 +1534,11 @@ class midiTab(QScrollArea):
 
                     
 
-                    button.setFixedHeight(40)  # Set size as needed
+                    button.setFixedHeight(60)  # Set size as needed
                     if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
-                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
+                        button.setFixedWidth(100)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
-                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
+                        button.setFixedWidth(60)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
