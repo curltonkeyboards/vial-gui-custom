@@ -168,10 +168,11 @@ class Theme:
             QApplication.setPalette(palettes[theme])
             QApplication.setStyle("Fusion")
             app = QApplication.instance()  # Get the current QApplication instance
-            font = QFont("Segoe UI")  # Specify your desired font and size
+            if "Inter" in QFontDatabase().families():
+                font = QFont("Inter")  # Set to 'Inter' if available
+            else:
+                font = QFont("Segoe UI")  # Fallback to 'Segoe UI' or another font
             app.setFont(font)
-        # For default/system theme, do nothing
-        # User will have to restart the application for it to be applied
 
     @classmethod
     def get_theme(cls):
