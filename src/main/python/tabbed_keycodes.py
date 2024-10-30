@@ -1605,7 +1605,7 @@ def keycode_filter_masked(kc):
     return Keycode.is_basic(kc)
 
 
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout, QSizePolicy
 from PyQt5.QtCore import pyqtSignal
 
 class FilteredTabbedKeycodes(QWidget):
@@ -1613,7 +1613,7 @@ class FilteredTabbedKeycodes(QWidget):
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
 
-    def __init__(self, parent=None, keycode_filter=keycode_filter_any):
+    def __init__(self, parent=None, keycode_filter=None):  # Update keycode_filter as needed
         super().__init__(parent)
         
         # Create main layout
@@ -1627,7 +1627,10 @@ class FilteredTabbedKeycodes(QWidget):
         # Create stacked widget for tab content
         self.stacked_widget = QStackedWidget(self)
         
-        self.keycode_filter = keycode_filter
+        # Sample keycode_filter value - update as necessary
+        self.keycode_filter = keycode_filter  
+        
+        # Define tabs (this is placeholder content, use actual tabs in your code)
         self.tabs = [
             Tab(self, "Basic", [
                 (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
@@ -1659,11 +1662,13 @@ class FilteredTabbedKeycodes(QWidget):
             button = QPushButton(tab.label)
             button.setStyleSheet("""
                 border: 1px solid transparent;
-                border-radius: 0px;
+                border-radius: 5px;
                 background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
                 color: white;
                 padding: 5px;
             """)
+            button.setMinimumHeight(40)  # Set the minimum height for the buttons
+            button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)  # Allow vertical expansion
             button.clicked.connect(lambda _, idx=i: self.select_tab(idx))
             self.nav_buttons.addWidget(button)
             self.buttons.append(button)  # Add button to list
@@ -1674,11 +1679,7 @@ class FilteredTabbedKeycodes(QWidget):
         
         # Set up tabs
         for tab in self.tabs:
-            tab.keycode_changed.connect(self.on_keycode_changed)
             self.stacked_widget.addWidget(tab)
-
-        self.recreate_keycode_buttons()
-        KeycodeDisplay.notify_keymap_override(self)
 
         # Initialize the first button as selected
         self.set_active_button(0)
@@ -1706,7 +1707,7 @@ class FilteredTabbedKeycodes(QWidget):
             color: white;
             padding: 5px;
         """)
-
+        
     def on_keycode_changed(self, code):
         if code == "Any":
             self.anykey.emit()
@@ -1733,9 +1734,6 @@ class FilteredTabbedKeycodes(QWidget):
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
-
-
-
 
 class TabbedKeycodes(QWidget):
 
