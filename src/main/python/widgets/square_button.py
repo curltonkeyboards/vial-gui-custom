@@ -8,7 +8,7 @@ class SquareButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.scale = 0.7
+        self.scale = 0.8
         self.label = None
         self.word_wrap = False
         self.text = ""
@@ -22,7 +22,7 @@ class SquareButton(QPushButton):
         self.setText(self.text)
 
     def sizeHint(self):
-        size = int(round(self.fontMetrics().height() * self.scale))
+        size = int(round(self.fontMetrics().height() * self.scale * 0.8))
         return QSize(size, size)
 
     # Override setText to facilitate automatic word wrapping

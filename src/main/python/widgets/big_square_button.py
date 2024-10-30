@@ -10,7 +10,7 @@ class BigSquareButton(QPushButton):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.scale = 1.2
+        self.scale = 0.8
         self.label = None
         self.word_wrap = True
         self.text = ""
