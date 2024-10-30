@@ -1702,6 +1702,7 @@ class FilteredTabbedKeycodes(QWidget):
         self.buttons[index].setStyleSheet("""
             border: 1px solid #f7f7c8;  /* Green border for selected button */
             background-color: rgba(250, 250, 230, 10);  /* Slightly opaque green */
+            border-radius: 5px;
             color: white;
             padding: 5px;
         """)
