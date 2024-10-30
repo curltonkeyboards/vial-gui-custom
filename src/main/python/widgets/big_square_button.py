@@ -10,7 +10,7 @@ class BigSquareButton(QPushButton):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.scale = 1.2
+        self.scale = 2
         self.label = None
         self.word_wrap = True
         self.text = ""
@@ -24,8 +24,8 @@ class BigSquareButton(QPushButton):
 
     def update_size(self):
         new_size = self.sizeHint()
-        new_size.setWidth(int(new_size.width() * 1.5))  # Increase width by 50%
-        new_size.setHeight(int(new_size.height() * 1.5))  # Increase height by 50%
+        new_size.setWidth(int(new_size.width() * 2))  # Increase width by 50%
+        new_size.setHeight(int(new_size.height() * 2))  # Increase height by 50%
         self.setFixedSize(new_size)  # Set the new fixed size for the button
 
     def setWordWrap(self, state):
