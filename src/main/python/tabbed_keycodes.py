@@ -1663,12 +1663,13 @@ class FilteredTabbedKeycodes(QWidget):
                 background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
                 color: white;
                 padding: 5px;
-                font-family: Arial;  /* Change to desired font */
-                font-size: 14px;     /* Set font size */
+                font-family: 'Segoe UI';  /* Set to Segoe UI font */
+                font-size: 14px;          /* Adjust font size */
             """)
             button.clicked.connect(lambda _, idx=i: self.select_tab(idx))
             self.nav_buttons.addWidget(button)
             self.buttons.append(button)  # Add button to list
+
         
         # Add navigation layout and stacked widget to the main layout
         self.main_layout.addLayout(self.nav_buttons)
