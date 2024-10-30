@@ -22,7 +22,7 @@ class SquareButton(QPushButton):
         self.setText(self.text)
 
     def sizeHint(self):
-        size = int(round(self.fontMetrics().height() * self.scale * 0.7))
+        size = int(round(self.fontMetrics().height() * self.scale * 0.8))
         return QSize(size, size)
 
     # Override setText to facilitate automatic word wrapping
