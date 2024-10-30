@@ -1757,7 +1757,9 @@ class TabbedKeycodes(QWidget):
         self.layout = QVBoxLayout()
 
         # Set background color to white
-        self.setStyleSheet("background-color: white;")
+        image_path = os.path.join(os.path.dirname(__file__), 'background.png')
+        self.setStyleSheet(f"background-image: url({image_path}); background-repeat: no-repeat; background-position: center;")
+
 
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
