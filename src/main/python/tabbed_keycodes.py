@@ -1740,6 +1740,9 @@ class FilteredTabbedKeycodes(QWidget):
 
 
 
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtCore import pyqtSignal
+
 class TabbedKeycodes(QWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -1752,6 +1755,9 @@ class TabbedKeycodes(QWidget):
         self.is_tray = False
 
         self.layout = QVBoxLayout()
+
+        # Set background color to white
+        self.setStyleSheet("background-color: white;")
 
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
@@ -1808,3 +1814,4 @@ class TabbedKeycodes(QWidget):
         else:
             self.all_keycodes.show()
             self.basic_keycodes.hide()
+
