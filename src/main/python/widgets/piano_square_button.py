@@ -10,7 +10,7 @@ class PianoSquareButton(QPushButton):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.scale = 1.4
+        self.scale = 1.6
         self.label = None
         self.word_wrap = True
         self.text = ""
