@@ -166,7 +166,7 @@ class Theme:
         cls.theme = theme
         if theme in palettes:
             QApplication.setPalette(palettes[theme])
-            QApplication.setStyle("Material")
+            QApplication.setStyle("Cleanlooks")
         # For default/system theme, do nothing
         # User will have to restart the application for it to be applied
 
