@@ -34,6 +34,20 @@ from editor.matrix_test import MatrixTest
 import themes
 
 
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QToolButton, QLabel, QTabWidget
+from PyQt5.QtCore import Qt, QRect, QSettings, QStandardPaths, QTimer
+import os
+import logging
+import sys
+from json import JSONDecodeError
+
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QToolButton, QLabel, QTabWidget
+from PyQt5.QtCore import Qt, QRect, QSettings, QStandardPaths, QTimer
+import os
+import logging
+import sys
+from json import JSONDecodeError
+
 class MainWindow(QMainWindow):
 
     def __init__(self, appctx):
@@ -41,21 +55,22 @@ class MainWindow(QMainWindow):
         self.appctx = appctx
 
         self.ui_lock_count = 0
-
         self.settings = QSettings("Vial", "Vial")
+
+        # Restore window size and position
         if self.settings.value("size", None):
             self.resize(self.settings.value("size"))
         else:
             self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
         _pos = self.settings.value("pos", None)
-        # NOTE: QDesktopWidget is obsolete, but QApplication.screenAt only usable in Qt 5.10+
         if _pos and qApp.desktop().geometry().contains(QRect(_pos, self.size())):
-        #if _pos and qApp.screenAt(_pos) and qApp.screenAt(_pos + (self.rect().bottomRight())):
             self.move(self.settings.value("pos"))
 
+        # Set theme
         themes.Theme.set_theme(self.get_theme())
 
+        # Example of widgets and layout setup
         self.combobox_devices = QComboBox()
         self.combobox_devices.currentIndexChanged.connect(self.on_device_selected)
 
@@ -69,6 +84,7 @@ class MainWindow(QMainWindow):
         if sys.platform != "emscripten":
             layout_combobox.addWidget(self.btn_refresh_devices)
 
+        # Initialize other components (LayoutEditor, KeymapEditor, etc.)
         self.layout_editor = LayoutEditor()
         self.keymap_editor = KeymapEditor(self.layout_editor)
         self.firmware_flasher = FirmwareFlasher(self)
@@ -81,6 +97,7 @@ class MainWindow(QMainWindow):
         self.matrix_tester = MatrixTest(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
 
+        # Set up tabs
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
@@ -104,45 +121,59 @@ class MainWindow(QMainWindow):
         self.lbl_no_devices.setTextFormat(Qt.RichText)
         self.lbl_no_devices.setAlignment(Qt.AlignCenter)
 
+        # Layout setup
         layout = QVBoxLayout()
         layout.addLayout(layout_combobox)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.lbl_no_devices)
         layout.setAlignment(self.lbl_no_devices, Qt.AlignHCenter)
+
         self.tray_keycodes = TabbedKeycodes()
         self.tray_keycodes.make_tray()
         layout.addWidget(self.tray_keycodes, 1)
         self.tray_keycodes.hide()
+
+        # Create central widget and set layout
         w = QWidget()
         w.setLayout(layout)
         self.setCentralWidget(w)
 
-        self.init_menu()
+        # Apply background image using stylesheet
+        w.setStyleSheet("""
+            QWidget {
+                background-image: url('./background.png');
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+        """)
 
+        # Initialize menu and autorefresh
+        self.init_menu()
         self.autorefresh = Autorefresh()
         self.autorefresh.devices_updated.connect(self.on_devices_updated)
 
-        # cache for via definition files
+        # Cache setup for VIA definition files
         self.cache_path = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
         if not os.path.exists(self.cache_path):
             os.makedirs(self.cache_path)
 
-        # check if the via defitions already exist
-        if os.path.isfile(os.path.join(self.cache_path, "via_keyboards.json")):
-            with open(os.path.join(self.cache_path, "via_keyboards.json")) as vf:
+        # Check if VIA definitions exist
+        via_file_path = os.path.join(self.cache_path, "via_keyboards.json")
+        if os.path.isfile(via_file_path):
+            with open(via_file_path) as vf:
                 data = vf.read()
             try:
                 self.autorefresh.load_via_stack(data)
             except JSONDecodeError as e:
-                # the saved file is invalid - just ignore this
-                logging.warning("Failed to parse stored via_keyboards.json: {}".format(e))
+                logging.warning(f"Failed to parse stored via_keyboards.json: {e}")
 
-        # make sure initial state is valid
+        # Ensure initial state is valid
         self.on_click_refresh()
 
         if sys.platform == "emscripten":
             import vialglue
             QTimer.singleShot(100, vialglue.notify_ready)
+
 
     def init_menu(self):
         layout_load_act = QAction(tr("MenuFile", "Load saved layout..."), self)
