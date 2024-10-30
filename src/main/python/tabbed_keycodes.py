@@ -1759,7 +1759,15 @@ class TabbedKeycodes(QWidget):
 
         # Set background color to white
         image_path = os.path.join(os.path.dirname(__file__), 'background.png')
-        self.setStyleSheet(f"background-image: url({image_path}); background-repeat: no-repeat; background-position: center;")
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-image: url({image_path});
+                background-repeat: no-repeat;
+                background-position: center;
+                background-size: cover;  /* Ensures the image covers the widget */
+            }}
+        """)
+        
 
 
         self.all_keycodes = FilteredTabbedKeycodes()
