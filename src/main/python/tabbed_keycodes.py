@@ -1708,32 +1708,7 @@ class FilteredTabbedKeycodes(QWidget):
             padding: 5px;
         """)
         
-    def on_keycode_changed(self, code):
-        if code == "Any":
-            self.anykey.emit()
-        else:
-            self.keycode_changed.emit(Keycode.normalize(code))
-
-    def recreate_keycode_buttons(self):
-        prev_tab_index = self.stacked_widget.currentIndex()
         
-        # Clear current stacked widget
-        while self.stacked_widget.count() > 0:
-            self.stacked_widget.removeWidget(self.stacked_widget.widget(0))
-        
-        # Recreate each tab’s buttons and add to the stacked widget
-        for tab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.stacked_widget.addWidget(tab)
-        
-        # Restore the previously selected tab, if possible
-        if prev_tab_index < self.stacked_widget.count():
-            self.stacked_widget.setCurrentIndex(prev_tab_index)
-
-    def on_keymap_override(self):
-        for tab in self.tabs:
-            tab.relabel_buttons()
 
 class TabbedKeycodes(QWidget):
 
