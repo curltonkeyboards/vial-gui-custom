@@ -168,6 +168,7 @@ class Theme:
             QApplication.setPalette(palettes[theme])
             QApplication.setStyle("Fusion")
             font = QFont("Segoe UI", 14)  # Specify your desired font and size
+            app = QApplication.instance()
             app.setFont(font)
         # For default/system theme, do nothing
         # User will have to restart the application for it to be applied
