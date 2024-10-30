@@ -1663,6 +1663,8 @@ class FilteredTabbedKeycodes(QWidget):
                 background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
                 color: white;
                 padding: 5px;
+                font-family: Arial;  /* Change to desired font */
+                font-size: 14px;     /* Set font size */
             """)
             button.clicked.connect(lambda _, idx=i: self.select_tab(idx))
             self.nav_buttons.addWidget(button)
