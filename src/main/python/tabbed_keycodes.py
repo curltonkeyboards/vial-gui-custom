@@ -364,6 +364,7 @@ class SmartChordTab(QScrollArea):
                     button.setFixedHeight(45)  # Set size as needed
                     if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
                         button.setFixedWidth(100)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
+                        button.setFixedHeight(60)
                     else:
                         button.setFixedWidth(45)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
@@ -1537,6 +1538,7 @@ class midiTab(QScrollArea):
                     button.setFixedHeight(45)  # Set size as needed
                     if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
                         button.setFixedWidth(100)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
+                        button.setFixedHeight(60)
                     else:
                         button.setFixedWidth(45)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
