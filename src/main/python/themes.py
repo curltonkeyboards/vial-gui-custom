@@ -3,6 +3,13 @@
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QPalette, QColor, QFont
 
+def make_transparent(hex_color, alpha=128):
+    # Convert the hex color to RGB
+    color = QColor(hex_color)
+    # Set the alpha value for transparency
+    color.setAlpha(alpha)
+    return color
+
 themes = [
     ("Light", {
         QPalette.Window: "#ffefebe7",
@@ -85,24 +92,24 @@ themes = [
         (QPalette.Disabled, QPalette.Light): "#88c0d0",
     }),
     ("Olivia", {
-        QPalette.Window: "#181818",
-        QPalette.WindowText: "#d9d9d9",
-        QPalette.Base: "#181818",
-        QPalette.AlternateBase: "#2c2c2c",
-        QPalette.ToolTipBase: "#363636 ",
-        QPalette.ToolTipText: "#d9d9d9",
-        QPalette.Text: "#d9d9d9",
-        QPalette.Button: "#181818",
-        QPalette.ButtonText: "#d9d9d9",
-        QPalette.BrightText: "#fabcad",
-        QPalette.Link: "#fabcad",
-        QPalette.Highlight: "#fabcad",
-        QPalette.HighlightedText: "#2c2c2c",
-        (QPalette.Active, QPalette.Button): "#181818",
-        (QPalette.Disabled, QPalette.ButtonText): "#d9d9d9",
-        (QPalette.Disabled, QPalette.WindowText): "#d9d9d9",
-        (QPalette.Disabled, QPalette.Text): "#d9d9d9",
-        (QPalette.Disabled, QPalette.Light): "#fabcad",
+        QPalette.Window: make_transparent("#333333"),
+        QPalette.WindowText: make_transparent("#cc5200"),
+        QPalette.Base: make_transparent("#333333"),
+        QPalette.AlternateBase: make_transparent("#baaa93"),
+        QPalette.ToolTipBase: make_transparent("#3e2308"),
+        QPalette.ToolTipText: make_transparent("#cc5200"),
+        QPalette.Text: make_transparent("#cc5200"),
+        QPalette.Button: make_transparent("#baaa93"),
+        QPalette.ButtonText: make_transparent("#cc5200"),
+        QPalette.BrightText: make_transparent("#cc5200"),
+        QPalette.Link: make_transparent("#baaa93"),
+        QPalette.Highlight: make_transparent("#a59783"),
+        QPalette.HighlightedText: make_transparent("#cc5200"),
+        (QPalette.Active, QPalette.Button): make_transparent("#baaa93"),
+        (QPalette.Disabled, QPalette.ButtonText): make_transparent("#cc5200"),
+        (QPalette.Disabled, QPalette.WindowText): make_transparent("#cc5200"),
+        (QPalette.Disabled, QPalette.Text): make_transparent("#baaa93"),
+        (QPalette.Disabled, QPalette.Light): make_transparent("#baaa93"),   
     }),
     ("Dracula", {
         QPalette.Window: "#282a36",
