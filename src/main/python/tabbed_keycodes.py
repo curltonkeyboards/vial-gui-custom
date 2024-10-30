@@ -1692,16 +1692,16 @@ class FilteredTabbedKeycodes(QWidget):
         for button in self.buttons:
             button.setStyleSheet("""
                 border: 1px solid transparent;
-                border-radius: 0px;
-                background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
+                border-radius: 5px;
+                background-color: rgba(0, 0, 0, 0);  /* Default semi-transparent black */
                 color: white;
                 padding: 5px;
             """)
         
         # Highlight the selected button
         self.buttons[index].setStyleSheet("""
-            border: 1px solid #4CAF50;  /* Green border for selected button */
-            background-color: rgba(0, 128, 0, 100);  /* Slightly opaque green */
+            border: 1px solid #f7f7c8;  /* Green border for selected button */
+            background-color: rgba(250, 250, 230, 10);  /* Slightly opaque green */
             color: white;
             padding: 5px;
         """)
