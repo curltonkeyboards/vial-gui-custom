@@ -2,7 +2,7 @@
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
-from PyQt5.QtGui import QPalette, QPainter
+from PyQt5.QtGui import QPalette, QPainter, QFont
 
 from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
@@ -1311,6 +1311,8 @@ class midiTab(QScrollArea):
         self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
+        font = QFont("Segoe UI")
+        self.setFont(font)
 
         # Define MIDI layout
         self.midi_layout2 = [
@@ -1627,6 +1629,9 @@ class FilteredTabbedKeycodes(QWidget):
         # Create stacked widget for tab content
         self.stacked_widget = QStackedWidget(self)
         
+        font = QFont("Segoe UI")
+        self.setFont(font)
+        
         self.keycode_filter = keycode_filter
         self.tabs = [
             Tab(self, "Basic", [
@@ -1663,8 +1668,6 @@ class FilteredTabbedKeycodes(QWidget):
                 background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
                 color: white;
                 padding: 5px;
-                font-family: 'Segoe UI';  /* Set to Segoe UI font */
-                font-size: 14px;          /* Adjust font size */
             """)
             button.clicked.connect(lambda _, idx=i: self.select_tab(idx))
             self.nav_buttons.addWidget(button)
