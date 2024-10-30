@@ -248,15 +248,16 @@ class EncoderWidget(KeyWidget):
         return "EncoderWidget"
 
 
-class KeyboardWidget(QWidget):
+from PyQt5.QtGui import QPixmap
 
+class KeyboardWidget(QWidget):
     clicked = pyqtSignal()
     deselected = pyqtSignal()
     anykey = pyqtSignal()
 
-    def __init__(self, layout_editor):
+    def __init__(self, layout_editor, background_image_path=None):
         super().__init__()
-
+        
         self.enabled = True
         self.scale = 0.7
         self.padding = KEYBOARD_WIDGET_PADDING
@@ -265,18 +266,34 @@ class KeyboardWidget(QWidget):
 
         self.layout_editor = layout_editor
 
-        # widgets common for all layouts
+        # Load the background image if provided
+        self.background_image = QPixmap(background_image_path) if background_image_path else None
+
+        # Widgets common for all layouts
         self.common_widgets = []
 
-        # layout-specific widgets
+        # Layout-specific widgets
         self.widgets_for_layout = []
 
-        # widgets in current layout
+        # Widgets in current layout
         self.widgets = []
 
         self.width = self.height = 0
         self.active_key = None
         self.active_mask = False
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        
+        # Draw the background image if it's set
+        if self.background_image:
+            painter.drawPixmap(self.rect(), self.background_image)
+
+        # Call any additional painting required, such as drawing keys
+        for widget in self.widgets:
+            widget.draw(painter)
+        
+        painter.end()
 
     def set_keys(self, keys, encoders):
         self.common_widgets = []
