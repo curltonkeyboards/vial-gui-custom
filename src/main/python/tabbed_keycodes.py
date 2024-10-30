@@ -1761,6 +1761,7 @@ class TabbedKeycodes(QWidget):
         image_path = os.path.join(os.path.dirname(__file__), 'background.png')
         self.setStyleSheet(f"""
             QWidget {{
+                background-color: white;
                 background-image: url({image_path});
                 background-repeat: no-repeat;
                 background-position: center;
