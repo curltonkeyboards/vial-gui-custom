@@ -1757,17 +1757,16 @@ class TabbedKeycodes(QWidget):
 
         # Set background color to white
         image_path = os.path.join(os.path.dirname(__file__), 'background.png')
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-color: white;
-                background-image: url({image_path});
-                background-repeat: no-repeat;
-                background-position: center;
-                background-size: cover;  /* Ensures the image covers the widget */
-            }}
-        """)
-        
-
+        self.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #181818, stop:1 #fabcad);
+                color: #d9d9d9;
+            }
+            QToolTip {
+                background-color: #363636;
+                color: #d9d9d9;
+            }
+        """)        
 
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
