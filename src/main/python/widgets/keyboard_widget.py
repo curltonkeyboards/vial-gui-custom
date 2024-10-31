@@ -369,7 +369,7 @@ class KeyboardWidget(QWidget):
 
         # Move all widgets right 20 pixels and down 20 pixels
         for widget in self.widgets:
-            widget.shift_x += 20  # Move right
+            widget.shift_x += 30  # Move right
             widget.shift_y += 20  # Move down
 
         self.width = round(max_w + 2 * self.padding)
