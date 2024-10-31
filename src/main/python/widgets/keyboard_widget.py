@@ -340,13 +340,22 @@ class KeyboardWidget(QWidget):
     def update_layout(self):
         """ Updates self.widgets for the currently active layout """
 
-        # determine widgets for current layout
+        # Determine widgets for current layout
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
+        # Adjust encoder positions
+        for widget in self.widgets:
+            if widget.is_encoder:
+                # Move encoders down by one row if they are on row 2 or row 4
+                if widget.y == 2:
+                    widget.y = 3
+                elif widget.y == 4:
+                    widget.y = 5
+
         self.widgets.sort(key=lambda w: (w.y, w.x))
 
-        # determine maximum width and height of container
+        # Determine maximum width and height of container
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
@@ -358,6 +367,7 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
+
 
     def paintEvent(self, event):
         qp = QPainter()
