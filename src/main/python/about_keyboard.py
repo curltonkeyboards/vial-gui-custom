@@ -86,12 +86,11 @@ class AboutKeyboard(QDialog):
 
         text += "QMK Settings: {}\n".format(self.about_qmk_settings())
 
-        font = QFont("Segoe UI")
-        font.setPointSize(14)  # Optional: Adjust the font size if needed
+        font = QFont("monospace")
+        font.setStyleHint(QFont.TypeWriter)
         textarea = QPlainTextEdit()
         textarea.setReadOnly(True)
         textarea.setFont(font)
-
 
         textarea.setPlainText(text)
 

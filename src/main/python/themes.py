@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QPalette, QColor, QFont
+from PyQt5.QtGui import QPalette, QColor
 
 themes = [
     ("Light", {
@@ -167,9 +167,6 @@ class Theme:
         if theme in palettes:
             QApplication.setPalette(palettes[theme])
             QApplication.setStyle("Fusion")
-            app = QApplication.instance()  # Get the current QApplication instance
-            font = QFont("Inter")  # Specify your desired font and size
-            app.setFont(font)
         # For default/system theme, do nothing
         # User will have to restart the application for it to be applied
 

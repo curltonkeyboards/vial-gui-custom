@@ -99,7 +99,7 @@ class Tab(QScrollArea):
             self.alternatives.append(alt)
 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWidgetResizable(True)
 
         w = QWidget()
@@ -180,7 +180,7 @@ class SmartChordTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         
                 
                 # Define MIDI layout
@@ -361,12 +361,11 @@ class SmartChordTab(QScrollArea):
 
                     
 
-                    button.setFixedHeight(45)  # Set size as needed
+                    button.setFixedHeight(40)  # Set size as needed
                     if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
-                        button.setFixedWidth(100)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
-                        button.setFixedHeight(60)
+                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
-                        button.setFixedWidth(45)  # Set fixed width of 40 for other buttons
+                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
@@ -522,7 +521,7 @@ class midiadvancedTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # Add CC X and CC Y menu
         self.add_cc_x_y_menu()
@@ -812,7 +811,7 @@ class LayerTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
@@ -966,7 +965,7 @@ class LayerTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
         
-class LightingTab(QWidget):
+class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_LSB, smartchord_MSB):
@@ -977,14 +976,14 @@ class LightingTab(QWidget):
         self.smartchord_MSB = smartchord_MSB
 
         # Create a widget for the scroll area content
-        self.main_layout = QVBoxLayout()
-        self.setLayout(self.main_layout)
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
         
         # Set the scroll area properties
-        #self.setWidget(self.scroll_content)
-        #self.setWidgetResizable(True)
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
@@ -1152,7 +1151,7 @@ class MacroTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
@@ -1338,7 +1337,7 @@ class midiTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.main_layout = QVBoxLayout(self.scroll_content)
 
@@ -1535,12 +1534,11 @@ class midiTab(QScrollArea):
 
                     
 
-                    button.setFixedHeight(45)  # Set size as needed
+                    button.setFixedHeight(40)  # Set size as needed
                     if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
-                        button.setFixedWidth(100)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
-                        button.setFixedHeight(60)
+                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
-                        button.setFixedWidth(45)  # Set fixed width of 40 for other buttons
+                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
@@ -1607,29 +1605,16 @@ def keycode_filter_masked(kc):
     return Keycode.is_basic(kc)
 
 
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QPushButton, QHBoxLayout
-from PyQt5.QtCore import pyqtSignal
-
-class FilteredTabbedKeycodes(QWidget):
+class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
 
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
-        
-        # Create main layout
-        self.main_layout = QHBoxLayout(self)
-        
-        # Create navigation layout (stacked vertically)
-        self.nav_buttons = QVBoxLayout()
-        self.nav_buttons.setSpacing(2)
-        self.nav_buttons.setContentsMargins(0, 0, 0, 0)
-        
-        # Create stacked widget for tab content
-        self.stacked_widget = QStackedWidget(self)
-        
+
         self.keycode_filter = keycode_filter
+
         self.tabs = [
             Tab(self, "Basic", [
                 (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
@@ -1654,59 +1639,18 @@ class FilteredTabbedKeycodes(QWidget):
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
-        
-        # Create navigation buttons for each tab and add them to the nav_buttons layout
-        self.buttons = []  # Store references to buttons for later access
-        for i, tab in enumerate(self.tabs):
-            button = QPushButton(tab.label)
-            button.setStyleSheet("""
-                border: 1px solid transparent;
-                border-radius: 0px;
-                background-color: rgba(0, 0, 0, 20);  /* Default semi-transparent black */
-                color: white;
-                padding: 5px;
-            """)
-            button.clicked.connect(lambda _, idx=i: self.select_tab(idx))
-            self.nav_buttons.addWidget(button)
-            self.buttons.append(button)  # Add button to list
 
-        
-        # Add navigation layout and stacked widget to the main layout
-        self.main_layout.addLayout(self.nav_buttons)
-        self.main_layout.addWidget(self.stacked_widget)
-        
-        # Set up tabs
         for tab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
-            self.stacked_widget.addWidget(tab)
 
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
-
-        # Initialize the first button as selected
-        self.set_active_button(0)
-
-    def select_tab(self, index):
-        self.stacked_widget.setCurrentIndex(index)
-        self.set_active_button(index)
-
-    def set_active_button(self, index):
-        # Reset all buttons to default style
-        for button in self.buttons:
-            button.setStyleSheet("""
-                border: 1px solid transparent;
-                border-radius: 5px;
-                background-color: rgba(0, 0, 0, 0);  /* Default semi-transparent black */
-                padding: 5px;
-            """)
         
-        # Highlight the selected button
-        self.buttons[index].setStyleSheet("""
-            border: 1px solid #f7f7c8;  /* Green border for selected button */
-            background-color: rgba(250, 250, 230, 10);  /* Slightly opaque green */
-            border-radius: 5px;
-            padding: 5px;
-        """)
+        for miditab in self.tabs:
+            tab.keycode_changed.connect(self.on_keycode_changed)
+
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
 
     def on_keycode_changed(self, code):
         if code == "Any":
@@ -1715,32 +1659,35 @@ class FilteredTabbedKeycodes(QWidget):
             self.keycode_changed.emit(Keycode.normalize(code))
 
     def recreate_keycode_buttons(self):
-        prev_tab_index = self.stacked_widget.currentIndex()
-        
-        # Clear current stacked widget
-        while self.stacked_widget.count() > 0:
-            self.stacked_widget.removeWidget(self.stacked_widget.widget(0))
-        
-        # Recreate each tab’s buttons and add to the stacked widget
+        prev_tab = self.tabText(self.currentIndex()) if self.currentIndex() >= 0 else ""
+        while self.count() > 0:
+            self.removeTab(0)
+
         for tab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
-                self.stacked_widget.addWidget(tab)
-        
-        # Restore the previously selected tab, if possible
-        if prev_tab_index < self.stacked_widget.count():
-            self.stacked_widget.setCurrentIndex(prev_tab_index)
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for miditab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for midiadvancedTab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
 
     def on_keymap_override(self):
         for tab in self.tabs:
             tab.relabel_buttons()
 
-
-
-
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtCore import pyqtSignal
-import os
 
 class TabbedKeycodes(QWidget):
 
@@ -1754,20 +1701,6 @@ class TabbedKeycodes(QWidget):
         self.is_tray = False
 
         self.layout = QVBoxLayout()
-
-        # Set background color to white
-        image_path = os.path.join(os.path.dirname(__file__), 'background.png')
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-color: white;
-                background-image: url({image_path});
-                background-repeat: no-repeat;
-                background-position: center;
-                background-size: cover;  /* Ensures the image covers the widget */
-            }}
-        """)
-        
-
 
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
@@ -1824,4 +1757,3 @@ class TabbedKeycodes(QWidget):
         else:
             self.all_keycodes.show()
             self.basic_keycodes.hide()
-
