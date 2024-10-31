@@ -365,7 +365,7 @@ class KeyboardWidget(QWidget):
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
             max_w = max(max_w, p.x() * (self.scale * 1.4))
-            max_h = max(max_h, p.y() * (self.scale * 1.42))
+            max_h = max(max_h, p.y() * (self.scale * 1.5))
 
         # Move all widgets right 20 pixels and down 20 pixels
         for widget in self.widgets:
