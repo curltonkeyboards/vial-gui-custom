@@ -356,7 +356,7 @@ class KeyboardWidget(QWidget):
                 new_y_position = widget.shift_y + 90
                 if new_y_position > lowest_non_encoder_y:
                     widget.shift_y += 45  # Move down by 45 pixels
-            else:
+                else:
                     widget.shift_y += 90  # Move down by 90 pixels
 
         # Sort widgets by position for proper layout (if needed)
