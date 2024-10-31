@@ -23,53 +23,36 @@ class KeyWidget:
         self.tooltip = ""
         self.color = None
         self.mask_color = None
-        self.scale = scale  # Set scale immediately
+        self.scale = 0
 
         self.rotation_angle = desc.rotation_angle
 
-        # Check for secondary dimensions
         self.has2 = desc.width2 != desc.width or desc.height2 != desc.height or desc.x2 != 0 or desc.y2 != 0
-        
-        # Initialize polygons
-        self.polygon = QPolygonF()
-        self.polygon2 = QPolygonF()
 
-        # Initialize shift_x and shift_y
-        self.shift_x = shift_x
-        self.shift_y = shift_y
-        
-        # Update position right after initialization
         self.update_position(scale, shift_x, shift_y)
 
     def update_position(self, scale, shift_x=0, shift_y=0):
-        # Update the scale and shifts only if they change
         if self.scale != scale or self.shift_x != shift_x or self.shift_y != shift_y:
             self.scale = scale
             self.size = self.scale * (KEY_SIZE_RATIO + KEY_SPACING_RATIO)
             spacing = self.scale * KEY_SPACING_RATIO
 
-            # Update positions based on the desc properties
             self.rotation_x = self.size * self.desc.rotation_x
             self.rotation_y = self.size * self.desc.rotation_y
 
-            # Set shifts
             self.shift_x = shift_x
             self.shift_y = shift_y
-            
             self.x = self.size * self.desc.x
             self.y = self.size * self.desc.y
             self.w = self.size * self.desc.width - spacing
             self.h = self.size * self.desc.height - spacing
 
-            # Create the main rectangle
             self.rect = QRect(
                 round(self.x),
                 round(self.y),
                 round(self.w),
                 round(self.h)
             )
-
-            # Update the text rectangle
             self.text_rect = QRect(
                 round(self.x),
                 round(self.y + self.size * SHADOW_TOP_PADDING),
@@ -77,7 +60,6 @@ class KeyWidget:
                 round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING))
             )
 
-            # Update secondary dimensions if necessary
             self.x2 = self.x + self.size * self.desc.x2
             self.y2 = self.y + self.size * self.desc.y2
             self.w2 = self.size * self.desc.width2 - spacing
@@ -90,7 +72,6 @@ class KeyWidget:
                 round(self.h2)
             )
 
-            # Calculate bounding boxes and polygons
             self.bbox = self.calculate_bbox(self.rect)
             self.bbox2 = self.calculate_bbox(self.rect2)
             self.polygon = QPolygonF(self.bbox + [self.bbox[0]])
@@ -101,7 +82,9 @@ class KeyWidget:
             self.foreground_draw_path = self.calculate_foreground_draw_path()
             self.extra_draw_path = self.calculate_extra_draw_path()
 
-            # Non-mask and mask rectangles
+            # calculate areas where the inner keycode will be located
+            # nonmask = outer (e.g. Rsft_T)
+            # mask = inner (e.g. KC_A)
             self.nonmask_rect = QRect(
                 round(self.x),
                 round(self.y + self.size * KEYBOARD_WIDGET_NONMASK_PADDING),
@@ -116,18 +99,8 @@ class KeyWidget:
             )
             self.mask_bbox = self.calculate_bbox(self.mask_rect)
             self.mask_polygon = QPolygonF(self.mask_bbox + [self.mask_bbox[0]])
-            
-    def update_bounding_rect(self):
-        """Update the bounding rectangle of the key widget."""
-        # Assuming self.rect is updated in update_position
-        self.bounding_rect = self.rect.adjusted(-self.shift_x, -self.shift_y, self.shift_x, self.shift_y)
-        # This creates a new bounding rectangle based on the current rectangle and shifts.
-        # You might want to adjust how this is calculated based on your specific requirements.
-
-
 
     def calculate_bbox(self, rect):
-        """ Calculates the bounding box for the given rectangle. """
         x1 = rect.topLeft().x()
         y1 = rect.topLeft().y()
         x2 = rect.bottomRight().x()
