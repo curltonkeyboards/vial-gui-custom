@@ -1753,9 +1753,10 @@ class TabbedKeycodes(QWidget):
         self.target = None
         self.is_tray = False
 
-        self.layout = QVBoxLayout()
+        # Create a single main layout to share between `FilteredTabbedKeycodes` and `TabbedKeycodes`
+        self.main_layout = QVBoxLayout(self)
 
-        # Set background color to white
+        # Set background color and image styling
         image_path = os.path.join(os.path.dirname(__file__), 'background.png')
         self.setStyleSheet(f"""
             QWidget {{
@@ -1766,17 +1767,21 @@ class TabbedKeycodes(QWidget):
                 background-size: cover;  /* Ensures the image covers the widget */
             }}
         """)
-        
 
-
+        # Create `FilteredTabbedKeycodes` and `TabbedKeycodes` instances
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
+
+        # Connect signals for both instances
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.keycode_changed.connect(self.keycode_changed)
             opt.anykey.connect(self.anykey)
-            self.layout.addWidget(opt)
+            self.main_layout.addWidget(opt)
 
-        self.setLayout(self.layout)
+        # Set the main layout as the layout of the combined box
+        self.setLayout(self.main_layout)
+        
+        # Set the keycode filter to the initial state
         self.set_keycode_filter(keycode_filter_any)
 
     @classmethod
@@ -1824,4 +1829,5 @@ class TabbedKeycodes(QWidget):
         else:
             self.all_keycodes.show()
             self.basic_keycodes.hide()
+
 
