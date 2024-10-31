@@ -344,40 +344,40 @@ class KeyboardWidget(QWidget):
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-        # Find the lowest y position among KeyWidget instances
-        key_widgets = [widget for widget in self.widgets if isinstance(widget, KeyWidget)]
+        # Separate encoder widgets and identify initial y-positions
+        encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget)]
     
-        # Set a default value for lowest_key_y if there are no KeyWidgets
-        if key_widgets:
-            lowest_key_y = max(widget.shift_y for widget in key_widgets)
-        else:
-            lowest_key_y = 0  # Default value if no KeyWidgets are found
+        # Sort encoders by their initial y position
+        encoders.sort(key=lambda w: w.shift_y)
     
-        # Move encoder widgets down by 90 pixels, or by 45 pixels if 90 would place them below lowest_key_y
-        for widget in self.widgets:
-            if isinstance(widget, EncoderWidget):
-                # Calculate the new position if moved by 90 pixels
-                new_y_position = widget.shift_y + 90
-                if new_y_position > lowest_key_y:
-                    widget.shift_y += 45  # Move down by 45 pixels
-                else:
-                    widget.shift_y += 90  # Move down by 90 pixels
-    
+        # Move encoders based on their initial y position
+        if len(encoders) >= 2:
+            # Move the first encoder down by 45 pixels (to row 4)
+            encoders[0].shift_y += 45
+
+            # Move the second encoder down by 90 pixels (to row 5)
+            encoders[1].shift_y += 90
+
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
-    
+
         # Determine maximum width and height of the container
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
             max_w = max(max_w, p.x() * (self.scale * 1.4))
-            max_h = max(max_h, p.y() * (self.scale * 1.4))
+            max_h = max(max_h, p.y() * (self.scale * 1.45))
+            
+        for widget in self.widgets:
+            widget.shift_x += 30  # Move right
+            widget.shift_y += 20  # Move down
 
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
 
         self.update()
         self.updateGeometry()
+
 
     def paintEvent(self, event):
         qp = QPainter()
