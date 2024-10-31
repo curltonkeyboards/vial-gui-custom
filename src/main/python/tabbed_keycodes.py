@@ -981,7 +981,7 @@ class LightingTab(QScrollArea):
         #self.main_layout = QVBoxLayout(self.scroll_content)
         
         # Set the scroll area properties
-        self.setWidget(self.scroll_content)
+        #self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
