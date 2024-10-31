@@ -258,7 +258,7 @@ class KeyboardWidget(QWidget):
         super().__init__()
 
         self.enabled = True
-        self.scale = 1.1
+        self.scale = 0.8
         self.padding = KEYBOARD_WIDGET_PADDING
 
         self.setMouseTracking(True)
