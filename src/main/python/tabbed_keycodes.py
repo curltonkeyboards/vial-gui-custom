@@ -1697,7 +1697,6 @@ class FilteredTabbedKeycodes(QWidget):
                 border: 1px solid transparent;
                 border-radius: 5px;
                 background-color: rgba(0, 0, 0, 0);  /* Default semi-transparent black */
-                color: white;
                 padding: 5px;
             """)
         
@@ -1706,7 +1705,6 @@ class FilteredTabbedKeycodes(QWidget):
             border: 1px solid #f7f7c8;  /* Green border for selected button */
             background-color: rgba(250, 250, 230, 10);  /* Slightly opaque green */
             border-radius: 5px;
-            color: white;
             padding: 5px;
         """)
 
