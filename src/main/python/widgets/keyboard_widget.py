@@ -376,13 +376,13 @@ class KeyboardWidget(QWidget):
         
          # Set up the color and pen for the keyboard border
         border_pen = QPen(QApplication.palette().color(QPalette.Highlight))
-        border_pen.setWidth(2)  # Set width of the border
+        border_pen.setWidth(3)  # Set width of the border
         qp.setPen(border_pen)
         qp.setBrush(Qt.NoBrush)
     
         # Draw the rounded border around the keyboard
         border_radius = 15  # Radius for rounded corners
-        rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
+        rect = QRect(self.padding, self.padding, self.width - 12 * self.padding, self.height - 12 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
         # for regular keycaps
