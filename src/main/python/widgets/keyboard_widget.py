@@ -340,23 +340,19 @@ class KeyboardWidget(QWidget):
     def update_layout(self):
         """ Updates self.widgets for the currently active layout """
 
-        # Determine widgets for current layout
+        # Determine widgets for the current layout
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-        # Adjust encoder positions by moving them down a row
+        # Move encoder widgets down by 40 pixels
         for widget in self.widgets:
-            if isinstance(widget, EncoderWidget):  # Check if widget is an EncoderWidget
-                # Move encoders down by one row if they are on row 2 or row 4
-                if widget.y == 2:
-                    widget.y = 3
-                elif widget.y == 4:
-                    widget.y = 5
+            if isinstance(widget, EncoderWidget):
+                widget.shift_y += 40  # Move down by 40 pixels
 
-        # Sort widgets by row and column for proper layout
+        # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
-
-        # Determine maximum width and height of container
+    
+        # Determine maximum width and height of the container
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
@@ -368,6 +364,7 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
+
 
 
 
@@ -384,7 +381,7 @@ class KeyboardWidget(QWidget):
     
         # Draw the rounded border around the keyboard
         border_radius = 15  # Radius for rounded corners
-        rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
+        rect = QRect(self.padding, self.padding, self.width - 12 * self.padding, self.height - 12 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
         # for regular keycaps
