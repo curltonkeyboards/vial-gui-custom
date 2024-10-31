@@ -979,6 +979,7 @@ class LightingTab(QScrollArea):
         # Create a widget for the scroll area content
         #self.scroll_content = QWidget()
         #self.main_layout = QVBoxLayout(self.scroll_content)
+        self.setLayout(self.main_layout)
         
         # Set the scroll area properties
         #self.setWidget(self.scroll_content)
