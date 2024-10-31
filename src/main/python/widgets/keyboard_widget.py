@@ -325,9 +325,8 @@ class KeyboardWidget(QWidget):
                 widget.update_position(scale_factor, -shift_x, -shift_y)
                 self.widgets.append(widget)
 
-        encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget)]
-        self.widgets = [widget for widget in self.widgets if not isinstance(widget, EncoderWidget)] + encoders
-
+        # at this point some widgets on left side might be cutoff, or there may be too much empty space
+        # calculate top left position of visible widgets and shift everything around
         top_x = top_y = 1e6
         for widget in self.widgets:
             if not widget.desc.decal:
@@ -383,12 +382,12 @@ class KeyboardWidget(QWidget):
         # Draw the rounded border around the keyboard
         border_radius = 15  # Radius for rounded corners
         rect = QRect(
-            self.padding - 2.5 * self.padding,  # Shift left
-            self.padding - 2.5 * self.padding,  # Shift up
-            self.width + 5 * self.padding,      # Expand width
-            self.height + 5 * self.padding      # Expand height
+            self.padding - 2.5, self.padding - 2.5,  # Shift left and up by 2.5
+            self.width + 5 * self.padding + 5,       # Add 5 to width to compensate for shift
+            self.height + 5 * self.padding + 5       # Add 5 to height to compensate for shift
         )
         qp.drawRoundedRect(rect, border_radius, border_radius)
+
 
         # for regular keycaps
         regular_pen = qp.pen()
