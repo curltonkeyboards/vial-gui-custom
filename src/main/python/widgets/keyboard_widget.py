@@ -11,7 +11,6 @@ from themes import Theme
 
 
 class KeyWidget:
-
     def __init__(self, desc, scale, shift_x=0, shift_y=0):
         self.active = False
         self.on = False
@@ -23,30 +22,31 @@ class KeyWidget:
         self.tooltip = ""
         self.color = None
         self.mask_color = None
-        self.scale = 0
+        self.scale = scale  # Initialize scale here
 
+        self.shift_x = shift_x
+        self.shift_y = shift_y
         self.rotation_angle = desc.rotation_angle
 
         self.has2 = desc.width2 != desc.width or desc.height2 != desc.height or desc.x2 != 0 or desc.y2 != 0
-
-        self.update_position(scale, shift_x, shift_y)
+        
+        # Ensure the position is updated upon initialization
+        self.update_position(scale)
 
     def update_position(self, scale, shift_x=0, shift_y=0):
+        """ Updates position and bounding boxes based on the scale and shifts. """
         if self.scale != scale or self.shift_x != shift_x or self.shift_y != shift_y:
             self.scale = scale
             self.size = self.scale * (KEY_SIZE_RATIO + KEY_SPACING_RATIO)
             spacing = self.scale * KEY_SPACING_RATIO
 
-            self.rotation_x = self.size * self.desc.rotation_x
-            self.rotation_y = self.size * self.desc.rotation_y
+            # Update position based on scale and shifts
+            self.x = (self.size * self.desc.x) + self.shift_x
+            self.y = (self.size * self.desc.y) + self.shift_y
+            self.w = (self.size * self.desc.width) - spacing
+            self.h = (self.size * self.desc.height) - spacing
 
-            self.shift_x = shift_x
-            self.shift_y = shift_y
-            self.x = self.size * self.desc.x
-            self.y = self.size * self.desc.y
-            self.w = self.size * self.desc.width - spacing
-            self.h = self.size * self.desc.height - spacing
-
+            # Define the main rectangle
             self.rect = QRect(
                 round(self.x),
                 round(self.y),
@@ -60,31 +60,36 @@ class KeyWidget:
                 round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING))
             )
 
-            self.x2 = self.x + self.size * self.desc.x2
-            self.y2 = self.y + self.size * self.desc.y2
-            self.w2 = self.size * self.desc.width2 - spacing
-            self.h2 = self.size * self.desc.height2 - spacing
+            # Update second part only if needed
+            if self.has2:
+                self.x2 = (self.x + self.size * self.desc.x2) + self.shift_x
+                self.y2 = (self.y + self.size * self.desc.y2) + self.shift_y
+                self.w2 = (self.size * self.desc.width2) - spacing
+                self.h2 = (self.size * self.desc.height2) - spacing
 
-            self.rect2 = QRect(
-                round(self.x2),
-                round(self.y2),
-                round(self.w2),
-                round(self.h2)
-            )
+                self.rect2 = QRect(
+                    round(self.x2),
+                    round(self.y2),
+                    round(self.w2),
+                    round(self.h2)
+                )
+            else:
+                self.rect2 = QRect()  # Ensure this is empty if not used
 
+            # Update bounding boxes and polygons
             self.bbox = self.calculate_bbox(self.rect)
-            self.bbox2 = self.calculate_bbox(self.rect2)
-            self.polygon = QPolygonF(self.bbox + [self.bbox[0]])
-            self.polygon2 = QPolygonF(self.bbox2 + [self.bbox2[0]])
-            self.polygon = self.polygon.united(self.polygon2)
+            if self.has2:
+                self.bbox2 = self.calculate_bbox(self.rect2)
+                self.polygon = QPolygonF(self.bbox + [self.bbox[0]]).united(QPolygonF(self.bbox2 + [self.bbox2[0]]))
+            else:
+                self.polygon = QPolygonF(self.bbox + [self.bbox[0]])
+
             self.corner = self.size * KEY_ROUNDNESS
             self.background_draw_path = self.calculate_background_draw_path()
             self.foreground_draw_path = self.calculate_foreground_draw_path()
             self.extra_draw_path = self.calculate_extra_draw_path()
 
-            # calculate areas where the inner keycode will be located
-            # nonmask = outer (e.g. Rsft_T)
-            # mask = inner (e.g. KC_A)
+            # Update non-mask and mask rectangles
             self.nonmask_rect = QRect(
                 round(self.x),
                 round(self.y + self.size * KEYBOARD_WIDGET_NONMASK_PADDING),
@@ -101,6 +106,7 @@ class KeyWidget:
             self.mask_polygon = QPolygonF(self.mask_bbox + [self.mask_bbox[0]])
 
     def calculate_bbox(self, rect):
+        """ Calculates the bounding box for the given rectangle. """
         x1 = rect.topLeft().x()
         y1 = rect.topLeft().y()
         x2 = rect.bottomRight().x()
@@ -356,6 +362,12 @@ class KeyboardWidget(QWidget):
             # Move the last two encoders down by 45 pixels
             encoders[2].shift_y += 45
             encoders[3].shift_y += 45
+
+        # Sort widgets by position for proper layout (if needed)
+        self.widgets.sort(key=lambda w: (w.y, w.x))
+        
+        for widget in self.widgets:
+            widget.update_bounding_rect()  # Ensure you have this method defined
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
