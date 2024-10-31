@@ -356,8 +356,8 @@ class KeyboardWidget(QWidget):
         # Check if there are enough encoders
         if len(encoders) >= 4:
             # Move the first two encoders down by 90 pixels
-            encoders[0].shift_y += 90
-            encoders[1].shift_y += 90
+            encoders[0].shift_y += 80
+            encoders[1].shift_y += 80
 
             # Move the last two encoders down by 45 pixels
             encoders[2].shift_y += 45
