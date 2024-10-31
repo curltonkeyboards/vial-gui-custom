@@ -343,16 +343,21 @@ class KeyboardWidget(QWidget):
         # Determine widgets for the current layout
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
-        widget.shift_x += 20  # Move down by 40 pixels
 
-        # Move encoder widgets down by 40 pixels
+        # Move encoder widgets down by 100 pixels, with bounds checking
         for widget in self.widgets:
             if isinstance(widget, EncoderWidget):
-                widget.shift_y += 50  # Move down by 40 pixels
+                potential_new_y = widget.shift_y + 100
+                if potential_new_y + widget.polygon.boundingRect().height() > self.height:
+                    # Move down by only 50 pixels if out of bounds
+                    widget.shift_y += 50
+                else:
+                    # Move down by 100 pixels otherwise
+                    widget.shift_y += 100
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
-    
+
         # Determine maximum width and height of the container
         max_w = max_h = 0
         for key in self.widgets:
@@ -365,6 +370,7 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
+
 
 
 
