@@ -381,8 +381,11 @@ class KeyboardWidget(QWidget):
     
         # Draw the rounded border around the keyboard
         border_radius = 15  # Radius for rounded corners
-        rect = QRect(self.padding, self.padding, self.width - 12 * self.padding, self.height - 12 * self.padding)
-        qp.drawRoundedRect(rect, border_radius, border_radius)
+        rect = QRect(
+            self.padding - 2.5 * self.padding,  # Shift left
+            self.padding - 2.5 * self.padding,  # Shift up
+            self.width + 5 * self.padding,      # Expand width
+            self.height + 5 * self.padding      # Expand height
 
         # for regular keycaps
         regular_pen = qp.pen()
