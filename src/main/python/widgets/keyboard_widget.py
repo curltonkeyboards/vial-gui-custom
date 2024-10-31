@@ -386,6 +386,8 @@ class KeyboardWidget(QWidget):
             self.padding - 2.5 * self.padding,  # Shift up
             self.width + 5 * self.padding,      # Expand width
             self.height + 5 * self.padding      # Expand height
+        )
+        qp.drawRoundedRect(rect, border_radius, border_radius)
 
         # for regular keycaps
         regular_pen = qp.pen()
