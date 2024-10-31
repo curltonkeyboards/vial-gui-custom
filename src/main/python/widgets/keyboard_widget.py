@@ -117,7 +117,7 @@ class KeyWidget:
             self.mask_bbox = self.calculate_bbox(self.mask_rect)
             self.mask_polygon = QPolygonF(self.mask_bbox + [self.mask_bbox[0]])
             
-       def update_bounding_rect(self):
+    def update_bounding_rect(self):
         """Update the bounding rectangle of the key widget."""
         # Assuming self.rect is updated in update_position
         self.bounding_rect = self.rect.adjusted(-self.shift_x, -self.shift_y, self.shift_x, self.shift_y)
