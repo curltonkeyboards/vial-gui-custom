@@ -325,8 +325,9 @@ class KeyboardWidget(QWidget):
                 widget.update_position(scale_factor, -shift_x, -shift_y)
                 self.widgets.append(widget)
 
-        # at this point some widgets on left side might be cutoff, or there may be too much empty space
-        # calculate top left position of visible widgets and shift everything around
+        encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget)]
+        self.widgets = [widget for widget in self.widgets if not isinstance(widget, EncoderWidget)] + encoders
+
         top_x = top_y = 1e6
         for widget in self.widgets:
             if not widget.desc.decal:
