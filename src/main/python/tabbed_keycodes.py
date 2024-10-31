@@ -977,8 +977,8 @@ class LightingTab(QWidget):
         self.smartchord_MSB = smartchord_MSB
 
         # Create a widget for the scroll area content
-        self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
         
         # Set the scroll area properties
         self.setWidget(self.scroll_content)
