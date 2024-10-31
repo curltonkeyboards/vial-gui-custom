@@ -344,19 +344,18 @@ class KeyboardWidget(QWidget):
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-        # Separate encoder widgets and identify initial y-positions
+        # Separate encoder widgets
         encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget)]
-    
-        # Sort encoders by their initial y position
-        encoders.sort(key=lambda w: w.shift_y)
-    
-        # Move encoders based on their initial y position
-        if len(encoders) >= 2:
-            # Move the first encoder down by 45 pixels (to row 4)
-            encoders[0].shift_y += 45
 
-            # Move the second encoder down by 90 pixels (to row 5)
+        # Check if there are enough encoders
+        if len(encoders) >= 4:
+            # Move the first two encoders down by 90 pixels
+            encoders[0].shift_y += 90
             encoders[1].shift_y += 90
+
+            # Move the last two encoders down by 45 pixels
+            encoders[2].shift_y += 45
+            encoders[3].shift_y += 45
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
@@ -366,10 +365,11 @@ class KeyboardWidget(QWidget):
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
             max_w = max(max_w, p.x() * (self.scale * 1.4))
-            max_h = max(max_h, p.y() * (self.scale * 1.45))
-            
+            max_h = max(max_h, p.y() * (self.scale * 1.4))
+
+        # Move all widgets right 20 pixels and down 20 pixels
         for widget in self.widgets:
-            widget.shift_x += 30  # Move right
+            widget.shift_x += 20  # Move right
             widget.shift_y += 20  # Move down
 
         self.width = round(max_w + 2 * self.padding)
@@ -377,6 +377,7 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
+
 
 
     def paintEvent(self, event):
