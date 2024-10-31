@@ -34,11 +34,15 @@ class KeyWidget:
         self.polygon = QPolygonF()
         self.polygon2 = QPolygonF()
 
+        # Initialize shift_x and shift_y
+        self.shift_x = shift_x
+        self.shift_y = shift_y
+        
         # Update position right after initialization
         self.update_position(scale, shift_x, shift_y)
 
     def update_position(self, scale, shift_x=0, shift_y=0):
-        # This method handles the position update logic
+        # Update the scale and shifts only if they change
         if self.scale != scale or self.shift_x != shift_x or self.shift_y != shift_y:
             self.scale = scale
             self.size = self.scale * (KEY_SIZE_RATIO + KEY_SPACING_RATIO)
@@ -48,8 +52,10 @@ class KeyWidget:
             self.rotation_x = self.size * self.desc.rotation_x
             self.rotation_y = self.size * self.desc.rotation_y
 
+            # Set shifts
             self.shift_x = shift_x
             self.shift_y = shift_y
+            
             self.x = self.size * self.desc.x
             self.y = self.size * self.desc.y
             self.w = self.size * self.desc.width - spacing
@@ -110,8 +116,6 @@ class KeyWidget:
             )
             self.mask_bbox = self.calculate_bbox(self.mask_rect)
             self.mask_polygon = QPolygonF(self.mask_bbox + [self.mask_bbox[0]])
-
-    # Other methods remain unchanged...
 
 
     def calculate_bbox(self, rect):
