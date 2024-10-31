@@ -977,8 +977,8 @@ class LightingTab(QScrollArea):
         self.smartchord_MSB = smartchord_MSB
 
         # Create a widget for the scroll area content
-        self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout(self.scroll_content)
+        #self.scroll_content = QWidget()
+        #self.main_layout = QVBoxLayout(self.scroll_content)
         
         # Set the scroll area properties
         self.setWidget(self.scroll_content)
@@ -1753,10 +1753,9 @@ class TabbedKeycodes(QWidget):
         self.target = None
         self.is_tray = False
 
-        # Create a single main layout to share between `FilteredTabbedKeycodes` and `TabbedKeycodes`
-        self.main_layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout()
 
-        # Set background color and image styling
+        # Set background color to white
         image_path = os.path.join(os.path.dirname(__file__), 'background.png')
         self.setStyleSheet(f"""
             QWidget {{
@@ -1767,21 +1766,17 @@ class TabbedKeycodes(QWidget):
                 background-size: cover;  /* Ensures the image covers the widget */
             }}
         """)
+        
 
-        # Create `FilteredTabbedKeycodes` and `TabbedKeycodes` instances
+
         self.all_keycodes = FilteredTabbedKeycodes()
         self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
-
-        # Connect signals for both instances
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.keycode_changed.connect(self.keycode_changed)
             opt.anykey.connect(self.anykey)
-            self.main_layout.addWidget(opt)
+            self.layout.addWidget(opt)
 
-        # Set the main layout as the layout of the combined box
-        self.setLayout(self.main_layout)
-        
-        # Set the keycode filter to the initial state
+        self.setLayout(self.layout)
         self.set_keycode_filter(keycode_filter_any)
 
     @classmethod
@@ -1829,5 +1824,4 @@ class TabbedKeycodes(QWidget):
         else:
             self.all_keycodes.show()
             self.basic_keycodes.hide()
-
 
