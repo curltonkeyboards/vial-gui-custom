@@ -982,9 +982,9 @@ class LightingTab(QScrollArea):
         
         # Set the scroll area properties
         #self.setWidget(self.scroll_content)
-        self.setWidgetResizable(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        #self.setWidgetResizable(True)
+       # self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        #self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
