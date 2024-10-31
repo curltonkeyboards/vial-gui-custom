@@ -99,7 +99,7 @@ class Tab(QScrollArea):
             self.alternatives.append(alt)
 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setWidgetResizable(True)
 
         w = QWidget()
@@ -180,7 +180,7 @@ class SmartChordTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
                 
                 # Define MIDI layout
@@ -521,7 +521,7 @@ class midiadvancedTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Add CC X and CC Y menu
         self.add_cc_x_y_menu()
@@ -811,7 +811,7 @@ class LayerTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
@@ -983,7 +983,7 @@ class LightingTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
@@ -1151,7 +1151,7 @@ class MacroTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
@@ -1337,7 +1337,7 @@ class midiTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.main_layout = QVBoxLayout(self.scroll_content)
 
