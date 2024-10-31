@@ -340,38 +340,38 @@ class KeyboardWidget(QWidget):
     def update_layout(self):
         """ Updates self.widgets for the currently active layout """
 
-    # Determine widgets for the current layout
+        # Determine widgets for the current layout
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-    # Separate encoder widgets
+        # Separate encoder widgets
         encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget)]
 
-    # Check if there are enough encoders
+        # Check if there are enough encoders
         if len(encoders) >= 4:
-        # Move the first two encoders down by 80 pixels
+            # Move the first two encoders down by 90 pixels
             encoders[0].shift_y += 80
             encoders[1].shift_y += 80
 
-        # Move the last two encoders down by 45 pixels
+            # Move the last two encoders down by 45 pixels
             encoders[2].shift_y += 45
             encoders[3].shift_y += 45
 
-    # Sort widgets by position for proper layout (if needed)
+        # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
+        
 
-    # Move all widgets right 30 pixels and down 20 pixels
-        for widget in self.widgets:
-            widget.shift_x += 30  # Move right
-            widget.shift_y += 20  # Move down
-            widget.update_polygon_position()  # Update the polygon position
-
-    # Determine maximum width and height of the container
+        # Determine maximum width and height of the container
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
             max_w = max(max_w, p.x() * (self.scale * 1.4))
             max_h = max(max_h, p.y() * (self.scale * 1.5))
+
+        # Move all widgets right 20 pixels and down 20 pixels
+        for widget in self.widgets:
+            widget.shift_x += 30  # Move right
+            widget.shift_y += 20  # Move down
 
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
@@ -518,13 +518,19 @@ class KeyboardWidget(QWidget):
     def hit_test(self, pos):
         """ Returns key, hit_masked_part """
 
+        # Adjust the position for hit testing based on shifts
+        adjusted_pos = pos / (self.scale * 1.3)
+
         for key in self.widgets:
-            if key.masked and key.mask_polygon.containsPoint(pos/(self.scale * 1.3), Qt.OddEvenFill):
+            # Check the masked hitbox first
+            if key.masked and key.mask_polygon.containsPoint(adjusted_pos - QPointF(key.shift_x, key.shift_y), Qt.OddEvenFill):
                 return key, True
-            if key.polygon.containsPoint(pos/(self.scale * 1.3), Qt.OddEvenFill):
+            # Then check the regular hitbox
+            if key.polygon.containsPoint(adjusted_pos - QPointF(key.shift_x, key.shift_y), Qt.OddEvenFill):
                 return key, False
 
         return None, False
+
 
     def mousePressEvent(self, ev):
         if not self.enabled:
