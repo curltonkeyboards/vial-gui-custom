@@ -344,15 +344,16 @@ class KeyboardWidget(QWidget):
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-        # Adjust encoder positions
+        # Adjust encoder positions by moving them down a row
         for widget in self.widgets:
-            if widget.is_encoder:
+            if isinstance(widget, EncoderWidget):  # Check if widget is an EncoderWidget
                 # Move encoders down by one row if they are on row 2 or row 4
                 if widget.y == 2:
                     widget.y = 3
                 elif widget.y == 4:
                     widget.y = 5
 
+        # Sort widgets by row and column for proper layout
         self.widgets.sort(key=lambda w: (w.y, w.x))
 
         # Determine maximum width and height of container
@@ -369,6 +370,7 @@ class KeyboardWidget(QWidget):
         self.updateGeometry()
 
 
+
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
@@ -382,7 +384,7 @@ class KeyboardWidget(QWidget):
     
         # Draw the rounded border around the keyboard
         border_radius = 15  # Radius for rounded corners
-        rect = QRect(self.padding, self.padding, self.width - 12 * self.padding, self.height - 12 * self.padding)
+        rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
         # for regular keycaps
