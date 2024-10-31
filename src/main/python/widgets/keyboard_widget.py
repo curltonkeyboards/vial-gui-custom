@@ -344,16 +344,20 @@ class KeyboardWidget(QWidget):
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
 
-        # Move encoder widgets down by 100 pixels, with bounds checking
+        # Find the lowest y position among non-encoder widgets
+        lowest_non_encoder_y = max(
+            widget.shift_y for widget in self.widgets if not isinstance(widget, EncoderWidget)
+        )
+
+        # Move encoder widgets down by 90 pixels, or by 45 pixels if 90 would place them below lowest_non_encoder_y
         for widget in self.widgets:
             if isinstance(widget, EncoderWidget):
-                potential_new_y = widget.shift_y + 100
-                if potential_new_y + widget.polygon.boundingRect().height() > self.height:
-                    # Move down by only 50 pixels if out of bounds
-                    widget.shift_y += 50
-                else:
-                    # Move down by 100 pixels otherwise
-                    widget.shift_y += 100
+                # Calculate the new position if moved by 90 pixels
+                new_y_position = widget.shift_y + 90
+                if new_y_position > lowest_non_encoder_y:
+                    widget.shift_y += 45  # Move down by 45 pixels
+            else:
+                    widget.shift_y += 90  # Move down by 90 pixels
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
@@ -370,9 +374,6 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
-
-
-
 
 
     def paintEvent(self, event):
