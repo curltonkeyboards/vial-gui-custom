@@ -529,15 +529,20 @@ class KeyboardWidget(QWidget):
             self.update_layout()
 
     def select_next(self):
-        """ Selects next key based on their order in the keymap """
-
+        """ Selects next key based on their order in the keymap, skipping EncoderWidgets """
+    
+        # Loop through widgets, with wraparound to start
         keys_looped = self.widgets + [self.widgets[0]]
         for x, key in enumerate(keys_looped):
             if key == self.active_key:
-                self.active_key = keys_looped[x + 1]
-                self.active_mask = False
-                self.clicked.emit()
-                return
+                # Find the next widget that is not an EncoderWidget
+                for next_key in keys_looped[x + 1:]:
+                    if not isinstance(next_key, EncoderWidget):
+                        self.active_key = next_key
+                        self.active_mask = False
+                        self.clicked.emit()
+                        return
+
 
     def deselect(self):
         if self.active_key is not None:
