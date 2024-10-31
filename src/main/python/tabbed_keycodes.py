@@ -239,11 +239,11 @@ class SmartChordTab(QScrollArea):
         midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
         midi_container.setLayout(midi_container_layout)
 
+        # Add MIDI container to the main layout
+        self.main_layout.addWidget(midi_container)
         # Create the MIDI buttons
         self.create_midi_buttons(layout, midi_container_layout)
 
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
         
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
@@ -977,14 +977,14 @@ class LightingTab(QScrollArea):
         self.smartchord_MSB = smartchord_MSB
 
         # Create a widget for the scroll area content
-        #self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout()
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
         
         # Set the scroll area properties
-        #self.setWidget(self.scroll_content)
-        #self.setWidgetResizable(True)
-       # self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        #self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Inversions Header
         #self.inversion_label = QLabel("Function Buttons")
