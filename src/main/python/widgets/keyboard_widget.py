@@ -396,6 +396,24 @@ class KeyboardWidget(QWidget):
         border_radius = 15  # Radius for rounded corners
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
+        
+            # Draw the inner rounded square
+        inner_rect_size = 80
+        inner_border_radius = 10  # Radius for the inner square's rounded corners
+        inner_rect = QRect(
+            (self.width - inner_rect_size) // 2,  # Centered x position
+            (self.height - inner_rect_size) // 2,  # Centered y position
+            inner_rect_size,  # Width
+            inner_rect_size   # Height
+        )
+    
+        # Set color and style for inner square
+        inner_square_brush = QBrush(QApplication.palette().color(QPalette.Button))
+        qp.setBrush(inner_square_brush)
+        qp.setPen(Qt.NoPen)
+    
+        # Draw the inner rounded square
+        qp.drawRoundedRect(inner_rect, inner_border_radius, inner_border_radius)
 
         # for regular keycaps
         regular_pen = qp.pen()
