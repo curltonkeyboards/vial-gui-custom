@@ -378,8 +378,10 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
-
-
+        
+    def with_transparency(color, transparency_factor):
+        alpha = int(255 * (1 - transparency_factor))
+        return QColor(color.red(), color.green(), color.blue(), alpha)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -422,15 +424,20 @@ class KeyboardWidget(QWidget):
         qp.setPen(regular_pen)
 
         background_brush = QBrush()
-        background_brush.setColor(QApplication.palette().color(QPalette.Button))
+        background_color = QApplication.palette().color(QPalette.Button)
+        background_brush.setColor(with_transparency(background_color, 0.7))  # 70% transparent
         background_brush.setStyle(Qt.SolidPattern)
 
+        # Foreground brush
         foreground_brush = QBrush()
-        foreground_brush.setColor(QApplication.palette().color(QPalette.Button).lighter(120))
+        foreground_color = QApplication.palette().color(QPalette.Button).lighter(120)
+        foreground_brush.setColor(with_transparency(foreground_color, 0.7))  # 70% transparent
         foreground_brush.setStyle(Qt.SolidPattern)
 
+        # Mask brush
         mask_brush = QBrush()
-        mask_brush.setColor(QApplication.palette().color(QPalette.Button).lighter(Theme.mask_light_factor()))
+        mask_color = QApplication.palette().color(QPalette.Button).lighter(Theme.mask_light_factor())
+        mask_brush.setColor(with_transparency(mask_color, 0.7))  # 70% transparent
         mask_brush.setStyle(Qt.SolidPattern)
 
         # for currently selected keycap
