@@ -383,164 +383,165 @@ class KeyboardWidget(QWidget):
         self.update()
         self.updateGeometry()
 
-    def paintEvent(self, event):
-        qp = QPainter()
-        qp.begin(self)
-        qp.setRenderHint(QPainter.Antialiasing)
-        
-         # Set up the color and pen for the keyboard border
-        border_pen = QPen(QApplication.palette().color(QPalette.Highlight))
-        border_pen.setWidth(3)  # Set width of the border
-        qp.setPen(border_pen)
-        qp.setBrush(Qt.NoBrush)
-        
-        def with_transparency(color, transparency_factor):
-            alpha = int(255 * (1 - transparency_factor))
-            return QColor(color.red(), color.green(), color.blue(), alpha)
-    
-        # Draw the rounded border around the keyboard
-        border_radius = 15  # Radius for rounded corners
-        rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
-        qp.drawRoundedRect(rect, border_radius, border_radius)
-        
-        image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/background.png"
-        image = QPixmap(image_path)
-        if not image.isNull():
-            # Define the rounded rectangle area for the image
-            image_x, image_y = 0, 0  # Adjust as needed
-            image_width, image_height = 1035, 345  # Adjust as needed
-            image_rect = QRectF(image_x, image_y, image_width, image_height)
+	def paintEvent(self, event):
+		qp = QPainter()
+		qp.begin(self)
+		qp.setRenderHint(QPainter.Antialiasing)
+		
+		# Set up the color and pen for the keyboard border
+		border_pen = QPen(QApplication.palette().color(QPalette.Highlight))
+		border_pen.setWidth(3)  # Set width of the border
+		qp.setPen(border_pen)
+		qp.setBrush(Qt.NoBrush)
+		
+		def with_transparency(color, transparency_factor):
+			alpha = int(255 * (1 - transparency_factor))
+			return QColor(color.red(), color.green(), color.blue(), alpha)
+	
+		# Draw the rounded border around the keyboard
+		border_radius = 15  # Radius for rounded corners
+		rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
+		qp.drawRoundedRect(rect, border_radius, border_radius)
+		
+		image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/background.png"
+		image = QPixmap(image_path)
+		if not image.isNull():
+			# Define the rounded rectangle area for the image
+			image_x, image_y = 0, 0  # Adjust as needed
+			image_width, image_height = 1035, 345  # Adjust as needed
+			image_rect = QRectF(image_x, image_y, image_width, image_height)
 
-            # Create a rounded path for clipping
-            path = QPainterPath()
-            path.addRoundedRect(image_rect, 15.0, 15.0)  # Using QRectF and floats for rounded corners
+			# Create a rounded path for clipping
+			path = QPainterPath()
+			path.addRoundedRect(image_rect, 15.0, 15.0)  # Using QRectF and floats for rounded corners
 
-            # Clip drawing to the rounded rectangle path and draw the image
-            qp.setClipPath(path)
-            qp.drawPixmap(QRect(image_x, image_y, image_width, image_height), image)
+			# Clip drawing to the rounded rectangle path and draw the image
+			qp.setClipPath(path)
+			qp.drawPixmap(QRect(image_x, image_y, image_width, image_height), image)
 
-        # Reset clipping after drawing the image
-        qp.setClipping(False)
+		# Reset clipping after drawing the image
+		qp.setClipping(False)
 
-        # for regular keycaps
-        regular_pen = qp.pen()
-        regular_pen.setColor(QApplication.palette().color(QPalette.ButtonText))
-        qp.setPen(regular_pen)
+		# for regular keycaps
+		regular_pen = qp.pen()
+		regular_pen.setColor(QApplication.palette().color(QPalette.ButtonText))
+		qp.setPen(regular_pen)
 
-        background_brush = QBrush()
-        background_color = QApplication.palette().color(QPalette.Button)
-        background_brush.setColor(with_transparency(background_color, 0.99))  # 70% transparent
-        background_brush.setStyle(Qt.SolidPattern)
+		background_brush = QBrush()
+		background_color = QApplication.palette().color(QPalette.Button)
+		background_brush.setColor(with_transparency(background_color, 0.99))  # 70% transparent
+		background_brush.setStyle(Qt.SolidPattern)
 
-        # Foreground brush
-        foreground_brush = QBrush()
-        foreground_color = QApplication.palette().color(QPalette.Button)
-        foreground_brush.setColor(with_transparency(foreground_color, 0.99))  # 70% transparent
-        foreground_brush.setStyle(Qt.SolidPattern)
+		# Foreground brush
+		foreground_brush = QBrush()
+		foreground_color = QApplication.palette().color(QPalette.Button)
+		foreground_brush.setColor(with_transparency(foreground_color, 0.99))  # 70% transparent
+		foreground_brush.setStyle(Qt.SolidPattern)
 
-        # Mask brush
-        mask_brush = QBrush()
-        mask_color = QApplication.palette().color(QPalette.Button).lighter(Theme.mask_light_factor())
-        mask_brush.setColor(with_transparency(mask_color, 0.01))  # 70% transparent
-        mask_brush.setStyle(Qt.SolidPattern)
+		# Mask brush
+		mask_brush = QBrush()
+		mask_color = QApplication.palette().color(QPalette.Button).lighter(Theme.mask_light_factor())
+		mask_brush.setColor(with_transparency(mask_color, 0.01))  # 70% transparent
+		mask_brush.setStyle(Qt.SolidPattern)
 
-        # for currently selected keycap
-        active_pen = qp.pen()
-        active_pen.setColor(QApplication.palette().color(QPalette.Highlight))
-        active_pen.setWidthF(1.5)
+		# for currently selected keycap
+		active_pen = qp.pen()
+		active_pen.setColor(QApplication.palette().color(QPalette.Highlight))
+		active_pen.setWidthF(1.5)
 
-        # for the encoder arrow
-        extra_pen = regular_pen
-        extra_brush = QBrush()
-        extra_brush.setColor(QApplication.palette().color(QPalette.ButtonText))
-        extra_brush.setStyle(Qt.SolidPattern)
+		# for the encoder arrow
+		extra_pen = regular_pen
+		extra_brush = QBrush()
+		extra_brush.setColor(QApplication.palette().color(QPalette.ButtonText))
+		extra_brush.setStyle(Qt.SolidPattern)
 
-        # for pressed keycaps
-        background_pressed_brush = QBrush()
-        background_pressed_brush.setColor(QApplication.palette().color(QPalette.Highlight))
-        background_pressed_brush.setStyle(Qt.SolidPattern)
+		# for pressed keycaps
+		background_pressed_brush = QBrush()
+		background_pressed_brush.setColor(QApplication.palette().color(QPalette.Highlight))
+		background_pressed_brush.setStyle(Qt.SolidPattern)
 
-        foreground_pressed_brush = QBrush()
-        foreground_pressed_brush.setColor(QApplication.palette().color(QPalette.Highlight).lighter(120))
-        foreground_pressed_brush.setStyle(Qt.SolidPattern)
+		foreground_pressed_brush = QBrush()
+		foreground_pressed_brush.setColor(QApplication.palette().color(QPalette.Highlight).lighter(120))
+		foreground_pressed_brush.setStyle(Qt.SolidPattern)
 
-        background_on_brush = QBrush()
-        background_on_brush.setColor(QApplication.palette().color(QPalette.Highlight).darker(150))
-        background_on_brush.setStyle(Qt.SolidPattern)
+		background_on_brush = QBrush()
+		background_on_brush.setColor(QApplication.palette().color(QPalette.Highlight).darker(150))
+		background_on_brush.setStyle(Qt.SolidPattern)
 
-        foreground_on_brush = QBrush()
-        foreground_on_brush.setColor(QApplication.palette().color(QPalette.Highlight).darker(120))
-        foreground_on_brush.setStyle(Qt.SolidPattern)
+		foreground_on_brush = QBrush()
+		foreground_on_brush.setColor(QApplication.palette().color(QPalette.Highlight).darker(120))
+		foreground_on_brush.setStyle(Qt.SolidPattern)
 
-        mask_font = qp.font()
-        #doesnt seem to change font size
-        mask_font.setPointSize(round(mask_font.pointSize() * 1.8))
+		mask_font = qp.font()
+		#doesnt seem to change font size
+		mask_font.setPointSize(round(mask_font.pointSize() * 1.8))
 
-        for idx, key in enumerate(self.widgets):
-            qp.save()
+		for idx, key in enumerate(self.widgets):
+			qp.save()
 
-            qp.scale(self.scale * 1.3, self.scale * 1.3)
-            qp.translate(key.shift_x, key.shift_y)
-            qp.translate(key.rotation_x, key.rotation_y)
-            qp.rotate(key.rotation_angle)
-            qp.translate(-key.rotation_x, -key.rotation_y)
+			qp.scale(self.scale * 1.3, self.scale * 1.3)
+			qp.translate(key.shift_x, key.shift_y)
+			qp.translate(key.rotation_x, key.rotation_y)
+			qp.rotate(key.rotation_angle)
+			qp.translate(-key.rotation_x, -key.rotation_y)
 
-            active = key.active or (self.active_key == key and not self.active_mask)
+			active = key.active or (self.active_key == key and not self.active_mask)
 
-            # draw keycap background/drop-shadow
-            qp.setPen(active_pen if active else Qt.NoPen)
-            brush = background_brush
-            if key.pressed:
-                brush = background_pressed_brush
-            elif key.on:
-                brush = background_on_brush
-            qp.setBrush(brush)
-            qp.drawPath(key.background_draw_path)
+			# draw keycap background/drop-shadow
+			qp.setPen(active_pen if active else Qt.NoPen)
+			brush = background_brush
+			if key.pressed:
+				brush = background_pressed_brush
+			elif key.on:
+				brush = background_on_brush
+			qp.setBrush(brush)
+			qp.drawPath(key.background_draw_path)
 
-            # draw keycap foreground
-            qp.setPen(Qt.NoPen)
-            brush = foreground_brush
-            if key.pressed:
-                brush = foreground_pressed_brush
-            elif key.on:
-                brush = foreground_on_brush
-            qp.setBrush(brush)
-            qp.drawPath(key.foreground_draw_path)
+			# draw keycap foreground
+			qp.setPen(Qt.NoPen)
+			brush = foreground_brush
+			if key.pressed:
+				brush = foreground_pressed_brush
+			elif key.on:
+				brush = foreground_on_brush
+			qp.setBrush(brush)
+			qp.drawPath(key.foreground_draw_path)
 
-            # draw key text
-            if key.masked:
-                # draw the outer legend doesnt seem to change font size
-                qp.setFont(mask_font)
-                qp.setPen(key.color if key.color else regular_pen)
-                qp.drawText(key.nonmask_rect, Qt.AlignCenter, key.text)
+			# draw key text
+			if key.masked:
+				# draw the outer legend doesnt seem to change font size
+				qp.setFont(mask_font)
+				qp.setPen(key.color if key.color else regular_pen)
+				qp.drawText(key.nonmask_rect, Qt.AlignCenter, key.text)
 
-                # draw the inner highlight rect
-                qp.setPen(active_pen if self.active_key == key and self.active_mask else Qt.NoPen)
-                qp.setBrush(mask_brush)
-                qp.drawRoundedRect(key.mask_rect, key.corner, key.corner)
+				# draw the inner highlight rect
+				qp.setPen(active_pen if self.active_key == key and self.active_mask else Qt.NoPen)
+				qp.setBrush(mask_brush)
+				qp.drawRoundedRect(key.mask_rect, key.corner, key.corner)
 
-                # draw the inner legend
-                qp.setPen(key.mask_color if key.mask_color else regular_pen)
-                smaller_font = qp.font()
-                smaller_font.setPointSize(smaller_font.pointSize() - 1)
-                qp.setFont(smaller_font)
-                qp.drawText(key.mask_rect, Qt.AlignCenter, key.mask_text)
-            else:
-                # draw the legend
-                qp.setPen(key.color if key.color else regular_pen)
-                smaller_font = qp.font()
-                smaller_font.setPointSize(smaller_font.pointSize() - 1)
-                qp.setFont(smaller_font)
-                qp.drawText(key.text_rect, Qt.AlignCenter, key.text)
+				# draw the inner legend
+				qp.setPen(key.mask_color if key.mask_color else regular_pen)
+				smaller_font = qp.font()
+				smaller_font.setPointSize(smaller_font.pointSize() - 1)
+				qp.setFont(smaller_font)
+				qp.drawText(key.mask_rect, Qt.AlignCenter, key.mask_text)
+			else:
+				# draw the legend
+				qp.setPen(key.color if key.color else regular_pen)
+				smaller_font = qp.font()
+				smaller_font.setPointSize(smaller_font.pointSize() - 1)
+				qp.setFont(smaller_font)
+				qp.drawText(key.text_rect, Qt.AlignCenter, key.text)
 
-            # draw the extra shape (encoder arrow)
-            qp.setPen(extra_pen)
-            qp.setBrush(extra_brush)
-            qp.drawPath(key.extra_draw_path)
+			# draw the extra shape (encoder arrow)
+			qp.setPen(extra_pen)
+			qp.setBrush(extra_brush)
+			qp.drawPath(key.extra_draw_path)
 
-            qp.restore()
+			qp.restore()
 
-        qp.end()
+		qp.end()
+
 
     def minimumSizeHint(self):
         return QSize(self.width, self.height)
