@@ -397,7 +397,7 @@ class KeyboardWidget(QWidget):
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
         
-        image_path = "background.png"  # Replace with the correct path if necessary
+        image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/background.png"
         image = QPixmap(image_path)
         if not image.isNull():  # Check if the image was loaded successfully
             # Set the position and size where the image will be drawn
