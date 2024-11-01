@@ -425,19 +425,19 @@ class KeyboardWidget(QWidget):
 
         background_brush = QBrush()
         background_color = QApplication.palette().color(QPalette.Button)
-        background_brush.setColor(with_transparency(background_color, 0.7))  # 70% transparent
+        background_brush.setColor(with_transparency(background_color, 0.99))  # 70% transparent
         background_brush.setStyle(Qt.SolidPattern)
 
         # Foreground brush
         foreground_brush = QBrush()
-        foreground_color = QApplication.palette().color(QPalette.Button).lighter(120)
-        foreground_brush.setColor(with_transparency(foreground_color, 0.7))  # 70% transparent
+        foreground_color = QApplication.palette().color(QPalette.Button)
+        foreground_brush.setColor(with_transparency(foreground_color, 0.99))  # 70% transparent
         foreground_brush.setStyle(Qt.SolidPattern)
 
         # Mask brush
         mask_brush = QBrush()
         mask_color = QApplication.palette().color(QPalette.Button).lighter(Theme.mask_light_factor())
-        mask_brush.setColor(with_transparency(mask_color, 0.7))  # 70% transparent
+        mask_brush.setColor(with_transparency(mask_color, 0.01))  # 70% transparent
         mask_brush.setStyle(Qt.SolidPattern)
 
         # for currently selected keycap
