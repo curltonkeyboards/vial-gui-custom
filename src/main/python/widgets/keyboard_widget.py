@@ -358,8 +358,8 @@ class KeyboardWidget(QWidget):
             encoders[1].shift_x -= 20
 
             # Move the last two encoders down by 45 pixels
-            encoders[2].shift_y += 45
-            encoders[3].shift_y += 45
+            encoders[2].shift_y += 50
+            encoders[3].shift_y += 50
             encoders[2].shift_x -= 20
             encoders[3].shift_x -= 20
 
