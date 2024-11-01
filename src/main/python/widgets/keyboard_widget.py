@@ -401,17 +401,17 @@ class KeyboardWidget(QWidget):
         image = QPixmap(image_path)
         if not image.isNull():
             # Define the rounded rectangle area for the image
-            image_x, image_y = -60, -300  # Adjust as needed
-            image_width, image_height = 1300, 800  # Adjust as needed
-            image_rect = QRect(image_x, image_y, image_width, image_height)
+            image_x, image_y = 10, 10  # Adjust as needed
+            image_width, image_height = 100, 100  # Adjust as needed
+            image_rect = QRectF(image_x, image_y, image_width, image_height)
 
             # Create a rounded path for clipping
             path = QPainterPath()
-            path.addRoundedRect(image_rect, 15, 15)  # 15px rounded corners
+            path.addRoundedRect(image_rect, 15.0, 15.0)  # Using QRectF and floats for rounded corners
 
             # Clip drawing to the rounded rectangle path and draw the image
             qp.setClipPath(path)
-            qp.drawPixmap(image_rect, image)
+            qp.drawPixmap(QRect(image_x, image_y, image_width, image_height), image)
 
         # Reset clipping after drawing the image
         qp.setClipping(False)
