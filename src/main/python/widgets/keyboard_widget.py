@@ -352,10 +352,14 @@ class KeyboardWidget(QWidget):
             # Move the first two encoders down by 90 pixels
             encoders[0].shift_y += 80
             encoders[1].shift_y += 80
+            encoders[0].shift_x -= 40
+            encoders[1].shift_x -= 40
 
             # Move the last two encoders down by 45 pixels
             encoders[2].shift_y += 45
             encoders[3].shift_y += 45
+            encoders[2].shift_x -= 40
+            encoders[3].shift_x -= 40
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
