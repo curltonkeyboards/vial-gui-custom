@@ -378,10 +378,6 @@ class KeyboardWidget(QWidget):
 
         self.update()
         self.updateGeometry()
-        
-    def with_transparency(color, transparency_factor):
-        alpha = int(255 * (1 - transparency_factor))
-        return QColor(color.red(), color.green(), color.blue(), alpha)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -393,6 +389,10 @@ class KeyboardWidget(QWidget):
         border_pen.setWidth(3)  # Set width of the border
         qp.setPen(border_pen)
         qp.setBrush(Qt.NoBrush)
+        
+        def with_transparency(color, transparency_factor):
+            alpha = int(255 * (1 - transparency_factor))
+            return QColor(color.red(), color.green(), color.blue(), alpha)
     
         # Draw the rounded border around the keyboard
         border_radius = 15  # Radius for rounded corners
