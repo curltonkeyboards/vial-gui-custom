@@ -230,23 +230,24 @@ class EncoderWidget(KeyWidget):
         y = self.y  # Align with the top of the widget
 
         if self.desc.encoder_dir == 0:
-            # counterclockwise - pointing down
+            # counterclockwise - pointing up (flipped)
             path.moveTo(round(x), round(y))
-            path.lineTo(round(x + p / 10), round(y + p / 10))
-            path.lineTo(round(x), round(y - p / 10))
-            path.lineTo(round(x - p / 10), round(y + p / 10))
+            path.lineTo(round(x + p / 10), round(y - p / 10))  # Flipped
+            path.lineTo(round(x), round(y + p / 10))           # Flipped
+            path.lineTo(round(x - p / 10), round(y - p / 10))  # Flipped
             path.lineTo(round(x), round(y))
         else:
-            # clockwise - pointing up
+            # clockwise - pointing down (flipped)
             path.moveTo(round(x), round(y))
-            path.lineTo(round(x + p / 10), round(y - p / 10))
-            path.lineTo(round(x), round(y + p / 10))
-            path.lineTo(round(x - p / 10), round(y - p / 10))
+            path.lineTo(round(x + p / 10), round(y + p / 10))  # Flipped
+            path.lineTo(round(x), round(y - p / 10))           # Flipped
+            path.lineTo(round(x - p / 10), round(y + p / 10))  # Flipped
             path.lineTo(round(x), round(y))
         return path
 
     def __repr__(self):
         return "EncoderWidget"
+
 
 
 
