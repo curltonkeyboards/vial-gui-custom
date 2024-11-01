@@ -401,7 +401,7 @@ class KeyboardWidget(QWidget):
         image = QPixmap(image_path)
         if not image.isNull():
             # Define the rounded rectangle area for the image
-            image_x, image_y = 0, 0  # Adjust as needed
+            image_x, image_y = -60, -300  # Adjust as needed
             image_width, image_height = 1300, 800  # Adjust as needed
             image_rect = QRect(image_x, image_y, image_width, image_height)
 
