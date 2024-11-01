@@ -399,13 +399,22 @@ class KeyboardWidget(QWidget):
         
         image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/background.png"
         image = QPixmap(image_path)
-        if not image.isNull():  # Check if the image was loaded successfully
-            # Set the position and size where the image will be drawn
-            image_x = 10  # Adjust x position as needed
-            image_y = 10  # Adjust y position as needed
-            image_width = 1400  # Adjust width as needed
-            image_height = 600  # Adjust height as needed
-            qp.drawPixmap(image_x, image_y, image_width, image_height, image)
+        if not image.isNull():
+            # Define the rounded rectangle area for the image
+            image_x, image_y = 0, 0  # Adjust as needed
+            image_width, image_height = 1300, 800  # Adjust as needed
+            image_rect = QRect(image_x, image_y, image_width, image_height)
+
+            # Create a rounded path for clipping
+            path = QPainterPath()
+            path.addRoundedRect(image_rect, 15, 15)  # 15px rounded corners
+
+            # Clip drawing to the rounded rectangle path and draw the image
+            qp.setClipPath(path)
+            qp.drawPixmap(image_rect, image)
+
+        # Reset clipping after drawing the image
+        qp.setClipping(False)
 
         # for regular keycaps
         regular_pen = qp.pen()
