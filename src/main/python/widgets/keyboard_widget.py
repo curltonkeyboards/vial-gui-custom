@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPolygonF, QPalette, QPen, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPolygonF, QPalette, QPen, QPixmap, QPainterPath, QRectF  # Ensure you import QPainterPath and QRectF
 from PyQt5.QtWidgets import QWidget, QToolTip, QApplication
 from PyQt5.QtCore import Qt, QSize, QRect, QPointF, pyqtSignal, QEvent, QRectF
 
@@ -259,24 +259,34 @@ class KeyboardWidget(QWidget):
 
         self.enabled = True
         self.scale = 1
-        self.padding = KEYBOARD_WIDGET_PADDING
+        self.padding = KEYBOARD_WIDGET_PADDING  # Make sure KEYBOARD_WIDGET_PADDING is defined
 
         self.setMouseTracking(True)
 
         self.layout_editor = layout_editor
 
-        # widgets common for all layouts
+        # Widgets common for all layouts
         self.common_widgets = []
 
-        # layout-specific widgets
+        # Layout-specific widgets
         self.widgets_for_layout = []
 
-        # widgets in current layout
+        # Widgets in current layout
         self.widgets = []
 
         self.width = self.height = 0
         self.active_key = None
         self.active_mask = False
+
+        # Initialize the container path for the rounded rectangle
+        self.container_path = QPainterPath()  # Initialize the container path
+        self.update_container_path()  # Call the method to set the initial path
+
+    def update_container_path(self):
+        """ Method to update the container path based on the current width and height. """
+        rect = QRectF(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
+        self.container_path = QPainterPath()
+        self.container_path.addRoundedRect(rect, 15, 15)  # 15px rounded corners
 
     def set_keys(self, keys, encoders):
         self.common_widgets = []
@@ -339,11 +349,11 @@ class KeyboardWidget(QWidget):
 
     def update_layout(self):
         """ Updates self.widgets for the currently active layout """
-
+    
         # Determine widgets for the current layout
         self.place_widgets()
         self.widgets = list(filter(lambda w: not w.desc.decal, self.widgets))
-
+    
         # Separate encoder widgets
         encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget)]
 
@@ -359,7 +369,6 @@ class KeyboardWidget(QWidget):
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
-        
 
         # Determine maximum width and height of the container
         max_w = max_h = 0
@@ -368,14 +377,20 @@ class KeyboardWidget(QWidget):
             max_w = max(max_w, p.x() * (self.scale * 1.4))
             max_h = max(max_h, p.y() * (self.scale * 1.5))
 
-        # Move all widgets right 20 pixels and down 20 pixels
+        # Move all widgets right 30 pixels and down 20 pixels
         for widget in self.widgets:
             widget.shift_x += 30  # Move right
             widget.shift_y += 20  # Move down
 
+        # Calculate container width and height with padding
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
 
+        # Create the rounded rectangle path for the container
+        self.container_path = QPainterPath()
+        rect = QRectF(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
+        self.container_path.addRoundedRect(rect, 15, 15)  # 15px rounded corners
+    
         self.update()
         self.updateGeometry()
 
@@ -385,6 +400,10 @@ class KeyboardWidget(QWidget):
         qp = QPainter()
         qp.begin(self)
         qp.setRenderHint(QPainter.Antialiasing)
+        
+        qp.setPen(QPen(QApplication.palette().color(QPalette.Highlight), 3))
+        qp.setBrush(QApplication.palette().color(QPalette.Window).lighter(120))
+        qp.drawPath(self.container_path)
         
          # Set up the color and pen for the keyboard border
         border_pen = QPen(QApplication.palette().color(QPalette.Highlight))
