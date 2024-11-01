@@ -449,7 +449,7 @@ class KeyboardWidget(QWidget):
 
         # for currently selected keycap
         active_pen = qp.pen()
-        active_pen.setColor(QApplication.palette().color(QPalette.Highlight))
+        active_pen.setColor(QColor("#fabcad"))  # Set color with a hex code
         active_pen.setWidthF(1.5)
 
         # for the encoder arrow
