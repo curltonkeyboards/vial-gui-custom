@@ -403,8 +403,8 @@ class KeyboardWidget(QWidget):
             # Set the position and size where the image will be drawn
             image_x = 10  # Adjust x position as needed
             image_y = 10  # Adjust y position as needed
-            image_width = 810  # Adjust width as needed
-            image_height = 300  # Adjust height as needed
+            image_width = 1400  # Adjust width as needed
+            image_height = 600  # Adjust height as needed
             qp.drawPixmap(image_x, image_y, image_width, image_height, image)
 
         # for regular keycaps
