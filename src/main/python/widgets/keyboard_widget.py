@@ -4,8 +4,6 @@ from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPol
 from PyQt5.QtWidgets import QWidget, QToolTip, QApplication
 from PyQt5.QtCore import Qt, QSize, QRect, QPointF, pyqtSignal, QEvent, QRectF
 
-import output_file
-
 from constants import KEY_SIZE_RATIO, KEY_SPACING_RATIO, KEYBOARD_WIDGET_PADDING, \
     KEYBOARD_WIDGET_MASK_HEIGHT, KEY_ROUNDNESS, SHADOW_SIDE_PADDING, SHADOW_TOP_PADDING, SHADOW_BOTTOM_PADDING, \
     KEYBOARD_WIDGET_NONMASK_PADDING
@@ -943,15 +941,18 @@ class KeyboardWidget2(QWidget):
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
+        image_path_dark = output_file.backgrounddark
+        image_path_light = output_file.backgroundlight
+
         # Get the Window color and calculate brightness to determine light or dark theme
         window_color = QApplication.palette().color(QPalette.Window)
         brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
 
         # Use light background if brightness is high (light theme), else dark
         if brightness > 127:  # Threshold for light/dark
-            image_path = output_file.backgroundlight
+            image_path = image_path_light
         else:
-            image_path = output_file.backgrounddark
+            image_path = image_path_dark
         
         image = QPixmap(image_path)
         if not image.isNull():
