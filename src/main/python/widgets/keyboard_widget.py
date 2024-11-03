@@ -798,6 +798,7 @@ class KeyboardWidget2(QWidget):
 
     def __init__(self, layout_editor):
         super().__init__()
+        output_file.qInitResources()  # Initialize the resources
 
         self.enabled = True
         self.scale = 1
