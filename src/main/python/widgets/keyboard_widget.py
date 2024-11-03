@@ -1,7 +1,5 @@
 from collections import defaultdict
 
-import output_file
-
 from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPolygonF, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import QWidget, QToolTip, QApplication
 from PyQt5.QtCore import Qt, QSize, QRect, QPointF, pyqtSignal, QEvent, QRectF
@@ -10,8 +8,6 @@ from constants import KEY_SIZE_RATIO, KEY_SPACING_RATIO, KEYBOARD_WIDGET_PADDING
     KEYBOARD_WIDGET_MASK_HEIGHT, KEY_ROUNDNESS, SHADOW_SIDE_PADDING, SHADOW_TOP_PADDING, SHADOW_BOTTOM_PADDING, \
     KEYBOARD_WIDGET_NONMASK_PADDING
 from themes import Theme
-
-
 
 
 
@@ -798,9 +794,6 @@ class KeyboardWidget2(QWidget):
 
     def __init__(self, layout_editor):
         super().__init__()
-        output_file.qInitResources()  # Initialize the resources
-
-        app = QtWidgets.QApplication([])
 
         self.enabled = True
         self.scale = 1
@@ -948,8 +941,9 @@ class KeyboardWidget2(QWidget):
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
-        image_path_dark = output_file.qt_resource_struct_v1
-        image_path_light = output_file.qt_resource_struct_v2
+        image_path_dark = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
+        image_path_dark = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
+        image_path_light = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgroundlight.png"
 
         # Get the Window color and calculate brightness to determine light or dark theme
         window_color = QApplication.palette().color(QPalette.Window)
