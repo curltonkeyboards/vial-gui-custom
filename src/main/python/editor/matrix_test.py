@@ -6,7 +6,7 @@ import math
 
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
-from widgets.keyboard_widget import KeyboardWidget
+from widgets.keyboard_widget import KeyboardWidget2
 from util import tr
 from vial_device import VialKeyboard
 from unlocker import Unlocker
@@ -19,15 +19,15 @@ class MatrixTest(BasicEditor):
 
         self.layout_editor = layout_editor
 
-        self.keyboardWidget = KeyboardWidget(layout_editor)
-        self.keyboardWidget.set_enabled(False)
+        self.KeyboardWidget2 = KeyboardWidget2(layout_editor)
+        self.KeyboardWidget2.set_enabled(False)
 
         self.unlock_btn = QPushButton("Unlock")
         self.reset_btn = QPushButton("Reset")
 
         layout = QVBoxLayout()
-        layout.addWidget(self.keyboardWidget)
-        layout.setAlignment(self.keyboardWidget, Qt.AlignCenter)
+        layout.addWidget(self.KeyboardWidget2)
+        layout.setAlignment(self.KeyboardWidget2, Qt.AlignCenter)
 
         self.addLayout(layout)
 
@@ -56,8 +56,8 @@ class MatrixTest(BasicEditor):
         if self.valid():
             self.keyboard = device.keyboard
 
-            self.keyboardWidget.set_keys(self.keyboard.keys, self.keyboard.encoders)
-        self.keyboardWidget.setEnabled(self.valid())
+            self.KeyboardWidget2.set_keys(self.keyboard.keys, self.keyboard.encoders)
+        self.KeyboardWidget2.setEnabled(self.valid())
 
     def valid(self):
         # Check if vial protocol is v3 or later
@@ -67,13 +67,13 @@ class MatrixTest(BasicEditor):
 
     def reset_keyboard_widget(self):
         # reset keyboard widget
-        for w in self.keyboardWidget.widgets:
+        for w in self.KeyboardWidget2.widgets:
             w.setPressed(False)
             w.setOn(False)
 
-        self.keyboardWidget.update_layout()
-        self.keyboardWidget.update()
-        self.keyboardWidget.updateGeometry()
+        self.KeyboardWidget2.update_layout()
+        self.KeyboardWidget2.update()
+        self.KeyboardWidget2.updateGeometry()
 
     def matrix_poller(self):
         if not self.valid():
@@ -128,7 +128,7 @@ class MatrixTest(BasicEditor):
                 matrix[row][col] = (row_data[col_byte] >> col_mod) & 1
 
         # write matrix state to keyboard widget
-        for w in self.keyboardWidget.widgets:
+        for w in self.KeyboardWidget2.widgets:
             if w.desc.row is not None and w.desc.col is not None:
                 row = w.desc.row
                 col = w.desc.col
@@ -138,9 +138,9 @@ class MatrixTest(BasicEditor):
                     if matrix[row][col]:
                         w.setOn(True)
 
-        self.keyboardWidget.update_layout()
-        self.keyboardWidget.update()
-        self.keyboardWidget.updateGeometry()
+        self.KeyboardWidget2.update_layout()
+        self.KeyboardWidget2.update()
+        self.KeyboardWidget2.updateGeometry()
 
     def unlock(self):
         Unlocker.unlock(self.keyboard)
