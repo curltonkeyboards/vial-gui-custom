@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-import backgroundimages
+#import backgroundimages
 
 from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPolygonF, QPalette, QPen, QPixmap
 from PyQt5.QtWidgets import QWidget, QToolTip, QApplication
