@@ -798,6 +798,9 @@ class KeyboardWidget2(QWidget):
 
     def __init__(self, layout_editor):
         super().__init__()
+        output_file.qInitResources()  # Initialize the resources
+
+        app = QtWidgets.QApplication([])
 
         self.enabled = True
         self.scale = 1
@@ -945,8 +948,8 @@ class KeyboardWidget2(QWidget):
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
-        image_path_dark = output_file.backgrounddark()
-        image_path_light = output_file.backgroundlight()
+        image_path_dark = output_file.qt_resource_struct_v1
+        image_path_light = output_file.qt_resource_struct_v2
 
         # Get the Window color and calculate brightness to determine light or dark theme
         window_color = QApplication.palette().color(QPalette.Window)
