@@ -95,7 +95,7 @@ class LayoutEditor(BasicEditor):
         self.widgets = []
 
         self.addStretch()
-        self.keyboard_preview = KeyboardWidget(self)
+        self.keyboard_preview = KeyboardWidget2(self)
         self.keyboard_preview.set_enabled(False)
         self.keyboard_preview.set_scale(0.7)
         self.addWidget(self.keyboard_preview)
