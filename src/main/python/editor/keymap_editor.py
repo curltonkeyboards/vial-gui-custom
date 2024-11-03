@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from any_keycode_dialog import AnyKeycodeDialog
 from editor.basic_editor import BasicEditor
-from widgets.keyboard_widget import KeyboardWidget, EncoderWidget
+from widgets.keyboard_widget import KeyboardWidget2, EncoderWidget
 from keycodes.keycodes import Keycode
 from widgets.square_button import SquareButton
 from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
@@ -41,7 +41,7 @@ class KeymapEditor(BasicEditor):
         layout_labels_container.addLayout(self.layout_size)
 
         # contains the actual keyboard
-        self.container = KeyboardWidget(layout_editor)
+        self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
