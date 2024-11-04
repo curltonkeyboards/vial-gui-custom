@@ -942,10 +942,15 @@ class KeyboardWidget2(QWidget):
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
         image_path_dark = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
+        image_path_dark = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
         image_path_light = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgroundlight.png"
 
-        # Check the palette's Window color
-        if QApplication.palette().color(QPalette.Window).name() == "#ffefebe7":
+        # Get the Window color and calculate brightness to determine light or dark theme
+        window_color = QApplication.palette().color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
+
+        # Use light background if brightness is high (light theme), else dark
+        if brightness > 127:  # Threshold for light/dark
             image_path = image_path_light
         else:
             image_path = image_path_dark
