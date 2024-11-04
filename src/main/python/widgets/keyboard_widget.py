@@ -11,8 +11,6 @@ from themes import Theme
 
 
 
-
-
 class KeyWidget:
 
     def __init__(self, desc, scale, shift_x=0, shift_y=0):
@@ -796,9 +794,6 @@ class KeyboardWidget2(QWidget):
 
     def __init__(self, layout_editor):
         super().__init__()
-        output_file.qInitResources()  # Initialize the resources
-
-        app = QtWidgets.QApplication([])
 
         self.enabled = True
         self.scale = 1
@@ -945,16 +940,15 @@ class KeyboardWidget2(QWidget):
         border_radius = 15  # Radius for rounded corners
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
+        
+        image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
+        image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgroundlight.png"
+        
+        image_path_dark = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
+        image_path_light = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgroundlight.png"
 
-        image_path_dark = output_file.qt_resource_struct_v1
-        image_path_light = output_file.qt_resource_struct_v2
-
-        # Get the Window color and calculate brightness to determine light or dark theme
-        window_color = QApplication.palette().color(QPalette.Window)
-        brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
-
-        # Use light background if brightness is high (light theme), else dark
-        if brightness > 127:  # Threshold for light/dark
+        # Check the palette's Window color
+        if QApplication.palette().color(QPalette.Window).name() == "#ffefebe7":
             image_path = image_path_light
         else:
             image_path = image_path_dark
