@@ -794,11 +794,11 @@ class KeyboardWidget2(QWidget):
 
     def __init__(self, layout_editor):
         super().__init__()
-
+        
         self.enabled = True
         self.scale = 1
         self.padding = KEYBOARD_WIDGET_PADDING
-
+        themes2.qInitResources()
         self.setMouseTracking(True)
 
         self.layout_editor = layout_editor
