@@ -2,6 +2,8 @@
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QLabel
 
 themes = [
     ("Light", {
@@ -179,3 +181,13 @@ class Theme2:
         if cls.theme == "Light":
             return 103
         return 150
+        
+class ClickableLabel(QLabel):
+    clicked = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def mousePressEvent(self, ev):
+        self.clicked.emit()
+
