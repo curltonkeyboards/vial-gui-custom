@@ -951,11 +951,10 @@ class KeyboardWidget2(QWidget):
         else:
             pixmap = QPixmap(":/backgrounddark")  # Dark theme alias
         
-        image = QPixmap(image_path)
-        if not image.isNull():
-            # Define the rounded rectangle area for the image
-            image_x, image_y = 0, 0  # Adjust as needed
-            image_width, image_height = 1035, 345  # Adjust as needed
+        if not pixmap.isNull():
+            # Define the area for the image with specific coordinates and dimensions
+            image_x, image_y = 0, 0  # Adjust as needed for positioning
+            image_width, image_height = 1035, 345  # Set the dimensions as desired
             image_rect = QRectF(image_x, image_y, image_width, image_height)
 
             # Create a rounded path for clipping
