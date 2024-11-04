@@ -940,10 +940,7 @@ class KeyboardWidget2(QWidget):
         border_radius = 15  # Radius for rounded corners
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
-        
-        image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
-        image_path = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgroundlight.png"
-        
+
         image_path_dark = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgrounddark.png"
         image_path_light = "D:/Users/ocurl/Documents/GitHub/vial-gui-custom/src/main/python/backgroundlight.png"
 
