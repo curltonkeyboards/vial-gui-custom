@@ -926,7 +926,7 @@ class KeyboardWidget2(QWidget):
         qp.begin(self)
         qp.setRenderHint(QPainter.Antialiasing)
         
-         # Set up the color and pen for the keyboard border
+        # Set up the color and pen for the keyboard border
         border_pen = QPen(QApplication.palette().color(QPalette.Highlight))
         border_pen.setWidth(3)  # Set width of the border
         qp.setPen(border_pen)
@@ -945,7 +945,7 @@ class KeyboardWidget2(QWidget):
         window_color = QApplication.palette().color(QPalette.Window)
         brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
 
-         # Choose image based on brightness (light or dark theme)
+        # Choose image based on brightness (light or dark theme)
         if brightness > 127:  # Threshold for light/dark theme
             pixmap = QPixmap(":/backgroundlight")  # Light theme alias
         else:
@@ -955,11 +955,11 @@ class KeyboardWidget2(QWidget):
             # Define the area for the image with specific coordinates and dimensions
             image_x, image_y = 0, 0  # Adjust as needed for positioning
             image_width, image_height = 1035, 345  # Set the dimensions as desired
-            image_rect = QRectF(image_x, image_y, image_width, image_height)
+            image_rect = QRect(image_x, image_y, image_width, image_height)  # Use QRect instead of QRectF
 
             # Create a rounded path for clipping
             path = QPainterPath()
-            path.addRoundedRect(image_rect, 15.0, 15.0)  # Using QRectF and floats for rounded corners
+            path.addRoundedRect(QRectF(image_rect), 15.0, 15.0)  # Use QRectF here for rounded corners
 
             # Clip drawing to the rounded rectangle path and draw the image
             qp.setClipPath(path)
