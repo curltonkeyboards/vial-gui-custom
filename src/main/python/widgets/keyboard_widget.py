@@ -941,17 +941,15 @@ class KeyboardWidget2(QWidget):
         rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
-        image_path_dark = themes2.backgrounddark
-        image_path_light = themes2.backgroundlight
         # Get the Window color and calculate brightness to determine light or dark theme
         window_color = QApplication.palette().color(QPalette.Window)
         brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
 
-        # Use light background if brightness is high (light theme), else dark
-        if brightness > 127:  # Threshold for light/dark
-            image_path = image_path_light
+         # Choose image based on brightness (light or dark theme)
+        if brightness > 127:  # Threshold for light/dark theme
+            pixmap = QPixmap(":/backgroundlight")  # Light theme alias
         else:
-            image_path = image_path_dark
+            pixmap = QPixmap(":/backgrounddark")  # Dark theme alias
         
         image = QPixmap(image_path)
         if not image.isNull():
