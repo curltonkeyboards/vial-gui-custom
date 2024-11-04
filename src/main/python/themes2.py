@@ -1,7 +1,5 @@
 from PyQt5 import QtCore
 
-import skibooo
-
 qt_resource_data = b"\
 \x00\x09\x46\x4c\
 \x89\
