@@ -963,7 +963,7 @@ class KeyboardWidget2(QWidget):
 
             # Clip drawing to the rounded rectangle path and draw the image
             qp.setClipPath(path)
-            qp.drawPixmap(QRect(image_x, image_y, image_width, image_height), image)
+            qp.drawPixmap(image_rect, pixmap, pixmap.rect())
 
         # Reset clipping after drawing the image
         qp.setClipping(False)
