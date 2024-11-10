@@ -1158,6 +1158,91 @@ KEYCODES_MIDI_BASIC = [
     K("MI_CHORD_99", "Smart\nChord", "Press QuickChord"),  
 ]
 
+KEYCODES_MIDI_SPLIT = [
+        K("MI_SPLIT_C", "Midi\nC", "Midi send note C"),
+        K("MI_SPLIT_Cs", "Midi\nC#/Dᵇ", "Midi send note C#/Dᵇ", alias=["MI_SPLIT_Db"]),
+        K("MI_SPLIT_D", "Midi\nD", "Midi send note D"),
+        K("MI_SPLIT_Ds", "Midi\nD#/Eᵇ", "Midi send note D#/Eᵇ", alias=["MI_SPLIT_Eb"]),
+        K("MI_SPLIT_E", "Midi\nE", "Midi send note E"),
+        K("MI_SPLIT_F", "Midi\nF", "Midi send note F"),
+        K("MI_SPLIT_Fs", "Midi\nF#/Gᵇ", "Midi send note F#/Gᵇ", alias=["MI_SPLIT_Gb"]),
+        K("MI_SPLIT_G", "Midi\nG", "Midi send note G"),
+        K("MI_SPLIT_Gs", "Midi\nG#/Aᵇ", "Midi send note G#/Aᵇ", alias=["MI_SPLIT_Ab"]),
+        K("MI_SPLIT_A", "Midi\nA", "Midi send note A"),
+        K("MI_SPLIT_As", "Midi\nA#/Bᵇ", "Midi send note A#/Bᵇ", alias=["MI_SPLIT_Bb"]),
+        K("MI_SPLIT_B", "Midi\nB", "Midi send note B"),
+
+        K("MI_SPLIT_C_1", "Midi\nC₁", "Midi send note C₁"),
+        K("MI_SPLIT_Cs_1", "Midi\nC#₁/Dᵇ₁", "Midi send note C#₁/Dᵇ₁", alias=["MI_SPLIT_Db_1"]),
+        K("MI_SPLIT_D_1", "Midi\nD₁", "Midi send note D₁"),
+        K("MI_SPLIT_Ds_1", "Midi\nD#₁/Eᵇ₁", "Midi send note D#₁/Eᵇ₁", alias=["MI_SPLIT_Eb_1"]),
+        K("MI_SPLIT_E_1", "Midi\nE₁", "Midi send note E₁"),
+        K("MI_SPLIT_F_1", "Midi\nF₁", "Midi send note F₁"),
+        K("MI_SPLIT_Fs_1", "Midi\nF#₁/Gᵇ₁", "Midi send note F#₁/Gᵇ₁", alias=["MI_SPLIT_Gb_1"]),
+        K("MI_SPLIT_G_1", "Midi\nG₁", "Midi send note G₁"),
+        K("MI_SPLIT_Gs_1", "Midi\nG#₁/Aᵇ₁", "Midi send note G#₁/Aᵇ₁", alias=["MI_SPLIT_Ab_1"]),
+        K("MI_SPLIT_A_1", "Midi\nA₁", "Midi send note A₁"),
+        K("MI_SPLIT_As_1", "Midi\nA#₁/Bᵇ₁", "Midi send note A#₁/Bᵇ₁", alias=["MI_SPLIT_Bb_1"]),
+        K("MI_SPLIT_B_1", "Midi\nB₁", "Midi send note B₁"),
+
+        K("MI_SPLIT_C_2", "Midi\nC₂", "Midi send note C₂"),
+        K("MI_SPLIT_Cs_2", "Midi\nC#₂/Dᵇ₂", "Midi send note C#₂/Dᵇ₂", alias=["MI_SPLIT_Db_2"]),
+        K("MI_SPLIT_D_2", "Midi\nD₂", "Midi send note D₂"),
+        K("MI_SPLIT_Ds_2", "Midi\nD#₂/Eᵇ₂", "Midi send note D#₂/Eᵇ₂", alias=["MI_SPLIT_Eb_2"]),
+        K("MI_SPLIT_E_2", "Midi\nE₂", "Midi send note E₂"),
+        K("MI_SPLIT_F_2", "Midi\nF₂", "Midi send note F₂"),
+        K("MI_SPLIT_Fs_2", "Midi\nF#₂/Gᵇ₂", "Midi send note F#₂/Gᵇ₂", alias=["MI_SPLIT_Gb_2"]),
+        K("MI_SPLIT_G_2", "Midi\nG₂", "Midi send note G₂"),
+        K("MI_SPLIT_Gs_2", "Midi\nG#₂/Aᵇ₂", "Midi send note G#₂/Aᵇ₂", alias=["MI_SPLIT_Ab_2"]),
+        K("MI_SPLIT_A_2", "Midi\nA₂", "Midi send note A₂"),
+        K("MI_SPLIT_As_2", "Midi\nA#₂/Bᵇ₂", "Midi send note A#₂/Bᵇ₂", alias=["MI_SPLIT_Bb_2"]),
+        K("MI_SPLIT_B_2", "Midi\nB₂", "Midi send note B₂"),
+
+        K("MI_SPLIT_C_3", "Midi\nC₃", "Midi send note C₃"),
+        K("MI_SPLIT_Cs_3", "Midi\nC#₃/Dᵇ₃", "Midi send note C#₃/Dᵇ₃", alias=["MI_SPLIT_Db_3"]),
+        K("MI_SPLIT_D_3", "Midi\nD₃", "Midi send note D₃"),
+        K("MI_SPLIT_Ds_3", "Midi\nD#₃/Eᵇ₃", "Midi send note D#₃/Eᵇ₃", alias=["MI_SPLIT_Eb_3"]),
+        K("MI_SPLIT_E_3", "Midi\nE₃", "Midi send note E₃"),
+        K("MI_SPLIT_F_3", "Midi\nF₃", "Midi send note F₃"),
+        K("MI_SPLIT_Fs_3", "Midi\nF#₃/Gᵇ₃", "Midi send note F#₃/Gᵇ₃", alias=["MI_SPLIT_Gb_3"]),
+        K("MI_SPLIT_G_3", "Midi\nG₃", "Midi send note G₃"),
+        K("MI_SPLIT_Gs_3", "Midi\nG#₃/Aᵇ₃", "Midi send note G#₃/Aᵇ₃", alias=["MI_SPLIT_Ab_3"]),
+        K("MI_SPLIT_A_3", "Midi\nA₃", "Midi send note A₃"),
+        K("MI_SPLIT_As_3", "Midi\nA#₃/Bᵇ₃", "Midi send note A#₃/Bᵇ₃", alias=["MI_SPLIT_Bb_3"]),
+        K("MI_SPLIT_B_3", "Midi\nB₃", "Midi send note B₃"),
+
+        K("MI_SPLIT_C_4", "Midi\nC₄", "Midi send note C₄"),
+        K("MI_SPLIT_Cs_4", "Midi\nC#₄/Dᵇ₄", "Midi send note C#₄/Dᵇ₄", alias=["MI_SPLIT_Db_4"]),
+        K("MI_SPLIT_D_4", "Midi\nD₄", "Midi send note D₄"),
+        K("MI_SPLIT_Ds_4", "Midi\nD#₄/Eᵇ₄", "Midi send note D#₄/Eᵇ₄", alias=["MI_SPLIT_Eb_4"]),
+        K("MI_SPLIT_E_4", "Midi\nE₄", "Midi send note E₄"),
+        K("MI_SPLIT_F_4", "Midi\nF₄", "Midi send note F₄"),
+        K("MI_SPLIT_Fs_4", "Midi\nF#₄/Gᵇ₄", "Midi send note F#₄/Gᵇ₄", alias=["MI_SPLIT_Gb_4"]),
+        K("MI_SPLIT_G_4", "Midi\nG₄", "Midi send note G₄"),
+        K("MI_SPLIT_Gs_4", "Midi\nG#₄/Aᵇ₄", "Midi send note G#₄/Aᵇ₄", alias=["MI_SPLIT_Ab_4"]),
+        K("MI_SPLIT_A_4", "Midi\nA₄", "Midi send note A₄"),
+        K("MI_SPLIT_As_4", "Midi\nA#₄/Bᵇ₄", "Midi send note A#₄/Bᵇ₄", alias=["MI_SPLIT_Bb_4"]),
+        K("MI_SPLIT_B_4", "Midi\nB₄", "Midi send note B₄"),
+
+        K("MI_SPLIT_C_5", "Midi\nC₅", "Midi send note C₅"),
+        K("MI_SPLIT_Cs_5", "Midi\nC#₅/Dᵇ₅", "Midi send note C#₅/Dᵇ₅", alias=["MI_SPLIT_Db_5"]),
+        K("MI_SPLIT_D_5", "Midi\nD₅", "Midi send note D₅"),
+        K("MI_SPLIT_Ds_5", "Midi\nD#₅/Eᵇ₅", "Midi send note D#₅/Eᵇ₅", alias=["MI_SPLIT_Eb_5"]),
+        K("MI_SPLIT_E_5", "Midi\nE₅", "Midi send note E₅"),
+        K("MI_SPLIT_F_5", "Midi\nF₅", "Midi send note F₅"),
+        K("MI_SPLIT_Fs_5", "Midi\nF#₅/Gᵇ₅", "Midi send note F#₅/Gᵇ₅", alias=["MI_SPLIT_Gb_5"]),
+        K("MI_SPLIT_G_5", "Midi\nG₅", "Midi send note G₅"),
+        K("MI_SPLIT_Gs_5", "Midi\nG#₅/Aᵇ₅", "Midi send note G#₅/Aᵇ₅", alias=["MI_SPLIT_Ab_5"]),
+        K("MI_SPLIT_A_5", "Midi\nA₅", "Midi send note A₅"),
+        K("MI_SPLIT_As_5", "Midi\nA#₅/Bᵇ₅", "Midi send note A#₅/Bᵇ₅", alias=["MI_SPLIT_Bb_5"]),
+        K("MI_SPLIT_B_5", "Midi\nB₅", "Midi send note B₅"),
+
+        K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
+        K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
+        K("KC_NO", "", "None"),
+        K("MI_CHORD_99", "Smart\nChord", "Press QuickChord"),  
+]
+
 KEYCODES_MIDI_ADVANCED = [
     K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"), 
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),  
@@ -1250,6 +1335,26 @@ KEYCODES_MIDI_CHANNEL = [
     K("MI_CH15", "Channel\n15", "Midi set channel to 15"),
     K("MI_CH16", "Channel\n16", "Midi set channel to 16"),
 ]
+
+KEYCODES_MIDI_CHANNEL_KEYSPLIT = [
+    K("MI_CHANNEL_KEYSPLIT_1", "KeySplit\nChannel 1", "Midi set key split channel to 1"),
+    K("MI_CHANNEL_KEYSPLIT_2", "KeySplit\nChannel 2", "Midi set key split channel to 2"),
+    K("MI_CHANNEL_KEYSPLIT_3", "KeySplit\nChannel 3", "Midi set key split channel to 3"),
+    K("MI_CHANNEL_KEYSPLIT_4", "KeySplit\nChannel 4", "Midi set key split channel to 4"),
+    K("MI_CHANNEL_KEYSPLIT_5", "KeySplit\nChannel 5", "Midi set key split channel to 5"),
+    K("MI_CHANNEL_KEYSPLIT_6", "KeySplit\nChannel 6", "Midi set key split channel to 6"),
+    K("MI_CHANNEL_KEYSPLIT_7", "KeySplit\nChannel 7", "Midi set key split channel to 7"),
+    K("MI_CHANNEL_KEYSPLIT_8", "KeySplit\nChannel 8", "Midi set key split channel to 8"),
+    K("MI_CHANNEL_KEYSPLIT_9", "KeySplit\nChannel 9", "Midi set key split channel to 9"),
+    K("MI_CHANNEL_KEYSPLIT_10", "KeySplit\nChannel 10", "Midi set key split channel to 10"),
+    K("MI_CHANNEL_KEYSPLIT_11", "KeySplit\nChannel 11", "Midi set key split channel to 11"),
+    K("MI_CHANNEL_KEYSPLIT_12", "KeySplit\nChannel 12", "Midi set key split channel to 12"),
+    K("MI_CHANNEL_KEYSPLIT_13", "KeySplit\nChannel 13", "Midi set key split channel to 13"),
+    K("MI_CHANNEL_KEYSPLIT_14", "KeySplit\nChannel 14", "Midi set key split channel to 14"),
+    K("MI_CHANNEL_KEYSPLIT_15", "KeySplit\nChannel 15", "Midi set key split channel to 15"),
+    K("MI_CHANNEL_KEYSPLIT_16", "KeySplit\nChannel 16", "Midi set key split channel to 16"),
+]
+
 
 KEYCODES_CC_STEPSIZE = [
     K("CC_STEPSIZE_1", "CC\nUp/Down\nx1", "SET CC Up/Down TO X1"),
@@ -1571,9 +1676,9 @@ def recreate_keycodes():
     KEYCODES.clear()
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA + KEYCODES_OLED + KEYCODES_CLEAR + KEYCODES_RGB_KC_COLOR +
-                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM +
+                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_MIDI_CHANNEL_KEYSPLIT +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+
-                    KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+
+                    KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_SPLIT+
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()

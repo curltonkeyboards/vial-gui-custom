@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource>
+        <file alias="backgrounddark">src/main/python/backgrounddark.png</file>
+        <file alias="backgroundlight">src/main/python/backgroundlight.png</file>
+    </qresource>
+</RCC>
