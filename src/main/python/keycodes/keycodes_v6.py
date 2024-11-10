@@ -934,6 +934,11 @@ class keycodes_v6:
         "KS_CHAN_DOWN": 0xC650,
         "KS_CHAN_UP": 0xC651,
         
+        "SMARTCHORD_DOWN": 0xC4A0,
+        "SMARTCHORD_UP": 0xC4A1,
+        "COLORBLIND_TOGGLE": 0xC4A2,
+        "SMARTCHORDCOLOR_TOGGLE": 0xC4A3,
+        
         "MI_CHANNEL_KEYSPLIT_1": 0xC652,
         "MI_CHANNEL_KEYSPLIT_2": 0xC653,
         "MI_CHANNEL_KEYSPLIT_3": 0xC654,
