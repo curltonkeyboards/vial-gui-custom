@@ -201,7 +201,7 @@ class SmartChordTab(QScrollArea):
              "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
              "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"],
             
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99"]
+            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KS_CHAN_UP", "KS_CHAN_DOWN"]
         ]
         
         # 1. MIDI Layout
@@ -248,83 +248,85 @@ class SmartChordTab(QScrollArea):
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
         name_mapping = {
-            "MI_SPLIT_Cs": "C#\nDb\nKeysplit",
-            "MI_SPLIT_Ds": "D#\nEb\nKeysplit",
-            "MI_SPLIT_Fs": "F#\nGb\nKeysplit",
-            "MI_SPLIT_Gs": "G#\nAb\nKeysplit",
-            "MI_SPLIT_As": "A#\nBb\nKeysplit",
-            "MI_SPLIT_Cs_1": "C#1\nDb1\nKeysplit",
-            "MI_SPLIT_Ds_1": "D#1\nEb1\nKeysplit",
-            "MI_SPLIT_Fs_1": "F#1\nGb1\nKeysplit",
-            "MI_SPLIT_Gs_1": "G#1\nAb1\nKeysplit",
-            "MI_SPLIT_As_1": "A#1\nBb1\nKeysplit",
-            "MI_SPLIT_Cs_2": "C#2\nDb2\nKeysplit",
-            "MI_SPLIT_Ds_2": "D#2\nEb2\nKeysplit",
-            "MI_SPLIT_Fs_2": "F#2\nGb2\nKeysplit",
-            "MI_SPLIT_Gs_2": "G#2\nAb2\nKeysplit",
-            "MI_SPLIT_As_2": "A#2\nBb2\nKeysplit",
-            "MI_SPLIT_C_1": "C1\nKeysplit",
-            "MI_SPLIT_D_1": "D1\nKeysplit",
-            "MI_SPLIT_E_1": "E1\nKeysplit",
-            "MI_SPLIT_F_1": "F1\nKeysplit",
-            "MI_SPLIT_G_1": "G1\nKeysplit",
-            "MI_SPLIT_A_1": "A1\nKeysplit",
-            "MI_SPLIT_B_1": "B1\nKeysplit",
-            "MI_SPLIT_C_2": "C2\nKeysplit",
-            "MI_SPLIT_D_2": "D2\nKeysplit",
-            "MI_SPLIT_E_2": "E2\nKeysplit",
-            "MI_SPLIT_F_2": "F2\nKeysplit",
-            "MI_SPLIT_G_2": "G2\nKeysplit",
-            "MI_SPLIT_A_2": "A2\nKeysplit",
-            "MI_SPLIT_B_2": "B2\nKeysplit",
-            "MI_SPLIT_Cs_3": "C#3\nDb3\nKeysplit",
-            "MI_SPLIT_Ds_3": "D#3\nEb3\nKeysplit",
-            "MI_SPLIT_Fs_3": "F#3\nGb3\nKeysplit",
-            "MI_SPLIT_Gs_3": "G#3\nAb3\nKeysplit",
-            "MI_SPLIT_As_3": "A#3\nBb3\nKeysplit",
-            "MI_SPLIT_Cs_4": "C#4\nDb4\nKeysplit",
-            "MI_SPLIT_Ds_4": "D#4\nEb4\nKeysplit",
-            "MI_SPLIT_Fs_4": "F#4\nGb4\nKeysplit",
-            "MI_SPLIT_Gs_4": "G#4\nAb4\nKeysplit",
-            "MI_SPLIT_As_4": "A#4\nBb4\nKeysplit",
-            "MI_SPLIT_Cs_5": "C#5\nDb5\nKeysplit",
-            "MI_SPLIT_Ds_5": "D#5\nEb5\nKeysplit",
-            "MI_SPLIT_Fs_5": "F#5\nGb5\nKeysplit",
-            "MI_SPLIT_Gs_5": "G#5\nAb5\nKeysplit",
-            "MI_SPLIT_As_5": "A#5\nBb5\nKeysplit",
-            "MI_SPLIT_C_3": "C3\nKeysplit",
-            "MI_SPLIT_D_3": "D3\nKeysplit",
-            "MI_SPLIT_E_3": "E3\nKeysplit",
-            "MI_SPLIT_F_3": "F3\nKeysplit",
-            "MI_SPLIT_G_3": "G3\nKeysplit",
-            "MI_SPLIT_A_3": "A3\nKeysplit",
-            "MI_SPLIT_B_3": "B3\nKeysplit",
-            "MI_SPLIT_C_4": "C4\nKeysplit",
-            "MI_SPLIT_D_4": "D4\nKeysplit",
-            "MI_SPLIT_E_4": "E4\nKeysplit",
-            "MI_SPLIT_F_4": "F4\nKeysplit",
-            "MI_SPLIT_G_4": "G4\nKeysplit",
-            "MI_SPLIT_A_4": "A4\nKeysplit",
-            "MI_SPLIT_B_4": "B4\nKeysplit",
-            "MI_SPLIT_C_5": "C5\nKeysplit",
-            "MI_SPLIT_D_5": "D5\nKeysplit",
-            "MI_SPLIT_E_5": "E5\nKeysplit",
-            "MI_SPLIT_F_5": "F5\nKeysplit",
-            "MI_SPLIT_G_5": "G5\nKeysplit",
-            "MI_SPLIT_A_5": "A5\nKeysplit",
-            "MI_SPLIT_B_5": "B5\nKeysplit",
-            "MI_SPLIT_C": "C\nKeysplit",
-            "MI_SPLIT_D": "D\nKeysplit",
-            "MI_SPLIT_E": "E\nKeysplit",
-            "MI_SPLIT_F": "F\nKeysplit",
-            "MI_SPLIT_G": "G\nKeysplit",
-            "MI_SPLIT_A": "A\nKeysplit",
-            "MI_SPLIT_B": "B\nKeysplit",
+            "MI_SPLIT_Cs": "C#\nDb\nKS",
+            "MI_SPLIT_Ds": "D#\nEb\nKS",
+            "MI_SPLIT_Fs": "F#\nGb\nKS",
+            "MI_SPLIT_Gs": "G#\nAb\nKS",
+            "MI_SPLIT_As": "A#\nBb\nKS",
+            "MI_SPLIT_Cs_1": "C#1\nDb1\nKS",
+            "MI_SPLIT_Ds_1": "D#1\nEb1\nKS",
+            "MI_SPLIT_Fs_1": "F#1\nGb1\nKS",
+            "MI_SPLIT_Gs_1": "G#1\nAb1\nKS",
+            "MI_SPLIT_As_1": "A#1\nBb1\nKS",
+            "MI_SPLIT_Cs_2": "C#2\nDb2\nKS",
+            "MI_SPLIT_Ds_2": "D#2\nEb2\nKS",
+            "MI_SPLIT_Fs_2": "F#2\nGb2\nKS",
+            "MI_SPLIT_Gs_2": "G#2\nAb2\nKS",
+            "MI_SPLIT_As_2": "A#2\nBb2\nKS",
+            "MI_SPLIT_C_1": "C1\nKS",
+            "MI_SPLIT_D_1": "D1\nKS",
+            "MI_SPLIT_E_1": "E1\nKS",
+            "MI_SPLIT_F_1": "F1\nKS",
+            "MI_SPLIT_G_1": "G1\nKS",
+            "MI_SPLIT_A_1": "A1\nKS",
+            "MI_SPLIT_B_1": "B1\nKS",
+            "MI_SPLIT_C_2": "C2\nKS",
+            "MI_SPLIT_D_2": "D2\nKS",
+            "MI_SPLIT_E_2": "E2\nKS",
+            "MI_SPLIT_F_2": "F2\nKS",
+            "MI_SPLIT_G_2": "G2\nKS",
+            "MI_SPLIT_A_2": "A2\nKS",
+            "MI_SPLIT_B_2": "B2\nKS",
+            "MI_SPLIT_Cs_3": "C#3\nDb3\nKS",
+            "MI_SPLIT_Ds_3": "D#3\nEb3\nKS",
+            "MI_SPLIT_Fs_3": "F#3\nGb3\nKS",
+            "MI_SPLIT_Gs_3": "G#3\nAb3\nKS",
+            "MI_SPLIT_As_3": "A#3\nBb3\nKS",
+            "MI_SPLIT_Cs_4": "C#4\nDb4\nKS",
+            "MI_SPLIT_Ds_4": "D#4\nEb4\nKS",
+            "MI_SPLIT_Fs_4": "F#4\nGb4\nKS",
+            "MI_SPLIT_Gs_4": "G#4\nAb4\nKS",
+            "MI_SPLIT_As_4": "A#4\nBb4\nKS",
+            "MI_SPLIT_Cs_5": "C#5\nDb5\nKS",
+            "MI_SPLIT_Ds_5": "D#5\nEb5\nKS",
+            "MI_SPLIT_Fs_5": "F#5\nGb5\nKS",
+            "MI_SPLIT_Gs_5": "G#5\nAb5\nKS",
+            "MI_SPLIT_As_5": "A#5\nBb5\nKS",
+            "MI_SPLIT_C_3": "C3\nKS",
+            "MI_SPLIT_D_3": "D3\nKS",
+            "MI_SPLIT_E_3": "E3\nKS",
+            "MI_SPLIT_F_3": "F3\nKS",
+            "MI_SPLIT_G_3": "G3\nKS",
+            "MI_SPLIT_A_3": "A3\nKS",
+            "MI_SPLIT_B_3": "B3\nKS",
+            "MI_SPLIT_C_4": "C4\nKS",
+            "MI_SPLIT_D_4": "D4\nKS",
+            "MI_SPLIT_E_4": "E4\nKS",
+            "MI_SPLIT_F_4": "F4\nKS",
+            "MI_SPLIT_G_4": "G4\nKS",
+            "MI_SPLIT_A_4": "A4\nKS",
+            "MI_SPLIT_B_4": "B4\nKS",
+            "MI_SPLIT_C_5": "C5\nKS",
+            "MI_SPLIT_D_5": "D5\nKS",
+            "MI_SPLIT_E_5": "E5\nKS",
+            "MI_SPLIT_F_5": "F5\nKS",
+            "MI_SPLIT_G_5": "G5\nKS",
+            "MI_SPLIT_A_5": "A5\nKS",
+            "MI_SPLIT_B_5": "B5\nKS",
+            "MI_SPLIT_C": "C\nKS",
+            "MI_SPLIT_D": "D\nKS",
+            "MI_SPLIT_E": "E\nKS",
+            "MI_SPLIT_F": "F\nKS",
+            "MI_SPLIT_G": "G\nKS",
+            "MI_SPLIT_A": "A\nKS",
+            "MI_SPLIT_B": "B\nKS",
 
             "MI_ALLOFF": "All\nNotes\nOff", 
             "MI_SUS" : "Sustain\nPedal",
             "KC_NO" : " ",
-            "MI_CHORD_99": "SmartChord"
+            "MI_CHORD_99": "SmartChord",
+            "KS_CHAN_DOWN": "KS\nChannel\nDown",
+            "KS_CHAN_UP": "KS\nChannel\nUp"
         }
 
         for row_index, row in enumerate(layout):
@@ -345,18 +347,18 @@ class SmartChordTab(QScrollArea):
                     if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Smart" in readable_name:
                         button.setStyleSheet("")
   
-                    if readable_name in ["C#\nDb", "C#3\nDb3"]:
+                    if readable_name in ["C#\nDb\nKS", "C#3\nDb3\nKS"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         
-                    if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
+                    if readable_name in ["C#1\nDb1\nKS", "C#2\nDb2\nKS", "C#4\nDb4\nKS", "C#5\nDb5\nKS"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         hbox.addSpacing(60)                      
                         
-                    if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
+                    if readable_name in ["F#\nGb", "F#1\nGb1\nKS", "F#2\nGb2\nKS", "F#3\nGb3\nKS", "F#4\nGb4\nKS", "F#5\nGb5\nKS"]:
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
                         hbox.addSpacing(50)
                         
-                    if readable_name in ["C1", "C2", "C4", "C5"]:
+                    if readable_name in ["C1\nKS", "C2\nKS", "C4\nKS", "C5\nKS"]:
                         button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
                         hbox.addSpacing(20)
 
