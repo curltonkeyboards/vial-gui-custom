@@ -11,7 +11,7 @@ from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, \
-    KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
+    KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, \
     KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
 from widgets.square_button import SquareButton
@@ -181,31 +181,6 @@ class SmartChordTab(QScrollArea):
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        
-                
-                # Define MIDI layout
-        self.midi_layout2 = [
-            ["MI_SPLIT_Cs", "MI_SPLIT_Ds", "MI_SPLIT_Fs", "MI_SPLIT_Gs", "MI_SPLIT_As",
-             "MI_SPLIT_Cs_1", "MI_SPLIT_Ds_1", "MI_SPLIT_Fs_1", "MI_SPLIT_Gs_1", "MI_SPLIT_As_1",
-             "MI_SPLIT_Cs_2", "MI_SPLIT_Ds_2", "MI_SPLIT_Fs_2", "MI_SPLIT_Gs_2", "MI_SPLIT_As_2"],
-
-            ["MI_SPLIT_C", "MI_SPLIT_D", "MI_SPLIT_E", "MI_SPLIT_F", "MI_SPLIT_G", "MI_SPLIT_A", "MI_SPLIT_B",
-             "MI_SPLIT_C_1", "MI_SPLIT_D_1", "MI_SPLIT_E_1", "MI_SPLIT_F_1", "MI_SPLIT_G_1", "MI_SPLIT_A_1", "MI_SPLIT_B_1",
-             "MI_SPLIT_C_2", "MI_SPLIT_D_2", "MI_SPLIT_E_2", "MI_SPLIT_F_2", "MI_SPLIT_G_2", "MI_SPLIT_A_2", "MI_SPLIT_B_2"],
-
-            ["MI_SPLIT_Cs_3", "MI_SPLIT_Ds_3", "MI_SPLIT_Fs_3", "MI_SPLIT_Gs_3", "MI_SPLIT_As_3",
-             "MI_SPLIT_Cs_4", "MI_SPLIT_Ds_4", "MI_SPLIT_Fs_4", "MI_SPLIT_Gs_4", "MI_SPLIT_As_4",
-             "MI_SPLIT_Cs_5", "MI_SPLIT_Ds_5", "MI_SPLIT_Fs_5", "MI_SPLIT_Gs_5", "MI_SPLIT_As_5"],
-
-            ["MI_SPLIT_C_3", "MI_SPLIT_D_3", "MI_SPLIT_E_3", "MI_SPLIT_F_3", "MI_SPLIT_G_3", "MI_SPLIT_A_3", "MI_SPLIT_B_3",
-             "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
-             "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"],
-            
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KS_CHAN_UP", "KS_CHAN_DOWN"]
-        ]
-        
-        # 1. MIDI Layout
-        self.add_midi_layout2(self.midi_layout2)
 
         # Create a horizontal layout for the Smart Chord dropdowns
         self.smartchord_dropdown_layout = QHBoxLayout()
@@ -233,146 +208,6 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
         
-    def add_midi_layout2(self, layout):
-        """Helper method to add staggered buttons based on MIDI layout."""
-        midi_container = QWidget()
-        midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container.setLayout(midi_container_layout)
-
-        # Create the MIDI buttons
-        self.create_midi_buttons(layout, midi_container_layout)
-
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
-        
-    def create_midi_buttons(self, layout, container_layout):
-        """Create buttons based on MIDI layout coordinates."""
-        name_mapping = {
-            "MI_SPLIT_Cs": "C#\nDb\nKS",
-            "MI_SPLIT_Ds": "D#\nEb\nKS",
-            "MI_SPLIT_Fs": "F#\nGb\nKS",
-            "MI_SPLIT_Gs": "G#\nAb\nKS",
-            "MI_SPLIT_As": "A#\nBb\nKS",
-            "MI_SPLIT_Cs_1": "C#1\nDb1\nKS",
-            "MI_SPLIT_Ds_1": "D#1\nEb1\nKS",
-            "MI_SPLIT_Fs_1": "F#1\nGb1\nKS",
-            "MI_SPLIT_Gs_1": "G#1\nAb1\nKS",
-            "MI_SPLIT_As_1": "A#1\nBb1\nKS",
-            "MI_SPLIT_Cs_2": "C#2\nDb2\nKS",
-            "MI_SPLIT_Ds_2": "D#2\nEb2\nKS",
-            "MI_SPLIT_Fs_2": "F#2\nGb2\nKS",
-            "MI_SPLIT_Gs_2": "G#2\nAb2\nKS",
-            "MI_SPLIT_As_2": "A#2\nBb2\nKS",
-            "MI_SPLIT_C_1": "C1\nKS",
-            "MI_SPLIT_D_1": "D1\nKS",
-            "MI_SPLIT_E_1": "E1\nKS",
-            "MI_SPLIT_F_1": "F1\nKS",
-            "MI_SPLIT_G_1": "G1\nKS",
-            "MI_SPLIT_A_1": "A1\nKS",
-            "MI_SPLIT_B_1": "B1\nKS",
-            "MI_SPLIT_C_2": "C2\nKS",
-            "MI_SPLIT_D_2": "D2\nKS",
-            "MI_SPLIT_E_2": "E2\nKS",
-            "MI_SPLIT_F_2": "F2\nKS",
-            "MI_SPLIT_G_2": "G2\nKS",
-            "MI_SPLIT_A_2": "A2\nKS",
-            "MI_SPLIT_B_2": "B2\nKS",
-            "MI_SPLIT_Cs_3": "C#3\nDb3\nKS",
-            "MI_SPLIT_Ds_3": "D#3\nEb3\nKS",
-            "MI_SPLIT_Fs_3": "F#3\nGb3\nKS",
-            "MI_SPLIT_Gs_3": "G#3\nAb3\nKS",
-            "MI_SPLIT_As_3": "A#3\nBb3\nKS",
-            "MI_SPLIT_Cs_4": "C#4\nDb4\nKS",
-            "MI_SPLIT_Ds_4": "D#4\nEb4\nKS",
-            "MI_SPLIT_Fs_4": "F#4\nGb4\nKS",
-            "MI_SPLIT_Gs_4": "G#4\nAb4\nKS",
-            "MI_SPLIT_As_4": "A#4\nBb4\nKS",
-            "MI_SPLIT_Cs_5": "C#5\nDb5\nKS",
-            "MI_SPLIT_Ds_5": "D#5\nEb5\nKS",
-            "MI_SPLIT_Fs_5": "F#5\nGb5\nKS",
-            "MI_SPLIT_Gs_5": "G#5\nAb5\nKS",
-            "MI_SPLIT_As_5": "A#5\nBb5\nKS",
-            "MI_SPLIT_C_3": "C3\nKS",
-            "MI_SPLIT_D_3": "D3\nKS",
-            "MI_SPLIT_E_3": "E3\nKS",
-            "MI_SPLIT_F_3": "F3\nKS",
-            "MI_SPLIT_G_3": "G3\nKS",
-            "MI_SPLIT_A_3": "A3\nKS",
-            "MI_SPLIT_B_3": "B3\nKS",
-            "MI_SPLIT_C_4": "C4\nKS",
-            "MI_SPLIT_D_4": "D4\nKS",
-            "MI_SPLIT_E_4": "E4\nKS",
-            "MI_SPLIT_F_4": "F4\nKS",
-            "MI_SPLIT_G_4": "G4\nKS",
-            "MI_SPLIT_A_4": "A4\nKS",
-            "MI_SPLIT_B_4": "B4\nKS",
-            "MI_SPLIT_C_5": "C5\nKS",
-            "MI_SPLIT_D_5": "D5\nKS",
-            "MI_SPLIT_E_5": "E5\nKS",
-            "MI_SPLIT_F_5": "F5\nKS",
-            "MI_SPLIT_G_5": "G5\nKS",
-            "MI_SPLIT_A_5": "A5\nKS",
-            "MI_SPLIT_B_5": "B5\nKS",
-            "MI_SPLIT_C": "C\nKS",
-            "MI_SPLIT_D": "D\nKS",
-            "MI_SPLIT_E": "E\nKS",
-            "MI_SPLIT_F": "F\nKS",
-            "MI_SPLIT_G": "G\nKS",
-            "MI_SPLIT_A": "A\nKS",
-            "MI_SPLIT_B": "B\nKS",
-
-            "MI_ALLOFF": "All\nNotes\nOff", 
-            "MI_SUS" : "Sustain\nPedal",
-            "KC_NO" : " ",
-            "MI_CHORD_99": "SmartChord",
-            "KS_CHAN_DOWN": "KS\nChannel\nDown",
-            "KS_CHAN_UP": "KS\nChannel\nUp"
-        }
-
-        for row_index, row in enumerate(layout):
-            hbox = QHBoxLayout()  # New horizontal row layout
-            hbox.setAlignment(Qt.AlignCenter)
-            for col_index, item in enumerate(row):
-                if isinstance(item, str):
-                    readable_name = name_mapping.get(item, item)
-                    button = SquareButton()
-                    button.setText(readable_name)
-
-                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
-                    
-                    if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        # Add an empty space before the black keys to stagger
-                        
-                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Smart" in readable_name:
-                        button.setStyleSheet("")
-  
-                    if readable_name in ["C#\nDb\nKS", "C#3\nDb3\nKS"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        
-                    if readable_name in ["C#1\nDb1\nKS", "C#2\nDb2\nKS", "C#4\nDb4\nKS", "C#5\nDb5\nKS"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        hbox.addSpacing(60)                      
-                        
-                    if readable_name in ["F#\nGb", "F#1\nGb1\nKS", "F#2\nGb2\nKS", "F#3\nGb3\nKS", "F#4\nGb4\nKS", "F#5\nGb5\nKS"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
-                        hbox.addSpacing(50)
-                        
-                    if readable_name in ["C1\nKS", "C2\nKS", "C4\nKS", "C5\nKS"]:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
-                        hbox.addSpacing(20)
-
-                    
-
-                    button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
-                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
-                    else:
-                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
-                    button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    hbox.addWidget(button)  # Add button to horizontal layout
-
-            container_layout.addLayout(hbox)  # Add row to vertical layout          
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
