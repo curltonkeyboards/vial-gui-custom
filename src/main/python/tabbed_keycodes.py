@@ -2,7 +2,7 @@
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QMenu
-from PyQt5.QtGui import QPalette, QPainter, QCursor
+from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
@@ -154,6 +154,10 @@ class CenteredComboBox(QComboBox):
     def wheelEvent(self, event):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
+
+from PyQt5.QtWidgets import QComboBox, QVBoxLayout, QWidget, QMenu, QAction, QScrollArea, QHBoxLayout, QGridLayout
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QCursor
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -311,6 +315,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 
 from PyQt5.QtWidgets import (
