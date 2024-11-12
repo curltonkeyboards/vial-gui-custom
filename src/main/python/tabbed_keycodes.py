@@ -235,16 +235,30 @@ class SmartChordTab(QScrollArea):
 
     def add_sub_option_menu(self, header_text, keycodes):
         """Add a menu for sub-options under the selected category."""
-        menu = QMenu(header_text, self)
+        dropdown = QComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
 
-        # Add the keycodes as actions
+        # Add a placeholder item as the first item
+        dropdown.addItem(header_text)  # Placeholder item
+
+        # Add the keycodes as options
         for keycode in keycodes:
-            action = menu.addAction(Keycode.label(keycode.qmk_id))
-            action.triggered.connect(lambda checked, k=keycode.qmk_id: self.on_selection_change(k))
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
-        # Display the menu at the mouse position when the category is hovered
-        self.category_dropdown.setPopupVisible(True)
-        self.category_dropdown.setMenu(menu)
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        # Limit the number of visible items when the dropdown is opened
+        dropdown.setMaxVisibleItems(10)  # Adjust this number to fit your needs
+
+        # Optional: To open the dropdown programmatically, you can use this:
+        # dropdown.showPopup()
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+
+        self.sub_option_layout.addWidget(dropdown)
+
 
     def on_selection_change(self, selected_qmk_id):
         if selected_qmk_id:
