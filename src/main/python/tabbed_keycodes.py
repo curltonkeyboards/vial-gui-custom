@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QTreeWidget, QTreeWidgetItem
 from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
@@ -154,6 +154,8 @@ class CenteredComboBox(QComboBox):
     def wheelEvent(self, event):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
+        
+        
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
