@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QMenu
 from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
@@ -183,22 +183,23 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create the main dropdown for chord types and their keycodes in one
-        self.main_dropdown = QComboBox()
-        self.main_dropdown.setFixedHeight(40)
-        self.main_dropdown.addItem("Select Chord Type")  # Placeholder item
+        # Create a button to hold the "parent" dropdown
+        self.main_dropdown_button = QComboBox()
+        self.main_dropdown_button.setFixedHeight(40)
+        self.main_dropdown_button.addItem("Select Chord Type")  # Placeholder item
+        self.main_dropdown_button.currentIndexChanged.connect(self.on_selection_change)
 
-        # Populate the dropdown with chord types and nested keycodes
-        for category, keycodes in self.smartchord_keycodes.items():
-            self.main_dropdown.addItem(category)  # Add category as top-level item
-            for keycode in keycodes:
-                # Add nested keycodes under the category (indented for visual hierarchy)
-                self.main_dropdown.addItem(f"    {Keycode.label(keycode.qmk_id)}", keycode.qmk_id)
+        # Add parent options (3 Note Chords, 4 Note Chords, etc.) to the dropdown
+        for category in self.smartchord_keycodes.keys():
+            # Create an action for each category (parent item)
+            parent_action = QAction(category, self)
+            parent_action.setEnabled(True)  # Make sure it's selectable
+            parent_action.triggered.connect(self.show_sub_options)
+            self.main_dropdown_button.addItem(category)  # Main dropdown item for selection
 
-        self.main_dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.main_layout.addWidget(self.main_dropdown)
+        self.main_layout.addWidget(self.main_dropdown_button)
 
-        # Create other dropdowns and layouts
+        # Add small header dropdowns for octave, key, and inversion
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
@@ -217,9 +218,34 @@ class SmartChordTab(QScrollArea):
 
     def on_selection_change(self, index):
         """Handle selection change in the main dropdown."""
-        selected_qmk_id = self.main_dropdown.itemData(index)
+        selected_qmk_id = self.main_dropdown_button.itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
+
+    def show_sub_options(self):
+        """Show the nested options when hovering over a parent option."""
+        sender = self.sender()
+        category = sender.text()
+
+        # Create a menu that will hold the sub-options
+        submenu = QMenu(self)
+
+        # Add sub-options (keycodes) based on the selected category
+        for keycode in self.smartchord_keycodes.get(category, []):
+            sub_action = QAction(Keycode.label(keycode.qmk_id), self)
+            sub_action.setData(keycode.qmk_id)
+            sub_action.triggered.connect(self.on_sub_option_selected)
+            submenu.addAction(sub_action)
+
+        # Show the submenu near the parent action
+        sender.setMenu(submenu)
+        submenu.popup(sender.mapToGlobal(sender.pos()))
+
+    def on_sub_option_selected(self):
+        """Handle selection of a sub-option (keycode)."""
+        action = self.sender()
+        selected_keycode = action.data()  # Get the keycode ID from the action
+        self.keycode_changed.emit(selected_keycode)
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
