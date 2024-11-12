@@ -155,8 +155,9 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QTreeView, QStandardItemModel, QStandardItem, QVBoxLayout, QWidget, QScrollArea
+from PyQt5.QtWidgets import QTreeView, QStandardItemModel, QStandardItem, QVBoxLayout, QWidget, QScrollArea, QComboBox, QHBoxLayout
 from PyQt5.QtCore import Qt
+from PyQt5.QtCore import pyqtSignal
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -186,6 +187,20 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
+        # Create a QVBoxLayout for combining dropdowns and tree view
+        layout = QVBoxLayout()
+
+        # Add header dropdowns
+        self.dropdown_layout = QHBoxLayout()
+        for category in self.smartchord_keycodes:
+            dropdown = QComboBox()
+            dropdown.addItem(f"Select {category}")
+            dropdown.addItems([f"{keycode}" for keycode in self.smartchord_keycodes[category]])  # Adding keycodes as items
+            dropdown.currentIndexChanged.connect(self.on_dropdown_change)
+            self.dropdown_layout.addWidget(dropdown)
+
+        layout.addLayout(self.dropdown_layout)
+
         # Set up the QTreeView for displaying keycodes in a nested format
         self.tree_view = QTreeView(self.scroll_content)
         self.tree_view.setUniformRowHeights(True)
@@ -193,46 +208,43 @@ class SmartChordTab(QScrollArea):
         self.tree_model = QStandardItemModel()
         self.tree_view.setModel(self.tree_model)
 
-        # Create the root item and populate the tree
-        root_item = QStandardItem('Chord Types')  # Root of the tree
-        self.tree_model.appendRow(root_item)
+        # Add tree view to layout
+        layout.addWidget(self.tree_view)
 
-        # Add each category as a parent item and their respective keycodes as children
-        for category, keycodes in self.smartchord_keycodes.items():
-            category_item = QStandardItem(category)
-            root_item.appendRow(category_item)
+        # Add the layout to the scrollable content
+        self.main_layout.addLayout(layout)
+
+        # Add spacer to push everything to the top
+        self.main_layout.addStretch()
+
+    def on_dropdown_change(self, index):
+        """Handle the dropdown change to display corresponding keycodes in the tree."""
+        # Clear the previous tree items
+        self.tree_model.clear()
+
+        # Find which dropdown was triggered and get the corresponding category
+        sender = self.sender()
+        category = sender.currentText()
+
+        # Find the keycodes for the selected category
+        if category in self.smartchord_keycodes:
+            keycodes = self.smartchord_keycodes[category]
+
+            # Create the root item for the selected category
+            root_item = QStandardItem(category)  # Category as the root item
+            self.tree_model.appendRow(root_item)
 
             # Add keycodes as children of the category
             for keycode in keycodes:
-                keycode_item = QStandardItem(Keycode.label(keycode.qmk_id))  # Label of the keycode
-                keycode_item.setData(keycode.qmk_id)  # Store the keycode id
-                category_item.appendRow(keycode_item)
+                keycode_item = QStandardItem(str(keycode))  # Keycode as the child item
+                root_item.appendRow(keycode_item)
 
-        # Expand the root item to show the categories
-        self.tree_view.expandAll()
-
-        # Add the tree view to the layout
-        self.main_layout.addWidget(self.tree_view)
-
-        # Spacer to push everything to the top
-        self.main_layout.addStretch()
-
-        # Connect item selection to handle keycode change
-        self.tree_view.selectionModel().selectionChanged.connect(self.on_selection_change)
-
-    def on_selection_change(self, selected, deselected):
-        """Handle selection change in the tree view."""
-        index = self.tree_view.selectedIndexes()[0]  # Get the selected index
-        if index.isValid():
-            selected_keycode = index.data()  # Get the keycode ID from the selected item
-            if selected_keycode:
-                self.keycode_changed.emit(selected_keycode)
+            # Expand the root item to show the keycodes
+            self.tree_view.expandAll()
 
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return False  # We are now using a tree view instead of buttons
-
-
 
 
 
