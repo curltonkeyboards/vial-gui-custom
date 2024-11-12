@@ -185,7 +185,8 @@ class SmartChordTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Create a button to trigger the menu
-        self.category_button = QPushButton("Select Category", self)
+        self.category_button = QPushButton("SmartChord Selector", self)
+        self.category_button.setFixedHeight(40)  # Set the button height
         self.category_button.clicked.connect(self.show_menu)
 
         # Add button to the layout
@@ -196,13 +197,13 @@ class SmartChordTab(QScrollArea):
 
         # Add main category actions
         chords_action = QAction("Chords", self)
-        scales_action = QAction("Scales/Modes", self)
+        scales_submenu = QMenu("Scales/Modes", self)
         self.menu.addAction(chords_action)
-        self.menu.addAction(scales_action)
+        self.populate_submenu(scales_submenu, "Scales/Modes", self.scales_modes_keycodes)
+        scales_action.setMenu(scales_submenu)
 
         # Create submenus for chords and scales/modes
         chords_submenu = QMenu("Chords", self)
-        scales_submenu = QMenu("Scales/Modes", self)
 
         # Populate submenus with smartchord keycodes
         self.populate_submenu(chords_submenu, "3 Note Chords", self.smartchord_keycodes_1)
@@ -210,11 +211,9 @@ class SmartChordTab(QScrollArea):
         self.populate_submenu(chords_submenu, "5 Note Chords", self.smartchord_keycodes_3)
         self.populate_submenu(chords_submenu, "Advanced Chords", self.smartchord_keycodes_4)
 
-        self.populate_submenu(scales_submenu, "Scales/Modes", self.scales_modes_keycodes)
-
         # Attach submenus to main actions
         chords_action.setMenu(chords_submenu)
-        scales_action.setMenu(scales_submenu)
+
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
