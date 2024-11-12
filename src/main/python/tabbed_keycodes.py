@@ -228,39 +228,7 @@ class SmartChordTab(QScrollArea):
 
         # Append the parent item to the model
         self.model.appendRow(parent_item)
-        
 
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-        #vbox.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"{header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
         
     def reset_dropdown(self, dropdown, header_text):
         """Reset the dropdown to show default text while storing the selected value."""
