@@ -155,7 +155,10 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QGridLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction
+)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 class SmartChordTab(QScrollArea):
@@ -173,7 +176,7 @@ class SmartChordTab(QScrollArea):
         self.smartchord_key = smartchord_key
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
-        
+
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -184,41 +187,12 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create a button to trigger the menu
-        self.category_button = QPushButton("SmartChord Selector", self)
-        self.category_button.setFixedHeight(40)  # Set the button height
-        self.category_button.clicked.connect(self.show_menu_at_mouse_position)
-
-        # Add button to the layout
-        self.main_layout.addWidget(self.category_button)
-
-        # Create a main menu for categories
-        self.menu = QMenu(self)
-
-        # Add main category actions
-        chords_action = QAction("Chords", self)
-        scales_action = QMenu("Scales/Modes", self)  # Make scales_action a menu directly
-        self.menu.addAction(chords_action)
-        self.menu.addMenu(scales_action)  # Add the scales submenu directly to the main menu
-
-        # Create a submenu for chords
-        chords_submenu = QMenu("Chords", self)
-
-        # Populate the chords submenu with smartchord keycodes
-        self.populate_submenu(chords_submenu, "3 Note Chords", self.smartchord_keycodes_1)
-        self.populate_submenu(chords_submenu, "4 Note Chords", self.smartchord_keycodes_2)
-        self.populate_submenu(chords_submenu, "5 Note Chords", self.smartchord_keycodes_3)
-        self.populate_submenu(chords_submenu, "Advanced Chords", self.smartchord_keycodes_4)
-
-        #Attach the submenu to the chords action
-        chords_action.setMenu(chords_submenu)
-
-        # Populate the scales/modes menu directly
-        self.populate_submenu(scales_action, "Scales/Modes", self.scales_modes_keycodes)
-
-        # Connect the button to show the main menu
-        self.category_button.setMenu(self.menu)
-
+        # Add the QTreeWidget for category selection
+        self.category_tree = QTreeWidget()
+        self.category_tree.setHeaderLabel("SmartChord Selector")
+        self.populate_tree()
+        self.category_tree.itemClicked.connect(self.on_item_selected)
+        self.main_layout.addWidget(self.category_tree)
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
@@ -237,18 +211,31 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def show_menu(self):
-        """Show the menu when the button is clicked."""
-        self.menu.exec_(self.category_button.mapToGlobal(self.category_button.pos()))
+    def populate_tree(self):
+        """Populate the QTreeWidget with categories and keycodes."""
+        # Add "Chords" category with subcategories
+        chords_item = QTreeWidgetItem(self.category_tree, ["Chords"])
+        self.add_keycode_group(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
+        self.add_keycode_group(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
+        self.add_keycode_group(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
+        self.add_keycode_group(chords_item, "Advanced Chords", self.smartchord_keycodes_4)
+        
+        # Add "Scales/Modes" category
+        scales_item = QTreeWidgetItem(self.category_tree, ["Scales/Modes"])
+        self.add_keycode_group(scales_item, "Scales/Modes", self.scales_modes_keycodes)
 
-    def populate_submenu(self, submenu, title, keycodes):
-        """Populate a submenu with actions based on keycodes."""
-        sub_submenu = QMenu(title, self)
+    def add_keycode_group(self, parent_item, title, keycodes):
+        """Helper function to add a subgroup and its keycodes to a parent item."""
+        group_item = QTreeWidgetItem(parent_item, [title])
         for keycode in keycodes:
-            action = QAction(Keycode.label(keycode.qmk_id), self)
-            action.triggered.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-            sub_submenu.addAction(action)
-        submenu.addMenu(sub_submenu)
+            keycode_item = QTreeWidgetItem(group_item, [Keycode.label(keycode.qmk_id)])
+            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
+
+    def on_item_selected(self, item):
+        """Handle tree item selection to emit keycode_changed signal."""
+        qmk_id = item.data(0, Qt.UserRole)
+        if qmk_id:
+            self.keycode_changed.emit(qmk_id)
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -295,12 +282,6 @@ class SmartChordTab(QScrollArea):
         selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
-            
-    def show_menu_at_mouse_position(self):
-        # Get the position of the button in global coordinates
-        button_position = self.category_button.mapToGlobal(QPoint(0, self.category_button.height()))
-        # Show the menu at the button's position to align with the mouse click
-        self.menu.exec_(button_position)
 
     def relabel_buttons(self):
         """Relabel buttons based on keycodes."""
@@ -314,6 +295,8 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
+
+
 
 
 from PyQt5.QtWidgets import (
