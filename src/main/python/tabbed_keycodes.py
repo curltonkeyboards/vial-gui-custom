@@ -155,6 +155,8 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
+from PyQt5.QtWidgets import QComboBox, QStandardItemModel, QStandardItem, QVBoxLayout, QWidget, QApplication
+
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -182,14 +184,19 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create a horizontal layout for the Smart Chord dropdowns
-        self.smartchord_dropdown_layout = QHBoxLayout()
-        self.add_header_dropdown("3 Note Chords", self.smartchord_keycodes_1, self.smartchord_dropdown_layout)
-        self.add_header_dropdown("4 Note Chords", self.smartchord_keycodes_2, self.smartchord_dropdown_layout)
-        self.add_header_dropdown("5 Note Chords", self.smartchord_keycodes_3, self.smartchord_dropdown_layout)
-        self.add_header_dropdown("Advanced Chords", self.smartchord_keycodes_4, self.smartchord_dropdown_layout)
-        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes, self.smartchord_dropdown_layout)
-        self.main_layout.addLayout(self.smartchord_dropdown_layout)
+        elf.smartchord_selector = QComboBox()
+        self.model = QStandardItemModel()
+        self.smartchord_selector.setModel(self.model)
+
+        # Add tree structures for each group of chords/scales
+        self.add_tree_dropdown("3 Note Chords", self.smartchord_keycodes_1)
+        self.add_tree_dropdown("4 Note Chords", self.smartchord_keycodes_2)
+        self.add_tree_dropdown("5 Note Chords", self.smartchord_keycodes_3)
+        self.add_tree_dropdown("Advanced Chords", self.smartchord_keycodes_4)
+        self.add_tree_dropdown("Scales/Modes", self.scales_modes_keycodes)
+
+        # Add the dropdown to the layout
+        self.layout.addWidget(self.smartchord_selector)
 
         # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
@@ -207,6 +214,20 @@ class SmartChordTab(QScrollArea):
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
+        
+     def add_tree_dropdown(self, header, items):
+        # Create the parent item
+        parent_item = QStandardItem(header)
+        parent_item.setEditable(False)
+
+        # Add child items
+        for item_text in items:
+            child_item = QStandardItem(item_text)
+            child_item.setEditable(False)
+            parent_item.appendRow(child_item)
+
+        # Append the parent item to the model
+        self.model.appendRow(parent_item)
         
 
     def add_header_dropdown(self, header_text, keycodes, layout):
