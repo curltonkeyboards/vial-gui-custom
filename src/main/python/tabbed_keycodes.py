@@ -155,52 +155,6 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-class AccordionWidget(QWidget):
-    """Accordion-style widget for expanding/collapsing content."""
-    def __init__(self, header_text, keycodes, parent=None):
-        super().__init__(parent)
-        self.setLayout(QVBoxLayout())
-
-        # Header label
-        self.header_label = QLabel(header_text)
-        self.header_label.setAlignment(Qt.AlignCenter)
-        self.layout().addWidget(self.header_label)
-
-        # Dropdown
-        self.dropdown = CenteredComboBox()
-        self.dropdown.setFixedHeight(40)  # Set height of dropdown
-        self.dropdown.addItem(f"{header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            self.dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        self.dropdown.model().item(0).setEnabled(False)
-        self.layout().addWidget(self.dropdown)
-
-        # Create the accordion button (expand/collapse)
-        self.toggle_button = QPushButton("Expand")
-        self.toggle_button.clicked.connect(self.toggle_content)
-        self.layout().addWidget(self.toggle_button)
-
-        # Hidden content that will be shown/hidden
-        self.content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self.content_widget)
-
-        # Adding additional content (Dropdown in this case)
-        self.content_layout.addWidget(self.dropdown)
-        self.content_widget.setVisible(False)
-
-        self.layout().addWidget(self.content_widget)
-
-    def toggle_content(self):
-        """Toggles the visibility of the accordion content."""
-        is_visible = self.content_widget.isVisible()
-        self.content_widget.setVisible(not is_visible)
-        self.toggle_button.setText("Collapse" if not is_visible else "Expand")
-
-
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -216,7 +170,7 @@ class SmartChordTab(QScrollArea):
         self.smartchord_key = smartchord_key
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
-
+        
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -227,12 +181,24 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create accordion-style widgets for the Smart Chord keycodes and Scales/Modes
-        self.add_accordion_section("3 Note Chords", self.smartchord_keycodes_1)
-        self.add_accordion_section("4 Note Chords", self.smartchord_keycodes_2)
-        self.add_accordion_section("5 Note Chords", self.smartchord_keycodes_3)
-        self.add_accordion_section("Advanced Chords", self.smartchord_keycodes_4)
-        self.add_accordion_section("Scales/Modes", self.scales_modes_keycodes)
+        # Create a single dropdown with categories
+        self.category_dropdown = QComboBox()
+        self.category_dropdown.addItem("Select Category")
+        self.category_dropdown.addItem("Chords")
+        self.category_dropdown.addItem("Scales/Modes")
+
+        # Connect dropdown selection change to handle the sub-options
+        self.category_dropdown.currentIndexChanged.connect(self.handle_category_change)
+
+        # Layout to hold the category dropdown
+        self.main_layout.addWidget(self.category_dropdown)
+
+        # Placeholder layout to hold sub-options dynamically
+        self.sub_option_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.sub_option_layout)
+
+        # Add header and sub-options dynamically
+        self.handle_category_change(0)  # Default state with no category selected
 
         # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
@@ -251,114 +217,29 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_accordion_section(self, header_text, keycodes):
-        """Helper method to add an accordion-style section with a dropdown."""
-        accordion_widget = AccordionWidget(header_text, keycodes, self)
-        self.main_layout.addWidget(accordion_widget)
-
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"{header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
-        dropdown.setCurrentIndex(0)
-
-    def recreate_buttons(self, keycode_filter=None):
-        # Clear previous widgets
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
+    def handle_category_change(self, index):
+        """Handle category change and show corresponding sub-options."""
+        # Clear previous sub-options
+        for i in reversed(range(self.sub_option_layout.count())):
+            widget = self.sub_option_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Populate inversion buttons
-        row = 0
-        col = 0
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode  # Make sure keycode attribute is set
+        if index == 1:  # "Chords" category selected
+            self.add_sub_option_dropdown("3 Note Chords", self.smartchord_keycodes_1)
+            self.add_sub_option_dropdown("4 Note Chords", self.smartchord_keycodes_2)
+            self.add_sub_option_dropdown("5 Note Chords", self.smartchord_keycodes_3)
+            self.add_sub_option_dropdown("Advanced Chords", self.smartchord_keycodes_4)
+        elif index == 2:  # "Scales/Modes" category selected
+            self.add_sub_option_dropdown("Scales/Modes", self.scales_modes_keycodes)
 
-                # Add button to the grid layout
-                self.button_layout.addWidget(btn, row, col)
-
-                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
-                col += 1
-                if col >= 15:  # Adjust the number of columns as needed
-                    col = 0
-                    row += 1
-
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
-    def relabel_buttons(self):
-        # Handle relabeling only for buttons
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
-
-    def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0)
-
-        
-
-
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-        #vbox.addWidget(header_label)
-
-        # Create dropdown
+    def add_sub_option_dropdown(self, header_text, keycodes):
+        """Add a dropdown for sub-options under the selected category."""
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
 
         # Add a placeholder item as the first item
-        dropdown.addItem(f"{header_text}")  # Placeholder item
+        dropdown.addItem(header_text)  # Placeholder item
 
         # Add the keycodes as options
         for keycode in keycodes:
@@ -370,11 +251,8 @@ class SmartChordTab(QScrollArea):
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
-        vbox.addWidget(dropdown)
+        self.sub_option_layout.addWidget(dropdown)
 
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-        
     def reset_dropdown(self, dropdown, header_text):
         """Reset the dropdown to show default text while storing the selected value."""
         selected_index = dropdown.currentIndex()
@@ -386,7 +264,7 @@ class SmartChordTab(QScrollArea):
 
         # Reset the visible text to the default
         dropdown.setCurrentIndex(0)
-        
+
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
         # Create a vertical layout to hold header and dropdown
@@ -458,6 +336,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 from PyQt5.QtWidgets import (
     QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction
