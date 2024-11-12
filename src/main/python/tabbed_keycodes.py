@@ -155,8 +155,6 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QComboBox, QStandardItemModel, QStandardItem, QVBoxLayout, QWidget, QApplication
-
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -184,9 +182,9 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        elf.smartchord_selector = QComboBox()
-        self.model = QStandardItemModel()
-        self.smartchord_selector.setModel(self.model)
+        # Create a horizontal layout for the Smart Chord dropdowns
+        self.smartchord_selector = QTreeWidget()
+        self.smartchord_selector.setHeaderLabel("Smartchord Selector")
 
         # Add tree structures for each group of chords/scales
         self.add_tree_dropdown("3 Note Chords", self.smartchord_keycodes_1)
@@ -195,7 +193,7 @@ class SmartChordTab(QScrollArea):
         self.add_tree_dropdown("Advanced Chords", self.smartchord_keycodes_4)
         self.add_tree_dropdown("Scales/Modes", self.scales_modes_keycodes)
 
-        # Add the dropdown to the layout
+        # Add the tree widget to the layout
         self.layout.addWidget(self.smartchord_selector)
 
         # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
@@ -215,20 +213,51 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
         
-     def add_tree_dropdown(self, header, items):
+    def add_tree_dropdown(self, header, items):
         # Create the parent item
-        parent_item = QStandardItem(header)
-        parent_item.setEditable(False)
+        parent_item = QTreeWidgetItem([header])
 
         # Add child items
         for item_text in items:
-            child_item = QStandardItem(item_text)
-            child_item.setEditable(False)
-            parent_item.appendRow(child_item)
+            child_item = QTreeWidgetItem([item_text])
+            parent_item.addChild(child_item)
 
-        # Append the parent item to the model
-        self.model.appendRow(parent_item)
+        # Add the parent item to the tree
+        self.smartchord_selector.addTopLevelItem(parent_item)
+        
 
+
+    def add_header_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
+        #vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
         
     def reset_dropdown(self, dropdown, header_text):
         """Reset the dropdown to show default text while storing the selected value."""
