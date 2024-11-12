@@ -185,29 +185,21 @@ class SmartChordTab(QScrollArea):
 
         # Create the main "Smartchord Selector" dropdown
         self.main_dropdown = QComboBox()
-        self.main_dropdown.addItem("Smartchord Selector")  # Placeholder item
+        self.main_dropdown.addItem("Select Chord Type")  # Placeholder item
         for key in self.smartchord_keycodes.keys():
             self.main_dropdown.addItem(key)
         self.main_dropdown.setFixedHeight(40)
-        self.main_dropdown.currentIndexChanged.connect(self.show_sub_dropdown)
+        self.main_dropdown.currentIndexChanged.connect(self.update_nested_dropdown)
 
         # Add the main dropdown to the layout
         self.main_layout.addWidget(self.main_dropdown)
 
-        # Create the sub-dropdowns but keep them hidden initially
-        self.sub_dropdowns = {}
-        for key, keycodes in self.smartchord_keycodes.items():
-            sub_dropdown = CenteredComboBox()
-            sub_dropdown.addItem(f"{key}")  # Placeholder item
-            for keycode in keycodes:
-                sub_dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-            sub_dropdown.model().item(0).setEnabled(False)
-            sub_dropdown.setFixedHeight(40)
-            sub_dropdown.hide()  # Hide initially
-            sub_dropdown.currentIndexChanged.connect(self.on_selection_change)
-            sub_dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(sub_dropdown, key))
-            self.sub_dropdowns[key] = sub_dropdown
-            self.main_layout.addWidget(sub_dropdown)
+        # Create a single nested dropdown for showing keycodes
+        self.nested_dropdown = QComboBox()
+        self.nested_dropdown.addItem("Select Chord")  # Placeholder item
+        self.nested_dropdown.setFixedHeight(40)
+        self.nested_dropdown.currentIndexChanged.connect(self.on_selection_change)
+        self.main_layout.addWidget(self.nested_dropdown)
 
         # Create other dropdowns and layouts
         self.additional_dropdown_layout = QHBoxLayout()
@@ -226,37 +218,23 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def show_sub_dropdown(self, index):
-        """Show the sub-dropdown corresponding to the selected item in the main dropdown."""
+    def update_nested_dropdown(self, index):
+        """Update the nested dropdown with the selected chord type."""
         selected_text = self.main_dropdown.currentText()
-        for key, sub_dropdown in self.sub_dropdowns.items():
-            if key == selected_text:
-                sub_dropdown.show()
-            else:
-                sub_dropdown.hide()
+        self.nested_dropdown.clear()  # Clear previous items
+        self.nested_dropdown.addItem("Select Chord")  # Add default placeholder item
 
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-        if selected_index > 0:
-            selected_value = dropdown.itemData(selected_index)
-            # Process the selected value if necessary here
+        # Only update if a valid chord type is selected
+        if selected_text in self.smartchord_keycodes:
+            for keycode in self.smartchord_keycodes[selected_text]:
+                self.nested_dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
-        dropdown.setCurrentIndex(0)
+    def on_selection_change(self, index):
+        """Handle selection change in the nested dropdown."""
+        selected_qmk_id = self.nested_dropdown.itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
 
-        
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
-        dropdown.setCurrentIndex(0)
-        
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
         # Create a vertical layout to hold header and dropdown
@@ -277,7 +255,6 @@ class SmartChordTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
         vbox.addWidget(dropdown)
 
@@ -311,11 +288,6 @@ class SmartChordTab(QScrollArea):
                     col = 0
                     row += 1
 
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
     def relabel_buttons(self):
         # Handle relabeling only for buttons
         for i in range(self.button_layout.count()):
@@ -328,6 +300,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 from PyQt5.QtWidgets import (
     QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction
