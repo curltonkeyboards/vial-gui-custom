@@ -297,10 +297,10 @@ class SmartChordTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
             
     def show_menu_at_mouse_position(self):
-        # Get the global position of the mouse cursor
-        cursor_position = QCursor.pos()
-        # Show the menu at the cursor position
-        self.menu.exec_(cursor_position)
+        # Get the position of the button in global coordinates
+        button_position = self.category_button.mapToGlobal(QPoint(0, self.category_button.height()))
+        # Show the menu at the button's position to align with the mouse click
+        self.menu.exec_(button_position)
 
     def relabel_buttons(self):
         """Relabel buttons based on keycodes."""
