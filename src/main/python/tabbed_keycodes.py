@@ -238,8 +238,7 @@ class SmartChordTab(QScrollArea):
             submenu.addAction(sub_action)
 
         # Show the submenu near the parent action
-        sender.setMenu(submenu)
-        submenu.popup(sender.mapToGlobal(sender.pos()))
+        submenu.popup(QCursor.pos())  # Show the menu at the mouse position
 
     def on_sub_option_selected(self):
         """Handle selection of a sub-option (keycode)."""
