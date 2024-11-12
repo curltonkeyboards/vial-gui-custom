@@ -155,6 +155,10 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
+from PyQt5.QtWidgets import QMenu, QAction, QVBoxLayout, QWidget, QHBoxLayout, QScrollArea
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QComboBox
+
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -181,26 +185,46 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create a single dropdown with categories
-        self.category_dropdown = QComboBox()
-        self.category_dropdown.addItem("Select Category")
-        self.category_dropdown.addItem("Chords")
-        self.category_dropdown.addItem("Scales/Modes")
+        # Create a menu for categories
+        self.menu = QMenu(self)
 
-        # Connect dropdown selection change to handle the sub-options
-        self.category_dropdown.currentIndexChanged.connect(self.handle_category_change)
+        # Add actions for "Chords" and "Scales/Modes" categories
+        chords_action = QAction("Chords", self)
+        scales_action = QAction("Scales/Modes", self)
+        self.menu.addAction(chords_action)
+        self.menu.addAction(scales_action)
 
-        # Layout to hold the category dropdown
-        self.main_layout.addWidget(self.category_dropdown)
+        # Create submenus for categories
+        chords_submenu = QMenu(self)
+        scales_submenu = QMenu(self)
 
-        # Placeholder layout to hold sub-options dynamically
-        self.sub_option_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.sub_option_layout)
+        # Add actions to the submenus
+        chords_submenu.addAction("3 Note Chords")
+        chords_submenu.addAction("4 Note Chords")
+        chords_submenu.addAction("5 Note Chords")
+        chords_submenu.addAction("Advanced Chords")
 
-        # Add header and sub-options dynamically
-        self.handle_category_change(0)  # Default state with no category selected
+        scales_submenu.addAction("Major Scale")
+        scales_submenu.addAction("Minor Scale")
+        scales_submenu.addAction("Pentatonic")
+        scales_submenu.addAction("Blues Scale")
 
-        # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
+        # Attach submenus to the actions
+        chords_action.setMenu(chords_submenu)
+        scales_action.setMenu(scales_submenu)
+
+        # Show the menu when hovering
+        chords_action.hovered.connect(lambda: self.show_submenu(chords_submenu))
+        scales_action.hovered.connect(lambda: self.show_submenu(scales_submenu))
+
+        # Add category dropdown-like action to the layout
+        self.category_button = QAction("Select Category", self)
+        self.category_button.triggered.connect(self.menu.exec_)
+
+        # Add menu to the main layout
+        self.main_layout.addWidget(self.category_button)
+
+        # Add header for other controls (Octave, Key, etc.)
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
@@ -208,7 +232,7 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # Layout for inversion buttons
-        self.button_layout = QGridLayout()
+        self.button_layout = QVBoxLayout()
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
@@ -217,52 +241,9 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def handle_category_change(self, index):
-        """Handle category change and show corresponding sub-options."""
-        # Clear previous sub-options
-        for i in reversed(range(self.sub_option_layout.count())):
-            widget = self.sub_option_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        if index == 1:  # "Chords" category selected
-            self.add_sub_option_menu("3 Note Chords", self.smartchord_keycodes_1)
-            self.add_sub_option_menu("4 Note Chords", self.smartchord_keycodes_2)
-            self.add_sub_option_menu("5 Note Chords", self.smartchord_keycodes_3)
-            self.add_sub_option_menu("Advanced Chords", self.smartchord_keycodes_4)
-        elif index == 2:  # "Scales/Modes" category selected
-            self.add_sub_option_menu("Scales/Modes", self.scales_modes_keycodes)
-
-    def add_sub_option_menu(self, header_text, keycodes):
-        """Add a menu for sub-options under the selected category."""
-        dropdown = QComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(header_text)  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        # Limit the number of visible items when the dropdown is opened
-        dropdown.setMaxVisibleItems(10)  # Adjust this number to fit your needs
-
-        # Optional: To open the dropdown programmatically, you can use this:
-        # dropdown.showPopup()
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        self.sub_option_layout.addWidget(dropdown)
-
-
-    def on_selection_change(self, selected_qmk_id):
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
+    def show_submenu(self, submenu):
+        """Display the submenu when hovering over an option."""
+        submenu.exec_()
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -270,7 +251,7 @@ class SmartChordTab(QScrollArea):
         vbox = QVBoxLayout()
 
         # Create dropdown
-        dropdown = CenteredComboBox()
+        dropdown = QComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
 
         # Add a placeholder item as the first item
@@ -284,6 +265,7 @@ class SmartChordTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
         vbox.addWidget(dropdown)
 
@@ -291,13 +273,12 @@ class SmartChordTab(QScrollArea):
         layout.addLayout(vbox)
 
     def recreate_buttons(self, keycode_filter=None):
-        # Clear previous widgets
+        """Recreates the buttons for the inversion keycodes."""
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Populate inversion buttons
         row = 0
         col = 0
         for keycode in self.inversion_keycodes:
@@ -317,8 +298,13 @@ class SmartChordTab(QScrollArea):
                     col = 0
                     row += 1
 
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
     def relabel_buttons(self):
-        # Handle relabeling only for buttons
+        """Handle relabeling only for buttons."""
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
@@ -329,6 +315,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 
 
