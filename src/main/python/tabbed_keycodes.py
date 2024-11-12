@@ -155,9 +155,8 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QWidget, QHBoxLayout, QScrollArea
+from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QGridLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -231,8 +230,8 @@ class SmartChordTab(QScrollArea):
         self.add_smallheader_dropdown("Chord Inversion/Position", self.inversion_dropdown, self.additional_dropdown_layout)
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
-        # Layout for inversion buttons
-        self.button_layout = QVBoxLayout()
+        # Layout for inversion buttons (using QGridLayout)
+        self.button_layout = QGridLayout()  # Change to QGridLayout
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
@@ -284,7 +283,7 @@ class SmartChordTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Ensure the keycode is set
 
-                self.button_layout.addWidget(btn, row, col)
+                self.button_layout.addWidget(btn, row, col)  # Add widget to grid layout
 
                 col += 1
                 if col >= 15:  # Adjust column limit as needed
@@ -308,6 +307,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
+
 
 
 
