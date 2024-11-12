@@ -155,7 +155,7 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QMenu, QAction, QVBoxLayout, QWidget, QHBoxLayout, QScrollArea
+from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QWidget, QHBoxLayout, QScrollArea
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox
 
@@ -184,6 +184,13 @@ class SmartChordTab(QScrollArea):
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        # Create a button to trigger the menu (instead of directly adding QAction)
+        self.category_button = QPushButton("Select Category", self)
+        self.category_button.clicked.connect(self.show_menu)
+
+        # Add button to the layout
+        self.main_layout.addWidget(self.category_button)
 
         # Create a menu for categories
         self.menu = QMenu(self)
@@ -217,14 +224,7 @@ class SmartChordTab(QScrollArea):
         chords_action.hovered.connect(lambda: self.show_submenu(chords_submenu))
         scales_action.hovered.connect(lambda: self.show_submenu(scales_submenu))
 
-        # Add category dropdown-like action to the layout
-        self.category_button = QAction("Select Category", self)
-        self.category_button.triggered.connect(self.menu.exec_)
-
-        # Add menu to the main layout
-        self.main_layout.addWidget(self.category_button)
-
-        # Add header for other controls (Octave, Key, etc.)
+        # Add category button and layout for other dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
@@ -241,35 +241,30 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
+    def show_menu(self):
+        """Show the menu when the button is clicked."""
+        self.menu.exec_(self.category_button.mapToGlobal(self.category_button.pos()))
+
     def show_submenu(self, submenu):
         """Display the submenu when hovering over an option."""
         submenu.exec_()
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
-
-        # Create dropdown
         dropdown = QComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
         dropdown.addItem(f"{header_text}")  # Placeholder item
 
         # Add the keycodes as options
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
-        # Prevent the first item from being selected again
         dropdown.model().item(0).setEnabled(False)
-
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
         vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
         layout.addLayout(vbox)
 
     def recreate_buttons(self, keycode_filter=None):
@@ -287,14 +282,12 @@ class SmartChordTab(QScrollArea):
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode  # Make sure keycode attribute is set
+                btn.keycode = keycode  # Ensure the keycode is set
 
-                # Add button to the grid layout
                 self.button_layout.addWidget(btn, row, col)
 
-                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
                 col += 1
-                if col >= 15:  # Adjust the number of columns as needed
+                if col >= 15:  # Adjust column limit as needed
                     col = 0
                     row += 1
 
@@ -304,7 +297,7 @@ class SmartChordTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        """Handle relabeling only for buttons."""
+        """Relabel buttons based on keycodes."""
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
@@ -313,9 +306,8 @@ class SmartChordTab(QScrollArea):
                     widget.setText(Keycode.label(keycode.qmk_id))
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0)
-
+        """Check if buttons exist in the layout."""
+        return self.button_layout.count() > 0
 
 
 
