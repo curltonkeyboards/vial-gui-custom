@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QMenu
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
 from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
@@ -155,26 +155,22 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QTreeView, QStandardItemModel, QStandardItem, QVBoxLayout, QHBoxLayout, QWidget
-from PyQt5.QtCore import Qt, QItemSelectionModel
-
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, inversiondropdown, inversion_keycodes):
         super().__init__(parent)
         self.label = label
-        self.smartchord_keycodes = {
-            "3 Note Chords": smartchord_keycodes_1,
-            "4 Note Chords": smartchord_keycodes_2,
-            "5 Note Chords": smartchord_keycodes_3,
-            "Advanced Chords": smartchord_keycodes_4,
-            "Scales/Modes": scales_modes_keycodes
-        }
+        self.smartchord_keycodes_1 = smartchord_keycodes_1
+        self.smartchord_keycodes_2 = smartchord_keycodes_2
+        self.smartchord_keycodes_3 = smartchord_keycodes_3
+        self.smartchord_keycodes_4 = smartchord_keycodes_4
+        self.scales_modes_keycodes = scales_modes_keycodes
         self.smartchord_octave_1 = smartchord_octave_1
         self.smartchord_key = smartchord_key
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
+        
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -186,35 +182,16 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # QTreeView for displaying categories and keycodes
-        self.tree_view = QTreeView(self)
-        self.tree_model = QStandardItemModel(self.tree_view)
+        # Create a horizontal layout for the Smart Chord dropdowns
+        self.smartchord_dropdown_layout = QHBoxLayout()
+        self.add_header_dropdown("3 Note Chords", self.smartchord_keycodes_1, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("4 Note Chords", self.smartchord_keycodes_2, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("5 Note Chords", self.smartchord_keycodes_3, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("Advanced Chords", self.smartchord_keycodes_4, self.smartchord_dropdown_layout)
+        self.add_header_dropdown("Scales/Modes", self.scales_modes_keycodes, self.smartchord_dropdown_layout)
+        self.main_layout.addLayout(self.smartchord_dropdown_layout)
 
-        # Set up the model with a root item
-        root_item = QStandardItem("Smart Chords and Scales")
-        self.tree_model.setHorizontalHeaderLabels(["Category/Keycode"])
-        self.tree_model.appendRow(root_item)
-
-        # Populate the tree model with categories and keycodes
-        for category, keycodes in self.smartchord_keycodes.items():
-            category_item = QStandardItem(category)
-            root_item.appendRow(category_item)
-
-            for keycode in keycodes:
-                keycode_item = QStandardItem(Keycode.label(keycode.qmk_id))
-                keycode_item.setData(keycode.qmk_id)
-                category_item.appendRow(keycode_item)
-
-        # Assign the model to the tree view
-        self.tree_view.setModel(self.tree_model)
-
-        # Connect the selection change signal to handle keycode selection
-        self.tree_view.selectionModel().selectionChanged.connect(self.on_tree_item_selected)
-
-        # Add the QTreeView to the layout
-        self.main_layout.addWidget(self.tree_view)
-
-        # Add small header dropdowns for octave, key, and inversion
+        # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
@@ -230,16 +207,53 @@ class SmartChordTab(QScrollArea):
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
+        
 
-    def on_tree_item_selected(self, selected, deselected):
-        """Handle selection change in the QTreeView."""
-        selected_indexes = selected.indexes()
-        if selected_indexes:
-            selected_item = selected_indexes[0]
-            selected_keycode = selected_item.data()
-            if selected_keycode:
-                self.keycode_changed.emit(selected_keycode)
 
+    def add_header_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
+        #vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+        
+    def reset_dropdown(self, dropdown, header_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
+        
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
         # Create a vertical layout to hold header and dropdown
@@ -260,6 +274,7 @@ class SmartChordTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
         vbox.addWidget(dropdown)
 
@@ -293,6 +308,11 @@ class SmartChordTab(QScrollArea):
                     col = 0
                     row += 1
 
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
     def relabel_buttons(self):
         # Handle relabeling only for buttons
         for i in range(self.button_layout.count()):
@@ -305,7 +325,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
-
 
 from PyQt5.QtWidgets import (
     QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QAction
