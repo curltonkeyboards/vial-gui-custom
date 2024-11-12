@@ -200,7 +200,6 @@ class SmartChordTab(QScrollArea):
         scales_submenu = QMenu("Scales/Modes", self)
         self.menu.addAction(chords_action)
         self.populate_submenu(scales_submenu, "Scales/Modes", self.scales_modes_keycodes)
-        scales_action.setMenu(scales_submenu)
 
         # Create submenus for chords and scales/modes
         chords_submenu = QMenu("Chords", self)
