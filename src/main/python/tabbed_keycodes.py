@@ -173,7 +173,6 @@ class SmartChordTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
         
-
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -184,7 +183,7 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create a horizontal layout for the Smart Chord dropdowns
+        # Create a tree widget for the Smart Chord dropdowns
         self.smartchord_selector = QTreeWidget()
         self.smartchord_selector.setHeaderLabel("Smartchord Selector")
 
@@ -195,8 +194,9 @@ class SmartChordTab(QScrollArea):
         self.add_tree_dropdown("Advanced Chords", self.smartchord_keycodes_4)
         self.add_tree_dropdown("Scales/Modes", self.scales_modes_keycodes)
 
-        # Add the tree widget to the layout
-        self.layout.addWidget(self.smartchord_selector)
+        # Add the tree widget to the main layout
+        self.main_layout.addWidget(self.smartchord_selector)
+
 
         # Create a horizontal layout for the Octave, Key, and Program Change dropdowns
         self.additional_dropdown_layout = QHBoxLayout()
