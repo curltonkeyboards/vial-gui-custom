@@ -187,7 +187,7 @@ class SmartChordTab(QScrollArea):
         # Create a button to trigger the menu
         self.category_button = QPushButton("SmartChord Selector", self)
         self.category_button.setFixedHeight(40)  # Set the button height
-        self.category_button.clicked.connect(self.show_menu)
+        self.category_button.clicked.connect(self.show_menu_at_mouse_position)
 
         # Add button to the layout
         self.main_layout.addWidget(self.category_button)
@@ -295,6 +295,12 @@ class SmartChordTab(QScrollArea):
         selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
+            
+    def show_menu_at_mouse_position(self):
+        # Get the global position of the mouse cursor
+        cursor_position = QCursor.pos()
+        # Show the menu at the cursor position
+        self.menu.exec_(cursor_position)
 
     def relabel_buttons(self):
         """Relabel buttons based on keycodes."""
