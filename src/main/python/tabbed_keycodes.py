@@ -226,44 +226,29 @@ class SmartChordTab(QScrollArea):
                 widget.deleteLater()
 
         if index == 1:  # "Chords" category selected
-            self.add_sub_option_dropdown("3 Note Chords", self.smartchord_keycodes_1)
-            self.add_sub_option_dropdown("4 Note Chords", self.smartchord_keycodes_2)
-            self.add_sub_option_dropdown("5 Note Chords", self.smartchord_keycodes_3)
-            self.add_sub_option_dropdown("Advanced Chords", self.smartchord_keycodes_4)
+            self.add_sub_option_menu("3 Note Chords", self.smartchord_keycodes_1)
+            self.add_sub_option_menu("4 Note Chords", self.smartchord_keycodes_2)
+            self.add_sub_option_menu("5 Note Chords", self.smartchord_keycodes_3)
+            self.add_sub_option_menu("Advanced Chords", self.smartchord_keycodes_4)
         elif index == 2:  # "Scales/Modes" category selected
-            self.add_sub_option_dropdown("Scales/Modes", self.scales_modes_keycodes)
+            self.add_sub_option_menu("Scales/Modes", self.scales_modes_keycodes)
 
-    def add_sub_option_dropdown(self, header_text, keycodes):
-        """Add a dropdown for sub-options under the selected category."""
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
+    def add_sub_option_menu(self, header_text, keycodes):
+        """Add a menu for sub-options under the selected category."""
+        menu = QMenu(header_text, self)
 
-        # Add a placeholder item as the first item
-        dropdown.addItem(header_text)  # Placeholder item
-
-        # Add the keycodes as options
+        # Add the keycodes as actions
         for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            action = menu.addAction(Keycode.label(keycode.qmk_id))
+            action.triggered.connect(lambda checked, k=keycode.qmk_id: self.on_selection_change(k))
 
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
+        # Display the menu at the mouse position when the category is hovered
+        self.category_dropdown.setPopupVisible(True)
+        self.category_dropdown.setMenu(menu)
 
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        self.sub_option_layout.addWidget(dropdown)
-
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
-        dropdown.setCurrentIndex(0)
+    def on_selection_change(self, selected_qmk_id):
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -285,7 +270,6 @@ class SmartChordTab(QScrollArea):
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
         vbox.addWidget(dropdown)
 
@@ -319,11 +303,6 @@ class SmartChordTab(QScrollArea):
                     col = 0
                     row += 1
 
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
     def relabel_buttons(self):
         # Handle relabeling only for buttons
         for i in range(self.button_layout.count()):
@@ -336,6 +315,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 
 from PyQt5.QtWidgets import (
