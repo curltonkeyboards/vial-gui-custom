@@ -158,6 +158,8 @@ class CenteredComboBox(QComboBox):
 from PyQt5.QtWidgets import QTabWidget, QWidget, QVBoxLayout
 
 class SmartChordTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+    
     def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes):
         super().__init__(parent)
         self.label = label
