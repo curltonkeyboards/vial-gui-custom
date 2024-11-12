@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QTreeWidget, QTreeWidgetItem
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
 from PyQt5.QtGui import QPalette, QPainter
 
 from constants import KEYCODE_BTN_RATIO
@@ -161,11 +161,13 @@ class SmartChordTab(QScrollArea):
     def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, inversiondropdown, inversion_keycodes):
         super().__init__(parent)
         self.label = label
-        self.smartchord_keycodes_1 = smartchord_keycodes_1
-        self.smartchord_keycodes_2 = smartchord_keycodes_2
-        self.smartchord_keycodes_3 = smartchord_keycodes_3
-        self.smartchord_keycodes_4 = smartchord_keycodes_4
-        self.scales_modes_keycodes = scales_modes_keycodes
+        self.smartchord_keycodes = {
+            "3 Note Chords": smartchord_keycodes_1,
+            "4 Note Chords": smartchord_keycodes_2,
+            "5 Note Chords": smartchord_keycodes_3,
+            "Advanced Chords": smartchord_keycodes_4,
+            "Scales/Modes": scales_modes_keycodes
+        }
         self.smartchord_octave_1 = smartchord_octave_1
         self.smartchord_key = smartchord_key
         self.inversion_keycodes = inversion_keycodes
@@ -181,31 +183,31 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create a main dropdown for the Smartchord Selector
-        self.smartchord_selector = QComboBox()
-        self.smartchord_selector.addItem("Smartchord Selector")
-        self.smartchord_selector.setFixedHeight(40)
+        # Create the main "Smartchord Selector" dropdown
+        self.main_dropdown = QComboBox()
+        self.main_dropdown.addItem("Smartchord Selector")  # Placeholder item
+        for key in self.smartchord_keycodes.keys():
+            self.main_dropdown.addItem(key)
+        self.main_dropdown.setFixedHeight(40)
+        self.main_dropdown.currentIndexChanged.connect(self.show_sub_dropdown)
 
-        # Create a tree structure to hold sub-dropdowns
-        self.smartchord_tree = QTreeWidget()
-        self.smartchord_tree.setHeaderHidden(True)
+        # Add the main dropdown to the layout
+        self.main_layout.addWidget(self.main_dropdown)
 
-        # Add tree structures for each group of chords/scales
-        self.add_tree_dropdown("3 Note Chords", self.smartchord_keycodes_1)
-        self.add_tree_dropdown("4 Note Chords", self.smartchord_keycodes_2)
-        self.add_tree_dropdown("5 Note Chords", self.smartchord_keycodes_3)
-        self.add_tree_dropdown("Advanced Chords", self.smartchord_keycodes_4)
-        self.add_tree_dropdown("Scales/Modes", self.scales_modes_keycodes)
-
-        # Add tree widget to a layout and hide it initially
-        self.smartchord_tree.hide()
-
-        # Add a signal to show/hide the tree when the dropdown changes
-        self.smartchord_selector.currentIndexChanged.connect(self.toggle_tree)
-
-        # Add the Smartchord Selector and tree widget to the main layout
-        self.main_layout.addWidget(self.smartchord_selector)
-        self.main_layout.addWidget(self.smartchord_tree)
+        # Create the sub-dropdowns but keep them hidden initially
+        self.sub_dropdowns = {}
+        for key, keycodes in self.smartchord_keycodes.items():
+            sub_dropdown = CenteredComboBox()
+            sub_dropdown.addItem(f"{key}")  # Placeholder item
+            for keycode in keycodes:
+                sub_dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+            sub_dropdown.model().item(0).setEnabled(False)
+            sub_dropdown.setFixedHeight(40)
+            sub_dropdown.hide()  # Hide initially
+            sub_dropdown.currentIndexChanged.connect(self.on_selection_change)
+            sub_dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(sub_dropdown, key))
+            self.sub_dropdowns[key] = sub_dropdown
+            self.main_layout.addWidget(sub_dropdown)
 
         # Create other dropdowns and layouts
         self.additional_dropdown_layout = QHBoxLayout()
@@ -224,21 +226,24 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_tree_dropdown(self, header_text, keycodes):
-        """Helper method to create a tree dropdown with sub-items."""
-        parent_item = QTreeWidgetItem([header_text])
-        for keycode in keycodes:
-            child_item = QTreeWidgetItem([Keycode.label(keycode.qmk_id)])
-            child_item.setData(0, Qt.UserRole, keycode.qmk_id)
-            parent_item.addChild(child_item)
-        self.smartchord_tree.addTopLevelItem(parent_item)
+    def show_sub_dropdown(self, index):
+        """Show the sub-dropdown corresponding to the selected item in the main dropdown."""
+        selected_text = self.main_dropdown.currentText()
+        for key, sub_dropdown in self.sub_dropdowns.items():
+            if key == selected_text:
+                sub_dropdown.show()
+            else:
+                sub_dropdown.hide()
 
-    def toggle_tree(self, index):
-        """Show or hide the tree widget based on the main dropdown selection."""
-        if index == 0:
-            self.smartchord_tree.hide()
-        else:
-            self.smartchord_tree.show()
+    def reset_dropdown(self, dropdown, header_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+        if selected_index > 0:
+            selected_value = dropdown.itemData(selected_index)
+            # Process the selected value if necessary here
+
+        dropdown.setCurrentIndex(0)
+
         
     def reset_dropdown(self, dropdown, header_text):
         """Reset the dropdown to show default text while storing the selected value."""
