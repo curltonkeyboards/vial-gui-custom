@@ -183,23 +183,20 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create the main "Smartchord Selector" dropdown
+        # Create the main dropdown for chord types and their keycodes in one
         self.main_dropdown = QComboBox()
-        self.main_dropdown.addItem("Select Chord Type")  # Placeholder item
-        for key in self.smartchord_keycodes.keys():
-            self.main_dropdown.addItem(key)
         self.main_dropdown.setFixedHeight(40)
-        self.main_dropdown.currentIndexChanged.connect(self.update_nested_dropdown)
+        self.main_dropdown.addItem("Select Chord Type")  # Placeholder item
 
-        # Add the main dropdown to the layout
+        # Populate the dropdown with chord types and nested keycodes
+        for category, keycodes in self.smartchord_keycodes.items():
+            self.main_dropdown.addItem(category)  # Add category as top-level item
+            for keycode in keycodes:
+                # Add nested keycodes under the category (indented for visual hierarchy)
+                self.main_dropdown.addItem(f"    {Keycode.label(keycode.qmk_id)}", keycode.qmk_id)
+
+        self.main_dropdown.currentIndexChanged.connect(self.on_selection_change)
         self.main_layout.addWidget(self.main_dropdown)
-
-        # Create a single nested dropdown for showing keycodes
-        self.nested_dropdown = QComboBox()
-        self.nested_dropdown.addItem("Select Chord")  # Placeholder item
-        self.nested_dropdown.setFixedHeight(40)
-        self.nested_dropdown.currentIndexChanged.connect(self.on_selection_change)
-        self.main_layout.addWidget(self.nested_dropdown)
 
         # Create other dropdowns and layouts
         self.additional_dropdown_layout = QHBoxLayout()
@@ -218,20 +215,9 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def update_nested_dropdown(self, index):
-        """Update the nested dropdown with the selected chord type."""
-        selected_text = self.main_dropdown.currentText()
-        self.nested_dropdown.clear()  # Clear previous items
-        self.nested_dropdown.addItem("Select Chord")  # Add default placeholder item
-
-        # Only update if a valid chord type is selected
-        if selected_text in self.smartchord_keycodes:
-            for keycode in self.smartchord_keycodes[selected_text]:
-                self.nested_dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
     def on_selection_change(self, index):
-        """Handle selection change in the nested dropdown."""
-        selected_qmk_id = self.nested_dropdown.itemData(index)
+        """Handle selection change in the main dropdown."""
+        selected_qmk_id = self.main_dropdown.itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
