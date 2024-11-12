@@ -219,15 +219,19 @@ class SmartChordTab(QScrollArea):
         # Create the parent item
         parent_item = QTreeWidgetItem([header])
 
-        # Add child items
-        for item_text in items:
+        # Add child items, converting non-string objects to strings
+        for item in items:
+            if not isinstance(item, str):
+                item_text = str(item.label) if hasattr(item, 'label') else str(item)
+            else:
+                item_text = item
+    
             child_item = QTreeWidgetItem([item_text])
             parent_item.addChild(child_item)
 
         # Add the parent item to the tree
         self.smartchord_selector.addTopLevelItem(parent_item)
         
-
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
