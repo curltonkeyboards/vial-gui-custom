@@ -155,9 +155,8 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QTreeView, QStandardItemModel, QStandardItem, QVBoxLayout, QWidget, QScrollArea, QComboBox, QHBoxLayout
-from PyQt5.QtCore import Qt
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QTreeView, QStandardItemModel, QStandardItem, QVBoxLayout, QHBoxLayout, QWidget
+from PyQt5.QtCore import Qt, QItemSelectionModel
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -187,65 +186,125 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create a QVBoxLayout for combining dropdowns and tree view
-        layout = QVBoxLayout()
+        # QTreeView for displaying categories and keycodes
+        self.tree_view = QTreeView(self)
+        self.tree_model = QStandardItemModel(self.tree_view)
 
-        # Add header dropdowns
-        self.dropdown_layout = QHBoxLayout()
-        for category in self.smartchord_keycodes:
-            dropdown = QComboBox()
-            dropdown.addItem(f"Select {category}")
-            dropdown.addItems([f"{keycode}" for keycode in self.smartchord_keycodes[category]])  # Adding keycodes as items
-            dropdown.currentIndexChanged.connect(self.on_dropdown_change)
-            self.dropdown_layout.addWidget(dropdown)
+        # Set up the model with a root item
+        root_item = QStandardItem("Smart Chords and Scales")
+        self.tree_model.setHorizontalHeaderLabels(["Category/Keycode"])
+        self.tree_model.appendRow(root_item)
 
-        layout.addLayout(self.dropdown_layout)
+        # Populate the tree model with categories and keycodes
+        for category, keycodes in self.smartchord_keycodes.items():
+            category_item = QStandardItem(category)
+            root_item.appendRow(category_item)
 
-        # Set up the QTreeView for displaying keycodes in a nested format
-        self.tree_view = QTreeView(self.scroll_content)
-        self.tree_view.setUniformRowHeights(True)
-        self.tree_view.setHeaderHidden(True)  # Hide the header of the tree
-        self.tree_model = QStandardItemModel()
+            for keycode in keycodes:
+                keycode_item = QStandardItem(Keycode.label(keycode.qmk_id))
+                keycode_item.setData(keycode.qmk_id)
+                category_item.appendRow(keycode_item)
+
+        # Assign the model to the tree view
         self.tree_view.setModel(self.tree_model)
 
-        # Add tree view to layout
-        layout.addWidget(self.tree_view)
+        # Connect the selection change signal to handle keycode selection
+        self.tree_view.selectionModel().selectionChanged.connect(self.on_tree_item_selected)
 
-        # Add the layout to the scrollable content
-        self.main_layout.addLayout(layout)
+        # Add the QTreeView to the layout
+        self.main_layout.addWidget(self.tree_view)
 
-        # Add spacer to push everything to the top
+        # Add small header dropdowns for octave, key, and inversion
+        self.additional_dropdown_layout = QHBoxLayout()
+        self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
+        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
+        self.add_smallheader_dropdown("Chord Inversion/Position", self.inversion_dropdown, self.additional_dropdown_layout)
+        self.main_layout.addLayout(self.additional_dropdown_layout)
+
+        # Layout for inversion buttons
+        self.button_layout = QGridLayout()
+        self.main_layout.addLayout(self.button_layout)
+
+        # Populate the inversion buttons
+        self.recreate_buttons()
+
+        # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def on_dropdown_change(self, index):
-        """Handle the dropdown change to display corresponding keycodes in the tree."""
-        # Clear the previous tree items
-        self.tree_model.clear()
+    def on_tree_item_selected(self, selected, deselected):
+        """Handle selection change in the QTreeView."""
+        selected_indexes = selected.indexes()
+        if selected_indexes:
+            selected_item = selected_indexes[0]
+            selected_keycode = selected_item.data()
+            if selected_keycode:
+                self.keycode_changed.emit(selected_keycode)
 
-        # Find which dropdown was triggered and get the corresponding category
-        sender = self.sender()
-        category = sender.currentText()
+    def add_smallheader_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
 
-        # Find the keycodes for the selected category
-        if category in self.smartchord_keycodes:
-            keycodes = self.smartchord_keycodes[category]
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
 
-            # Create the root item for the selected category
-            root_item = QStandardItem(category)  # Category as the root item
-            self.tree_model.appendRow(root_item)
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
 
-            # Add keycodes as children of the category
-            for keycode in keycodes:
-                keycode_item = QStandardItem(str(keycode))  # Keycode as the child item
-                root_item.appendRow(keycode_item)
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
-            # Expand the root item to show the keycodes
-            self.tree_view.expandAll()
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear previous widgets
+        for i in reversed(range(self.button_layout.count())):
+            widget = self.button_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Populate inversion buttons
+        row = 0
+        col = 0
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode  # Make sure keycode attribute is set
+
+                # Add button to the grid layout
+                self.button_layout.addWidget(btn, row, col)
+
+                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
+                col += 1
+                if col >= 15:  # Adjust the number of columns as needed
+                    col = 0
+                    row += 1
+
+    def relabel_buttons(self):
+        # Handle relabeling only for buttons
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
 
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
-        return False  # We are now using a tree view instead of buttons
-
+        return (self.button_layout.count() > 0)
 
 
 from PyQt5.QtWidgets import (
