@@ -431,7 +431,7 @@ class midiadvancedTab(QScrollArea):
         button = QPushButton("CC Value")
         button.setFixedHeight(40)
         button.clicked.connect(self.open_cc_xy_dialog)
-        layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
+        layout.addWidget(button)
 
     def open_cc_xy_dialog(self):
         """Open a dialog to input CC values."""
