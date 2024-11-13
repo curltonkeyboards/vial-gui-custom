@@ -134,8 +134,8 @@ class Tab(QScrollArea):
 
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
-        self.select_alternative()  
-
+        self.select_alternative()        
+        
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
 from PyQt5.QtCore import pyqtSignal
 
@@ -153,12 +153,9 @@ class CenteredComboBox(QComboBox):
         
     def wheelEvent(self, event):
         # Ignore the wheel event to prevent changing selection
-        event.ignore()        
-        
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QLabel
-)
+        event.ignore()
+
+from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QGridLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea
 from PyQt5.QtCore import Qt, pyqtSignal
 
 class SmartChordTab(QScrollArea):
@@ -176,7 +173,7 @@ class SmartChordTab(QScrollArea):
         self.smartchord_key = smartchord_key
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
-
+        
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -187,12 +184,41 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Add the main container layout for columns
-        self.columns_layout = QHBoxLayout()
-        self.main_layout.addLayout(self.columns_layout)
+        # Create a button to trigger the menu
+        self.category_button = QPushButton("SmartChord Selector", self)
+        self.category_button.setFixedHeight(40)  # Set the button height
+        self.category_button.clicked.connect(self.show_menu_at_mouse_position)
 
-        # Populate the QTreeWidget with categories in columns
-        self.populate_columns()
+        # Add button to the layout
+        self.main_layout.addWidget(self.category_button)
+
+        # Create a main menu for categories
+        self.menu = QMenu(self)
+
+        # Add main category actions
+        chords_action = QAction("Chords", self)
+        scales_action = QMenu("Scales/Modes", self)  # Make scales_action a menu directly
+        self.menu.addAction(chords_action)
+        self.menu.addMenu(scales_action)  # Add the scales submenu directly to the main menu
+
+        # Create a submenu for chords
+        chords_submenu = QMenu("Chords", self)
+
+        # Populate the chords submenu with smartchord keycodes
+        self.populate_submenu(chords_submenu, "3 Note Chords", self.smartchord_keycodes_1)
+        self.populate_submenu(chords_submenu, "4 Note Chords", self.smartchord_keycodes_2)
+        self.populate_submenu(chords_submenu, "5 Note Chords", self.smartchord_keycodes_3)
+        self.populate_submenu(chords_submenu, "Advanced Chords", self.smartchord_keycodes_4)
+
+        #Attach the submenu to the chords action
+        chords_action.setMenu(chords_submenu)
+
+        # Populate the scales/modes menu directly
+        self.populate_submenu(scales_action, "Scales/Modes", self.scales_modes_keycodes)
+
+        # Connect the button to show the main menu
+        self.category_button.setMenu(self.menu)
+
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
@@ -202,7 +228,7 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # Layout for inversion buttons
-        self.button_layout = QVBoxLayout()
+        self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
@@ -211,29 +237,18 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def populate_columns(self):
-        """Populate the layout with 5 columns, each containing keycode groups."""
-        column_1_layout = QVBoxLayout()
-        self.add_keycode_group(column_1_layout, "3 Note Chords", self.smartchord_keycodes_1)
+    def show_menu(self):
+        """Show the menu when the button is clicked."""
+        self.menu.exec_(self.category_button.mapToGlobal(self.category_button.pos()))
 
-        column_2_layout = QVBoxLayout()
-        self.add_keycode_group(column_2_layout, "4 Note Chords", self.smartchord_keycodes_2)
-
-        column_3_layout = QVBoxLayout()
-        self.add_keycode_group(column_3_layout, "5 Note Chords", self.smartchord_keycodes_3)
-
-        column_4_layout = QVBoxLayout()
-        self.add_keycode_group(column_4_layout, "Advanced Chords", self.smartchord_keycodes_4)
-
-        column_5_layout = QVBoxLayout()
-        self.add_keycode_group(column_5_layout, "Scales/Modes", self.scales_modes_keycodes)
-
-        # Add each column layout to the main columns layout
-        self.columns_layout.addLayout(column_1_layout)
-        self.columns_layout.addLayout(column_2_layout)
-        self.columns_layout.addLayout(column_3_layout)
-        self.columns_layout.addLayout(column_4_layout)
-        self.columns_layout.addLayout(column_5_layout)
+    def populate_submenu(self, submenu, title, keycodes):
+        """Populate a submenu with actions based on keycodes."""
+        sub_submenu = QMenu(title, self)
+        for keycode in keycodes:
+            action = QAction(Keycode.label(keycode.qmk_id), self)
+            action.triggered.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            sub_submenu.addAction(action)
+        submenu.addMenu(sub_submenu)
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -253,20 +268,6 @@ class SmartChordTab(QScrollArea):
         vbox.addWidget(dropdown)
         layout.addLayout(vbox)
 
-    def add_keycode_group(self, layout, title, keycodes):
-        """Helper function to add a group of keycodes to a layout."""
-        header = QWidget()
-        header_layout = QVBoxLayout()
-        header_label = QLabel(title)
-        header_layout.addWidget(header_label)
-        header.setLayout(header_layout)
-        layout.addWidget(header)
-
-        # Add keycodes as items
-        for keycode in keycodes:
-            keycode_item = QLabel(Keycode.label(keycode.qmk_id))  # Using QLabel for displaying the keycode labels
-            layout.addWidget(keycode_item)
-
     def recreate_buttons(self, keycode_filter=None):
         """Recreates the buttons for the inversion keycodes."""
         for i in reversed(range(self.button_layout.count())):
@@ -284,13 +285,22 @@ class SmartChordTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
-                self.button_layout.addWidget(btn)
-                row += 1
+                self.button_layout.addWidget(btn, row, col)
+                col += 1
+                if col >= 15:
+                    col = 0
+                    row += 1
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
+            
+    def show_menu_at_mouse_position(self):
+        # Get the position of the button in global coordinates
+        button_position = self.category_button.mapToGlobal(QPoint(0, self.category_button.height()))
+        # Show the menu at the button's position to align with the mouse click
+        self.menu.exec_(button_position)
 
     def relabel_buttons(self):
         """Relabel buttons based on keycodes."""
@@ -304,7 +314,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
 
 
 from PyQt5.QtWidgets import (
