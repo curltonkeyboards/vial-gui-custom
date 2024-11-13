@@ -157,7 +157,7 @@ class CenteredComboBox(QComboBox):
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QGridLayout, QAction
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -187,12 +187,16 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Add the QTreeWidget for category selection
-        self.category_tree = QTreeWidget()
-        self.category_tree.setHeaderLabel("SmartChord Selector")
-        self.populate_tree()
-        self.category_tree.itemClicked.connect(self.on_item_selected)
-        self.main_layout.addWidget(self.category_tree)
+        # Create the layout for holding the QTreeWidgets side by side
+        self.tree_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.tree_layout)
+
+        # Add the QTreeWidgets for each keycode group
+        self.create_qtree_for_keycodes("3 Note Chords", self.smartchord_keycodes_1)
+        self.create_qtree_for_keycodes("4 Note Chords", self.smartchord_keycodes_2)
+        self.create_qtree_for_keycodes("5 Note Chords", self.smartchord_keycodes_3)
+        self.create_qtree_for_keycodes("Advanced Chords", self.smartchord_keycodes_4)
+        self.create_qtree_for_keycodes("Scales/Modes", self.scales_modes_keycodes)
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
@@ -211,34 +215,19 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def populate_tree(self):
-        """Populate the QTreeWidget with categories and keycodes."""
-        # Create a QTreeWidgetItem for each category
-        chord_titles = ["3 Note Chords", "4 Note Chords", "5 Note Chords", "Advanced Chords"]
-        chord_keycodes = [self.smartchord_keycodes_1, self.smartchord_keycodes_2, self.smartchord_keycodes_3, self.smartchord_keycodes_4]
+    def create_qtree_for_keycodes(self, title, keycodes):
+        """Helper function to create a QTreeWidget for each keycode category."""
+        tree_widget = QTreeWidget()
+        tree_widget.setHeaderLabel(title)
 
-        # Create a header row for columns (5 columns)
-        for i in range(5):
-            self.category_tree.setColumnCount(i + 1)
-
-        # Add the keycode groups for each title in separate columns
-        for idx, title in enumerate(chord_titles):
-            self.add_keycode_group(title, chord_keycodes[idx], idx)
-
-        # Add "Scales/Modes" category to the last column
-        self.add_keycode_group("Scales/Modes", self.scales_modes_keycodes, 4)
-
-    def add_keycode_group(self, title, keycodes, column):
-        """Helper function to add a title and its keycodes to the correct column."""
-        # Add the title to the column
-        title_item = QTreeWidgetItem([title])
-        self.category_tree.addTopLevelItem(title_item)
-        # Add the keycodes under this title in the same column
+        # Add keycodes as items to the QTreeWidget
         for keycode in keycodes:
-            keycode_item = QTreeWidgetItem([Keycode.label(keycode.qmk_id)])
+            keycode_item = QTreeWidgetItem(tree_widget, [Keycode.label(keycode.qmk_id)])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
-            self.category_tree.addTopLevelItem(keycode_item)
 
+        # Add the created QTreeWidget to the layout
+        self.tree_layout.addWidget(tree_widget)
+        
     def on_item_selected(self, item):
         """Handle tree item selection to emit keycode_changed signal."""
         qmk_id = item.data(0, Qt.UserRole)
@@ -303,7 +292,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
 
 
 from PyQt5.QtWidgets import (
