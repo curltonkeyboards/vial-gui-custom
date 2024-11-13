@@ -134,7 +134,26 @@ class Tab(QScrollArea):
 
     def resizeEvent(self, evt):
         super().resizeEvent(evt)
-        self.select_alternative()        
+        self.select_alternative()  
+
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
+from PyQt5.QtCore import pyqtSignal
+
+class CenteredComboBox(QComboBox):
+    def paintEvent(self, event):
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+
+        painter = QPainter(self)
+        self.style().drawComplexControl(self.style().CC_ComboBox, opt, painter, self)
+
+        # Center the text horizontally
+        text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
+        painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
+        
+    def wheelEvent(self, event):
+        # Ignore the wheel event to prevent changing selection
+        event.ignore()        
         
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
