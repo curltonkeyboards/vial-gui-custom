@@ -155,8 +155,8 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QGridLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QScrollArea, QVBoxLayout, QPushButton, QMenu, QAction, QComboBox, QHBoxLayout, QGridLayout, QTreeView, QStandardItemModel, QStandardItem, QWidget
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -210,7 +210,7 @@ class SmartChordTab(QScrollArea):
         self.populate_submenu(chords_submenu, "5 Note Chords", self.smartchord_keycodes_3)
         self.populate_submenu(chords_submenu, "Advanced Chords", self.smartchord_keycodes_4)
 
-        #Attach the submenu to the chords action
+        # Attach the submenu to the chords action
         chords_action.setMenu(chords_submenu)
 
         # Populate the scales/modes menu directly
@@ -219,27 +219,31 @@ class SmartChordTab(QScrollArea):
         # Connect the button to show the main menu
         self.category_button.setMenu(self.menu)
 
+        # Add a QTreeView to the layout
+        self.tree_view = QTreeView(self)
+        self.tree_model = QStandardItemModel()
+        self.tree_view.setModel(self.tree_model)
+        self.tree_view.setHeaderHidden(True)  # Hide header for cleaner view
 
-        # Add dropdowns and inversion buttons layout
+        self.main_layout.addWidget(self.tree_view)
+
+        # Create the root items for the tree
+        self.create_tree_items()
+
+        # Add dropdowns layout
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Chord Inversion/Position", self.inversion_dropdown, self.additional_dropdown_layout)
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
-        # Layout for inversion buttons
-        self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
-
-        # Populate the inversion buttons
-        self.recreate_buttons()
-
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def show_menu(self):
-        """Show the menu when the button is clicked."""
-        self.menu.exec_(self.category_button.mapToGlobal(self.category_button.pos()))
+    def show_menu_at_mouse_position(self):
+        """Show the menu at the mouse position."""
+        button_position = self.category_button.mapToGlobal(QPoint(0, self.category_button.height()))
+        self.menu.exec_(button_position)
 
     def populate_submenu(self, submenu, title, keycodes):
         """Populate a submenu with actions based on keycodes."""
@@ -263,57 +267,42 @@ class SmartChordTab(QScrollArea):
 
         dropdown.model().item(0).setEnabled(False)
         dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
 
         vbox.addWidget(dropdown)
         layout.addLayout(vbox)
 
-    def recreate_buttons(self, keycode_filter=None):
-        """Recreates the buttons for the inversion keycodes."""
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
+    def create_tree_items(self):
+        """Populate the QTreeView with items."""
+        root_item = self.tree_model.invisibleRootItem()
 
-        row = 0
-        col = 0
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
+        # Create the main categories as root items
+        chords_item = QStandardItem("Chords")
+        scales_modes_item = QStandardItem("Scales/Modes")
 
-                self.button_layout.addWidget(btn, row, col)
-                col += 1
-                if col >= 15:
-                    col = 0
-                    row += 1
+        root_item.appendRow(chords_item)
+        root_item.appendRow(scales_modes_item)
+
+        # Add subitems for chords and scales/modes
+        self.add_tree_subitems(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
+        self.add_tree_subitems(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
+        self.add_tree_subitems(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
+        self.add_tree_subitems(chords_item, "Advanced Chords", self.smartchord_keycodes_4)
+        self.add_tree_subitems(scales_modes_item, "Scales/Modes", self.scales_modes_keycodes)
+
+    def add_tree_subitems(self, parent_item, title, keycodes):
+        """Add subitems to a given tree item."""
+        for keycode in keycodes:
+            item = QStandardItem(Keycode.label(keycode.qmk_id))
+            item.setData(keycode.qmk_id)
+            parent_item.appendRow(item)
 
     def on_selection_change(self, index):
+        """Handle dropdown selection change."""
         selected_qmk_id = self.sender().itemData(index)
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
-            
-    def show_menu_at_mouse_position(self):
-        # Get the position of the button in global coordinates
-        button_position = self.category_button.mapToGlobal(QPoint(0, self.category_button.height()))
-        # Show the menu at the button's position to align with the mouse click
-        self.menu.exec_(button_position)
 
-    def relabel_buttons(self):
-        """Relabel buttons based on keycodes."""
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
 
-    def has_buttons(self):
-        """Check if buttons exist in the layout."""
-        return self.button_layout.count() > 0
 
 
 from PyQt5.QtWidgets import (
