@@ -157,7 +157,7 @@ class CenteredComboBox(QComboBox):
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QGridLayout, QAction
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -187,16 +187,12 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create the layout for holding the QTreeWidgets side by side
-        self.tree_layout = QHBoxLayout()
-        self.main_layout.addLayout(self.tree_layout)
-
-        # Add the QTreeWidgets for each keycode group
-        self.create_qtree_for_keycodes("3 Note Chords", self.smartchord_keycodes_1)
-        self.create_qtree_for_keycodes("4 Note Chords", self.smartchord_keycodes_2)
-        self.create_qtree_for_keycodes("5 Note Chords", self.smartchord_keycodes_3)
-        self.create_qtree_for_keycodes("Advanced Chords", self.smartchord_keycodes_4)
-        self.create_qtree_for_keycodes("Scales/Modes", self.scales_modes_keycodes)
+        # Add the QTreeWidget for category selection
+        self.category_tree = QTreeWidget()
+        self.category_tree.setHeaderLabel("SmartChord Selector")
+        self.populate_tree()
+        self.category_tree.itemClicked.connect(self.on_item_selected)
+        self.main_layout.addWidget(self.category_tree)
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
@@ -215,22 +211,33 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def create_qtree_for_keycodes(self, title, keycodes):
-        """Helper function to create a QTreeWidget for each keycode category."""
-        tree_widget = QTreeWidget()
-        tree_widget.setHeaderLabel(title)
+    def populate_tree(self):
+        """Populate the QTreeWidget with categories and keycodes."""
+        # Create the QTreeWidgetItems for each category
+        self.create_keycode_tree(self.smartchord_keycodes_1, "3 Note Chords")
+        self.create_keycode_tree(self.smartchord_keycodes_2, "4 Note Chords")
+        self.create_keycode_tree(self.smartchord_keycodes_3, "5 Note Chords")
+        self.create_keycode_tree(self.smartchord_keycodes_4, "Advanced Chords")
+        self.create_keycode_tree(self.scales_modes_keycodes, "Scales/Modes")
 
-        # Add keycodes as items to the QTreeWidget
+    def create_keycode_tree(self, keycodes, title):
+        """Create a QTreeWidgetItem and add keycodes under it."""
+        tree = QTreeWidget()
+        tree.setHeaderLabel(title)
+        self.add_keycode_group(tree, title, keycodes)
+        self.main_layout.addWidget(tree)
+
+    def add_keycode_group(self, tree, title, keycodes):
+        """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id).replace("\n", " ") 
-            keycode_item = QTreeWidgetItem(tree_widget, [Keycode.label(keycode.qmk_id)])
+            label = Keycode.label(keycode.qmk_id).replace("\n", " ")  # Replace \n with space
+            keycode_item = QTreeWidgetItem(tree, [label])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
-        # Connect itemClicked to the on_item_selected method to handle selection
-        tree_widget.itemClicked.connect(self.on_item_selected)
-
-        # Add the created QTreeWidget to the layout
-        self.tree_layout.addWidget(tree_widget)
+            # Force text to be on one line and left-aligned
+            keycode_item.setTextAlignment(0, Qt.AlignLeft)
+            keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
+            keycode_item.setTextElideMode(Qt.ElideRight)  # Elide text if too long
 
     def on_item_selected(self, item):
         """Handle tree item selection to emit keycode_changed signal."""
