@@ -157,7 +157,7 @@ class CenteredComboBox(QComboBox):
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction, QLabel
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction, QLabel, QGridLayout
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -187,10 +187,9 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Add the QTreeWidget for category selection
+        # Add the QTreeWidget for category selection (if needed)
         self.category_tree = QTreeWidget()
-        self.category_tree.setHeaderLabels(["3 Note Chords", "4 Note Chords", "5 Note Chords", "Advanced Chords", "Scales/Modes"])
-        self.category_tree.setColumnCount(5)  # One column for each category
+        self.category_tree.setHeaderLabel("SmartChord Selector")
         self.populate_tree()
         self.category_tree.itemClicked.connect(self.on_item_selected)
         self.main_layout.addWidget(self.category_tree)
@@ -202,39 +201,41 @@ class SmartChordTab(QScrollArea):
         self.add_smallheader_dropdown("Chord Inversion/Position", self.inversion_dropdown, self.additional_dropdown_layout)
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
-        # Layout for inversion buttons
-        self.button_layout = QHBoxLayout()  # Change to horizontal layout for buttons
-        self.main_layout.addLayout(self.button_layout)
+        # Create a grid layout for the columns
+        self.grid_layout = QGridLayout()
+        self.main_layout.addLayout(self.grid_layout)
 
-        # Populate the inversion buttons
-        self.recreate_buttons()
+        # Populate the columns with keycodes
+        self.populate_columns()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
     def populate_tree(self):
         """Populate the QTreeWidget with categories and keycodes."""
-        # Create root items for each category and populate them in different columns
-        self.add_keycode_group("3 Note Chords", 0, self.smartchord_keycodes_1)
-        self.add_keycode_group("4 Note Chords", 1, self.smartchord_keycodes_2)
-        self.add_keycode_group("5 Note Chords", 2, self.smartchord_keycodes_3)
-        self.add_keycode_group("Advanced Chords", 3, self.smartchord_keycodes_4)
-        self.add_keycode_group("Scales/Modes", 4, self.scales_modes_keycodes)
-
-    def add_keycode_group(self, title, column_index, keycodes):
-        """Helper function to add a subgroup and its keycodes to a specific column."""
-        parent_item = QTreeWidgetItem(self.category_tree)
-        parent_item.setText(column_index, title)
-        parent_item.setExpanded(True)  # Ensure the item starts expanded
+        # Add "Chords" category with subcategories
+        chords_item = QTreeWidgetItem(self.category_tree, ["Chords"])
+        chords_item.setExpanded(True)  # Ensure the item starts expanded
+        self.add_keycode_group(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
+        self.add_keycode_group(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
+        self.add_keycode_group(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
+        self.add_keycode_group(chords_item, "Advanced Chords", self.smartchord_keycodes_4)
         
-        # Add keycodes under the parent item in the specific column
-        for keycode in keycodes:
-            keycode_item = QTreeWidgetItem(parent_item)
-            keycode_item.setText(column_index, Keycode.label(keycode.qmk_id))
-            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
+        # Add "Scales/Modes" category
+        scales_item = QTreeWidgetItem(self.category_tree, ["Scales/Modes"])
+        scales_item.setExpanded(True)  # Ensure the item starts expanded
+        self.add_keycode_group(scales_item, "Scales/Modes", self.scales_modes_keycodes)
 
-        # Add the parent item to the tree
-        self.category_tree.addTopLevelItem(parent_item)
+        # Set column count to ensure proper display
+        self.category_tree.setColumnCount(1)
+
+    def add_keycode_group(self, parent_item, title, keycodes):
+        """Helper function to add a subgroup and its keycodes to a parent item."""
+        group_item = QTreeWidgetItem(parent_item, [title])
+        group_item.setExpanded(False)  # Initially collapsed; change to True to show by default
+        for keycode in keycodes:
+            keycode_item = QTreeWidgetItem(group_item, [Keycode.label(keycode.qmk_id)])
+            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
     def on_item_selected(self, item):
         """Handle tree item selection to emit keycode_changed signal."""
@@ -242,60 +243,61 @@ class SmartChordTab(QScrollArea):
         if qmk_id:
             self.keycode_changed.emit(qmk_id)
 
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        vbox = QVBoxLayout()
-        dropdown = QComboBox()
-        dropdown.setFixedHeight(40)
-        dropdown.addItem(f"{header_text}")
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        dropdown.model().item(0).setEnabled(False)
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        vbox.addWidget(dropdown)
-        layout.addLayout(vbox)
-
-    def recreate_buttons(self, keycode_filter=None):
-        """Recreates the buttons for the inversion keycodes."""
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
+    def populate_columns(self):
+        """Populate columns with keycodes."""
+        # Column 1 - 3 Note Chords
         col = 0
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
+        for keycode in self.smartchord_keycodes_1:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.grid_layout.addWidget(btn, self.grid_layout.rowCount(), col)
 
-                self.button_layout.addWidget(btn)
-                col += 1
+        # Column 2 - 4 Note Chords
+        col = 1
+        for keycode in self.smartchord_keycodes_2:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.grid_layout.addWidget(btn, self.grid_layout.rowCount(), col)
 
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
+        # Column 3 - 5 Note Chords
+        col = 2
+        for keycode in self.smartchord_keycodes_3:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.grid_layout.addWidget(btn, self.grid_layout.rowCount(), col)
 
-    def relabel_buttons(self):
-        """Relabel buttons based on keycodes."""
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+        # Column 4 - Advanced Chords
+        col = 3
+        for keycode in self.smartchord_keycodes_4:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.grid_layout.addWidget(btn, self.grid_layout.rowCount(), col)
+
+        # Column 5 - Scales/Modes
+        col = 4
+        for keycode in self.scales_modes_keycodes:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.grid_layout.addWidget(btn, self.grid_layout.rowCount(), col)
 
     def has_buttons(self):
         """Check if buttons exist in the layout."""
-        return self.button_layout.count() > 0
+        return self.grid_layout.count() > 0
 
 
 from PyQt5.QtWidgets import (
