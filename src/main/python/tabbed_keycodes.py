@@ -136,28 +136,9 @@ class Tab(QScrollArea):
         super().resizeEvent(evt)
         self.select_alternative()        
         
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QGridLayout, QSpacerItem, QSizePolicy, QPushButton
-from PyQt5.QtCore import pyqtSignal
-
-class CenteredComboBox(QComboBox):
-    def paintEvent(self, event):
-        opt = QStyleOptionComboBox()
-        self.initStyleOption(opt)
-
-        painter = QPainter(self)
-        self.style().drawComplexControl(self.style().CC_ComboBox, opt, painter, self)
-
-        # Center the text horizontally
-        text_rect = self.style().subControlRect(self.style().CC_ComboBox, opt, self.style().SC_ComboBoxEditField, self)
-        painter.drawText(text_rect, Qt.AlignCenter, self.currentText())
-        
-    def wheelEvent(self, event):
-        # Ignore the wheel event to prevent changing selection
-        event.ignore()
-
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QGridLayout, QAction
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -187,12 +168,12 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Add the QTreeWidget for category selection
-        self.category_tree = QTreeWidget()
-        self.category_tree.setHeaderLabel("SmartChord Selector")
-        self.populate_tree()
-        self.category_tree.itemClicked.connect(self.on_item_selected)
-        self.main_layout.addWidget(self.category_tree)
+        # Add the main container layout for columns
+        self.columns_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.columns_layout)
+
+        # Populate the QTreeWidget with categories in columns
+        self.populate_columns()
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
@@ -211,49 +192,45 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def populate_tree(self):
-        """Populate the QTreeWidget with categories and keycodes."""
-        # Add "Chords" category with subcategories
-        chords_item = QTreeWidgetItem(self.category_tree, ["Chords"])
-        self.add_keycode_group(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
-        self.add_keycode_group(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
-        self.add_keycode_group(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
-        self.add_keycode_group(chords_item, "Advanced Chords", self.smartchord_keycodes_4)
-        
-        # Add "Scales/Modes" category
-        scales_item = QTreeWidgetItem(self.category_tree, ["Scales/Modes"])
-        self.add_keycode_group(scales_item, "Scales/Modes", self.scales_modes_keycodes)
+    def populate_columns(self):
+        """Populate the layout with 5 columns, each containing keycode groups."""
+        # Create individual column layouts for the 5 groups
+        column_1_layout = QVBoxLayout()
+        self.add_keycode_group(column_1_layout, "3 Note Chords", self.smartchord_keycodes_1)
 
-    def add_keycode_group(self, parent_item, title, keycodes):
-        """Helper function to add a subgroup and its keycodes to a parent item."""
-        group_item = QTreeWidgetItem(parent_item, [title])
+        column_2_layout = QVBoxLayout()
+        self.add_keycode_group(column_2_layout, "4 Note Chords", self.smartchord_keycodes_2)
+
+        column_3_layout = QVBoxLayout()
+        self.add_keycode_group(column_3_layout, "5 Note Chords", self.smartchord_keycodes_3)
+
+        column_4_layout = QVBoxLayout()
+        self.add_keycode_group(column_4_layout, "Advanced Chords", self.smartchord_keycodes_4)
+
+        column_5_layout = QVBoxLayout()
+        self.add_keycode_group(column_5_layout, "Scales/Modes", self.scales_modes_keycodes)
+
+        # Add each column layout to the main columns layout
+        self.columns_layout.addLayout(column_1_layout)
+        self.columns_layout.addLayout(column_2_layout)
+        self.columns_layout.addLayout(column_3_layout)
+        self.columns_layout.addLayout(column_4_layout)
+        self.columns_layout.addLayout(column_5_layout)
+
+    def add_keycode_group(self, layout, title, keycodes):
+        """Helper function to add a group of keycodes to a layout."""
+        # Add a header (title)
+        header = QWidget()
+        header_layout = QVBoxLayout()
+        header_label = QLabel(title)
+        header_layout.addWidget(header_label)
+        header.setLayout(header_layout)
+        layout.addWidget(header)
+
+        # Add keycodes as items
         for keycode in keycodes:
-            keycode_item = QTreeWidgetItem(group_item, [Keycode.label(keycode.qmk_id)])
-            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
-
-    def on_item_selected(self, item):
-        """Handle tree item selection to emit keycode_changed signal."""
-        qmk_id = item.data(0, Qt.UserRole)
-        if qmk_id:
-            self.keycode_changed.emit(qmk_id)
-
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        vbox = QVBoxLayout()
-        dropdown = QComboBox()
-        dropdown.setFixedHeight(40)
-        dropdown.addItem(f"{header_text}")
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        dropdown.model().item(0).setEnabled(False)
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        vbox.addWidget(dropdown)
-        layout.addLayout(vbox)
+            keycode_item = QLabel(Keycode.label(keycode.qmk_id))  # Using QLabel for displaying the keycode labels
+            layout.addWidget(keycode_item)
 
     def recreate_buttons(self, keycode_filter=None):
         """Recreates the buttons for the inversion keycodes."""
@@ -295,8 +272,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
-
 
 
 from PyQt5.QtWidgets import (
