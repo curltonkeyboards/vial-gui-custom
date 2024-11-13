@@ -331,7 +331,7 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Default MIDI Channel", self.channel_options, self.additional_dropdown_layout4)
         self.add_header_dropdown("Next Key MIDI Channel", self.channel_oneshot, self.additional_dropdown_layout4)
         self.add_header_dropdown("Hold for MIDI Channel", self.channel_hold, self.additional_dropdown_layout4)
-        self.add_header_dropdown("Velocity", self.velocity_options, self.additional_dropdown_layout4)
+        self.add_value_button("Velocity", self.velocity_options, self.additional_dropdown_layout4)
         self.main_layout.addLayout(self.additional_dropdown_layout4)
         
         # Replace dropdowns with individual buttons in the modified layout
@@ -412,7 +412,8 @@ class midiadvancedTab(QScrollArea):
                 "CC ▼": f"MI_CC_{value}_DWN",
                 "Program Change": f"MI_PROG_{value}",
                 "Bank LSB": f"MI_BANK_LSB_{value}",
-                "Bank MSB": f"MI_BANK_MSB_{value}"
+                "Bank MSB": f"MI_BANK_MSB_{value}",
+                "Velocity": f"MI_VELOCITY_{value}"
             }
         
             # Construct the keycode using the label as a key
@@ -435,11 +436,7 @@ class midiadvancedTab(QScrollArea):
         self.cc_button.setFixedHeight(40)
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
 
-        # Add the button to the layout
-        self.cc_layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
-
-        # Add the layout to the main layout
-        self.main_layout.addLayout(self.cc_layout)
+        layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
 
     def open_cc_xy_dialog(self):
         """Open a dialog to input CC values."""
