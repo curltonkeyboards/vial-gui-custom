@@ -235,6 +235,24 @@ class SmartChordTab(QScrollArea):
         self.columns_layout.addLayout(column_3_layout)
         self.columns_layout.addLayout(column_4_layout)
         self.columns_layout.addLayout(column_5_layout)
+        
+    def add_smallheader_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        vbox = QVBoxLayout()
+        dropdown = QComboBox()
+        dropdown.setFixedHeight(40)
+        dropdown.addItem(f"{header_text}")
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        dropdown.model().item(0).setEnabled(False)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+
+        vbox.addWidget(dropdown)
+        layout.addLayout(vbox)
 
     def add_keycode_group(self, layout, title, keycodes):
         """Helper function to add a group of keycodes to a layout."""
