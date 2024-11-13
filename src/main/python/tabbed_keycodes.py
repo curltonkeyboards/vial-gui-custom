@@ -539,35 +539,35 @@ class midiadvancedTab(QScrollArea):
         self.keycode_changed.emit(f"MI_CC_{x}_{y}")
 
     def add_header_dropdown(self, header_text, keycodes, layout):
-        """helper method to add a header and dropdown side by side."""
-        # create a vertical layout to hold header and dropdown
-        vbox = qvboxlayout()
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
 
-        # create header
-        header_label = qlabel(header_text)
-        header_label.setalignment(qt.aligncenter)
-        #vbox.addwidget(header_label)
+        # Create header
+        header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
+        #vbox.addWidget(header_label)
 
-        # create dropdown
-        dropdown = centeredcombobox()
-        dropdown.setfixedheight(40)  # set height of dropdown
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(40)  # Set height of dropdown
 
-        # add a placeholder item as the first item
-        dropdown.additem(f"{header_text}")  # placeholder item
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
 
-        # add the keycodes as options
+        # Add the keycodes as options
         for keycode in keycodes:
-            dropdown.additem(keycode.label(keycode.qmk_id), keycode.qmk_id)
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
-        # prevent the first item from being selected again
-        dropdown.model().item(0).setenabled(false)
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
 
-        dropdown.currentindexchanged.connect(self.on_selection_change)
-        dropdown.currentindexchanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-        vbox.addwidget(dropdown)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+        vbox.addWidget(dropdown)
 
-        # add the vertical box (header + dropdown) to the provided layout
-        layout.addlayout(vbox)
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
         
     def update_header_label(self, dropdown, header_label):
         """Update the header label based on the selected dropdown item."""
@@ -630,6 +630,7 @@ class midiadvancedTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+
 
 
 class LayerTab(QScrollArea):
