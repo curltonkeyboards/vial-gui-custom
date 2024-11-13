@@ -226,6 +226,9 @@ class SmartChordTab(QScrollArea):
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
 
+        # Connect itemClicked signal to on_item_selected
+        tree.itemClicked.connect(self.on_item_selected)
+
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
 
@@ -240,7 +243,7 @@ class SmartChordTab(QScrollArea):
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
             keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
 
-    def on_item_selected(self, item):
+    def on_item_selected(self, item, column):
         """Handle tree item selection to emit keycode_changed signal."""
         qmk_id = item.data(0, Qt.UserRole)
         if qmk_id:
@@ -304,6 +307,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
+
 
 
 from PyQt5.QtWidgets import (
