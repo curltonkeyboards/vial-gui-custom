@@ -187,12 +187,12 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Add the QTreeWidget for category selection
-        self.category_tree = QTreeWidget()
-        self.category_tree.setHeaderLabel("SmartChord Selector")
+        # Create a horizontal layout to hold the QTreeWidgets
+        self.tree_layout = QHBoxLayout()
         self.populate_tree()
-        self.category_tree.itemClicked.connect(self.on_item_selected)
-        self.main_layout.addWidget(self.category_tree)
+
+        # Add the QTreeWidget layout to the main layout
+        self.main_layout.addLayout(self.tree_layout)
 
         # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
@@ -225,7 +225,9 @@ class SmartChordTab(QScrollArea):
         tree = QTreeWidget()
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
-        self.main_layout.addWidget(tree)
+
+        # Add the QTreeWidget instance to the horizontal layout
+        self.tree_layout.addWidget(tree)
 
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
@@ -302,7 +304,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
 
 
 from PyQt5.QtWidgets import (
