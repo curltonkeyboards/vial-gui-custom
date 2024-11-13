@@ -164,7 +164,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, inversiondropdown, inversion_keycodes):
+    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, inversiondropdown, inversion_keycodes):
         super().__init__(parent)
         self.label = label
         self.smartchord_keycodes_1 = smartchord_keycodes_1
@@ -172,8 +172,6 @@ class SmartChordTab(QScrollArea):
         self.smartchord_keycodes_3 = smartchord_keycodes_3
         self.smartchord_keycodes_4 = smartchord_keycodes_4
         self.scales_modes_keycodes = scales_modes_keycodes
-        self.smartchord_octave_1 = smartchord_octave_1
-        self.smartchord_key = smartchord_key
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
 
@@ -194,13 +192,6 @@ class SmartChordTab(QScrollArea):
         # Add the QTreeWidget layout to the main layout
         self.main_layout.addLayout(self.tree_layout)
 
-        # Add dropdowns and inversion buttons layout
-        self.additional_dropdown_layout = QHBoxLayout()
-        self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
-        self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
-        self.add_smallheader_dropdown("Chord Inversion/Position", self.inversion_dropdown, self.additional_dropdown_layout)
-        self.main_layout.addLayout(self.additional_dropdown_layout)
-
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
@@ -219,12 +210,14 @@ class SmartChordTab(QScrollArea):
         self.create_keycode_tree(self.smartchord_keycodes_3, "5 Note Chords")
         self.create_keycode_tree(self.smartchord_keycodes_4, "Advanced Chords")
         self.create_keycode_tree(self.scales_modes_keycodes, "Scales/Modes")
+        self.create_keycode_tree(self.inversion_dropdown, "Inversions")
 
     def create_keycode_tree(self, keycodes, title):
         """Create a QTreeWidgetItem and add keycodes under it."""
         tree = QTreeWidget()
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
+        tree.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Connect itemClicked signal to on_item_selected
         tree.itemClicked.connect(self.on_item_selected)
@@ -248,24 +241,6 @@ class SmartChordTab(QScrollArea):
         qmk_id = item.data(0, Qt.UserRole)
         if qmk_id:
             self.keycode_changed.emit(qmk_id)
-
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        vbox = QVBoxLayout()
-        dropdown = QComboBox()
-        dropdown.setFixedHeight(40)
-        dropdown.addItem(f"{header_text}")
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        dropdown.model().item(0).setEnabled(False)
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-
-        vbox.addWidget(dropdown)
-        layout.addLayout(vbox)
 
     def recreate_buttons(self, keycode_filter=None):
         """Recreates the buttons for the inversion keycodes."""
@@ -318,7 +293,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_key, smartchord_octave_1):
         super().__init__(parent)
         self.label = label
         self.inversion_keycodes = inversion_keycodes
@@ -326,6 +301,8 @@ class midiadvancedTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_CC_toggle = smartchord_CC_toggle
+        self.smartchord_octave_1 = smartchord_octave_1
+        self.smartchord_key = smartchord_key
         self.CCfixed = CCfixed
         self.CCup = CCup
         self.CCdown = CCdown
@@ -370,7 +347,9 @@ class midiadvancedTab(QScrollArea):
         # Add Channel and Velocity dropdowns in the second row
         self.additional_dropdown_layout3 = QHBoxLayout()
         self.add_header_dropdown("CC ▲▼ Multiplier", self.cc_multiplier_options, self.additional_dropdown_layout3)
-        self.add_header_dropdown("Velocity ▲▼ Multiplier", self.velocity_multiplier_options, self.additional_dropdown_layout3) 
+        self.add_header_dropdown("Velocity ▲▼ Multiplier", self.velocity_multiplier_options, self.additional_dropdown_layout3)
+        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout3)
+        self.add_header_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout3)        
         self.main_layout.addLayout(self.additional_dropdown_layout3)
 
         self.inversion_label = QLabel("Advanced Midi Settings")
@@ -1457,8 +1436,8 @@ class FilteredTabbedKeycodes(QTabWidget):
             LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
-            midiadvancedTab(self, "MIDI",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD),
+            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
+            midiadvancedTab(self, "MIDI",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
