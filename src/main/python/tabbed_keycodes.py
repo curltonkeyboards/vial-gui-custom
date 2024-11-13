@@ -155,12 +155,6 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction, QLabel, QGridLayout
-)
-from PyQt5.QtCore import Qt, pyqtSignal
-
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -210,6 +204,12 @@ class SmartChordTab(QScrollArea):
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
+
+    def add_smallheader_dropdown(self, header, dropdown, layout):
+        """Helper function to add a small header with a dropdown to a layout."""
+        header_label = QLabel(header)
+        layout.addWidget(header_label)  # Add the header label
+        layout.addWidget(dropdown)  # Add the dropdown to the layout
 
     def populate_tree(self):
         """Populate the QTreeWidget with categories and keycodes."""
