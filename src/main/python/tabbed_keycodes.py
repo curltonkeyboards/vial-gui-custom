@@ -324,7 +324,7 @@ class midiadvancedTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Add CC X and CC Y menu
-        self.add_cc_x_y_menu()
+        
 
         # Add Channel and Velocity dropdowns in the second row
         self.additional_dropdown_layout4 = QHBoxLayout()
@@ -336,6 +336,7 @@ class midiadvancedTab(QScrollArea):
         
         # Replace dropdowns with individual buttons in the modified layout
         self.additional_button_layout2 = QHBoxLayout()
+        self.add_cc_x_y_menu(self.additional_button_layout2))
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, self.additional_button_layout2)
         self.add_value_button("CC ▲", self.CCup, self.additional_button_layout2)
         self.add_value_button("CC ▼", self.CCdown, self.additional_button_layout2)
@@ -432,7 +433,6 @@ class midiadvancedTab(QScrollArea):
         # Create a button to represent the CC X -> CC Y dropdown
         self.cc_button = QPushButton("CC Value")
         self.cc_button.setFixedHeight(40)
-        self.cc_button.setFixedWidth(500)
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
 
         # Add the button to the layout
