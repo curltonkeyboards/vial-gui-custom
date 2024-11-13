@@ -222,6 +222,7 @@ class SmartChordTab(QScrollArea):
 
         # Add keycodes as items to the QTreeWidget
         for keycode in keycodes:
+            label = Keycode.label(keycode.qmk_id).replace("\n", " ") 
             keycode_item = QTreeWidgetItem(tree_widget, [Keycode.label(keycode.qmk_id)])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
