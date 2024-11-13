@@ -189,7 +189,8 @@ class SmartChordTab(QScrollArea):
 
         # Add the QTreeWidget for category selection
         self.category_tree = QTreeWidget()
-        self.category_tree.setHeaderLabel("SmartChord Selector")
+        self.category_tree.setHeaderLabels(["3 Note Chords", "4 Note Chords", "5 Note Chords", "Advanced Chords", "Scales/Modes"])
+        self.category_tree.setColumnCount(5)  # One column for each category
         self.populate_tree()
         self.category_tree.itemClicked.connect(self.on_item_selected)
         self.main_layout.addWidget(self.category_tree)
@@ -213,29 +214,27 @@ class SmartChordTab(QScrollArea):
 
     def populate_tree(self):
         """Populate the QTreeWidget with categories and keycodes."""
-        # Add "Chords" category with subcategories
-        chords_item = QTreeWidgetItem(self.category_tree, ["Chords"])
-        chords_item.setExpanded(True)  # Ensure the item starts expanded
-        self.add_keycode_group(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
-        self.add_keycode_group(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
-        self.add_keycode_group(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
-        self.add_keycode_group(chords_item, "Advanced Chords", self.smartchord_keycodes_4)
+        # Create root items for each category and populate them in different columns
+        self.add_keycode_group("3 Note Chords", 0, self.smartchord_keycodes_1)
+        self.add_keycode_group("4 Note Chords", 1, self.smartchord_keycodes_2)
+        self.add_keycode_group("5 Note Chords", 2, self.smartchord_keycodes_3)
+        self.add_keycode_group("Advanced Chords", 3, self.smartchord_keycodes_4)
+        self.add_keycode_group("Scales/Modes", 4, self.scales_modes_keycodes)
+
+    def add_keycode_group(self, title, column_index, keycodes):
+        """Helper function to add a subgroup and its keycodes to a specific column."""
+        parent_item = QTreeWidgetItem(self.category_tree)
+        parent_item.setText(column_index, title)
+        parent_item.setExpanded(True)  # Ensure the item starts expanded
         
-        # Add "Scales/Modes" category
-        scales_item = QTreeWidgetItem(self.category_tree, ["Scales/Modes"])
-        scales_item.setExpanded(True)  # Ensure the item starts expanded
-        self.add_keycode_group(scales_item, "Scales/Modes", self.scales_modes_keycodes)
-
-        # Set column count to ensure proper display
-        self.category_tree.setColumnCount(3)
-
-    def add_keycode_group(self, parent_item, title, keycodes):
-        """Helper function to add a subgroup and its keycodes to a parent item."""
-        group_item = QTreeWidgetItem(parent_item, [title])
-        group_item.setExpanded(False)  # Initially collapsed; change to True to show by default
+        # Add keycodes under the parent item in the specific column
         for keycode in keycodes:
-            keycode_item = QTreeWidgetItem(group_item, [Keycode.label(keycode.qmk_id)])
+            keycode_item = QTreeWidgetItem(parent_item)
+            keycode_item.setText(column_index, Keycode.label(keycode.qmk_id))
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
+
+        # Add the parent item to the tree
+        self.category_tree.addTopLevelItem(parent_item)
 
     def on_item_selected(self, item):
         """Handle tree item selection to emit keycode_changed signal."""
@@ -297,7 +296,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
 
 
 from PyQt5.QtWidgets import (
