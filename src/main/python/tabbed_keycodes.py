@@ -336,7 +336,7 @@ class midiadvancedTab(QScrollArea):
         
         # Replace dropdowns with individual buttons in the modified layout
         self.additional_button_layout2 = QHBoxLayout()
-        self.add_cc_x_y_menu(self.additional_button_layout2))
+        self.add_cc_x_y_menu(self.additional_button_layout2)
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, self.additional_button_layout2)
         self.add_value_button("CC ▲", self.CCup, self.additional_button_layout2)
         self.add_value_button("CC ▼", self.CCdown, self.additional_button_layout2)
