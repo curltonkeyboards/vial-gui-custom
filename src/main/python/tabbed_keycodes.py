@@ -426,7 +426,7 @@ class midiadvancedTab(QScrollArea):
             self.value_input.clear()
 
 
-    def add_cc_x_y_menu(self):
+    def add_cc_x_y_menu(self, layout):
         """Add a button that opens a CC X -> CC Y submenu."""
         self.cc_layout = QVBoxLayout()
 
