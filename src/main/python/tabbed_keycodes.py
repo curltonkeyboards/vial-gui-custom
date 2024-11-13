@@ -159,6 +159,8 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QPushButt
 from PyQt5.QtCore import Qt
 
 class SmartChordTab2(QWidget):
+    keycode_changed = pyqtSignal(str)
+    
     def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, inversiondropdown, inversion_keycodes):
         super().__init__(parent)
         self.label = label
