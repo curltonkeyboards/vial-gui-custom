@@ -154,6 +154,73 @@ class CenteredComboBox(QComboBox):
     def wheelEvent(self, event):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
+        
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QPushButton, QWidget
+from PyQt5.QtCore import Qt
+
+class SmartChordTab2(QWidget):
+    def __init__(self, parent, label, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, scales_modes_keycodes, smartchord_octave_1, smartchord_key, inversiondropdown, inversion_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.smartchord_keycodes_1 = smartchord_keycodes_1
+        self.smartchord_keycodes_2 = smartchord_keycodes_2
+        self.smartchord_keycodes_3 = smartchord_keycodes_3
+        self.smartchord_keycodes_4 = smartchord_keycodes_4
+        self.scales_modes_keycodes = scales_modes_keycodes
+        self.smartchord_octave_1 = smartchord_octave_1
+        self.smartchord_key = smartchord_key
+        self.inversion_keycodes = inversion_keycodes
+        self.inversion_dropdown = inversiondropdown
+        
+        # Create layout for the widget
+        self.layout = QVBoxLayout(self)
+
+        # Create the QTreeWidget with 5 columns
+        self.tree_widget = QTreeWidget(self)
+        self.tree_widget.setColumnCount(5)
+        self.tree_widget.setHeaderLabels(["3 Note Chords", "4 Note Chords", "5 Note Chords", "Advanced Chords", "Scales/Modes"])
+
+        # Populate the tree with the keycodes
+        self.populate_tree()
+
+        # Add the tree widget to the layout
+        self.layout.addWidget(self.tree_widget)
+
+        # Optional: add a button to trigger the menu
+        self.category_button = QPushButton("Show SmartChord Information", self)
+        self.category_button.clicked.connect(self.show_tree_widget)
+        self.layout.addWidget(self.category_button)
+
+    def populate_tree(self):
+        """Populate the QTreeWidget with the keycodes."""
+        # Assuming each subcategory has the same number of items, you can iterate over them
+        max_len = max(len(self.smartchord_keycodes_1), len(self.smartchord_keycodes_2), len(self.smartchord_keycodes_3), len(self.smartchord_keycodes_4), len(self.scales_modes_keycodes))
+        
+        # Loop over the longest list and create a new item for each row
+        for i in range(max_len):
+            # Create a new tree item for each row
+            item = QTreeWidgetItem(self.tree_widget)
+
+            # Populate the columns with keycodes (or empty if index is out of range)
+            self.add_item_to_tree(item, self.smartchord_keycodes_1, i, 0)
+            self.add_item_to_tree(item, self.smartchord_keycodes_2, i, 1)
+            self.add_item_to_tree(item, self.smartchord_keycodes_3, i, 2)
+            self.add_item_to_tree(item, self.smartchord_keycodes_4, i, 3)
+            self.add_item_to_tree(item, self.scales_modes_keycodes, i, 4)
+
+    def add_item_to_tree(self, item, keycodes, index, column):
+        """Helper function to add items to the tree widget."""
+        if index < len(keycodes):
+            # Assuming keycodes are objects with a qmk_id property
+            item.setText(column, Keycode.label(keycodes[index].qmk_id))  # Adjust as needed for your data structure
+        else:
+            item.setText(column, "")
+
+    def show_tree_widget(self):
+        """Show or hide the tree widget when the button is clicked."""
+        self.tree_widget.setVisible(not self.tree_widget.isVisible())
+
+
 
 from PyQt5.QtWidgets import QPushButton, QMenu, QAction, QVBoxLayout, QGridLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -1464,6 +1531,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
+            SmartChordTab2(self, "SmartChord2", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
             midiadvancedTab(self, "MIDI",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
