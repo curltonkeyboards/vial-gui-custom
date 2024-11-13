@@ -155,6 +155,12 @@ class CenteredComboBox(QComboBox):
         # Ignore the wheel event to prevent changing selection
         event.ignore()
 
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction, QLabel
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
