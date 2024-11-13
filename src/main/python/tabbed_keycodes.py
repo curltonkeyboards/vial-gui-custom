@@ -215,6 +215,7 @@ class SmartChordTab(QScrollArea):
         """Populate the QTreeWidget with categories and keycodes."""
         # Add "Chords" category with subcategories
         chords_item = QTreeWidgetItem(self.category_tree, ["Chords"])
+        chords_item.setExpanded(True)  # Ensure the item starts expanded
         self.add_keycode_group(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
         self.add_keycode_group(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
         self.add_keycode_group(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
@@ -222,36 +223,16 @@ class SmartChordTab(QScrollArea):
         
         # Add "Scales/Modes" category
         scales_item = QTreeWidgetItem(self.category_tree, ["Scales/Modes"])
+        scales_item.setExpanded(True)  # Ensure the item starts expanded
         self.add_keycode_group(scales_item, "Scales/Modes", self.scales_modes_keycodes)
 
-        # Make child items appear horizontally by setting their columns and layout
+        # Set column count to ensure proper display
         self.category_tree.setColumnCount(1)
-        for i in range(self.category_tree.topLevelItemCount()):
-            top_item = self.category_tree.topLevelItem(i)
-            self.set_item_horizontal(top_item)
-
-    def set_item_horizontal(self, item):
-        """Adjust QTreeWidgetItem children to display horizontally."""
-        if item.childCount() > 0:
-            for i in range(item.childCount()):
-                child = item.child(i)
-                item.setChildIndicatorPolicy(QTreeWidgetItem.DontShowIndicator)
-                child.setExpanded(True)
-                child.setFirstColumnSpanned(True)
-                # Custom QLabel with horizontal spacing
-                label = QLabel(child.text(0))
-                label.setAlignment(Qt.AlignCenter)
-                label.setFixedWidth(120)  # Adjust width as needed
-                widget = QWidget()
-                layout = QHBoxLayout(widget)
-                layout.addWidget(label)
-                layout.setContentsMargins(0, 0, 0, 0)
-                self.category_tree.setItemWidget(child, 0, widget)
-                self.set_item_horizontal(child)
 
     def add_keycode_group(self, parent_item, title, keycodes):
         """Helper function to add a subgroup and its keycodes to a parent item."""
         group_item = QTreeWidgetItem(parent_item, [title])
+        group_item.setExpanded(False)  # Initially collapsed; change to True to show by default
         for keycode in keycodes:
             keycode_item = QTreeWidgetItem(group_item, [Keycode.label(keycode.qmk_id)])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
@@ -316,8 +297,6 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
-
 
 
 
