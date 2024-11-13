@@ -428,10 +428,9 @@ class midiadvancedTab(QScrollArea):
 
 
     def add_cc_x_y_menu(self, layout):
-        self.cc_button = QPushButton("CC Value")
-        self.cc_button.setFixedHeight(40)
-        self.cc_button.clicked.connect(self.open_cc_xy_dialog)
-
+        button = QPushButton("CC Value")
+        button.setFixedHeight(40)
+        button.clicked.connect(self.open_cc_xy_dialog)
         layout.addWidget(self.cc_button, alignment=Qt.AlignCenter)
 
     def open_cc_xy_dialog(self):
