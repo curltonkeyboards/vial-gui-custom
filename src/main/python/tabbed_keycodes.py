@@ -222,9 +222,8 @@ class SmartChordTab(QScrollArea):
         
         tree.setStyleSheet("""
             QTreeWidget::item {
-                border: 1px solid #888;
-                margin: 2px;
-                padding: 4px;
+                border: 1px solid;
+                margin: 1px;
             }
         """)
 
