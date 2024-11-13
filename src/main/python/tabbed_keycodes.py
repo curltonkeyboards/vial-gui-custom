@@ -237,7 +237,6 @@ class SmartChordTab(QScrollArea):
             # Force text to be on one line and left-aligned
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
             keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
-            keycode_item.setTextElideMode(Qt.ElideRight)  # Elide text if too long
 
     def on_item_selected(self, item):
         """Handle tree item selection to emit keycode_changed signal."""
@@ -303,6 +302,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
+
 
 
 from PyQt5.QtWidgets import (
