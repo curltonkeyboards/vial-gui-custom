@@ -227,7 +227,7 @@ class SmartChordTab(QScrollArea):
         self.add_keycode_group(scales_item, "Scales/Modes", self.scales_modes_keycodes)
 
         # Set column count to ensure proper display
-        self.category_tree.setColumnCount(1)
+        self.category_tree.setColumnCount(3)
 
     def add_keycode_group(self, parent_item, title, keycodes):
         """Helper function to add a subgroup and its keycodes to a parent item."""
