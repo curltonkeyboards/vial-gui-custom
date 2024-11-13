@@ -192,6 +192,11 @@ class SmartChordTab2(QWidget):
         self.category_button = QPushButton("Show SmartChord Information", self)
         self.category_button.clicked.connect(self.show_tree_widget)
         self.layout.addWidget(self.category_button)
+        
+    def recreate_buttons(self, keycode_filter):
+        for alt in self.alternatives:
+            alt.recreate_buttons(keycode_filter)
+        self.setVisible(self.has_buttons())
 
     def populate_tree(self):
         """Populate the QTreeWidget with the keycodes."""
