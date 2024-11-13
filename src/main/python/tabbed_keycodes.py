@@ -156,10 +156,10 @@ class CenteredComboBox(QComboBox):
         event.ignore()
 
 from PyQt5.QtWidgets import (
-    QPushButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QGridLayout, QWidget,
-    QComboBox, QHBoxLayout, QScrollArea
+    QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QAction, QLabel, QPushButton, QGridLayout
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint
+from PyQt5.QtCore import Qt, pyqtSignal
 
 class SmartChordTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -187,21 +187,14 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Create QTreeWidget for categories
-        self.tree_widget = QTreeWidget()
-        self.tree_widget.setHeaderHidden(True)  # Hide header for simpler appearance
-        self.tree_widget.setColumnCount(1)  # Set single column for each level
+        # Horizontal category layout
+        self.category_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.category_layout)
 
-        # Populate the tree widget
-        self.populate_tree_widget()
+        # Add categories as horizontal tree items
+        self.create_horizontal_tree()
 
-        # Connect selection change signal
-        self.tree_widget.itemClicked.connect(self.on_item_clicked)
-
-        # Add the tree widget to the layout
-        self.main_layout.addWidget(self.tree_widget)
-
-        # Additional dropdowns and inversion buttons layout
+        # Add dropdowns and inversion buttons layout
         self.additional_dropdown_layout = QHBoxLayout()
         self.add_smallheader_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout)
         self.add_smallheader_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout)
@@ -218,34 +211,54 @@ class SmartChordTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def populate_tree_widget(self):
-        """Populate the QTreeWidget with a horizontal structure."""
-        # Add main categories
-        chords_item = QTreeWidgetItem(self.tree_widget, ["Chords"])
-        scales_item = QTreeWidgetItem(self.tree_widget, ["Scales/Modes"])
+    def create_horizontal_tree(self):
+        """Create horizontal categories with keycodes displayed when clicked."""
+        # Chords category
+        chords_btn = QPushButton("Chords")
+        chords_btn.clicked.connect(lambda: self.populate_tree("Chords"))
+        self.category_layout.addWidget(chords_btn)
 
-        # Populate chord subcategories
-        self.add_tree_subcategories(chords_item, "3 Note Chords", self.smartchord_keycodes_1)
-        self.add_tree_subcategories(chords_item, "4 Note Chords", self.smartchord_keycodes_2)
-        self.add_tree_subcategories(chords_item, "5 Note Chords", self.smartchord_keycodes_3)
-        self.add_tree_subcategories(chords_item, "Advanced Chords", self.smartchord_keycodes_4)
+        # Scales/Modes category
+        scales_btn = QPushButton("Scales/Modes")
+        scales_btn.clicked.connect(lambda: self.populate_tree("Scales/Modes"))
+        self.category_layout.addWidget(scales_btn)
 
-        # Populate scales/modes category directly
-        self.add_tree_subcategories(scales_item, "Scales/Modes", self.scales_modes_keycodes)
+    def populate_tree(self, category):
+        """Populate the tree horizontally based on the selected category."""
+        # Clear current layout contents
+        for i in reversed(range(self.button_layout.count())):
+            widget = self.button_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
 
-        # Expand main categories horizontally
-        self.tree_widget.setRootIsDecorated(False)
-        self.tree_widget.setItemsExpandable(True)
-        self.tree_widget.setColumnCount(1)
-        chords_item.setExpanded(True)
-        scales_item.setExpanded(True)
+        if category == "Chords":
+            self.add_keycode_group("3 Note Chords", self.smartchord_keycodes_1)
+            self.add_keycode_group("4 Note Chords", self.smartchord_keycodes_2)
+            self.add_keycode_group("5 Note Chords", self.smartchord_keycodes_3)
+            self.add_keycode_group("Advanced Chords", self.smartchord_keycodes_4)
+        elif category == "Scales/Modes":
+            self.add_keycode_group("Scales/Modes", self.scales_modes_keycodes)
 
-    def add_tree_subcategories(self, parent_item, title, keycodes):
-        """Adds a submenu to the QTreeWidget under a parent item."""
-        subcategory = QTreeWidgetItem(parent_item, [title])
+    def add_keycode_group(self, title, keycodes):
+        """Add a keycode group horizontally to the button layout."""
+        title_label = QLabel(title)
+        title_label.setStyleSheet("font-weight: bold;")
+        self.button_layout.addWidget(title_label, 0, self.button_layout.columnCount())
+
+        row = 1  # Start on the row after the title
         for keycode in keycodes:
-            action_item = QTreeWidgetItem(subcategory, [Keycode.label(keycode.qmk_id)])
-            action_item.setData(0, Qt.UserRole, keycode.qmk_id)
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            self.button_layout.addWidget(btn, row, self.button_layout.columnCount())
+            row += 1  # Move down for each keycode within this group
+
+    # Rest of your class remains the same
+
+    def on_item_selected(self, item):
+        """Handle tree item selection to emit keycode_changed signal."""
+        qmk_id = item.data(0, Qt.UserRole)
+        if qmk_id:
+            self.keycode_changed.emit(qmk_id)
 
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
@@ -293,11 +306,20 @@ class SmartChordTab(QScrollArea):
         if selected_qmk_id:
             self.keycode_changed.emit(selected_qmk_id)
 
-    def on_item_clicked(self, item):
-        """Handles clicking on items in the tree widget."""
-        keycode = item.data(0, Qt.UserRole)
-        if keycode:
-            self.keycode_changed.emit(keycode)
+    def relabel_buttons(self):
+        """Relabel buttons based on keycodes."""
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
+
+    def has_buttons(self):
+        """Check if buttons exist in the layout."""
+        return self.button_layout.count() > 0
+
+
 
 
 from PyQt5.QtWidgets import (
