@@ -406,9 +406,20 @@ class midiadvancedTab(QScrollArea):
         """Confirm the value input and emit the corresponding keycode."""
         value = self.value_input.text()
         if value.isdigit() and 0 <= int(value) <= 127:
-            selected_keycode = f"{label}({value})"
-            self.keycode_changed.emit(selected_keycode)
-            dialog.accept()
+            keycode_map = {
+                "CC On/Off": f"MI_CC_{value}_TOG",
+                "CC ▲": f"MI_CC_{value}_UP",
+                "CC ▼": f"MI_CC_{value}_DWN",
+                "Program Change": f"MI_PROG_{value}",
+                "Bank LSB": f"MI_BANK_LSB_{value}",
+                "Bank MSB": f"MI_BANK_MSB_{value}"
+            }
+        
+            # Construct the keycode using the label as a key
+            if label in keycode_map:
+                selected_keycode = keycode_map[label]
+                self.keycode_changed.emit(selected_keycode)
+                dialog.accept()
 
     def validate_value_input(self, text):
         if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
