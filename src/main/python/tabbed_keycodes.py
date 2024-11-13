@@ -293,7 +293,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_key, smartchord_octave_1):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key):
         super().__init__(parent)
         self.label = label
         self.inversion_keycodes = inversion_keycodes
@@ -331,11 +331,11 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Default MIDI Channel", self.channel_options, self.additional_dropdown_layout4)
         self.add_header_dropdown("Next Key MIDI Channel", self.channel_oneshot, self.additional_dropdown_layout4)
         self.add_header_dropdown("Hold for MIDI Channel", self.channel_hold, self.additional_dropdown_layout4)
-        self.add_value_button("Velocity", self.velocity_options, self.additional_dropdown_layout4)
         self.main_layout.addLayout(self.additional_dropdown_layout4)
         
         # Replace dropdowns with individual buttons in the modified layout
         self.additional_button_layout2 = QHBoxLayout()
+        self.add_value_button("Velocity", self.velocity_options, self.additional_button_layout2)
         self.add_cc_x_y_menu(self.additional_button_layout2)
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, self.additional_button_layout2)
         self.add_value_button("CC ▲", self.CCup, self.additional_button_layout2)
@@ -428,10 +428,6 @@ class midiadvancedTab(QScrollArea):
 
 
     def add_cc_x_y_menu(self, layout):
-        """Add a button that opens a CC X -> CC Y submenu."""
-        self.cc_layout = QVBoxLayout()
-
-        # Create a button to represent the CC X -> CC Y dropdown
         self.cc_button = QPushButton("CC Value")
         self.cc_button.setFixedHeight(40)
         self.cc_button.clicked.connect(self.open_cc_xy_dialog)
