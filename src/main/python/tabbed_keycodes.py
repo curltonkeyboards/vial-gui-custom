@@ -157,7 +157,7 @@ class CenteredComboBox(QComboBox):
         
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, 
-    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QGridLayout, QAction
+    QVBoxLayout, QWidget, QComboBox, QHBoxLayout, QScrollArea, QLabel
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -202,7 +202,7 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addLayout(self.additional_dropdown_layout)
 
         # Layout for inversion buttons
-        self.button_layout = QGridLayout()
+        self.button_layout = QVBoxLayout()
         self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
@@ -213,7 +213,6 @@ class SmartChordTab(QScrollArea):
 
     def populate_columns(self):
         """Populate the layout with 5 columns, each containing keycode groups."""
-        # Create individual column layouts for the 5 groups
         column_1_layout = QVBoxLayout()
         self.add_keycode_group(column_1_layout, "3 Note Chords", self.smartchord_keycodes_1)
 
@@ -235,7 +234,7 @@ class SmartChordTab(QScrollArea):
         self.columns_layout.addLayout(column_3_layout)
         self.columns_layout.addLayout(column_4_layout)
         self.columns_layout.addLayout(column_5_layout)
-        
+
     def add_smallheader_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown side by side."""
         vbox = QVBoxLayout()
@@ -256,7 +255,6 @@ class SmartChordTab(QScrollArea):
 
     def add_keycode_group(self, layout, title, keycodes):
         """Helper function to add a group of keycodes to a layout."""
-        # Add a header (title)
         header = QWidget()
         header_layout = QVBoxLayout()
         header_label = QLabel(title)
@@ -286,11 +284,8 @@ class SmartChordTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
-                self.button_layout.addWidget(btn, row, col)
-                col += 1
-                if col >= 15:
-                    col = 0
-                    row += 1
+                self.button_layout.addWidget(btn)
+                row += 1
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -309,6 +304,7 @@ class SmartChordTab(QScrollArea):
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
+
 
 
 from PyQt5.QtWidgets import (
