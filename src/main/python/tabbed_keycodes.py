@@ -1216,18 +1216,18 @@ class KeySplitTab(QScrollArea):
         self.main_layout = QVBoxLayout(self.scroll_content)
         
         button_layout2 = QHBoxLayout()
-
+        button_layout2.addStretch(1)
         # Add the toggle buttons to the horizontal layout
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
         self.toggle_button.setFixedSize(80, 40)  # Set width to 80 and height to 40
         button_layout2.addWidget(self.toggle_button)
-
+        button_layout2.setSpacing(1)
         self.toggle_button2 = QPushButton("Show TripleSplit")
         self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
         self.toggle_button2.setFixedSize(80, 40)  # Set width to 80 and height to 40
         button_layout2.addWidget(self.toggle_button2)
-
+        button_layout2.addStretch(1)
         # Add the horizontal layout (button_layout) to the main layout
         self.main_layout.addLayout(button_layout2)       
 
@@ -1309,6 +1309,16 @@ class KeySplitTab(QScrollArea):
             self.midi_layout3_widget.show()  # Show midi_layout3
             self.set_highlighted(self.toggle_button2)
             self.set_normal(self.toggle_button)
+            
+    def set_highlighted(self, button):
+        button.setStyleSheet("""
+            background-color: #3498db;  /* Highlighted background color */
+            color: white;               /* Font color */
+        """)
+
+    def set_normal(self, button):
+        # Unset the stylesheet to revert to the default button style
+        button.setStyleSheet("")  # Clears the stylesheet, using the default style
 
 
     def add_midi_layout2(self, layout):
