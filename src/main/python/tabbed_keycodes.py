@@ -1222,8 +1222,8 @@ class KeySplitTab(QScrollArea):
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
         self.toggle_button.setFixedSize(120, 40)  # Set width to 80 and height to 40
         self.toggle_button.setStyleSheet("""
-            background-color: rgba(243, 209, 209, 1);  # Set background color
-            color: rgba(128, 87, 87, 1);  # Set text color
+            background-color: #f3d1d1;  /* Set background color (hex for rgba(243, 209, 209)) */
+            color: #805757;  /* Set text color (hex for rgba(128, 87, 87)) */
         """)
         button_layout2.addWidget(self.toggle_button)
         button_layout2.setSpacing(0)
