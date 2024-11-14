@@ -1215,19 +1215,19 @@ class KeySplitTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
         
-        button_layout = QHBoxLayout()
+        button_layout2 = QHBoxLayout()
 
         # Add the toggle buttons to the horizontal layout
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
-        button_layout.addWidget(self.toggle_button)
+        button_layout2.addWidget(self.toggle_button)
 
         self.toggle_button2 = QPushButton("Show TripleSplit")
         self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
-        button_layout.addWidget(self.toggle_button2)
+        button_layout2.addWidget(self.toggle_button2)
 
         # Add the horizontal layout (button_layout) to the main layout
-        self.main_layout.addLayout(button_layout)       
+        self.main_layout.addLayout(button_layout2)       
 
         # 1. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
