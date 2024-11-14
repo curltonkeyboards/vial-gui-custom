@@ -1216,17 +1216,6 @@ class KeySplitTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
         
-                # Create buttons for toggling visibility
-        self.toggle_midi_layout2_button = QPushButton("Toggle MIDI Layout 2")
-        self.toggle_midi_layout3_button = QPushButton("Toggle MIDI Layout 3")
-
-        # Connect buttons to toggle methods
-        self.toggle_midi_layout2_button.clicked.connect(self.toggle_midi_layout2)
-        self.toggle_midi_layout3_button.clicked.connect(self.toggle_midi_layout3)
-
-        # Add buttons to the main layout (or a separate control layout)
-        self.main_layout.addWidget(self.toggle_midi_layout2_button)
-        self.main_layout.addWidget(self.toggle_midi_layout3_button)
 
         # 1. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
@@ -1252,19 +1241,6 @@ class KeySplitTab(QScrollArea):
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
-        
-    def toggle_midi_layout2(self):
-        """Toggle the visibility of midi_layout2."""
-        current_visibility = any(widget.isVisible() for widget in self.midi_layout2)
-        for widget in self.midi_layout2:
-            widget.setVisible(not current_visibility)
-
-    def toggle_midi_layout3(self):
-        """Toggle the visibility of midi_layout3."""
-        current_visibility = any(widget.isVisible() for widget in self.midi_layout3)
-        for widget in self.midi_layout3:
-            widget.setVisible(not current_visibility)
-    
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown above it."""
