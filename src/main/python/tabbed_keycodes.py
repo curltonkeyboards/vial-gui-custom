@@ -1279,7 +1279,7 @@ class KeySplitTab(QScrollArea):
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
         name_mapping = {
-             "MI_SPLIT_Cs": "C#\nDb\nKS",
+            "MI_SPLIT_Cs": "C#\nDb\nKS",
             "MI_SPLIT_Ds": "D#\nEb\nKS",
             "MI_SPLIT_Fs": "F#\nGb\nKS",
             "MI_SPLIT_Gs": "G#\nAb\nKS",
