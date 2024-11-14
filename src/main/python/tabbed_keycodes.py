@@ -1218,30 +1218,64 @@ class KeySplitTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
 
-        # 1. MIDI Layout
-        self.add_midi_layout2(self.midi_layout2)
-        self.add_midi_layout3(self.midi_layout3)
+        # 1. MIDI Layouts
+        self.midi_layout2_widget = QWidget()  # Container for midi_layout2
+        self.midi_layout3_widget = QWidget()  # Container for midi_layout3
         
-        # 2. Dropdowns and Headers (Horizontal Layout)
+        # Populate the midi_layout2_widget and midi_layout3_widget
+        self.add_midi_layout2(self.midi_layout2_widget)
+        self.add_midi_layout3(self.midi_layout3_widget)
+        
+        # Add the layouts to the main layout but hide midi_layout3 initially
+        self.main_layout.addWidget(self.midi_layout2_widget)
+        self.main_layout.addWidget(self.midi_layout3_widget)
+        
+        self.midi_layout2_widget.setVisible(True)
+        self.midi_layout3_widget.setVisible(False)
+
+        # 2. Add buttons to toggle between the MIDI layouts
+        self.button_layout = QHBoxLayout()
+        self.show_midi_layout2_button = QPushButton("Show MIDI Layout 2")
+        self.show_midi_layout3_button = QPushButton("Show MIDI Layout 3")
+
+        self.show_midi_layout2_button.clicked.connect(self.show_midi_layout2)
+        self.show_midi_layout3_button.clicked.connect(self.show_midi_layout3)
+        
+        self.button_layout.addWidget(self.show_midi_layout2_button)
+        self.button_layout.addWidget(self.show_midi_layout3_button)
+        self.main_layout.addLayout(self.button_layout)
+
+        # 3. Dropdowns and Headers (Horizontal Layout)
         self.dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.dropdown_layout)
 
         # Create a horizontal layout for the dropdowns
         self.horizontal_dropdown_layout = QHBoxLayout()
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
-        # 3. Inversions Header
+
+        # 4. Inversions Header
         self.inversion_label = QLabel(" ")
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for buttons (Inversions) using QGridLayout
-        self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
+        self.button_grid_layout = QGridLayout()
+        self.main_layout.addLayout(self.button_grid_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
+
+    def show_midi_layout2(self):
+        """Method to show midi_layout2 and hide midi_layout3."""
+        self.midi_layout2_widget.setVisible(True)
+        self.midi_layout3_widget.setVisible(False)
+
+    def show_midi_layout3(self):
+        """Method to show midi_layout3 and hide midi_layout2."""
+        self.midi_layout2_widget.setVisible(False)
+        self.midi_layout3_widget.setVisible(True)
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown above it."""
