@@ -1220,12 +1220,16 @@ class KeySplitTab(QScrollArea):
         # Add the toggle buttons to the horizontal layout
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
-        self.toggle_button.setFixedSize(80, 40)  # Set width to 80 and height to 40
+        self.toggle_button.setFixedSize(120, 40)  # Set width to 80 and height to 40
+        self.toggle_button.setStyleSheet("""
+            background-color: rgba(243, 209, 209, 1);  # Set background color
+            color: rgba(128, 87, 87, 1);  # Set text color
+        """)
         button_layout2.addWidget(self.toggle_button)
-        button_layout2.setSpacing(1)
+        button_layout2.setSpacing(0)
         self.toggle_button2 = QPushButton("Show TripleSplit")
         self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
-        self.toggle_button2.setFixedSize(80, 40)  # Set width to 80 and height to 40
+        self.toggle_button2.setFixedSize(120, 40)  # Set width to 80 and height to 40
         button_layout2.addWidget(self.toggle_button2)
         button_layout2.addStretch(1)
         # Add the horizontal layout (button_layout) to the main layout
@@ -1307,13 +1311,19 @@ class KeySplitTab(QScrollArea):
     def toggle_midi_layouts2(self):
             self.midi_layout2_widget.hide()  # Hide midi_layout2
             self.midi_layout3_widget.show()  # Show midi_layout3
-            self.set_highlighted(self.toggle_button2)
+            self.set_highlighted2(self.toggle_button2)
             self.set_normal(self.toggle_button)
             
     def set_highlighted(self, button):
         button.setStyleSheet("""
-            background-color: #3498db;  /* Highlighted background color */
-            color: white;               /* Font color */
+            background-color: rgba(243, 209, 209, 1);  # Set background color
+            color: rgba(128, 87, 87, 1);  # Set text color
+        """)
+    
+    def set_highlighted2(self, button):
+        button.setStyleSheet("""
+            background-color: rgba( 128, 128, 87, 1);  # Set background color
+            color: rgba(209, 243, 215, 1);  # Set text color
         """)
 
     def set_normal(self, button):
