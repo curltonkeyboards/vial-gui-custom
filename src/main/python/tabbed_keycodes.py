@@ -1188,7 +1188,7 @@ class KeySplitTab(QScrollArea):
              "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
              "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"],
             
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KS_CHAN_UP", "KS_CHAN_DOWN"]
+            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KS_TOGGLE", "KS_CHAN_UP", "KS_CHAN_DOWN", "KS2_CHAN_UP", "KS2_CHAN_DOWN"]
         ]
 
         # Main layout for the scroll area
@@ -1356,8 +1356,11 @@ class KeySplitTab(QScrollArea):
             "MI_SUS" : "Sustain\nPedal",
             "KC_NO" : " ",
             "MI_CHORD_99": "SmartChord",
+            "KS_TOGGLE": "KeySplit\nToggle"
             "KS_CHAN_DOWN": "KS\nChannel\nDown",
             "KS_CHAN_UP": "KS\nChannel\nUp"
+            "KS2_CHAN_DOWN": "KS\nChannel\nDown",
+            "KS2_CHAN_UP": "KS\nChannel\nUp"
         }
 
 
