@@ -184,14 +184,16 @@ class SmartChordTab(QScrollArea):
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        
+        self.tree_layout.setSpacing(1)
 
         # Create a horizontal layout to hold the QTreeWidgets
         self.tree_layout = QHBoxLayout()
-        self.tree_layout.setSpacing(0)
         self.populate_tree()
 
         # Add the QTreeWidget layout to the main layout
         self.main_layout.addLayout(self.tree_layout)
+        tree.itemSelectionChanged.connect(self.handle_selection)
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -212,6 +214,13 @@ class SmartChordTab(QScrollArea):
         self.create_keycode_tree(self.smartchord_keycodes_4, "Advanced Chords")
         self.create_keycode_tree(self.scales_modes_keycodes, "Scales/Modes")
         self.create_keycode_tree(self.inversion_dropdown, "Inversions")
+        
+    def handle_selection(self):
+        """Ensure only one item is highlighted at a time across all trees."""
+        sender = self.sender()
+        for tree in self.tree_widgets:
+            if tree != sender:
+                tree.clearSelection()
 
     def create_keycode_tree(self, keycodes, title):
         """Create a QTreeWidgetItem and add keycodes under it."""
@@ -219,7 +228,6 @@ class SmartChordTab(QScrollArea):
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
         tree.setFixedHeight(300)
-        tree.setStyleSheet("border: 4px;")
 
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
