@@ -1207,7 +1207,7 @@ class KeySplitTab(QScrollArea):
         self.main_layout.addLayout(self.dropdown_layout)
 
         # Create a horizontal layout for the dropdowns
-        self.horizontal_dropdown_layout = QHBoxLayout()
+        self.horizontal_dropdown_layout = QHBoxLayout() 
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
         # 3. Inversions Header
         self.inversion_label = QLabel(" ")
@@ -1358,7 +1358,7 @@ class KeySplitTab(QScrollArea):
             "MI_CHORD_99": "SmartChord",
             "KS_TOGGLE": "KeySplit\nToggle"
             "KS_CHAN_DOWN": "KS\nChannel\nDown",
-            "KS_CHAN_UP": "KS\nChannel\nUp"
+            "KS_CHAN_UP": "KS\nChannel\nUp",
             "KS2_CHAN_DOWN": "KS2\nChannel\nDown",
             "KS2_CHAN_UP": "KS2\nChannel\nUp"
         }
