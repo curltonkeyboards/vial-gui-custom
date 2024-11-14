@@ -218,7 +218,8 @@ class SmartChordTab(QScrollArea):
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
         tree.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        tree.setMaximumHeight(340)
+        tree.setMinimumHeight(100)
+        tree.setMaximumHeight(600)
 
         # Connect itemClicked signal to on_item_selected
         tree.itemClicked.connect(self.on_item_selected)
