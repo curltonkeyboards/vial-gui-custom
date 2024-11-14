@@ -194,7 +194,7 @@ class SmartChordTab(QScrollArea):
 
         # Add the QTreeWidget layout to the main layout
         self.main_layout.addLayout(self.tree_layout)
-        self.on_item_selected.connect(self.handle_selection)
+        self.on_selection_change.connect(self.handle_selection)
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -232,7 +232,7 @@ class SmartChordTab(QScrollArea):
         tree.setStyleSheet("border: 2px;")
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Connect itemClicked signal to on_item_selected
+        # Connect itemClicked signal to on_item_selected method
         tree.itemClicked.connect(self.on_item_selected)
 
         # Add the QTreeWidget instance to the horizontal layout
