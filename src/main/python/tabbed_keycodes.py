@@ -235,7 +235,7 @@ class SmartChordTab(QScrollArea):
     def handle_selection(self):
         """Ensure only one item is highlighted at a time across all trees."""
         sender = self.sender()
-        for tree in self.tree_widgets:
+        for tree in self.tree_widget:
             if tree != sender:
                 tree.clearSelection()
                 
