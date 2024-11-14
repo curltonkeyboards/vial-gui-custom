@@ -1281,31 +1281,42 @@ class KeySplitTab(QScrollArea):
 
         # Reset the visible text to the default
         dropdown.setCurrentIndex(0)
+        
+    def toggle_midi_layouts(self):
+        """Toggle visibility between MIDI layout 2 and layout 3."""
+        if self.midi_layout2_container.isVisible():
+            self.midi_container2_layout_.hide()
+            self.midi_container3_layout_.show()
+            self.toggle_button.setText("Show MIDI Layout 2")
+        else:
+            self.midi_container2_layout_.show()
+            self.midi_container3_layout_.hide()
+            self.toggle_button.setText("Show MIDI Layout 3")
 
 
     def add_midi_layout2(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
-        midi_container = QWidget()
-        midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container.setLayout(midi_container_layout)
+        midi_container2 = QWidget()
+        midi_container2_layout = QVBoxLayout()  # Use QVBoxLayout for rows
+        midi_container2.setLayout(midi_container2_layout)
 
         # Create the MIDI buttons
-        self.create_midi_buttons(layout, midi_container_layout)
+        self.create_midi_buttons(layout, midi_container2_layout)
 
         # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
+        self.main_layout.addWidget(midi_container2)
         
     def add_midi_layout3(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
-        midi_container = QWidget()
-        midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container.setLayout(midi_container_layout)
+        midi_container3 = QWidget()
+        midi_container3_layout = QVBoxLayout()  # Use QVBoxLayout for rows
+        midi_container3.setLayout(midi_container3_layout)
 
         # Create the MIDI buttons
-        self.create_midi_buttons2(layout, midi_container_layout)
+        self.create_midi_buttons2(layout, midi_container3_layout)
 
         # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
+        self.main_layout.addWidget(midi_container3)
         
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
