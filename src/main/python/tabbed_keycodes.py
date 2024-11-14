@@ -431,7 +431,6 @@ class KeySplitTab(QScrollArea):
 
         # Add MIDI container to the main layout
         self.main_layout.addWidget(midi_container)
-        self.main_layout.addWidget(midi_container)
         
     def add_midi_layout3(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
@@ -443,7 +442,6 @@ class KeySplitTab(QScrollArea):
         self.create_midi_buttons2(layout, midi_container_layout)
 
         # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
         self.main_layout.addWidget(midi_container)
         
     def create_midi_buttons(self, layout, container_layout):
