@@ -1404,34 +1404,34 @@ class KeySplitTab(QScrollArea):
                     button = SquareButton()
                     button.setText(readable_name)
 
-                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    button.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
                     
                     if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Smart" in readable_name:
+                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
                         button.setStyleSheet("")
   
-                    if readable_name in ["C#\nDb", "C#3\nDb3"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    if readable_name in ["C#\nDb\nKS", "C#3\nDb3\nKS"]:
+                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
                         
-                    if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    if readable_name in ["C#1\nDb1\nKS", "C#2\nDb2\nKS", "C#4\nDb4\nKS", "C#5\nDb5\nKS"]:
+                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
                         hbox.addSpacing(60)                      
                         
-                    if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    if readable_name in ["F#\nGb\nKS", "F#1\nGb1\nKS", "F#2\nGb2\nKS", "F#3\nGb3\nKS", "F#4\nGb4\nKS", "F#5\nGb5\nKS"]:
+                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
                         hbox.addSpacing(50)
                         
-                    if readable_name in ["C1", "C2", "C4", "C5"]:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    if readable_name in ["C1\nKS", "C2\nKS", "C4\nKS", "C5\nKS"]:
+                        button.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
                         hbox.addSpacing(20)
 
                     
 
                     button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
+                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
                         button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
                         button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
@@ -1527,41 +1527,41 @@ class KeySplitTab(QScrollArea):
                     button = SquareButton()
                     button.setText(readable_name)
 
-                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    button.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
                     
                     if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Smart" in readable_name:
+                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
                         button.setStyleSheet("")
   
-                    if readable_name in ["C#\nDb", "C#3\nDb3"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    if readable_name in ["C#\nDb\nTS", "C#3\nDb3\nTS"]:
+                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
                         
-                    if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    if readable_name in ["C#1\nDb1\nTS", "C#2\nDb2\nTS", "C#4\nDb4\nTS", "C#5\nDb5\nTS"]:
+                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
                         hbox.addSpacing(60)                      
                         
-                    if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                    if readable_name in ["F#\nGb\nTS", "F#1\nGb1\nTS", "F#2\nGb2\nTS", "F#3\nGb3\nTS", "F#4\nGb4\nTS", "F#5\nGb5\nTS"]:
+                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
                         hbox.addSpacing(50)
                         
-                    if readable_name in ["C1", "C2", "C4", "C5"]:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    if readable_name in ["C1\nTS", "C2\nTS", "C4\nTS", "C5\nTS"]:
+                        button.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
                         hbox.addSpacing(20)
 
                     
 
                     button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
+                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
                         button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
                         button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
                     button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
                     hbox.addWidget(button)  # Add button to horizontal layout
 
-            container_layout.addLayout(hbox)  # Add row to vertical layout  
+            container_layout.addLayout(hbox)  # Add row to vertical layout   
 
     def recreate_buttons(self, keycode_filter=None):
         """Recreate inversion buttons and add MIDI_CC dropdowns."""
