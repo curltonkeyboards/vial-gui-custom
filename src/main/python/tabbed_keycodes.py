@@ -1217,12 +1217,8 @@ class KeySplitTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.main_layout = QVBoxLayout(self.scroll_content)
-
-        # 1. MIDI Layout
-        self.add_midi_layout2(self.midi_layout2)
-        self.add_midi_layout3(self.midi_layout3)
-
-        # Create buttons for toggling visibility
+        
+                # Create buttons for toggling visibility
         self.toggle_midi_layout2_button = QPushButton("Toggle MIDI Layout 2")
         self.toggle_midi_layout3_button = QPushButton("Toggle MIDI Layout 3")
 
@@ -1233,7 +1229,11 @@ class KeySplitTab(QScrollArea):
         # Add buttons to the main layout (or a separate control layout)
         self.main_layout.addWidget(self.toggle_midi_layout2_button)
         self.main_layout.addWidget(self.toggle_midi_layout3_button)
-        
+
+        # 1. MIDI Layout
+        self.add_midi_layout2(self.midi_layout2)
+        self.add_midi_layout3(self.midi_layout3)
+     
         # 2. Dropdowns and Headers (Horizontal Layout)
         self.dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.dropdown_layout)
@@ -1257,12 +1257,12 @@ class KeySplitTab(QScrollArea):
         
     def toggle_midi_layout2(self):
         """Toggle the visibility of midi_layout2."""
-        current_visibility = self.midi_layout2_widget.isVisible()
+        current_visibility = self.midi_layout2.isVisible()
         self.midi_layout2_widget.setVisible(not current_visibility)
 
     def toggle_midi_layout3(self):
         """Toggle the visibility of midi_layout3."""
-        current_visibility = self.midi_layout3_widget.isVisible()
+        current_visibility = self.midi_layout3.isVisible()
         self.midi_layout3_widget.setVisible(not current_visibility)
 
 
