@@ -187,6 +187,7 @@ class SmartChordTab(QScrollArea):
 
         # Create a horizontal layout to hold the QTreeWidgets
         self.tree_layout = QHBoxLayout()
+        self.tree_layout.setSpacing(0)  # Remove spacing between widgets
         self.populate_tree()
 
         # Add the QTreeWidget layout to the main layout
@@ -217,74 +218,29 @@ class SmartChordTab(QScrollArea):
         tree = QTreeWidget()
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
+        tree.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         tree.setFixedHeight(300)
 
-        tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Apply a border to the tree widget using stylesheets
+        tree.setStyleSheet("border: 4px solid black;")
 
-        # Connect itemClicked signal to on_item_selected
-        tree.itemClicked.connect(self.on_item_selected)
-
-        # Add the QTreeWidget instance to the horizontal layout
+        # Add the tree widget to the layout
         self.tree_layout.addWidget(tree)
 
     def add_keycode_group(self, tree, title, keycodes):
-        """Helper function to add keycodes to a QTreeWidget."""
+        """Add keycode items under the given tree widget."""
         for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id).replace("\n", " ")  # Replace \n with space
-            keycode_item = QTreeWidgetItem(tree, [label])
-            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
+            item = QTreeWidgetItem(tree)
+            item.setText(0, keycode)
 
-            # Force text to be on one line and left-aligned
-            keycode_item.setTextAlignment(0, Qt.AlignLeft)
-            keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
+    def on_item_selected(self, item):
+        """Handle item selection."""
+        keycode = item.text(0)
+        self.keycode_changed.emit(keycode)
 
-    def on_item_selected(self, item, column):
-        """Handle tree item selection to emit keycode_changed signal."""
-        qmk_id = item.data(0, Qt.UserRole)
-        if qmk_id:
-            self.keycode_changed.emit(qmk_id)
-
-    def recreate_buttons(self, keycode_filter=None):
-        """Recreates the buttons for the inversion keycodes."""
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        row = 0
-        col = 0
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-
-                self.button_layout.addWidget(btn, row, col)
-                col += 1
-                if col >= 15:
-                    col = 0
-                    row += 1
-
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
-    def relabel_buttons(self):
-        """Relabel buttons based on keycodes."""
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
-
-    def has_buttons(self):
-        """Check if buttons exist in the layout."""
-        return self.button_layout.count() > 0
-
+    def recreate_buttons(self):
+        """Placeholder for button creation logic."""
+        pass
 
 
 from PyQt5.QtWidgets import (
