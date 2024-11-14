@@ -1213,7 +1213,7 @@ class KeySplitTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout = QHBoxLayout(self.scroll_content)
         
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
