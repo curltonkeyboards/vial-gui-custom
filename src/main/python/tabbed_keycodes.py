@@ -1316,15 +1316,16 @@ class KeySplitTab(QScrollArea):
             
     def set_highlighted(self, button):
         button.setStyleSheet("""
-            background-color: rgba(243, 209, 209, 1);  # Set background color
-            color: rgba(128, 87, 87, 1);  # Set text color
+            background-color: #f3d1d1;  /* Set background color (hex for rgba(243, 209, 209)) */
+            color: #805757;  /* Set text color (hex for rgba(128, 87, 87)) */
         """)
-    
+
     def set_highlighted2(self, button):
         button.setStyleSheet("""
-            background-color: rgba( 128, 128, 87, 1);  # Set background color
-            color: rgba(209, 243, 215, 1);  # Set text color
+            background-color: #808057;  /* Set background color (hex for rgba(128, 128, 87)) */
+            color: #d1f3d7;  /* Set text color (hex for rgba(209, 243, 215)) */
         """)
+
 
     def set_normal(self, button):
         # Unset the stylesheet to revert to the default button style
