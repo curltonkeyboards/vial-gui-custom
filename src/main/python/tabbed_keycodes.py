@@ -185,7 +185,7 @@ class SmartChordTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
-        
+
 
         # Create a horizontal layout to hold the QTreeWidgets
         self.tree_layout = QHBoxLayout()
@@ -194,7 +194,6 @@ class SmartChordTab(QScrollArea):
 
         # Add the QTreeWidget layout to the main layout
         self.main_layout.addLayout(self.tree_layout)
-        self.on_selection_change.connect(self.handle_selection)
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
@@ -216,12 +215,6 @@ class SmartChordTab(QScrollArea):
         self.create_keycode_tree(self.scales_modes_keycodes, "Scales/Modes")
         self.create_keycode_tree(self.inversion_dropdown, "Inversions")
         
-    def handle_selection(self):
-        """Ensure only one item is highlighted at a time across all trees."""
-        sender = self.sender()
-        for tree in self.tree_widgets:
-            if tree != sender:
-                tree.clearSelection()
 
     def create_keycode_tree(self, keycodes, title):
         """Create a QTreeWidgetItem and add keycodes under it."""
@@ -232,12 +225,20 @@ class SmartChordTab(QScrollArea):
         tree.setStyleSheet("border: 2px;")
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Connect itemClicked signal to on_item_selected method
+        # Connect itemClicked signal to on_item_selected
         tree.itemClicked.connect(self.on_item_selected)
+        tree.itemClicked.connect(self.handle_selection)
 
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
-
+        
+    def handle_selection(self):
+        """Ensure only one item is highlighted at a time across all trees."""
+        sender = self.sender()
+        for tree in self.tree_widgets:
+            if tree != sender:
+                tree.clearSelection()
+                
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
