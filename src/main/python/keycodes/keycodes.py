@@ -1441,6 +1441,8 @@ KEYCODES_MIDI_CHANNEL_KEYSPLIT = [
     K("KS_CHAN_DOWN", "KeySplit\nCH DOWN", "Midi set key split channel Down"),
     K("KS_CHAN_UP", "KeySplit\nCH UP", "Midi set key split channel UP"),
     K("KS_TOGGLE", "KeySplit\nOn/Off", "Toggle keysplit mode"),
+    K("KS2_CHAN_DOWN", "Triple\nSplit\nCH Down", "Midi set key split channel Down"),
+    K("KS2_CHAN_UP", "Triple\nSplit\nCH UP", "Midi set key split channel UP"),
 ]
 
 KEYCODES_MIDI_CHANNEL_KEYSPLIT2 = [
@@ -1460,8 +1462,6 @@ KEYCODES_MIDI_CHANNEL_KEYSPLIT2 = [
     K("MI_CHANNEL_KEYSPLIT2_14", "Triple\nSplit\nChannel 14", "Midi set key split channel to 14"),
     K("MI_CHANNEL_KEYSPLIT2_15", "Triple\nSplit\nChannel 15", "Midi set key split channel to 15"),
     K("MI_CHANNEL_KEYSPLIT2_16", "Triple\nSplit\nChannel 16", "Midi set key split channel to 16"),
-    K("KS2_CHAN_DOWN", "Triple\nSplit\nCH Down", "Midi set key split channel Down"),
-    K("KS2_CHAN_UP", "Triple\nSplit\nCH UP", "Midi set key split channel UP"),
 ]
 
 

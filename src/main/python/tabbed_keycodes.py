@@ -1359,8 +1359,8 @@ class KeySplitTab(QScrollArea):
             "KS_TOGGLE": "KeySplit\nToggle"
             "KS_CHAN_DOWN": "KS\nChannel\nDown",
             "KS_CHAN_UP": "KS\nChannel\nUp"
-            "KS2_CHAN_DOWN": "KS\nChannel\nDown",
-            "KS2_CHAN_UP": "KS\nChannel\nUp"
+            "KS2_CHAN_DOWN": "KS2\nChannel\nDown",
+            "KS2_CHAN_UP": "KS2\nChannel\nUp"
         }
 
 
