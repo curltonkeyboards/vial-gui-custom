@@ -1320,27 +1320,32 @@ class KeySplitTab(QScrollArea):
 
     def add_midi_layout2(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
-        midi_container = QWidget()
+        # Create the container widget and layout
+        self.midi_layout2_widget = QWidget()
         midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container.setLayout(midi_container_layout)
+        self.midi_layout2_widget.setLayout(midi_container_layout)
 
         # Create the MIDI buttons
         self.create_midi_buttons(layout, midi_container_layout)
 
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
-        
+        # Add MIDI container to the main layout and hide it by default
+        self.main_layout.addWidget(self.midi_layout2_widget)
+        self.midi_layout2_widget.setVisible(False)  # Initially hidden
+
     def add_midi_layout3(self, layout):
         """Helper method to add staggered buttons based on MIDI layout."""
-        midi_container = QWidget()
+        # Create the container widget and layout
+        self.midi_layout3_widget = QWidget()
         midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container.setLayout(midi_container_layout)
+        self.midi_layout3_widget.setLayout(midi_container_layout)
 
         # Create the MIDI buttons
         self.create_midi_buttons2(layout, midi_container_layout)
 
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
+        # Add MIDI container to the main layout and hide it by default
+        self.main_layout.addWidget(self.midi_layout3_widget)
+        self.midi_layout3_widget.setVisible(False)  # Initially hidden
+
         
     def create_midi_buttons(self, layout, container_layout):
         """Create buttons based on MIDI layout coordinates."""
