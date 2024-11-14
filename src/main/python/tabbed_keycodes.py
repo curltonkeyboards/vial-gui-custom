@@ -342,23 +342,38 @@ class midiadvancedTab(QScrollArea):
         
 
         # Add Channel and Velocity dropdowns in the second row
+        
+        self.inversion4_label = QLabel("MIDI Channel Options")
+        self.inversion4_label.setAlignment(Qt.AlignCenter)
+        self.main_layout.addWidget(self.inversion_label4, alignment=Qt.AlignCenter)
+        
         self.additional_dropdown_layout4 = QHBoxLayout()
-        self.add_header_dropdown("Default MIDI Channel", self.channel_options, self.additional_dropdown_layout4)
-        self.add_header_dropdown("Next Key MIDI Channel", self.channel_oneshot, self.additional_dropdown_layout4)
-        self.add_header_dropdown("Hold for MIDI Channel", self.channel_hold, self.additional_dropdown_layout4)
+        self.add_header_dropdown("MIDI Channel", self.channel_options, self.additional_dropdown_layout4)
+        self.add_header_dropdown("Temporary MIDI Channel", self.channel_oneshot, self.additional_dropdown_layout4)
+        self.add_header_dropdown("Hold MIDI Channel", self.channel_hold, self.additional_dropdown_layout4)
         self.main_layout.addLayout(self.additional_dropdown_layout4)
+        
+                
+        self.inversion2_label = QLabel("Control Changes (CC) and Velocity")
+        self.inversion2_label.setAlignment(Qt.AlignCenter)
+        self.main_layout.addWidget(self.inversion_label2, alignment=Qt.AlignCenter)
         
         # Replace dropdowns with individual buttons in the modified layout
         self.additional_button_layout2 = QHBoxLayout()
-        self.add_value_button("Velocity", self.velocity_options, self.additional_button_layout2)
+        self.add_value_button("Set Velocity", self.velocity_options, self.additional_button_layout2)
         self.add_cc_x_y_menu(self.additional_button_layout2)
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, self.additional_button_layout2)
-        self.add_value_button("CC ▲", self.CCup, self.additional_button_layout2)
-        self.add_value_button("CC ▼", self.CCdown, self.additional_button_layout2)
+        self.add_value_button("CC Up", self.CCup, self.additional_button_layout2)
+        self.add_value_button("CC Down", self.CCdown, self.additional_button_layout2)
         self.add_value_button("Program Change", self.smartchord_program_change, self.additional_button_layout2)
         self.add_value_button("Bank LSB", self.smartchord_LSB, self.additional_button_layout2)
         self.add_value_button("Bank MSB", self.smartchord_MSB, self.additional_button_layout2)
         self.main_layout.addLayout(self.additional_button_layout2)
+        
+                
+        self.inversion3_label = QLabel("Up/Down Increments / Advanced Transposition settings")
+        self.inversion3_label.setAlignment(Qt.AlignCenter)
+        self.main_layout.addWidget(self.inversion_label3, alignment=Qt.AlignCenter)
 
         # Add Channel and Velocity dropdowns in the third row
         self.additional_dropdown_layout3 = QHBoxLayout()
@@ -423,12 +438,12 @@ class midiadvancedTab(QScrollArea):
         if value.isdigit() and 0 <= int(value) <= 127:
             keycode_map = {
                 "CC On/Off": f"MI_CC_{value}_TOG",
-                "CC ▲": f"MI_CC_{value}_UP",
-                "CC ▼": f"MI_CC_{value}_DWN",
+                "CC Up": f"MI_CC_{value}_UP",
+                "CC Down": f"MI_CC_{value}_DWN",
                 "Program Change": f"MI_PROG_{value}",
                 "Bank LSB": f"MI_BANK_LSB_{value}",
                 "Bank MSB": f"MI_BANK_MSB_{value}",
-                "Velocity": f"MI_VELOCITY_{value}"
+                "Set Velocity": f"MI_VELOCITY_{value}"
             }
         
             # Construct the keycode using the label as a key
@@ -1988,7 +2003,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
             LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
-            midiTab(self, "Instrument", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
+            midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTab
             midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY),
