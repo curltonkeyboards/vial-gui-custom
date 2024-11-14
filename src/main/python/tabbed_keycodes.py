@@ -1216,6 +1216,9 @@ class KeySplitTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
         
+        self.toggle_button = QPushButton("Show MIDI Layout 3")
+        self.toggle_button.clicked.connect(self.toggle_midi_layouts)
+        self.main_layout.addWidget(self.toggle_button)       
 
         # 1. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
