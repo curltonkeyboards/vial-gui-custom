@@ -1205,7 +1205,6 @@ class KeySplitTab(QScrollArea):
             ["MI_SPLIT2_C_3", "MI_SPLIT2_D_3", "MI_SPLIT2_E_3", "MI_SPLIT2_F_3", "MI_SPLIT2_G_3", "MI_SPLIT2_A_3", "MI_SPLIT2_B_3",
              "MI_SPLIT2_C_4", "MI_SPLIT2_D_4", "MI_SPLIT2_E_4", "MI_SPLIT2_F_4", "MI_SPLIT2_G_4", "MI_SPLIT2_A_4", "MI_SPLIT2_B_4",
              "MI_SPLIT2_C_5", "MI_SPLIT2_D_5", "MI_SPLIT2_E_5", "MI_SPLIT2_F_5", "MI_SPLIT2_G_5", "MI_SPLIT2_A_5", "MI_SPLIT2_B_5"]
-
         ]
 
         # Main layout for the scroll area
@@ -1287,7 +1286,7 @@ class KeySplitTab(QScrollArea):
         
     def toggle_midi_layouts(self):
         """Toggle visibility between MIDI layout 2 and layout 3."""
-        if self.midi_layout2_container.isVisible():
+        if self.midi_container2.isVisible():
             self.midi_container2_layout_.hide()
             self.midi_container3_layout_.show()
             self.toggle_button.setText("Show MIDI Layout 2")
