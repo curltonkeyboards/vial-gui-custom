@@ -1255,14 +1255,16 @@ class KeySplitTab(QScrollArea):
         
     def toggle_midi_layout2(self):
         """Toggle the visibility of midi_layout2."""
-        current_visibility = self.midi_layout2.isVisible()
-        self.midi_layout2_widget.setVisible(not current_visibility)
+        current_visibility = any(widget.isVisible() for widget in self.midi_layout2)
+        for widget in self.midi_layout2:
+            widget.setVisible(not current_visibility)
 
     def toggle_midi_layout3(self):
         """Toggle the visibility of midi_layout3."""
-        current_visibility = self.midi_layout3.isVisible()
-        self.midi_layout3_widget.setVisible(not current_visibility)
-
+        current_visibility = any(widget.isVisible() for widget in self.midi_layout3)
+        for widget in self.midi_layout3:
+            widget.setVisible(not current_visibility)
+    
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         """Helper method to add a header and dropdown above it."""
