@@ -1286,13 +1286,13 @@ class KeySplitTab(QScrollArea):
         
     def toggle_midi_layouts(self):
         """Toggle visibility between MIDI layout 2 and layout 3."""
-        if self.midi_container2.isVisible():
-            self.midi_container2_layout_.hide()
-            self.midi_container3_layout_.show()
+        if self.midi_layout2.isVisible():
+            self.midi_layout2.hide()
+            self.midi_layout3.show()
             self.toggle_button.setText("Show MIDI Layout 2")
         else:
-            self.midi_container2_layout_.show()
-            self.midi_container3_layout_.hide()
+            self.midi_layout2.show()
+            self.midi_layout3.hide()
             self.toggle_button.setText("Show MIDI Layout 3")
 
 
