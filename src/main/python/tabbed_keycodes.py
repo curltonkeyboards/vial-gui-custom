@@ -1215,9 +1215,13 @@ class KeySplitTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
         
-        self.toggle_button = QPushButton("Show MIDI Layout 3")
+        self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
-        self.main_layout.addWidget(self.toggle_button)       
+        self.main_layout.addWidget(self.toggle_button)   
+
+        self.toggle_button2 = QPushButton("Show TripleSplit")
+        self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
+        self.main_layout.addWidget(self.toggle_button2)           
 
         # 1. MIDI Layout
         self.add_midi_layout2(self.midi_layout2)
@@ -1285,15 +1289,12 @@ class KeySplitTab(QScrollArea):
         dropdown.setCurrentIndex(0)
         
     def toggle_midi_layouts(self):
-        """Toggle between midi_layout2 and midi_layout3 visibility."""
-        if self.midi_layout2_widget.isVisible():
-            self.midi_layout2_widget.hide()  # Hide midi_layout2
-            self.midi_layout3_widget.show()  # Show midi_layout3
-            self.toggle_button.setText("Show MIDI Layout 2")
-        else:
             self.midi_layout3_widget.hide()  # Hide midi_layout3
             self.midi_layout2_widget.show()  # Show midi_layout2
-            self.toggle_button.setText("Show MIDI Layout 3")
+            
+    def toggle_midi_layouts2(self):
+            self.midi_layout2_widget.hide()  # Hide midi_layout2
+            self.midi_layout3_widget.show()  # Show midi_layout3
 
 
     def add_midi_layout2(self, layout):
