@@ -324,7 +324,7 @@ class KeySplitTab(QScrollArea):
              "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
              "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"],
             
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "KS_TOGGLE", "KS_CHAN_UP", "KS_CHAN_DOWN", "KS2_CHAN_UP", "KS2_CHAN_DOWN""]
+            ["KC_NO", "MI_ALLOFF", "MI_SUS", "KS_TOGGLE", "KS_CHAN_UP", "KS_CHAN_DOWN", "KS2_CHAN_UP", "KS2_CHAN_DOWN"]
         ]
         
         self.midi_layout3 = [
