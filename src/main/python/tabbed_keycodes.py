@@ -217,8 +217,6 @@ class SmartChordTab(QScrollArea):
         tree = QTreeWidget()
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
-        tree.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-                # Set an initial fixed height
         tree.setFixedHeight(300)
 
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
