@@ -345,7 +345,7 @@ class midiadvancedTab(QScrollArea):
         
         self.inversion4_label = QLabel("MIDI Channel Options")
         self.inversion4_label.setAlignment(Qt.AlignCenter)
-        self.main_layout.addWidget(self.inversion_label4, alignment=Qt.AlignCenter)
+        self.main_layout.addWidget(self.inversion4_label, alignment=Qt.AlignCenter)
         
         self.additional_dropdown_layout4 = QHBoxLayout()
         self.add_header_dropdown("MIDI Channel", self.channel_options, self.additional_dropdown_layout4)
@@ -356,7 +356,7 @@ class midiadvancedTab(QScrollArea):
                 
         self.inversion2_label = QLabel("Control Changes (CC) and Velocity")
         self.inversion2_label.setAlignment(Qt.AlignCenter)
-        self.main_layout.addWidget(self.inversion_label2, alignment=Qt.AlignCenter)
+        self.main_layout.addWidget(self.inversion2_label, alignment=Qt.AlignCenter)
         
         # Replace dropdowns with individual buttons in the modified layout
         self.additional_button_layout2 = QHBoxLayout()
@@ -373,7 +373,7 @@ class midiadvancedTab(QScrollArea):
                 
         self.inversion3_label = QLabel("Up/Down Increments / Advanced Transposition settings")
         self.inversion3_label.setAlignment(Qt.AlignCenter)
-        self.main_layout.addWidget(self.inversion_label3, alignment=Qt.AlignCenter)
+        self.main_layout.addWidget(self.inversion3_label, alignment=Qt.AlignCenter)
 
         # Add Channel and Velocity dropdowns in the third row
         self.additional_dropdown_layout3 = QHBoxLayout()
