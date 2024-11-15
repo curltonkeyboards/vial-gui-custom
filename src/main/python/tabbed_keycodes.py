@@ -377,8 +377,8 @@ class midiadvancedTab(QScrollArea):
 
         # Add Channel and Velocity dropdowns in the third row
         self.additional_dropdown_layout3 = QHBoxLayout()
-        self.add_header_dropdown("CC ▲▼ Multiplier", self.cc_multiplier_options, self.additional_dropdown_layout3)
-        self.add_header_dropdown("Velocity ▲▼ Multiplier", self.velocity_multiplier_options, self.additional_dropdown_layout3)
+        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, self.additional_dropdown_layout3)
+        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, self.additional_dropdown_layout3)
         self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout3)
         self.add_header_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout3)        
         self.main_layout.addLayout(self.additional_dropdown_layout3)
