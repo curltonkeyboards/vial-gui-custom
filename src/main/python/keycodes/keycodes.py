@@ -1446,11 +1446,25 @@ KEYCODES_MIDI_CHANNEL_KEYSPLIT = [
 ]
 
 KEYCODES_KEYSPLIT_BUTTONS = [
-    K("KS_TOGGLE", "KeySplit\nToggle", "Toggle keysplit mode"),
+    K("KS_TOGGLE", "KeySplit\nChannel\nToggle", "Toggle keysplit mode"),
+    K("KS_TRANSPOSE_TOGGLE", "KeySplit\nTranspose\nToggle", "Toggle keysplit mode"),
+    K("KS_VELOCITY_TOGGLE", "KeySplit\nVelocity\nToggle", "Toggle keysplit mode"),
     K("KS_CHAN_DOWN", "KeySplit\nChannel▼", "Midi set key split channel Down"),
     K("KS_CHAN_UP", "KeySplit\nChannel▲", "Midi set key split channel UP"),
     K("KS2_CHAN_DOWN", "Triple\nSplit\nChannel▼", "Midi set key split channel Down"),
     K("KS2_CHAN_UP", "Triple\nSplit\nChannel▲", "Midi set key split channel UP"),
+    K("MI_VELOCITY2_DOWN", "KeySplit\nVelocity▼", "Midi set key split channel Down"),
+    K("MI_VELOCITY2_UP", "KeySplit\nVelocity▲", "Midi set key split channel UP"),
+    K("MI_VELOCITY3_DOWN", "Triple\nSplit\nVelocity▼", "Midi set key split channel Down"),
+    K("MI_VELOCITY3_UP", "Triple\nSplit\nVelocity▲", "Midi set key split channel UP"),
+    K("MI_TRANSPOSE2_DOWN", "KeySplit\nTranspose▼", "Midi set key split channel Down"),
+    K("MI_TRANSPOSE2_UP", "KeySplit\nTranspose▲", "Midi set key split channel UP"),
+    K("MI_TRANSPOSE3_DOWN", "Triple\nSplit\nTranspose▼", "Midi set key split channel Down"),
+    K("MI_TRANSPOSE3_UP", "Triple\nSplit\nTranspose▲", "Midi set key split channel UP"),
+    K("MI_OCTAVE2_DOWN", "KeySplit\nOctave▼", "Midi set key split channel Down"),
+    K("MI_OCTAVE2_UP", "KeySplit\nOctave▲", "Midi set key split channel UP"),
+    K("MI_OCTAVE3_DOWN", "Triple\nSplit\nOctave▼", "Midi set key split channel Down"),
+    K("MI_OCTAVE3_UP", "Triple\nSplit\nOctave▲", "Midi set key split channel UP"),
 ]
 
 KEYCODES_MIDI_CHANNEL_KEYSPLIT2 = [
@@ -1752,6 +1766,20 @@ for x in range (128):
     KEYCODES_MIDI_VELOCITY.append(K("MI_VELOCITY_{}".format(x),
                               "Velocity\n{}".format(x),
                               "Velocity {}".format(x)))
+                              
+KEYCODES_MIDI_VELOCITY2 = []
+
+for x in range (128):
+    KEYCODES_MIDI_VELOCITY2.append(K("MI_VELOCITY2_{}".format(x),
+                              "KS\nVelocity\n{}".format(x),
+                              "KS\nVelocity {}".format(x)))
+                              
+KEYCODES_MIDI_VELOCITY3 = []
+
+for x in range (128):
+    KEYCODES_MIDI_VELOCITY3.append(K("MI_VELOCITY3_{}".format(x),
+                              "TS\nVelocity\n{}".format(x),
+                              "TS\nVelocity {}".format(x)))
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_MIDI_BANK_MSB = []
