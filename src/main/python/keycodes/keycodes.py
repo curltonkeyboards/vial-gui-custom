@@ -1373,6 +1373,32 @@ KEYCODES_MIDI_OCTAVE = [
     K("MI_OCT_7", "Octave\n+7", "Midi set octave to 7"),
 ] 
 
+KEYCODES_MIDI_OCTAVE2 = [
+    K("MI_OCTAVE2_N2", "KS\nOctave\n-2", "Midi set octave to -2"),
+    K("MI_OCTAVE2_N1", "KS\nOctave\n-1", "Midi set octave to -1"),
+    K("MI_OCTAVE2_0", "KS\nOctave\n 0", "Midi set octave to 0"),
+    K("MI_OCTAVE2_1", "KS\nOctave\n+1", "Midi set octave to 1"),
+    K("MI_OCTAVE2_2", "KS\nOctave\n+2", "Midi set octave to 2"),
+    K("MI_OCTAVE2_3", "KS\nOctave\n+3", "Midi set octave to 3"),
+    K("MI_OCTAVE2_4", "KS\nOctave\n+4", "Midi set octave to 4"),
+    K("MI_OCTAVE2_5", "KS\nOctave\n+5", "Midi set octave to 5"),
+    K("MI_OCTAVE2_6", "KS\nOctave\n+6", "Midi set octave to 6"),
+    K("MI_OCTAVE2_7", "KS\nOctave\n+7", "Midi set octave to 7"),
+] 
+
+KEYCODES_MIDI_OCTAVE3 = [
+    K("MI_OCTAVE3_N2", "TS\nOctave\n-2", "Midi set octave to -2"),
+    K("MI_OCTAVE3_N1", "TS\nOctave\n-1", "Midi set octave to -1"),
+    K("MI_OCTAVE3_0", "TS\nOctave\n 0", "Midi set octave to 0"),
+    K("MI_OCTAVE3_1", "TS\nOctave\n+1", "Midi set octave to 1"),
+    K("MI_OCTAVE3_2", "TS\nOctave\n+2", "Midi set octave to 2"),
+    K("MI_OCTAVE3_3", "TS\nOctave\n+3", "Midi set octave to 3"),
+    K("MI_OCTAVE3_4", "TS\nOctave\n+4", "Midi set octave to 4"),
+    K("MI_OCTAVE3_5", "TS\nOctave\n+5", "Midi set octave to 5"),
+    K("MI_OCTAVE3_6", "TS\nOctave\n+6", "Midi set octave to 6"),
+    K("MI_OCTAVE3_7", "TS\nOctave\n+7", "Midi set octave to 7"),
+] 
+
 KEYCODES_MIDI_UPDOWN = [  
     K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),    
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),   
@@ -1400,6 +1426,36 @@ KEYCODES_MIDI_KEY = [
     K("MI_TRNS_N3", "Key\nA Major\nF# minor", "Midi set transposition to -3 semitones"),
     K("MI_TRNS_N2", "Key\nA# Major\nG minor", "Midi set transposition to -2 semitones"),
     K("MI_TRNS_N1", "Key B Major\n G# Minor", "Midi set transposition to -1 semitones"),
+]
+
+KEYCODES_MIDI_KEY2 = [
+    K("MI_TRNS2_0", "KS\nC Major\nA minor", "Midi set no transposition"),
+    K("MI_TRNS2_1", "KS\nC# Major\nA# minor", "Midi set transposition to +1 semitones"),
+    K("MI_TRNS2_2", "KS\nD Major\nB minor", "Midi set transposition to +2 semitones"),
+    K("MI_TRNS2_3", "KS\nD# Major\nC minor", "Midi set transposition to +3 semitones"),
+    K("MI_TRNS2_4", "KS\nE Major\nC# minor", "Midi set transposition to +4 semitones"),
+    K("MI_TRNS2_5", "KS\nF Major\nD minor", "Midi set transposition to +5 semitones"),
+    K("MI_TRNS2_6", "KS\nF# Major\nD# minor", "Midi set transposition to +6 semitones"),
+    K("MI_TRNS2_N5", "KS\nG Major\nE minor", "Midi set transposition to -5 semitones"),
+    K("MI_TRNS2_N4", "KS\nG# Major\nF minor", "Midi set transposition to -4 semitones"),
+    K("MI_TRNS2_N3", "KS\nA Major\nF# minor", "Midi set transposition to -3 semitones"),
+    K("MI_TRNS2_N2", "KS\nA# Major\nG minor", "Midi set transposition to -2 semitones"),
+    K("MI_TRNS2_N1", "KS B Major\n G# Minor", "Midi set transposition to -1 semitones"),
+]
+
+KEYCODES_MIDI_KEY3 = [
+    K("MI_TRNS3_0", "TS\nC Major\nA minor", "Midi set no transposition"),
+    K("MI_TRNS3_1", "TS\nC# Major\nA# minor", "Midi set transposition to +1 semitones"),
+    K("MI_TRNS3_2", "TS\nD Major\nB minor", "Midi set transposition to +2 semitones"),
+    K("MI_TRNS3_3", "TS\nD# Major\nC minor", "Midi set transposition to +3 semitones"),
+    K("MI_TRNS3_4", "TS\nE Major\nC# minor", "Midi set transposition to +4 semitones"),
+    K("MI_TRNS3_5", "TS\nF Major\nD minor", "Midi set transposition to +5 semitones"),
+    K("MI_TRNS3_6", "TS\nF# Major\nD# minor", "Midi set transposition to +6 semitones"),
+    K("MI_TRNS3_N5", "TS\nG Major\nE minor", "Midi set transposition to -5 semitones"),
+    K("MI_TRNS3_N4", "TS\nG# Major\nF minor", "Midi set transposition to -4 semitones"),
+    K("MI_TRNS3_N3", "TS\nA Major\nF# minor", "Midi set transposition to -3 semitones"),
+    K("MI_TRNS3_N2", "TS\nA# Major\nG minor", "Midi set transposition to -2 semitones"),
+    K("MI_TRNS3_N1", "TS B Major\n G# Minor", "Midi set transposition to -1 semitones"),
 ]
 
 KEYCODES_MIDI_CHANNEL = [
