@@ -184,9 +184,13 @@ class SmartChordTab(QScrollArea):
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        self.button_layout = QGridLayout()
+        self.main_layout.addLayout(self.button_layout)
+
+        # Populate the inversion buttons
+        self.recreate_buttons()
         
-
-
         # Create a horizontal layout to hold the QTreeWidgets
         self.tree_layout = QHBoxLayout()
         self.tree_layout.setSpacing(1)
@@ -195,12 +199,7 @@ class SmartChordTab(QScrollArea):
         # Add the QTreeWidget layout to the main layout
         self.main_layout.addLayout(self.tree_layout)
 
-        # Layout for inversion buttons
-        self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
 
-        # Populate the inversion buttons
-        self.recreate_buttons()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
