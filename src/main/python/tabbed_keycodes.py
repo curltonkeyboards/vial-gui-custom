@@ -1254,7 +1254,7 @@ class KeySplitTab(QScrollArea):
         self.add_midi_layout2(self.midi_layout2)
         self.add_midi_layout3(self.midi_layout3)
      
-        self.midi_layout2_widget.hide()  # Hide midi_layout2
+        self.midi_layout3_widget.hide()  # Hide midi_layout2
      
         # 2. Dropdowns and Headers (Horizontal Layout)
         self.dropdown_layout = QVBoxLayout()
