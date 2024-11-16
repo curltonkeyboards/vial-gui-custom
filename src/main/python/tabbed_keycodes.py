@@ -1691,7 +1691,7 @@ class KeySplitTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(120, 120)  # Set fixed width and height
+                btn.setFixedSize(60, 60)  # Set fixed width and height
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
