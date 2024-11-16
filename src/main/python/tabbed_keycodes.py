@@ -197,18 +197,8 @@ class SmartChordTab(QScrollArea):
         self.main_layout.addLayout(self.tree_layout)
 
         # Layout for inversion buttons
-        self.centering_layout = QHBoxLayout()
-
-        # Create the grid layout for the buttons
         self.button_layout = QGridLayout()
-
-        # Add the grid layout to the centering layout
-        self.centering_layout.addStretch()  # Add stretch before the grid layout
-        self.centering_layout.addLayout(self.button_layout)
-        self.centering_layout.addStretch()  # Add stretch after the grid layout
-
-        # Add the centering layout to the main vertical layout
-        self.main_layout.addLayout(self.centering_layout)
+        self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
@@ -281,7 +271,6 @@ class SmartChordTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(40, 40)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
@@ -672,7 +661,6 @@ class midiadvancedTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(40, 40)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
 
@@ -734,18 +722,9 @@ class LayerTab(QScrollArea):
         #self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add to layout with center alignment
 
 
-        self.centering_layout = QHBoxLayout()
-
-        # Create the grid layout for the buttons
+        # Layout for inversion buttons
         self.button_layout = QGridLayout()
-
-        # Add the grid layout to the centering layout
-        self.centering_layout.addStretch()  # Add stretch before the grid layout
-        self.centering_layout.addLayout(self.button_layout)
-        self.centering_layout.addStretch()  # Add stretch after the grid layout
-
-        # Add the centering layout to the main vertical layout
-        self.main_layout.addLayout(self.centering_layout)
+        self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
@@ -916,18 +895,8 @@ class LightingTab(QScrollArea):
 
 
         # Layout for inversion buttons
-        self.centering_layout = QHBoxLayout()
-
-        # Create the grid layout for the buttons
         self.button_layout = QGridLayout()
-
-        # Add the grid layout to the centering layout
-        self.centering_layout.addStretch()  # Add stretch before the grid layout
-        self.centering_layout.addLayout(self.button_layout)
-        self.centering_layout.addStretch()  # Add stretch after the grid layout
-
-        # Add the centering layout to the main vertical layout
-        self.main_layout.addLayout(self.centering_layout)
+        self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
@@ -1094,18 +1063,8 @@ class MacroTab(QScrollArea):
 
 
         # Layout for inversion buttons
-        self.centering_layout = QHBoxLayout()
-
-        # Create the grid layout for the buttons
         self.button_layout = QGridLayout()
-
-        # Add the grid layout to the centering layout
-        self.centering_layout.addStretch()  # Add stretch before the grid layout
-        self.centering_layout.addLayout(self.button_layout)
-        self.centering_layout.addStretch()  # Add stretch after the grid layout
-
-        # Add the centering layout to the main vertical layout
-        self.main_layout.addLayout(self.centering_layout)
+        self.main_layout.addLayout(self.button_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
@@ -2032,7 +1991,6 @@ class midiTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(40, 40)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
