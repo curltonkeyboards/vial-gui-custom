@@ -1512,7 +1512,7 @@ class KeySplitTab(QScrollArea):
                         button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
+                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
                         button.setStyleSheet("")
   
                     if readable_name in ["C#\nDb\nKS", "C#3\nDb3\nKS"]:
@@ -1643,7 +1643,7 @@ class KeySplitTab(QScrollArea):
                         button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
                         # Add an empty space before the black keys to stagger
                         
-                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
+                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
                         button.setStyleSheet("")
   
                     if readable_name in ["C#\nDb\nTS", "C#3\nDb3\nTS"]:
@@ -1691,6 +1691,7 @@ class KeySplitTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(120, 120)  # Set fixed width and height
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
