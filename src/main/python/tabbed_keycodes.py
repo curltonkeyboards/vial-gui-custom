@@ -1229,9 +1229,7 @@ class KeySplitTab(QScrollArea):
 
             ["MI_SPLIT_C_3", "MI_SPLIT_D_3", "MI_SPLIT_E_3", "MI_SPLIT_F_3", "MI_SPLIT_G_3", "MI_SPLIT_A_3", "MI_SPLIT_B_3",
              "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
-             "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"], 
-             
-            ["KS_CHAN_DOWN", "KS_CHAN_UP", "MI_VELOCITY2_DOWN", "MI_VELOCITY2_UP", "MI_TRANSPOSE2_DOWN", "MI_TRANSPOSE2_UP", "MI_OCTAVE2_DOWN", "MI_OCTAVE2_UP"]
+             "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"]
         ]
         
         self.midi_layout3 = [
@@ -1249,9 +1247,7 @@ class KeySplitTab(QScrollArea):
 
             ["MI_SPLIT2_C_3", "MI_SPLIT2_D_3", "MI_SPLIT2_E_3", "MI_SPLIT2_F_3", "MI_SPLIT2_G_3", "MI_SPLIT2_A_3", "MI_SPLIT2_B_3",
              "MI_SPLIT2_C_4", "MI_SPLIT2_D_4", "MI_SPLIT2_E_4", "MI_SPLIT2_F_4", "MI_SPLIT2_G_4", "MI_SPLIT2_A_4", "MI_SPLIT2_B_4",
-             "MI_SPLIT2_C_5", "MI_SPLIT2_D_5", "MI_SPLIT2_E_5", "MI_SPLIT2_F_5", "MI_SPLIT2_G_5", "MI_SPLIT2_A_5", "MI_SPLIT2_B_5"],
-            
-            ["KS2_CHAN_DOWN", "KS2_CHAN_UP", "MI_VELOCITY3_DOWN", "MI_VELOCITY3_UP", "MI_TRANSPOSE3_DOWN", "MI_TRANSPOSE3_UP", "MI_OCTAVE3_DOWN", "MI_OCTAVE3_UP"]
+             "MI_SPLIT2_C_5", "MI_SPLIT2_D_5", "MI_SPLIT2_E_5", "MI_SPLIT2_F_5", "MI_SPLIT2_G_5", "MI_SPLIT2_A_5", "MI_SPLIT2_B_5"]
         ]
 
         # Main layout for the scroll area
