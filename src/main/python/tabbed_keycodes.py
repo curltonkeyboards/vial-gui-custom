@@ -230,17 +230,10 @@ class SmartChordTab(QScrollArea):
 
         # Connect itemClicked signal to on_item_selected
         tree.itemClicked.connect(self.on_item_selected)
-        tree.itemClicked.connect(self.handle_selection)
 
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
-        
-    def handle_selection(self):
-        """Ensure only one item is highlighted at a time across all trees."""
-        sender = self.sender()
-        for tree in self.tree_layout:
-            if tree != sender:
-                tree.clearSelection()
+
                 
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
@@ -258,6 +251,7 @@ class SmartChordTab(QScrollArea):
         qmk_id = item.data(0, Qt.UserRole)
         if qmk_id:
             self.keycode_changed.emit(qmk_id)
+            self.clearSelection()
 
     def recreate_buttons(self, keycode_filter=None):
         """Recreates the buttons for the inversion keycodes."""
