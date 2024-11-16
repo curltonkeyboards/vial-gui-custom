@@ -1190,7 +1190,7 @@ class keycodes_v6:
         "MI_OCTAVE2_DOWN": 0xC74F,
         
         "MI_OCTAVE2_N2": 0xC750,
-        "MI_OCTAVE_N1": 0xC751,
+        "MI_OCTAVE2_N1": 0xC751,
         "MI_OCTAVE2_0": 0xC752,
         "MI_OCTAVE2_1": 0xC753,
         "MI_OCTAVE2_2": 0xC754,
