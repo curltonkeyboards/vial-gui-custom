@@ -1300,8 +1300,18 @@ class KeySplitTab(QScrollArea):
         self.main_layout.addWidget(self.inversion_label)
 
         # Layout for buttons (Inversions) using QGridLayout
+        self.centering_layout = QHBoxLayout()
+
+        # Create the grid layout for the buttons
         self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
+
+        # Add the grid layout to the centering layout
+        self.centering_layout.addStretch()  # Add stretch before the grid layout
+        self.centering_layout.addLayout(self.button_layout)
+        self.centering_layout.addStretch()  # Add stretch after the grid layout
+
+        # Add the centering layout to the main vertical layout
+        self.main_layout.addLayout(self.centering_layout)
 
         # Populate the inversion buttons
         self.recreate_buttons()
