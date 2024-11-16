@@ -309,7 +309,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key):
         super().__init__(parent)
         self.label = label
         self.inversion_keycodes = inversion_keycodes
@@ -328,15 +328,7 @@ class midiadvancedTab(QScrollArea):
         self.velocity_options = velocity_options
         self.channel_oneshot = channel_oneshot
         self.channel_hold = channel_hold
-        self.ksvelocity2 = ksvelocity2
-        self.ksvelocity3 = ksvelocity3
-        self.kskey2 = kskey2
-        self.kskey3 = kskey3
-        self.ksoctave2 = ksoctave2 
-        self.ksoctave3 = ksoctave3
-        self.kschannel2 = kschannel2 
-        self.kschannel3 = kschannel3
-        
+
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -391,23 +383,6 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, self.additional_dropdown_layout3)
         self.add_header_dropdown("Key Selector", self.smartchord_key, self.additional_dropdown_layout3)        
         self.main_layout.addLayout(self.additional_dropdown_layout3)
-        
-        self.inversion6_label = QLabel("KeySplit/Triplesplit")
-        self.inversion6_label.setAlignment(Qt.AlignCenter)
-        self.main_layout.addWidget(self.inversion6_label, alignment=Qt.AlignCenter)
-        
-        # Replace dropdowns with individual buttons in the modified layout
-        self.keysplit_layout6 = QHBoxLayout()
-        self.add_value_button("KS Velocity", self.ksvelocity2, self.keysplit_layout6)
-        self.add_header_dropdown("KS Octave", self.ksoctave2, self.keysplit_layout6)
-        self.add_header_dropdown("KS Key", self.kskey2, self.keysplit_layout6)  
-        self.add_header_dropdown("KS Channel", self.kschannel2, self.keysplit_layout6)
-        self.add_value_button("TS Velocity", self.ksvelocity3, self.keysplit_layout6)
-        self.add_header_dropdown("TS Octave", self.ksoctave3, self.keysplit_layout6)
-        self.add_header_dropdown("TS Key", self.kskey3, self.keysplit_layout6)  
-        self.add_header_dropdown("TS Channel", self.kschannel3, self.keysplit_layout6)
-        
-        self.main_layout.addLayout(self.keysplit_layout6)
 
         self.inversion_label = QLabel("Advanced Midi Settings")
         self.inversion_label.setAlignment(Qt.AlignCenter)
@@ -469,9 +444,7 @@ class midiadvancedTab(QScrollArea):
                 "Program Change": f"MI_PROG_{value}",
                 "Bank LSB": f"MI_BANK_LSB_{value}",
                 "Bank MSB": f"MI_BANK_MSB_{value}",
-                "Set Velocity": f"MI_VELOCITY_{value}",
-                "KS Velocity": f"MI_VELOCITY2_{value}",
-                "TS Velocity": f"MI_VELOCITY3_{value}"
+                "Set Velocity": f"MI_VELOCITY_{value}"
             }
         
             # Construct the keycode using the label as a key
@@ -2054,7 +2027,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SMARTCHORDBUTTONS),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTab
-            midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2),
+            midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
