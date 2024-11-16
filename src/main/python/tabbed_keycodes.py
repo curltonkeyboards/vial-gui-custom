@@ -1927,7 +1927,7 @@ class midiTab(QScrollArea):
                     button = SquareButton()
                     button.setText(readable_name)
 
-                    button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                    button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(209, 211, 243, 1);")
                     
                     if "#" in readable_name:  # Sharp keys have # in their name
                         button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
@@ -1937,18 +1937,18 @@ class midiTab(QScrollArea):
                         button.setStyleSheet("")
   
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
                         
                     if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
                         hbox.addSpacing(60)                      
                         
                     if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
                         hbox.addSpacing(50)
                         
                     if readable_name in ["C1", "C2", "C4", "C5"]:
-                        button.setStyleSheet("background-color: rgba(190, 190, 190, 1); color: rgba(30, 30, 30, 1);")
+                        button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(209, 211, 243, 1);")
                         hbox.addSpacing(20)
 
                     
