@@ -1459,6 +1459,14 @@ class KeySplitTab(QScrollArea):
             "MI_SPLIT_G": "G\nKS",
             "MI_SPLIT_A": "A\nKS",
             "MI_SPLIT_B": "B\nKS",
+            "KS_CHAN_DOWN": "KS\nChannel\nDown", 
+            "KS_CHAN_UP": "KS\nChannel\nUp", 
+            "MI_VELOCITY2_DOWN": "KS\nVelocity\nDown", 
+            "MI_VELOCITY2_UP": "KS\nVelocity\nUp", 
+            "MI_TRANSPOSE2_DOWN": "KS\nTranspose\nDown", 
+            "MI_TRANSPOSE2_UP": "KS\nTranspose\nUp", 
+            "MI_OCTAVE2_DOWN": "KS\nOctave\nDown", 
+            "MI_OCTAVE2_UP": : "KS\nOctave\nUp"
         }
 
         
@@ -1581,7 +1589,15 @@ class KeySplitTab(QScrollArea):
             "MI_SPLIT2_F": "F\nTS",
             "MI_SPLIT2_G": "G\nTS",
             "MI_SPLIT2_A": "A\nTS",
-            "MI_SPLIT2_B": "B\nTS"
+            "MI_SPLIT2_B": "B\nTS",
+            "KS2_CHAN_DOWN": "TS\nChannel\nDown", 
+            "KS2_CHAN_UP": "KS\nChannel\nUp", 
+            "MI_VELOCITY3_DOWN": "KS\nVelocity\nDown", 
+            "MI_VELOCITY3_UP": "KS\nVelocity\nUp", 
+            "MI_TRANSPOSE3_DOWN": "KS\nTranspose\nDown", 
+            "MI_TRANSPOSE3_UP": "KS\nTranspose\nUp", 
+            "MI_OCTAVE3_DOWN": "KS\nOctave\nDown", 
+            "MI_OCTAVE3_UP": : "KS\nOctave\nUp"
         }
 
         
