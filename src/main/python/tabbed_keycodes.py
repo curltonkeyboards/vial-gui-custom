@@ -1491,7 +1491,7 @@ class KeySplitTab(QScrollArea):
             "MI_VELOCITY2_DOWN": "KS\nVelocity\n-", 
             "MI_VELOCITY2_UP": "KS\nVelocity\n+", 
             "MI_TRANSPOSE2_DOWN": "KS\nTranspose\n-", 
-            "MI_TRANSPOSE2_UP": "KS\nTranspose\+", 
+            "MI_TRANSPOSE2_UP": "KS\nTranspose\n+", 
             "MI_OCTAVE2_DOWN": "KS\nOctave\n-", 
             "MI_OCTAVE2_UP": "KS\nOctave\n+"
         }
@@ -1513,7 +1513,7 @@ class KeySplitTab(QScrollArea):
                         # Add an empty space before the black keys to stagger
                         
                     if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
-                        button.setStyleSheet("")
+                        button.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
   
                     if readable_name in ["C#\nDb\nKS", "C#3\nDb3\nKS"]:
                         button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
@@ -1644,7 +1644,7 @@ class KeySplitTab(QScrollArea):
                         # Add an empty space before the black keys to stagger
                         
                     if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
-                        button.setStyleSheet("")
+                         button.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
   
                     if readable_name in ["C#\nDb\nTS", "C#3\nDb3\nTS"]:
                         button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
@@ -1927,28 +1927,28 @@ class midiTab(QScrollArea):
                     button = SquareButton()
                     button.setText(readable_name)
 
-                    button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(209, 211, 243, 1);")
+                    button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
                     
                     if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(30, 30, 30, 1); color: rgba(190, 190, 190, 1);")
+                        button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(190, 190, 190, 1);")
                         # Add an empty space before the black keys to stagger
                         
                     if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Smart" in readable_name:
-                        button.setStyleSheet("")
+                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
   
                     if readable_name in ["C#\nDb", "C#3\nDb3"]:
-                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
+                        button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(87, 87, 128, 1);")
                         
                     if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
-                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
+                        button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(87, 87, 128, 1);")
                         hbox.addSpacing(60)                      
                         
                     if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
-                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
+                        button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(87, 87, 128, 1);")
                         hbox.addSpacing(50)
                         
                     if readable_name in ["C1", "C2", "C4", "C5"]:
-                        button.setStyleSheet("background-color: rgba(87, 87, 128, 1); color: rgba(209, 211, 243, 1);")
+                        button.setStyleSheet("background-color: rgba(209, 211, 243, 1); color: rgba(87, 87, 128, 1);")
                         hbox.addSpacing(20)
 
                     
