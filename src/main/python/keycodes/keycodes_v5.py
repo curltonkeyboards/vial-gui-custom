@@ -573,25 +573,36 @@ class keycodes_v5:
         "MI_VELOCITY_0": (0x8000 + 128 * 6) + 128 * 128 + 5,
         
         
-        "CC_STEPSIZE_1": (0x8000 + 128 * 7) + 128 * 128 + 5,
-        "CC_STEPSIZE_2": (0x8000 + 128 * 7) + 128 * 128 + 6,
-        "CC_STEPSIZE_3": (0x8000 + 128 * 7) + 128 * 128 + 7,
-        "CC_STEPSIZE_4": (0x8000 + 128 * 7) + 128 * 128 + 8,
-        "CC_STEPSIZE_5": (0x8000 + 128 * 7) + 128 * 128 + 9,
-        "CC_STEPSIZE_6": (0x8000 + 128 * 7) + 128 * 128 + 10,
-        "CC_STEPSIZE_7": (0x8000 + 128 * 7) + 128 * 128 + 11,
-        "CC_STEPSIZE_8": (0x8000 + 128 * 7) + 128 * 128 + 12,
-        "CC_STEPSIZE_9": (0x8000 + 128 * 7) + 128 * 128 + 13,
-        "CC_STEPSIZE_10": (0x8000 + 128 * 7) + 128 * 128 + 14,
-        "CC_STEPSIZE_11": (0x8000 + 128 * 7) + 128 * 128 + 15,
-        "CC_STEPSIZE_12": (0x8000 + 128 * 7) + 128 * 128 + 16,
-        "CC_STEPSIZE_13": (0x8000 + 128 * 7) + 128 * 128 + 17,
-        "CC_STEPSIZE_14": (0x8000 + 128 * 7) + 128 * 128 + 18,
-        "CC_STEPSIZE_15": (0x8000 + 128 * 7) + 128 * 128 + 19,
-        "CC_STEPSIZE_16": (0x8000 + 128 * 7) + 128 * 128 + 20,
+        "CC_STEPSIZE_1": 0xC80C,
+        "CC_STEPSIZE_2": 0xC80D,
+        "CC_STEPSIZE_3": 0xC80E,
+        "CC_STEPSIZE_4": 0xC80F,
+        "CC_STEPSIZE_5": 0xC810,
+        "CC_STEPSIZE_6": 0xC811,
+        "CC_STEPSIZE_7": 0xC812,
+        "CC_STEPSIZE_8": 0xC813,
+        "CC_STEPSIZE_9": 0xC814,
+        "CC_STEPSIZE_10": 0xC815,
+        "CC_STEPSIZE_11": 0xC816,
+        "CC_STEPSIZE_12": 0xC817,
+        "CC_STEPSIZE_13": 0xC818,
+        "CC_STEPSIZE_14": 0xC819,
+        "CC_STEPSIZE_15": 0xC81A,
+        "CC_STEPSIZE_16": 0xC81B,
         
         
                 # midi chords "MI_CHORD_1": (0x8000 + 128 * 7) + 128 * 128 + 5 + 17,
+        "MI_INV_1": 0xC38B,
+        "MI_INV_2": 0xC38C,
+        "MI_INV_3": 0xC38D,
+        "MI_INV_4": 0xC38E,
+        "MI_INV_5": 0xC38F,
+        "MI_INV_6": 0xC390,
+        "MI_INV_7": 0xC391,
+        "MI_INV_8": 0xC392,
+        "MI_INV_9": 0xC393,
+        "MI_INV_10": 0xC394,
+        "MI_INV_11": 0xC395,
         "MI_CHORD_0": 0xC396,
         "MI_CHORD_1": 0xC397,
         "MI_CHORD_2": 0xC398,
@@ -1381,7 +1392,7 @@ class keycodes_v5:
 
         
 
-        "QK_KB":0xC80C,  # custom keycodes safe range
+        "QK_KB": 0xC81C,  # custom keycodes safe range
         
        
 
