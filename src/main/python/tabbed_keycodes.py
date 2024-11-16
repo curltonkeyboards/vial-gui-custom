@@ -11,8 +11,9 @@ from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, \
-    KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
+    KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, \
+    KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
@@ -1201,7 +1202,9 @@ class KeySplitTab(QScrollArea):
 
             ["MI_SPLIT_C_3", "MI_SPLIT_D_3", "MI_SPLIT_E_3", "MI_SPLIT_F_3", "MI_SPLIT_G_3", "MI_SPLIT_A_3", "MI_SPLIT_B_3",
              "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
-             "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"]
+             "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"], 
+             
+            ["KS_CHAN_DOWN", "KS_CHAN_UP", "MI_VELOCITY2_DOWN", "MI_VELOCITY2_UP", "MI_TRANSPOSE2_DOWN", "MI_TRANSPOSE2_UP", "MI_OCTAVE2_DOWN", "MI_OCTAVE2_UP"]
         ]
         
         self.midi_layout3 = [
@@ -1219,7 +1222,9 @@ class KeySplitTab(QScrollArea):
 
             ["MI_SPLIT2_C_3", "MI_SPLIT2_D_3", "MI_SPLIT2_E_3", "MI_SPLIT2_F_3", "MI_SPLIT2_G_3", "MI_SPLIT2_A_3", "MI_SPLIT2_B_3",
              "MI_SPLIT2_C_4", "MI_SPLIT2_D_4", "MI_SPLIT2_E_4", "MI_SPLIT2_F_4", "MI_SPLIT2_G_4", "MI_SPLIT2_A_4", "MI_SPLIT2_B_4",
-             "MI_SPLIT2_C_5", "MI_SPLIT2_D_5", "MI_SPLIT2_E_5", "MI_SPLIT2_F_5", "MI_SPLIT2_G_5", "MI_SPLIT2_A_5", "MI_SPLIT2_B_5"]
+             "MI_SPLIT2_C_5", "MI_SPLIT2_D_5", "MI_SPLIT2_E_5", "MI_SPLIT2_F_5", "MI_SPLIT2_G_5", "MI_SPLIT2_A_5", "MI_SPLIT2_B_5"],
+            
+            ["KS2_CHAN_DOWN", "KS2_CHAN_UP", "MI_VELOCITY3_DOWN", "MI_VELOCITY3_UP", "MI_TRANSPOSE3_DOWN", "MI_TRANSPOSE3_UP", "MI_OCTAVE3_DOWN", "MI_OCTAVE3_UP"]
         ]
 
         # Main layout for the scroll area
@@ -1454,6 +1459,14 @@ class KeySplitTab(QScrollArea):
             "MI_SPLIT_G": "G\nKS",
             "MI_SPLIT_A": "A\nKS",
             "MI_SPLIT_B": "B\nKS",
+            "KS_CHAN_DOWN": "KS\nChannel\n-", 
+            "KS_CHAN_UP": "KS\nChannel\n+", 
+            "MI_VELOCITY2_DOWN": "KS\nVelocity\n-", 
+            "MI_VELOCITY2_UP": "KS\nVelocity\n+", 
+            "MI_TRANSPOSE2_DOWN": "KS\nTranspose\n-", 
+            "MI_TRANSPOSE2_UP": "KS\nTranspose\+", 
+            "MI_OCTAVE2_DOWN": "KS\nOctave\n-", 
+            "MI_OCTAVE2_UP": : "KS\nOctave\n+"
         }
 
         
@@ -1493,7 +1506,7 @@ class KeySplitTab(QScrollArea):
                     
 
                     button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
+                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
                         button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
                         button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
@@ -1576,7 +1589,15 @@ class KeySplitTab(QScrollArea):
             "MI_SPLIT2_F": "F\nTS",
             "MI_SPLIT2_G": "G\nTS",
             "MI_SPLIT2_A": "A\nTS",
-            "MI_SPLIT2_B": "B\nTS"
+            "MI_SPLIT2_B": "B\nTS",
+            "KS2_CHAN_DOWN": "TS\nChannel\n-", 
+            "KS2_CHAN_UP": "TS\nChannel\n+", 
+            "MI_VELOCITY3_DOWN": "TS\nVelocity\n-", 
+            "MI_VELOCITY3_UP": "TS\nVelocity\n+", 
+            "MI_TRANSPOSE3_DOWN": "TS\nTranspose\n-", 
+            "MI_TRANSPOSE3_UP": "TS\nTranspose\n+", 
+            "MI_OCTAVE3_DOWN": "TS\nOctave\n-", 
+            "MI_OCTAVE3_UP": : "TS\nOctave\n+"
         }
 
         
@@ -1616,7 +1637,7 @@ class KeySplitTab(QScrollArea):
                     
 
                     button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name or "Channel" in readable_name or "Toggle" in readable_name:
+                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
                         button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
                     else:
                         button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
