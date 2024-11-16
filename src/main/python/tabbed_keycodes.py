@@ -281,6 +281,7 @@ class SmartChordTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(40, 40)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
@@ -671,6 +672,7 @@ class midiadvancedTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(40, 40)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode  # Make sure keycode attribute is set
 
@@ -2030,6 +2032,7 @@ class midiTab(QScrollArea):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(40, 40)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
