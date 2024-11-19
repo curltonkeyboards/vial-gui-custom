@@ -249,7 +249,6 @@ class SmartChordTab(QScrollArea):
     def on_item_selected(self, item, column):
         """Handle tree item selection to emit keycode_changed signal."""
         qmk_id = item.data(0, Qt.UserRole)
-        self.clearSelection()
         if qmk_id:
             self.keycode_changed.emit(qmk_id)
             
