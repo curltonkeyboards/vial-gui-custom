@@ -176,6 +176,9 @@ class SmartChordTab(QScrollArea):
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
+        
+        # Store all tree widgets for managing selections
+        self.trees = []
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -186,8 +189,6 @@ class SmartChordTab(QScrollArea):
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        
-
 
         # Create a horizontal layout to hold the QTreeWidgets
         self.tree_layout = QHBoxLayout()
@@ -220,7 +221,7 @@ class SmartChordTab(QScrollArea):
         
 
     def create_keycode_tree(self, keycodes, title):
-        """Create a QTreeWidgetItem and add keycodes under it."""
+        """Create a QTreeWidget and add keycodes under it."""
         tree = QTreeWidget()
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
@@ -230,9 +231,27 @@ class SmartChordTab(QScrollArea):
 
         # Connect itemClicked signal to on_item_selected
         tree.itemClicked.connect(self.on_item_selected)
+        
+        # Add tree to our list of trees
+        self.trees.append(tree)
 
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
+
+    def on_item_selected(self, item, column):
+        """Handle tree item selection and clear other trees' selections."""
+        # Get the tree widget that was clicked
+        clicked_tree = item.treeWidget()
+        
+        # Clear selection in all other trees
+        for tree in self.trees:
+            if tree != clicked_tree:
+                tree.clearSelection()
+        
+        # Emit the keycode for the selected item
+        qmk_id = item.data(0, Qt.UserRole)
+        if qmk_id:
+            self.keycode_changed.emit(qmk_id)
 
                 
     def add_keycode_group(self, tree, title, keycodes):
