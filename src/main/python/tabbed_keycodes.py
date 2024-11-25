@@ -229,8 +229,11 @@ class SmartChordTab(QScrollArea):
         tree.setStyleSheet("border: 2px;")
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        # Set selection mode to single selection
+        tree.setSelectionMode(QTreeWidget.SingleSelection)
+        
         # Connect itemClicked signal to on_item_selected
-        tree.itemClicked.connect(self.on_item_selected)
+        tree.itemClicked.connect(lambda item, col: self.on_item_selected(tree, item))
         
         # Add tree to our list of trees
         self.trees.append(tree)
@@ -238,20 +241,33 @@ class SmartChordTab(QScrollArea):
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
 
-    def on_item_selected(self, item, column):
+    def on_item_selected(self, clicked_tree, item):
         """Handle tree item selection and clear other trees' selections."""
-        # Get the tree widget that was clicked
-        clicked_tree = item.treeWidget()
-        
-        # Clear selection in all other trees
+        # Block signals temporarily to prevent recursion
         for tree in self.trees:
-            if tree != clicked_tree:
-                tree.clearSelection()
-        
-        # Emit the keycode for the selected item
-        qmk_id = item.data(0, Qt.UserRole)
-        if qmk_id:
-            self.keycode_changed.emit(qmk_id)
+            tree.blockSignals(True)
+            
+        try:
+            # Clear selection in all trees first
+            for tree in self.trees:
+                if tree != clicked_tree:
+                    tree.clearSelection()
+                    # Clear the current item as well
+                    tree.setCurrentItem(None)
+            
+            # Set the selection for the clicked tree
+            clicked_tree.setCurrentItem(item)
+            item.setSelected(True)
+            
+            # Emit the keycode for the selected item
+            qmk_id = item.data(0, Qt.UserRole)
+            if qmk_id:
+                self.keycode_changed.emit(qmk_id)
+                
+        finally:
+            # Restore signals
+            for tree in self.trees:
+                tree.blockSignals(False)
 
                 
     def add_keycode_group(self, tree, title, keycodes):
