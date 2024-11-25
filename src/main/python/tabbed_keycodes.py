@@ -290,12 +290,6 @@ class SmartChordTab(QScrollArea):
             # Force text to be on one line and left-aligned
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
             keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
-
-    def on_item_selected(self, item, column):
-        """Handle tree item selection to emit keycode_changed signal."""
-        qmk_id = item.data(0, Qt.UserRole)
-        if qmk_id:
-            self.keycode_changed.emit(qmk_id)
             
 
     def recreate_buttons(self, keycode_filter=None):
