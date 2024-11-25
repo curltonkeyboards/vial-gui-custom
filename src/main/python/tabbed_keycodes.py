@@ -241,7 +241,18 @@ class SmartChordTab(QScrollArea):
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
 
-    def on_item_selected(self, clicked_tree, item):
+    def add_keycode_group(self, tree, title, keycodes):
+        """Helper function to add keycodes to a QTreeWidget."""
+        for keycode in keycodes:
+            label = Keycode.label(keycode.qmk_id).replace("\n", " ")  # Replace \n with space
+            keycode_item = QTreeWidgetItem(tree, [label])
+            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
+
+            # Force text to be on one line and left-aligned
+            keycode_item.setTextAlignment(0, Qt.AlignLeft)
+            keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
+
+    def on_item_selected(self, clicked_tree, clicked_item):
         """Handle tree item selection and clear other trees' selections."""
         # Block signals temporarily to prevent recursion
         for tree in self.trees:
@@ -252,15 +263,14 @@ class SmartChordTab(QScrollArea):
             for tree in self.trees:
                 if tree != clicked_tree:
                     tree.clearSelection()
-                    # Clear the current item as well
                     tree.setCurrentItem(None)
             
             # Set the selection for the clicked tree
-            clicked_tree.setCurrentItem(item)
-            item.setSelected(True)
+            clicked_tree.setCurrentItem(clicked_item)
+            clicked_item.setSelected(True)
             
-            # Emit the keycode for the selected item
-            qmk_id = item.data(0, Qt.UserRole)
+            # Get the data from the clicked item
+            qmk_id = clicked_item.data(0, Qt.UserRole)
             if qmk_id:
                 self.keycode_changed.emit(qmk_id)
                 
