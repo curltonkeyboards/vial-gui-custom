@@ -220,6 +220,7 @@ class SmartChordTab(QScrollArea):
         self.create_keycode_tree(self.inversion_dropdown, "Inversions")
         
 
+
     def create_keycode_tree(self, keycodes, title):
         """Create a QTreeWidget and add keycodes under it."""
         tree = QTreeWidget()
@@ -233,7 +234,7 @@ class SmartChordTab(QScrollArea):
         tree.setSelectionMode(QTreeWidget.SingleSelection)
         
         # Connect itemClicked signal to on_item_selected
-        tree.itemClicked.connect(lambda item, col: self.on_item_selected(tree, item))
+        tree.itemClicked.connect(self.on_item_selected)
         
         # Add tree to our list of trees
         self.trees.append(tree)
@@ -252,21 +253,23 @@ class SmartChordTab(QScrollArea):
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
             keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
 
-    def on_item_selected(self, clicked_tree, clicked_item):
+    def on_item_selected(self, clicked_item, column):
         """Handle tree item selection and clear other trees' selections."""
+        # Get the tree that was clicked
+        clicked_tree = clicked_item.treeWidget()
+        
         # Block signals temporarily to prevent recursion
         for tree in self.trees:
             tree.blockSignals(True)
             
         try:
-            # Clear selection in all trees first
+            # Clear selection in all other trees
             for tree in self.trees:
                 if tree != clicked_tree:
                     tree.clearSelection()
                     tree.setCurrentItem(None)
             
-            # Set the selection for the clicked tree
-            clicked_tree.setCurrentItem(clicked_item)
+            # Ensure the clicked item is selected
             clicked_item.setSelected(True)
             
             # Get the data from the clicked item
