@@ -1389,10 +1389,13 @@ class keycodes_v6:
         "MI_OCTAVE3_5": 0xC809,
         "MI_OCTAVE3_6": 0xC80A,
         "MI_OCTAVE3_7": 0xC80B,
+        
+        "MI_INV_UP": 0xC80C,
+        "MI_INV_DOWN": 0xC80D,
 
         
 
-        "QK_KB": 0xC81C, # custom keycodes safe range
+        "QK_KB": 0xC81E, # custom keycodes safe range
         
        
 

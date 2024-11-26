@@ -178,6 +178,14 @@ class SmartChordTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.inversion_dropdown = inversiondropdown
         
+        
+        # Layout for inversion buttons
+        self.button_layout = QGridLayout()
+        self.main_layout.addLayout(self.button_layout)
+
+        # Populate the inversion buttons
+        self.recreate_buttons()
+        
         # Store all tree widgets for managing selections
         self.trees = []
 
@@ -198,13 +206,6 @@ class SmartChordTab(QScrollArea):
 
         # Add the QTreeWidget layout to the main layout
         self.main_layout.addLayout(self.tree_layout)
-
-        # Layout for inversion buttons
-        self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
-
-        # Populate the inversion buttons
-        self.recreate_buttons()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
