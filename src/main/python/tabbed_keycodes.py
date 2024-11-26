@@ -218,7 +218,7 @@ class SmartChordTab(QScrollArea):
         self.create_keycode_tree(self.smartchord_keycodes_2, "4 Note Chords")
         self.create_keycode_tree(self.smartchord_keycodes_3, "5 Note Chords")
         self.create_keycode_tree(self.smartchord_keycodes_4, "6 Note Chords")
-        self.create_keycode_tree(self.smartchord_keycodes_5, "Other")
+        self.create_keycode_tree(self.smartchord_keycodes_5, "Other Chords")
         self.create_keycode_tree(self.scales_modes_keycodes, "Scales/Modes")
         self.create_keycode_tree(self.inversion_dropdown, "Inversions")
         
