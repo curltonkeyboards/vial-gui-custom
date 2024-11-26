@@ -31,6 +31,7 @@ class keycodes_v5:
         "QK_RALT": 0x1400,
         "QK_RGUI": 0x1800,
         "QK_0xC81E": 0x7700,
+        "QK_MACRO": 0xC81E,
 
         "ALL_T(kc)": 0x2f00,
         "C_S_T(kc)": 0x2300,

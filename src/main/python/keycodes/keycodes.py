@@ -1188,7 +1188,7 @@ KEYCODES_MACRO = [
     K("M253", "Macro 253", "Macro 253"),
     K("M254", "Macro 254", "Macro 254"),
     K("M255", "Macro 255", "Macro 255"),
-    K("M256", "Macro 256", "Macro 256")
+    K("M256", "Macro 256", "Macro 256"),
 ]
 
 
