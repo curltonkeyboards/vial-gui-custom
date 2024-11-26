@@ -2118,10 +2118,10 @@ def recreate_keyboard_keycodes(keyboard):
         KEYCODES_LAYERS_LT.append(Keycode("LT{}(kc)".format(x), "LT {}\n(kc)".format(x),
                                        "kc on tap, switch to layer {} while held".format(x), masked=True))
 
-    KEYCODES_MACRO.clear()
-    for x in range(keyboard.macro_count):
-        lbl = "M{}".format(x)
-        KEYCODES_MACRO.append(Keycode(lbl, lbl))
+#   KEYCODES_MACRO.clear()
+#    for x in range(keyboard.macro_count):
+ #       lbl = "M{}".format(x)
+  #      KEYCODES_MACRO.append(Keycode(lbl, lbl))
 
 
     KEYCODES_TAP_DANCE.clear()
