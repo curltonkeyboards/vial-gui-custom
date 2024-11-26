@@ -30,7 +30,7 @@ class keycodes_v6:
         "QK_RSFT": 0x1200,
         "QK_RALT": 0x1400,
         "QK_RGUI": 0x1800,
-        "QK_MACRO": 0xC81E,
+        "QK_MACRO": 0x7700,
 
         "ALL_T(kc)": 0x2f00,
         "C_S_T(kc)": 0x2300,
@@ -1395,7 +1395,7 @@ class keycodes_v6:
 
         
 
-        "QK_KB": 0xC998, # custom keycodes safe range
+        "QK_KB": 0xC81E, # custom keycodes safe range
         
        
 
