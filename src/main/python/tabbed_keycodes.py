@@ -837,6 +837,8 @@ class LayerTab(QScrollArea):
     def has_buttons(self):
         return self.button_layout.count() > 0
         
+from PyQt5.QtWidgets import QFrame
+        
 class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
