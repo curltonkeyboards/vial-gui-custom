@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 
 from any_keycode_dialog import AnyKeycodeDialog
 from editor.basic_editor import BasicEditor
-from widgets.keyboard_widget import KeyboardWidget2, EncoderWidget
+from widgets.keyboard_widget import KeyboardWidget2, EncoderWidget, EncoderWidget2
 from keycodes.keycodes import Keycode
 from widgets.square_button import SquareButton
 from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
@@ -194,7 +194,7 @@ class KeymapEditor(BasicEditor):
         if self.container.active_key is None:
             return
 
-        if isinstance(self.container.active_key, EncoderWidget):
+        if isinstance(self.container.active_key, EncoderWidget2):
             self.set_key_encoder(keycode)
         else:
             self.set_key_matrix(keycode)

@@ -820,9 +820,8 @@ class KeyboardWidget2(QWidget):
         self.common_widgets = []
         self.widgets_for_layout = []
 
-        self.add_keys([(x, KeyWidget2) for x in keys] + [(x, EncoderWidget) for x in encoders])
-        self.update_layout()     
-
+        self.add_keys([(x, KeyWidget2) for x in keys] + [(x, EncoderWidget2) for x in encoders])
+        self.update_layout()
 
     def add_keys(self, keys):
         scale_factor = self.fontMetrics().height()
