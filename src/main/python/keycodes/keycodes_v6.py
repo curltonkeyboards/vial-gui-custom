@@ -1395,7 +1395,7 @@ class keycodes_v6:
 
         
 
-        "QK_KB": 0xC95B, # custom keycodes safe range
+        "QK_KB": 0xC98D, # custom keycodes safe range
         
        
 
