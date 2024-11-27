@@ -1109,7 +1109,6 @@ class MacroTab(QScrollArea):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
-        button.setFixedWidth(120)
         button.clicked.connect(lambda: self.open_value_dialog(label_text))
         self.button_layout.addWidget(button, row, col)
 
