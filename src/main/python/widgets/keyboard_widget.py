@@ -816,7 +816,7 @@ class KeyboardWidget2(QWidget):
         self.active_key = None
         self.active_mask = False
 
-    def set_key(self, keycode):
+    def set_keys(self, keycode):
         """ Change currently selected key to provided keycode """
         if self.container.active_key is None:
             return
