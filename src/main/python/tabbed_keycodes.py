@@ -782,7 +782,6 @@ class LayerTab(QScrollArea):
         for header_text, keycodes in dropdown_configs:
             dropdown = CenteredComboBox()
             dropdown.setFixedHeight(40)
-            dropdown.setMinimumWidth(150)
             dropdown.addItem(header_text)
             
             for keycode in keycodes:
@@ -885,7 +884,14 @@ class LightingTab(QScrollArea):
             QComboBox QAbstractItemView {
                 selection-background-color: palette(highlight);
                 selection-color: palette(highlighted-text);
-                max-height: 400px;
+                max-height: 300px;
+                height: 300px;
+            }
+            QComboBox QAbstractScrollArea {
+                max-height: 300px;
+            }
+            QComboBox QListView {
+                max-height: 300px;
             }
         """)
         dropdown1.addItem("RGB Mode")
@@ -905,12 +911,18 @@ class LightingTab(QScrollArea):
         # Add RGB Color dropdown with same styling
         dropdown2 = CenteredComboBox()
         dropdown2.setFixedHeight(40)
-        dropdown2.setMinimumWidth(150)
         dropdown2.setStyleSheet("""
             QComboBox QAbstractItemView {
                 selection-background-color: palette(highlight);
                 selection-color: palette(highlighted-text);
-                max-height: 400px;
+                max-height: 300px;
+                height: 300px;
+            }
+            QComboBox QAbstractScrollArea {
+                max-height: 300px;
+            }
+            QComboBox QListView {
+                max-height: 300px;
             }
         """)
         dropdown2.addItem("RGB Color")
