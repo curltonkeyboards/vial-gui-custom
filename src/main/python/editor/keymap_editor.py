@@ -190,16 +190,32 @@ class KeymapEditor(BasicEditor):
 
     def set_key(self, keycode):
         """ Change currently selected key to provided keycode """
-
         if self.container.active_key is None:
             return
 
         if isinstance(self.container.active_key, EncoderWidget):
             self.set_key_encoder(keycode)
         else:
-            self.set_key_matrix(keycode)
+            # Only try to set matrix key if row/col are valid
+            if self.container.active_key.desc.row is not None and self.container.active_key.desc.col is not None:
+                self.set_key_matrix(keycode)
 
         self.container.select_next()
+
+    def set_key_matrix(self, keycode):
+        l, r, c = self.current_layer, self.container.active_key.desc.row, self.container.active_key.desc.col
+        
+        # if masked, ensure that this is a byte-sized keycode
+        if self.container.active_mask:
+            if not Keycode.is_basic(keycode):
+                return
+            kc = Keycode.find_outer_keycode(self.keyboard.layout[(l, r, c)])
+            if kc is None:
+                return
+            keycode = kc.qmk_id.replace("(kc)", "({})".format(keycode))
+
+        self.keyboard.set_key(l, r, c, keycode)
+        self.refresh_layer_display()
 
     def set_key_encoder(self, keycode):
         l, i, d = self.current_layer, self.container.active_key.desc.encoder_idx,\
@@ -216,22 +232,6 @@ class KeymapEditor(BasicEditor):
 
         self.keyboard.set_encoder(l, i, d, keycode)
         self.refresh_layer_display()
-
-    def set_key_matrix(self, keycode):
-        l, r, c = self.current_layer, self.container.active_key.desc.row, self.container.active_key.desc.col
-
-        if r >= 0 and c >= 0:
-            # if masked, ensure that this is a byte-sized keycode
-            if self.container.active_mask:
-                if not Keycode.is_basic(keycode):
-                    return
-                kc = Keycode.find_outer_keycode(self.keyboard.layout[(l, r, c)])
-                if kc is None:
-                    return
-                keycode = kc.qmk_id.replace("(kc)", "({})".format(keycode))
-
-            self.keyboard.set_key(l, r, c, keycode)
-            self.refresh_layer_display()
 
     def on_key_clicked(self):
         """ Called when a key on the keyboard widget is clicked """
