@@ -1105,7 +1105,7 @@ class MacroTab(QScrollArea):
         # Create a horizontal layout for the value buttons
         self.additional_button_layout = QHBoxLayout()
         self.add_value_button("Macro", self.additional_button_layout, 0, 255, "MACRO_")
-        self.add_value_button("Tapdance", self.additional_button_layout, 0, 31, "TD_")
+        self.add_value_button("Tapdance", self.additional_button_layout, 0, 31, "TD({})")
         self.main_layout.addLayout(self.additional_button_layout)
 
         # Spacer to push everything to the top
@@ -1145,12 +1145,20 @@ class MacroTab(QScrollArea):
             self.value_input.clear()
 
     def confirm_value(self, dialog, label, min_value, max_value, prefix):
-        """Confirm the value input and emit the corresponding keycode."""
-        value = self.value_input.text()
-        if value.isdigit() and min_value <= int(value) <= max_value:
-            keycode = f"{prefix}{value}"
-            self.keycode_changed.emit(keycode)
+    """Confirm the value input and emit the corresponding keycode."""
+    value = self.value_input.text()
+    if value.isdigit() and min_value <= int(value) <= max_value:
+        keycode_map = {
+            "Tapdance": f"TD({value})",
+            "Macro": f"M{value}"
+        }
+        
+        # Construct the keycode using the label as a key
+        if label in keycode_map:
+            selected_keycode = keycode_map[label]
+            self.keycode_changed.emit(selected_keycode)
             dialog.accept()
+            
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
