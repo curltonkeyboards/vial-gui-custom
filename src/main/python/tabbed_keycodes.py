@@ -1095,12 +1095,6 @@ class MacroTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Inversions Header
-        #self.inversion_label = QLabel("Function Buttons")
-        #self.inversion_label.setAlignment(Qt.AlignCenter)  # Center the label text
-        #self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add to layout with center alignment
-
-
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
@@ -1108,95 +1102,55 @@ class MacroTab(QScrollArea):
         # Populate the inversion buttons
         self.recreate_buttons()
 
-        # Create a horizontal layout for the additional dropdowns
-        self.additional_dropdown_layout2 = QHBoxLayout()
-        self.add_header_dropdown("Macro Selection", self.smartchord_LSB, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Tapdance Selection", self.smartchord_MSB, self.additional_dropdown_layout2)
-        self.main_layout.addLayout(self.additional_dropdown_layout2)
+        # Create a horizontal layout for the value buttons
+        self.additional_button_layout = QHBoxLayout()
+        self.add_value_button("Macro", self.additional_button_layout, 0, 255, "MACRO_")
+        self.add_value_button("Tapdance", self.additional_button_layout, 0, 31, "TD_")
+        self.main_layout.addLayout(self.additional_button_layout)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
+    def add_value_button(self, label_text, layout, min_value, max_value, prefix):
+        """Create a button that opens a dialog to input a value for the corresponding keycode."""
+        button = QPushButton(label_text)
+        button.setFixedHeight(40)
+        button.clicked.connect(lambda: self.open_value_dialog(label_text, min_value, max_value, prefix))
+        layout.addWidget(button)
 
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-        #vbox.addWidget(header_label)
+    def open_value_dialog(self, label, min_value, max_value, prefix):
+        """Open a dialog to input a value between min and max and set the keycode accordingly."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Set Value for {label}")
+        dialog.setFixedSize(300, 150)
 
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
+        layout = QVBoxLayout(dialog)
+        label_widget = QLabel(f"Enter value for {label} ({min_value}-{max_value}):")
+        self.value_input = QLineEdit()
+        self.value_input.setPlaceholderText(f"Enter a number between {min_value} and {max_value}")
+        self.value_input.textChanged.connect(lambda text: self.validate_value_input(text, min_value, max_value))
 
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"{header_text}")  # Placeholder item
+        layout.addWidget(label_widget)
+        layout.addWidget(self.value_input)
 
-        for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id)
-            tooltip = Keycode.description(keycode.qmk_id)  # Get the description
-            dropdown.addItem(label, keycode.qmk_id)
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(lambda: self.confirm_value(dialog, label, min_value, max_value, prefix))
+        layout.addWidget(confirm_button)
 
-            # Set the tooltip for the item
-            item = dropdown.model().item(dropdown.count() - 1)
-            item.setToolTip(tooltip)
+        dialog.exec_()
 
+    def validate_value_input(self, text, min_value, max_value):
+        """Validate that the input is within the specified range."""
+        if text and (not text.isdigit() or not (min_value <= int(text) <= max_value)):
+            self.value_input.clear()
 
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-        
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
-        dropdown.setCurrentIndex(0)
-        
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-            #vbox.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-        dropdown.setFixedWidth(150)  # Set width of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
+    def confirm_value(self, dialog, label, min_value, max_value, prefix):
+        """Confirm the value input and emit the corresponding keycode."""
+        value = self.value_input.text()
+        if value.isdigit() and min_value <= int(value) <= max_value:
+            keycode = f"{prefix}{value}"
+            self.keycode_changed.emit(keycode)
+            dialog.accept()
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
