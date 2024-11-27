@@ -1395,7 +1395,7 @@ class keycodes_v5:
 
         
 
-        "QK_KB": 0xC98D, # custom keycodes safe range
+        "QK_KB": 0xC929, # custom keycodes safe range
         
        
 
@@ -1418,11 +1418,10 @@ for x in range(128):
         keycodes_v5.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v5.kc["MI_CC_0_0"] + (x * 128) + y
 
 
-for x in range(256):
-    keycodes_v5.kc["TD({})".format(x)] = keycodes_v5.kc["QK_TAP_DANCE"] + x
 
-for x in range(302):    
+for x in range(256):
     keycodes_v5.kc["M{}".format(x)] = keycodes_v5.kc["QK_MACRO"] + x
+    keycodes_v5.kc["TD({})".format(x)] = keycodes_v5.kc["QK_TAP_DANCE"] + x
 
 
 for x in range(32):
