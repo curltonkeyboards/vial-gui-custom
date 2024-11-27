@@ -837,7 +837,7 @@ class LayerTab(QScrollArea):
     def has_buttons(self):
         return self.button_layout.count() > 0
         
-from PyQt5.QtWidgets import QFrame
+from PyQt5.QtWidgets import QFrame, QListView, QScrollBar
         
 class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -879,13 +879,6 @@ class LightingTab(QScrollArea):
         row = 0
         col = 0
 
-        class ScrollableComboBox(CenteredComboBox):
-            def showPopup(self):
-                popup = self.findChild(QFrame)
-                if popup:
-                    popup.setFixedHeight(300)
-                super().showPopup()
-
         # Add RGB Mode dropdown
         dropdown1 = ScrollableComboBox()
         dropdown1.setFixedHeight(40)
@@ -922,7 +915,7 @@ class LightingTab(QScrollArea):
         self.button_layout.addWidget(dropdown2, row, col)
         col += 1
 
-        # Add regular buttons after the dropdowns
+        # Add regular buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
@@ -936,6 +929,16 @@ class LightingTab(QScrollArea):
                 if col >= 15:
                     col = 0
                     row += 1
+                    
+    class ScrollableComboBox(CenteredComboBox):
+        def showPopup(self):
+            popup = self.findChild(QFrame)
+            if popup:
+                popup.setFixedHeight(300)
+                view = popup.findChild(QListView)
+                if view:
+                    view.verticalScrollBar().setValue(0)
+            super().showPopup()
 
     def reset_dropdown(self, dropdown, header_text):
         """Reset the dropdown to show default text while storing the selected value."""
