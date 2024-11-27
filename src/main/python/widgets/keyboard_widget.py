@@ -816,12 +816,17 @@ class KeyboardWidget2(QWidget):
         self.active_key = None
         self.active_mask = False
 
-    def set_keys(self, keys, encoders):
-        self.common_widgets = []
-        self.widgets_for_layout = []
+    def set_key(self, keycode):
+        """ Change currently selected key to provided keycode """
+        if self.container.active_key is None:
+            return
 
-        self.add_keys([(x, KeyWidget2) for x in keys] + [(x, EncoderWidget2) for x in encoders])
-        self.update_layout()
+        if isinstance(self.container.active_key, EncoderWidget):  # Note this check!
+            self.set_key_encoder(keycode)
+        else:
+            self.set_key_matrix(keycode)
+
+        self.container.select_next()
 
     def add_keys(self, keys):
         scale_factor = self.fontMetrics().height()
