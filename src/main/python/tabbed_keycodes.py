@@ -838,6 +838,16 @@ class LayerTab(QScrollArea):
         return self.button_layout.count() > 0
         
 from PyQt5.QtWidgets import QFrame, QListView, QScrollBar
+
+class ScrollableComboBox(CenteredComboBox):
+    def showPopup(self):
+        popup = self.findChild(QFrame)
+        if popup:
+            popup.setFixedHeight(300)
+            view = popup.findChild(QListView)
+            if view:
+                view.verticalScrollBar().setValue(0)
+        super().showPopup()
         
 class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -928,17 +938,7 @@ class LightingTab(QScrollArea):
                 col += 1
                 if col >= 15:
                     col = 0
-                    row += 1
-                    
-    class ScrollableComboBox(CenteredComboBox):
-        def showPopup(self):
-            popup = self.findChild(QFrame)
-            if popup:
-                popup.setFixedHeight(300)
-                view = popup.findChild(QListView)
-                if view:
-                    view.verticalScrollBar().setValue(0)
-            super().showPopup()
+                    row += 1                  
 
     def reset_dropdown(self, dropdown, header_text):
         """Reset the dropdown to show default text while storing the selected value."""
