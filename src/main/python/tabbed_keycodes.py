@@ -805,6 +805,7 @@ class LayerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -880,7 +881,13 @@ class LightingTab(QScrollArea):
         # Add RGB Mode dropdown
         dropdown1 = CenteredComboBox()
         dropdown1.setFixedHeight(40)
-        dropdown1.setMinimumWidth(150)  # Set minimum width to make dropdown readable
+        dropdown1.setStyleSheet("""
+            QComboBox QAbstractItemView {
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+                max-height: 400px;
+            }
+        """)
         dropdown1.addItem("RGB Mode")
         for keycode in self.smartchord_LSB:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -895,10 +902,17 @@ class LightingTab(QScrollArea):
         self.button_layout.addWidget(dropdown1, row, col)
         col += 1
 
-        # Add RGB Color dropdown
+        # Add RGB Color dropdown with same styling
         dropdown2 = CenteredComboBox()
         dropdown2.setFixedHeight(40)
-        dropdown2.setMinimumWidth(150)  # Set minimum width to make dropdown readable
+        dropdown2.setMinimumWidth(150)
+        dropdown2.setStyleSheet("""
+            QComboBox QAbstractItemView {
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+                max-height: 400px;
+            }
+        """)
         dropdown2.addItem("RGB Color")
         for keycode in self.smartchord_MSB:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -918,6 +932,7 @@ class LightingTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
