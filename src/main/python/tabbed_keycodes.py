@@ -1095,7 +1095,7 @@ class MacroTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Layout for inversion buttons
+        # Layout for buttons (Inversions) using QGridLayout
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
@@ -1103,62 +1103,64 @@ class MacroTab(QScrollArea):
         self.recreate_buttons()
 
         # Create a horizontal layout for the value buttons
-        self.additional_button_layout = QHBoxLayout()
-        self.add_value_button("Macro", self.additional_button_layout, 0, 255, "MACRO_")
-        self.add_value_button("Tapdance", self.additional_button_layout, 0, 31, "TD({})")
-        self.main_layout.addLayout(self.additional_button_layout)
+        self.additional_button_layout2 = QHBoxLayout()
+        self.add_value_button("Tapdance", self.additional_button_layout2)
+        self.add_value_button("Macro", self.additional_button_layout2)
+        self.main_layout.addLayout(self.additional_button_layout2)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_value_button(self, label_text, layout, min_value, max_value, prefix):
+    def add_value_button(self, label_text, layout):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
-        button.clicked.connect(lambda: self.open_value_dialog(label_text, min_value, max_value, prefix))
+        button.clicked.connect(lambda: self.open_value_dialog(label_text))
         layout.addWidget(button)
 
-    def open_value_dialog(self, label, min_value, max_value, prefix):
-        """Open a dialog to input a value between min and max and set the keycode accordingly."""
+    def open_value_dialog(self, label):
+        """Open a dialog to input a value between 0 and 127 and set the keycode accordingly."""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Set Value for {label}")
         dialog.setFixedSize(300, 150)
 
+        max_value = 31 if label == "Tapdance" else 255
+        
         layout = QVBoxLayout(dialog)
-        label_widget = QLabel(f"Enter value for {label} ({min_value}-{max_value}):")
+        label_widget = QLabel(f"Enter value for {label} (0-{max_value}):")
         self.value_input = QLineEdit()
-        self.value_input.setPlaceholderText(f"Enter a number between {min_value} and {max_value}")
-        self.value_input.textChanged.connect(lambda text: self.validate_value_input(text, min_value, max_value))
+        self.value_input.setPlaceholderText(f"Enter a number between 0 and {max_value}")
+        self.value_input.textChanged.connect(lambda text: self.validate_value_input(text, max_value))
 
         layout.addWidget(label_widget)
         layout.addWidget(self.value_input)
 
         confirm_button = QPushButton("Confirm")
-        confirm_button.clicked.connect(lambda: self.confirm_value(dialog, label, min_value, max_value, prefix))
+        confirm_button.clicked.connect(lambda: self.confirm_value(dialog, label))
         layout.addWidget(confirm_button)
 
         dialog.exec_()
 
-    def validate_value_input(self, text, min_value, max_value):
-        """Validate that the input is within the specified range."""
-        if text and (not text.isdigit() or not (min_value <= int(text) <= max_value)):
+    def validate_value_input(self, text, max_value):
+        if text and (not text.isdigit() or not (0 <= int(text) <= max_value)):
             self.value_input.clear()
 
-    def confirm_value(self, dialog, label, min_value, max_value, prefix):
-    """Confirm the value input and emit the corresponding keycode."""
-    value = self.value_input.text()
-    if value.isdigit() and min_value <= int(value) <= max_value:
-        keycode_map = {
-            "Tapdance": f"TD({value})",
-            "Macro": f"M{value}"
-        }
+    def confirm_value(self, dialog, label):
+        """Confirm the value input and emit the corresponding keycode."""
+        value = self.value_input.text()
+        max_value = 31 if label == "Tapdance" else 255
         
-        # Construct the keycode using the label as a key
-        if label in keycode_map:
-            selected_keycode = keycode_map[label]
-            self.keycode_changed.emit(selected_keycode)
-            dialog.accept()
+        if value.isdigit() and 0 <= int(value) <= max_value:
+            keycode_map = {
+                "Tapdance": f"TD({value})",
+                "Macro": f"M{value}"
+            }
             
+            # Construct the keycode using the label as a key
+            if label in keycode_map:
+                selected_keycode = keycode_map[label]
+                self.keycode_changed.emit(selected_keycode)
+                dialog.accept()
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
