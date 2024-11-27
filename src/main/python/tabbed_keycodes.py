@@ -846,6 +846,8 @@ class ScrollableComboBox(CenteredComboBox):
             popup.setFixedHeight(300)
             view = popup.findChild(QListView)
             if view:
+                view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+                view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
                 view.verticalScrollBar().setValue(0)
         super().showPopup()
         
