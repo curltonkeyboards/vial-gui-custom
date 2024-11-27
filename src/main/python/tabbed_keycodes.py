@@ -1118,7 +1118,7 @@ class MacroTab(QScrollArea):
         dialog.setWindowTitle(f"Set Value for {label}")
         dialog.setFixedSize(300, 150)
 
-        max_value = 31 if label == "TD" else 255
+        max_value = 31 if label == "Tapdance Selection" else 255
         
         layout = QVBoxLayout(dialog)
         label_widget = QLabel(f"Enter value for {label} (0-{max_value}):")
@@ -1142,12 +1142,12 @@ class MacroTab(QScrollArea):
     def confirm_value(self, dialog, label):
         """Confirm the value input and emit the corresponding keycode."""
         value = self.value_input.text()
-        max_value = 31 if label == "TD" else 255
+        max_value = 31 if label == "Tapdance Selection" else 255
         
         if value.isdigit() and 0 <= int(value) <= max_value:
             keycode_map = {
-                "TD": f"TD({value})",
-                "M": f"M{value}"
+                "TapDance Selection": f"TD({value})",
+                "Macro Selection": f"M{value}"
             }
             
             # Construct the keycode using the label as a key
@@ -1189,10 +1189,10 @@ class MacroTab(QScrollArea):
 
         # Add value buttons at the end of the current row
         if col < max_columns:
-            self.add_value_button("TD", row, col)
+            self.add_value_button("Tapdance Selection", row, col)
             col += 1
         if col < max_columns:
-            self.add_value_button("M", row, col)
+            self.add_value_button("Macro Selection", row, col)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
