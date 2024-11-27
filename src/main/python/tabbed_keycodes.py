@@ -745,149 +745,81 @@ class LayerTab(QScrollArea):
         self.smartchord_CC_toggle = smartchord_CC_toggle
         self.smartchord_LSB2 = smartchord_LSB2
         self.smartchord_CC_toggle2 = smartchord_CC_toggle2
-        # Create a widget for the scroll area content
+
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         
-        # Set the scroll area properties
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Inversions Header
-        #self.inversion_label = QLabel("Function Buttons")
-        #self.inversion_label.setAlignment(Qt.AlignCenter)  # Center the label text
-        #self.main_layout.addWidget(self.inversion_label, alignment=Qt.AlignCenter)  # Add to layout with center alignment
-
-
-        # Layout for inversion buttons
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
-        # Populate the inversion buttons
         self.recreate_buttons()
-
-        # Create a horizontal layout for the additional dropdowns
-        self.additional_dropdown_layout2 = QHBoxLayout()
-        self.add_header_dropdown("Active/Default Layer", self.smartchord_CC_toggle, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Hold Layer", self.smartchord_program_change, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Toggle Layer", self.smartchord_LSB, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Tap-Toggle Layer", self.smartchord_MSB, self.additional_dropdown_layout2)
-        self.add_header_dropdown("One Shot Layer", self.smartchord_LSB2, self.additional_dropdown_layout2)
-        self.add_header_dropdown("Double Layer", self.smartchord_CC_toggle2, self.additional_dropdown_layout2)
-        self.main_layout.addLayout(self.additional_dropdown_layout2)
-
-        # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-        #vbox.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"{header_text}")  # Placeholder item
-
-        for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id)
-            tooltip = Keycode.description(keycode.qmk_id)  # Get the description
-            dropdown.addItem(label, keycode.qmk_id)
-
-            # Set the tooltip for the item
-            item = dropdown.model().item(dropdown.count() - 1)
-            item.setToolTip(tooltip)
-
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-        
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
-        dropdown.setCurrentIndex(0)
-        
-    def add_smallheader_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown side by side."""
-        # Create a vertical layout to hold header and dropdown
-        vbox = QVBoxLayout()
-
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-            #vbox.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)  # Set height of dropdown
-        dropdown.setFixedWidth(150)  # Set width of dropdown
-
-        # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-
-        # Add the keycodes as options
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-
-        # Prevent the first item from being selected again
-        dropdown.model().item(0).setEnabled(False)
-
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-        vbox.addWidget(dropdown)
-
-        # Add the vertical box (header + dropdown) to the provided layout
-        layout.addLayout(vbox)
-
     def recreate_buttons(self, keycode_filter=None):
-        # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Populate inversion buttons
         row = 0
         col = 0
+
+        # Add dropdowns
+        dropdown_configs = [
+            ("Active/Default Layer", self.smartchord_CC_toggle),
+            ("Hold Layer", self.smartchord_program_change),
+            ("Toggle Layer", self.smartchord_LSB),
+            ("Tap-Toggle Layer", self.smartchord_MSB),
+            ("One Shot Layer", self.smartchord_LSB2),
+            ("Double Layer", self.smartchord_CC_toggle2)
+        ]
+
+        for header_text, keycodes in dropdown_configs:
+            dropdown = CenteredComboBox()
+            dropdown.setFixedHeight(40)
+            dropdown.setMinimumWidth(150)
+            dropdown.addItem(header_text)
+            
+            for keycode in keycodes:
+                if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                    label = Keycode.label(keycode.qmk_id)
+                    tooltip = Keycode.description(keycode.qmk_id)
+                    dropdown.addItem(label, keycode.qmk_id)
+                    item = dropdown.model().item(dropdown.count() - 1)
+                    item.setToolTip(tooltip)
+            
+            dropdown.model().item(0).setEnabled(False)
+            dropdown.currentIndexChanged.connect(self.on_selection_change)
+            dropdown.currentIndexChanged.connect(lambda d=dropdown, h=header_text: self.reset_dropdown(d, h))
+            
+            self.button_layout.addWidget(dropdown, row, col)
+            col += 1
+
+        # Add regular buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode  # Make sure keycode attribute is set
+                btn.keycode = keycode
 
-                # Add button to the grid layout
                 self.button_layout.addWidget(btn, row, col)
-
-                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
                 col += 1
-                if col >= 15:  # Adjust the number of columns as needed
+                if col >= 15:
                     col = 0
                     row += 1
+
+    def reset_dropdown(self, dropdown, header_text):
+        selected_index = dropdown.currentIndex()
+        if selected_index > 0:
+            selected_value = dropdown.itemData(selected_index)
+        dropdown.setCurrentIndex(0)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -895,7 +827,6 @@ class LayerTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        # Handle relabeling only for buttons
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
@@ -904,8 +835,7 @@ class LayerTab(QScrollArea):
                     widget.setText(Keycode.label(keycode.qmk_id))
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0)
+        return self.button_layout.count() > 0
         
 class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
