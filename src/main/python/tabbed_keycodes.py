@@ -1162,13 +1162,18 @@ class MacroTab(QScrollArea):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
-
-        # Populate buttons
+    
         row = 0
         col = 0
         max_columns = 15  # Maximum number of columns
+    
+        # Add value buttons first (on the left)
+        self.add_value_button("Macro Selection", row, col)
+        col += 1
+        self.add_value_button("Tapdance Selection", row, col)
+        col += 1
 
-        # Add regular buttons
+        # Add regular buttons after the value buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
@@ -1186,13 +1191,6 @@ class MacroTab(QScrollArea):
                 if col >= max_columns:
                     col = 0
                     row += 1
-
-        # Add value buttons at the end of the current row
-        if col < max_columns:
-            self.add_value_button("Tapdance Selection", row, col)
-            col += 1
-        if col < max_columns:
-            self.add_value_button("Macro Selection", row, col)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
