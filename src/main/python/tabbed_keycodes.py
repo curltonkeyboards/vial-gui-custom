@@ -1095,28 +1095,23 @@ class MacroTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Layout for buttons (Inversions) using QGridLayout
+        # Layout for buttons using QGridLayout
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
 
-        # Populate the inversion buttons
+        # Populate all buttons including value buttons
         self.recreate_buttons()
-
-        # Create a horizontal layout for the value buttons
-        self.additional_button_layout2 = QHBoxLayout()
-        self.add_value_button("Tapdance", self.additional_button_layout2)
-        self.add_value_button("Macro", self.additional_button_layout2)
-        self.main_layout.addLayout(self.additional_button_layout2)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_value_button(self, label_text, layout):
+    def add_value_button(self, label_text, row, col):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
+        button.setFixedWidth(120)
         button.clicked.connect(lambda: self.open_value_dialog(label_text))
-        layout.addWidget(button)
+        self.button_layout.addWidget(button, row, col)
 
     def open_value_dialog(self, label):
         """Open a dialog to input a value between 0 and 127 and set the keycode accordingly."""
@@ -1124,7 +1119,7 @@ class MacroTab(QScrollArea):
         dialog.setWindowTitle(f"Set Value for {label}")
         dialog.setFixedSize(300, 150)
 
-        max_value = 31 if label == "Tapdance" else 255
+        max_value = 31 if label == "TD" else 255
         
         layout = QVBoxLayout(dialog)
         label_widget = QLabel(f"Enter value for {label} (0-{max_value}):")
@@ -1148,12 +1143,12 @@ class MacroTab(QScrollArea):
     def confirm_value(self, dialog, label):
         """Confirm the value input and emit the corresponding keycode."""
         value = self.value_input.text()
-        max_value = 31 if label == "Tapdance" else 255
+        max_value = 31 if label == "TD" else 255
         
         if value.isdigit() and 0 <= int(value) <= max_value:
             keycode_map = {
-                "Tapdance": f"TD({value})",
-                "Macro": f"M{value}"
+                "TD": f"TD({value})",
+                "M": f"M{value}"
             }
             
             # Construct the keycode using the label as a key
@@ -1169,25 +1164,36 @@ class MacroTab(QScrollArea):
             if widget is not None:
                 widget.deleteLater()
 
-        # Populate inversion buttons
+        # Populate buttons
         row = 0
         col = 0
+        max_columns = 15  # Maximum number of columns
+
+        # Add regular buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode  # Make sure keycode attribute is set
+                btn.keycode = keycode
 
                 # Add button to the grid layout
                 self.button_layout.addWidget(btn, row, col)
 
-                # Move to the next column; if the limit is reached, reset to column 0 and increment the row
+                # Move to the next column
                 col += 1
-                if col >= 15:  # Adjust the number of columns as needed
+                if col >= max_columns:
                     col = 0
                     row += 1
+
+        # Add value buttons at the end of the current row
+        if col < max_columns:
+            self.add_value_button("TD", row, col)
+            col += 1
+        if col < max_columns:
+            self.add_value_button("M", row, col)
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
