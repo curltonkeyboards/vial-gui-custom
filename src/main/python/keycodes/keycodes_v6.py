@@ -1392,10 +1392,20 @@ class keycodes_v6:
         
         "MI_INV_UP": 0xC81C,
         "MI_INV_DOWN": 0xC81D,
-
         
+        "MI_TAP":0xC929,
+        
+        "MI_ET1": 0xC92A,
+        "MI_ET2": 0xC92B,
+        "MI_ET3": 0xC92C,
+        "MI_ET4": 0xC92D,
+        "MI_ET5": 0xC92E,
+        "MI_ET6": 0xC92F,
+        "MI_ET7": 0xC930,
+        "MI_ET8": 0xC931,
+        "MI_ET9": 0xC932,      
 
-        "QK_KB": 0xC929, # custom keycodes safe range
+        "QK_KB": 0xC933, # custom keycodes safe range
         
        
 
