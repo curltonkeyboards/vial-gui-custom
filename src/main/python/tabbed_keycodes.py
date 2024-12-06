@@ -729,6 +729,92 @@ class midiadvancedTab(QScrollArea):
     def has_buttons(self):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
+        
+class EarTrainerTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.eartrainer_keycodes = eartrainer_keycodes
+        self.chordtrainer_keycodes = chordtrainer_keycodes
+
+        # Create a widget for the scroll area content
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+
+        # Set the scroll area properties
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        # Create section labels
+        self.ear_trainer_label = QLabel("Ear Trainer")
+        self.ear_trainer_label.setAlignment(Qt.AlignCenter)
+        self.chord_trainer_label = QLabel("Chord Trainer")
+        self.chord_trainer_label.setAlignment(Qt.AlignCenter)
+
+        # Add labels and grid layouts to main layout
+        self.main_layout.addWidget(self.ear_trainer_label)
+        self.ear_trainer_grid = QGridLayout()
+        self.main_layout.addLayout(self.ear_trainer_grid)
+
+        self.main_layout.addSpacing(20)  # Add space between sections
+        
+        self.main_layout.addWidget(self.chord_trainer_label)
+        self.chord_trainer_grid = QGridLayout()
+        self.main_layout.addLayout(self.chord_trainer_grid)
+
+        # Populate the grids
+        self.recreate_buttons()
+
+        # Add stretch at the bottom
+        self.main_layout.addStretch()
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear previous buttons
+        for layout in [self.ear_trainer_grid, self.chord_trainer_grid]:
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+
+        # Create Ear Trainer buttons (4x4 grid)
+        for i, keycode in enumerate(self.eartrainer_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 4
+                col = i % 4
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.ear_trainer_grid.addWidget(btn, row, col)
+
+        # Create Chord Trainer buttons (5x4 grid)
+        for i, keycode in enumerate(self.chordtrainer_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 4
+                col = i % 4
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.chord_trainer_grid.addWidget(btn, row, col)
+
+    def relabel_buttons(self):
+        for layout in [self.ear_trainer_grid, self.chord_trainer_grid]:
+            for i in range(layout.count()):
+                widget = layout.itemAt(i).widget()
+                if isinstance(widget, SquareButton):
+                    keycode = widget.keycode
+                    if keycode:
+                        widget.setText(Keycode.label(keycode.qmk_id))
+
+    def has_buttons(self):
+        return self.ear_trainer_grid.count() > 0 or self.chord_trainer_grid.count() > 0
 
 
 
@@ -793,7 +879,7 @@ class LayerTab(QScrollArea):
                     item.setToolTip(tooltip)
             
             dropdown.model().item(0).setEnabled(False)
-            dropdown.currentIndexChanged.connect(self.on_selection_change)
+            dropdown.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown, header_text))
             dropdown.currentIndexChanged.connect(lambda d=dropdown, h=header_text: self.reset_dropdown(d, h))
             
             self.button_layout.addWidget(dropdown, row, col)
@@ -1965,7 +2051,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTab
-            SimpleTab(self, "Ear Training", KEYCODES_EARTRAINER + KEYCODES_CHORDTRAINER), 
+            EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
             midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
