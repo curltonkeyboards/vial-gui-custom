@@ -1393,19 +1393,60 @@ class keycodes_v5:
         "MI_INV_UP": 0xC81C,
         "MI_INV_DOWN": 0xC81D,
 
+        
         "MI_TAP":0xC929,
         
-        "MI_ET1": 0xC92A,
-        "MI_ET2": 0xC92B,
-        "MI_ET3": 0xC92C,
-        "MI_ET4": 0xC92D,
-        "MI_ET5": 0xC92E,
-        "MI_ET6": 0xC92F,
-        "MI_ET7": 0xC930,
-        "MI_ET8": 0xC931,
-        "MI_ET9": 0xC932,      
+        "MI_SCAN":0xC4B0,
+        
+        "MI_ET_1":0xC92A,# Positive intervals up to P5 
+        "MI_ET_2":0xC92B,# Negative intervals up to P5
+        "MI_ET_3":0xC92C,# Positive and negative up to P5
+        "MI_ET_4":0xC92D,# Positive intervals up to octave
+        "MI_ET_5":0xC92E,# Negative intervals up to octave
+        "MI_ET_6":0xC92F,# Positive and negative up to octave
+        "MI_ET_7":0xC930,# Positive intervals 12 to 24
+        "MI_ET_8":0xC931,# Negative intervals 12 to 24
+        "MI_ET_9":0xC932,# Positive and negative 12 to 24
+        "MI_ET_10":0xC933,# Positive intervals 1 to 24
+        "MI_ET_11":0xC934,# Negative intervals 1 to 24
+        "MI_ET_12":0xC935,# Positive and negative 1 to 24
 
-        "QK_KB": 0xC933, # custom keycodes safe range
+
+        "MI_ET_13":0xC938,# Positive up to P5 (simultaneous)
+        "MI_ET_14":0xC939,# Positive up to octave (simultaneous)
+        "MI_ET_15":0xC93A,# Positive 12 to 24 (simultaneous)
+        "MI_ET_16":0xC93B,# Positive 1 to 24 (simultaneous)
+
+
+        # Basic playback (0xC93C-0xC940):
+        "MI_CET_1":0xC93C,# Basic triads
+        "MI_CET_2":0xC93D,# Basic 7ths
+        "MI_CET_3":0xC93E,# All 7ths
+        "MI_CET_4":0xC93F,# Triads and basic 7ths
+        "MI_CET_5":0xC940,# Triads and all 7ths
+
+        # Simultaneous playback (0xC941-0xC945):
+        "MI_CET_6":0xC941,# Basic triads (simultaneous)
+        "MI_CET_7":0xC942,# Basic 7ths (simultaneous)
+        "MI_CET_8":0xC943,# All 7ths (simultaneous)
+        "MI_CET_9":0xC944,# Triads and basic 7ths (simultaneous)
+        "MI_CET_10":0xC945,# Triads and all 7ths (simultaneous)
+
+        # Random octave down (0xC946-0xC94A):
+        "MI_CET_11":0xC946,# Basic triads (random -12)
+        "MI_CET_12":0xC947,# Basic 7ths (random -12)
+        "MI_CET_13":0xC948,# All 7ths (random -12)
+        "MI_CET_14":0xC949,# Triads and basic 7ths (random -12)
+        "MI_CET_15":0xC94A,# Triads and all 7ths (random -12)
+
+        # Random octave down + simultaneous (0xC94B-0xC94F):
+        "MI_CET_16":0xC94B,# Basic triads (random -12, simultaneous)
+        "MI_CET_17":0xC94C,# Basic 7ths (random -12, simultaneous)
+        "MI_CET_18":0xC94D,# All 7ths (random -12, simultaneous)
+        "MI_CET_19":0xC94E,# Triads and basic 7ths (random -12, simultaneous)
+        "MI_CET_20":0xC94F,# Triads and all 7ths (random -12, simultaneous)     
+
+        "QK_KB": 0xC950, # custom keycodes safe range
         
        
 

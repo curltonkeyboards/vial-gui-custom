@@ -1200,16 +1200,45 @@ KEYCODES_MACRO_BASE = [
 ]
 
 KEYCODES_EARTRAINER = [
-     K("ET_1", "Ear Train\nLevel 1", "Ear Train\nLevel 1"),
-     K("ET_2", "Ear Train\nLevel 2", "Ear Train\nLevel 2"),
-     K("ET_3", "Ear Train\nLevel 3", "Ear Train\nLevel 3"),
-     K("ET_4", "Ear Train\nLevel 4", "Ear Train\nLevel 4"),
-     K("ET_5", "Ear Train\nLevel 5", "Ear Train\nLevel 5"),
-     K("ET_6", "Ear Train\nLevel 6", "Ear Train\nLevel 6"),
-     K("ET_7", "Ear Train\nLevel 7", "Ear Train\nLevel 7"),
-     K("ET_8", "Ear Train\nLevel 8", "Ear Train\nLevel 8"),
-     K("ET_9", "Ear Train\nLevel 9", "Ear Train\nLevel 9"),
-     K("MI_TAP", "Tap\nBPM", "Tap\nBPM"),
+     K("MI_ET_1", "Ear Train\nLevel 1", "Ear Train\nLevel 1"),
+     K("MI_ET_2", "Ear Train\nLevel 2", "Ear Train\nLevel 2"),
+     K("MI_ET_3", "Ear Train\nLevel 3", "Ear Train\nLevel 3"),
+     K("MI_ET_4", "Ear Train\nLevel 4", "Ear Train\nLevel 4"),
+     K("MI_ET_5", "Ear Train\nLevel 5", "Ear Train\nLevel 5"),
+     K("MI_ET_6", "Ear Train\nLevel 6", "Ear Train\nLevel 6"),
+     K("MI_ET_7", "Ear Train\nLevel 7", "Ear Train\nLevel 7"),
+     K("MI_ET_8", "Ear Train\nLevel 8", "Ear Train\nLevel 8"),
+     K("MI_ET_9", "Ear Train\nLevel 9", "Ear Train\nLevel 9"),
+     K("MI_ET_10", "Ear Train\nLevel 10", "Ear Train\nLevel 9"),
+     K("MI_ET_11", "Ear Train\nLevel 11", "Ear Train\nLevel 9"),
+     K("MI_ET_12", "Ear Train\nLevel 12", "Ear Train\nLevel 9"),
+     K("MI_ET_13", "Ear Train\nLevel 13", "Ear Train\nLevel 9"),
+     K("MI_ET_14", "Ear Train\nLevel 14", "Ear Train\nLevel 9"),
+     K("MI_ET_15", "Ear Train\nLevel 15", "Ear Train\nLevel 9"),
+     K("MI_ET_16", "Ear Train\nLevel 16", "Ear Train\nLevel 9"),
+]
+
+KEYCODES_CHORDTRAINER = [
+     K("MI_CET_1", "Chord Train\nLevel 1", "Chord Train\nLevel 1"),
+     K("MI_CET_2", "Chord Train\nLevel 2", "Chord Train\nLevel 2"),
+     K("MI_CET_3", "Chord Train\nLevel 3", "Chord Train\nLevel 3"),
+     K("MI_CET_4", "Chord Train\nLevel 4", "Chord Train\nLevel 4"),
+     K("MI_CET_5", "Chord Train\nLevel 5", "Chord Train\nLevel 5"),
+     K("MI_CET_6", "Chord Train\nLevel 6", "Chord Train\nLevel 6"),
+     K("MI_CET_7", "Chord Train\nLevel 7", "Chord Train\nLevel 7"),
+     K("MI_CET_8", "Chord Train\nLevel 8", "Chord Train\nLevel 8"),
+     K("MI_CET_9", "Chord Train\nLevel 9", "Chord Train\nLevel 9"),
+     K("MI_CET_10", "Chord Train\nLevel 10", "Chord Train\nLevel 9"),
+     K("MI_CET_11", "Chord Train\nLevel 11", "Chord Train\nLevel 9"),
+     K("MI_CET_12", "Chord Train\nLevel 12", "Chord Train\nLevel 9"),
+     K("MI_CET_13", "Chord Train\nLevel 13", "Chord Train\nLevel 9"),
+     K("MI_CET_14", "Chord Train\nLevel 14", "Chord Train\nLevel 9"),
+     K("MI_CET_15", "Chord Train\nLevel 15", "Chord Train\nLevel 9"),
+     K("MI_CET_16", "Chord Train\nLevel 16", "Chord Train\nLevel 9"),
+     K("MI_CET_17", "Chord Train\nLevel 17", "Chord Train\nLevel 9"),
+     K("MI_CET_18", "Chord Train\nLevel 18", "Chord Train\nLevel 9"),
+     K("MI_CET_19", "Chord Train\nLevel 19", "Chord Train\nLevel 9"),
+     K("MI_CET_20", "Chord Train\nLevel 20", "Chord Train\nLevel 9"),
 ]
 
 KEYCODES_MIDI = []
@@ -2059,7 +2088,7 @@ def recreate_keycodes():
     KEYCODES.clear()
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
                     KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA + KEYCODES_OLED + KEYCODES_CLEAR + KEYCODES_RGB_KC_COLOR + KEYCODES_MIDI_OCTAVE2 + KEYCODES_MIDI_OCTAVE3 + KEYCODES_MIDI_KEY2 + KEYCODES_MIDI_KEY3 + KEYCODES_MIDI_VELOCITY2 + KEYCODES_MIDI_VELOCITY3 + 
-                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_EARTRAINER + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_MIDI_CHANNEL_KEYSPLIT + KEYCODES_MIDI_CHANNEL_KEYSPLIT2 + KEYCODES_KEYSPLIT_BUTTONS +
+                    KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_EARTRAINER + KEYCODES_CHORDTRAINER + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_MIDI_CHANNEL_KEYSPLIT + KEYCODES_MIDI_CHANNEL_KEYSPLIT2 + KEYCODES_KEYSPLIT_BUTTONS +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_0+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_CHORD_5+KEYCODES_MIDI_SPLIT+KEYCODES_MIDI_SPLIT2+
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)
