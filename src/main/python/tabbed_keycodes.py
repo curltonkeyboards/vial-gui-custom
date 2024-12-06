@@ -139,6 +139,27 @@ class PianoButton(SquareButton):
         }
     """
 
+    def __init__(self, key_type='white', style='classic'):
+        super().__init__()
+        self.setMinimumSize(40, 60)
+        
+        style_map = {
+            'classic': {
+                'white': self.WHITE_KEY,
+                'black': self.BLACK_KEY
+            },
+            'ivory': {
+                'white': self.IVORY_KEY,
+                'black': self.EBONY_KEY
+            },
+            'modern': {
+                'white': self.MODERN_WHITE,
+                'black': self.MODERN_BLACK
+            }
+        }
+        
+        self.setStyleSheet(style_map[style][key_type])
+
 class AlternativeDisplay(QWidget):
 
     keycode_changed = pyqtSignal(str)
