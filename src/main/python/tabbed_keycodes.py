@@ -1863,6 +1863,77 @@ class KeySplitTab(QScrollArea):
 
 
 
+class PianoKeyboard(QWidget):
+    keyPressed = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.white_key_width = 40
+        self.white_key_height = 120
+        self.black_key_width = 24
+        self.black_key_height = 80
+        self.setMinimumHeight(self.white_key_height + 20)
+        self.setMinimumWidth(self.white_key_width * 21)
+        self.white_keys = []
+        self.black_keys = []
+
+    def create_piano_keys(self, midi_mappings):
+        for key in self.white_keys + self.black_keys:
+            key.deleteLater()
+        self.white_keys.clear()
+        self.black_keys.clear()
+
+        octave_notes = [
+            ("C", None), ("C#", "Cs"), ("D", None), ("D#", "Ds"), ("E", None),
+            ("F", None), ("F#", "Fs"), ("G", None), ("G#", "Gs"), ("A", None),
+            ("A#", "As"), ("B", None)
+        ]
+
+        white_x = 0
+        for octave in [-1, 0, 1, 2, 3, 4, 5]:
+            for note, midi_note in octave_notes:
+                if "#" not in note:
+                    key = PianoButton(key_type='white', style='ivory')
+                    key.setParent(self)
+                    key.setGeometry(white_x, 0, self.white_key_width, self.white_key_height)
+                    
+                    if octave == 0:
+                        midi_id = f"MI_{note}"
+                    else:
+                        midi_id = f"MI_{note}_{octave}"
+                        
+                    if midi_id in midi_mappings:
+                        key.setText(f"{note}\n{octave if octave != 0 else ''}")
+                        key.keycode = midi_mappings[midi_id]
+                        key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
+                    
+                    self.white_keys.append(key)
+                    white_x += self.white_key_width
+
+        white_x = 0
+        for octave in [-1, 0, 1, 2, 3, 4, 5]:
+            for i, (note, midi_note) in enumerate(octave_notes):
+                if "#" in note and midi_note:
+                    if i not in [4, 11]:
+                        x = white_x - (self.black_key_width // 2)
+                        key = PianoButton(key_type='black', style='ivory')
+                        key.setParent(self)
+                        key.setGeometry(x, 0, self.black_key_width, self.black_key_height)
+                        
+                        if octave == 0:
+                            midi_id = f"MI_{midi_note}"
+                        else:
+                            midi_id = f"MI_{midi_note}_{octave}"
+                            
+                        if midi_id in midi_mappings:
+                            key.setText(f"{note}\n{octave if octave != 0 else ''}")
+                            key.keycode = midi_mappings[midi_id]
+                            key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
+                        
+                        self.black_keys.append(key)
+                if "#" not in note:
+                    white_x += self.white_key_width
+
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -1872,28 +1943,10 @@ class midiTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
 
-        # Define MIDI layout
         self.midi_layout2 = [
-            ["MI_Cs", "MI_Ds", "MI_Fs", "MI_Gs", "MI_As",
-             "MI_Cs_1", "MI_Ds_1", "MI_Fs_1", "MI_Gs_1", "MI_As_1",
-             "MI_Cs_2", "MI_Ds_2", "MI_Fs_2", "MI_Gs_2", "MI_As_2"],
-
-            ["MI_C", "MI_D", "MI_E", "MI_F", "MI_G", "MI_A", "MI_B",
-             "MI_C_1", "MI_D_1", "MI_E_1", "MI_F_1", "MI_G_1", "MI_A_1", "MI_B_1",
-             "MI_C_2", "MI_D_2", "MI_E_2", "MI_F_2", "MI_G_2", "MI_A_2", "MI_B_2"],
-
-            ["MI_Cs_3", "MI_Ds_3", "MI_Fs_3", "MI_Gs_3", "MI_As_3",
-             "MI_Cs_4", "MI_Ds_4", "MI_Fs_4", "MI_Gs_4", "MI_As_4",
-             "MI_Cs_5", "MI_Ds_5", "MI_Fs_5", "MI_Gs_5", "MI_As_5"],
-
-            ["MI_C_3", "MI_D_3", "MI_E_3", "MI_F_3", "MI_G_3", "MI_A_3", "MI_B_3",
-             "MI_C_4", "MI_D_4", "MI_E_4", "MI_F_4", "MI_G_4", "MI_A_4", "MI_B_4",
-             "MI_C_5", "MI_D_5", "MI_E_5", "MI_F_5", "MI_G_5", "MI_A_5", "MI_B_5"],
-            
             ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99"]
         ]
 
-        # Main layout for the scroll area
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -1901,47 +1954,54 @@ class midiTab(QScrollArea):
 
         self.main_layout = QVBoxLayout(self.scroll_content)
 
-        # 1. MIDI Layout
-        self.add_midi_layout2(self.midi_layout2)
+        # Piano keyboard
+        self.piano = PianoKeyboard()
+        self.piano.keyPressed.connect(self.keycode_changed)
+        self.main_layout.addWidget(self.piano)
+
+        # Control buttons
+        control_container = QWidget()
+        control_layout = QHBoxLayout(control_container)
+        control_layout.setAlignment(Qt.AlignCenter)
         
-        # 2. Dropdowns and Headers (Horizontal Layout)
+        for item in self.midi_layout2[0]:
+            if item != "KC_NO":
+                btn = PianoButton(key_type='white', style='modern')
+                if item == "MI_ALLOFF":
+                    btn.setText("All\nNotes\nOff")
+                elif item == "MI_SUS":
+                    btn.setText("Sustain\nPedal")
+                else:
+                    btn.setText("SmartChord")
+                btn.setFixedWidth(80)
+                btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
+                control_layout.addWidget(btn)
+        
+        self.main_layout.addWidget(control_container)
+        
+        # Additional layouts
         self.dropdown_layout = QVBoxLayout()
         self.main_layout.addLayout(self.dropdown_layout)
-
-        # Create a horizontal layout for the dropdowns
         self.horizontal_dropdown_layout = QHBoxLayout()
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
-        # 3. Inversions Header
+        
         self.inversion_label = QLabel(" ")
         self.main_layout.addWidget(self.inversion_label)
 
-        # Layout for buttons (Inversions) using QGridLayout
         self.button_layout = QGridLayout()
         self.main_layout.addLayout(self.button_layout)
-
-        # Populate the inversion buttons
         self.recreate_buttons()
-
-        # Spacer to push everything to the top
         self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown above it."""
-        # Create a vertical layout for the header and dropdown
         header_dropdown_layout = QVBoxLayout()
-    
-        # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
-        #header_dropdown_layout.addWidget(header_label)
-
-        # Create dropdown
+        
         dropdown = CenteredComboBox()
         dropdown.setFixedWidth(300)
         dropdown.setFixedHeight(40)
-        
-         # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
+        dropdown.addItem(f"Select {header_text}")
         dropdown.model().item(0).setEnabled(False)
         
         for keycode in keycodes:
@@ -1949,188 +2009,39 @@ class midiTab(QScrollArea):
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
         header_dropdown_layout.addWidget(dropdown)
-
-        # Add the vertical layout to the main horizontal layout
         layout.addLayout(header_dropdown_layout)
-        
+
     def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
         selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
+        if selected_index > 0:
+            selected_value = dropdown.itemData(selected_index)
         dropdown.setCurrentIndex(0)
 
-
-    def add_midi_layout2(self, layout):
-        """Helper method to add staggered buttons based on MIDI layout."""
-        midi_container = QWidget()
-        midi_container_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container.setLayout(midi_container_layout)
-
-        # Create the MIDI buttons
-        self.create_midi_buttons(layout, midi_container_layout)
-
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container)
-
-    def create_midi_buttons(self, layout, container_layout):
-        """Create buttons based on MIDI layout coordinates."""
-        name_mapping = {
-            "MI_Cs": "C#\nDb",
-            "MI_Ds": "D#\nEb",
-            "MI_Fs": "F#\nGb",
-            "MI_Gs": "G#\nAb",
-            "MI_As": "A#\nBb",
-            "MI_Cs_1": "C#1\nDb1",
-            "MI_Ds_1": "D#1\nEb1",
-            "MI_Fs_1": "F#1\nGb1",
-            "MI_Gs_1": "G#1\nAb1",
-            "MI_As_1": "A#1\nBb1",
-            "MI_Cs_2": "C#2\nDb2",
-            "MI_Ds_2": "D#2\nEb2",
-            "MI_Fs_2": "F#2\nGb2",
-            "MI_Gs_2": "G#2\nAb2",
-            "MI_As_2": "A#2\nBb2",
-            "MI_C_1": "C1",
-            "MI_D_1": "D1",
-            "MI_E_1": "E1",
-            "MI_F_1": "F1",
-            "MI_G_1": "G1",
-            "MI_A_1": "A1",
-            "MI_B_1": "B1",
-            "MI_C_2": "C2",
-            "MI_D_2": "D2",
-            "MI_E_2": "E2",
-            "MI_F_2": "F2",
-            "MI_G_2": "G2",
-            "MI_A_2": "A2",
-            "MI_B_2": "B2",
-            "MI_Cs_3": "C#3\nDb3",
-            "MI_Ds_3": "D#3\nEb3",
-            "MI_Fs_3": "F#3\nGb3",
-            "MI_Gs_3": "G#3\nAb3",
-            "MI_As_3": "A#3\nBb3",
-            "MI_Cs_4": "C#4\nDb4",
-            "MI_Ds_4": "D#4\nEb4",
-            "MI_Fs_4": "F#4\nGb4",
-            "MI_Gs_4": "G#4\nAb4",
-            "MI_As_4": "A#4\nBb4",
-            "MI_Cs_5": "C#5\nDb5",
-            "MI_Ds_5": "D#5\nEb5",
-            "MI_Fs_5": "F#5\nGb5",
-            "MI_Gs_5": "G#5\nAb5",
-            "MI_As_5": "A#5\nBb5",
-            "MI_C_3": "C3",
-            "MI_D_3": "D3",
-            "MI_E_3": "E3",
-            "MI_F_3": "F3",
-            "MI_G_3": "G3",
-            "MI_A_3": "A3",
-            "MI_B_3": "B3",
-            "MI_C_4": "C4",
-            "MI_D_4": "D4",
-            "MI_E_4": "E4",
-            "MI_F_4": "F4",
-            "MI_G_4": "G4",
-            "MI_A_4": "A4",
-            "MI_B_4": "B4",
-            "MI_C_5": "C5",
-            "MI_D_5": "D5",
-            "MI_E_5": "E5",
-            "MI_F_5": "F5",
-            "MI_G_5": "G5",
-            "MI_A_5": "A5",
-            "MI_B_5": "B5",
-            "MI_C": "C",
-            "MI_D": "D",
-            "MI_E": "E",
-            "MI_F": "F",
-            "MI_G": "G",
-            "MI_A": "A",
-            "MI_B": "B",
-            "MI_ALLOFF": "All\nNotes\nOff", 
-            "MI_SUS" : "Sustain\nPedal",
-            "KC_NO" : " ",
-            "MI_CHORD_99": "SmartChord"
-        }
-
-        for row_index, row in enumerate(layout):
-            hbox = QHBoxLayout()  # New horizontal row layout
-            hbox.setAlignment(Qt.AlignCenter)
-            for col_index, item in enumerate(row):
-                if isinstance(item, str):
-                    readable_name = name_mapping.get(item, item)
-                    button = SquareButton()
-                    button.setText(readable_name)
-
-                    button.setStyleSheet("background-color: rgba(255, 255, 204, 1); color: rgba(128, 102, 0, 1);")
-                    
-                    if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(204, 255, 255, 1); color: rgba(0, 102, 102, 1);")
-                        # Add an empty space before the black keys to stagger
-                        
-                    if "Pedal" in readable_name or "All" in readable_name or " " in readable_name or "Smart" in readable_name:
-                        button.setStyleSheet("background-color: rgba(255, 255, 204, 1); color: rgba(128, 102, 0, 1);")
-  
-                    if readable_name in ["C#\nDb", "C#3\nDb3"]:
-                        button.setStyleSheet("background-color: rgba(204, 255, 255, 1); color: rgba(0, 102, 102, 1);")
-                        
-                    if readable_name in ["C#1\nDb1", "C#2\nDb2", "C#4\nDb4", "C#5\nDb5"]:
-                        button.setStyleSheet("background-color: rgba(204, 255, 255, 1); color: rgba(0, 102, 102, 1);")
-                        hbox.addSpacing(60)                      
-                        
-                    if readable_name in ["F#\nGb", "F#1\nGb1", "F#2\nGb2", "F#3\nGb3", "F#4\nGb4", "F#5\nGb5"]:
-                        button.setStyleSheet("background-color: rgba(204, 255, 255, 1); color: rgba(0, 102, 102, 1);")
-                        hbox.addSpacing(50)
-                        
-                    if readable_name in ["C1", "C2", "C4", "C5"]:
-                        button.setStyleSheet("background-color: rgba(255, 255, 204, 1); color: rgba(128, 102, 0, 1);")
-                        hbox.addSpacing(20)
-
-                    
-
-                    button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "All" in readable_name or "Smart" in readable_name:
-                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
-                    else:
-                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
-                    button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    hbox.addWidget(button)  # Add button to horizontal layout
-
-            container_layout.addLayout(hbox)  # Add row to vertical layout            
-
     def recreate_buttons(self, keycode_filter=None):
-        """Recreate inversion buttons and add MIDI_CC dropdowns."""
-        # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
+        midi_mappings = {kc.qmk_id: kc for kc in self.inversion_keycodes 
+                        if keycode_filter is None or keycode_filter(kc.qmk_id)}
+        self.piano.create_piano_keys(midi_mappings)
+
         row = 0
         col = 0
-        max_columns = 5  # Maximum number of columns before dropdown
-
-        # Add inversion buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-
-                self.button_layout.addWidget(btn, row, col)
-
-                col += 1
-                if col >= max_columns:
-                    col = 0
-                    row += 1
+                if not keycode.qmk_id.startswith("MI_"):  # Only add non-MIDI keys
+                    btn = SquareButton()
+                    btn.setRelSize(KEYCODE_BTN_RATIO)
+                    btn.setText(Keycode.label(keycode.qmk_id))
+                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    btn.keycode = keycode
+                    self.button_layout.addWidget(btn, row, col)
+                    col += 1
+                    if col >= 5:
+                        col = 0
+                        row += 1
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -2138,17 +2049,17 @@ class midiTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        # Handle relabeling only for buttons
+        for widget in self.white_keys + self.black_keys:
+            if hasattr(widget, 'keycode'):
+                widget.setText(Keycode.label(widget.keycode.qmk_id))
+        
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+            if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
+                widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0)
+        return True
 
 
 class SimpleTab(Tab):
