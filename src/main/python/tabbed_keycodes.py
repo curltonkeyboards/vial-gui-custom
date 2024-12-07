@@ -1136,7 +1136,7 @@ class LightingTab(QScrollArea):
                 item.setToolTip(tooltip)
         dropdown1.model().item(0).setEnabled(False)
         dropdown1.currentIndexChanged.connect(self.on_selection_change)
-        dropdown1.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown1, "RGB Mode"))
+        dropdown1.currentIndexChanged.connect(lambda x: self.reset_dropdown(dropdown1, "RGB Mode"))
         self.button_layout.addWidget(dropdown1, row, col)
         col += 1
 
@@ -1154,7 +1154,7 @@ class LightingTab(QScrollArea):
                 item.setToolTip(tooltip)
         dropdown2.model().item(0).setEnabled(False)
         dropdown2.currentIndexChanged.connect(self.on_selection_change)
-        dropdown2.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown2, "RGB Color"))
+        dropdown2.currentIndexChanged.connect(lambda x: self.reset_dropdown(dropdown2, "RGB Color"))
         self.button_layout.addWidget(dropdown2, row, col)
         col += 1
 
@@ -1868,71 +1868,81 @@ class PianoKeyboard(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.white_key_width = 40
-        self.white_key_height = 120
-        self.black_key_width = 24
-        self.black_key_height = 80
-        self.setMinimumHeight(self.white_key_height + 20)
-        self.setMinimumWidth(self.white_key_width * 21)
+        self.white_key_width = 50
+        self.white_key_height = 160
+        self.black_key_width = 30
+        self.black_key_height = 100
+        
+        # Adjust total width based on number of white keys
+        self.octaves = 5  # C0 to C5
+        num_white_keys = self.octaves * 7 + 1  # 7 white keys per octave + final C
+        total_width = num_white_keys * self.white_key_width
+        
+        self.setFixedSize(total_width, self.white_key_height + 20)
         self.white_keys = []
         self.black_keys = []
 
     def create_piano_keys(self, midi_mappings):
+        # Clear existing keys
         for key in self.white_keys + self.black_keys:
             key.deleteLater()
         self.white_keys.clear()
         self.black_keys.clear()
 
-        octave_notes = [
-            ("C", None), ("C#", "Cs"), ("D", None), ("D#", "Ds"), ("E", None),
-            ("F", None), ("F#", "Fs"), ("G", None), ("G#", "Gs"), ("A", None),
-            ("A#", "As"), ("B", None)
-        ]
+        # Define key positions (0 = white key, 1 = black key)
+        key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]  # C to B
+        notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-        white_x = 0
-        for octave in [-1, 0, 1, 2, 3, 4, 5]:
-            for note, midi_note in octave_notes:
-                if "#" not in note:
+        # Create white keys first
+        white_index = 0
+        for octave in range(-1, 5):  # -1 to 4 for full range
+            for i, is_black in enumerate(key_pattern):
+                if not is_black:
+                    note = notes[i]
+                    x = white_index * self.white_key_width
                     key = PianoButton(key_type='white', style='ivory')
                     key.setParent(self)
-                    key.setGeometry(white_x, 0, self.white_key_width, self.white_key_height)
+                    key.setGeometry(x, 0, self.white_key_width, self.white_key_height)
                     
-                    if octave == 0:
-                        midi_id = f"MI_{note}"
-                    else:
-                        midi_id = f"MI_{note}_{octave}"
-                        
+                    midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
+                    display_text = f"{note}\n{octave if octave != 0 else ''}"
+                    key.setText(display_text)
+                    
                     if midi_id in midi_mappings:
-                        key.setText(f"{note}\n{octave if octave != 0 else ''}")
                         key.keycode = midi_mappings[midi_id]
                         key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
                     
                     self.white_keys.append(key)
-                    white_x += self.white_key_width
+                    white_index += 1
 
-        white_x = 0
-        for octave in [-1, 0, 1, 2, 3, 4, 5]:
-            for i, (note, midi_note) in enumerate(octave_notes):
-                if "#" in note and midi_note:
-                    if i not in [4, 11]:
-                        x = white_x - (self.black_key_width // 2)
-                        key = PianoButton(key_type='black', style='ivory')
-                        key.setParent(self)
-                        key.setGeometry(x, 0, self.black_key_width, self.black_key_height)
-                        
-                        if octave == 0:
-                            midi_id = f"MI_{midi_note}"
-                        else:
-                            midi_id = f"MI_{midi_note}_{octave}"
-                            
-                        if midi_id in midi_mappings:
-                            key.setText(f"{note}\n{octave if octave != 0 else ''}")
-                            key.keycode = midi_mappings[midi_id]
-                            key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
-                        
-                        self.black_keys.append(key)
-                if "#" not in note:
-                    white_x += self.white_key_width
+        # Create black keys
+        white_index = 0
+        for octave in range(-1, 5):
+            for i, is_black in enumerate(key_pattern):
+                if is_black:
+                    note = notes[i]
+                    x = white_index * self.white_key_width - (self.black_key_width // 2)
+                    key = PianoButton(key_type='black', style='ivory')
+                    key.setParent(self)
+                    key.setGeometry(x, 0, self.black_key_width, self.black_key_height)
+                    
+                    midi_note = note.replace('#', 's')
+                    midi_id = f"MI_{midi_note}" if octave == 0 else f"MI_{midi_note}_{octave}"
+                    display_text = f"{note}\n{octave if octave != 0 else ''}"
+                    key.setText(display_text)
+                    
+                    if midi_id in midi_mappings:
+                        key.keycode = midi_mappings[midi_id]
+                        key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
+                    
+                    self.black_keys.append(key)
+                if not is_black:
+                    white_index += 1
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.white_keys:
+            self.create_piano_keys({key.keycode.qmk_id: key.keycode for key in self.white_keys + self.black_keys if hasattr(key, 'keycode')})
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
