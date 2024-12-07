@@ -1903,14 +1903,12 @@ class PianoKeyboard(QWidget):
                     
                     note = notes[i]
                     midi_id = f"MI_{note}_{octave}" if octave != 0 else f"MI_{note}"
-                    display_text = f"{note}\n{octave if octave != 0 else ''}"
+                    display_text = f"\n\n\n{note}{octave if octave != 0 else ''}"  # Added newlines to move text down
                     
-                    # Position text lower on the key
                     key.setText(display_text)
-                    key.setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
-                    key.setContentsMargins(0, 0, 0, 5)  # Add bottom margin
-                    
-                    key.midi_id = midi_id  # Store MIDI ID
+                    key.midi_id = midi_id
+                    if midi_id in midi_mappings:
+                        key.keycode = midi_mappings[midi_id]
                     key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
                     
                     self.white_keys.append(key)
@@ -1929,13 +1927,12 @@ class PianoKeyboard(QWidget):
                     
                     midi_note = note.replace('#', 's')
                     midi_id = f"MI_{midi_note}_{octave}" if octave != 0 else f"MI_{midi_note}"
-                    display_text = f"{note}\n{octave if octave != 0 else ''}"
+                    display_text = f"\n\n{note}{octave if octave != 0 else ''}"
                     
                     key.setText(display_text)
-                    key.setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
-                    key.setContentsMargins(0, 0, 0, 5)
-                    
                     key.midi_id = midi_id
+                    if midi_id in midi_mappings:
+                        key.keycode = midi_mappings[midi_id]
                     key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
                     
                     self.black_keys.append(key)
