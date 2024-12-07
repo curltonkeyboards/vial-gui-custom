@@ -1868,17 +1868,19 @@ class PianoKeyboard(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.white_key_width = 25  # Halved from 50
-        self.white_key_height = 80  # Halved from 160
-        self.black_key_width = 15   # Halved from 30
-        self.black_key_height = 50  # Halved from 100
+        self.white_key_width = 25
+        self.white_key_height = 80
+        self.black_key_width = 15
+        self.black_key_height = 50
+        self.row_spacing = 20  # Space between rows
         
-        # Calculate total width for 5 octaves
-        self.octaves = 5
-        num_white_keys = self.octaves * 7 + 1
-        total_width = num_white_keys * self.white_key_width
+        # Calculate width for 3 octaves (first row) and 3 octaves (second row)
+        self.octaves_per_row = 3
+        num_white_keys_per_row = self.octaves_per_row * 7
+        total_width = num_white_keys_per_row * self.white_key_width
+        total_height = (self.white_key_height * 2) + self.row_spacing
         
-        self.setFixedSize(total_width, self.white_key_height + 10)
+        self.setFixedSize(total_width, total_height)
         self.white_keys = []
         self.black_keys = []
 
@@ -1891,61 +1893,54 @@ class PianoKeyboard(QWidget):
         key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
         notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-        # Create white keys
-        white_index = 0
-        for octave in range(-1, 5):
-            for i, is_black in enumerate(key_pattern):
-                if not is_black:
-                    x = white_index * self.white_key_width
-                    key = PianoButton(key_type='white', style='ivory')
-                    key.setParent(self)
-                    key.setGeometry(x, 0, self.white_key_width, self.white_key_height)
-                    
-                    note = notes[i]
-                    midi_id = f"MI_{note}_{octave}" if octave != 0 else f"MI_{note}"
-                    display_text = f"\n\n\n{note}{octave if octave != 0 else ''}"  # Added newlines to move text down
-                    
-                    key.setText(display_text)
-                    key.midi_id = midi_id
-                    if midi_id in midi_mappings:
-                        key.keycode = midi_mappings[midi_id]
-                    key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
-                    
-                    self.white_keys.append(key)
-                    white_index += 1
+        # Create both rows
+        for row in range(2):
+            white_index = 0
+            y_offset = row * (self.white_key_height + self.row_spacing)
+            start_octave = 0 if row == 0 else 3
 
-        # Create black keys
-        white_index = 0
-        for octave in range(-1, 5):
-            for i, is_black in enumerate(key_pattern):
-                if is_black:
-                    note = notes[i]
-                    x = white_index * self.white_key_width - (self.black_key_width // 2)
-                    key = PianoButton(key_type='black', style='ivory')
-                    key.setParent(self)
-                    key.setGeometry(x, 0, self.black_key_width, self.black_key_height)
-                    
-                    midi_note = note.replace('#', 's')
-                    midi_id = f"MI_{midi_note}_{octave}" if octave != 0 else f"MI_{midi_note}"
-                    display_text = f"\n\n{note}{octave if octave != 0 else ''}"
-                    
-                    key.setText(display_text)
-                    key.midi_id = midi_id
-                    if midi_id in midi_mappings:
-                        key.keycode = midi_mappings[midi_id]
-                    key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
-                    
-                    self.black_keys.append(key)
-                if not is_black:
-                    white_index += 1
+            # Create white keys
+            for octave in range(start_octave, start_octave + 3):
+                for i, is_black in enumerate(key_pattern):
+                    if not is_black:
+                        x = white_index * self.white_key_width
+                        key = PianoButton(key_type='white', style='ivory')
+                        key.setParent(self)
+                        key.setGeometry(x, y_offset, self.white_key_width, self.white_key_height)
+                        
+                        note = notes[i]
+                        midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
+                        display_text = f"\n\n\n{note}{octave}"
+                        
+                        key.setText(display_text)
+                        key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
+                        self.white_keys.append(key)
+                        white_index += 1
+
+            # Create black keys
+            white_index = 0
+            for octave in range(start_octave, start_octave + 3):
+                for i, is_black in enumerate(key_pattern):
+                    if is_black:
+                        x = white_index * self.white_key_width - (self.black_key_width // 2)
+                        key = PianoButton(key_type='black', style='ivory')
+                        key.setParent(self)
+                        key.setGeometry(x, y_offset, self.black_key_width, self.black_key_height)
+                        
+                        note = notes[i].replace('#', 's')
+                        midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
+                        display_text = f"\n\n{notes[i]}{octave}"
+                        
+                        key.setText(display_text)
+                        key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
+                        self.black_keys.append(key)
+                    if not is_black:
+                        white_index += 1
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if self.white_keys:
-            white_key = self.white_keys[0]
-            if hasattr(white_key, 'midi_id'):
-                mappings = {key.midi_id: key.keycode for key in self.white_keys + self.black_keys if hasattr(key, 'keycode')}
-                self.create_piano_keys(mappings)
+            self.create_piano_keys({})  # We don't need mappings for resize
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
