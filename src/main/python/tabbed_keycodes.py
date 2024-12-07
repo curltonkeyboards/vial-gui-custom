@@ -2049,16 +2049,16 @@ class midiTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-    # First relabel piano keys
-    for widget in self.piano.white_keys + self.piano.black_keys:
-        if hasattr(widget, 'keycode'):
-            widget.setText(Keycode.label(widget.keycode.qmk_id))
-    
-    # Then relabel other buttons
-    for i in range(self.button_layout.count()):
-        widget = self.button_layout.itemAt(i).widget()
-        if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
-            widget.setText(Keycode.label(widget.keycode.qmk_id))
+        # First relabel piano keys
+        for widget in self.piano.white_keys + self.piano.black_keys:
+            if hasattr(widget, 'keycode'):
+                widget.setText(Keycode.label(widget.keycode.qmk_id))
+        
+        # Then relabel other buttons
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
+                widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
         return True
