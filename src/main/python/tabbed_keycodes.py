@@ -1868,49 +1868,50 @@ class PianoKeyboard(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.white_key_width = 50
-        self.white_key_height = 160
-        self.black_key_width = 30
-        self.black_key_height = 100
+        self.white_key_width = 25  # Halved from 50
+        self.white_key_height = 80  # Halved from 160
+        self.black_key_width = 15   # Halved from 30
+        self.black_key_height = 50  # Halved from 100
         
-        # Adjust total width based on number of white keys
-        self.octaves = 5  # C0 to C5
-        num_white_keys = self.octaves * 7 + 1  # 7 white keys per octave + final C
+        # Calculate total width for 5 octaves
+        self.octaves = 5
+        num_white_keys = self.octaves * 7 + 1
         total_width = num_white_keys * self.white_key_width
         
-        self.setFixedSize(total_width, self.white_key_height + 20)
+        self.setFixedSize(total_width, self.white_key_height + 10)
         self.white_keys = []
         self.black_keys = []
 
     def create_piano_keys(self, midi_mappings):
-        # Clear existing keys
         for key in self.white_keys + self.black_keys:
             key.deleteLater()
         self.white_keys.clear()
         self.black_keys.clear()
 
-        # Define key positions (0 = white key, 1 = black key)
-        key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]  # C to B
+        key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
         notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-        # Create white keys first
+        # Create white keys
         white_index = 0
-        for octave in range(-1, 5):  # -1 to 4 for full range
+        for octave in range(-1, 5):
             for i, is_black in enumerate(key_pattern):
                 if not is_black:
-                    note = notes[i]
                     x = white_index * self.white_key_width
                     key = PianoButton(key_type='white', style='ivory')
                     key.setParent(self)
                     key.setGeometry(x, 0, self.white_key_width, self.white_key_height)
                     
-                    midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
+                    note = notes[i]
+                    midi_id = f"MI_{note}_{octave}" if octave != 0 else f"MI_{note}"
                     display_text = f"{note}\n{octave if octave != 0 else ''}"
-                    key.setText(display_text)
                     
-                    if midi_id in midi_mappings:
-                        key.keycode = midi_mappings[midi_id]
-                        key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
+                    # Position text lower on the key
+                    key.setText(display_text)
+                    key.setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
+                    key.setContentsMargins(0, 0, 0, 5)  # Add bottom margin
+                    
+                    key.midi_id = midi_id  # Store MIDI ID
+                    key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
                     
                     self.white_keys.append(key)
                     white_index += 1
@@ -1927,13 +1928,15 @@ class PianoKeyboard(QWidget):
                     key.setGeometry(x, 0, self.black_key_width, self.black_key_height)
                     
                     midi_note = note.replace('#', 's')
-                    midi_id = f"MI_{midi_note}" if octave == 0 else f"MI_{midi_note}_{octave}"
+                    midi_id = f"MI_{midi_note}_{octave}" if octave != 0 else f"MI_{midi_note}"
                     display_text = f"{note}\n{octave if octave != 0 else ''}"
-                    key.setText(display_text)
                     
-                    if midi_id in midi_mappings:
-                        key.keycode = midi_mappings[midi_id]
-                        key.clicked.connect(lambda _, k=midi_id: self.keyPressed.emit(k))
+                    key.setText(display_text)
+                    key.setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
+                    key.setContentsMargins(0, 0, 0, 5)
+                    
+                    key.midi_id = midi_id
+                    key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
                     
                     self.black_keys.append(key)
                 if not is_black:
@@ -1942,7 +1945,10 @@ class PianoKeyboard(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if self.white_keys:
-            self.create_piano_keys({key.keycode.qmk_id: key.keycode for key in self.white_keys + self.black_keys if hasattr(key, 'keycode')})
+            white_key = self.white_keys[0]
+            if hasattr(white_key, 'midi_id'):
+                mappings = {key.midi_id: key.keycode for key in self.white_keys + self.black_keys if hasattr(key, 'keycode')}
+                self.create_piano_keys(mappings)
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
