@@ -1895,10 +1895,10 @@ class midiTab(QScrollArea):
         control_container = QWidget()
         control_layout = QHBoxLayout(control_container)
         control_layout.setAlignment(Qt.AlignCenter)
-        
+
         for item in self.midi_layout2[0]:
             if item != "KC_NO":
-                key = PianoButton(key_type='white')
+                btn = PianoButton(key_type='white')  # Changed 'key' to 'btn'
                 if item == "MI_ALLOFF":
                     btn.setText("All\nNotes\nOff")
                 elif item == "MI_SUS":
@@ -1908,6 +1908,8 @@ class midiTab(QScrollArea):
                 btn.setFixedWidth(80)
                 btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
                 control_layout.addWidget(btn)
+
+        self.main_layout.addWidget(control_container)
         
         self.main_layout.addWidget(control_container)
         
