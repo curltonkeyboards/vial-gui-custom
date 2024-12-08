@@ -844,7 +844,7 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                key = PianoButton(key_type='white')
+                btn = PianoButton(key_type='white')  # Changed 'key' to 'btn'
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -855,7 +855,7 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                key = PianoButton(key_type='black')
+                btn = PianoButton(key_type='black')  # Changed 'key' to 'btn'
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
