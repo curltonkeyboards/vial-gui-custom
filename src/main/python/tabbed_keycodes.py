@@ -905,6 +905,11 @@ class EarTrainerTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chord_trainer_grid.addWidget(btn, row, col)
+                
+    def has_buttons(self):
+        """Check if there are buttons in either grid."""
+        return (self.ear_trainer_grid.count() > 0 or 
+                self.chord_trainer_grid.count() > 0)
 
 
 
