@@ -22,43 +22,6 @@ from util import tr, KeycodeDisplay
 
 
 class PianoButton(SquareButton):
-    # Classic Piano Style
-    WHITE_KEY = """
-        QPushButton {
-            background-color: #FFFFFF;
-            border: 1px solid #A0A0A0;
-            border-radius: 0px 0px 4px 4px;
-            color: #000000;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background-color: #F0F0F0;
-            border: 1px solid #808080;
-        }
-        QPushButton:pressed {
-            background-color: #E0E0E0;
-            border: 1px solid #606060;
-        }
-    """
-
-    BLACK_KEY = """
-        QPushButton {
-            background-color: #202020;
-            border: 1px solid #000000;
-            border-radius: 0px 0px 4px 4px;
-            color: #FFFFFF;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background-color: #303030;
-            border: 1px solid #202020;
-        }
-        QPushButton:pressed {
-            background-color: #404040;
-            border: 1px solid #303030;
-        }
-    """
-    
     GLASS_WHITE = """
         QPushButton {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -105,110 +68,9 @@ class PianoButton(SquareButton):
         }
     """
 
-    # Ivory Style
-    IVORY_KEY = """
-        QPushButton {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #FFFFF0, stop:1 #FFF8DC);
-            border: 1px solid #DEB887;
-            border-radius: 0px 0px 6px 6px;
-            color: #8B4513;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #FFF8DC, stop:1 #FFFFF0);
-        }
-        QPushButton:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #FFE4B5, stop:1 #FFF8DC);
-        }
-    """
-
-    EBONY_KEY = """
-        QPushButton {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #2F1F14, stop:1 #3D291A);
-            border: 1px solid #1A0F0A;
-            border-radius: 0px 0px 4px 4px;
-            color: #FFF8DC;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #3D291A, stop:1 #2F1F14);
-        }
-        QPushButton:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #241812, stop:1 #2F1F14);
-        }
-    """
-
-    # Modern Piano Style
-    MODERN_WHITE = """
-        QPushButton {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #FFFFFF, stop:1 #F8F8F8);
-            border: 1px solid #E0E0E0;
-            border-radius: 2px;
-            color: #404040;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #F8F8F8, stop:1 #FFFFFF);
-            border: 1px solid #D0D0D0;
-        }
-        QPushButton:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #F0F0F0, stop:1 #F8F8F8);
-            border: 1px solid #C0C0C0;
-        }
-    """
-
-    MODERN_BLACK = """
-        QPushButton {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #404040, stop:1 #303030);
-            border: 1px solid #202020;
-            border-radius: 2px;
-            color: #FFFFFF;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #505050, stop:1 #404040);
-            border: 1px solid #303030;
-        }
-        QPushButton:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #303030, stop:1 #404040);
-            border: 1px solid #202020;
-        }
-    """
-
-    def __init__(self, key_type='white', style='classic'):
-        super().__init__()
-        self.setMinimumSize(40, 60)
+    def __init__(self, key_type='white'):
         super().__init__()
         self.setStyleSheet(self.GLASS_WHITE if key_type == 'white' else self.GLASS_BLACK)
-        
-        style_map = {
-            'classic': {
-                'white': self.WHITE_KEY,
-                'black': self.BLACK_KEY
-            },
-            'ivory': {
-                'white': self.IVORY_KEY,
-                'black': self.EBONY_KEY
-            },
-            'modern': {
-                'white': self.MODERN_WHITE,
-                'black': self.MODERN_BLACK
-            }
-        }
-        
-        self.setStyleSheet(style_map[style][key_type])
 
 class AlternativeDisplay(QWidget):
 
@@ -982,7 +844,7 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                btn = PianoButton(key_type='white', style='ivory')
+                key = PianoButton(key_type='white')
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -993,7 +855,7 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                btn = PianoButton(key_type='black', style='ivory')
+                key = PianoButton(key_type='black')
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -2036,7 +1898,7 @@ class midiTab(QScrollArea):
         
         for item in self.midi_layout2[0]:
             if item != "KC_NO":
-                btn = PianoButton(key_type='white', style='modern')
+                key = PianoButton(key_type='white')
                 if item == "MI_ALLOFF":
                     btn.setText("All\nNotes\nOff")
                 elif item == "MI_SUS":
