@@ -29,7 +29,10 @@ class PianoButton(SquareButton):
                 stop:0.5 rgba(240, 240, 240, 240),
                 stop:1 rgba(230, 230, 230, 240));
             border: 1px solid rgba(200, 200, 200, 180);
-            border-radius: 0px 0px 4px 4px;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            border-top-left-radius: 0px;
+            border-top-right-radius: 0px;
             color: #303030;
             padding: 2px;
             padding-bottom: 15px;
@@ -47,13 +50,16 @@ class PianoButton(SquareButton):
     """
 
     GLASS_BLACK = """
-        QPushButton {
+       QPushButton {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 rgba(40, 40, 40, 240),
                 stop:0.5 rgba(30, 30, 30, 240),
                 stop:1 rgba(20, 20, 20, 240));
             border: 1px solid rgba(0, 0, 0, 180);
-            border-radius: 0px 0px 4px 4px;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            border-top-left-radius: 0px;
+            border-top-right-radius: 0px;
             color: #FFFFFF;
             padding: 2px;
         }
@@ -892,7 +898,7 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                btn = ModernButton(Keycode.label(keycode.qmk_id), "#4a90e2")
+                btn = ModernButton(Keycode.label(keycode.qmk_id), "#b8d8eb")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.ear_trainer_grid.addWidget(btn, row, col)
@@ -902,7 +908,7 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                btn = ModernButton(Keycode.label(keycode.qmk_id), "#2ecc71")
+                btn = ModernButton(Keycode.label(keycode.qmk_id), "#c9e4ca")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chord_trainer_grid.addWidget(btn, row, col)
@@ -1945,16 +1951,31 @@ class midiTab(QScrollArea):
         control_layout.setAlignment(Qt.AlignCenter)
 
         for item in self.midi_layout2[0]:
-            btn = PianoButton(key_type='white')
+            btn = QPushButton()
+            btn.setFixedSize(50, 50)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #f0f0f0;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 8px;
+                    color: #333333;
+                    padding: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+            """)
             if item == "MI_ALLOFF":
                 btn.setText("All\nNotes\nOff")
-                btn.setFixedSize(60, 60)
             elif item == "MI_SUS":
                 btn.setText("Sustain\nPedal")
-                btn.setFixedSize(60, 60)
             elif item == "MI_CHORD_99":
                 btn.setText("SmartChord")
-                btn.setFixedSize(60, 60)
+            elif item == "KC_NO":
+                btn.setText("")
             btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
             control_layout.addWidget(btn)
 
@@ -2002,6 +2023,7 @@ class midiTab(QScrollArea):
             selected_value = dropdown.itemData(selected_index)
         dropdown.setCurrentIndex(0)
 
+    # In midiTab class:
     def recreate_buttons(self, keycode_filter=None):
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
@@ -2014,10 +2036,11 @@ class midiTab(QScrollArea):
 
         row = 0
         col = 0
+        # Add non-MIDI keys in 2 rows of 5
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                if not keycode.qmk_id.startswith("MI_"):  # Only add non-MIDI keys
-                    grid_btn = SquareButton()  # Changed variable name to grid_btn
+                if not keycode.qmk_id.startswith("MI_"):
+                    grid_btn = SquareButton()
                     grid_btn.setRelSize(KEYCODE_BTN_RATIO)
                     grid_btn.setText(Keycode.label(keycode.qmk_id))
                     grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
