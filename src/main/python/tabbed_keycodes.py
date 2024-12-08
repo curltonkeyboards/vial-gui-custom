@@ -908,13 +908,12 @@ class EarTrainerTab(QScrollArea):
                 self.chord_trainer_grid.addWidget(btn, row, col)
                 
     def relabel_buttons(self):
-        # Handle relabeling only for buttons
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+        """Relabel all buttons in both grids."""
+        for grid in [self.ear_trainer_grid, self.chord_trainer_grid]:
+            for i in range(grid.count()):
+                widget = grid.itemAt(i).widget()
+                if hasattr(widget, 'keycode'):
+                    widget.setText(Keycode.label(widget.keycode.qmk_id))
                 
     def has_buttons(self):
         """Check if there are buttons in either grid."""
