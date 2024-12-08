@@ -29,13 +29,13 @@ class PianoButton(SquareButton):
                 stop:0.5 rgba(240, 240, 240, 240),
                 stop:1 rgba(230, 230, 230, 240));
             border: 1px solid rgba(200, 200, 200, 180);
-            border-bottom-left-radius: 8px;
-            border-bottom-right-radius: 8px;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
             border-top-left-radius: 0px;
             border-top-right-radius: 0px;
             color: #303030;
             padding: 2px;
-            padding-bottom: 7px;
+            padding-bottom: 0px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -906,7 +906,7 @@ class EarTrainerTab(QScrollArea):
         right_layout.addLayout(self.chord_trainer_grid)
         
         # Add sections to container with proportional sizes
-        container_layout.addWidget(left_section, 4)  # 4/9 of space
+        container_layout.addWidget(left_section, 5)  # 4/9 of space
         container_layout.addWidget(divider)
         container_layout.addWidget(right_section, 5)  # 5/9 of space
         
@@ -939,7 +939,7 @@ class EarTrainerTab(QScrollArea):
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
-                col = i % 5
+                col = i % 4
                 btn = ModernButton(Keycode.label(keycode.qmk_id), "#c9e4ca")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1866,9 +1866,9 @@ class PianoKeyboard(QWidget):
         
         # Key dimensions
         self.white_key_width = 45
-        self.white_key_height = 120
+        self.white_key_height = 90
         self.black_key_width = 31
-        self.black_key_height = 80
+        self.black_key_height = 60
         self.row_spacing = 30
         
         # Calculate size for two rows of 3 octaves each
@@ -1885,7 +1885,7 @@ class PianoKeyboard(QWidget):
         self.container.setFixedSize(total_width, total_height)
         
         # Center the container
-        self.setMinimumSize(total_width + 40, total_height + 40)
+        self.setMinimumSize(total_width + 40, total_height + 30)
         
         self.white_keys = []
         self.black_keys = []
