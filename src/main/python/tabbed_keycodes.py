@@ -818,6 +818,7 @@ class ModernButton(QPushButton):
         return '#{:02x}{:02x}{:02x}'.format(*rgb)
 
 class EarTrainerTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)  # Add this line
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
