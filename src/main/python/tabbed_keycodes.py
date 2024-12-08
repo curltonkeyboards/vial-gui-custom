@@ -835,28 +835,51 @@ class EarTrainerTab(QScrollArea):
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         
-        # Container for both sections
-        container = QWidget()
-        container_layout = QHBoxLayout(container)
-        container_layout.setSpacing(0)  # Remove spacing between sections
+        # Add heading row
+        headers = QWidget()
+        headers_layout = QHBoxLayout(headers)
+        headers_layout.setContentsMargins(20, 0, 20, 0)
         
-        # Left section (Ear Trainer)
-        left_section = QWidget()
-        left_layout = QVBoxLayout(left_section)
-        left_layout.setContentsMargins(20, 10, 20, 20)
-        
-        ear_label = QLabel("Ear Trainer")
-        ear_label.setStyleSheet("""
+        # Interval Trainer header (4/9 width)
+        interval_header = QLabel("Interval Trainer")
+        interval_header.setStyleSheet("""
             QLabel {
                 font-size: 16px;
                 font-weight: bold;
                 color: #333;
-                padding: 10px;
-                border-bottom: 2px solid #e0e0e0;
-                margin-bottom: 10px;
             }
         """)
-        left_layout.addWidget(ear_label)
+        interval_header.setFixedWidth(4 * 100)  # Approximate width for 4 columns
+        interval_header.setAlignment(Qt.AlignCenter)
+        headers_layout.addWidget(interval_header)
+        
+        # Spacer for divider space
+        headers_layout.addSpacing(40)
+        
+        # Chord Trainer header (5/9 width)
+        chord_header = QLabel("Chord Trainer")
+        chord_header.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333;
+            }
+        """)
+        chord_header.setFixedWidth(5 * 100)  # Approximate width for 5 columns
+        chord_header.setAlignment(Qt.AlignCenter)
+        headers_layout.addWidget(chord_header)
+        
+        self.main_layout.addWidget(headers)
+        
+        # Container for both sections
+        container = QWidget()
+        container_layout = QHBoxLayout(container)
+        container_layout.setSpacing(0)
+        
+        # Left section (Interval Trainer) - 4 columns
+        left_section = QWidget()
+        left_layout = QVBoxLayout(left_section)
+        left_layout.setContentsMargins(20, 10, 20, 20)
         
         self.ear_trainer_grid = QGridLayout()
         self.ear_trainer_grid.setSpacing(10)
@@ -867,38 +890,25 @@ class EarTrainerTab(QScrollArea):
         divider.setFrameShape(QFrame.VLine)
         divider.setStyleSheet("""
             QFrame {
-                background-color: #e0e0e0;
+                background-color: rgba(0, 0, 0, 0.1);  /* Black with 90% transparency */
                 width: 2px;
                 margin: 0px 20px;
             }
         """)
         
-        # Right section (Chord Trainer)
+        # Right section (Chord Trainer) - 5 columns
         right_section = QWidget()
         right_layout = QVBoxLayout(right_section)
         right_layout.setContentsMargins(20, 10, 20, 20)
-        
-        chord_label = QLabel("Chord Trainer")
-        chord_label.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                color: #333;
-                padding: 10px;
-                border-bottom: 2px solid #e0e0e0;
-                margin-bottom: 10px;
-            }
-        """)
-        right_layout.addWidget(chord_label)
         
         self.chord_trainer_grid = QGridLayout()
         self.chord_trainer_grid.setSpacing(10)
         right_layout.addLayout(self.chord_trainer_grid)
         
-        # Add sections to container
-        container_layout.addWidget(left_section)
+        # Add sections to container with proportional sizes
+        container_layout.addWidget(left_section, 4)  # 4/9 of space
         container_layout.addWidget(divider)
-        container_layout.addWidget(right_section)
+        container_layout.addWidget(right_section, 5)  # 5/9 of space
         
         # Add container to main layout
         self.main_layout.addWidget(container)
