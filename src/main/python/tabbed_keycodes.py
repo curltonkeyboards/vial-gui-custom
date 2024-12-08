@@ -819,6 +819,7 @@ class ModernButton(QPushButton):
 
 class EarTrainerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)  # Add this line
+    
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
@@ -905,6 +906,15 @@ class EarTrainerTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chord_trainer_grid.addWidget(btn, row, col)
+                
+    def relabel_buttons(self):
+        # Handle relabeling only for buttons
+        for i in range(self.button_layout.count()):
+            widget = self.button_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
                 
     def has_buttons(self):
         """Check if there are buttons in either grid."""
