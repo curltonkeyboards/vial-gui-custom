@@ -35,7 +35,7 @@ class PianoButton(SquareButton):
             border-top-right-radius: 0px;
             color: #303030;
             padding: 2px;
-            padding-bottom: 25px;
+            padding-bottom: 7px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -939,7 +939,7 @@ class EarTrainerTab(QScrollArea):
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
-                col = i % 4
+                col = i % 5
                 btn = ModernButton(Keycode.label(keycode.qmk_id), "#c9e4ca")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1865,9 +1865,9 @@ class PianoKeyboard(QWidget):
         super().__init__(parent)
         
         # Key dimensions
-        self.white_key_width = 47
+        self.white_key_width = 45
         self.white_key_height = 120
-        self.black_key_width = 32
+        self.black_key_width = 31
         self.black_key_height = 80
         self.row_spacing = 30
         
@@ -2003,7 +2003,7 @@ class midiTab(QScrollArea):
             elif item == "MI_SUS":
                 btn.setText("Sustain\nPedal")
             elif item == "MI_CHORD_99":
-                btn.setText("SmartChord")
+                btn.setText("Smart\nChord")
             elif item == "KC_NO":
                 btn.setText("")
             btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
