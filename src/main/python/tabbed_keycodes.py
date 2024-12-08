@@ -19,6 +19,8 @@ from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
 
+
+
 class PianoButton(SquareButton):
     # Classic Piano Style
     WHITE_KEY = """
@@ -54,6 +56,52 @@ class PianoButton(SquareButton):
         QPushButton:pressed {
             background-color: #404040;
             border: 1px solid #303030;
+        }
+    """
+    
+    GLASS_WHITE = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(255, 255, 255, 240), 
+                stop:0.5 rgba(240, 240, 240, 240),
+                stop:1 rgba(230, 230, 230, 240));
+            border: 1px solid rgba(200, 200, 200, 180);
+            border-radius: 4px;
+            color: #303030;
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(255, 255, 255, 255),
+                stop:1 rgba(240, 240, 240, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(230, 230, 230, 255),
+                stop:1 rgba(220, 220, 220, 255));
+        }
+    """
+
+    GLASS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(40, 40, 40, 240),
+                stop:0.5 rgba(30, 30, 30, 240),
+                stop:1 rgba(20, 20, 20, 240));
+            border: 1px solid rgba(0, 0, 0, 180);
+            border-radius: 4px;
+            color: #FFFFFF;
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(50, 50, 50, 255),
+                stop:1 rgba(40, 40, 40, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(30, 30, 30, 255),
+                stop:1 rgba(20, 20, 20, 255));
         }
     """
 
@@ -142,6 +190,8 @@ class PianoButton(SquareButton):
     def __init__(self, key_type='white', style='classic'):
         super().__init__()
         self.setMinimumSize(40, 60)
+        super().__init__()
+        self.setStyleSheet(self.GLASS_WHITE if key_type == 'white' else self.GLASS_BLACK)
         
         style_map = {
             'classic': {
@@ -1868,7 +1918,8 @@ class PianoKeyboard(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Fixed dimensions
+        
+        # Key dimensions
         self.white_key_width = 40
         self.white_key_height = 120
         self.black_key_width = 24
@@ -1883,53 +1934,64 @@ class PianoKeyboard(QWidget):
         # Set fixed widget size
         total_width = self.total_white_keys_per_row * self.white_key_width
         total_height = (self.white_key_height * 2) + self.row_spacing
-        self.setFixedSize(total_width, total_height)
+        
+        # Create a container for centering
+        self.container = QWidget(self)
+        self.container.setFixedSize(total_width, total_height)
+        
+        # Center the container
+        self.setMinimumSize(total_width + 40, total_height + 40)
         
         self.white_keys = []
         self.black_keys = []
 
+    def resizeEvent(self, event):
+        # Center the container in the widget
+        x = (self.width() - self.container.width()) // 2
+        y = (self.height() - self.container.height()) // 2
+        self.container.move(x, y)
+        super().resizeEvent(event)
+
     def create_piano_keys(self, midi_mappings):
-        # Clear existing keys
         for key in self.white_keys + self.black_keys:
             key.deleteLater()
         self.white_keys.clear()
         self.black_keys.clear()
 
-        key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]  # 0 = white, 1 = black
+        key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
         notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-        # Create both rows
         for row in range(2):
             white_index = 0
             y_offset = row * (self.white_key_height + self.row_spacing)
             start_octave = 0 if row == 0 else 3
 
-            # Create white keys for this row
+            # Create white keys first
             for octave in range(start_octave, start_octave + 3):
                 for i, is_black in enumerate(key_pattern):
                     if not is_black:
                         x = white_index * self.white_key_width
-                        key = PianoButton(key_type='white', style='ivory')
-                        key.setParent(self)
+                        key = PianoButton(key_type='white')
+                        key.setParent(self.container)
                         key.setGeometry(x, y_offset, self.white_key_width, self.white_key_height)
                         
                         note = notes[i]
                         midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
-                        display_text = f"\n\n\n{note}{octave}"
+                        display_text = f"\n\n\n\n{note}{octave}"  # Extra newline for lower position
                         
                         key.setText(display_text)
                         key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
                         self.white_keys.append(key)
                         white_index += 1
 
-            # Reset for black keys
+            # Create black keys on top
             white_index = 0
             for octave in range(start_octave, start_octave + 3):
                 for i, is_black in enumerate(key_pattern):
                     if is_black:
                         x = white_index * self.white_key_width - (self.black_key_width // 2)
-                        key = PianoButton(key_type='black', style='ivory')
-                        key.setParent(self)
+                        key = PianoButton(key_type='black')
+                        key.setParent(self.container)
                         key.setGeometry(x, y_offset, self.black_key_width, self.black_key_height)
                         
                         note = notes[i].replace('#', 's')
