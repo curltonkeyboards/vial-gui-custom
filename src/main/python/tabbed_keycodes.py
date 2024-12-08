@@ -1891,23 +1891,25 @@ class midiTab(QScrollArea):
         self.piano.keyPressed.connect(self.keycode_changed)
         self.main_layout.addWidget(self.piano)
 
-        # Control buttons
+                # Control buttons
         control_container = QWidget()
         control_layout = QHBoxLayout(control_container)
         control_layout.setAlignment(Qt.AlignCenter)
 
         for item in self.midi_layout2[0]:
             if item != "KC_NO":
-                btn = PianoButton(key_type='white')  # Changed 'key' to 'btn'
+                control_btn = PianoButton(key_type='white')
                 if item == "MI_ALLOFF":
-                    btn.setText("All\nNotes\nOff")
+                    control_btn.setText("All\nNotes\nOff")
                 elif item == "MI_SUS":
-                    btn.setText("Sustain\nPedal")
+                    control_btn.setText("Sustain\nPedal")
                 else:
-                    btn.setText("SmartChord")
-                btn.setFixedWidth(80)
-                btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
-                control_layout.addWidget(btn)
+                    control_btn.setText("SmartChord")
+                control_btn.setFixedWidth(80)
+                control_btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
+                control_layout.addWidget(control_btn)
+
+        self.main_layout.addWidget(control_container)
 
         self.main_layout.addWidget(control_container)
         
@@ -1966,12 +1968,12 @@ class midiTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 if not keycode.qmk_id.startswith("MI_"):  # Only add non-MIDI keys
-                    btn = SquareButton()
-                    btn.setRelSize(KEYCODE_BTN_RATIO)
-                    btn.setText(Keycode.label(keycode.qmk_id))
-                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                    btn.keycode = keycode
-                    self.button_layout.addWidget(btn, row, col)
+                    grid_btn = SquareButton()  # Changed variable name to grid_btn
+                    grid_btn.setRelSize(KEYCODE_BTN_RATIO)
+                    grid_btn.setText(Keycode.label(keycode.qmk_id))
+                    grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    grid_btn.keycode = keycode
+                    self.button_layout.addWidget(grid_btn, row, col)
                     col += 1
                     if col >= 5:
                         col = 0
