@@ -29,13 +29,13 @@ class PianoButton(SquareButton):
                 stop:0.5 rgba(240, 240, 240, 240),
                 stop:1 rgba(230, 230, 230, 240));
             border: 1px solid rgba(200, 200, 200, 180);
-            border-bottom-left-radius: 4px;
-            border-bottom-right-radius: 4px;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
             border-top-left-radius: 0px;
             border-top-right-radius: 0px;
             color: #303030;
             padding: 2px;
-            padding-bottom: 15px;
+            padding-bottom: 25px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -2023,7 +2023,7 @@ class midiTab(QScrollArea):
             selected_value = dropdown.itemData(selected_index)
         dropdown.setCurrentIndex(0)
 
-    # In midiTab class:
+        # In midiTab class:
     def recreate_buttons(self, keycode_filter=None):
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
@@ -2036,20 +2036,19 @@ class midiTab(QScrollArea):
 
         row = 0
         col = 0
-        # Add non-MIDI keys in 2 rows of 5
+        # Remove the MI_ check since we want these MIDI controls to show
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                if not keycode.qmk_id.startswith("MI_"):
-                    grid_btn = SquareButton()
-                    grid_btn.setRelSize(KEYCODE_BTN_RATIO)
-                    grid_btn.setText(Keycode.label(keycode.qmk_id))
-                    grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                    grid_btn.keycode = keycode
-                    self.button_layout.addWidget(grid_btn, row, col)
-                    col += 1
-                    if col >= 5:
-                        col = 0
-                        row += 1
+                grid_btn = SquareButton()
+                grid_btn.setRelSize(KEYCODE_BTN_RATIO)
+                grid_btn.setText(Keycode.label(keycode.qmk_id))
+                grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                grid_btn.keycode = keycode
+                self.button_layout.addWidget(grid_btn, row, col)
+                col += 1
+                if col >= 5:
+                    col = 0
+                    row += 1
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
