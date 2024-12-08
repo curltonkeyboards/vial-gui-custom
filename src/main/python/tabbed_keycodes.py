@@ -824,20 +824,27 @@ class ModernButton(QPushButton):
         return '#{:02x}{:02x}{:02x}'.format(*rgb)
 
 class EarTrainerTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)  # Add this line
+    keycode_changed = pyqtSignal(str)
     
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
         self.eartrainer_keycodes = eartrainer_keycodes
         self.chordtrainer_keycodes = chordtrainer_keycodes
-
+        
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         
-        # Create sections
-        ear_section = QWidget()
-        ear_layout = QVBoxLayout(ear_section)
+        # Container for both sections
+        container = QWidget()
+        container_layout = QHBoxLayout(container)
+        container_layout.setSpacing(0)  # Remove spacing between sections
+        
+        # Left section (Ear Trainer)
+        left_section = QWidget()
+        left_layout = QVBoxLayout(left_section)
+        left_layout.setContentsMargins(20, 10, 20, 20)
+        
         ear_label = QLabel("Ear Trainer")
         ear_label.setStyleSheet("""
             QLabel {
@@ -845,18 +852,32 @@ class EarTrainerTab(QScrollArea):
                 font-weight: bold;
                 color: #333;
                 padding: 10px;
+                border-bottom: 2px solid #e0e0e0;
+                margin-bottom: 10px;
             }
         """)
-        ear_layout.addWidget(ear_label)
+        left_layout.addWidget(ear_label)
         
-        # Grid for ear trainer buttons
-        ear_grid = QGridLayout()
-        ear_grid.setSpacing(10)
-        ear_layout.addLayout(ear_grid)
+        self.ear_trainer_grid = QGridLayout()
+        self.ear_trainer_grid.setSpacing(10)
+        left_layout.addLayout(self.ear_trainer_grid)
         
-        # Same for chord trainer
-        chord_section = QWidget()
-        chord_layout = QVBoxLayout(chord_section)
+        # Vertical divider
+        divider = QFrame()
+        divider.setFrameShape(QFrame.VLine)
+        divider.setStyleSheet("""
+            QFrame {
+                background-color: #e0e0e0;
+                width: 2px;
+                margin: 0px 20px;
+            }
+        """)
+        
+        # Right section (Chord Trainer)
+        right_section = QWidget()
+        right_layout = QVBoxLayout(right_section)
+        right_layout.setContentsMargins(20, 10, 20, 20)
+        
         chord_label = QLabel("Chord Trainer")
         chord_label.setStyleSheet("""
             QLabel {
@@ -864,27 +885,28 @@ class EarTrainerTab(QScrollArea):
                 font-weight: bold;
                 color: #333;
                 padding: 10px;
+                border-bottom: 2px solid #e0e0e0;
+                margin-bottom: 10px;
             }
         """)
-        chord_layout.addWidget(chord_label)
+        right_layout.addWidget(chord_label)
         
-        chord_grid = QGridLayout()
-        chord_grid.setSpacing(10)
-        chord_layout.addLayout(chord_grid)
+        self.chord_trainer_grid = QGridLayout()
+        self.chord_trainer_grid.setSpacing(10)
+        right_layout.addLayout(self.chord_trainer_grid)
         
-        # Add sections to main layout
-        self.main_layout.addWidget(ear_section)
-        self.main_layout.addSpacing(20)
-        self.main_layout.addWidget(chord_section)
+        # Add sections to container
+        container_layout.addWidget(left_section)
+        container_layout.addWidget(divider)
+        container_layout.addWidget(right_section)
         
-        self.ear_trainer_grid = ear_grid
-        self.chord_trainer_grid = chord_grid
+        # Add container to main layout
+        self.main_layout.addWidget(container)
         
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         
         self.recreate_buttons()
-        self.main_layout.addStretch()
 
     def recreate_buttons(self, keycode_filter=None):
         for layout in [self.ear_trainer_grid, self.chord_trainer_grid]:
@@ -893,7 +915,7 @@ class EarTrainerTab(QScrollArea):
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Create Ear Trainer buttons
+        # Create Ear Trainer buttons (4x4 grid)
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
@@ -903,7 +925,7 @@ class EarTrainerTab(QScrollArea):
                 btn.keycode = keycode
                 self.ear_trainer_grid.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons
+        # Create Chord Trainer buttons (4x4 grid)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
@@ -912,17 +934,15 @@ class EarTrainerTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chord_trainer_grid.addWidget(btn, row, col)
-                
+
     def relabel_buttons(self):
-        """Relabel all buttons in both grids."""
         for grid in [self.ear_trainer_grid, self.chord_trainer_grid]:
             for i in range(grid.count()):
                 widget = grid.itemAt(i).widget()
                 if hasattr(widget, 'keycode'):
                     widget.setText(Keycode.label(widget.keycode.qmk_id))
-                
+
     def has_buttons(self):
-        """Check if there are buttons in either grid."""
         return (self.ear_trainer_grid.count() > 0 or 
                 self.chord_trainer_grid.count() > 0)
 
