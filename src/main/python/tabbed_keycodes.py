@@ -29,9 +29,10 @@ class PianoButton(SquareButton):
                 stop:0.5 rgba(240, 240, 240, 240),
                 stop:1 rgba(230, 230, 230, 240));
             border: 1px solid rgba(200, 200, 200, 180);
-            border-radius: 4px;
+            border-radius: 0px 0px 4px 4px;
             color: #303030;
             padding: 2px;
+            padding-bottom: 15px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -52,7 +53,7 @@ class PianoButton(SquareButton):
                 stop:0.5 rgba(30, 30, 30, 240),
                 stop:1 rgba(20, 20, 20, 240));
             border: 1px solid rgba(0, 0, 0, 180);
-            border-radius: 4px;
+            border-radius: 0px 0px 4px 4px;
             color: #FFFFFF;
             padding: 2px;
         }
@@ -782,9 +783,41 @@ class midiadvancedTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.button_layout.count() > 0)
         
-class EarTrainerTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)
+class ModernButton(QPushButton):
+    def __init__(self, text, color="#4a90e2"):
+        super().__init__(text)
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {color};
+                border: none;
+                border-radius: 6px;
+                color: white;
+                padding: 10px;
+                font-weight: bold;
+                min-height: 40px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.lighten_color(color, 20)};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.darken_color(color, 20)};
+            }}
+        """)
+        
+    def lighten_color(self, color, amount):
+        # Convert hex to RGB and lighten
+        c = color.lstrip('#')
+        rgb = tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+        rgb = tuple(min(255, x + amount) for x in rgb)
+        return '#{:02x}{:02x}{:02x}'.format(*rgb)
+        
+    def darken_color(self, color, amount):
+        c = color.lstrip('#')
+        rgb = tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+        rgb = tuple(max(0, x - amount) for x in rgb)
+        return '#{:02x}{:02x}{:02x}'.format(*rgb)
 
+class EarTrainerTab(QScrollArea):
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
@@ -793,85 +826,84 @@ class EarTrainerTab(QScrollArea):
 
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
+        
+        # Create sections
+        ear_section = QWidget()
+        ear_layout = QVBoxLayout(ear_section)
+        ear_label = QLabel("Ear Trainer")
+        ear_label.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333;
+                padding: 10px;
+            }
+        """)
+        ear_layout.addWidget(ear_label)
+        
+        # Grid for ear trainer buttons
+        ear_grid = QGridLayout()
+        ear_grid.setSpacing(10)
+        ear_layout.addLayout(ear_grid)
+        
+        # Same for chord trainer
+        chord_section = QWidget()
+        chord_layout = QVBoxLayout(chord_section)
+        chord_label = QLabel("Chord Trainer")
+        chord_label.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333;
+                padding: 10px;
+            }
+        """)
+        chord_layout.addWidget(chord_label)
+        
+        chord_grid = QGridLayout()
+        chord_grid.setSpacing(10)
+        chord_layout.addLayout(chord_grid)
+        
+        # Add sections to main layout
+        self.main_layout.addWidget(ear_section)
+        self.main_layout.addSpacing(20)
+        self.main_layout.addWidget(chord_section)
+        
+        self.ear_trainer_grid = ear_grid
+        self.chord_trainer_grid = chord_grid
+        
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-
-        # Style strings for the section labels
-        label_style = """
-            QLabel {
-                color: #2F1F14;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 10px;
-                background-color: #FFF8DC;
-                border-radius: 4px;
-            }
-        """
-
-        self.ear_trainer_label = QLabel("Ear Trainer")
-        self.ear_trainer_label.setAlignment(Qt.AlignCenter)
-        self.ear_trainer_label.setStyleSheet(label_style)
         
-        self.chord_trainer_label = QLabel("Chord Trainer")
-        self.chord_trainer_label.setAlignment(Qt.AlignCenter)
-        self.chord_trainer_label.setStyleSheet(label_style)
-
-        self.main_layout.addWidget(self.ear_trainer_label)
-        self.ear_trainer_grid = QGridLayout()
-        self.main_layout.addLayout(self.ear_trainer_grid)
-
-        self.main_layout.addSpacing(20)
-        
-        self.main_layout.addWidget(self.chord_trainer_label)
-        self.chord_trainer_grid = QGridLayout()
-        self.main_layout.addLayout(self.chord_trainer_grid)
-
         self.recreate_buttons()
         self.main_layout.addStretch()
 
     def recreate_buttons(self, keycode_filter=None):
-        # Clear previous buttons
         for layout in [self.ear_trainer_grid, self.chord_trainer_grid]:
             while layout.count():
                 item = layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Create Ear Trainer buttons (4x4 grid) with ivory style
+        # Create Ear Trainer buttons
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                btn = PianoButton(key_type='white')  # Changed 'key' to 'btn'
-                btn.setText(Keycode.label(keycode.qmk_id))
+                btn = ModernButton(Keycode.label(keycode.qmk_id), "#4a90e2")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.ear_trainer_grid.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons (5x4 grid) with ebony style
+        # Create Chord Trainer buttons
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
-                btn = PianoButton(key_type='black')  # Changed 'key' to 'btn'
-                btn.setText(Keycode.label(keycode.qmk_id))
+                btn = ModernButton(Keycode.label(keycode.qmk_id), "#2ecc71")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chord_trainer_grid.addWidget(btn, row, col)
-
-    def relabel_buttons(self):
-        for layout in [self.ear_trainer_grid, self.chord_trainer_grid]:
-            for i in range(layout.count()):
-                widget = layout.itemAt(i).widget()
-                if isinstance(widget, PianoButton):
-                    keycode = widget.keycode
-                    if keycode:
-                        widget.setText(Keycode.label(keycode.qmk_id))
-
-    def has_buttons(self):
-        return self.ear_trainer_grid.count() > 0 or self.chord_trainer_grid.count() > 0
 
 
 
@@ -1782,9 +1814,9 @@ class PianoKeyboard(QWidget):
         super().__init__(parent)
         
         # Key dimensions
-        self.white_key_width = 40
+        self.white_key_width = 47
         self.white_key_height = 120
-        self.black_key_width = 24
+        self.black_key_width = 32
         self.black_key_height = 80
         self.row_spacing = 30
         
@@ -1875,9 +1907,10 @@ class midiTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
 
+        # In midiTab class, restore original control buttons
         self.midi_layout2 = [
             ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99"]
-        ]
+]
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -1897,17 +1930,18 @@ class midiTab(QScrollArea):
         control_layout.setAlignment(Qt.AlignCenter)
 
         for item in self.midi_layout2[0]:
-            if item != "KC_NO":
-                control_btn = PianoButton(key_type='white')
-                if item == "MI_ALLOFF":
-                    control_btn.setText("All\nNotes\nOff")
-                elif item == "MI_SUS":
-                    control_btn.setText("Sustain\nPedal")
-                else:
-                    control_btn.setText("SmartChord")
-                control_btn.setFixedWidth(80)
-                control_btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
-                control_layout.addWidget(control_btn)
+            btn = PianoButton(key_type='white')
+            if item == "MI_ALLOFF":
+                btn.setText("All\nNotes\nOff")
+                btn.setFixedSize(60, 60)
+            elif item == "MI_SUS":
+                btn.setText("Sustain\nPedal")
+                btn.setFixedSize(60, 60)
+            elif item == "MI_CHORD_99":
+                btn.setText("SmartChord")
+                btn.setFixedSize(60, 60)
+            btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
+            control_layout.addWidget(btn)
 
         self.main_layout.addWidget(control_container)
 
