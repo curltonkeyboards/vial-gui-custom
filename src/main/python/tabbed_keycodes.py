@@ -22,6 +22,16 @@ from util import tr, KeycodeDisplay
 
 
 class PianoButton(SquareButton):
+    def __init__(self, key_type='white', color_scheme='default'):
+        super().__init__()
+        if color_scheme == 'default':
+            self.setStyleSheet(self.GLASS_WHITE if key_type == 'white' else self.GLASS_BLACK)
+        elif color_scheme == 'keysplit':
+            self.setStyleSheet(self.KS_WHITE if key_type == 'white' else self.KS_BLACK)
+        elif color_scheme == 'triplesplit':
+            self.setStyleSheet(self.TS_WHITE if key_type == 'white' else self.TS_BLACK)
+
+    # Original styles
     GLASS_WHITE = """
         QPushButton {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -29,13 +39,9 @@ class PianoButton(SquareButton):
                 stop:0.5 rgba(240, 240, 240, 240),
                 stop:1 rgba(230, 230, 230, 240));
             border: 1px solid rgba(200, 200, 200, 180);
-            border-bottom-left-radius: 6px;
-            border-bottom-right-radius: 6px;
-            border-top-left-radius: 0px;
-            border-top-right-radius: 0px;
+            border-radius: 4px;
             color: #303030;
             padding: 2px;
-            padding-bottom: 0px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -50,16 +56,13 @@ class PianoButton(SquareButton):
     """
 
     GLASS_BLACK = """
-       QPushButton {
+        QPushButton {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 rgba(40, 40, 40, 240),
                 stop:0.5 rgba(30, 30, 30, 240),
                 stop:1 rgba(20, 20, 20, 240));
             border: 1px solid rgba(0, 0, 0, 180);
-            border-bottom-left-radius: 4px;
-            border-bottom-right-radius: 4px;
-            border-top-left-radius: 0px;
-            border-top-right-radius: 0px;
+            border-radius: 4px;
             color: #FFFFFF;
             padding: 2px;
         }
@@ -75,9 +78,99 @@ class PianoButton(SquareButton):
         }
     """
 
-    def __init__(self, key_type='white'):
-        super().__init__()
-        self.setStyleSheet(self.GLASS_WHITE if key_type == 'white' else self.GLASS_BLACK)
+    # KeySplit styles
+    KS_WHITE = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(243, 209, 209, 240),
+                stop:0.5 rgba(238, 204, 204, 240),
+                stop:1 rgba(233, 199, 199, 240));
+            border: 1px solid rgba(128, 87, 87, 180);
+            border-radius: 4px;
+            color: rgba(128, 87, 87, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(248, 214, 214, 255),
+                stop:1 rgba(243, 209, 209, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(238, 204, 204, 255),
+                stop:1 rgba(233, 199, 199, 255));
+        }
+    """
+
+    KS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(128, 87, 87, 240),
+                stop:0.5 rgba(118, 77, 77, 240),
+                stop:1 rgba(108, 67, 67, 240));
+            border: 1px solid rgba(88, 47, 47, 180);
+            border-radius: 4px;
+            color: rgba(243, 209, 209, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(138, 97, 97, 255),
+                stop:1 rgba(128, 87, 87, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(118, 77, 77, 255),
+                stop:1 rgba(108, 67, 67, 255));
+        }
+    """
+
+    # TripleSplit styles
+    TS_WHITE = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(209, 243, 215, 240),
+                stop:0.5 rgba(204, 238, 210, 240),
+                stop:1 rgba(199, 233, 205, 240));
+            border: 1px solid rgba(128, 128, 87, 180);
+            border-radius: 4px;
+            color: rgba(128, 128, 87, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(214, 248, 220, 255),
+                stop:1 rgba(209, 243, 215, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(204, 238, 210, 255),
+                stop:1 rgba(199, 233, 205, 255));
+        }
+    """
+
+    TS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(128, 128, 87, 240),
+                stop:0.5 rgba(118, 118, 77, 240),
+                stop:1 rgba(108, 108, 67, 240));
+            border: 1px solid rgba(88, 88, 47, 180);
+            border-radius: 4px;
+            color: rgba(209, 243, 215, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(138, 138, 97, 255),
+                stop:1 rgba(128, 128, 87, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(118, 118, 77, 255),
+                stop:1 rgba(108, 108, 67, 255));
+        }
+    """
 
 class AlternativeDisplay(QWidget):
 
@@ -840,7 +933,7 @@ class EarTrainerTab(QScrollArea):
         headers_layout = QHBoxLayout(headers)
         headers_layout.setContentsMargins(20, 0, 20, 0)
         
-        # Interval Trainer header (4/9 width)
+        # Interval Trainer header
         interval_header = QLabel("Interval Trainer")
         interval_header.setStyleSheet("""
             QLabel {
@@ -849,14 +942,13 @@ class EarTrainerTab(QScrollArea):
                 color: #333;
             }
         """)
-        interval_header.setFixedWidth(4 * 100)  # Approximate width for 4 columns
         interval_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(interval_header)
         
         # Spacer for divider space
         headers_layout.addSpacing(40)
         
-        # Chord Trainer header (5/9 width)
+        # Chord Trainer header
         chord_header = QLabel("Chord Trainer")
         chord_header.setStyleSheet("""
             QLabel {
@@ -865,7 +957,6 @@ class EarTrainerTab(QScrollArea):
                 color: #333;
             }
         """)
-        chord_header.setFixedWidth(5 * 100)  # Approximate width for 5 columns
         chord_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(chord_header)
         
@@ -874,41 +965,21 @@ class EarTrainerTab(QScrollArea):
         # Container for both sections
         container = QWidget()
         container_layout = QHBoxLayout(container)
-        container_layout.setSpacing(0)
+        container_layout.setSpacing(20)
         
-        # Left section (Interval Trainer) - 4 columns
+        # Left section (Interval Trainer) - 3 columns, 4 rows
         left_section = QWidget()
-        left_layout = QVBoxLayout(left_section)
-        left_layout.setContentsMargins(20, 10, 20, 20)
+        left_layout = QGridLayout(left_section)
+        left_layout.setSpacing(10)
         
-        self.ear_trainer_grid = QGridLayout()
-        self.ear_trainer_grid.setSpacing(10)
-        left_layout.addLayout(self.ear_trainer_grid)
-        
-        # Vertical divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.VLine)
-        divider.setStyleSheet("""
-            QFrame {
-                background-color: rgba(0, 0, 0, 0.1);  /* Black with 90% transparency */
-                width: 2px;
-                margin: 0px 20px;
-            }
-        """)
-        
-        # Right section (Chord Trainer) - 5 columns
+        # Right section (Chord Trainer) - 5 columns, 4 rows
         right_section = QWidget()
-        right_layout = QVBoxLayout(right_section)
-        right_layout.setContentsMargins(20, 10, 20, 20)
+        right_layout = QGridLayout(right_section)
+        right_layout.setSpacing(10)
         
-        self.chord_trainer_grid = QGridLayout()
-        self.chord_trainer_grid.setSpacing(10)
-        right_layout.addLayout(self.chord_trainer_grid)
-        
-        # Add sections to container with proportional sizes
-        container_layout.addWidget(left_section, 5)  # 4/9 of space
-        container_layout.addWidget(divider)
-        container_layout.addWidget(right_section, 5)  # 5/9 of space
+        # Add sections to container
+        container_layout.addWidget(left_section)
+        container_layout.addWidget(right_section)
         
         # Add container to main layout
         self.main_layout.addWidget(container)
@@ -916,45 +987,103 @@ class EarTrainerTab(QScrollArea):
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         
+        self.left_layout = left_layout
+        self.right_layout = right_layout
+        
         self.recreate_buttons()
 
+    def create_gradient_button(self, text, position, total_positions, section):
+        """Create a button with gradient based on its position"""
+        btn = QPushButton(text)
+        
+        # Calculate darkness factor based on distance from center
+        if section == 'interval':
+            max_distance = max(2, 3)  # max distance from center in either direction
+            x_dist = abs(position[1] - 1)  # distance from center column (0-based)
+            y_dist = abs(position[0] - 1.5)  # distance from center row (0-based)
+        else:  # chord
+            max_distance = max(2, 4)  # max distance from center
+            x_dist = abs(position[1] - 2)  # distance from center column
+            y_dist = abs(position[0] - 1.5)  # distance from center row
+            
+        distance = math.sqrt(x_dist**2 + y_dist**2) / max_distance
+        darkness = int(40 * distance)  # Adjust the multiplier to control gradient intensity
+        
+        if section == 'interval':
+            base_color = (184, 216, 235)  # Light blue base
+        else:
+            base_color = (201, 228, 202)  # Light green base
+            
+        darker_color = tuple(max(0, c - darkness) for c in base_color)
+        
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgb{darker_color};
+                border: none;
+                border-radius: 6px;
+                color: #303030;
+                padding: 10px;
+                font-weight: bold;
+                min-height: 40px;
+            }}
+            QPushButton:hover {{
+                background-color: rgb{tuple(min(255, c + 20) for c in darker_color)};
+            }}
+            QPushButton:pressed {{
+                background-color: rgb{tuple(max(0, c - 20) for c in darker_color)};
+            }}
+        """)
+        
+        return btn
+
     def recreate_buttons(self, keycode_filter=None):
-        for layout in [self.ear_trainer_grid, self.chord_trainer_grid]:
+        # Clear existing layouts
+        for layout in [self.left_layout, self.right_layout]:
             while layout.count():
                 item = layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Create Ear Trainer buttons (4x4 grid)
+        # Create Interval Trainer buttons (3x4 grid)
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 4
-                col = i % 4
-                btn = ModernButton(Keycode.label(keycode.qmk_id), "#b8d8eb")
+                row = i // 3
+                col = i % 3
+                btn = self.create_gradient_button(
+                    Keycode.label(keycode.qmk_id),
+                    (row, col),
+                    (4, 3),
+                    'interval'
+                )
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                self.ear_trainer_grid.addWidget(btn, row, col)
+                self.left_layout.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons (4x4 grid)
+        # Create Chord Trainer buttons (5x4 grid)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 4
-                col = i % 4
-                btn = ModernButton(Keycode.label(keycode.qmk_id), "#c9e4ca")
+                row = i // 5
+                col = i % 5
+                btn = self.create_gradient_button(
+                    Keycode.label(keycode.qmk_id),
+                    (row, col),
+                    (4, 5),
+                    'chord'
+                )
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                self.chord_trainer_grid.addWidget(btn, row, col)
+                self.right_layout.addWidget(btn, row, col)
 
     def relabel_buttons(self):
-        for grid in [self.ear_trainer_grid, self.chord_trainer_grid]:
-            for i in range(grid.count()):
-                widget = grid.itemAt(i).widget()
+        for layout in [self.left_layout, self.right_layout]:
+            for i in range(layout.count()):
+                widget = layout.itemAt(i).widget()
                 if hasattr(widget, 'keycode'):
                     widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
-        return (self.ear_trainer_grid.count() > 0 or 
-                self.chord_trainer_grid.count() > 0)
+        return (self.left_layout.count() > 0 or 
+                self.right_layout.count() > 0)
 
 
 
@@ -1338,531 +1467,154 @@ class KeySplitTab(QScrollArea):
         self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
-
-        # Define MIDI layout
-        self.midi_layout2 = [
-            ["MI_SPLIT_Cs", "MI_SPLIT_Ds", "MI_SPLIT_Fs", "MI_SPLIT_Gs", "MI_SPLIT_As",
-             "MI_SPLIT_Cs_1", "MI_SPLIT_Ds_1", "MI_SPLIT_Fs_1", "MI_SPLIT_Gs_1", "MI_SPLIT_As_1",
-             "MI_SPLIT_Cs_2", "MI_SPLIT_Ds_2", "MI_SPLIT_Fs_2", "MI_SPLIT_Gs_2", "MI_SPLIT_As_2"],
-
-            ["MI_SPLIT_C", "MI_SPLIT_D", "MI_SPLIT_E", "MI_SPLIT_F", "MI_SPLIT_G", "MI_SPLIT_A", "MI_SPLIT_B",
-             "MI_SPLIT_C_1", "MI_SPLIT_D_1", "MI_SPLIT_E_1", "MI_SPLIT_F_1", "MI_SPLIT_G_1", "MI_SPLIT_A_1", "MI_SPLIT_B_1",
-             "MI_SPLIT_C_2", "MI_SPLIT_D_2", "MI_SPLIT_E_2", "MI_SPLIT_F_2", "MI_SPLIT_G_2", "MI_SPLIT_A_2", "MI_SPLIT_B_2"],
-
-            ["MI_SPLIT_Cs_3", "MI_SPLIT_Ds_3", "MI_SPLIT_Fs_3", "MI_SPLIT_Gs_3", "MI_SPLIT_As_3",
-             "MI_SPLIT_Cs_4", "MI_SPLIT_Ds_4", "MI_SPLIT_Fs_4", "MI_SPLIT_Gs_4", "MI_SPLIT_As_4",
-             "MI_SPLIT_Cs_5", "MI_SPLIT_Ds_5", "MI_SPLIT_Fs_5", "MI_SPLIT_Gs_5", "MI_SPLIT_As_5"],
-
-            ["MI_SPLIT_C_3", "MI_SPLIT_D_3", "MI_SPLIT_E_3", "MI_SPLIT_F_3", "MI_SPLIT_G_3", "MI_SPLIT_A_3", "MI_SPLIT_B_3",
-             "MI_SPLIT_C_4", "MI_SPLIT_D_4", "MI_SPLIT_E_4", "MI_SPLIT_F_4", "MI_SPLIT_G_4", "MI_SPLIT_A_4", "MI_SPLIT_B_4",
-             "MI_SPLIT_C_5", "MI_SPLIT_D_5", "MI_SPLIT_E_5", "MI_SPLIT_F_5", "MI_SPLIT_G_5", "MI_SPLIT_A_5", "MI_SPLIT_B_5"], 
-             
-            ["KS_CHAN_DOWN", "KS_CHAN_UP", "MI_VELOCITY2_DOWN", "MI_VELOCITY2_UP", "MI_TRANSPOSE2_DOWN", "MI_TRANSPOSE2_UP", "MI_OCTAVE2_DOWN", "MI_OCTAVE2_UP"]
-        ]
         
-        self.midi_layout3 = [
-            ["MI_SPLIT2_Cs", "MI_SPLIT2_Ds", "MI_SPLIT2_Fs", "MI_SPLIT2_Gs", "MI_SPLIT2_As",
-             "MI_SPLIT2_Cs_1", "MI_SPLIT2_Ds_1", "MI_SPLIT2_Fs_1", "MI_SPLIT2_Gs_1", "MI_SPLIT2_As_1",
-             "MI_SPLIT2_Cs_2", "MI_SPLIT2_Ds_2", "MI_SPLIT2_Fs_2", "MI_SPLIT2_Gs_2", "MI_SPLIT2_As_2"],
+        # Main layout
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        
+        # Toggle buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        
+        self.toggle_button = QPushButton("Show KeySplit")
+        self.toggle_button.clicked.connect(self.toggle_midi_layouts)
+        self.toggle_button.setFixedSize(120, 40)
+        self.toggle_button.setStyleSheet("""
+            background-color: #f3d1d1;
+            color: #805757;
+        """)
+        button_layout.addWidget(self.toggle_button)
+        
+        self.toggle_button2 = QPushButton("Show TripleSplit")
+        self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
+        self.toggle_button2.setFixedSize(120, 40)
+        button_layout.addWidget(self.toggle_button2)
+        button_layout.addStretch(1)
+        
+        self.main_layout.addLayout(button_layout)
 
-            ["MI_SPLIT2_C", "MI_SPLIT2_D", "MI_SPLIT2_E", "MI_SPLIT2_F", "MI_SPLIT2_G", "MI_SPLIT2_A", "MI_SPLIT2_B",
-             "MI_SPLIT2_C_1", "MI_SPLIT2_D_1", "MI_SPLIT2_E_1", "MI_SPLIT2_F_1", "MI_SPLIT2_G_1", "MI_SPLIT2_A_1", "MI_SPLIT2_B_1",
-             "MI_SPLIT2_C_2", "MI_SPLIT2_D_2", "MI_SPLIT2_E_2", "MI_SPLIT2_F_2", "MI_SPLIT2_G_2", "MI_SPLIT2_A_2", "MI_SPLIT2_B_2"],
+        # Create piano keyboards
+        self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
+        self.keysplit_piano.keyPressed.connect(self.keycode_changed)
+        
+        self.triplesplit_piano = PianoKeyboard(color_scheme='triplesplit')
+        self.triplesplit_piano.keyPressed.connect(self.keycode_changed)
+        
+        self.main_layout.addWidget(self.keysplit_piano)
+        self.main_layout.addWidget(self.triplesplit_piano)
+        self.triplesplit_piano.hide()
 
-            ["MI_SPLIT2_Cs_3", "MI_SPLIT2_Ds_3", "MI_SPLIT2_Fs_3", "MI_SPLIT2_Gs_3", "MI_SPLIT2_As_3",
-             "MI_SPLIT2_Cs_4", "MI_SPLIT2_Ds_4", "MI_SPLIT2_Fs_4", "MI_SPLIT2_Gs_4", "MI_SPLIT2_As_4",
-             "MI_SPLIT2_Cs_5", "MI_SPLIT2_Ds_5", "MI_SPLIT2_Fs_5", "MI_SPLIT2_Gs_5", "MI_SPLIT2_As_5"],
+        # Control buttons for KeySplit
+        self.ks_controls = QWidget()
+        ks_control_layout = QHBoxLayout(self.ks_controls)
+        ks_control_layout.setAlignment(Qt.AlignCenter)
+        self.create_control_buttons(ks_control_layout, 'KS')
+        self.main_layout.addWidget(self.ks_controls)
+        
+        # Control buttons for TripleSplit
+        self.ts_controls = QWidget()
+        ts_control_layout = QHBoxLayout(self.ts_controls)
+        ts_control_layout.setAlignment(Qt.AlignCenter)
+        self.create_control_buttons(ts_control_layout, 'TS')
+        self.main_layout.addWidget(self.ts_controls)
+        self.ts_controls.hide()
 
-            ["MI_SPLIT2_C_3", "MI_SPLIT2_D_3", "MI_SPLIT2_E_3", "MI_SPLIT2_F_3", "MI_SPLIT2_G_3", "MI_SPLIT2_A_3", "MI_SPLIT2_B_3",
-             "MI_SPLIT2_C_4", "MI_SPLIT2_D_4", "MI_SPLIT2_E_4", "MI_SPLIT2_F_4", "MI_SPLIT2_G_4", "MI_SPLIT2_A_4", "MI_SPLIT2_B_4",
-             "MI_SPLIT2_C_5", "MI_SPLIT2_D_5", "MI_SPLIT2_E_5", "MI_SPLIT2_F_5", "MI_SPLIT2_G_5", "MI_SPLIT2_A_5", "MI_SPLIT2_B_5"],
-            
-            ["KS2_CHAN_DOWN", "KS2_CHAN_UP", "MI_VELOCITY3_DOWN", "MI_VELOCITY3_UP", "MI_TRANSPOSE3_DOWN", "MI_TRANSPOSE3_UP", "MI_OCTAVE3_DOWN", "MI_OCTAVE3_UP"]
-        ]
-
-        # Main layout for the scroll area
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        self.main_layout = QVBoxLayout(self.scroll_content)
-        
-        button_layout2 = QHBoxLayout()
-        button_layout2.addStretch(1)
-        # Add the toggle buttons to the horizontal layout
-        self.toggle_button = QPushButton("Show KeySplit")
-        self.toggle_button.clicked.connect(self.toggle_midi_layouts)
-        self.toggle_button.setFixedSize(120, 40)  # Set width to 80 and height to 40
-        self.toggle_button.setStyleSheet("""
-            background-color: #f3d1d1;  /* Set background color (hex for rgba(243, 209, 209)) */
-            color: #805757;  /* Set text color (hex for rgba(128, 87, 87)) */
-        """)
-        button_layout2.addWidget(self.toggle_button)
-        button_layout2.setSpacing(0)
-        self.toggle_button2 = QPushButton("Show TripleSplit")
-        self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
-        self.toggle_button2.setFixedSize(120, 40)  # Set width to 80 and height to 40
-        button_layout2.addWidget(self.toggle_button2)
-        button_layout2.addStretch(1)
-        # Add the horizontal layout (button_layout) to the main layout
-        self.main_layout.addLayout(button_layout2)       
+    def create_control_buttons(self, layout, prefix):
+        controls = [
+            (f"{prefix}\nChannel\n-", f"{prefix}_CHAN_DOWN"),
+            (f"{prefix}\nChannel\n+", f"{prefix}_CHAN_UP"),
+            (f"{prefix}\nVelocity\n-", f"MI_VELOCITY{2 if prefix == 'KS' else 3}_DOWN"),
+            (f"{prefix}\nVelocity\n+", f"MI_VELOCITY{2 if prefix == 'KS' else 3}_UP"),
+            (f"{prefix}\nTranspose\n-", f"MI_TRANSPOSE{2 if prefix == 'KS' else 3}_DOWN"),
+            (f"{prefix}\nTranspose\n+", f"MI_TRANSPOSE{2 if prefix == 'KS' else 3}_UP"),
+            (f"{prefix}\nOctave\n-", f"MI_OCTAVE{2 if prefix == 'KS' else 3}_DOWN"),
+            (f"{prefix}\nOctave\n+", f"MI_OCTAVE{2 if prefix == 'KS' else 3}_UP")
+        ]
 
-        # 1. MIDI Layout
-        self.add_midi_layout2(self.midi_layout2)
-        self.add_midi_layout3(self.midi_layout3)
-     
-        self.midi_layout3_widget.hide()  # Hide midi_layout2
-     
-        # 2. Dropdowns and Headers (Horizontal Layout)
-        self.dropdown_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.dropdown_layout)
+        for text, code in controls:
+            btn = QPushButton(text)
+            btn.setFixedSize(80, 50)
+            if prefix == 'KS':
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: rgba(243, 209, 209, 1);
+                        color: rgba(128, 87, 87, 1);
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: rgba(248, 214, 214, 1);
+                    }
+                    QPushButton:pressed {
+                        background-color: rgba(238, 204, 204, 1);
+                    }
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: rgba(209, 243, 215, 1);
+                        color: rgba(128, 128, 87, 1);
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: rgba(214, 248, 220, 1);
+                    }
+                    QPushButton:pressed {
+                        background-color: rgba(204, 238, 210, 1);
+                    }
+                """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            layout.addWidget(btn)
 
-        # Create a horizontal layout for the dropdowns
-        self.horizontal_dropdown_layout = QHBoxLayout()
-        self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
-        # 3. Inversions Header
-        self.inversion_label = QLabel(" ")
-        self.main_layout.addWidget(self.inversion_label)
-
-        # Layout for buttons (Inversions) using QGridLayout
-        self.centering_layout = QHBoxLayout()
-
-        # Create the grid layout for the buttons
-        self.button_layout = QGridLayout()
-
-        # Add the grid layout to the centering layout
-        self.centering_layout.addStretch()  # Add stretch before the grid layout
-        self.centering_layout.addLayout(self.button_layout)
-        self.centering_layout.addStretch()  # Add stretch after the grid layout
-
-        # Add the centering layout to the main vertical layout
-        self.main_layout.addLayout(self.centering_layout)
-
-        # Populate the inversion buttons
-        self.recreate_buttons()
-
-        # Spacer to push everything to the top
-        self.main_layout.addStretch()
-
-    def add_header_dropdown(self, header_text, keycodes, layout):
-        """Helper method to add a header and dropdown above it."""
-        # Create a vertical layout for the header and dropdown
-        header_dropdown_layout = QVBoxLayout()
-    
-        # Create header
-        header_label = QLabel(header_text)
-        header_label.setAlignment(Qt.AlignCenter)
-        #header_dropdown_layout.addWidget(header_label)
-
-        # Create dropdown
-        dropdown = CenteredComboBox()
-        dropdown.setFixedWidth(300)
-        dropdown.setFixedHeight(40)
-        
-         # Add a placeholder item as the first item
-        dropdown.addItem(f"Select {header_text}")  # Placeholder item
-        dropdown.model().item(0).setEnabled(False)
-        
-        for keycode in keycodes:
-            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
-        dropdown.currentIndexChanged.connect(self.on_selection_change)
-        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
-        header_dropdown_layout.addWidget(dropdown)
-
-        # Add the vertical layout to the main horizontal layout
-        layout.addLayout(header_dropdown_layout)
-        
-    def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
-        selected_index = dropdown.currentIndex()
-
-        if selected_index > 0:  # Ensure an actual selection was made
-            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
-
-        # Reset the visible text to the default
-        dropdown.setCurrentIndex(0)
-        
     def toggle_midi_layouts(self):
-            self.midi_layout3_widget.hide()  # Hide midi_layout3
-            self.midi_layout2_widget.show()  # Show midi_layout2
-            self.set_highlighted(self.toggle_button)
-            self.set_normal(self.toggle_button2)
-            
+        self.keysplit_piano.show()
+        self.triplesplit_piano.hide()
+        self.ks_controls.show()
+        self.ts_controls.hide()
+        self.set_highlighted(self.toggle_button)
+        self.set_normal(self.toggle_button2)
+
     def toggle_midi_layouts2(self):
-            self.midi_layout2_widget.hide()  # Hide midi_layout2
-            self.midi_layout3_widget.show()  # Show midi_layout3
-            self.set_highlighted2(self.toggle_button2)
-            self.set_normal(self.toggle_button)
-            
+        self.keysplit_piano.hide()
+        self.triplesplit_piano.show()
+        self.ks_controls.hide()
+        self.ts_controls.show()
+        self.set_highlighted2(self.toggle_button2)
+        self.set_normal(self.toggle_button)
+
     def set_highlighted(self, button):
         button.setStyleSheet("""
-            background-color: #f3d1d1;  /* Set background color (hex for rgba(243, 209, 209)) */
-            color: #805757;  /* Set text color (hex for rgba(128, 87, 87)) */
+            background-color: #f3d1d1;
+            color: #805757;
         """)
 
     def set_highlighted2(self, button):
         button.setStyleSheet("""
-            background-color: #808057;  /* Set background color (hex for rgba(128, 128, 87)) */
-            color: #d1f3d7;  /* Set text color (hex for rgba(209, 243, 215)) */
+            background-color: #808057;
+            color: #d1f3d7;
         """)
 
-
     def set_normal(self, button):
-        # Unset the stylesheet to revert to the default button style
-        button.setStyleSheet("")  # Clears the stylesheet, using the default style
-
-
-    def add_midi_layout2(self, layout):
-        """Helper method to add staggered buttons based on MIDI layout."""
-        # Create a QWidget for midi_layout2
-        midi_container2 = QWidget()
-        midi_container2_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container2.setLayout(midi_container2_layout)
-
-        # Create the MIDI buttons
-        self.create_midi_buttons(layout, midi_container2_layout)
-
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container2)
-
-        # Store a reference to the midi_layout2 widget
-        self.midi_layout2_widget = midi_container2
-
-    def add_midi_layout3(self, layout):
-        """Helper method to add staggered buttons based on MIDI layout."""
-        # Create a QWidget for midi_layout3
-        midi_container3 = QWidget()
-        midi_container3_layout = QVBoxLayout()  # Use QVBoxLayout for rows
-        midi_container3.setLayout(midi_container3_layout)
-    
-        # Create the MIDI buttons
-        self.create_midi_buttons2(layout, midi_container3_layout)
-
-        # Add MIDI container to the main layout
-        self.main_layout.addWidget(midi_container3)
-    
-        # Store a reference to the midi_layout3 widget
-        self.midi_layout3_widget = midi_container3
-            
-    def create_midi_buttons(self, layout, container_layout):
-        """Create buttons based on MIDI layout coordinates."""
-        name_mapping = {
-            "MI_SPLIT_Cs": "C#\nDb\nKS",
-            "MI_SPLIT_Ds": "D#\nEb\nKS",
-            "MI_SPLIT_Fs": "F#\nGb\nKS",
-            "MI_SPLIT_Gs": "G#\nAb\nKS",
-            "MI_SPLIT_As": "A#\nBb\nKS",
-            "MI_SPLIT_Cs_1": "C#1\nDb1\nKS",
-            "MI_SPLIT_Ds_1": "D#1\nEb1\nKS",
-            "MI_SPLIT_Fs_1": "F#1\nGb1\nKS",
-            "MI_SPLIT_Gs_1": "G#1\nAb1\nKS",
-            "MI_SPLIT_As_1": "A#1\nBb1\nKS",
-            "MI_SPLIT_Cs_2": "C#2\nDb2\nKS",
-            "MI_SPLIT_Ds_2": "D#2\nEb2\nKS",
-            "MI_SPLIT_Fs_2": "F#2\nGb2\nKS",
-            "MI_SPLIT_Gs_2": "G#2\nAb2\nKS",
-            "MI_SPLIT_As_2": "A#2\nBb2\nKS",
-            "MI_SPLIT_C_1": "C1\nKS",
-            "MI_SPLIT_D_1": "D1\nKS",
-            "MI_SPLIT_E_1": "E1\nKS",
-            "MI_SPLIT_F_1": "F1\nKS",
-            "MI_SPLIT_G_1": "G1\nKS",
-            "MI_SPLIT_A_1": "A1\nKS",
-            "MI_SPLIT_B_1": "B1\nKS",
-            "MI_SPLIT_C_2": "C2\nKS",
-            "MI_SPLIT_D_2": "D2\nKS",
-            "MI_SPLIT_E_2": "E2\nKS",
-            "MI_SPLIT_F_2": "F2\nKS",
-            "MI_SPLIT_G_2": "G2\nKS",
-            "MI_SPLIT_A_2": "A2\nKS",
-            "MI_SPLIT_B_2": "B2\nKS",
-            "MI_SPLIT_Cs_3": "C#3\nDb3\nKS",
-            "MI_SPLIT_Ds_3": "D#3\nEb3\nKS",
-            "MI_SPLIT_Fs_3": "F#3\nGb3\nKS",
-            "MI_SPLIT_Gs_3": "G#3\nAb3\nKS",
-            "MI_SPLIT_As_3": "A#3\nBb3\nKS",
-            "MI_SPLIT_Cs_4": "C#4\nDb4\nKS",
-            "MI_SPLIT_Ds_4": "D#4\nEb4\nKS",
-            "MI_SPLIT_Fs_4": "F#4\nGb4\nKS",
-            "MI_SPLIT_Gs_4": "G#4\nAb4\nKS",
-            "MI_SPLIT_As_4": "A#4\nBb4\nKS",
-            "MI_SPLIT_Cs_5": "C#5\nDb5\nKS",
-            "MI_SPLIT_Ds_5": "D#5\nEb5\nKS",
-            "MI_SPLIT_Fs_5": "F#5\nGb5\nKS",
-            "MI_SPLIT_Gs_5": "G#5\nAb5\nKS",
-            "MI_SPLIT_As_5": "A#5\nBb5\nKS",
-            "MI_SPLIT_C_3": "C3\nKS",
-            "MI_SPLIT_D_3": "D3\nKS",
-            "MI_SPLIT_E_3": "E3\nKS",
-            "MI_SPLIT_F_3": "F3\nKS",
-            "MI_SPLIT_G_3": "G3\nKS",
-            "MI_SPLIT_A_3": "A3\nKS",
-            "MI_SPLIT_B_3": "B3\nKS",
-            "MI_SPLIT_C_4": "C4\nKS",
-            "MI_SPLIT_D_4": "D4\nKS",
-            "MI_SPLIT_E_4": "E4\nKS",
-            "MI_SPLIT_F_4": "F4\nKS",
-            "MI_SPLIT_G_4": "G4\nKS",
-            "MI_SPLIT_A_4": "A4\nKS",
-            "MI_SPLIT_B_4": "B4\nKS",
-            "MI_SPLIT_C_5": "C5\nKS",
-            "MI_SPLIT_D_5": "D5\nKS",
-            "MI_SPLIT_E_5": "E5\nKS",
-            "MI_SPLIT_F_5": "F5\nKS",
-            "MI_SPLIT_G_5": "G5\nKS",
-            "MI_SPLIT_A_5": "A5\nKS",
-            "MI_SPLIT_B_5": "B5\nKS",
-            "MI_SPLIT_C": "C\nKS",
-            "MI_SPLIT_D": "D\nKS",
-            "MI_SPLIT_E": "E\nKS",
-            "MI_SPLIT_F": "F\nKS",
-            "MI_SPLIT_G": "G\nKS",
-            "MI_SPLIT_A": "A\nKS",
-            "MI_SPLIT_B": "B\nKS",
-            "KS_CHAN_DOWN": "KS\nChannel\n-", 
-            "KS_CHAN_UP": "KS\nChannel\n+", 
-            "MI_VELOCITY2_DOWN": "KS\nVelocity\n-", 
-            "MI_VELOCITY2_UP": "KS\nVelocity\n+", 
-            "MI_TRANSPOSE2_DOWN": "KS\nTranspose\n-", 
-            "MI_TRANSPOSE2_UP": "KS\nTranspose\n+", 
-            "MI_OCTAVE2_DOWN": "KS\nOctave\n-", 
-            "MI_OCTAVE2_UP": "KS\nOctave\n+"
-        }
-
-        
-        for row_index, row in enumerate(layout):
-            hbox = QHBoxLayout()  # New horizontal row layout
-            hbox.setAlignment(Qt.AlignCenter)
-            for col_index, item in enumerate(row):
-                if isinstance(item, str):
-                    readable_name = name_mapping.get(item, item)
-                    button = SquareButton()
-                    button.setText(readable_name)
-
-                    button.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
-                    
-                    if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
-                        # Add an empty space before the black keys to stagger
-                        
-                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
-                        button.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
-  
-                    if readable_name in ["C#\nDb\nKS", "C#3\nDb3\nKS"]:
-                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
-                        
-                    if readable_name in ["C#1\nDb1\nKS", "C#2\nDb2\nKS", "C#4\nDb4\nKS", "C#5\nDb5\nKS"]:
-                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
-                        hbox.addSpacing(60)                      
-                        
-                    if readable_name in ["F#\nGb\nKS", "F#1\nGb1\nKS", "F#2\nGb2\nKS", "F#3\nGb3\nKS", "F#4\nGb4\nKS", "F#5\nGb5\nKS"]:
-                        button.setStyleSheet("background-color: rgba(128, 87, 87, 1); color: rgba(243, 209, 209, 1);")
-                        hbox.addSpacing(50)
-                        
-                    if readable_name in ["C1\nKS", "C2\nKS", "C4\nKS", "C5\nKS"]:
-                        button.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
-                        hbox.addSpacing(20)
-
-                    
-
-                    button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
-                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
-                    else:
-                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
-                    button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    hbox.addWidget(button)  # Add button to horizontal layout
-
-            container_layout.addLayout(hbox)  # Add row to vertical layout            
-
-    def create_midi_buttons2(self, layout, container_layout):
-        """Create buttons based on MIDI layout coordinates."""
-        name_mapping = {
-            "MI_SPLIT2_Cs": "C#\nDb\nTS",
-            "MI_SPLIT2_Ds": "D#\nEb\nTS",
-            "MI_SPLIT2_Fs": "F#\nGb\nTS",
-            "MI_SPLIT2_Gs": "G#\nAb\nTS",
-            "MI_SPLIT2_As": "A#\nBb\nTS",
-            "MI_SPLIT2_Cs_1": "C#1\nDb1\nTS",
-            "MI_SPLIT2_Ds_1": "D#1\nEb1\nTS",
-            "MI_SPLIT2_Fs_1": "F#1\nGb1\nTS",
-            "MI_SPLIT2_Gs_1": "G#1\nAb1\nTS",
-            "MI_SPLIT2_As_1": "A#1\nBb1\nTS",
-            "MI_SPLIT2_Cs_2": "C#2\nDb2\nTS",
-            "MI_SPLIT2_Ds_2": "D#2\nEb2\nTS",
-            "MI_SPLIT2_Fs_2": "F#2\nGb2\nTS",
-            "MI_SPLIT2_Gs_2": "G#2\nAb2\nTS",
-            "MI_SPLIT2_As_2": "A#2\nBb2\nTS",
-            "MI_SPLIT2_C_1": "C1\nTS",
-            "MI_SPLIT2_D_1": "D1\nTS",
-            "MI_SPLIT2_E_1": "E1\nTS",
-            "MI_SPLIT2_F_1": "F1\nTS",
-            "MI_SPLIT2_G_1": "G1\nTS",
-            "MI_SPLIT2_A_1": "A1\nTS",
-            "MI_SPLIT2_B_1": "B1\nTS",
-            "MI_SPLIT2_C_2": "C2\nTS",
-            "MI_SPLIT2_D_2": "D2\nTS",
-            "MI_SPLIT2_E_2": "E2\nTS",
-            "MI_SPLIT2_F_2": "F2\nTS",
-            "MI_SPLIT2_G_2": "G2\nTS",
-            "MI_SPLIT2_A_2": "A2\nTS",
-            "MI_SPLIT2_B_2": "B2\nTS",
-            "MI_SPLIT2_Cs_3": "C#3\nDb3\nTS",
-            "MI_SPLIT2_Ds_3": "D#3\nEb3\nTS",
-            "MI_SPLIT2_Fs_3": "F#3\nGb3\nTS",
-            "MI_SPLIT2_Gs_3": "G#3\nAb3\nTS",
-            "MI_SPLIT2_As_3": "A#3\nBb3\nTS",
-            "MI_SPLIT2_Cs_4": "C#4\nDb4\nTS",
-            "MI_SPLIT2_Ds_4": "D#4\nEb4\nTS",
-            "MI_SPLIT2_Fs_4": "F#4\nGb4\nTS",
-            "MI_SPLIT2_Gs_4": "G#4\nAb4\nTS",
-            "MI_SPLIT2_As_4": "A#4\nBb4\nTS",
-            "MI_SPLIT2_Cs_5": "C#5\nDb5\nTS",
-            "MI_SPLIT2_Ds_5": "D#5\nEb5\nTS",
-            "MI_SPLIT2_Fs_5": "F#5\nGb5\nTS",
-            "MI_SPLIT2_Gs_5": "G#5\nAb5\nTS",
-            "MI_SPLIT2_As_5": "A#5\nBb5\nTS",
-            "MI_SPLIT2_C_3": "C3\nTS",
-            "MI_SPLIT2_D_3": "D3\nTS",
-            "MI_SPLIT2_E_3": "E3\nTS",
-            "MI_SPLIT2_F_3": "F3\nTS",
-            "MI_SPLIT2_G_3": "G3\nTS",
-            "MI_SPLIT2_A_3": "A3\nTS",
-            "MI_SPLIT2_B_3": "B3\nTS",
-            "MI_SPLIT2_C_4": "C4\nTS",
-            "MI_SPLIT2_D_4": "D4\nTS",
-            "MI_SPLIT2_E_4": "E4\nTS",
-            "MI_SPLIT2_F_4": "F4\nTS",
-            "MI_SPLIT2_G_4": "G4\nTS",
-            "MI_SPLIT2_A_4": "A4\nTS",
-            "MI_SPLIT2_B_4": "B4\nTS",
-            "MI_SPLIT2_C_5": "C5\nTS",
-            "MI_SPLIT2_D_5": "D5\nTS",
-            "MI_SPLIT2_E_5": "E5\nTS",
-            "MI_SPLIT2_F_5": "F5\nTS",
-            "MI_SPLIT2_G_5": "G5\nTS",
-            "MI_SPLIT2_A_5": "A5\nTS",
-            "MI_SPLIT2_B_5": "B5\nTS",
-            "MI_SPLIT2_C": "C\nTS",
-            "MI_SPLIT2_D": "D\nTS",
-            "MI_SPLIT2_E": "E\nTS",
-            "MI_SPLIT2_F": "F\nTS",
-            "MI_SPLIT2_G": "G\nTS",
-            "MI_SPLIT2_A": "A\nTS",
-            "MI_SPLIT2_B": "B\nTS",
-            "KS2_CHAN_DOWN": "TS\nChannel\n-", 
-            "KS2_CHAN_UP": "TS\nChannel\n+", 
-            "MI_VELOCITY3_DOWN": "TS\nVelocity\n-", 
-            "MI_VELOCITY3_UP": "TS\nVelocity\n+", 
-            "MI_TRANSPOSE3_DOWN": "TS\nTranspose\n-", 
-            "MI_TRANSPOSE3_UP": "TS\nTranspose\n+", 
-            "MI_OCTAVE3_DOWN": "TS\nOctave\n-", 
-            "MI_OCTAVE3_UP": "TS\nOctave\n+"
-        }
-
-        
-        for row_index, row in enumerate(layout):
-            hbox = QHBoxLayout()  # New horizontal row layout
-            hbox.setAlignment(Qt.AlignCenter)
-            for col_index, item in enumerate(row):
-                if isinstance(item, str):
-                    readable_name = name_mapping.get(item, item)
-                    button = SquareButton()
-                    button.setText(readable_name)
-
-                    button.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
-                    
-                    if "#" in readable_name:  # Sharp keys have # in their name
-                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
-                        # Add an empty space before the black keys to stagger
-                        
-                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
-                         button.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
-  
-                    if readable_name in ["C#\nDb\nTS", "C#3\nDb3\nTS"]:
-                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
-                        
-                    if readable_name in ["C#1\nDb1\nTS", "C#2\nDb2\nTS", "C#4\nDb4\nTS", "C#5\nDb5\nTS"]:
-                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
-                        hbox.addSpacing(60)                      
-                        
-                    if readable_name in ["F#\nGb\nTS", "F#1\nGb1\nTS", "F#2\nGb2\nTS", "F#3\nGb3\nTS", "F#4\nGb4\nTS", "F#5\nGb5\nTS"]:
-                        button.setStyleSheet("background-color: rgba(128, 128, 87, 1); color: rgba(209, 243, 215, 1);")
-                        hbox.addSpacing(50)
-                        
-                    if readable_name in ["C1\nTS", "C2\nTS", "C4\nTS", "C5\nTS"]:
-                        button.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
-                        hbox.addSpacing(20)
-
-                    
-
-                    button.setFixedHeight(40)  # Set size as needed
-                    if "Pedal" in readable_name or "Velocity" in readable_name or "Transpose" in readable_name or "Channel" in readable_name or "Octave" in readable_name:
-                        button.setFixedWidth(80)  # Set fixed width of 80 for 'Pedal' or 'All' in readable_name
-                    else:
-                        button.setFixedWidth(40)  # Set fixed width of 40 for other buttons
-                    button.clicked.connect(lambda _, text=item: self.keycode_changed.emit(text))
-                    hbox.addWidget(button)  # Add button to horizontal layout
-
-            container_layout.addLayout(hbox)  # Add row to vertical layout   
+        button.setStyleSheet("")
 
     def recreate_buttons(self, keycode_filter=None):
-        """Recreate inversion buttons and add MIDI_CC dropdowns."""
-        # Clear previous widgets
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-
-        row = 0
-        col = 0
-        max_columns = 5  # Maximum number of columns before dropdown
-
-        # Add inversion buttons
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(60, 60)  # Set fixed width and height
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-
-                self.button_layout.addWidget(btn, row, col)
-
-                col += 1
-                if col >= max_columns:
-                    col = 0
-                    row += 1
-
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
-
-    def relabel_buttons(self):
-        # Handle relabeling only for buttons
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+        self.keysplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT')
+        self.triplesplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT2')
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0)
+        return True
 
 
 
 class PianoKeyboard(QWidget):
     keyPressed = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, color_scheme='default'):
         super().__init__(parent)
+        self.color_scheme = color_scheme
         
         # Key dimensions
         self.white_key_width = 45
@@ -1897,7 +1649,7 @@ class PianoKeyboard(QWidget):
         self.container.move(x, y)
         super().resizeEvent(event)
 
-    def create_piano_keys(self, midi_mappings):
+    def create_piano_keys(self, midi_mappings, key_prefix='MI'):
         for key in self.white_keys + self.black_keys:
             key.deleteLater()
         self.white_keys.clear()
@@ -1916,13 +1668,13 @@ class PianoKeyboard(QWidget):
                 for i, is_black in enumerate(key_pattern):
                     if not is_black:
                         x = white_index * self.white_key_width
-                        key = PianoButton(key_type='white')
+                        key = PianoButton(key_type='white', color_scheme=self.color_scheme)
                         key.setParent(self.container)
                         key.setGeometry(x, y_offset, self.white_key_width, self.white_key_height)
                         
                         note = notes[i]
-                        midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
-                        display_text = f"\n\n\n\n{note}{octave}"  # Extra newline for lower position
+                        midi_id = f"{key_prefix}_{note}" if octave == 0 else f"{key_prefix}_{note}_{octave}"
+                        display_text = f"\n\n\n\n{note}{octave}"
                         
                         key.setText(display_text)
                         key.clicked.connect(lambda checked, k=midi_id: self.keyPressed.emit(k))
@@ -1935,12 +1687,12 @@ class PianoKeyboard(QWidget):
                 for i, is_black in enumerate(key_pattern):
                     if is_black:
                         x = white_index * self.white_key_width - (self.black_key_width // 2)
-                        key = PianoButton(key_type='black')
+                        key = PianoButton(key_type='black', color_scheme=self.color_scheme)
                         key.setParent(self.container)
                         key.setGeometry(x, y_offset, self.black_key_width, self.black_key_height)
                         
                         note = notes[i].replace('#', 's')
-                        midi_id = f"MI_{note}" if octave == 0 else f"MI_{note}_{octave}"
+                        midi_id = f"{key_prefix}_{note}" if octave == 0 else f"{key_prefix}_{note}_{octave}"
                         display_text = f"\n\n{notes[i]}{octave}"
                         
                         key.setText(display_text)

@@ -1202,19 +1202,15 @@ KEYCODES_MACRO_BASE = [
 KEYCODES_EARTRAINER = [
      K("MI_ET_1", "Ear Train\nLevel 1", "Ear Train\nLevel 1"),
      K("MI_ET_2", "Ear Train\nLevel 2", "Ear Train\nLevel 2"),
-     K("MI_ET_3", "Ear Train\nLevel 3", "Ear Train\nLevel 3"),
+     K("MI_ET_13", "Ear Train\nLevel 13", "Ear Train\nLevel 9"),
      K("MI_ET_4", "Ear Train\nLevel 4", "Ear Train\nLevel 4"),
      K("MI_ET_5", "Ear Train\nLevel 5", "Ear Train\nLevel 5"),
-     K("MI_ET_6", "Ear Train\nLevel 6", "Ear Train\nLevel 6"),
+     K("MI_ET_14", "Ear Train\nLevel 14", "Ear Train\nLevel 9"),
      K("MI_ET_7", "Ear Train\nLevel 7", "Ear Train\nLevel 7"),
      K("MI_ET_8", "Ear Train\nLevel 8", "Ear Train\nLevel 8"),
-     K("MI_ET_9", "Ear Train\nLevel 9", "Ear Train\nLevel 9"),
-     K("MI_ET_10", "Ear Train\nLevel 10", "Ear Train\nLevel 9"),
-     K("MI_ET_11", "Ear Train\nLevel 11", "Ear Train\nLevel 9"),
-     K("MI_ET_12", "Ear Train\nLevel 12", "Ear Train\nLevel 9"),
-     K("MI_ET_13", "Ear Train\nLevel 13", "Ear Train\nLevel 9"),
-     K("MI_ET_14", "Ear Train\nLevel 14", "Ear Train\nLevel 9"),
      K("MI_ET_15", "Ear Train\nLevel 15", "Ear Train\nLevel 9"),
+     K("MI_ET_10", "Ear Train\nLevel 10", "Ear Train\nLevel 9"),
+     K("MI_ET_11", "Ear Train\nLevel 11", "Ear Train\nLevel 9"),   
      K("MI_ET_16", "Ear Train\nLevel 16", "Ear Train\nLevel 9"),
 ]
 
