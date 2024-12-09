@@ -920,7 +920,6 @@ class ModernButton(QPushButton):
 import math
 
 class EarTrainerTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
@@ -932,61 +931,71 @@ class EarTrainerTab(QScrollArea):
         self.main_layout.setSpacing(5)
         self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Headers with center alignment
+        # Create headers container
         headers = QWidget()
         headers_layout = QHBoxLayout(headers)
-        headers_layout.setContentsMargins(20, 0, 20, 0)
+        headers_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Add initial stretch
-        headers_layout.addStretch()
+        # Left stretch to the start of interval trainer section
+        headers_layout.addStretch(2)
         
-        # Interval Trainer header centered in its space
+        # Interval trainer label - width of 4 columns
         interval_header = QLabel("Interval Trainer")
+        interval_container = QWidget()
+        interval_container_layout = QHBoxLayout(interval_container)
+        interval_container_layout.setContentsMargins(0, 0, 0, 0)
+        interval_container_layout.addWidget(interval_header)
+        interval_container.setFixedWidth(90 * 4)  # Width of 4 buttons
         interval_header.setAlignment(Qt.AlignCenter)
-        headers_layout.addWidget(interval_header)
+        headers_layout.addWidget(interval_container)
         
-        # Middle stretch
-        headers_layout.addStretch()
+        # Middle stretch between sections
+        headers_layout.addStretch(1)
         
-        # Chord Trainer header centered in its space
+        # Chord trainer label - width of 5 columns
         chord_header = QLabel("Chord Trainer")
+        chord_container = QWidget()
+        chord_container_layout = QHBoxLayout(chord_container)
+        chord_container_layout.setContentsMargins(0, 0, 0, 0)
+        chord_container_layout.addWidget(chord_header)
+        chord_container.setFixedWidth(90 * 5)  # Width of 5 buttons
         chord_header.setAlignment(Qt.AlignCenter)
-        headers_layout.addWidget(chord_header)
+        headers_layout.addWidget(chord_container)
         
-        # Final stretch
-        headers_layout.addStretch()
+        # Right stretch to end
+        headers_layout.addStretch(2)
         
         self.main_layout.addWidget(headers)
         
-        # Container for both sections
+        # Container for button sections
         container = QWidget()
         container_layout = QHBoxLayout(container)
         container_layout.setSpacing(0)
         
-        # Add initial stretch
-        container_layout.addStretch()
+        # Initial stretch
+        container_layout.addStretch(2)
         
         # Left section (Interval Trainer)
         left_section = QWidget()
         left_layout = QGridLayout(left_section)
-        left_layout.setSpacing(5)  # Match chord trainer spacing
-        left_layout.setVerticalSpacing(5)  # Explicitly set vertical spacing
-        left_layout.setHorizontalSpacing(5)  # Explicitly set horizontal spacing
+        left_layout.setSpacing(5)
+        left_layout.setVerticalSpacing(5)
+        left_layout.setHorizontalSpacing(5)
         container_layout.addWidget(left_section)
         
         # Middle stretch
-        container_layout.addStretch()
+        container_layout.addStretch(1)
         
         # Right section (Chord Trainer)
         right_section = QWidget()
         right_layout = QGridLayout(right_section)
-        right_layout.setSpacing(5)  # Consistent spacing
-        right_layout.setVerticalSpacing(5)  # Explicitly set vertical spacing
-        right_layout.setHorizontalSpacing(5)  # Explicitly set horizontal spacing
+        right_layout.setSpacing(5)
+        right_layout.setVerticalSpacing(5)
+        right_layout.setHorizontalSpacing(5)
         container_layout.addWidget(right_section)
         
         # Final stretch
-        container_layout.addStretch()
+        container_layout.addStretch(2)
         
         self.main_layout.addWidget(container)
         self.setWidget(self.scroll_content)
@@ -1019,6 +1028,10 @@ class EarTrainerTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.left_layout.addWidget(btn, row, col)
+        
+        # Add spacer at the bottom of interval trainer
+        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.left_layout.addItem(spacer, 3, 0, 1, 4)  # Span across all 4 columns
 
         # Create Chord Trainer buttons (5x4 grid)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
@@ -1026,7 +1039,7 @@ class EarTrainerTab(QScrollArea):
                 row = i // 5
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(90, 90)
+                btn.setFixedSize(80, 60)
                 btn.setStyleSheet("""
                     background-color: rgb(201, 228, 202);
                     color: black;
@@ -1034,6 +1047,7 @@ class EarTrainerTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.right_layout.addWidget(btn, row, col)
+
 
     def create_gradient_button(self, text, position, total_positions, section):
         """Create a button with gradient based on its position"""
@@ -1475,9 +1489,8 @@ class KeySplitTab(QScrollArea):
         
         # Main layout with minimal spacing
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(10)  # Set consistent 10px spacing
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-        
+        self.main_layout.setSpacing(0)  # Set consistent 10px spacing
+       
         # Toggle buttons
         button_layout = QHBoxLayout()
         button_layout.setSpacing(0)
@@ -1497,39 +1510,30 @@ class KeySplitTab(QScrollArea):
         
         # Add layouts with explicit spacing
         self.main_layout.addLayout(button_layout)
-        self.main_layout.addSpacing(10)  # Explicit spacing
-        
+
         # Piano keyboards
         self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
         self.keysplit_piano.keyPressed.connect(self.keycode_changed)
         self.main_layout.addWidget(self.keysplit_piano)
-        self.main_layout.addSpacing(10)  # Explicit spacing
         
         self.triplesplit_piano = PianoKeyboard(color_scheme='triplesplit')
         self.triplesplit_piano.keyPressed.connect(self.keycode_changed)
         self.main_layout.addWidget(self.triplesplit_piano)
-        self.main_layout.addSpacing(10)  # Explicit spacing
         self.triplesplit_piano.hide()
         
         # Control buttons
         self.ks_controls = QWidget()
         ks_control_layout = QHBoxLayout(self.ks_controls)
-        ks_control_layout.setSpacing(10)  # Explicit button spacing
-        ks_control_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         ks_control_layout.setAlignment(Qt.AlignCenter)
         self.create_control_buttons(ks_control_layout, 'KS')
         self.main_layout.addWidget(self.ks_controls)
-        self.main_layout.addSpacing(10)  # Explicit spacing
         
         # Control buttons for TripleSplit
         self.ts_controls = QWidget()
         ts_control_layout = QHBoxLayout(self.ts_controls)
-        ts_control_layout.setSpacing(10)  # Explicit button spacing
-        ts_control_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         ts_control_layout.setAlignment(Qt.AlignCenter)
         self.create_control_buttons(ts_control_layout, 'TS')
         self.main_layout.addWidget(self.ts_controls)
-        self.main_layout.addSpacing(10)  # Explicit spacing
         self.ts_controls.hide()
 
         # Add the split buttons at the bottom
