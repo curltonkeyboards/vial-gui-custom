@@ -1703,9 +1703,9 @@ class PianoKeyboard(QWidget):
         
         # Key dimensions
         self.white_key_width = 45
-        self.white_key_height = 70
+        self.white_key_height = 80
         self.black_key_width = 31
-        self.black_key_height = 47
+        self.black_key_height = 55
         self.row_spacing = 15
         
         # Calculate size for two rows of 3 octaves each
