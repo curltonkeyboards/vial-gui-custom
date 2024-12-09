@@ -937,33 +937,35 @@ class EarTrainerTab(QScrollArea):
         headers_layout = QHBoxLayout(headers)
         headers_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Left stretch to the start of interval trainer section
+        # Left stretch
         headers_layout.addStretch(2)
         
         # Interval trainer label - width of 4 columns
         interval_header = QLabel("Interval Trainer")
+        interval_header.setStyleSheet("font-size: 16px; font-weight: bold;")  # Bigger font
         interval_container = QWidget()
         interval_container_layout = QHBoxLayout(interval_container)
         interval_container_layout.setContentsMargins(0, 0, 0, 0)
         interval_container_layout.addWidget(interval_header)
-        interval_container.setFixedWidth(90 * 4)  # Width of 4 buttons
+        interval_container.setFixedWidth(90 * 4)
         interval_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(interval_container)
         
-        # Middle stretch between sections
+        # Middle stretch
         headers_layout.addStretch(1)
         
         # Chord trainer label - width of 5 columns
         chord_header = QLabel("Chord Trainer")
+        chord_header.setStyleSheet("font-size: 16px; font-weight: bold;")  # Bigger font
         chord_container = QWidget()
         chord_container_layout = QHBoxLayout(chord_container)
         chord_container_layout.setContentsMargins(0, 0, 0, 0)
         chord_container_layout.addWidget(chord_header)
-        chord_container.setFixedWidth(90 * 5)  # Width of 5 buttons
+        chord_container.setFixedWidth(90 * 5)
         chord_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(chord_container)
         
-        # Right stretch to end
+        # Right stretch
         headers_layout.addStretch(2)
         
         self.main_layout.addWidget(headers)
@@ -973,29 +975,22 @@ class EarTrainerTab(QScrollArea):
         container_layout = QHBoxLayout(container)
         container_layout.setSpacing(0)
         
-        # Initial stretch
         container_layout.addStretch(2)
         
         # Left section (Interval Trainer)
         left_section = QWidget()
         left_layout = QGridLayout(left_section)
         left_layout.setSpacing(5)
-        left_layout.setVerticalSpacing(5)
-        left_layout.setHorizontalSpacing(5)
         container_layout.addWidget(left_section)
         
-        # Middle stretch
         container_layout.addStretch(1)
         
         # Right section (Chord Trainer)
         right_section = QWidget()
         right_layout = QGridLayout(right_section)
         right_layout.setSpacing(5)
-        right_layout.setVerticalSpacing(5)
-        right_layout.setHorizontalSpacing(5)
         container_layout.addWidget(right_section)
         
-        # Final stretch
         container_layout.addStretch(2)
         
         self.main_layout.addWidget(container)
@@ -1015,17 +1010,22 @@ class EarTrainerTab(QScrollArea):
                 if item.widget():
                     item.widget().deleteLater()
 
+        # Common button style with rounded corners
+        button_style = """
+            QPushButton {
+                border-radius: 8px;
+                color: black;
+            }
+        """
+
         # Create Interval Trainer buttons (4 columns, 3 rows)
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 60)
-                btn.setStyleSheet("""
-                    background-color: rgb(184, 216, 235);
-                    color: black;
-                """)
+                btn.setFixedSize(90, 90)
+                btn.setStyleSheet(button_style + "background-color: rgb(184, 216, 235);")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.left_layout.addWidget(btn, row, col)
@@ -1040,14 +1040,15 @@ class EarTrainerTab(QScrollArea):
                 row = i // 5
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 60)
-                btn.setStyleSheet("""
-                    background-color: rgb(201, 228, 202);
-                    color: black;
-                """)
+                btn.setFixedSize(90, 90)
+                btn.setStyleSheet(button_style + "background-color: rgb(201, 228, 202);")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.right_layout.addWidget(btn, row, col)
+
+        # Add spacer at the bottom of chord trainer
+        spacer2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.right_layout.addItem(spacer2, 4, 0, 1, 5)  # Span across all 5 columns
 
 
     def create_gradient_button(self, text, position, total_positions, section):
@@ -1677,10 +1678,10 @@ class PianoKeyboard(QWidget):
         
         # Key dimensions
         self.white_key_width = 45
-        self.white_key_height = 90
+        self.white_key_height = 70
         self.black_key_width = 31
-        self.black_key_height = 60
-        self.row_spacing = 30
+        self.black_key_height = 47
+        self.row_spacing = 15
         
         # Calculate size for two rows of 3 octaves each
         self.octaves_per_row = 3
