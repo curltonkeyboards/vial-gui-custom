@@ -930,10 +930,10 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(5)  # Reduce spacing between elements
+        self.main_layout.setSpacing(5)
         self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Headers with reduced margin
+        # Headers
         headers = QWidget()
         headers_layout = QHBoxLayout(headers)
         headers_layout.setContentsMargins(20, 0, 20, 0)
@@ -949,18 +949,28 @@ class EarTrainerTab(QScrollArea):
         # Container for both sections
         container = QWidget()
         container_layout = QHBoxLayout(container)
-        container_layout.setSpacing(20)
+        container_layout.setSpacing(0)  # Remove default spacing
         
+        # Add stretch before sections
+        container_layout.addStretch()
+        
+        # Left section (Interval Trainer)
         left_section = QWidget()
         left_layout = QGridLayout(left_section)
         left_layout.setSpacing(10)
+        container_layout.addWidget(left_section)
         
+        # Add stretch between sections
+        container_layout.addStretch()
+        
+        # Right section (Chord Trainer)
         right_section = QWidget()
         right_layout = QGridLayout(right_section)
         right_layout.setSpacing(10)
-        
-        container_layout.addWidget(left_section)
         container_layout.addWidget(right_section)
+        
+        # Add stretch after sections
+        container_layout.addStretch()
         
         self.main_layout.addWidget(container)
         
@@ -983,9 +993,10 @@ class EarTrainerTab(QScrollArea):
         # Create Interval Trainer buttons (4 columns, 3 rows)
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 4  # Changed to integer division by 4 for 4 columns
-                col = i % 4   # Take modulo 4 for 4 columns
+                row = i // 4
+                col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(90, 90)
                 btn.setStyleSheet("""
                     background-color: rgb(184, 216, 235);
                     color: black;
@@ -1000,6 +1011,7 @@ class EarTrainerTab(QScrollArea):
                 row = i // 5
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(90, 90)
                 btn.setStyleSheet("""
                     background-color: rgb(201, 228, 202);
                     color: black;
@@ -1446,9 +1458,10 @@ class KeySplitTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
         
-        # Main layout with reduced spacing
+        # Main layout with consistent spacing
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(5)  # Set smaller spacing for all widgets
+        self.main_layout.setSpacing(5)  # Set consistent 10px spacing
+        self.main_layout.setContentsMargins(10, 10, 10, 10)  # Set consistent margins
         
         # Toggle buttons
         button_layout = QHBoxLayout()
