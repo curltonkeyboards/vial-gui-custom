@@ -1525,7 +1525,34 @@ class KeySplitTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
+    def relabel_buttons(self):
+        """Relabel all piano keys and control buttons"""
+        # Relabel KeySplit piano keys
+        for key in self.keysplit_piano.white_keys + self.keysplit_piano.black_keys:
+            if hasattr(key, 'midi_id'):
+                key.setText(Keycode.label(key.midi_id))
+
+        # Relabel TripleSplit piano keys
+        for key in self.triplesplit_piano.white_keys + self.triplesplit_piano.black_keys:
+            if hasattr(key, 'midi_id'):
+                key.setText(Keycode.label(key.midi_id))
+
+        # Relabel control buttons
+        for controls in [self.ks_controls, self.ts_controls]:
+            layout = controls.layout()
+            for i in range(layout.count()):
+                widget = layout.itemAt(i).widget()
+                if isinstance(widget, QPushButton) and hasattr(widget, 'midi_id'):
+                    widget.setText(Keycode.label(widget.midi_id))
+
+    def create_piano_keys(self, midi_mappings, key_prefix='MI'):
+        """Modified create_piano_keys method to store midi_id"""
+        # ... (previous piano key creation code) ...
+        # Add this line when creating each key:
+        key.midi_id = midi_id  # Store the midi_id for relabeling
+
     def create_control_buttons(self, layout, prefix):
+        """Modified create_control_buttons method to store midi_id"""
         controls = [
             (f"{prefix}\nChannel\n-", f"{prefix}_CHAN_DOWN"),
             (f"{prefix}\nChannel\n+", f"{prefix}_CHAN_UP"),
@@ -1540,6 +1567,7 @@ class KeySplitTab(QScrollArea):
         for text, code in controls:
             btn = QPushButton(text)
             btn.setFixedSize(80, 50)
+            btn.midi_id = code  # Store the midi_id for relabeling
             if prefix == 'KS':
                 btn.setStyleSheet("""
                     QPushButton {
