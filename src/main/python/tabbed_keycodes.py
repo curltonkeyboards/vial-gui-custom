@@ -1010,11 +1010,36 @@ class EarTrainerTab(QScrollArea):
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Common button style with rounded corners
-        button_style = """
+        # Common button style with full styling
+        interval_style = """
             QPushButton {
+                background-color: rgb(184, 216, 235);
+                border: 1px solid #b8b8b8;
                 border-radius: 8px;
                 color: black;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: rgb(194, 226, 245);
+            }
+            QPushButton:pressed {
+                background-color: rgb(174, 206, 225);
+            }
+        """
+
+        chord_style = """
+            QPushButton {
+                background-color: rgb(201, 228, 202);
+                border: 1px solid #b8b8b8;
+                border-radius: 8px;
+                color: black;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: rgb(211, 238, 212);
+            }
+            QPushButton:pressed {
+                background-color: rgb(191, 218, 192);
             }
         """
 
@@ -1024,8 +1049,8 @@ class EarTrainerTab(QScrollArea):
                 row = i // 4
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(90, 90)
-                btn.setStyleSheet(button_style + "background-color: rgb(184, 216, 235);")
+                btn.setFixedSize(80, 50)
+                btn.setStyleSheet(interval_style)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.left_layout.addWidget(btn, row, col)
@@ -1040,8 +1065,8 @@ class EarTrainerTab(QScrollArea):
                 row = i // 5
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(90, 90)
-                btn.setStyleSheet(button_style + "background-color: rgb(201, 228, 202);")
+                btn.setFixedSize(80, 50)
+                btn.setStyleSheet(chord_style)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.right_layout.addWidget(btn, row, col)
