@@ -921,6 +921,9 @@ import math
 class EarTrainerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
     
+    class EarTrainerTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+    
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
@@ -937,13 +940,7 @@ class EarTrainerTab(QScrollArea):
         
         # Interval Trainer header
         interval_header = QLabel("Interval Trainer")
-        interval_header.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                color: #333;
-            }
-        """)
+        interval_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         interval_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(interval_header)
         
@@ -952,13 +949,7 @@ class EarTrainerTab(QScrollArea):
         
         # Chord Trainer header
         chord_header = QLabel("Chord Trainer")
-        chord_header.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                color: #333;
-            }
-        """)
+        chord_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         chord_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(chord_header)
         
@@ -1051,12 +1042,8 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 3
                 col = i % 3
-                btn = self.create_gradient_button(
-                    Keycode.label(keycode.qmk_id),
-                    (row, col),
-                    (4, 3),
-                    'interval'
-                )
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setStyleSheet("background-color: rgb(184, 216, 235);")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.left_layout.addWidget(btn, row, col)
@@ -1066,12 +1053,8 @@ class EarTrainerTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 5
                 col = i % 5
-                btn = self.create_gradient_button(
-                    Keycode.label(keycode.qmk_id),
-                    (row, col),
-                    (4, 5),
-                    'chord'
-                )
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setStyleSheet("background-color: rgb(201, 228, 202);")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.right_layout.addWidget(btn, row, col)
@@ -1476,14 +1459,12 @@ class KeySplitTab(QScrollArea):
         # Toggle buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
+        button_layout.setSpacing(0)  # Remove spacing between buttons
         
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
         self.toggle_button.setFixedSize(120, 40)
-        self.toggle_button.setStyleSheet("""
-            background-color: #f3d1d1;
-            color: #805757;
-        """)
+        self.toggle_button.setStyleSheet("background-color: #f3d1d1; color: #805757;")
         button_layout.addWidget(self.toggle_button)
         
         self.toggle_button2 = QPushButton("Show TripleSplit")
@@ -1552,10 +1533,9 @@ class KeySplitTab(QScrollArea):
         key.midi_id = midi_id  # Store the midi_id for relabeling
 
     def create_control_buttons(self, layout, prefix):
-        """Modified create_control_buttons method to store midi_id"""
         controls = [
-            (f"{prefix}\nChannel\n-", f"{prefix}_CHAN_DOWN"),
-            (f"{prefix}\nChannel\n+", f"{prefix}_CHAN_UP"),
+            (f"{prefix}\nChannel\n-", f"{'KS2' if prefix == 'TS' else prefix}_CHAN_DOWN"),
+            (f"{prefix}\nChannel\n+", f"{'KS2' if prefix == 'TS' else prefix}_CHAN_UP"),
             (f"{prefix}\nVelocity\n-", f"MI_VELOCITY{2 if prefix == 'KS' else 3}_DOWN"),
             (f"{prefix}\nVelocity\n+", f"MI_VELOCITY{2 if prefix == 'KS' else 3}_UP"),
             (f"{prefix}\nTranspose\n-", f"MI_TRANSPOSE{2 if prefix == 'KS' else 3}_DOWN"),
@@ -1567,35 +1547,14 @@ class KeySplitTab(QScrollArea):
         for text, code in controls:
             btn = QPushButton(text)
             btn.setFixedSize(80, 50)
-            btn.midi_id = code  # Store the midi_id for relabeling
+            btn.midi_id = code
+            
+            # Set only background color and text color
             if prefix == 'KS':
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: rgba(243, 209, 209, 1);
-                        color: rgba(128, 87, 87, 1);
-                        border-radius: 4px;
-                    }
-                    QPushButton:hover {
-                        background-color: rgba(248, 214, 214, 1);
-                    }
-                    QPushButton:pressed {
-                        background-color: rgba(238, 204, 204, 1);
-                    }
-                """)
+                btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
             else:
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: rgba(209, 243, 215, 1);
-                        color: rgba(128, 128, 87, 1);
-                        border-radius: 4px;
-                    }
-                    QPushButton:hover {
-                        background-color: rgba(214, 248, 220, 1);
-                    }
-                    QPushButton:pressed {
-                        background-color: rgba(204, 238, 210, 1);
-                    }
-                """)
+                btn.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
+                
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
             layout.addWidget(btn)
 
