@@ -1449,14 +1449,14 @@ class KeySplitTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
         
-        # Main layout
+        # Main layout with reduced spacing
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(15)  # Set default spacing for the main layout
+        self.main_layout.setSpacing(15)  # Set smaller spacing for all widgets
         
         # Toggle buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
-        button_layout.setSpacing(0)  # Remove spacing between toggle buttons
+        button_layout.setSpacing(0)  # Remove spacing between buttons
         
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
@@ -1498,18 +1498,18 @@ class KeySplitTab(QScrollArea):
         self.main_layout.addWidget(self.ts_controls)
         self.ts_controls.hide()
 
-        # Split buttons container at the bottom
+        # Add the split buttons at the bottom
         split_buttons_container = QWidget()
         split_buttons_layout = QHBoxLayout(split_buttons_container)
         split_buttons_layout.setAlignment(Qt.AlignCenter)
-
-        self.split_buttons = [
+        
+        split_buttons = [
             ("Channel\nSplit", "MI_Cs"),
             ("Velocity\nSplit", "MI_Vs"),
             ("Transpose\nSplit", "MI_Ts")
         ]
-
-        for text, code in self.split_buttons:
+        
+        for text, code in split_buttons:
             btn = QPushButton(text)
             btn.setFixedSize(50, 50)
             btn.setStyleSheet("""
@@ -1529,19 +1529,13 @@ class KeySplitTab(QScrollArea):
             """)
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
             split_buttons_layout.addWidget(btn)
-
+            
         self.main_layout.addWidget(split_buttons_container)
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-
-        # Apply consistent spacing for the whole layout
-        for i in range(self.main_layout.count()):
-            item = self.main_layout.itemAt(i)
-            if item and isinstance(item, QLayoutItem):
-                self.main_layout.setSpacing(15)  # Set consistent spacing between all elements
 
     def relabel_buttons(self):
         """Relabel all piano keys and control buttons"""
