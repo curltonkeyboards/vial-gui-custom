@@ -929,24 +929,23 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setAlignment(Qt.AlignTop)  # Push content to the top
         
         # Add heading row
         headers = QWidget()
         headers_layout = QHBoxLayout(headers)
         headers_layout.setContentsMargins(20, 0, 20, 0)
         
-        # Interval Trainer header
+        # Interval Trainer header with palette-aware styling
         interval_header = QLabel("Interval Trainer")
-        interval_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         interval_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(interval_header)
         
         # Spacer for divider space
         headers_layout.addSpacing(40)
         
-        # Chord Trainer header
+        # Chord Trainer header with palette-aware styling
         chord_header = QLabel("Chord Trainer")
-        chord_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         chord_header.setAlignment(Qt.AlignCenter)
         headers_layout.addWidget(chord_header)
         
@@ -981,6 +980,36 @@ class EarTrainerTab(QScrollArea):
         self.right_layout = right_layout
         
         self.recreate_buttons()
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear existing layouts
+        for layout in [self.left_layout, self.right_layout]:
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+
+        # Create Interval Trainer buttons (3 columns, 4 rows)
+        for i, keycode in enumerate(self.eartrainer_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 3  # Changed to integer division by 3 for 3 columns
+                col = i % 3   # Take modulo 3 for 3 columns
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setStyleSheet("background-color: rgb(184, 216, 235);")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.left_layout.addWidget(btn, row, col)
+
+        # Create Chord Trainer buttons (5x4 grid)
+        for i, keycode in enumerate(self.chordtrainer_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 5
+                col = i % 5
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setStyleSheet("background-color: rgb(201, 228, 202);")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.right_layout.addWidget(btn, row, col)
 
     def create_gradient_button(self, text, position, total_positions, section):
         """Create a button with gradient based on its position"""
@@ -1025,36 +1054,6 @@ class EarTrainerTab(QScrollArea):
         """)
         
         return btn
-
-    def recreate_buttons(self, keycode_filter=None):
-        # Clear existing layouts
-        for layout in [self.left_layout, self.right_layout]:
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-
-        # Create Interval Trainer buttons (3x4 grid)
-        for i, keycode in enumerate(self.eartrainer_keycodes):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 3
-                col = i % 3
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setStyleSheet("background-color: rgb(184, 216, 235);")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.left_layout.addWidget(btn, row, col)
-
-        # Create Chord Trainer buttons (5x4 grid)
-        for i, keycode in enumerate(self.chordtrainer_keycodes):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 5
-                col = i % 5
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setStyleSheet("background-color: rgb(201, 228, 202);")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.right_layout.addWidget(btn, row, col)
 
     def relabel_buttons(self):
         for layout in [self.left_layout, self.right_layout]:
@@ -1452,11 +1451,12 @@ class KeySplitTab(QScrollArea):
         
         # Main layout
         self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(15)  # Set default spacing for the main layout
         
         # Toggle buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
-        button_layout.setSpacing(0)  # Remove spacing between buttons
+        button_layout.setSpacing(0)  # Remove spacing between toggle buttons
         
         self.toggle_button = QPushButton("Show KeySplit")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
@@ -1472,7 +1472,7 @@ class KeySplitTab(QScrollArea):
         
         self.main_layout.addLayout(button_layout)
 
-        # Create piano keyboards
+        # Piano keyboards
         self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
         self.keysplit_piano.keyPressed.connect(self.keycode_changed)
         
@@ -1498,10 +1498,50 @@ class KeySplitTab(QScrollArea):
         self.main_layout.addWidget(self.ts_controls)
         self.ts_controls.hide()
 
+        # Split buttons container at the bottom
+        split_buttons_container = QWidget()
+        split_buttons_layout = QHBoxLayout(split_buttons_container)
+        split_buttons_layout.setAlignment(Qt.AlignCenter)
+
+        self.split_buttons = [
+            ("Channel\nSplit", "MI_Cs"),
+            ("Velocity\nSplit", "MI_Vs"),
+            ("Transpose\nSplit", "MI_Ts")
+        ]
+
+        for text, code in self.split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(50, 50)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #f0f0f0;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 8px;
+                    color: #333333;
+                    padding: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            split_buttons_layout.addWidget(btn)
+
+        self.main_layout.addWidget(split_buttons_container)
+
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        # Apply consistent spacing for the whole layout
+        for i in range(self.main_layout.count()):
+            item = self.main_layout.itemAt(i)
+            if item and isinstance(item, QLayoutItem):
+                self.main_layout.setSpacing(15)  # Set consistent spacing between all elements
 
     def relabel_buttons(self):
         """Relabel all piano keys and control buttons"""
