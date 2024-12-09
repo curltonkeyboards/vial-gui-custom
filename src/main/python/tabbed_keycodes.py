@@ -55,29 +55,6 @@ class PianoButton(SquareButton):
         }
     """
 
-    GLASS_BLACK = """
-        QPushButton {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(40, 40, 40, 240),
-                stop:0.5 rgba(30, 30, 30, 240),
-                stop:1 rgba(20, 20, 20, 240));
-            border: 1px solid rgba(0, 0, 0, 180);
-            border-radius: 4px;
-            color: #FFFFFF;
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(50, 50, 50, 255),
-                stop:1 rgba(40, 40, 40, 255));
-        }
-        QPushButton:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(30, 30, 30, 255),
-                stop:1 rgba(20, 20, 20, 255));
-        }
-    """
-
     # KeySplit styles
     KS_WHITE = """
         QPushButton {
@@ -102,13 +79,36 @@ class PianoButton(SquareButton):
         }
     """
 
+    GLASS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(40, 40, 40, 255),
+                stop:0.5 rgba(30, 30, 30, 255),
+                stop:1 rgba(20, 20, 20, 255));
+            border: 1px solid rgba(0, 0, 0, 255);
+            border-radius: 4px;
+            color: #FFFFFF;
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(50, 50, 50, 255),
+                stop:1 rgba(40, 40, 40, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(30, 30, 30, 255),
+                stop:1 rgba(20, 20, 20, 255));
+        }
+    """
+
     KS_BLACK = """
         QPushButton {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(128, 87, 87, 240),
-                stop:0.5 rgba(118, 77, 77, 240),
-                stop:1 rgba(108, 67, 67, 240));
-            border: 1px solid rgba(88, 47, 47, 180);
+                stop:0 rgba(128, 87, 87, 255),
+                stop:0.5 rgba(118, 77, 77, 255),
+                stop:1 rgba(108, 67, 67, 255));
+            border: 1px solid rgba(88, 47, 47, 255);
             border-radius: 4px;
             color: rgba(243, 209, 209, 255);
             padding: 2px;
@@ -122,6 +122,29 @@ class PianoButton(SquareButton):
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 rgba(118, 77, 77, 255),
                 stop:1 rgba(108, 67, 67, 255));
+        }
+    """
+
+    TS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(128, 128, 87, 255),
+                stop:0.5 rgba(118, 118, 77, 255),
+                stop:1 rgba(108, 108, 67, 255));
+            border: 1px solid rgba(88, 88, 47, 255);
+            border-radius: 4px;
+            color: rgba(209, 243, 215, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(138, 138, 97, 255),
+                stop:1 rgba(128, 128, 87, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(118, 118, 77, 255),
+                stop:1 rgba(108, 108, 67, 255));
         }
     """
 
@@ -149,28 +172,6 @@ class PianoButton(SquareButton):
         }
     """
 
-    TS_BLACK = """
-        QPushButton {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(128, 128, 87, 240),
-                stop:0.5 rgba(118, 118, 77, 240),
-                stop:1 rgba(108, 108, 67, 240));
-            border: 1px solid rgba(88, 88, 47, 180);
-            border-radius: 4px;
-            color: rgba(209, 243, 215, 255);
-            padding: 2px;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(138, 138, 97, 255),
-                stop:1 rgba(128, 128, 87, 255));
-        }
-        QPushButton:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(118, 118, 77, 255),
-                stop:1 rgba(108, 108, 67, 255));
-        }
-    """
 
 class AlternativeDisplay(QWidget):
 
@@ -919,8 +920,6 @@ class ModernButton(QPushButton):
 import math
 
 class EarTrainerTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)
-    
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
         self.label = label
@@ -929,24 +928,18 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setAlignment(Qt.AlignTop)  # Push content to the top
+        self.main_layout.setSpacing(5)  # Reduce spacing between elements
+        self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Add heading row
+        # Headers with reduced margin
         headers = QWidget()
         headers_layout = QHBoxLayout(headers)
         headers_layout.setContentsMargins(20, 0, 20, 0)
         
-        # Interval Trainer header with palette-aware styling
         interval_header = QLabel("Interval Trainer")
-        interval_header.setAlignment(Qt.AlignCenter)
-        headers_layout.addWidget(interval_header)
-        
-        # Spacer for divider space
-        headers_layout.addSpacing(40)
-        
-        # Chord Trainer header with palette-aware styling
         chord_header = QLabel("Chord Trainer")
-        chord_header.setAlignment(Qt.AlignCenter)
+        headers_layout.addWidget(interval_header)
+        headers_layout.addSpacing(40)
         headers_layout.addWidget(chord_header)
         
         self.main_layout.addWidget(headers)
@@ -956,21 +949,17 @@ class EarTrainerTab(QScrollArea):
         container_layout = QHBoxLayout(container)
         container_layout.setSpacing(20)
         
-        # Left section (Interval Trainer) - 3 columns, 4 rows
         left_section = QWidget()
         left_layout = QGridLayout(left_section)
         left_layout.setSpacing(10)
         
-        # Right section (Chord Trainer) - 5 columns, 4 rows
         right_section = QWidget()
         right_layout = QGridLayout(right_section)
         right_layout.setSpacing(10)
         
-        # Add sections to container
         container_layout.addWidget(left_section)
         container_layout.addWidget(right_section)
         
-        # Add container to main layout
         self.main_layout.addWidget(container)
         
         self.setWidget(self.scroll_content)
@@ -989,13 +978,16 @@ class EarTrainerTab(QScrollArea):
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Create Interval Trainer buttons (3 columns, 4 rows)
+        # Create Interval Trainer buttons (4 columns, 3 rows)
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 3  # Changed to integer division by 3 for 3 columns
-                col = i % 3   # Take modulo 3 for 3 columns
+                row = i // 4  # Changed to integer division by 4 for 4 columns
+                col = i % 4   # Take modulo 4 for 4 columns
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setStyleSheet("background-color: rgb(184, 216, 235);")
+                btn.setStyleSheet("""
+                    background-color: rgb(184, 216, 235);
+                    color: black;
+                """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.left_layout.addWidget(btn, row, col)
@@ -1006,7 +998,10 @@ class EarTrainerTab(QScrollArea):
                 row = i // 5
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setStyleSheet("background-color: rgb(201, 228, 202);")
+                btn.setStyleSheet("""
+                    background-color: rgb(201, 228, 202);
+                    color: black;
+                """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.right_layout.addWidget(btn, row, col)
@@ -1451,7 +1446,7 @@ class KeySplitTab(QScrollArea):
         
         # Main layout with reduced spacing
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(15)  # Set smaller spacing for all widgets
+        self.main_layout.setSpacing(5)  # Set smaller spacing for all widgets
         
         # Toggle buttons
         button_layout = QHBoxLayout()
@@ -1511,7 +1506,7 @@ class KeySplitTab(QScrollArea):
         
         for text, code in split_buttons:
             btn = QPushButton(text)
-            btn.setFixedSize(50, 50)
+            btn.setFixedSize(60, 60)  # Increased from 50x50 to 60x60
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #f0f0f0;
