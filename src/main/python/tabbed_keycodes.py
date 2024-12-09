@@ -916,6 +916,8 @@ class ModernButton(QPushButton):
         rgb = tuple(max(0, x - amount) for x in rgb)
         return '#{:02x}{:02x}{:02x}'.format(*rgb)
 
+import math
+
 class EarTrainerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
     
@@ -998,11 +1000,11 @@ class EarTrainerTab(QScrollArea):
         
         # Calculate darkness factor based on distance from center
         if section == 'interval':
-            max_distance = max(2, 3)  # max distance from center in either direction
+            max_distance = math.sqrt(2**2 + 3**2)  # max distance from center in either direction
             x_dist = abs(position[1] - 1)  # distance from center column (0-based)
             y_dist = abs(position[0] - 1.5)  # distance from center row (0-based)
         else:  # chord
-            max_distance = max(2, 4)  # max distance from center
+            max_distance = math.sqrt(2**2 + 4**2)  # max distance from center
             x_dist = abs(position[1] - 2)  # distance from center column
             y_dist = abs(position[0] - 1.5)  # distance from center row
             
