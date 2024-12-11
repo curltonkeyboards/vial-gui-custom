@@ -1058,7 +1058,6 @@ def recreate_buttons(self, keycode_filter=None):
         spacer2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.right_layout.addItem(spacer2, 4, 0, 1, 5)  # Span across all 5 columns
 
-
     def create_gradient_button(self, text, position, total_positions, section):
         """Create a button with gradient based on its position"""
         btn = QPushButton(text)
