@@ -1002,7 +1002,7 @@ class EarTrainerTab(QScrollArea):
         
         self.recreate_buttons()
 
-def recreate_buttons(self, keycode_filter=None):
+    def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
         for layout in [self.left_layout, self.right_layout]:
             while layout.count():
@@ -1010,19 +1010,36 @@ def recreate_buttons(self, keycode_filter=None):
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Interval Trainer style (matching KS controls pink/red theme)
+        # Common button style with full styling
         interval_style = """
             QPushButton {
-                background-color: rgba(243, 209, 209, 1);
-                color: rgba(128, 87, 87, 1);
+                background-color: rgb(184, 216, 235);
+                border: 3px solid #b8b8b8;
+                border-radius: 8px;
+                color: black;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: rgb(194, 226, 245);
+            }
+            QPushButton:pressed {
+                background-color: rgb(174, 206, 225);
             }
         """
 
-        # Chord Trainer style (matching TS controls green theme)
         chord_style = """
             QPushButton {
-                background-color: rgba(209, 243, 215, 1);
-                color: rgba(128, 128, 87, 1);
+                background-color: rgb(201, 228, 202);
+                border: 3px solid #b8b8b8;
+                border-radius: 8px;
+                color: black;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: rgb(211, 238, 212);
+            }
+            QPushButton:pressed {
+                background-color: rgb(191, 218, 192);
             }
         """
 
@@ -1057,6 +1074,7 @@ def recreate_buttons(self, keycode_filter=None):
         # Add spacer at the bottom of chord trainer
         spacer2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.right_layout.addItem(spacer2, 4, 0, 1, 5)  # Span across all 5 columns
+
 
     def create_gradient_button(self, text, position, total_positions, section):
         """Create a button with gradient based on its position"""
