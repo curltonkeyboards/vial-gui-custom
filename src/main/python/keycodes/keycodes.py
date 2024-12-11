@@ -1203,7 +1203,7 @@ KEYCODES_EARTRAINER = [
      K("MI_ET_1", "Basic\nIntervals\nLevel 1", "Ear Train\nLevel 1"),
      K("MI_ET_4", "Octave\nIntervals\nLevel 1", "Interval\nLevel 4"),
      K("MI_ET_7", "Extended\nIntervals\nLevel 1", "Interval\nLevel 7"),
-     K("MI_ET_10", "All\nnIntervals\nLevel 1", "Interval\nLevel 9"),
+     K("MI_ET_10", "All\nIntervals\nLevel 1", "Interval\nLevel 9"),
      K("MI_ET_2", "Basic\nIntervals\nLevel 2", "Ear Train\nLevel 2"),
      K("MI_ET_5", "Octave\nIntervals\nLevel 2", "Interval\nLevel 5"),
      K("MI_ET_8", "Extended\nIntervals\nLevel 2", "Interval\nLevel 8"),

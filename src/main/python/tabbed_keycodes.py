@@ -1003,77 +1003,78 @@ class EarTrainerTab(QScrollArea):
         self.recreate_buttons()
 
     def recreate_buttons(self, keycode_filter=None):
-        # Clear existing layouts
-        for layout in [self.left_layout, self.right_layout]:
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
+            # Clear existing layouts
+            for layout in [self.left_layout, self.right_layout]:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    if item.widget():
+                        item.widget().deleteLater()
 
-        # Common button style with full styling
-        interval_style = """
-            QPushButton {
-                background-color: rgb(184, 216, 235);
-                border: 1px solid #b8b8b8;
-                border-radius: 8px;
-                color: black;
-                padding: 6px;
-            }
-            QPushButton:hover {
-                background-color: rgb(194, 226, 245);
-            }
-            QPushButton:pressed {
-                background-color: rgb(174, 206, 225);
-            }
-        """
+            # KeySplit-style buttons for Interval Trainer
+            interval_style = """
+                QPushButton {
+                    background-color: rgba(243, 209, 209, 1);
+                    color: rgba(128, 87, 87, 1);
+                    border: 1px solid #d0d0d0;
+                    border-radius: 8px;
+                    padding: 4px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(248, 214, 214, 1);
+                }
+                QPushButton:pressed {
+                    background-color: rgba(238, 204, 204, 1);
+                }
+            """
 
-        chord_style = """
-            QPushButton {
-                background-color: rgb(201, 228, 202);
-                border: 1px solid #b8b8b8;
-                border-radius: 8px;
-                color: black;
-                padding: 6px;
-            }
-            QPushButton:hover {
-                background-color: rgb(211, 238, 212);
-            }
-            QPushButton:pressed {
-                background-color: rgb(191, 218, 192);
-            }
-        """
+            # KeySplit-style buttons for Chord Trainer
+            chord_style = """
+                QPushButton {
+                    background-color: rgba(209, 243, 215, 1);
+                    color: rgba(128, 128, 87, 1);
+                    border: 1px solid #d0d0d0;
+                    border-radius: 8px;
+                    padding: 4px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(214, 248, 220, 1);
+                }
+                QPushButton:pressed {
+                    background-color: rgba(204, 238, 210, 1);
+                }
+            """
 
-        # Create Interval Trainer buttons (4 columns, 3 rows)
-        for i, keycode in enumerate(self.eartrainer_keycodes):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 4
-                col = i % 4
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 50)
-                btn.setStyleSheet(interval_style)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.left_layout.addWidget(btn, row, col)
-        
-        # Add spacer at the bottom of interval trainer
-        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.left_layout.addItem(spacer, 3, 0, 1, 4)  # Span across all 4 columns
+            # Create Interval Trainer buttons (4 columns, 3 rows)
+            for i, keycode in enumerate(self.eartrainer_keycodes):
+                if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                    row = i // 4
+                    col = i % 4
+                    btn = QPushButton(Keycode.label(keycode.qmk_id))
+                    btn.setFixedSize(90, 90)
+                    btn.setStyleSheet(interval_style)
+                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    btn.keycode = keycode
+                    self.left_layout.addWidget(btn, row, col)
+            
+            # Add spacer at the bottom of interval trainer
+            spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+            self.left_layout.addItem(spacer, 3, 0, 1, 4)  # Span across all 4 columns
 
-        # Create Chord Trainer buttons (5x4 grid)
-        for i, keycode in enumerate(self.chordtrainer_keycodes):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 5
-                col = i % 5
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 50)
-                btn.setStyleSheet(chord_style)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.right_layout.addWidget(btn, row, col)
+            # Create Chord Trainer buttons (5x4 grid)
+            for i, keycode in enumerate(self.chordtrainer_keycodes):
+                if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                    row = i // 5
+                    col = i % 5
+                    btn = QPushButton(Keycode.label(keycode.qmk_id))
+                    btn.setFixedSize(90, 90)
+                    btn.setStyleSheet(chord_style)
+                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    btn.keycode = keycode
+                    self.right_layout.addWidget(btn, row, col)
 
-        # Add spacer at the bottom of chord trainer
-        spacer2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.right_layout.addItem(spacer2, 4, 0, 1, 5)  # Span across all 5 columns
+            # Add spacer at the bottom of chord trainer
+            spacer2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+            self.right_layout.addItem(spacer2, 4, 0, 1, 5)  # Span across all 5 columns
 
 
     def create_gradient_button(self, text, position, total_positions, section):
