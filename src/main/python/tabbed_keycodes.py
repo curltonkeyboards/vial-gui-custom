@@ -1044,7 +1044,7 @@ def recreate_buttons(self, keycode_filter=None):
                 row = i // 4
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(90, 90)
+                btn.setFixedSize(80, 50)
                 btn.setStyleSheet(interval_style)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1060,7 +1060,7 @@ def recreate_buttons(self, keycode_filter=None):
                 row = i // 5
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(90, 90)
+                btn.setFixedSize(80, 50)
                 btn.setStyleSheet(chord_style)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
