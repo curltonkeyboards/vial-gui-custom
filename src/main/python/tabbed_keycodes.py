@@ -980,7 +980,7 @@ class EarTrainerTab(QScrollArea):
         # Left section (Interval Trainer)
         left_section = QWidget()
         left_layout = QGridLayout(left_section)
-        left_layout.setSpacing(5)
+        left_layout.setSpacing(10)
         container_layout.addWidget(left_section)
         
         container_layout.addStretch(1)
@@ -988,7 +988,7 @@ class EarTrainerTab(QScrollArea):
         # Right section (Chord Trainer)
         right_section = QWidget()
         right_layout = QGridLayout(right_section)
-        right_layout.setSpacing(5)
+        right_layout.setSpacing(10)
         container_layout.addWidget(right_section)
         
         container_layout.addStretch(2)
@@ -1014,7 +1014,7 @@ class EarTrainerTab(QScrollArea):
         interval_style = """
             QPushButton {
                 background-color: rgb(184, 216, 235);
-                border: 1px solid #b8b8b8;
+                border: 3px solid #b8b8b8;
                 border-radius: 8px;
                 color: black;
                 padding: 6px;
@@ -1030,7 +1030,7 @@ class EarTrainerTab(QScrollArea):
         chord_style = """
             QPushButton {
                 background-color: rgb(201, 228, 202);
-                border: 1px solid #b8b8b8;
+                border: 3px solid #b8b8b8;
                 border-radius: 8px;
                 color: black;
                 padding: 6px;
