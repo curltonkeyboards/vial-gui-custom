@@ -1014,10 +1014,6 @@ class EarTrainerTab(QScrollArea):
         interval_style = """
             QPushButton {
                 background-color: rgb(184, 216, 235);
-                border: 3px solid #b8b8b8;
-                border-radius: 8px;
-                color: black;
-                padding: 6px;
             }
             QPushButton:hover {
                 background-color: rgb(194, 226, 245);
@@ -1030,10 +1026,6 @@ class EarTrainerTab(QScrollArea):
         chord_style = """
             QPushButton {
                 background-color: rgb(201, 228, 202);
-                border: 3px solid #b8b8b8;
-                border-radius: 8px;
-                color: black;
-                padding: 6px;
             }
             QPushButton:hover {
                 background-color: rgb(211, 238, 212);
