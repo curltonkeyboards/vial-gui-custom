@@ -1010,31 +1010,19 @@ def recreate_buttons(self, keycode_filter=None):
                 if item.widget():
                     item.widget().deleteLater()
 
-        # KeySplit-style buttons for Interval Trainer
+        # Interval Trainer style (matching KS controls pink/red theme)
         interval_style = """
             QPushButton {
                 background-color: rgba(243, 209, 209, 1);
                 color: rgba(128, 87, 87, 1);
             }
-            QPushButton:hover {
-                background-color: rgba(248, 214, 214, 1);
-            }
-            QPushButton:pressed {
-                background-color: rgba(238, 204, 204, 1);
-            }
         """
 
-        # KeySplit-style buttons for Chord Trainer
+        # Chord Trainer style (matching TS controls green theme)
         chord_style = """
             QPushButton {
                 background-color: rgba(209, 243, 215, 1);
                 color: rgba(128, 128, 87, 1);
-            }
-            QPushButton:hover {
-                background-color: rgba(214, 248, 220, 1);
-            }
-            QPushButton:pressed {
-                background-color: rgba(204, 238, 210, 1);
             }
         """
 
