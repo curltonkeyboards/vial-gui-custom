@@ -1042,7 +1042,7 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("border-radius: 8px;")
+                btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.left_layout.addWidget(btn, row, col)
@@ -1058,7 +1058,7 @@ class EarTrainerTab(QScrollArea):
                 col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("border-radius: 8px;")
+                btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.right_layout.addWidget(btn, row, col)
