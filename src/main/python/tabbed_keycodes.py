@@ -620,21 +620,33 @@ class midiadvancedTab(QScrollArea):
         self.toggle_section(sections[0])
 
     def populate_keysplit_section(self):
-        """Populate the KeySplit section with buttons."""
+        """Populate the KeySplit section with dropdowns and buttons."""
+        # Add dropdowns
+        layout = QHBoxLayout()
+        self.add_header_dropdown2("Key Switch\nVelocity", self.ksvelocity2, layout)
+        self.add_header_dropdown2("Key Switch\nOctave", self.ksoctave2, layout)
+        self.add_header_dropdown2("Key Switch\nKey", self.kskey2, layout)
+        self.add_header_dropdown2("Key Switch\nChannel", self.kschannel2, layout)
+        self.add_value_button2("Triple Switch\nVelocity", self.ksvelocity3, layout)
+        self.add_header_dropdown2("Triple Switch\nOctave", self.ksoctave3, layout)
+        self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, layout)
+        self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
+        self.keysplit_dropdowns.addLayout(layout)
+
         # Clear existing buttons
         for i in reversed(range(self.keysplit_grid.count())):
             widget = self.keysplit_grid.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Add inversion buttons in a grid layout
+        # Add buttons in a grid layout
         row = 0
         col = 0
-        max_cols = 8
+        max_cols = 4
 
         for keycode in self.inversion_keycodes2:
             btn = SquareButton()
-            btn.setFixedSize(55, 55)
+            btn.setFixedSize(40, 40)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
@@ -726,14 +738,6 @@ class midiadvancedTab(QScrollArea):
 
     def populate_keysplit_section(self):
         layout = QHBoxLayout()
-        self.add_value_button2("Key Switch\nVelocity", self.ksvelocity2, layout)
-        self.add_header_dropdown2("Key Switch\nOctave", self.ksoctave2, layout)
-        self.add_header_dropdown2("Key Switch\nKey", self.kskey2, layout)
-        self.add_header_dropdown2("Key Switch\nChannel", self.kschannel2, layout)
-        self.add_value_button2("Triple Switch\nVelocity", self.ksvelocity3, layout)
-        self.add_header_dropdown2("Triple Switch\nOctave", self.ksoctave3, layout)
-        self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, layout)
-        self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.containers["Show\nKeySplit\nOptions"].layout().addLayout(layout)
 
     def add_header_dropdown(self, label_text, items, layout):
