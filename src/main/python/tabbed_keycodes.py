@@ -543,13 +543,13 @@ class midiadvancedTab(QScrollArea):
 
         # Define sections
         sections = [
-            "MIDI Channel Options",
-            "CC Options",
+            "Show\nChannel\nOptions",
+            "Show\nCC Options",
             "Encoder Increments",
-            "Transposition",
-            "KeySplit",
-            "Advanced MIDI Settings",
-            "Velocity"
+            "Show\nTransposition\nSettings",
+            "Show\nKeySplit\nOptions",
+            "Shwo\nAdvanced MIDI\nOptions",
+            "Show\nVelocity Settings"
         ]
 
         # Create buttons and containers for each section
