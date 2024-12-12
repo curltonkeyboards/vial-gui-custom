@@ -662,20 +662,31 @@ class midiadvancedTab(QScrollArea):
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
         
-        # Clear any existing layout
+        # First, clear any existing layout and its widgets
         if container.layout():
-            while container.layout().count():
-                item = container.layout().takeAt(0)
+            old_layout = container.layout()
+            while old_layout.count():
+                item = old_layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
-            
-        # Create a horizontal layout for centering
-        outer_layout = QHBoxLayout(container)
-        outer_layout.addStretch(1)  # Left spacer
+                elif item.layout():
+                    # Clear nested layouts too
+                    while item.layout().count():
+                        nested_item = item.layout().takeAt(0)
+                        if nested_item.widget():
+                            nested_item.widget().deleteLater()
         
-        # Create grid layout for the buttons
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(5)
+        # Create new main layout for the container
+        main_layout = QVBoxLayout(container)
+        main_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        
+        # Create horizontal layout for centering
+        h_layout = QHBoxLayout()
+        h_layout.addStretch(1)  # Left spacer
+        
+        # Create grid layout for buttons
+        grid = QGridLayout()
+        grid.setSpacing(5)  # Space between buttons
         
         # Add buttons to grid
         for i, keycode in enumerate(self.inversion_keycodes):
@@ -687,11 +698,15 @@ class midiadvancedTab(QScrollArea):
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            grid_layout.addWidget(btn, row, col)
+            grid.addWidget(btn, row, col)
         
-        # Add grid to the horizontal layout
-        outer_layout.addLayout(grid_layout)
-        outer_layout.addStretch(1)  # Right spacer
+        # Add grid to horizontal layout
+        h_layout.addLayout(grid)
+        h_layout.addStretch(1)  # Right spacer
+        
+        # Add horizontal layout to main layout
+        main_layout.addLayout(h_layout)
+        main_layout.addStretch()  # Bottom spacer
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
@@ -1088,45 +1103,45 @@ class EarTrainerTab(QScrollArea):
         self.show_intervals()
         self.recreate_buttons()
 
-def show_intervals(self):
-    self.intervals_container.show()
-    self.chords_container.hide()
-    self.toggle_intervals.setStyleSheet("""
-        QPushButton {
-            background-color: #B8D8EB;
-            color: #395968;
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
-    self.toggle_chords.setStyleSheet("""
-        QPushButton {
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
+    def show_intervals(self):
+        self.intervals_container.show()
+        self.chords_container.hide()
+        self.toggle_intervals.setStyleSheet("""
+            QPushButton {
+                background-color: #B8D8EB;
+                color: #395968;
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
+        self.toggle_chords.setStyleSheet("""
+            QPushButton {
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
 
-def show_chords(self):
-    self.intervals_container.hide()
-    self.chords_container.show()
-    self.toggle_chords.setStyleSheet("""
-        QPushButton {
-            background-color: #C9E4CA;
-            color: #4A654B;
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
-    self.toggle_intervals.setStyleSheet("""
-        QPushButton {
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
+    def show_chords(self):
+        self.intervals_container.hide()
+        self.chords_container.show()
+        self.toggle_chords.setStyleSheet("""
+            QPushButton {
+                background-color: #C9E4CA;
+                color: #4A654B;
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
+        self.toggle_intervals.setStyleSheet("""
+            QPushButton {
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
