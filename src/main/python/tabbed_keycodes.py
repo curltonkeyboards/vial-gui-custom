@@ -659,31 +659,39 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.containers["KeySplit"].layout().addLayout(layout)
 
-    def populate_advanced_section(self):
+    
         container = self.containers["Advanced MIDI Settings"]
-        main_layout = container.layout()
         
-        # Add grid layout for inversion buttons
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(5)  # Add some spacing between buttons
+        # Clear any existing layouts
+        if container.layout():
+            QWidget().setLayout(container.layout())
+            
+        # Create fresh main layout
+        main_layout = QVBoxLayout(container)
+        
+        # Create grid widget to contain buttons
+        grid_widget = QWidget()
+        grid_layout = QGridLayout(grid_widget)
+        grid_layout.setSpacing(10)  # Match the 10px spacing from EarTrainer
         
         row = 0
         col = 0
         for keycode in self.inversion_keycodes:
-            btn = SquareButton()
-            btn.setFixedSize(40, 40)  # Set fixed size for all buttons
-            btn.setText(Keycode.label(keycode.qmk_id))
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
+            btn.setFixedSize(80, 50)  # Match size from EarTrainer
+            btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")  # Match style from EarTrainer
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             grid_layout.addWidget(btn, row, col)
             
             col += 1
-            if col >= 12:  # Limit to 12 buttons per row
+            if col >= 12:  # Keep the 12 columns layout
                 col = 0
                 row += 1
         
-        main_layout.addLayout(grid_layout)
-        main_layout.addStretch()  # Add stretch at the bottom to prevent unwanted expansion
+        # Add the grid widget to main layout
+        main_layout.addWidget(grid_widget)
+        main_layout.addStretch()
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
@@ -1100,6 +1108,10 @@ class EarTrainerTab(QScrollArea):
                 item = layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
+
+        # Set spacing for both layouts
+        self.intervals_layout.setSpacing(10)  # Set horizontal and vertical spacing
+        self.chords_layout.setSpacing(10)     # Set horizontal and vertical spacing
 
         # Create Interval Trainer buttons (4 columns)
         for i, keycode in enumerate(self.eartrainer_keycodes):
