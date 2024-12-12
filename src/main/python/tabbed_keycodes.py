@@ -710,7 +710,8 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, layout)
         self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.keysplit_dropdowns.addLayout(layout)
-
+        self.containers["Show\nKeySplit\nOptions"].layout().addLayout(layout)
+                
         # Clear existing buttons
         for i in reversed(range(self.keysplit_grid.count())):
             widget = self.keysplit_grid.itemAt(i).widget()
@@ -734,7 +735,7 @@ class midiadvancedTab(QScrollArea):
             if col >= max_cols:
                 col = 0
                 row += 1
-        self.containers["Show\nKeySplit\nOptions"].layout().addLayout(layout)
+
         
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
