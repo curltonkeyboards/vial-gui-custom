@@ -662,23 +662,22 @@ class midiadvancedTab(QScrollArea):
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
         
-        # Clear existing layout
-        while container.layout().count():
-            item = container.layout().takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Clear the existing layout and create a new grid layout directly
+        old_layout = container.layout()
+        if old_layout:
+            while old_layout.count():
+                item = old_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
         
-        # Create new layout
-        layout = QVBoxLayout(container)
+        # Create a new grid layout directly for the container
+        grid_layout = QGridLayout(container)
+        grid_layout.setSpacing(5)
         
-        # Create grid layout for inversion buttons
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(5)  # Add some spacing between buttons
-        
-        # Calculate positions for 2 rows of 12 buttons
+        # Add buttons to grid
         for i, keycode in enumerate(self.inversion_keycodes):
-            row = i // 12  # Integer division to determine row (0 or 1)
-            col = i % 12   # Modulo to determine column (0-11)
+            row = i // 12  # Integer division for row (0 or 1)
+            col = i % 12   # Modulo for column (0-11)
             
             btn = SquareButton()
             btn.setFixedSize(40, 40)
@@ -686,14 +685,6 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             grid_layout.addWidget(btn, row, col)
-            
-            # Break after 24 buttons (2 rows of 12)
-            if i >= 23:
-                break
-        
-        # Add grid layout to container
-        layout.addLayout(grid_layout)
-        layout.addStretch()
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
@@ -1063,20 +1054,25 @@ class EarTrainerTab(QScrollArea):
         
         self.main_layout.addLayout(button_layout)
         
-        # Container for button sections
+        # Container for button sections with horizontal centering
         self.intervals_container = QWidget()
-        intervals_layout = QGridLayout(self.intervals_container)
-        intervals_layout.setSpacing(10)
+        intervals_outer_layout = QHBoxLayout(self.intervals_container)
+        intervals_outer_layout.addStretch(1)  # Left spacer
+        self.intervals_grid = QGridLayout()
+        self.intervals_grid.setSpacing(10)
+        intervals_outer_layout.addLayout(self.intervals_grid)
+        intervals_outer_layout.addStretch(1)  # Right spacer
         self.main_layout.addWidget(self.intervals_container)
         
         self.chords_container = QWidget()
-        chords_layout = QGridLayout(self.chords_container)
-        chords_layout.setSpacing(10)
+        chords_outer_layout = QHBoxLayout(self.chords_container)
+        chords_outer_layout.addStretch(1)  # Left spacer
+        self.chords_grid = QGridLayout()
+        self.chords_grid.setSpacing(10)
+        chords_outer_layout.addLayout(self.chords_grid)
+        chords_outer_layout.addStretch(1)  # Right spacer
         self.main_layout.addWidget(self.chords_container)
         self.chords_container.hide()
-        
-        self.intervals_layout = intervals_layout
-        self.chords_layout = chords_layout
         
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -1105,15 +1101,15 @@ class EarTrainerTab(QScrollArea):
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
-        for layout in [self.intervals_layout, self.chords_layout]:
-            while layout.count():
-                item = layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-
-        # Set spacing for both layouts
-        self.intervals_layout.setSpacing(10)  # Set horizontal and vertical spacing
-        self.chords_layout.setSpacing(10)     # Set horizontal and vertical spacing
+        while self.intervals_grid.count():
+            item = self.intervals_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        while self.chords_grid.count():
+            item = self.chords_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
         # Create Interval Trainer buttons (4 columns)
         for i, keycode in enumerate(self.eartrainer_keycodes):
@@ -1125,7 +1121,7 @@ class EarTrainerTab(QScrollArea):
                 btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                self.intervals_layout.addWidget(btn, row, col)
+                self.intervals_grid.addWidget(btn, row, col)
 
         # Create Chord Trainer buttons (5 columns)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
@@ -1137,18 +1133,18 @@ class EarTrainerTab(QScrollArea):
                 btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                self.chords_layout.addWidget(btn, row, col)
+                self.chords_grid.addWidget(btn, row, col)
 
     def relabel_buttons(self):
-        for layout in [self.intervals_layout, self.chords_layout]:
-            for i in range(layout.count()):
-                widget = layout.itemAt(i).widget()
+        for grid in [self.intervals_grid, self.chords_grid]:
+            for i in range(grid.count()):
+                widget = grid.itemAt(i).widget()
                 if hasattr(widget, 'keycode'):
                     widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
-        return (self.intervals_layout.count() > 0 or 
-                self.chords_layout.count() > 0)
+        return (self.intervals_grid.count() > 0 or 
+                self.chords_grid.count() > 0)
 
 
 
