@@ -977,110 +977,75 @@ class EarTrainerTab(QScrollArea):
         self.main_layout.setSpacing(5)
         self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Create headers container
-        headers = QWidget()
-        headers_layout = QHBoxLayout(headers)
-        headers_layout.setContentsMargins(0, 0, 0, 0)
+        # Toggle buttons
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(0)
+        button_layout.addStretch(1)
         
-        # Left stretch
-        headers_layout.addStretch(2)
+        self.toggle_intervals = QPushButton("Show Intervals")
+        self.toggle_intervals.clicked.connect(self.show_intervals)
+        self.toggle_intervals.setFixedSize(120, 40)
+        self.toggle_intervals.setStyleSheet("background-color: #B8D8EB; color: #395968;")
+        button_layout.addWidget(self.toggle_intervals)
         
-        # Interval trainer label - width of 4 columns
-        interval_header = QLabel("Interval Trainer")
-        interval_header.setStyleSheet("font-size: 16px; font-weight: bold;")  # Bigger font
-        interval_container = QWidget()
-        interval_container_layout = QHBoxLayout(interval_container)
-        interval_container_layout.setContentsMargins(0, 0, 0, 0)
-        interval_container_layout.addWidget(interval_header)
-        interval_container.setFixedWidth(90 * 4)
-        interval_header.setAlignment(Qt.AlignCenter)
-        headers_layout.addWidget(interval_container)
+        self.toggle_chords = QPushButton("Show Chords")
+        self.toggle_chords.clicked.connect(self.show_chords)
+        self.toggle_chords.setFixedSize(120, 40)
+        self.toggle_chords.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
+        button_layout.addWidget(self.toggle_chords)
+        button_layout.addStretch(1)
         
-        # Middle stretch
-        headers_layout.addStretch(1)
-        
-        # Chord trainer label - width of 5 columns
-        chord_header = QLabel("Chord Trainer")
-        chord_header.setStyleSheet("font-size: 16px; font-weight: bold;")  # Bigger font
-        chord_container = QWidget()
-        chord_container_layout = QHBoxLayout(chord_container)
-        chord_container_layout.setContentsMargins(0, 0, 0, 0)
-        chord_container_layout.addWidget(chord_header)
-        chord_container.setFixedWidth(90 * 5)
-        chord_header.setAlignment(Qt.AlignCenter)
-        headers_layout.addWidget(chord_container)
-        
-        # Right stretch
-        headers_layout.addStretch(2)
-        
-        self.main_layout.addWidget(headers)
+        self.main_layout.addLayout(button_layout)
         
         # Container for button sections
-        container = QWidget()
-        container_layout = QHBoxLayout(container)
-        container_layout.setSpacing(0)
+        self.intervals_container = QWidget()
+        intervals_layout = QGridLayout(self.intervals_container)
+        intervals_layout.setSpacing(10)
+        self.main_layout.addWidget(self.intervals_container)
         
-        container_layout.addStretch(2)
+        self.chords_container = QWidget()
+        chords_layout = QGridLayout(self.chords_container)
+        chords_layout.setSpacing(10)
+        self.main_layout.addWidget(self.chords_container)
+        self.chords_container.hide()
         
-        # Left section (Interval Trainer)
-        left_section = QWidget()
-        left_layout = QGridLayout(left_section)
-        left_layout.setSpacing(10)
-        container_layout.addWidget(left_section)
+        self.intervals_layout = intervals_layout
+        self.chords_layout = chords_layout
         
-        container_layout.addStretch(1)
-        
-        # Right section (Chord Trainer)
-        right_section = QWidget()
-        right_layout = QGridLayout(right_section)
-        right_layout.setSpacing(10)
-        container_layout.addWidget(right_section)
-        
-        container_layout.addStretch(2)
-        
-        self.main_layout.addWidget(container)
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         
-        self.left_layout = left_layout
-        self.right_layout = right_layout
-        
+        # Show intervals by default and highlight its button
+        self.show_intervals()
         self.recreate_buttons()
+
+    def show_intervals(self):
+        self.intervals_container.show()
+        self.chords_container.hide()
+        self.toggle_intervals.setStyleSheet("""
+            background-color: #B8D8EB;
+            color: #395968;
+        """)
+        self.toggle_chords.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
+
+    def show_chords(self):
+        self.intervals_container.hide()
+        self.chords_container.show()
+        self.toggle_chords.setStyleSheet("""
+            background-color: #C9E4CA;
+            color: #4A654B;
+        """)
+        self.toggle_intervals.setStyleSheet("background-color: #B8D8EB; color: #395968;")
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
-        for layout in [self.left_layout, self.right_layout]:
+        for layout in [self.intervals_layout, self.chords_layout]:
             while layout.count():
                 item = layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
 
-        # Common button style with full styling
-        interval_style = """
-            QPushButton {
-                background-color: rgb(184, 216, 235);
-            }
-            QPushButton:hover {
-                background-color: rgb(194, 226, 245);
-            }
-            QPushButton:pressed {
-                background-color: rgb(174, 206, 225);
-            }
-        """
-
-        chord_style = """
-            QPushButton {
-                background-color: rgb(201, 228, 202);
-            }
-            QPushButton:hover {
-                background-color: rgb(211, 238, 212);
-            }
-            QPushButton:pressed {
-                background-color: rgb(191, 218, 192);
-            }
-        """
-
-        # Create Interval Trainer buttons (4 columns, 3 rows)
+        # Create Interval Trainer buttons (4 columns)
         for i, keycode in enumerate(self.eartrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 4
@@ -1090,13 +1055,9 @@ class EarTrainerTab(QScrollArea):
                 btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                self.left_layout.addWidget(btn, row, col)
-        
-        # Add spacer at the bottom of interval trainer
-        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.left_layout.addItem(spacer, 3, 0, 1, 4)  # Span across all 4 columns
+                self.intervals_layout.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons (5x4 grid)
+        # Create Chord Trainer buttons (5 columns)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 row = i // 5
@@ -1106,67 +1067,18 @@ class EarTrainerTab(QScrollArea):
                 btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                self.right_layout.addWidget(btn, row, col)
-
-        # Add spacer at the bottom of chord trainer
-        spacer2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.right_layout.addItem(spacer2, 4, 0, 1, 5)  # Span across all 5 columns
-
-
-    def create_gradient_button(self, text, position, total_positions, section):
-        """Create a button with gradient based on its position"""
-        btn = QPushButton(text)
-        
-        # Calculate darkness factor based on distance from center
-        if section == 'interval':
-            max_distance = math.sqrt(2**2 + 3**2)  # max distance from center in either direction
-            x_dist = abs(position[1] - 1)  # distance from center column (0-based)
-            y_dist = abs(position[0] - 1.5)  # distance from center row (0-based)
-        else:  # chord
-            max_distance = math.sqrt(2**2 + 4**2)  # max distance from center
-            x_dist = abs(position[1] - 2)  # distance from center column
-            y_dist = abs(position[0] - 1.5)  # distance from center row
-            
-        distance = math.sqrt(x_dist**2 + y_dist**2) / max_distance
-        darkness = int(40 * distance)  # Adjust the multiplier to control gradient intensity
-        
-        if section == 'interval':
-            base_color = (184, 216, 235)  # Light blue base
-        else:
-            base_color = (201, 228, 202)  # Light green base
-            
-        darker_color = tuple(max(0, c - darkness) for c in base_color)
-        
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: rgb{darker_color};
-                border: none;
-                border-radius: 6px;
-                color: #303030;
-                padding: 10px;
-                font-weight: bold;
-                min-height: 40px;
-            }}
-            QPushButton:hover {{
-                background-color: rgb{tuple(min(255, c + 20) for c in darker_color)};
-            }}
-            QPushButton:pressed {{
-                background-color: rgb{tuple(max(0, c - 20) for c in darker_color)};
-            }}
-        """)
-        
-        return btn
+                self.chords_layout.addWidget(btn, row, col)
 
     def relabel_buttons(self):
-        for layout in [self.left_layout, self.right_layout]:
+        for layout in [self.intervals_layout, self.chords_layout]:
             for i in range(layout.count()):
                 widget = layout.itemAt(i).widget()
                 if hasattr(widget, 'keycode'):
                     widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
-        return (self.left_layout.count() > 0 or 
-                self.right_layout.count() > 0)
+        return (self.intervals_layout.count() > 0 or 
+                self.chords_layout.count() > 0)
 
 
 
