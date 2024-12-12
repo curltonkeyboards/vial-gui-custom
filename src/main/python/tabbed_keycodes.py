@@ -535,16 +535,16 @@ class midiadvancedTab(QScrollArea):
         self.main_layout = QVBoxLayout(self.scroll_content)
         self.main_layout.setSpacing(10)
 
-        # Create buttons layout with no spacing
+        # Create buttons layout
         self.button_layout = QHBoxLayout()
-        self.button_layout.setSpacing(0)  # Remove spacing between buttons
-        self.button_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        self.button_layout.setSpacing(0)
+        self.button_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create containers dict to store all section containers
+        # Create containers dict
         self.containers = {}
         self.buttons = {}
 
-        # Define sections (added Velocity section)
+        # Define sections
         sections = [
             "MIDI Channel Options",
             "CC Options",
@@ -557,7 +557,6 @@ class midiadvancedTab(QScrollArea):
 
         # Create buttons and containers for each section
         for section in sections:
-            # Create button
             btn = QPushButton(section)
             btn.setFixedHeight(40)
             btn.setMinimumWidth(150)
@@ -567,7 +566,14 @@ class midiadvancedTab(QScrollArea):
 
             # Create container
             container = QWidget()
-            container.setLayout(QVBoxLayout())
+            container_layout = QVBoxLayout()
+            
+            # If this is the Advanced MIDI Settings section, add a grid layout for the inversion buttons
+            if section == "Advanced MIDI Settings":
+                self.advanced_grid = QGridLayout()
+                container_layout.addLayout(self.advanced_grid)
+                
+            container.setLayout(container_layout)
             container.hide()
             self.main_layout.addWidget(container)
             self.containers[section] = container
@@ -579,7 +585,8 @@ class midiadvancedTab(QScrollArea):
         self.populate_cc_velocity_section()
         self.populate_increments_section()
         self.populate_transposition_section()
-        self.populate_keysplit_section()        
+        self.populate_keysplit_section()
+        self.populate_advanced_section()  # Add this new method
         self.populate_velocity_section()
 
         # Set up scroll area
@@ -590,6 +597,33 @@ class midiadvancedTab(QScrollArea):
 
         # Show first section by default
         self.toggle_section(sections[0])
+
+    def populate_advanced_section(self):
+        """Populate the Advanced MIDI Settings section with inversion buttons."""
+        # Clear existing buttons
+        for i in reversed(range(self.advanced_grid.count())):
+            widget = self.advanced_grid.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Add inversion buttons in a grid layout
+        row = 0
+        col = 0
+        max_cols = 4  # Adjust this value to change number of columns
+
+        for keycode in self.inversion_keycodes:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            
+            self.advanced_grid.addWidget(btn, row, col)
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+
 
     # Add new populate_velocity_section method
     def populate_velocity_section(self):
@@ -928,12 +962,31 @@ class midiadvancedTab(QScrollArea):
         
     
     def recreate_buttons(self, keycode_filter=None):
+        """Update to include advanced section buttons."""
         # Clear and recreate the advanced section
-        old_layout = self.containers["Advanced MIDI Settings"].layout()
-        while old_layout.count():
-            item = old_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        for i in reversed(range(self.advanced_grid.count())):
+            widget = self.advanced_grid.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Repopulate advanced section with filtered buttons
+        row = 0
+        col = 0
+        max_cols = 4
+
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                
+                self.advanced_grid.addWidget(btn, row, col)
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
         
 
     def relabel_buttons(self):
