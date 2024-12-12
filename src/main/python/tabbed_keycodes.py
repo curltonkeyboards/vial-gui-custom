@@ -1089,45 +1089,45 @@ class EarTrainerTab(QScrollArea):
         self.show_intervals()
         self.recreate_buttons()
 
-def show_intervals(self):
-    self.intervals_container.show()
-    self.chords_container.hide()
-    self.toggle_intervals.setStyleSheet("""
-        QPushButton {
-            background-color: #B8D8EB;
-            color: #395968;
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
-    self.toggle_chords.setStyleSheet("""
-        QPushButton {
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
+    def show_intervals(self):
+        self.intervals_container.show()
+        self.chords_container.hide()
+        self.toggle_intervals.setStyleSheet("""
+            QPushButton {
+                background-color: #B8D8EB;
+                color: #395968;
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
+        self.toggle_chords.setStyleSheet("""
+            QPushButton {
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
 
-def show_chords(self):
-    self.intervals_container.hide()
-    self.chords_container.show()
-    self.toggle_chords.setStyleSheet("""
-        QPushButton {
-            background-color: #C9E4CA;
-            color: #4A654B;
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
-    self.toggle_intervals.setStyleSheet("""
-        QPushButton {
-            margin: 0px;
-            padding: 0px;
-            border: 1px solid #888888;
-        }
-    """)
+    def show_chords(self):
+        self.intervals_container.hide()
+        self.chords_container.show()
+        self.toggle_chords.setStyleSheet("""
+            QPushButton {
+                background-color: #C9E4CA;
+                color: #4A654B;
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
+        self.toggle_intervals.setStyleSheet("""
+            QPushButton {
+                margin: 0px;
+                padding: 0px;
+                border: 1px solid #888888;
+            }
+        """)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
