@@ -662,36 +662,38 @@ class midiadvancedTab(QScrollArea):
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
         
-        # Clear any existing layouts
-        if container.layout():
-            QWidget().setLayout(container.layout())
+        # Clear existing layout
+        while container.layout().count():
+            item = container.layout().takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Create new layout
+        layout = QVBoxLayout(container)
+        
+        # Create grid layout for inversion buttons
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(5)  # Add some spacing between buttons
+        
+        # Calculate positions for 2 rows of 12 buttons
+        for i, keycode in enumerate(self.inversion_keycodes):
+            row = i // 12  # Integer division to determine row (0 or 1)
+            col = i % 12   # Modulo to determine column (0-11)
             
-        # Create fresh main layout
-        main_layout = QVBoxLayout(container)
-        
-        # Create grid widget to contain buttons
-        grid_widget = QWidget()
-        grid_layout = QGridLayout(grid_widget)
-        grid_layout.setSpacing(10)  # Match the 10px spacing from EarTrainer
-        
-        row = 0
-        col = 0
-        for keycode in self.inversion_keycodes:
-            btn = QPushButton(Keycode.label(keycode.qmk_id))
-            btn.setFixedSize(80, 50)  # Match size from EarTrainer
-            btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")  # Match style from EarTrainer
+            btn = SquareButton()
+            btn.setFixedSize(40, 40)
+            btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             grid_layout.addWidget(btn, row, col)
             
-            col += 1
-            if col >= 12:  # Keep the 12 columns layout
-                col = 0
-                row += 1
+            # Break after 24 buttons (2 rows of 12)
+            if i >= 23:
+                break
         
-        # Add the grid widget to main layout
-        main_layout.addWidget(grid_widget)
-        main_layout.addStretch()
+        # Add grid layout to container
+        layout.addLayout(grid_layout)
+        layout.addStretch()
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
