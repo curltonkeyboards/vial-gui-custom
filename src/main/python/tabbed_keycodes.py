@@ -637,53 +637,45 @@ class midiadvancedTab(QScrollArea):
     def populate_keysplit_section(self):
         layout = QHBoxLayout()
         self.add_value_button2("Key Switch\nVelocity", self.ksvelocity2, layout)
-        self.add_header_dropdown2("KS Octave", self.ksoctave2, layout)
-        self.add_header_dropdown2("KS Key", self.kskey2, layout)
-        self.add_header_dropdown2("KS Channel", self.kschannel2, layout)
-        self.add_value_button2("TS Velocity", self.ksvelocity3, layout)
-        self.add_header_dropdown2("TS Octave", self.ksoctave3, layout)
-        self.add_header_dropdown2("TS Key", self.kskey3, layout)
-        self.add_header_dropdown2("TS Channel", self.kschannel3, layout)
+        self.add_header_dropdown2("Key Switch\nOctave", self.ksoctave2, layout)
+        self.add_header_dropdown2("Key Switch\nKey", self.kskey2, layout)
+        self.add_header_dropdown2("Key Switch\nChannel", self.kschannel2, layout)
+        self.add_value_button2("Triple Switch\nVelocity", self.ksvelocity3, layout)
+        self.add_header_dropdown2("Triple Switch\nOctave", self.ksoctave3, layout)
+        self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, layout)
+        self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.containers["KeySplit"].layout().addLayout(layout)
 
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
-        
-        # Clear any existing layouts
-        if container.layout():
-            QWidget().setLayout(container.layout())
-            
-        # Create fresh main layout
-        main_layout = QVBoxLayout(container)
+        main_layout = container.layout()
         
         # Add velocity controls at the top
         velocity_layout = QHBoxLayout()
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
         main_layout.addLayout(velocity_layout)
         
-        # Create grid widget to contain buttons
-        grid_widget = QWidget()
-        grid_layout = QGridLayout(grid_widget)
-        grid_layout.setSpacing(5)
+        # Add grid layout for inversion buttons
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(5)  # Add some spacing between buttons
         
         row = 0
         col = 0
         for keycode in self.inversion_keycodes:
             btn = SquareButton()
-            btn.setFixedSize(40, 40)
+            btn.setFixedSize(40, 40)  # Set fixed size for all buttons
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             grid_layout.addWidget(btn, row, col)
             
             col += 1
-            if col >= 12:
+            if col >= 12:  # Limit to 12 buttons per row
                 col = 0
                 row += 1
         
-        # Add the grid widget to main layout
-        main_layout.addWidget(grid_widget)
-        main_layout.addStretch()
+        main_layout.addLayout(grid_layout)
+        main_layout.addStretch()  # Add stretch at the bottom to prevent unwanted expansion
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
