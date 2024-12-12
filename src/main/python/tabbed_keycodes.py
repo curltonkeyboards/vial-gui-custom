@@ -499,9 +499,16 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, Qt
 
 class midiadvancedTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+
     def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
         super().__init__(parent)
         self.label = label
+        
+        # Initialize dictionaries first
+        self.buttons = {}
+        self.containers = {}
+        
         # Store all the parameters as instance variables
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
@@ -543,13 +550,13 @@ class midiadvancedTab(QScrollArea):
 
         # Define sections
         sections = [
-            "Show\nChannel\nOptions",
-            "Show\nCC Options",
+            "MIDI Channel Options",
+            "CC Options",
             "Encoder Increments",
-            "Show\nTransposition\nSettings",
-            "Show\nKeySplit\nOptions",
-            "Shwo\nAdvanced MIDI\nOptions",
-            "Show\nVelocity Settings"
+            "Transposition",
+            "KeySplit",
+            "Advanced MIDI Settings",
+            "Velocity"
         ]
 
         # Create buttons and containers for each section
