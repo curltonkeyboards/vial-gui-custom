@@ -925,7 +925,20 @@ class midiadvancedTab(QScrollArea):
 
         # Reset the visible text to the default
         dropdown.setCurrentIndex(0)
-
+        
+    
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear and recreate the advanced section
+        old_layout = self.containers["Advanced MIDI Settings"].layout()
+        while old_layout.count():
+            item = old_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.populate_advanced_section()
+        
+    def recreate_buttons(self, keycode_filter=None):
+        self.keysplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT')
+        self.triplesplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT2')
 
     def relabel_buttons(self):
         # Only need to relabel buttons in the advanced section
@@ -1998,6 +2011,13 @@ class FilteredTabbedKeycodes(QTabWidget):
                     self.setCurrentIndex(self.count() - 1)
                     
         for miditab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for midiadvancedTab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
