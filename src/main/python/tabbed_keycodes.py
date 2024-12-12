@@ -643,12 +643,13 @@ class midiadvancedTab(QScrollArea):
 
     # Add new populate_velocity_section method
     def populate_velocity_section(self):
+        
         container = self.containers["Show\nVelocity\nOptions"]
         layout = container.layout()
         
         velocity_layout = QHBoxLayout()
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
-        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, layout)
+        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, velocity_layout)
         layout.addLayout(velocity_layout)
         layout.addStretch()
 
