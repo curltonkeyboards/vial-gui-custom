@@ -934,7 +934,6 @@ class midiadvancedTab(QScrollArea):
             item = old_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        self.populate_advanced_section()
         
 
     def relabel_buttons(self):
