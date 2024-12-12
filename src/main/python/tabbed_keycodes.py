@@ -661,33 +661,24 @@ class midiadvancedTab(QScrollArea):
 
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
-        
-        # Create new layout
         layout = QVBoxLayout(container)
-        layout.setSpacing(10)
         
-        # Create grid directly - no need for extra horizontal layout
-        grid = QGridLayout()
-        grid.setSpacing(5)
+        # Clear any existing layout
+        while container.layout():
+            old_layout = container.layout()
+            for i in reversed(range(old_layout.count())):
+                old_layout.itemAt(i).widget().deleteLater()
+            QWidget().setLayout(old_layout)
         
-        # Add buttons to grid
-        for i, keycode in enumerate(self.inversion_keycodes):
-            row = i // 12
-            col = i % 12
-            
-            btn = SquareButton()
+        # Simply add buttons one by one
+        for keycode in self.inversion_keycodes:
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
             btn.setFixedSize(40, 40)
-            btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            grid.addWidget(btn, row, col)
+            layout.addWidget(btn)
         
-        # Add grid directly to container layout
-        layout.addLayout(grid)
-        layout.addStretch()
-        
-        # Make sure the container has a minimum size
-        container.setMinimumHeight(100)
+        container.setLayout(layout)
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
