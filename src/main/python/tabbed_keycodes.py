@@ -501,10 +501,11 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
         super().__init__(parent)
         self.label = label
         # Store all the parameters as instance variables
+        self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
@@ -536,25 +537,27 @@ class midiadvancedTab(QScrollArea):
 
         # Create buttons layout with no spacing
         self.button_layout = QHBoxLayout()
-        self.button_layout.setSpacing(0)
-        self.button_layout.setContentsMargins(0, 0, 0, 0)
+        self.button_layout.setSpacing(0)  # Remove spacing between buttons
+        self.button_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
         # Create containers dict to store all section containers
         self.containers = {}
         self.buttons = {}
 
-        # Define sections
+        # Define sections (added Velocity section)
         sections = [
             "MIDI Channel Options",
-            "CC and Velocity",
+            "CC Options",
             "Encoder Increments",
             "Transposition",
             "KeySplit",
+            "Advanced MIDI Settings",
             "Velocity"
         ]
 
         # Create buttons and containers for each section
         for section in sections:
+            # Create button
             btn = QPushButton(section)
             btn.setFixedHeight(40)
             btn.setMinimumWidth(150)
@@ -562,6 +565,7 @@ class midiadvancedTab(QScrollArea):
             self.button_layout.addWidget(btn)
             self.buttons[section] = btn
 
+            # Create container
             container = QWidget()
             container.setLayout(QVBoxLayout())
             container.hide()
@@ -576,6 +580,7 @@ class midiadvancedTab(QScrollArea):
         self.populate_increments_section()
         self.populate_transposition_section()
         self.populate_keysplit_section()
+        self.populate_advanced_section()
         self.populate_velocity_section()
 
         # Set up scroll area
@@ -587,6 +592,7 @@ class midiadvancedTab(QScrollArea):
         # Show first section by default
         self.toggle_section(sections[0])
 
+    # Add new populate_velocity_section method
     def populate_velocity_section(self):
         container = self.containers["Velocity"]
         layout = container.layout()
@@ -595,6 +601,7 @@ class midiadvancedTab(QScrollArea):
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
         layout.addLayout(velocity_layout)
         layout.addStretch()
+
 
     def toggle_section(self, section_name):
         # Reset all buttons and hide all containers
@@ -626,7 +633,7 @@ class midiadvancedTab(QScrollArea):
         self.add_value_button("Program Change", self.smartchord_program_change, layout)
         self.add_value_button("Bank LSB", self.smartchord_LSB, layout)
         self.add_value_button("Bank MSB", self.smartchord_MSB, layout)
-        self.containers["CC and Velocity"].layout().addLayout(layout)
+        self.containers["CC Options"].layout().addLayout(layout)
 
     def populate_increments_section(self):
         layout = QHBoxLayout()
@@ -652,6 +659,27 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.containers["KeySplit"].layout().addLayout(layout)
 
+    def populate_advanced_section(self):
+        container = self.containers["Advanced MIDI Settings"]
+        layout = QVBoxLayout(container)
+        
+        # Clear any existing layout
+        while container.layout():
+            old_layout = container.layout()
+            for i in reversed(range(old_layout.count())):
+                old_layout.itemAt(i).widget().deleteLater()
+            QWidget().setLayout(old_layout)
+        
+        # Simply add buttons one by one
+        for keycode in self.inversion_keycodes:
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
+            btn.setFixedSize(40, 40)
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            layout.addWidget(btn)
+        
+        container.setLayout(layout)
+
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
         dropdown.addItems(items)
@@ -667,18 +695,21 @@ class midiadvancedTab(QScrollArea):
         layout.addWidget(dropdown)
 
     def add_value_button(self, label_text, keycode_set, layout):
+        """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
         button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
         layout.addWidget(button)
         
     def add_value_button2(self, label_text, keycode_set, layout):
+        """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(60)
         button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
         layout.addWidget(button)
 
     def open_value_dialog(self, label, keycode_set):
+        """Open a dialog to input a value between 0 and 127 and set the keycode accordingly."""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Set Value for {label}")
         dialog.setFixedSize(300, 150)
@@ -699,6 +730,7 @@ class midiadvancedTab(QScrollArea):
         dialog.exec_()
 
     def confirm_value(self, dialog, label, keycode_set):
+        """Confirm the value input and emit the corresponding keycode."""
         value = self.value_input.text()
         if value.isdigit() and 0 <= int(value) <= 127:
             keycode_map = {
@@ -713,6 +745,7 @@ class midiadvancedTab(QScrollArea):
                 "TS Velocity": f"MI_VELOCITY3_{value}"
             }
         
+            # Construct the keycode using the label as a key
             if label in keycode_map:
                 selected_keycode = keycode_map[label]
                 self.keycode_changed.emit(selected_keycode)
@@ -722,6 +755,7 @@ class midiadvancedTab(QScrollArea):
         if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
             self.value_input.clear()
 
+
     def add_cc_x_y_menu(self, layout):
         button = QPushButton("CC Value")
         button.setFixedHeight(40)
@@ -729,24 +763,29 @@ class midiadvancedTab(QScrollArea):
         layout.addWidget(button)
 
     def open_cc_xy_dialog(self):
-        dialog = QDialog(self)
+        """Open a dialog to input CC values."""
+        dialog = QDialog(self)  # Create a local dialog instance
         dialog.setWindowTitle("Enter CC Value")
-        dialog.setFixedHeight(170)
+        dialog.setFixedHeight(170)  # Set fixed height for the dialog
 
         layout = QVBoxLayout(dialog)
 
+        # Create a scroll area for CC X values
         cc_x_scroll_area = QScrollArea()
         cc_x_scroll_area.setWidgetResizable(True)
 
+        # Create a widget for the scroll area content
         cc_x_content_widget = QWidget()
         cc_x_content_layout = QVBoxLayout(cc_x_content_widget)
 
+        # Add a label and text box for CC X input
         cc_x_label = QLabel("CC(0-127):")
         self.cc_x_input = QLineEdit()
         self.cc_x_input.textChanged.connect(self.validate_cc_x_input)
         cc_x_content_layout.addWidget(cc_x_label)
         cc_x_content_layout.addWidget(self.cc_x_input)
 
+        # Add a label and text box for CC Y input
         cc_y_label = QLabel("Value(0-127):")
         self.cc_y_input = QLineEdit()
         self.cc_y_input.textChanged.connect(self.validate_cc_y_input)
@@ -756,69 +795,187 @@ class midiadvancedTab(QScrollArea):
         cc_x_content_widget.setLayout(cc_x_content_layout)
         cc_x_scroll_area.setWidget(cc_x_content_widget)
 
+        # Add the scroll area to the main layout of the dialog
         layout.addWidget(cc_x_scroll_area)
         dialog.setLayout(layout)
 
+        # Optional: Add a button to confirm the selection
         confirm_button = QPushButton("Confirm")
-        confirm_button.clicked.connect(lambda: self.confirm_cc_values(dialog))
+        confirm_button.clicked.connect(lambda: self.confirm_cc_values(dialog))  # Pass dialog instance
         layout.addWidget(confirm_button)
 
         dialog.exec_()
 
     def confirm_cc_values(self, dialog):
+        """Handle the confirmation of CC values and close the dialog."""
         cc_x_value = self.cc_x_input.text()
         cc_y_value = self.cc_y_input.text()
         if cc_x_value and cc_y_value:
+            # Emit the values or handle them as needed
             self.on_cc_selection(int(cc_x_value), int(cc_y_value))
-            dialog.accept()
+            dialog.accept()  # Close the dialog
         
     def validate_cc_x_input(self, text):
         if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
+            # If the input is not a digit or is out of the range, clear the input
             self.cc_x_input.clear()
             
     def validate_cc_y_input(self, text):
         if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
+            # If the input is not a digit or is out of the range, clear the input
             self.cc_y_input.clear()
 
+
+    def open_cc_y_submenu(self, selected_x):
+        """Open a submenu dialog for selecting CC Y values based on selected CC X."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"CC X {selected_x} -> CC Y Selection")
+        dialog.setFixedHeight(300)  # Set fixed height for the dialog
+
+        layout = QVBoxLayout(dialog)
+
+        # Create a scroll area for CC Y values
+        cc_y_scroll_area = QScrollArea()
+        cc_y_scroll_area.setWidgetResizable(True)
+
+        # Create a widget for the scroll area content
+        cc_y_content_widget = QWidget()
+        cc_y_content_layout = QVBoxLayout(cc_y_content_widget)
+
+        # Populate the CC Y buttons based on CCfixed
+        for keycode in self.CCfixed:
+            try:
+                x_value, y_value = map(int, keycode.qmk_id.split('_')[2:])  # Extract x and y
+                if x_value == selected_x:  # Only add CC Y if it matches the CC X value
+                    button = QPushButton(f"CC Y {y_value}")
+                    button.clicked.connect(lambda _, x=selected_x, y=y_value: self.on_cc_selection(x, y))
+                    cc_y_content_layout.addWidget(button)
+            except ValueError:
+                continue  # Skip if the format is unexpected
+
+        cc_y_content_widget.setLayout(cc_y_content_layout)
+        cc_y_scroll_area.setWidget(cc_y_content_widget)
+
+        # Add the scroll area to the main layout of the dialog
+        layout.addWidget(cc_y_scroll_area)
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+
+
     def on_cc_selection(self, x, y):
+        """Handle CC X and CC Y selection."""
         print(f"Selected CC X: {x}, CC Y: {y}")
+        # Emit a signal or perform any additional action here
         self.keycode_changed.emit(f"MI_CC_{x}_{y}")
 
     def add_header_dropdown(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
 
+        # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
+        #vbox.addWidget(header_label)
 
+        # Create dropdown
         dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)
+        dropdown.setFixedHeight(40)  # Set height of dropdown
 
-        dropdown.addItem(f"{header_text}")
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
 
+        # Add the keycodes as options
         for keycode in keycodes:
             dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
 
+        # Prevent the first item from being selected again
         dropdown.model().item(0).setEnabled(False)
 
         dropdown.currentIndexChanged.connect(self.on_selection_change)
         dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
         vbox.addWidget(dropdown)
 
+        # Add the vertical box (header + dropdown) to the provided layout
         layout.addLayout(vbox)
         
     def add_header_dropdown2(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
         vbox = QVBoxLayout()
 
+        # Create header
         header_label = QLabel(header_text)
         header_label.setAlignment(Qt.AlignCenter)
+        #vbox.addWidget(header_label)
 
+        # Create dropdown
         dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(60)
+        dropdown.setFixedHeight(60)  # Set height of dropdown
 
-        dropdown.addItem(f"{header_text}")
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
 
+        # Add the keycodes as options
         for keycode in keycodes:
-            dropdown.addItem(Keycode.
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+        
+    def update_header_label(self, dropdown, header_label):
+        """Update the header label based on the selected dropdown item."""
+        selected_item = dropdown.currentText()
+        header_label.setText(selected_item)
+        
+    def reset_dropdown(self, dropdown, header_text):
+        """Reset the dropdown to show default text while storing the selected value."""
+        selected_index = dropdown.currentIndex()
+
+        if selected_index > 0:  # Ensure an actual selection was made
+            selected_value = dropdown.itemData(selected_index)  # Get the selected keycode value
+            # Process the selected value if necessary here
+            # Example: print(f"Selected: {selected_value}")
+
+        # Reset the visible text to the default
+        dropdown.setCurrentIndex(0)
+        
+    
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear and recreate the advanced section
+        old_layout = self.containers["Advanced MIDI Settings"].layout()
+        while old_layout.count():
+            item = old_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.populate_advanced_section()
+
+    def relabel_buttons(self):
+        # Only need to relabel buttons in the advanced section
+        advanced_container = self.containers["Advanced MIDI Settings"]
+        for i in range(advanced_container.layout().count()):
+            item = advanced_container.layout().itemAt(i)
+            if isinstance(item, QGridLayout):
+                for j in range(item.count()):
+                    widget = item.itemAt(j).widget()
+                    if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
+                        widget.setText(Keycode.label(widget.keycode.qmk_id))
+
+    def has_buttons(self):
+        return True
+
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
         
 class ModernButton(QPushButton):
     def __init__(self, text, color="#4a90e2"):
