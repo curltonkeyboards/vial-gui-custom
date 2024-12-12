@@ -985,7 +985,7 @@ class midiadvancedTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
-        button.setMaximumWidth(150)
+        dropdown.setMaximumWidth(150)
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"{header_text}")  # Placeholder item
@@ -1017,7 +1017,7 @@ class midiadvancedTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(60)  # Set height of dropdown
-        button.setMaximumWidth(150)
+        dropdown.setMaximumWidth(150)
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"{header_text}")  # Placeholder item
