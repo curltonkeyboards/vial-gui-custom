@@ -648,29 +648,42 @@ class midiadvancedTab(QScrollArea):
 
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
-        main_layout = container.layout()
+        
+        # Clear any existing layouts
+        if container.layout():
+            QWidget().setLayout(container.layout())
+            
+        # Create fresh main layout
+        main_layout = QVBoxLayout(container)
         
         # Add velocity controls at the top
         velocity_layout = QHBoxLayout()
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
         main_layout.addLayout(velocity_layout)
         
-        # Add grid layout for inversion buttons
-        grid_layout = QGridLayout()
+        # Create grid widget to contain buttons
+        grid_widget = QWidget()
+        grid_layout = QGridLayout(grid_widget)
+        grid_layout.setSpacing(5)
+        
         row = 0
         col = 0
         for keycode in self.inversion_keycodes:
             btn = SquareButton()
-            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setFixedSize(40, 40)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             grid_layout.addWidget(btn, row, col)
+            
             col += 1
             if col >= 12:
                 col = 0
                 row += 1
-        main_layout.addLayout(grid_layout)
+        
+        # Add the grid widget to main layout
+        main_layout.addWidget(grid_widget)
+        main_layout.addStretch()
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
