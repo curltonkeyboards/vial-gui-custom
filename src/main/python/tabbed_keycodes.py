@@ -936,9 +936,6 @@ class midiadvancedTab(QScrollArea):
                 item.widget().deleteLater()
         self.populate_advanced_section()
         
-    def recreate_buttons(self, keycode_filter=None):
-        self.keysplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT')
-        self.triplesplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT2')
 
     def relabel_buttons(self):
         # Only need to relabel buttons in the advanced section
