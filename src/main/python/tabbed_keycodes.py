@@ -985,13 +985,11 @@ class EarTrainerTab(QScrollArea):
         self.toggle_intervals = QPushButton("Show Intervals")
         self.toggle_intervals.clicked.connect(self.show_intervals)
         self.toggle_intervals.setFixedSize(120, 40)
-        self.toggle_intervals.setStyleSheet("background-color: #B8D8EB; color: #395968;")
         button_layout.addWidget(self.toggle_intervals)
         
         self.toggle_chords = QPushButton("Show Chords")
         self.toggle_chords.clicked.connect(self.show_chords)
         self.toggle_chords.setFixedSize(120, 40)
-        self.toggle_chords.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
         button_layout.addWidget(self.toggle_chords)
         button_layout.addStretch(1)
         
@@ -1026,7 +1024,7 @@ class EarTrainerTab(QScrollArea):
             background-color: #B8D8EB;
             color: #395968;
         """)
-        self.toggle_chords.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
+        self.toggle_chords.setStyleSheet("")  # Reset to default
 
     def show_chords(self):
         self.intervals_container.hide()
@@ -1035,7 +1033,7 @@ class EarTrainerTab(QScrollArea):
             background-color: #C9E4CA;
             color: #4A654B;
         """)
-        self.toggle_intervals.setStyleSheet("background-color: #B8D8EB; color: #395968;")
+        self.toggle_intervals.setStyleSheet("")  # Reset to default
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
