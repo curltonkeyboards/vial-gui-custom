@@ -692,7 +692,9 @@ class midiadvancedTab(QScrollArea):
         
         velocity_layout = QHBoxLayout()
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
+        self.velocity_options.setMaximumWidth(150)
         self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, velocity_layout)
+        self.velocity_multiplier_options.setMaximumWidth(150)
         layout.addLayout(velocity_layout)
         layout.addStretch()
 
