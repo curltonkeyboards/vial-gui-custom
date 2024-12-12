@@ -499,12 +499,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, Qt
 
 class midiadvancedTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)
-
     def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
         super().__init__(parent)
         self.label = label
-        # Store parameters as instance variables
+        # Store all the parameters as instance variables
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
@@ -533,16 +531,15 @@ class midiadvancedTab(QScrollArea):
         # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(0)  # Remove spacing between layouts
+        self.main_layout.setSpacing(0)
 
-        # Create buttons layout
+        # Create buttons layout with stretches
         self.button_layout = QHBoxLayout()
         self.button_layout.setSpacing(0)
         self.button_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create containers dict
-        self.containers = {}
-        self.buttons = {}
+        
+        # Add initial stretch before buttons
+        self.button_layout.addStretch(1)
 
         # Define sections
         sections = [
@@ -558,7 +555,7 @@ class midiadvancedTab(QScrollArea):
         # Create buttons and containers for each section
         for section in sections:
             btn = QPushButton(section)
-            btn.setFixedSize(80, 50)  # Set fixed size for section buttons
+            btn.setFixedSize(80, 50)
             btn.clicked.connect(lambda checked, s=section: self.toggle_section(s))
             self.button_layout.addWidget(btn)
             self.buttons[section] = btn
@@ -567,15 +564,22 @@ class midiadvancedTab(QScrollArea):
             container = QWidget()
             container_layout = QVBoxLayout()
             
-            # If this is the Advanced MIDI Settings section, add a grid layout for the inversion buttons
+            # If this is the Advanced MIDI Settings section, add a horizontal layout with stretches
             if section == "Advanced MIDI Settings":
+                advanced_h_layout = QHBoxLayout()
+                advanced_h_layout.addStretch(1)
                 self.advanced_grid = QGridLayout()
-                container_layout.addLayout(self.advanced_grid)
+                advanced_h_layout.addLayout(self.advanced_grid)
+                advanced_h_layout.addStretch(1)
+                container_layout.addLayout(advanced_h_layout)
                 
             container.setLayout(container_layout)
             container.hide()
             self.main_layout.addWidget(container)
             self.containers[section] = container
+
+        # Add final stretch after buttons
+        self.button_layout.addStretch(1)
 
         self.main_layout.insertLayout(0, self.button_layout)
         
