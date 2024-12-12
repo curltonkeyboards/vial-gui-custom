@@ -2003,13 +2003,6 @@ class FilteredTabbedKeycodes(QTabWidget):
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
                 if tab.label == prev_tab:
                     self.setCurrentIndex(self.count() - 1)
-                    
-        for midiadvancedTab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
 
     def on_keymap_override(self):
         for tab in self.tabs:
