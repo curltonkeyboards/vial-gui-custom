@@ -925,16 +925,7 @@ class midiadvancedTab(QScrollArea):
 
         # Reset the visible text to the default
         dropdown.setCurrentIndex(0)
-        
-    
-    def recreate_buttons(self, keycode_filter=None):
-        # Clear and recreate the advanced section
-        old_layout = self.containers["Advanced MIDI Settings"].layout()
-        while old_layout.count():
-            item = old_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        self.populate_advanced_section()
+
 
     def relabel_buttons(self):
         # Only need to relabel buttons in the advanced section
