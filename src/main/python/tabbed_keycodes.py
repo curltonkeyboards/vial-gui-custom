@@ -974,6 +974,10 @@ class midiadvancedTab(QScrollArea):
     def has_buttons(self):
         return True
 
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
         
 class ModernButton(QPushButton):
     def __init__(self, text, color="#4a90e2"):
