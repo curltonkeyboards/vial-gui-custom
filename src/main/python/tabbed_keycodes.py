@@ -552,7 +552,6 @@ class midiadvancedTab(QScrollArea):
         sections = [
             "Show\nChannel\nOptions",
             "Show\nCC Options",
-            "Encoder Increments",
             "Show\nTransposition\nSettings",
             "Show\nKeySplit\nOptions",
             "Show\nAdvanced MIDI\nOptions",
@@ -598,7 +597,6 @@ class midiadvancedTab(QScrollArea):
         # Populate all sections
         self.populate_channel_section()
         self.populate_cc_velocity_section()
-        self.populate_increments_section()
         self.populate_transposition_section()
         self.populate_keysplit_section()
         self.populate_advanced_section()
@@ -650,6 +648,7 @@ class midiadvancedTab(QScrollArea):
         
         velocity_layout = QHBoxLayout()
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
+        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, layout)
         layout.addLayout(velocity_layout)
         layout.addStretch()
 
@@ -681,16 +680,11 @@ class midiadvancedTab(QScrollArea):
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, layout)
         self.add_value_button("CC Up", self.CCup, layout)
         self.add_value_button("CC Down", self.CCdown, layout)
+        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, layout)
         self.add_value_button("Program Change", self.smartchord_program_change, layout)
         self.add_value_button("Bank LSB", self.smartchord_LSB, layout)
         self.add_value_button("Bank MSB", self.smartchord_MSB, layout)
         self.containers["Show\nCC Options"].layout().addLayout(layout)
-
-    def populate_increments_section(self):
-        layout = QHBoxLayout()
-        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, layout)
-        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, layout)
-        self.containers["Encoder Increments"].layout().addLayout(layout)
 
     def populate_transposition_section(self):
         layout = QHBoxLayout()
