@@ -625,7 +625,6 @@ class midiadvancedTab(QScrollArea):
     def add_header_dropdown2(self, label_text, items, layout):
         dropdown = QComboBox()
         dropdown.addItems(items)
-        dropdown.setFixedHeight(60)
         label = QLabel(label_text)
         layout.addWidget(label)
         layout.addWidget(dropdown)
@@ -818,6 +817,37 @@ class midiadvancedTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
+
+        # Add a placeholder item as the first item
+        dropdown.addItem(f"{header_text}")  # Placeholder item
+
+        # Add the keycodes as options
+        for keycode in keycodes:
+            dropdown.addItem(Keycode.label(keycode.qmk_id), keycode.qmk_id)
+
+        # Prevent the first item from being selected again
+        dropdown.model().item(0).setEnabled(False)
+
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda: self.reset_dropdown(dropdown, header_text))
+        vbox.addWidget(dropdown)
+
+        # Add the vertical box (header + dropdown) to the provided layout
+        layout.addLayout(vbox)
+        
+    def add_header_dropdown2(self, header_text, keycodes, layout):
+        """Helper method to add a header and dropdown side by side."""
+        # Create a vertical layout to hold header and dropdown
+        vbox = QVBoxLayout()
+
+        # Create header
+        header_label = QLabel(header_text)
+        header_label.setAlignment(Qt.AlignCenter)
+        #vbox.addWidget(header_label)
+
+        # Create dropdown
+        dropdown = CenteredComboBox()
+        dropdown.setFixedHeight(60)  # Set height of dropdown
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"{header_text}")  # Placeholder item
