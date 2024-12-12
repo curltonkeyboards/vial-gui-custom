@@ -539,7 +539,7 @@ class midiadvancedTab(QScrollArea):
         # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(0)
+        self.main_layout.setSpacing(150)
 
         # Create buttons layout with stretches
         self.button_layout = QHBoxLayout()
