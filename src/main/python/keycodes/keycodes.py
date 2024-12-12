@@ -1428,6 +1428,25 @@ KEYCODES_MIDI_SPLIT = [
         K("MI_OCTAVE3_UP", "TS\nOctave▲", "Midi set key split channel UP"),
 ]
 
+KEYCODES_MIDI_SPLIT_BUTTONS = [        
+        K("KS_CHAN_UP", "KS\nChannel▲", "Midi set key split channel UP"),       
+        K("KS2_CHAN_UP", "TS\nChannel▲", "Midi set key split channel UP"),       
+        K("MI_VELOCITY2_UP", "KS\nVelocity▲", "Midi set key split channel UP"),       
+        K("MI_VELOCITY3_UP", "TS\nVelocity▲", "Midi set key split channel UP"),       
+        K("MI_TRANSPOSE2_UP", "KS\nTranspose▲", "Midi set key split channel UP"),        
+        K("MI_TRANSPOSE3_UP", "TS\nTranspose▲", "Midi set key split channel UP"),      
+        K("MI_OCTAVE2_UP", "KS\nOctave▲", "Midi set key split channel UP"),       
+        K("MI_OCTAVE3_UP", "TS\nOctave▲", "Midi set key split channel UP"),        
+        K("KS_CHAN_DOWN", "KS\nChannel▼", "Midi set key split channel Down"),
+        K("KS2_CHAN_DOWN", "TS\nChannel▼", "Midi set key split channel Down"),
+        K("MI_VELOCITY2_DOWN", "KS\nVelocity▼", "Midi set key split channel Down"),
+        K("MI_VELOCITY3_DOWN", "TS\nVelocity▼", "Midi set key split channel Down"),
+        K("MI_TRANSPOSE2_DOWN", "KS\nTranspose▼", "Midi set key split channel Down"),
+        K("MI_TRANSPOSE3_DOWN", "TS\nTranspose▼", "Midi set key split channel Down"),
+        K("MI_OCTAVE2_DOWN", "KS\nOctave▼", "Midi set key split channel Down"),
+        K("MI_OCTAVE3_DOWN", "TS\nOctave▼", "Midi set key split channel Down"),
+]
+
 KEYCODES_MIDI_SPLIT2 = [
         K("MI_SPLIT2_C", "TS\nC", "Midi send note C"),
         K("MI_SPLIT2_Cs", "TS\nC#/Dᵇ", "Midi send note C#/Dᵇ", alias=["MI_SPLIT2_Db"]),
@@ -2090,7 +2109,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_EARTRAINER + KEYCODES_CHORDTRAINER + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_MIDI_CHANNEL_KEYSPLIT + KEYCODES_MIDI_CHANNEL_KEYSPLIT2 + KEYCODES_KEYSPLIT_BUTTONS +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_0+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_CHORD_5+KEYCODES_MIDI_SPLIT+KEYCODES_MIDI_SPLIT2+
-                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED)
+                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED+KEYCODES_MIDI_SPLIT_BUTTONS)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
