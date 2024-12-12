@@ -590,14 +590,14 @@ class midiadvancedTab(QScrollArea):
         
         # Replace dropdowns with individual buttons in the modified layout
         self.keysplit_layout6 = QHBoxLayout()
-        self.add_value_button("KS Velocity", self.ksvelocity2, self.keysplit_layout6)
-        self.add_header_dropdown("KS Octave", self.ksoctave2, self.keysplit_layout6)
-        self.add_header_dropdown("KS Key", self.kskey2, self.keysplit_layout6)  
-        self.add_header_dropdown("KS Channel", self.kschannel2, self.keysplit_layout6)
-        self.add_value_button("TS Velocity", self.ksvelocity3, self.keysplit_layout6)
-        self.add_header_dropdown("TS Octave", self.ksoctave3, self.keysplit_layout6)
-        self.add_header_dropdown("TS Key", self.kskey3, self.keysplit_layout6)  
-        self.add_header_dropdown("TS Channel", self.kschannel3, self.keysplit_layout6)
+        self.add_value_button2("Key Switch\nVelocity", self.ksvelocity2, self.keysplit_layout6)
+        self.add_header_dropdown2("KS Octave", self.ksoctave2, self.keysplit_layout6)
+        self.add_header_dropdown2("KS Key", self.kskey2, self.keysplit_layout6)  
+        self.add_header_dropdown2("KS Channel", self.kschannel2, self.keysplit_layout6)
+        self.add_value_button2("TS Velocity", self.ksvelocity3, self.keysplit_layout6)
+        self.add_header_dropdown2("TS Octave", self.ksoctave3, self.keysplit_layout6)
+        self.add_header_dropdown2("TS Key", self.kskey3, self.keysplit_layout6)  
+        self.add_header_dropdown2("TS Channel", self.kschannel3, self.keysplit_layout6)
         
         self.main_layout.addLayout(self.keysplit_layout6)
 
@@ -621,11 +621,26 @@ class midiadvancedTab(QScrollArea):
         label = QLabel(label_text)
         layout.addWidget(label)
         layout.addWidget(dropdown)
+        
+    def add_header_dropdown2(self, label_text, items, layout):
+        dropdown = QComboBox()
+        dropdown.addItems(items)
+        dropdown.setFixedHeight(60)
+        label = QLabel(label_text)
+        layout.addWidget(label)
+        layout.addWidget(dropdown)
 
     def add_value_button(self, label_text, keycode_set, layout):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
+        button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
+        layout.addWidget(button)
+        
+    def add_value_button2(self, label_text, keycode_set, layout):
+        """Create a button that opens a dialog to input a value for the corresponding keycode."""
+        button = QPushButton(label_text)
+        button.setFixedHeight(60)
         button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
         layout.addWidget(button)
 
@@ -662,7 +677,7 @@ class midiadvancedTab(QScrollArea):
                 "Bank LSB": f"MI_BANK_LSB_{value}",
                 "Bank MSB": f"MI_BANK_MSB_{value}",
                 "Set Velocity": f"MI_VELOCITY_{value}",
-                "KS Velocity": f"MI_VELOCITY2_{value}",
+                "Key Switch\nVelocity": f"MI_VELOCITY2_{value}",
                 "TS Velocity": f"MI_VELOCITY3_{value}"
             }
         
