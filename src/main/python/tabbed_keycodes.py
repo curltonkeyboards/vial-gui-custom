@@ -1031,9 +1031,11 @@ class EarTrainerTab(QScrollArea):
         self.main_layout.setSpacing(5)
         self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Toggle buttons
+        # Toggle buttons with center alignment
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(0)
+        button_layout.setSpacing(0)  # No spacing between buttons
+        
+        # Add stretch before buttons
         button_layout.addStretch(1)
         
         self.toggle_intervals = QPushButton("Show Intervals")
@@ -1045,6 +1047,8 @@ class EarTrainerTab(QScrollArea):
         self.toggle_chords.clicked.connect(self.show_chords)
         self.toggle_chords.setFixedSize(120, 40)
         button_layout.addWidget(self.toggle_chords)
+        
+        # Add stretch after buttons
         button_layout.addStretch(1)
         
         self.main_layout.addLayout(button_layout)
