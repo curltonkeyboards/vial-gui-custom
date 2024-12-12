@@ -605,7 +605,6 @@ class midiadvancedTab(QScrollArea):
         # Populate all sections
         self.populate_channel_section()
         self.populate_cc_velocity_section()
-        self.populate_increments_section()
         self.populate_transposition_section()
         self.populate_keysplit_section()  # This will now add the inversion_keycodes2 buttons
         self.populate_advanced_section()
