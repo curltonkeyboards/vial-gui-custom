@@ -691,9 +691,7 @@ class midiadvancedTab(QScrollArea):
         layout = container.layout()
         
         velocity_layout = QHBoxLayout()
-        self.velocity_options.setMaximumWidth(150)
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
-        self.velocity_multiplier_options.setMaximumWidth(150)
         self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, velocity_layout)
         layout.addLayout(velocity_layout)
         layout.addStretch()
@@ -801,6 +799,7 @@ class midiadvancedTab(QScrollArea):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
+        button.setMaximumWidth(150)
         button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
         layout.addWidget(button)
         
@@ -808,6 +807,7 @@ class midiadvancedTab(QScrollArea):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(60)
+        button.setMaximumWidth(150)
         button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
         layout.addWidget(button)
 
@@ -815,7 +815,7 @@ class midiadvancedTab(QScrollArea):
         """Open a dialog to input a value between 0 and 127 and set the keycode accordingly."""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Set Value for {label}")
-        dialog.setFixedSize(300, 150)
+        dialog.setFixedSize(300, 100)
 
         layout = QVBoxLayout(dialog)
         label_widget = QLabel(f"Enter value for {label} (0-127):")
@@ -869,7 +869,7 @@ class midiadvancedTab(QScrollArea):
         """Open a dialog to input CC values."""
         dialog = QDialog(self)  # Create a local dialog instance
         dialog.setWindowTitle("Enter CC Value")
-        dialog.setFixedHeight(170)  # Set fixed height for the dialog
+        dialog.setFixedSize(300, 100)
 
         layout = QVBoxLayout(dialog)
 
@@ -933,7 +933,7 @@ class midiadvancedTab(QScrollArea):
         """Open a submenu dialog for selecting CC Y values based on selected CC X."""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"CC X {selected_x} -> CC Y Selection")
-        dialog.setFixedHeight(300)  # Set fixed height for the dialog
+        dialog.setFixedSize(300, 100)
 
         layout = QVBoxLayout(dialog)
 
@@ -985,6 +985,7 @@ class midiadvancedTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(40)  # Set height of dropdown
+        button.setMaximumWidth(150)
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"{header_text}")  # Placeholder item
@@ -1016,6 +1017,7 @@ class midiadvancedTab(QScrollArea):
         # Create dropdown
         dropdown = CenteredComboBox()
         dropdown.setFixedHeight(60)  # Set height of dropdown
+        button.setMaximumWidth(150)
 
         # Add a placeholder item as the first item
         dropdown.addItem(f"{header_text}")  # Placeholder item
@@ -1559,6 +1561,7 @@ class MacroTab(QScrollArea):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
+        button.setMaximumWidth(150)
         button.clicked.connect(lambda: self.open_value_dialog(label_text))
         self.button_layout.addWidget(button, row, col)
 
@@ -1566,7 +1569,7 @@ class MacroTab(QScrollArea):
         """Open a dialog to input a value between 0 and 127 and set the keycode accordingly."""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Set Value for {label}")
-        dialog.setFixedSize(300, 150)
+        dialog.setFixedSize(300, 100)
 
         max_value = 31 if label == "Tapdance Selection" else 255
         
