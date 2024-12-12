@@ -571,8 +571,8 @@ class midiadvancedTab(QScrollArea):
             container = QWidget()
             container_layout = QVBoxLayout()
             
-            # If this is the Advanced MIDI Settings section
-            if section == "Advanced MIDI Settings":
+            # If this is the Show\nAdvanced MIDI\nOptions section
+            if section == "Show\nAdvanced MIDI\nOptions":
                 advanced_h_layout = QHBoxLayout()
                 advanced_h_layout.addStretch(1)
                 self.advanced_grid = QGridLayout()
@@ -646,7 +646,7 @@ class midiadvancedTab(QScrollArea):
                 row += 1
 
     def populate_advanced_section(self):
-        """Populate the Advanced MIDI Settings section with inversion buttons."""
+        """Populate the Show\nAdvanced MIDI\nOptions section with inversion buttons."""
         # Clear existing buttons
         for i in reversed(range(self.advanced_grid.count())):
             widget = self.advanced_grid.itemAt(i).widget()
