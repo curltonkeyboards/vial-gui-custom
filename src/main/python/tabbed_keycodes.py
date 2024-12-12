@@ -504,6 +504,7 @@ class midiadvancedTab(QScrollArea):
     def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
         super().__init__(parent)
         self.label = label
+        # Store all the parameters as instance variables
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
@@ -529,147 +530,133 @@ class midiadvancedTab(QScrollArea):
         self.kschannel2 = kschannel2
         self.kschannel3 = kschannel3
 
-        # Create a widget for the scroll area content
+        # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         self.main_layout.setSpacing(10)
 
-        # Create toggle buttons layout
-        toggle_layout = QHBoxLayout()
-        toggle_layout.addStretch(1)
+        # Create buttons layout
+        self.button_layout = QHBoxLayout()
+        self.button_layout.addStretch(1)
 
-        # Create section toggle buttons
-        self.sections = [
-            ("MIDI Channel Options", self.create_channel_section()),
-            ("CC and Velocity", self.create_cc_velocity_section()),
-            ("Encoder Increments", self.create_increments_section()),
-            ("Transposition", self.create_transposition_section()),
-            ("KeySplit", self.create_keysplit_section()),
-            ("Advanced MIDI Settings", self.create_advanced_section())
+        # Create containers dict to store all section containers
+        self.containers = {}
+        self.buttons = {}
+
+        # Define sections
+        sections = [
+            "MIDI Channel Options",
+            "CC and Velocity",
+            "Encoder Increments",
+            "Transposition",
+            "KeySplit",
+            "Advanced MIDI Settings"
         ]
 
-        self.buttons = []
-        self.containers = []
-
-        for title, container in self.sections:
-            # Create and setup button
-            btn = QPushButton(title)
+        # Create buttons and containers for each section
+        for section in sections:
+            # Create button
+            btn = QPushButton(section)
             btn.setFixedHeight(40)
             btn.setMinimumWidth(150)
-            btn.clicked.connect(lambda checked, b=btn, c=container: self.toggle_section(b, c))
-            toggle_layout.addWidget(btn)
-            self.buttons.append(btn)
-            
-            # Setup container
+            btn.clicked.connect(lambda checked, s=section: self.toggle_section(s))
+            self.button_layout.addWidget(btn)
+            self.buttons[section] = btn
+
+            # Create container
+            container = QWidget()
+            container.setLayout(QVBoxLayout())
             container.hide()
             self.main_layout.addWidget(container)
-            self.containers.append(container)
+            self.containers[section] = container
 
-        toggle_layout.addStretch(1)
-        self.main_layout.insertLayout(0, toggle_layout)
+        self.button_layout.addStretch(1)
+        self.main_layout.insertLayout(0, self.button_layout)
 
-        # Set the scroll area properties
+        # Populate all sections
+        self.populate_channel_section()
+        self.populate_cc_velocity_section()
+        self.populate_increments_section()
+        self.populate_transposition_section()
+        self.populate_keysplit_section()
+        self.populate_advanced_section()
+
+        # Set up scroll area
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Show first section by default
-        if self.buttons and self.containers:
-            self.toggle_section(self.buttons[0], self.containers[0])
+        self.toggle_section(sections[0])
 
-    def toggle_section(self, clicked_button, target_container):
+    def toggle_section(self, section_name):
         # Reset all buttons and hide all containers
-        for btn in self.buttons:
+        for btn in self.buttons.values():
             btn.setStyleSheet("")
-        for container in self.containers:
+        for container in self.containers.values():
             container.hide()
 
-        # Show target container and highlight button
-        target_container.show()
-        clicked_button.setStyleSheet("""
+        # Show selected section and highlight button
+        self.containers[section_name].show()
+        self.buttons[section_name].setStyleSheet("""
             background-color: #B8D8EB;
             color: #395968;
         """)
 
-    def create_channel_section(self):
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        
-        # MIDI Channel Options section
-        channel_layout = QHBoxLayout()
-        self.add_header_dropdown("MIDI Channel", self.channel_options, channel_layout)
-        self.add_header_dropdown("Temporary MIDI Channel", self.channel_oneshot, channel_layout)
-        self.add_header_dropdown("Hold MIDI Channel", self.channel_hold, channel_layout)
-        layout.addLayout(channel_layout)
-        
-        return container
+    def populate_channel_section(self):
+        layout = QHBoxLayout()
+        self.add_header_dropdown("MIDI Channel", self.channel_options, layout)
+        self.add_header_dropdown("Temporary MIDI Channel", self.channel_oneshot, layout)
+        self.add_header_dropdown("Hold MIDI Channel", self.channel_hold, layout)
+        self.containers["MIDI Channel Options"].layout().addLayout(layout)
 
-    def create_cc_velocity_section(self):
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        
-        # CC and Velocity controls
-        controls_layout = QHBoxLayout()
-        self.add_value_button("Set Velocity", self.velocity_options, controls_layout)
-        self.add_cc_x_y_menu(controls_layout)
-        self.add_value_button("CC On/Off", self.smartchord_CC_toggle, controls_layout)
-        self.add_value_button("CC Up", self.CCup, controls_layout)
-        self.add_value_button("CC Down", self.CCdown, controls_layout)
-        self.add_value_button("Program Change", self.smartchord_program_change, controls_layout)
-        self.add_value_button("Bank LSB", self.smartchord_LSB, controls_layout)
-        self.add_value_button("Bank MSB", self.smartchord_MSB, controls_layout)
-        layout.addLayout(controls_layout)
-        
-        return container
+    def populate_cc_velocity_section(self):
+        layout = QHBoxLayout()
+        self.add_cc_x_y_menu(layout)
+        self.add_value_button("CC On/Off", self.smartchord_CC_toggle, layout)
+        self.add_value_button("CC Up", self.CCup, layout)
+        self.add_value_button("CC Down", self.CCdown, layout)
+        self.add_value_button("Program Change", self.smartchord_program_change, layout)
+        self.add_value_button("Bank LSB", self.smartchord_LSB, layout)
+        self.add_value_button("Bank MSB", self.smartchord_MSB, layout)
+        self.containers["CC and Velocity"].layout().addLayout(layout)
 
-    def create_increments_section(self):
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        
-        # Increment settings
-        increment_layout = QHBoxLayout()
-        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, increment_layout)
-        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, increment_layout)
-        layout.addLayout(increment_layout)
-        
-        return container
+    def populate_increments_section(self):
+        layout = QHBoxLayout()
+        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, layout)
+        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, layout)
+        self.containers["Encoder Increments"].layout().addLayout(layout)
 
-    def create_transposition_section(self):
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        
-        # Transposition controls
-        transpose_layout = QHBoxLayout()
-        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, transpose_layout)
-        self.add_header_dropdown("Key Selector", self.smartchord_key, transpose_layout)
-        layout.addLayout(transpose_layout)
-        
-        return container
+    def populate_transposition_section(self):
+        layout = QHBoxLayout()
+        self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, layout)
+        self.add_header_dropdown("Key Selector", self.smartchord_key, layout)
+        self.containers["Transposition"].layout().addLayout(layout)
 
-    def create_keysplit_section(self):
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        
-        # KeySplit settings
-        keysplit_layout = QHBoxLayout()
-        self.add_value_button2("Key Switch\nVelocity", self.ksvelocity2, keysplit_layout)
-        self.add_header_dropdown2("KS Octave", self.ksoctave2, keysplit_layout)
-        self.add_header_dropdown2("KS Key", self.kskey2, keysplit_layout)
-        self.add_header_dropdown2("KS Channel", self.kschannel2, keysplit_layout)
-        self.add_value_button2("TS Velocity", self.ksvelocity3, keysplit_layout)
-        self.add_header_dropdown2("TS Octave", self.ksoctave3, keysplit_layout)
-        self.add_header_dropdown2("TS Key", self.kskey3, keysplit_layout)
-        self.add_header_dropdown2("TS Channel", self.kschannel3, keysplit_layout)
-        layout.addLayout(keysplit_layout)
-        
-        return container
+    def populate_keysplit_section(self):
+        layout = QHBoxLayout()
+        self.add_value_button2("Key Switch\nVelocity", self.ksvelocity2, layout)
+        self.add_header_dropdown2("KS Octave", self.ksoctave2, layout)
+        self.add_header_dropdown2("KS Key", self.kskey2, layout)
+        self.add_header_dropdown2("KS Channel", self.kschannel2, layout)
+        self.add_value_button2("TS Velocity", self.ksvelocity3, layout)
+        self.add_header_dropdown2("TS Octave", self.ksoctave3, layout)
+        self.add_header_dropdown2("TS Key", self.kskey3, layout)
+        self.add_header_dropdown2("TS Channel", self.kschannel3, layout)
+        self.containers["KeySplit"].layout().addLayout(layout)
 
-    def create_advanced_section(self):
-        container = QWidget()
-        layout = QGridLayout(container)
+    def populate_advanced_section(self):
+        container = self.containers["Advanced MIDI Settings"]
+        main_layout = container.layout()
         
-        # Advanced MIDI settings (buttons from inversion_keycodes)
+        # Add velocity controls at the top
+        velocity_layout = QHBoxLayout()
+        self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
+        main_layout.addLayout(velocity_layout)
+        
+        # Add grid layout for inversion buttons
+        grid_layout = QGridLayout()
         row = 0
         col = 0
         for keycode in self.inversion_keycodes:
@@ -678,13 +665,12 @@ class midiadvancedTab(QScrollArea):
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            layout.addWidget(btn, row, col)
+            grid_layout.addWidget(btn, row, col)
             col += 1
             if col >= 12:
                 col = 0
                 row += 1
-        
-        return container
+        main_layout.addLayout(grid_layout)
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
@@ -954,22 +940,26 @@ class midiadvancedTab(QScrollArea):
         # Reset the visible text to the default
         dropdown.setCurrentIndex(0)
         
+    
     def recreate_buttons(self, keycode_filter=None):
-        # Recreate the advanced section buttons
-        advanced_container = self.create_advanced_section()
-        self.containers[-1].deleteLater()
-        self.containers[-1] = advanced_container
-        self.main_layout.addWidget(advanced_container)
-        advanced_container.hide()
+        # Clear and recreate the advanced section
+        old_layout = self.containers["Advanced MIDI Settings"].layout()
+        while old_layout.count():
+            item = old_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.populate_advanced_section()
 
     def relabel_buttons(self):
-        # Relabel buttons in the advanced section
-        advanced_container = self.containers[-1]
-        layout = advanced_container.layout()
-        for i in range(layout.count()):
-            widget = layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
-                widget.setText(Keycode.label(widget.keycode.qmk_id))
+        # Only need to relabel buttons in the advanced section
+        advanced_container = self.containers["Advanced MIDI Settings"]
+        for i in range(advanced_container.layout().count()):
+            item = advanced_container.layout().itemAt(i)
+            if isinstance(item, QGridLayout):
+                for j in range(item.count()):
+                    widget = item.itemAt(j).widget()
+                    if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
+                        widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
         return True
