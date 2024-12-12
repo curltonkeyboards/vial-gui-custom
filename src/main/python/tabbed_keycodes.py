@@ -535,22 +535,24 @@ class midiadvancedTab(QScrollArea):
         self.main_layout = QVBoxLayout(self.scroll_content)
         self.main_layout.setSpacing(10)
 
-        # Create buttons layout
+        # Create buttons layout with no spacing
         self.button_layout = QHBoxLayout()
-        self.button_layout.addStretch(1)
+        self.button_layout.setSpacing(0)  # Remove spacing between buttons
+        self.button_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
 
         # Create containers dict to store all section containers
         self.containers = {}
         self.buttons = {}
 
-        # Define sections
+        # Define sections (added Velocity section)
         sections = [
             "MIDI Channel Options",
             "CC and Velocity",
             "Encoder Increments",
             "Transposition",
             "KeySplit",
-            "Advanced MIDI Settings"
+            "Advanced MIDI Settings",
+            "Velocity"
         ]
 
         # Create buttons and containers for each section
@@ -570,7 +572,6 @@ class midiadvancedTab(QScrollArea):
             self.main_layout.addWidget(container)
             self.containers[section] = container
 
-        self.button_layout.addStretch(1)
         self.main_layout.insertLayout(0, self.button_layout)
 
         # Populate all sections
@@ -580,6 +581,7 @@ class midiadvancedTab(QScrollArea):
         self.populate_transposition_section()
         self.populate_keysplit_section()
         self.populate_advanced_section()
+        self.populate_velocity_section()
 
         # Set up scroll area
         self.setWidget(self.scroll_content)
@@ -589,6 +591,17 @@ class midiadvancedTab(QScrollArea):
 
         # Show first section by default
         self.toggle_section(sections[0])
+
+    # Add new populate_velocity_section method
+    def populate_velocity_section(self):
+        container = self.containers["Velocity"]
+        layout = container.layout()
+        
+        velocity_layout = QHBoxLayout()
+        self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
+        layout.addLayout(velocity_layout)
+        layout.addStretch()
+
 
     def toggle_section(self, section_name):
         # Reset all buttons and hide all containers
@@ -649,11 +662,6 @@ class midiadvancedTab(QScrollArea):
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
         main_layout = container.layout()
-        
-        # Add velocity controls at the top
-        velocity_layout = QHBoxLayout()
-        self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
-        main_layout.addLayout(velocity_layout)
         
         # Add grid layout for inversion buttons
         grid_layout = QGridLayout()
