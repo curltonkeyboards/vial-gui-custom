@@ -539,7 +539,7 @@ class midiadvancedTab(QScrollArea):
         # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(150)
+        self.main_layout.setSpacing(60)
 
         # Create buttons layout with stretches
         self.button_layout = QHBoxLayout()
@@ -691,10 +691,10 @@ class midiadvancedTab(QScrollArea):
         layout = container.layout()
         
         velocity_layout = QHBoxLayout()
-        self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
         self.velocity_options.setMaximumWidth(150)
-        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, velocity_layout)
+        self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
         self.velocity_multiplier_options.setMaximumWidth(150)
+        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, velocity_layout)
         layout.addLayout(velocity_layout)
         layout.addStretch()
 
