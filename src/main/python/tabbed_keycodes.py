@@ -1056,8 +1056,8 @@ class EarTrainerTab(QScrollArea):
         
         # Toggle buttons with center alignment
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(-2)  # No spacing between buttons
-        button_layout.setContentsMargins(0, 0, 0, 0)  # Remove any margin
+        button_layout.setSpacing(0)  # No spacing between buttons
+        
         # Add stretch before buttons
         button_layout.addStretch(1)
         
@@ -1107,41 +1107,19 @@ class EarTrainerTab(QScrollArea):
         self.intervals_container.show()
         self.chords_container.hide()
         self.toggle_intervals.setStyleSheet("""
-            QPushButton {
-                background-color: #B8D8EB;
-                color: #395968;
-                margin: 0px;
-                padding: 0px;
-                border: 1px solid #888888;
-            }
+            background-color: #B8D8EB;
+            color: #395968;
         """)
-        self.toggle_chords.setStyleSheet("""
-            QPushButton {
-                margin: 0px;
-                padding: 0px;
-                border: 1px solid #888888;
-            }
-        """)
+        self.toggle_chords.setStyleSheet("")  # Reset to default
 
     def show_chords(self):
         self.intervals_container.hide()
         self.chords_container.show()
         self.toggle_chords.setStyleSheet("""
-            QPushButton {
-                background-color: #C9E4CA;
-                color: #4A654B;
-                margin: 0px;
-                padding: 0px;
-                border: 1px solid #888888;
-            }
+            background-color: #C9E4CA;
+            color: #4A654B;
         """)
-        self.toggle_intervals.setStyleSheet("""
-            QPushButton {
-                margin: 0px;
-                padding: 0px;
-                border: 1px solid #888888;
-            }
-        """)
+        self.toggle_intervals.setStyleSheet("")  # Reset to default
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
