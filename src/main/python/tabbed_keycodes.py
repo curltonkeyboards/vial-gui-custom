@@ -659,7 +659,7 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.containers["KeySplit"].layout().addLayout(layout)
 
-    
+    def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
         
         # Clear any existing layouts
