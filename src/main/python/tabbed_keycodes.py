@@ -662,36 +662,18 @@ class midiadvancedTab(QScrollArea):
     def populate_advanced_section(self):
         container = self.containers["Advanced MIDI Settings"]
         
-        # First, clear any existing layout and its widgets
-        if container.layout():
-            old_layout = container.layout()
-            while old_layout.count():
-                item = old_layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-                elif item.layout():
-                    # Clear nested layouts too
-                    while item.layout().count():
-                        nested_item = item.layout().takeAt(0)
-                        if nested_item.widget():
-                            nested_item.widget().deleteLater()
+        # Create new layout
+        layout = QVBoxLayout(container)
+        layout.setSpacing(10)
         
-        # Create new main layout for the container
-        main_layout = QVBoxLayout(container)
-        main_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-        
-        # Create horizontal layout for centering
-        h_layout = QHBoxLayout()
-        h_layout.addStretch(1)  # Left spacer
-        
-        # Create grid layout for buttons
+        # Create grid directly - no need for extra horizontal layout
         grid = QGridLayout()
-        grid.setSpacing(5)  # Space between buttons
+        grid.setSpacing(5)
         
         # Add buttons to grid
         for i, keycode in enumerate(self.inversion_keycodes):
-            row = i // 12  # Integer division for row (0 or 1)
-            col = i % 12   # Modulo for column (0-11)
+            row = i // 12
+            col = i % 12
             
             btn = SquareButton()
             btn.setFixedSize(40, 40)
@@ -700,13 +682,12 @@ class midiadvancedTab(QScrollArea):
             btn.keycode = keycode
             grid.addWidget(btn, row, col)
         
-        # Add grid to horizontal layout
-        h_layout.addLayout(grid)
-        h_layout.addStretch(1)  # Right spacer
+        # Add grid directly to container layout
+        layout.addLayout(grid)
+        layout.addStretch()
         
-        # Add horizontal layout to main layout
-        main_layout.addLayout(h_layout)
-        main_layout.addStretch()  # Bottom spacer
+        # Make sure the container has a minimum size
+        container.setMinimumHeight(100)
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
