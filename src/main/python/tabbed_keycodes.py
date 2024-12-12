@@ -504,7 +504,7 @@ class midiadvancedTab(QScrollArea):
     def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3):
         super().__init__(parent)
         self.label = label
-        # Store all the parameters as instance variables
+        # Store parameters as instance variables
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
@@ -533,7 +533,7 @@ class midiadvancedTab(QScrollArea):
         # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(10)
+        self.main_layout.setSpacing(0)  # Remove spacing between layouts
 
         # Create buttons layout
         self.button_layout = QHBoxLayout()
@@ -558,8 +558,7 @@ class midiadvancedTab(QScrollArea):
         # Create buttons and containers for each section
         for section in sections:
             btn = QPushButton(section)
-            btn.setFixedHeight(40)
-            btn.setMinimumWidth(150)
+            btn.setFixedSize(80, 50)  # Set fixed size for section buttons
             btn.clicked.connect(lambda checked, s=section: self.toggle_section(s))
             self.button_layout.addWidget(btn)
             self.buttons[section] = btn
@@ -579,6 +578,11 @@ class midiadvancedTab(QScrollArea):
             self.containers[section] = container
 
         self.main_layout.insertLayout(0, self.button_layout)
+        
+        # Add 100 pixel spacer below buttons
+        spacer = QWidget()
+        spacer.setFixedHeight(100)
+        self.main_layout.addWidget(spacer)
 
         # Populate all sections
         self.populate_channel_section()
@@ -586,8 +590,11 @@ class midiadvancedTab(QScrollArea):
         self.populate_increments_section()
         self.populate_transposition_section()
         self.populate_keysplit_section()
-        self.populate_advanced_section()  # Add this new method
+        self.populate_advanced_section()
         self.populate_velocity_section()
+
+        # Add stretch to push content up
+        self.main_layout.addStretch()
 
         # Set up scroll area
         self.setWidget(self.scroll_content)
@@ -609,11 +616,11 @@ class midiadvancedTab(QScrollArea):
         # Add inversion buttons in a grid layout
         row = 0
         col = 0
-        max_cols = 4  # Adjust this value to change number of columns
+        max_cols = 8  # Adjust this value to change number of columns
 
         for keycode in self.inversion_keycodes:
             btn = SquareButton()
-            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setFixedSize(40, 40)  # Set fixed size for inversion buttons
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
@@ -972,11 +979,12 @@ class midiadvancedTab(QScrollArea):
         # Repopulate advanced section with filtered buttons
         row = 0
         col = 0
-        max_cols = 4
+        max_cols = 8
 
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
+                btn.setFixedSize(40, 40)  # Set fixed size for inversion buttons
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
