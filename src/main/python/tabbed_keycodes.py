@@ -1023,12 +1023,12 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(5)
+        self.main_layout.setSpacing(0)
         self.main_layout.setAlignment(Qt.AlignTop)
         
         # Toggle buttons with center alignment
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(-5)  # No spacing between buttons
+        button_layout.setSpacing(0)  # No spacing between buttons
         
         # Add stretch before buttons
         button_layout.addStretch(1)
