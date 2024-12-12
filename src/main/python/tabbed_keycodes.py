@@ -579,8 +579,7 @@ class midiadvancedTab(QScrollArea):
         self.populate_cc_velocity_section()
         self.populate_increments_section()
         self.populate_transposition_section()
-        self.populate_keysplit_section()
-        self.populate_advanced_section()
+        self.populate_keysplit_section()        
         self.populate_velocity_section()
 
         # Set up scroll area
@@ -658,28 +657,6 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, layout)
         self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
         self.containers["KeySplit"].layout().addLayout(layout)
-
-    def populate_advanced_section(self):
-        container = self.containers["Advanced MIDI Settings"]
-        main_layout = container.layout()
-
-        
-        # Add grid layout for inversion buttons
-        grid_layout = QGridLayout()
-        row = 0
-        col = 0
-        for keycode in self.inversion_keycodes:
-            btn = SquareButton()
-            btn.setRelSize(KEYCODE_BTN_RATIO)
-            btn.setText(Keycode.label(keycode.qmk_id))
-            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-            btn.keycode = keycode
-            grid_layout.addWidget(btn, row, col)
-            col += 1
-            if col >= 12:
-                col = 0
-                row += 1
-        main_layout.addLayout(grid_layout)
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
