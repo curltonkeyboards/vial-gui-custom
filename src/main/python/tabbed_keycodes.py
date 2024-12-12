@@ -550,19 +550,19 @@ class midiadvancedTab(QScrollArea):
 
         # Define sections
         sections = [
-            "MIDI Channel Options",
-            "CC Options",
+            "Show\nChannel\nOptions",
+            "Show\nCC Options",
             "Encoder Increments",
-            "Transposition",
-            "KeySplit",
-            "Advanced MIDI Settings",
-            "Velocity"
+            "Show\nTransposition\nSettings",
+            "Show\nKeySplit\nOptions",
+            "Show\nAdvanced MIDI\nOptions",
+            "Show\nVelocity\nOptions"
         ]
 
         # Create buttons and containers for each section
         for section in sections:
             btn = QPushButton(section)
-            btn.setFixedSize(80, 50)
+            btn.setFixedSize(100, 70)
             btn.clicked.connect(lambda checked, s=section: self.toggle_section(s))
             self.button_layout.addWidget(btn)
             self.buttons[section] = btn
@@ -572,7 +572,7 @@ class midiadvancedTab(QScrollArea):
             container_layout = QVBoxLayout()
             
             # If this is the Advanced MIDI Settings section, add a horizontal layout with stretches
-            if section == "Advanced MIDI Settings":
+            if section == "Show\nAdvanced MIDI\nOptions":
                 advanced_h_layout = QHBoxLayout()
                 advanced_h_layout.addStretch(1)
                 self.advanced_grid = QGridLayout()
@@ -631,7 +631,7 @@ class midiadvancedTab(QScrollArea):
 
         for keycode in self.inversion_keycodes:
             btn = SquareButton()
-            btn.setFixedSize(40, 40)  # Set fixed size for inversion buttons
+            btn.setFixedSize(55, 55)  # Set fixed size for inversion buttons
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
@@ -645,7 +645,7 @@ class midiadvancedTab(QScrollArea):
 
     # Add new populate_velocity_section method
     def populate_velocity_section(self):
-        container = self.containers["Velocity"]
+        container = self.containers["Show\nVelocity\nOptions"]
         layout = container.layout()
         
         velocity_layout = QHBoxLayout()
@@ -673,7 +673,7 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown("MIDI Channel", self.channel_options, layout)
         self.add_header_dropdown("Temporary MIDI Channel", self.channel_oneshot, layout)
         self.add_header_dropdown("Hold MIDI Channel", self.channel_hold, layout)
-        self.containers["MIDI Channel Options"].layout().addLayout(layout)
+        self.containers["Show\nChannel\nOptions"].layout().addLayout(layout)
 
     def populate_cc_velocity_section(self):
         layout = QHBoxLayout()
@@ -684,7 +684,7 @@ class midiadvancedTab(QScrollArea):
         self.add_value_button("Program Change", self.smartchord_program_change, layout)
         self.add_value_button("Bank LSB", self.smartchord_LSB, layout)
         self.add_value_button("Bank MSB", self.smartchord_MSB, layout)
-        self.containers["CC Options"].layout().addLayout(layout)
+        self.containers["Show\nCC Options"].layout().addLayout(layout)
 
     def populate_increments_section(self):
         layout = QHBoxLayout()
@@ -696,7 +696,7 @@ class midiadvancedTab(QScrollArea):
         layout = QHBoxLayout()
         self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, layout)
         self.add_header_dropdown("Key Selector", self.smartchord_key, layout)
-        self.containers["Transposition"].layout().addLayout(layout)
+        self.containers["Show\nTransposition\nSettings"].layout().addLayout(layout)
 
     def populate_keysplit_section(self):
         layout = QHBoxLayout()
@@ -708,7 +708,7 @@ class midiadvancedTab(QScrollArea):
         self.add_header_dropdown2("Triple Switch\nOctave", self.ksoctave3, layout)
         self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, layout)
         self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, layout)
-        self.containers["KeySplit"].layout().addLayout(layout)
+        self.containers["Show\nKeySplit\nOptions"].layout().addLayout(layout)
 
     def add_header_dropdown(self, label_text, items, layout):
         dropdown = QComboBox()
@@ -1010,7 +1010,7 @@ class midiadvancedTab(QScrollArea):
 
     def relabel_buttons(self):
         # Only need to relabel buttons in the advanced section
-        advanced_container = self.containers["Advanced MIDI Settings"]
+        advanced_container = self.containers["Show\nAdvanced MIDI\nOptions"]
         for i in range(advanced_container.layout().count()):
             item = advanced_container.layout().itemAt(i)
             if isinstance(item, QGridLayout):
@@ -2041,7 +2041,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
-            KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTab
+            KeySplitTab(self, "Show\nKeySplit\nOptions", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTab
             EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
             midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
