@@ -842,7 +842,6 @@ class midiadvancedTab(QScrollArea):
                 "CC On/Off": f"MI_CC_{value}_TOG",
                 "CC Up": f"MI_CC_{value}_UP",
                 "CC Down": f"MI_CC_{value}_DWN",
-                "TS Velocity": f"MI_VELOCITY3_{value}"
                 "Expression Wheel CC": f"MI_CCENCODER_{value}",
                 "Program Change": f"MI_PROG_{value}",
                 "Bank LSB": f"MI_BANK_LSB_{value}",
