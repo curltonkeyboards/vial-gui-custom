@@ -875,7 +875,6 @@ class KeyboardWidget2(QWidget):
             widget.update_position(widget.scale, widget.shift_x - top_x + self.padding,
                                    widget.shift_y - top_y + self.padding)
 
-
     def update_layout(self):
         """ Updates self.widgets for the currently active layout """
 
@@ -888,32 +887,33 @@ class KeyboardWidget2(QWidget):
 
         # Check if there are enough encoders
         if len(encoders) >= 4:
-            # Scale down the encoder positions by 25%
-            encoders[0].shift_y += 60  # Reduced from 80
-            encoders[1].shift_y += 60  # Reduced from 80
-            encoders[0].shift_x -= 22  # Reduced from 30
-            encoders[1].shift_x -= 7   # Reduced from 10
+            # Move the first two encoders down by 90 pixels
+            encoders[0].shift_y += 80
+            encoders[1].shift_y += 80
+            encoders[0].shift_x -= 30
+            encoders[1].shift_x -= 10
 
-            encoders[2].shift_y += 37  # Reduced from 50
-            encoders[3].shift_y += 37  # Reduced from 50
-            encoders[2].shift_x -= 22  # Reduced from 30
-            encoders[3].shift_x -= 7   # Reduced from 10
+            # Move the last two encoders down by 45 pixels
+            encoders[2].shift_y += 50
+            encoders[3].shift_y += 50
+            encoders[2].shift_x -= 30
+            encoders[3].shift_x -= 10
 
-        # Sort widgets by position for proper layout
+        # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
+        
 
         # Determine maximum width and height of the container
-        # Scale down by 25% (multiply by 0.75)
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
-            max_w = max(max_w, p.x() * (self.scale * 1.05))  # Reduced from 1.4
-            max_h = max(max_h, p.y() * (self.scale * 1.125))  # Reduced from 1.5
+            max_w = max(max_w, p.x() * (self.scale * 1.4))
+            max_h = max(max_h, p.y() * (self.scale * 1.5))
 
-        # Move all widgets right and down by scaled amounts
+        # Move all widgets right 20 pixels and down 20 pixels
         for widget in self.widgets:
-            widget.shift_x += 22  # Reduced from 30
-            widget.shift_y += 15  # Reduced from 20
+            widget.shift_x += 30  # Move right
+            widget.shift_y += 20  # Move down
 
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
@@ -928,52 +928,44 @@ class KeyboardWidget2(QWidget):
         
         # Set up the color and pen for the keyboard border
         border_pen = QPen(QApplication.palette().color(QPalette.Highlight))
-        border_pen.setWidth(2)  # Reduced from 3 to match smaller scale
+        border_pen.setWidth(3)  # Set width of the border
         qp.setPen(border_pen)
         qp.setBrush(Qt.NoBrush)
         
-        def with_transparency(self, color, transparency_factor):
-        """
-        Helper function to add transparency to a color
-        transparency_factor: 0.0 to 1.0, where 1.0 is fully transparent
-        """
-        alpha = int(255 * (1 - transparency_factor))
-        return QColor(color.red(), color.green(), color.blue(), alpha)
-        
+        def with_transparency(color, transparency_factor):
+            alpha = int(255 * (1 - transparency_factor))
+            return QColor(color.red(), color.green(), color.blue(), alpha)
+    
         # Draw the rounded border around the keyboard
-        border_radius = 11  # Reduced from 15
-        rect = QRect(self.padding, self.padding, 
-                    round(self.width * 0.75), # Scale down width
-                    round(self.height * 0.75)) # Scale down height
+        border_radius = 15  # Radius for rounded corners
+        rect = QRect(self.padding, self.padding, self.width - 2 * self.padding, self.height - 2 * self.padding)
         qp.drawRoundedRect(rect, border_radius, border_radius)
 
-        # Background image handling
+        # Get the Window color and calculate brightness to determine light or dark theme
         window_color = QApplication.palette().color(QPalette.Window)
-        brightness = (window_color.red() * 0.299 + 
-                     window_color.green() * 0.587 + 
-                     window_color.blue() * 0.114)
+        brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
 
-        if brightness > 127:
-            pixmap = QPixmap(":/backgroundlight")
+        # Choose image based on brightness (light or dark theme)
+        if brightness > 127:  # Threshold for light/dark theme
+            pixmap = QPixmap(":/backgroundlight")  # Light theme alias
         else:
-            pixmap = QPixmap(":/backgrounddark")
+            pixmap = QPixmap(":/backgrounddark")  # Dark theme alias
         
         if not pixmap.isNull():
-            # Scale down image dimensions by 25%
-            image_width = round(776)  # Reduced from 1035
-            image_height = round(259)  # Reduced from 345
-            image_rect = QRect(0, 0, image_width, image_height)
+            # Define the area for the image with specific coordinates and dimensions
+            image_x, image_y = 0, 0  # Adjust as needed for positioning
+            image_width, image_height = 1035, 345  # Set the dimensions as desired
+            image_rect = QRect(image_x, image_y, image_width, image_height)  # Use QRect instead of QRectF
 
             # Create a rounded path for clipping
             path = QPainterPath()
-            path.addRoundedRect(QRectF(image_rect), 11.0, 11.0)  # Reduced from 15.0
+            path.addRoundedRect(QRectF(image_rect), 15.0, 15.0)  # Use QRectF here for rounded corners
 
+            # Clip drawing to the rounded rectangle path and draw the image
             qp.setClipPath(path)
-            scaled_pixmap = pixmap.scaled(image_width, image_height, 
-                                        Qt.KeepAspectRatio, 
-                                        Qt.SmoothTransformation)
-            qp.drawPixmap(image_rect, scaled_pixmap, scaled_pixmap.rect())
+            qp.drawPixmap(image_rect, pixmap, pixmap.rect())
 
+        # Reset clipping after drawing the image
         qp.setClipping(False)
 
         # for regular keycaps
@@ -1033,8 +1025,7 @@ class KeyboardWidget2(QWidget):
         for idx, key in enumerate(self.widgets):
             qp.save()
 
-            # Scale down by 25%
-            qp.scale(self.scale * 0.975, self.scale * 0.975)  # Reduced from 1.3
+            qp.scale(self.scale * 1.3, self.scale * 1.3)
             qp.translate(key.shift_x, key.shift_y)
             qp.translate(key.rotation_x, key.rotation_y)
             qp.rotate(key.rotation_angle)
@@ -1102,19 +1093,16 @@ class KeyboardWidget2(QWidget):
 
     def hit_test(self, pos):
         """ Returns key, hit_masked_part """
-        # Adjust the hit testing to match the new scale
-        adjusted_pos = pos / (self.scale * 0.975)  # Reduced from 1.3
+
+        # Adjust the position for hit testing based on shifts
+        adjusted_pos = pos / (self.scale * 1.3)
 
         for key in self.widgets:
-            if key.masked and key.mask_polygon.containsPoint(
-                adjusted_pos - QPointF(key.shift_x, key.shift_y), 
-                Qt.OddEvenFill
-            ):
+            # Check the masked hitbox first
+            if key.masked and key.mask_polygon.containsPoint(adjusted_pos - QPointF(key.shift_x, key.shift_y), Qt.OddEvenFill):
                 return key, True
-            if key.polygon.containsPoint(
-                adjusted_pos - QPointF(key.shift_x, key.shift_y), 
-                Qt.OddEvenFill
-            ):
+            # Then check the regular hitbox
+            if key.polygon.containsPoint(adjusted_pos - QPointF(key.shift_x, key.shift_y), Qt.OddEvenFill):
                 return key, False
 
         return None, False
