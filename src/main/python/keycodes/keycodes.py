@@ -1323,7 +1323,7 @@ KEYCODES_MIDI_BASIC = [
 
     K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
     K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
-    K("KC_NO", "", "None"),
+    K("KC_NO", "", "Blank"),
     K("MI_CHORD_99", "Smart\nChord", "Press QuickChord"),  
 ]
 
