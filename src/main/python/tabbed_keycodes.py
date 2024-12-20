@@ -19,7 +19,93 @@ from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
 
+class AsyncValueDialog(QDialog):
+    def __init__(self, parent, title, min_val, max_val, callback):
+        super().__init__(parent)
+        self.callback = callback
+        self.setWindowTitle(title)
+        self.setFixedSize(300, 150)
 
+        layout = QVBoxLayout(self)
+        
+        label_widget = QLabel(f"Enter value ({min_val}-{max_val}):")
+        self.value_input = QLineEdit()
+        self.value_input.setPlaceholderText(f"Enter a number between {min_val} and {max_val}")
+        
+        self.min_val = min_val
+        self.max_val = max_val
+        self.value_input.textChanged.connect(self.validate_input)
+        
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.accept)
+        
+        layout.addWidget(label_widget)
+        layout.addWidget(self.value_input)
+        layout.addWidget(confirm_button)
+
+        self.finished.connect(self.on_finished)
+
+    def validate_input(self, text):
+        if text and (not text.isdigit() or not (self.min_val <= int(text) <= self.max_val)):
+            self.value_input.clear()
+            
+    def on_finished(self, result):
+        if result == QDialog.Accepted and self.value_input.text():
+            self.callback(self.value_input.text())
+        self.deleteLater()
+
+class AsyncCCDialog(QDialog):
+    def __init__(self, parent, callback):
+        super().__init__(parent)
+        self.callback = callback
+        self.setWindowTitle("Enter CC Value")
+        self.setFixedHeight(170)
+
+        layout = QVBoxLayout(self)
+
+        cc_x_label = QLabel("CC(0-127):")
+        self.cc_x_input = QLineEdit()
+        self.cc_x_input.textChanged.connect(lambda text: self.validate_input(text, self.cc_x_input))
+
+        cc_y_label = QLabel("Value(0-127):")
+        self.cc_y_input = QLineEdit()
+        self.cc_y_input.textChanged.connect(lambda text: self.validate_input(text, self.cc_y_input))
+
+        layout.addWidget(cc_x_label)
+        layout.addWidget(self.cc_x_input)
+        layout.addWidget(cc_y_label)
+        layout.addWidget(self.cc_y_input)
+
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.accept)
+        layout.addWidget(confirm_button)
+
+        self.finished.connect(self.on_finished)
+
+    def validate_input(self, text, input_field):
+        if text and (not text.isdigit() or not (0 <= int(text) <= 127)):
+            input_field.clear()
+
+    def on_finished(self, result):
+        if result == QDialog.Accepted:
+            x_value = self.cc_x_input.text()
+            y_value = self.cc_y_input.text()
+            if x_value and y_value:
+                self.callback(int(x_value), int(y_value))
+        self.deleteLater()
+
+def show_value_dialog(parent, title, min_val, max_val, callback):
+    """Factory function that handles both web and desktop environments"""
+    try:
+        # Check if we're in web environment
+        import emscripten
+        # For web, show non-modal dialog
+        dialog = AsyncValueDialog(parent, title, min_val, max_val, callback)
+        dialog.show()
+    except ImportError:
+        # For desktop, use traditional modal dialog
+        dialog = AsyncValueDialog(parent, title, min_val, max_val, callback)
+        dialog.exec_()
 
 class PianoButton(SquareButton):
     def __init__(self, key_type='white', color_scheme='default'):
@@ -800,17 +886,59 @@ class midiadvancedTab(QScrollArea):
         layout.addWidget(dropdown)
 
     def add_value_button(self, label_text, keycode_set, layout):
-        """Create a button that opens a dialog to input a value for the corresponding keycode."""
-        button = QPushButton(label_text)
-        button.setFixedHeight(40)
-        button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
-        layout.addWidget(button)
+            """Create a button that opens a dialog to input a value for the corresponding keycode."""
+            button = QPushButton(label_text)
+            button.setFixedHeight(40)
+            
+            def handle_value(value):
+                if value and value.isdigit() and 0 <= int(value) <= 127:
+                    keycode_map = {
+                        "CC On/Off": f"MI_CC_{value}_TOG",
+                        "CC Up": f"MI_CC_{value}_UP",
+                        "CC Down": f"MI_CC_{value}_DWN",
+                        "Expression Wheel CC": f"MI_CCENCODER_{value}",
+                        "Program Change": f"MI_PROG_{value}",
+                        "Bank LSB": f"MI_BANK_LSB_{value}",
+                        "Bank MSB": f"MI_BANK_MSB_{value}",
+                        "Set Velocity": f"MI_VELOCITY_{value}",
+                        "Key Switch\nVelocity": f"MI_VELOCITY2_{value}",
+                        "Triple Switch\nVelocity": f"MI_VELOCITY3_{value}"
+                    }
+                    
+                    if label_text in keycode_map:
+                        self.keycode_changed.emit(keycode_map[label_text])
+            
+            button.clicked.connect(lambda: show_value_dialog(
+                self,
+                f"Set Value for {label_text}",
+                0,
+                127,
+                handle_value
+            ))
+            layout.addWidget(button)
         
     def add_value_button2(self, label_text, keycode_set, layout):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(60)
-        button.clicked.connect(lambda: self.open_value_dialog(label_text, keycode_set))
+        
+        def handle_value(value):
+            if value and value.isdigit() and 0 <= int(value) <= 127:
+                keycode_map = {
+                    "Key Switch\nVelocity": f"MI_VELOCITY2_{value}",
+                    "Triple Switch\nVelocity": f"MI_VELOCITY3_{value}"
+                }
+                
+                if label_text in keycode_map:
+                    self.keycode_changed.emit(keycode_map[label_text])
+        
+        button.clicked.connect(lambda: show_value_dialog(
+            self,
+            f"Set Value for {label_text}",
+            0,
+            127,
+            handle_value
+        ))
         layout.addWidget(button)
 
     def open_value_dialog(self, label, keycode_set):
@@ -869,48 +997,16 @@ class midiadvancedTab(QScrollArea):
         layout.addWidget(button)
 
     def open_cc_xy_dialog(self):
-        """Open a dialog to input CC values."""
-        dialog = QDialog(self)  # Create a local dialog instance
-        dialog.setWindowTitle("Enter CC Value")
-        dialog.setFixedHeight(170)  # Set fixed height for the dialog
+        def handle_cc_values(x, y):
+            self.keycode_changed.emit(f"MI_CC_{x}_{y}")
 
-        layout = QVBoxLayout(dialog)
-
-        # Create a scroll area for CC X values
-        cc_x_scroll_area = QScrollArea()
-        cc_x_scroll_area.setWidgetResizable(True)
-
-        # Create a widget for the scroll area content
-        cc_x_content_widget = QWidget()
-        cc_x_content_layout = QVBoxLayout(cc_x_content_widget)
-
-        # Add a label and text box for CC X input
-        cc_x_label = QLabel("CC(0-127):")
-        self.cc_x_input = QLineEdit()
-        self.cc_x_input.textChanged.connect(self.validate_cc_x_input)
-        cc_x_content_layout.addWidget(cc_x_label)
-        cc_x_content_layout.addWidget(self.cc_x_input)
-
-        # Add a label and text box for CC Y input
-        cc_y_label = QLabel("Value(0-127):")
-        self.cc_y_input = QLineEdit()
-        self.cc_y_input.textChanged.connect(self.validate_cc_y_input)
-        cc_x_content_layout.addWidget(cc_y_label)
-        cc_x_content_layout.addWidget(self.cc_y_input)
-
-        cc_x_content_widget.setLayout(cc_x_content_layout)
-        cc_x_scroll_area.setWidget(cc_x_content_widget)
-
-        # Add the scroll area to the main layout of the dialog
-        layout.addWidget(cc_x_scroll_area)
-        dialog.setLayout(layout)
-
-        # Optional: Add a button to confirm the selection
-        confirm_button = QPushButton("Confirm")
-        confirm_button.clicked.connect(lambda: self.confirm_cc_values(dialog))  # Pass dialog instance
-        layout.addWidget(confirm_button)
-
-        dialog.exec_()
+        try:
+            import emscripten
+            dialog = AsyncCCDialog(self, handle_cc_values)
+            dialog.show()
+        except ImportError:
+            dialog = AsyncCCDialog(self, handle_cc_values)
+            dialog.exec_()
 
     def confirm_cc_values(self, dialog):
         """Handle the confirmation of CC values and close the dialog."""
