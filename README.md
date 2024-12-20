@@ -1,4 +1,4 @@
-###  switchStation is a vial-gui fork with additional functionality
+###  MIDIswitch app is a vial-gui fork with additional functionality
 
 With respect to the original work of the various contributors in creating Vial, this version has been modified by MidiSwitch and is not officially connected to or endorsed by the Vial team.
 
