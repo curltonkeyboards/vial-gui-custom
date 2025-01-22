@@ -1909,9 +1909,9 @@ KEYCODES_MIDI_SMARTCHORDBUTTONS = [
     K("MI_INV_DOWN", "Inversion\nPosition\n▼", "Inv Up"),
     K("MI_INV_UP", "Inversion\nPosition\n▲", "Inv Up"),
     K("COLORBLIND_TOGGLE", "Colorblind\nMode\nOn/Off", "Colorblind"),
-    K("SMARTCHORDCOLOR_TOGGLE", "Smart\nchord\nRGB", "Smartchord LEDs Toggle"),
+    #K("SMARTCHORDCOLOR_TOGGLE", "Smartchord\nRGB\nOn/Off", "Smartchord LEDs Toggle"),
+    K("OLED_2", "SmartChord\nRGB\nMode", "Toggle Smartchord Light mode"),
     K("OLED_1", "Screen\nKeyboard\nShift", "Adjust Keyboard Screen"),
-    K("OLED_2", "SmartChord\nLight\nMode", "Toggle Smartchord Light mode"),
     # K("OLED_3", "SmartChord\nPiano\nModes", "Momentarily turn on layer when pressed"),
     
 ]
