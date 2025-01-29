@@ -1592,7 +1592,27 @@ class keycodes_v6:
         "MI_CCENCODER_126": 0xC9DF,
         "MI_CCENCODER_127": 0xC9E0,        
 
-        "QK_KB": 0xC9E1, # custom keycodes safe range
+        "RGB_MIDISWITCH": 0xC9E1, # custom keycodes safe range
+        
+        "RGB_LAYERRECORD0": 0xC9E2, # custom keycodes safe range
+        "RGB_LAYERRECORD1": 0xC9E3, # custom keycodes safe range
+        "RGB_LAYERRECORD2": 0xC9E4, # custom keycodes safe range
+        "RGB_LAYERRECORD3": 0xC9E5, # custom keycodes safe range
+        "RGB_LAYERRECORD4": 0xC9E6, # custom keycodes safe range
+        "RGB_LAYERRECORD5": 0xC9E7, # custom keycodes safe range
+        "RGB_LAYERRECORD6": 0xC9E8, # custom keycodes safe range
+        "RGB_LAYERRECORD7": 0xC9E9, # custom keycodes safe range
+        "RGB_LAYERRECORD8": 0xC9EA, # custom keycodes safe range
+        "RGB_LAYERRECORD9": 0xC9EB, # custom keycodes safe range
+        "RGB_LAYERRECORD10": 0xC9EC, # custom keycodes safe range
+        "RGB_LAYERRECORD11": 0xC9ED, # custom keycodes safe range
+        "RGB_LAYERSAVE": 0xC9EE, # custom keycodes safe range
+        
+        "RGB_LAYER_CUSTOM": 0xC9EF, # custom keycodes safe range
+
+        
+        "QK_KB": 0xC9F0, # custom keycodes safe range
+        
         
        
 

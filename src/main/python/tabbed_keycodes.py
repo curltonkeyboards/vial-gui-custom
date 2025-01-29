@@ -9,7 +9,7 @@ from widgets.display_keyboard import DisplayKeyboard
 from widgets.display_keyboard_defs import ansi_100, ansi_80, ansi_70, iso_100, iso_80, iso_70, mods, mods_narrow, midi_layout
 from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
-    KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, \
+    KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE,\
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER, \
@@ -1448,8 +1448,8 @@ class LayerTab(QScrollArea):
                     item.setToolTip(tooltip)
             
             dropdown.model().item(0).setEnabled(False)
-            dropdown.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown, header_text))
-            dropdown.currentIndexChanged.connect(lambda d=dropdown, h=header_text: self.reset_dropdown(d, h))
+            dropdown.currentIndexChanged.connect(self.on_selection_change)
+            dropdown.currentIndexChanged.connect(lambda _, d=dropdown, h=header_text: self.reset_dropdown(d, h))
             
             self.button_layout.addWidget(dropdown, row, col)
             col += 1
@@ -1509,10 +1509,11 @@ class ScrollableComboBox(CenteredComboBox):
 class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_LSB, smartchord_MSB):
+    def __init__(self, parent, label, inversion_keycodes, inversion_keycodes2, smartchord_LSB, smartchord_MSB):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
+        self.inversion_keycodes2 = inversion_keycodes2
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
 
@@ -1560,7 +1561,7 @@ class LightingTab(QScrollArea):
                 item.setToolTip(tooltip)
         dropdown1.model().item(0).setEnabled(False)
         dropdown1.currentIndexChanged.connect(self.on_selection_change)
-        dropdown1.currentIndexChanged.connect(lambda x: self.reset_dropdown(dropdown1, "RGB Mode"))
+        dropdown1.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown1, "RGB Mode"))
         self.button_layout.addWidget(dropdown1, row, col)
         col += 1
 
@@ -1578,11 +1579,11 @@ class LightingTab(QScrollArea):
                 item.setToolTip(tooltip)
         dropdown2.model().item(0).setEnabled(False)
         dropdown2.currentIndexChanged.connect(self.on_selection_change)
-        dropdown2.currentIndexChanged.connect(lambda x: self.reset_dropdown(dropdown2, "RGB Color"))
+        dropdown2.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown2, "RGB Color"))
         self.button_layout.addWidget(dropdown2, row, col)
         col += 1
 
-        # Add regular buttons
+        # Add regular buttons in same row
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
@@ -1595,15 +1596,40 @@ class LightingTab(QScrollArea):
                 col += 1
                 if col >= 15:
                     col = 0
-                    row += 1                  
+                    row += 1
+
+        # Start new row for RGB Layer Mode
+        row += 1
+        col = 0
+        
+        # Add RGB Layer Mode header
+        header_label = QLabel("RGB Layer Mode")
+        header_label.setAlignment(Qt.AlignCenter)
+        self.button_layout.addWidget(header_label, row, col, 1, 15)  # Span across columns
+        
+        # Move to next row for RGB Layer Mode buttons
+        row += 1
+        col = 0
+
+        # Add RGB Layer Mode buttons
+        for keycode in self.inversion_keycodes2:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setFixedHeight(40)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+
+                self.button_layout.addWidget(btn, row, col)
+                col += 1
+                if col >= 15:
+                    col = 0
+                    row += 1
 
     def reset_dropdown(self, dropdown, header_text):
-        """Reset the dropdown to show default text while storing the selected value."""
         selected_index = dropdown.currentIndex()
-        if selected_index > 0:  # Ensure an actual selection was made
+        if selected_index > 0:
             selected_value = dropdown.itemData(selected_index)
-            # Process the selected value if necessary here
-            # Example: print(f"Selected: {selected_value}")
         dropdown.setCurrentIndex(0)
 
     def on_selection_change(self, index):
@@ -1612,7 +1638,6 @@ class LightingTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        # Handle relabeling only for buttons
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
@@ -1621,7 +1646,6 @@ class LightingTab(QScrollArea):
                     widget.setText(Keycode.label(keycode.qmk_id))
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
         return self.button_layout.count() > 0
 
 class MacroTab(QScrollArea):
@@ -2232,7 +2256,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             ], prefix_buttons=[("Any", -1)]),   
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
             SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
