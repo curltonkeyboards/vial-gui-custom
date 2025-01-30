@@ -1278,12 +1278,12 @@ class EarTrainerTab(QScrollArea):
         # Add stretch before buttons
         button_layout.addStretch(1)
         
-        self.toggle_intervals = QPushButton("Show Intervals")
+        self.toggle_intervals = QPushButton("Inverval Trainer")
         self.toggle_intervals.clicked.connect(self.show_intervals)
         self.toggle_intervals.setFixedSize(120, 40)
         button_layout.addWidget(self.toggle_intervals)
         
-        self.toggle_chords = QPushButton("Show Chords")
+        self.toggle_chords = QPushButton("Chord Trainer")
         self.toggle_chords.clicked.connect(self.show_chords)
         self.toggle_chords.setFixedSize(120, 40)
         button_layout.addWidget(self.toggle_chords)

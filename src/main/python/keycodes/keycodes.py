@@ -1877,29 +1877,29 @@ KEYCODES_CC_ENCODERVALUE = [
 ]
 
 KEYCODES_CC_STEPSIZE = [
-    K("CC_STEPSIZE_1", "CC\nUp/Down\nx1", "SET CC Up/Down TO X1"),
-    K("CC_STEPSIZE_2", "CC\nUp/Down\nx2", "SET CC Up/Down TO X2"),
-    K("CC_STEPSIZE_3", "CC\nUp/Down\nx3", "SET CC Up/Down TO X3"),
-    K("CC_STEPSIZE_4", "CC\nUp/Down\nx4", "SET CC Up/Down TO X4"),
-    K("CC_STEPSIZE_5", "CC\nUp/Down\nx5", "SET CC Up/Down TO X5"),
-    K("CC_STEPSIZE_6", "CC\nUp/Down\nx6", "SET CC Up/Down TO X6"),
-    K("CC_STEPSIZE_7", "CC\nUp/Down\nx7", "SET CC Up/Down TO X7"),
-    K("CC_STEPSIZE_8", "CC\nUp/Down\nx8", "SET CC Up/Down TO X8"),
-    K("CC_STEPSIZE_9", "CC\nUp/Down\nx9", "SET CC Up/Down TO X9"),
-    K("CC_STEPSIZE_10", "CC\nUp/Down\nx10", "SET CC Up/Down TO X10"),
+    K("CC_STEPSIZE_1", "CC\nIncrement\n1", "SET CC Up/Down TO X1"),
+    K("CC_STEPSIZE_2", "CC\nIncrement\n2", "SET CC Up/Down TO X2"),
+    K("CC_STEPSIZE_3", "CC\nIncrement\n3", "SET CC Up/Down TO X3"),
+    K("CC_STEPSIZE_4", "CC\nIncrement\n4", "SET CC Up/Down TO X4"),
+    K("CC_STEPSIZE_5", "CC\nIncrement\n5", "SET CC Up/Down TO X5"),
+    K("CC_STEPSIZE_6", "CC\nIncrement\n6", "SET CC Up/Down TO X6"),
+    K("CC_STEPSIZE_7", "CC\nIncrement\n7", "SET CC Up/Down TO X7"),
+    K("CC_STEPSIZE_8", "CC\nIncrement\n8", "SET CC Up/Down TO X8"),
+    K("CC_STEPSIZE_9", "CC\nIncrement\n9", "SET CC Up/Down TO X9"),
+    K("CC_STEPSIZE_10", "CC\nIncrement\n10", "SET CC Up/Down TO X10"),
 ]
 
 KEYCODES_VELOCITY_STEPSIZE = [
-    K("MI_VELOCITY_STEPSIZE_1", "Velocity\nUp/Down\nx1", "SET Velocity Up/Down x1"),
-    K("MI_VELOCITY_STEPSIZE_2", "Velocity\nUp/Down\nx2", "SET Velocity Up/Down TO x2"),
-    K("MI_VELOCITY_STEPSIZE_3", "Velocity\nUp/Down\nx3", "SET Velocity Up/Down TO x3"),
-    K("MI_VELOCITY_STEPSIZE_4", "Velocity\nUp/Down\nx4", "SET Velocity Up/Down TO x4"),
-    K("MI_VELOCITY_STEPSIZE_5", "Velocity\nUp/Down\nx5", "SET Velocity Up/Down TO x5"),
-    K("MI_VELOCITY_STEPSIZE_6", "Velocity\nUp/Down\nx6", "SET Velocity Up/Down TO x6"),
-    K("MI_VELOCITY_STEPSIZE_7", "Velocity\nUp/Down\nx7", "SET Velocity Up/Down TO x7"),
-    K("MI_VELOCITY_STEPSIZE_8", "Velocity\nUp/Down\nx8", "SET Velocity Up/Down TO x8"),
-    K("MI_VELOCITY_STEPSIZE_9", "Velocity\nUp/Down\nx9", "SET Velocity Up/Down TO x9"),
-    K("MI_VELOCITY_STEPSIZE_10", "Velocity\nUp/Down\nx10", "SET Velocity Up/Down TO x10"),
+    K("MI_VELOCITY_STEPSIZE_1", "Velocity\nIncrement\n1", "SET Velocity Up/Down x1"),
+    K("MI_VELOCITY_STEPSIZE_2", "Velocity\nIncrement\n2", "SET Velocity Up/Down TO x2"),
+    K("MI_VELOCITY_STEPSIZE_3", "Velocity\nIncrement\n3", "SET Velocity Up/Down TO x3"),
+    K("MI_VELOCITY_STEPSIZE_4", "Velocity\nIncrement\n4", "SET Velocity Up/Down TO x4"),
+    K("MI_VELOCITY_STEPSIZE_5", "Velocity\nIncrement\n5", "SET Velocity Up/Down TO x5"),
+    K("MI_VELOCITY_STEPSIZE_6", "Velocity\nIncrement\n6", "SET Velocity Up/Down TO x6"),
+    K("MI_VELOCITY_STEPSIZE_7", "Velocity\nIncrement\n7", "SET Velocity Up/Down TO x7"),
+    K("MI_VELOCITY_STEPSIZE_8", "Velocity\nIncrement\n8", "SET Velocity Up/Down TO x8"),
+    K("MI_VELOCITY_STEPSIZE_9", "Velocity\nIncrement\n9", "SET Velocity Up/Down TO x9"),
+    K("MI_VELOCITY_STEPSIZE_10", "Velocity\nIncrement\n10", "SET Velocity Up/Down TO x10"),
 ]
 
 KEYCODES_MIDI_SMARTCHORDBUTTONS = [
