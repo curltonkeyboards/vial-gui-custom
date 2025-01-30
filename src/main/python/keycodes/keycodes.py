@@ -2154,7 +2154,6 @@ KEYCODES_RGB_KC_CUSTOM2 = [
     K("RGB_LAYERRECORD9", "Record\nLighting\nLyr 9", "Record Lighting Layer 0"),
     K("RGB_LAYERRECORD10", "Record\nLighting\nLyr 10", "Record Lighting Layer 0"),
     K("RGB_LAYERRECORD11", "Record\nLighting\nLyr 11", "Record Lighting Layer 0"),
-    K("RGB_LAYERSAVE", "Save\nLayer RGB\nSettings", "Save RGB settings"),
 ]
 
 KEYCODES_RGB_KC_CUSTOM3 = [
