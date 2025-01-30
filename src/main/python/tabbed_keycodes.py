@@ -1509,13 +1509,14 @@ class ScrollableComboBox(CenteredComboBox):
 class LightingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, inversion_keycodes2, smartchord_LSB, smartchord_MSB):
+    def __init__(self, parent, label, inversion_keycodes, inversion_keycodes4, smartchord_LSB, smartchord_MSB, smartchord_LSB2):
         super().__init__(parent)
         self.label = label     
         self.inversion_keycodes = inversion_keycodes
-        self.inversion_keycodes2 = inversion_keycodes2
+        self.inversion_keycodes4 = inversion_keycodes4
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
+        self.smartchord_LSB2 = smartchord_LSB2  # This will be for RGB Layer Save dropdown
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -1583,11 +1584,30 @@ class LightingTab(QScrollArea):
         self.button_layout.addWidget(dropdown2, row, col)
         col += 1
 
-        # Add regular buttons in same row
+        # Add RGB Layer Save dropdown
+        dropdown3 = ScrollableComboBox()
+        dropdown3.setFixedHeight(40)
+        dropdown3.setMinimumWidth(150)
+        dropdown3.addItem("RGB Layer Save")
+        for keycode in self.smartchord_LSB2:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                label = Keycode.label(keycode.qmk_id)
+                tooltip = Keycode.description(keycode.qmk_id)
+                dropdown3.addItem(label, keycode.qmk_id)
+                item = dropdown3.model().item(dropdown3.count() - 1)
+                item.setToolTip(tooltip)
+        dropdown3.model().item(0).setEnabled(False)
+        dropdown3.currentIndexChanged.connect(self.on_selection_change)
+        dropdown3.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown3, "RGB Layer Save"))
+        self.button_layout.addWidget(dropdown3, row, col)
+        col += 1
+
+        # Add regular buttons from inversion_keycodes
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1598,24 +1618,12 @@ class LightingTab(QScrollArea):
                     col = 0
                     row += 1
 
-        # Start new row for RGB Layer Mode
-        row += 1
-        col = 0
-        
-        # Add RGB Layer Mode header
-        header_label = QLabel("RGB Layer Mode")
-        header_label.setAlignment(Qt.AlignCenter)
-        self.button_layout.addWidget(header_label, row, col, 1, 15)  # Span across columns
-        
-        # Move to next row for RGB Layer Mode buttons
-        row += 1
-        col = 0
-
-        # Add RGB Layer Mode buttons
-        for keycode in self.inversion_keycodes2:
+        # Add buttons from inversion_keycodes4
+        for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -2256,7 +2264,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             ], prefix_buttons=[("Any", -1)]),   
             SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
             SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR),            
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGB_KC_CUSTOM3, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM3),            
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
