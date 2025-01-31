@@ -9,6 +9,7 @@ from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
 from vial_device import VialKeyboard
+from protocol.constants import CMD_VIA_SET_KEYCODE
 
 
 class QmkRgblightEffect:
