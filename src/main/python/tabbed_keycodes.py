@@ -1653,8 +1653,8 @@ class LightingTab(QScrollArea):
         dropdown3.currentIndexChanged.connect(self.on_selection_change)
         dropdown3.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown3, "RGB Layer Save"))
         self.button_layout.addWidget(dropdown3, row, col)
-        col = 0
-        row += 1
+        col += 1
+
         
 
         # Add first row buttons
@@ -1662,7 +1662,6 @@ class LightingTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
-                btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1674,7 +1673,6 @@ class LightingTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
-                btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
