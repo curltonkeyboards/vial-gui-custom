@@ -811,7 +811,7 @@ class midiadvancedTab(QScrollArea):
         col = 1
         for keycode in self.inversion_keycodesspecial:
             btn = SquareButton()
-            btn.setFixedSize(50, 50)
+            btn.setFixedSize(80, 80)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
@@ -1639,27 +1639,7 @@ class LightingTab(QScrollArea):
         dropdown2.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown2, "RGB Color"))
         self.button_layout.addWidget(dropdown2, row, col)
         col += 1
-
-        # Add first row buttons
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setFixedHeight(40)
-                btn.setFixedWidth(50)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-
-                self.button_layout.addWidget(btn, row, col)
-                col += 1
-                if col >= 15:
-                    col = 0
-                    row += 1
-
-        # Second row
-        row += 1
-        col = 0
-
+        
         # Add RGB Layer Save dropdown (slightly wider than first row dropdowns)
         dropdown3 = ScrollableComboBox()
         dropdown3.setFixedHeight(40)
@@ -1678,7 +1658,19 @@ class LightingTab(QScrollArea):
         self.button_layout.addWidget(dropdown3, row, col)
         col += 1
 
-        # Add second row buttons
+        # Add first row buttons
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setFixedHeight(40)
+                btn.setFixedWidth(50)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+
+                self.button_layout.addWidget(btn, row, col)
+                col += 1
+                    
         for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
@@ -1690,9 +1682,7 @@ class LightingTab(QScrollArea):
 
                 self.button_layout.addWidget(btn, row, col)
                 col += 1
-                if col >= 15:
-                    col = 0
-                    row += 1
+
 
     def reset_dropdown(self, dropdown, header_text):
         selected_index = dropdown.currentIndex()
