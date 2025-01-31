@@ -319,17 +319,18 @@ class VialRGBHandler(BasicHandler):
         preset_grid = QGridLayout(preset_widget)
         preset_grid.setSpacing(5)
         
-        # Create 12 buttons in a 3x4 grid
         self.preset_buttons = []
         for i in range(12):
             btn = QPushButton(f"Save to {i}")
             # Store the keycode directly in the lambda
-            btn.clicked.connect(lambda checked, keycode=0xC9E2 + i: self.keyboard.send_keycode(keycode))
+            btn.clicked.connect(lambda checked, code=0xC9E2 + i: 
+                self.keyboard.usb_send(self.keyboard.dev, 
+                          struct.pack(">BBBBH", CMD_VIA_SET_KEYCODE, 0, 0, 0, code), 
+                          retries=20))
             row_idx = i // 4
             col_idx = i % 4
             preset_grid.addWidget(btn, row_idx, col_idx)
             self.preset_buttons.append(btn)
-
         container.addWidget(preset_widget, row + 4, 1)
 
         self.widgets = [self.lbl_rgb_effect, self.rgb_effect, self.lbl_rgb_brightness, self.rgb_brightness,
@@ -338,6 +339,7 @@ class VialRGBHandler(BasicHandler):
 
         self.effects = []
 
+    # Rest of the existing methods remain the same
     def on_rgb_brightness_changed(self, value):
         self.keyboard.set_vialrgb_brightness(value)
 
