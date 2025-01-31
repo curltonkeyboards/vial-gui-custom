@@ -809,7 +809,7 @@ class midiadvancedTab(QScrollArea):
         
         # Add the three special inversion buttons
         col = 1
-        for keycode in self.inversionkeycodesspecial:
+        for keycode in self.inversion_keycodesspecial:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
             btn.setText(Keycode.label(keycode.qmk_id))
