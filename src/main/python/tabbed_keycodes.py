@@ -1538,7 +1538,7 @@ class LightingTab(QScrollArea):
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def recreate_buttons(self, keycode_filter=None):
+   def recreate_buttons(self, keycode_filter=None):
         # Clear previous widgets
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
@@ -1548,11 +1548,9 @@ class LightingTab(QScrollArea):
         row = 0
         col = 0
 
-        # First row: RGB Mode and RGB Color dropdowns with buttons
         # Add RGB Mode dropdown
         dropdown1 = ScrollableComboBox()
         dropdown1.setFixedHeight(40)
-        dropdown1.setMinimumWidth(150)
         dropdown1.addItem("RGB Mode")
         for keycode in self.smartchord_LSB:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -1570,7 +1568,6 @@ class LightingTab(QScrollArea):
         # Add RGB Color dropdown
         dropdown2 = ScrollableComboBox()
         dropdown2.setFixedHeight(40)
-        dropdown2.setMinimumWidth(150)
         dropdown2.addItem("RGB Color")
         for keycode in self.smartchord_MSB:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -1590,7 +1587,6 @@ class LightingTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
-                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1601,14 +1597,13 @@ class LightingTab(QScrollArea):
                     col = 0
                     row += 1
 
-        # Second row: RGB Layer Save dropdown with buttons
+        # Second row
         row += 1
         col = 0
 
         # Add RGB Layer Save dropdown
         dropdown3 = ScrollableComboBox()
         dropdown3.setFixedHeight(40)
-        dropdown3.setMinimumWidth(150)
         dropdown3.addItem("RGB Layer Save")
         for keycode in self.smartchord_LSB2:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -1628,7 +1623,6 @@ class LightingTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
-                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
