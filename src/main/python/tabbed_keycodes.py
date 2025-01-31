@@ -1654,7 +1654,8 @@ class LightingTab(QScrollArea):
         dropdown3.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown3, "RGB Layer Save"))
         self.button_layout.addWidget(dropdown3, row, col)
         col = 0
-        Row += 1
+        row += 1
+        
 
         # Add first row buttons
         for keycode in self.inversion_keycodes:
