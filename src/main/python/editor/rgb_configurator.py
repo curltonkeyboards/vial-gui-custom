@@ -276,6 +276,7 @@ class QmkBacklightHandler(BasicHandler):
 
 
 class VialRGBHandler(BasicHandler):
+
     def __init__(self, container):
         super().__init__(container)
 
@@ -309,45 +310,33 @@ class VialRGBHandler(BasicHandler):
         self.rgb_speed.valueChanged.connect(self.on_rgb_speed_changed)
         container.addWidget(self.rgb_speed, row + 3, 1)
 
-        # Add Layer Record section
-        self.lbl_layer_record = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
-        container.addWidget(self.lbl_layer_record, row + 4, 0)
+        # Add RGB Save buttons section
+        self.lbl_rgb_save = QLabel(tr("RGBConfigurator", "Save RGB Preset"))
+        container.addWidget(self.lbl_rgb_save, row + 4, 0)
 
-        # Create widget for layer buttons
-        layer_widget = QWidget()
-        layer_grid = QGridLayout(layer_widget)
-        layer_grid.setSpacing(5)  # Add some spacing between buttons
+        # Create widget for preset buttons
+        preset_widget = QWidget()
+        preset_grid = QGridLayout(preset_widget)
+        preset_grid.setSpacing(5)
         
         # Create 12 buttons in a 3x4 grid
-        self.layer_buttons = []
+        self.preset_buttons = []
         for i in range(12):
-            btn = QPushButton(f"Layer {i}")
-            btn.clicked.connect(lambda checked, layer=i: self.on_layer_record(layer))
-            row_idx = i // 4  # 4 buttons per row
+            btn = QPushButton(f"Save to {i}")
+            # Store the keycode directly in the lambda
+            btn.clicked.connect(lambda checked, keycode=0xC9E2 + i: self.keyboard.send_keycode(keycode))
+            row_idx = i // 4
             col_idx = i % 4
-            layer_grid.addWidget(btn, row_idx, col_idx)
-            self.layer_buttons.append(btn)
+            preset_grid.addWidget(btn, row_idx, col_idx)
+            self.preset_buttons.append(btn)
 
-        container.addWidget(layer_widget, row + 4, 1)
+        container.addWidget(preset_widget, row + 4, 1)
 
         self.widgets = [self.lbl_rgb_effect, self.rgb_effect, self.lbl_rgb_brightness, self.rgb_brightness,
                        self.lbl_rgb_color, self.rgb_color, self.lbl_rgb_speed, self.rgb_speed,
-                       self.lbl_layer_record, layer_widget]
+                       self.lbl_rgb_save, preset_widget]
 
         self.effects = []
-
-    def on_layer_record(self, layer):
-            if not self.valid():
-                return
-            # The keycodes start at 0xC9E2 for layer 0
-            keycode = 0xC9E2 + layer
-            try:
-                # Using keyboard protocol to send keycode
-                self.keyboard.send_key(keycode)
-                # Alternatively, if send_key doesn't exist:
-                # self.keyboard.protocol.send_key(keycode)
-            except AttributeError:
-                print(f"Failed to send keycode {hex(keycode)}. Method not available.")
 
     def on_rgb_brightness_changed(self, value):
         self.keyboard.set_vialrgb_brightness(value)
