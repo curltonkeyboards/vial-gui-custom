@@ -793,42 +793,33 @@ class midiadvancedTab(QScrollArea):
         container = self.containers["Show\nExpression Wheel\nOptions"]
         layout = container.layout()
         
-        # First row: Expression Wheel CC and special buttons
+        # First row: Expression Wheel controls
         top_row_layout = QHBoxLayout()
+        top_row_layout.addStretch(1)  # Add stretch before buttons
         
-        # Add the existing Expression Wheel CC button
-        self.add_value_button("Expression Wheel CC", self.CCencoder, top_row_layout)
+        # Create grid layout for the expression wheel buttons
+        button_grid = QGridLayout()
+        button_grid.setSpacing(4)
         
-        # Add the three new buttons for inversionkeycodesspecial
-        button_container = QHBoxLayout()
-        button_container.addStretch(1)
+        # Create Expression Wheel CC button
+        cc_button = QPushButton("Expression Wheel CC")
+        cc_button.setFixedSize(50, 50)
+        cc_button.clicked.connect(lambda: self.open_value_dialog("Expression Wheel CC", self.CCencoder))
+        button_grid.addWidget(cc_button, 0, 0)
         
-        # Create grid layout for the special inversion buttons
-        special_grid = QGridLayout()
-        special_grid.setSpacing(4)
-        
-        row = 0
-        col = 0
-        max_cols = 3  # We want these 3 buttons in a row
-        
-        for keycode in self.inversion_keycodesspecial:
+        # Add the three special inversion buttons
+        col = 1
+        for keycode in self.inversionkeycodesspecial:
             btn = SquareButton()
-            btn.setFixedSize(55, 55)
+            btn.setFixedSize(50, 50)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            
-            special_grid.addWidget(btn, row, col)
+            button_grid.addWidget(btn, 0, col)
             col += 1
-            if col >= max_cols:
-                col = 0
-                row += 1
         
-        button_container.addLayout(special_grid)
-        button_container.addStretch(1)
-        
-        # Add button layouts to the top row
-        top_row_layout.addLayout(button_container)
+        top_row_layout.addLayout(button_grid)
+        top_row_layout.addStretch(1)  # Add stretch after buttons
         
         # Second row: Dropdowns
         bottom_row_layout = QHBoxLayout()
