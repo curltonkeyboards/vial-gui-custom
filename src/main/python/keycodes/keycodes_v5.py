@@ -1611,8 +1611,11 @@ class keycodes_v5:
         
         "RGB_LAYER_CUSTOM": 0xC9EF, # custom keycodes safe range
 
+        "EXWHEEL_TRA": 0xC9F0,
+        "EXWHEEL_VEL": 0xC9F1,
+        "EXWHEEL_CHA": 0xC9F2,
         
-        "QK_KB": 0xC9F0, # custom keycodes safe range
+        "QK_KB": 0xC9F3, # custom keycodes safe range
         
        
 
