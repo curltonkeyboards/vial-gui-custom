@@ -793,11 +793,11 @@ class midiadvancedTab(QScrollArea):
         container = self.containers["Show\nExpression Wheel\nOptions"]
         layout = container.layout()
         
-        # Create horizontal layout for buttons
-        wheel_layout = QHBoxLayout()
+        # First row: Expression Wheel CC and special buttons
+        top_row_layout = QHBoxLayout()
         
         # Add the existing Expression Wheel CC button
-        self.add_value_button("Expression Wheel CC", self.CCencoder, wheel_layout)
+        self.add_value_button("Expression Wheel CC", self.CCencoder, top_row_layout)
         
         # Add the three new buttons for inversionkeycodesspecial
         button_container = QHBoxLayout()
@@ -827,9 +827,27 @@ class midiadvancedTab(QScrollArea):
         button_container.addLayout(special_grid)
         button_container.addStretch(1)
         
-        # Add both layouts to the main container
-        layout.addLayout(wheel_layout)
-        layout.addLayout(button_container)
+        # Add button layouts to the top row
+        top_row_layout.addLayout(button_container)
+        
+        # Second row: Dropdowns
+        bottom_row_layout = QHBoxLayout()
+        
+        # Add Velocity Up/Down Increment dropdown
+        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, bottom_row_layout)
+        
+        # Add CC Up/Down Increment dropdown
+        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, bottom_row_layout)
+        
+        # Add rows to the main container
+        layout.addLayout(top_row_layout)
+        
+        # Add spacing between rows
+        spacer = QWidget()
+        spacer.setFixedHeight(20)
+        layout.addWidget(spacer)
+        
+        layout.addLayout(bottom_row_layout)
         layout.addStretch()
 
     def toggle_section(self, section_name):
