@@ -802,7 +802,7 @@ class midiadvancedTab(QScrollArea):
         button_grid.setSpacing(4)
         
         # Create Expression Wheel CC button
-        cc_button = QPushButton("Expression Wheel CC")
+        cc_button = QPushButton("Expression\nWheel\nCC")
         cc_button.setFixedSize(80, 80)
         cc_button.clicked.connect(lambda: self.open_value_dialog("Expression Wheel CC", self.CCencoder))
         button_grid.addWidget(cc_button, 0, 0)
