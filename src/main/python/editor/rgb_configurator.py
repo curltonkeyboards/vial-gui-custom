@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
     QComboBox, QColorDialog, QCheckBox
-
+import struct
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
