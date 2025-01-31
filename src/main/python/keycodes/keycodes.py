@@ -2142,18 +2142,18 @@ KEYCODES_RGB_KC_CUSTOM = [
 ]
 
 KEYCODES_RGB_KC_CUSTOM2 = [
-    K("RGB_LAYERRECORD0", "Record\nLighting\nLyr 0", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD1", "Record\nLighting\nLyr 1", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD2", "Record\nLighting\nLyr 2", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD3", "Record\nLighting\nLyr 3", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD4", "Record\nLighting\nLyr 4", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD5", "Record\nLighting\nLyr 5", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD6", "Record\nLighting\nLyr 6", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD7", "Record\nLighting\nLyr 7", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD8", "Record\nLighting\nLyr 8", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD9", "Record\nLighting\nLyr 9", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD10", "Record\nLighting\nLyr 10", "Record Lighting Layer 0"),
-    K("RGB_LAYERRECORD11", "Record\nLighting\nLyr 11", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD0", "Record\nRGB\nLyr 0", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD1", "Record\nRGB\nLyr 1", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD2", "Record\nRGB\nLyr 2", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD3", "Record\nRGB\nLyr 3", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD4", "Record\nRGB\nLyr 4", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD5", "Record\nRGB\nLyr 5", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD6", "Record\nRGB\nLyr 6", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD7", "Record\nRGB\nLyr 7", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD8", "Record\nRGB\nLyr 8", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD9", "Record\nRGB\nLyr 9", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD10", "Record\nRGB\nLyr 10", "Record Lighting Layer 0"),
+    K("RGB_LAYERRECORD11", "Record\nRGB\nLyr 11", "Record Lighting Layer 0"),
 ]
 
 KEYCODES_RGBSAVE = [

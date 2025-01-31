@@ -1589,7 +1589,7 @@ class LightingTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(50)
+                btn.setFixedHeight(40)
                 btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -1601,15 +1601,28 @@ class LightingTab(QScrollArea):
                     col = 0
                     row += 1
 
-        # Second row
+        # Second row - header
         row += 1
         col = 0
+        
+        # Add Per Layer RGB Settings header
+        header_label = QLabel("Per Layer RGB Settings")
+        header_label.setAlignment(Qt.AlignCenter)
+        self.button_layout.addWidget(header_label, row, col, 1, 15)  # Span across columns
+        
+        # Move to next row for centered content
+        row += 1
+        
+        # Calculate total width needed
+        total_items = 1 + len([k for k in self.inversion_keycodes4 if keycode_filter is None or keycode_filter(k.qmk_id)])  # 1 for dropdown
+        start_col = max(0, (15 - total_items) // 2)  # Center by starting at appropriate column
+        col = start_col
 
-        # Add RGB Layer Save dropdown (slightly wider than first row dropdowns)
+        # Add RGB Layer Save dropdown
         dropdown3 = ScrollableComboBox()
         dropdown3.setFixedHeight(40)
-        dropdown3.setFixedWidth(150)  # Wider than the first row dropdowns
-        dropdown3.addItem("RGB Layer Save")
+        dropdown3.setFixedWidth(150)
+        dropdown3.addItem("Record Layer RGB")
         for keycode in self.smartchord_LSB2:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 label = Keycode.label(keycode.qmk_id)
@@ -1627,7 +1640,7 @@ class LightingTab(QScrollArea):
         for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(50)
+                btn.setFixedHeight(40)
                 btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
