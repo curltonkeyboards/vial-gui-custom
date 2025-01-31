@@ -1615,7 +1615,10 @@ class keycodes_v5:
         "EXWHEEL_VEL": 0xC9F1,
         "EXWHEEL_CHA": 0xC9F2,
         
-        "QK_KB": 0xC9F3, # custom keycodes safe range
+        "SAVE_SETTINGS": 0xC9F3,
+        "DEFAULT_SETTINGS": 0xC9F4,
+        
+        "QK_KB": 0xC9F5, # custom keycodes safe range
         
        
 

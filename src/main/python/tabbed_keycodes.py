@@ -12,7 +12,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE,\
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER, \
+    KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
 from widgets.square_button import SquareButton
@@ -646,7 +646,7 @@ class midiadvancedTab(QScrollArea):
             "Show\nKeySplit\nOptions",
             "Show\nAdvanced MIDI\nOptions",
             "Show\nVelocity\nOptions",
-            "Show\nExpression Wheel\nOptions"  # New section
+            "Show\nTouch Dial\nOptions"  # New section
         ]
 
         # Create buttons and containers for each section
@@ -789,22 +789,22 @@ class midiadvancedTab(QScrollArea):
         layout.addStretch()
   
     def populate_expression_wheel_section(self):
-        """Populate the Expression Wheel Options section."""
-        container = self.containers["Show\nExpression Wheel\nOptions"]
+        """Populate the Touch Dial Options section."""
+        container = self.containers["Show\nTouch Dial\nOptions"]
         layout = container.layout()
         
-        # First row: Expression Wheel controls
+        # First row: Touch Dial controls
         top_row_layout = QHBoxLayout()
         top_row_layout.addStretch(1)  # Add stretch before buttons
         
-        # Create grid layout for the expression wheel buttons
+        # Create grid layout for the Touch Dial buttons
         button_grid = QGridLayout()
         button_grid.setSpacing(4)
         
-        # Create Expression Wheel CC button
-        cc_button = QPushButton("Expression\nWheel\nCC")
+        # Create Touch Dial CC button
+        cc_button = QPushButton("Touch\nDial\nCC")
         cc_button.setFixedSize(80, 80)
-        cc_button.clicked.connect(lambda: self.open_value_dialog("Expression Wheel CC", self.CCencoder))
+        cc_button.clicked.connect(lambda: self.open_value_dialog("Touch Dial CC", self.CCencoder))
         button_grid.addWidget(cc_button, 0, 0)
         
         # Add the three special inversion buttons
@@ -868,7 +868,7 @@ class midiadvancedTab(QScrollArea):
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, layout)
         self.add_value_button("CC Up", self.CCup, layout)
         self.add_value_button("CC Down", self.CCdown, layout)
-        self.add_value_button("Expression Wheel CC", self.CCencoder, layout)
+        self.add_value_button("Touch Dial CC", self.CCencoder, layout)
         self.add_header_dropdown("CC Increment", self.cc_multiplier_options, layout)
         self.add_value_button("Program Change", self.smartchord_program_change, layout)
         self.add_value_button("Bank LSB", self.smartchord_LSB, layout)
@@ -951,7 +951,7 @@ class midiadvancedTab(QScrollArea):
                         "CC On/Off": f"MI_CC_{value}_TOG",
                         "CC Up": f"MI_CC_{value}_UP",
                         "CC Down": f"MI_CC_{value}_DWN",
-                        "Expression Wheel CC": f"MI_CCENCODER_{value}",
+                        "Touch Dial CC": f"MI_CCENCODER_{value}",
                         "Program Change": f"MI_PROG_{value}",
                         "Bank LSB": f"MI_BANK_LSB_{value}",
                         "Bank MSB": f"MI_BANK_MSB_{value}",
@@ -1025,7 +1025,7 @@ class midiadvancedTab(QScrollArea):
                 "CC On/Off": f"MI_CC_{value}_TOG",
                 "CC Up": f"MI_CC_{value}_UP",
                 "CC Down": f"MI_CC_{value}_DWN",
-                "Expression Wheel CC": f"MI_CCENCODER_{value}",
+                "Touch Dial CC": f"MI_CCENCODER_{value}",
                 "Program Change": f"MI_PROG_{value}",
                 "Bank LSB": f"MI_BANK_LSB_{value}",
                 "Bank MSB": f"MI_BANK_MSB_{value}",
@@ -2130,7 +2130,7 @@ class midiTab(QScrollArea):
 
         # In midiTab class, restore original control buttons
         self.midi_layout2 = [
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99"]
+            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO", "SAVE_SETTINGS", "DEFAULT_SETTINGS"]
 ]
 
         self.setWidget(self.scroll_content)
@@ -2174,6 +2174,10 @@ class midiTab(QScrollArea):
                 btn.setText("Sustain\nPedal")
             elif item == "MI_CHORD_99":
                 btn.setText("Smart\nChord")
+            elif item == "SAVE_SETTINGS":
+                btn.setText("Save\nSettings")
+            elif item == "DEFAULT_SETTINGS":
+                btn.setText("Reset\nDefault\nSettings")
             elif item == "KC_NO":
                 btn.setText("")
             btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
