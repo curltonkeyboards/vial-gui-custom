@@ -276,7 +276,6 @@ class QmkBacklightHandler(BasicHandler):
 
 
 class VialRGBHandler(BasicHandler):
-
     def __init__(self, container):
         super().__init__(container)
 
@@ -285,10 +284,6 @@ class VialRGBHandler(BasicHandler):
         self.lbl_rgb_effect = QLabel(tr("RGBConfigurator", "RGB Effect"))
         container.addWidget(self.lbl_rgb_effect, row, 0)
         self.rgb_effect = QComboBox()
-        self.rgb_effect.addItem("0")
-        self.rgb_effect.addItem("1")
-        self.rgb_effect.addItem("2")
-        self.rgb_effect.addItem("3")
         self.rgb_effect.currentIndexChanged.connect(self.on_rgb_effect_changed)
         container.addWidget(self.rgb_effect, row, 1)
 
@@ -314,10 +309,39 @@ class VialRGBHandler(BasicHandler):
         self.rgb_speed.valueChanged.connect(self.on_rgb_speed_changed)
         container.addWidget(self.rgb_speed, row + 3, 1)
 
+        # Add Layer Record section
+        self.lbl_layer_record = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
+        container.addWidget(self.lbl_layer_record, row + 4, 0)
+
+        # Create widget for layer buttons
+        layer_widget = QWidget()
+        layer_grid = QGridLayout(layer_widget)
+        layer_grid.setSpacing(5)  # Add some spacing between buttons
+        
+        # Create 12 buttons in a 3x4 grid
+        self.layer_buttons = []
+        for i in range(12):
+            btn = QPushButton(f"Layer {i}")
+            btn.clicked.connect(lambda checked, layer=i: self.on_layer_record(layer))
+            row_idx = i // 4  # 4 buttons per row
+            col_idx = i % 4
+            layer_grid.addWidget(btn, row_idx, col_idx)
+            self.layer_buttons.append(btn)
+
+        container.addWidget(layer_widget, row + 4, 1)
+
         self.widgets = [self.lbl_rgb_effect, self.rgb_effect, self.lbl_rgb_brightness, self.rgb_brightness,
-                        self.lbl_rgb_color, self.rgb_color, self.lbl_rgb_speed, self.rgb_speed]
+                       self.lbl_rgb_color, self.rgb_color, self.lbl_rgb_speed, self.rgb_speed,
+                       self.lbl_layer_record, layer_widget]
 
         self.effects = []
+
+    def on_layer_record(self, layer):
+        if not self.valid():
+            return
+        # The keycodes start at 0xC9E2 for layer 0
+        keycode = 0xC9E2 + layer
+        self.keyboard.tap_key(keycode)
 
     def on_rgb_brightness_changed(self, value):
         self.keyboard.set_vialrgb_brightness(value)
@@ -348,8 +372,8 @@ class VialRGBHandler(BasicHandler):
 
     def current_color(self):
         return QColor.fromHsvF(self.keyboard.rgb_hsv[0] / 255.0,
-                               self.keyboard.rgb_hsv[1] / 255.0,
-                               1.0)
+                             self.keyboard.rgb_hsv[1] / 255.0,
+                             1.0)
 
     def rebuild_effects(self):
         self.effects = []
