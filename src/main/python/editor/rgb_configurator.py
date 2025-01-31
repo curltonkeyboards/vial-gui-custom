@@ -337,11 +337,17 @@ class VialRGBHandler(BasicHandler):
         self.effects = []
 
     def on_layer_record(self, layer):
-        if not self.valid():
-            return
-        # The keycodes start at 0xC9E2 for layer 0
-        keycode = 0xC9E2 + layer
-        self.keyboard.tap_key(keycode)
+            if not self.valid():
+                return
+            # The keycodes start at 0xC9E2 for layer 0
+            keycode = 0xC9E2 + layer
+            try:
+                # Using keyboard protocol to send keycode
+                self.keyboard.send_key(keycode)
+                # Alternatively, if send_key doesn't exist:
+                # self.keyboard.protocol.send_key(keycode)
+            except AttributeError:
+                print(f"Failed to send keycode {hex(keycode)}. Method not available.")
 
     def on_rgb_brightness_changed(self, value):
         self.keyboard.set_vialrgb_brightness(value)
