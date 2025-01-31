@@ -803,7 +803,7 @@ class midiadvancedTab(QScrollArea):
         
         # Create Expression Wheel CC button
         cc_button = QPushButton("Expression Wheel CC")
-        cc_button.setFixedSize(50, 50)
+        cc_button.setFixedSize(80, 80)
         cc_button.clicked.connect(lambda: self.open_value_dialog("Expression Wheel CC", self.CCencoder))
         button_grid.addWidget(cc_button, 0, 0)
         
@@ -1607,7 +1607,6 @@ class LightingTab(QScrollArea):
         # Add RGB Mode dropdown
         dropdown1 = ScrollableComboBox()
         dropdown1.setFixedHeight(40)
-        dropdown1.setFixedWidth(150)
         dropdown1.addItem("RGB Mode")
         for keycode in self.smartchord_LSB:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -1625,7 +1624,6 @@ class LightingTab(QScrollArea):
         # Add RGB Color dropdown
         dropdown2 = ScrollableComboBox()
         dropdown2.setFixedHeight(40)
-        dropdown2.setFixedWidth(150)
         dropdown2.addItem("RGB Color")
         for keycode in self.smartchord_MSB:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -1643,7 +1641,6 @@ class LightingTab(QScrollArea):
         # Add RGB Layer Save dropdown (slightly wider than first row dropdowns)
         dropdown3 = ScrollableComboBox()
         dropdown3.setFixedHeight(40)
-        dropdown3.setFixedWidth(150)  # Wider than the first row dropdowns
         dropdown3.addItem("Record Layer RGB")
         for keycode in self.smartchord_LSB2:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
@@ -1656,7 +1653,8 @@ class LightingTab(QScrollArea):
         dropdown3.currentIndexChanged.connect(self.on_selection_change)
         dropdown3.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown3, "RGB Layer Save"))
         self.button_layout.addWidget(dropdown3, row, col)
-        col += 1
+        col = 0
+        Row += 1
 
         # Add first row buttons
         for keycode in self.inversion_keycodes:
