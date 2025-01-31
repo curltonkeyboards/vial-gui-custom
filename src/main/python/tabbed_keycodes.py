@@ -783,7 +783,7 @@ class midiadvancedTab(QScrollArea):
         
         velocity_layout = QHBoxLayout()
         self.add_value_button("Set Velocity", self.velocity_options, velocity_layout)
-        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, velocity_layout)
+        self.add_header_dropdown("Velocity Increment", self.velocity_multiplier_options, velocity_layout)
         self.add_header_dropdown("Velocity Shuffle", self.velocityshuffle, velocity_layout)
         layout.addLayout(velocity_layout)
         layout.addStretch()
@@ -825,10 +825,10 @@ class midiadvancedTab(QScrollArea):
         bottom_row_layout = QHBoxLayout()
         
         # Add Velocity Up/Down Increment dropdown
-        self.add_header_dropdown("Velocity Up/Down Increment", self.velocity_multiplier_options, bottom_row_layout)
+        self.add_header_dropdown("Velocity Increment", self.velocity_multiplier_options, bottom_row_layout)
         
         # Add CC Up/Down Increment dropdown
-        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, bottom_row_layout)
+        self.add_header_dropdown("CC Increment", self.cc_multiplier_options, bottom_row_layout)
         
         # Add rows to the main container
         layout.addLayout(top_row_layout)
@@ -869,7 +869,7 @@ class midiadvancedTab(QScrollArea):
         self.add_value_button("CC Up", self.CCup, layout)
         self.add_value_button("CC Down", self.CCdown, layout)
         self.add_value_button("Expression Wheel CC", self.CCencoder, layout)
-        self.add_header_dropdown("CC Up/Down Increment", self.cc_multiplier_options, layout)
+        self.add_header_dropdown("CC Increment", self.cc_multiplier_options, layout)
         self.add_value_button("Program Change", self.smartchord_program_change, layout)
         self.add_value_button("Bank LSB", self.smartchord_LSB, layout)
         self.add_value_button("Bank MSB", self.smartchord_MSB, layout)
