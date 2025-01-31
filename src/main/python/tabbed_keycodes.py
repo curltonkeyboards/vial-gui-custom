@@ -1516,7 +1516,7 @@ class LightingTab(QScrollArea):
         self.inversion_keycodes4 = inversion_keycodes4
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
-        self.smartchord_LSB2 = smartchord_LSB2  # This will be for RGB Layer Save dropdown
+        self.smartchord_LSB2 = smartchord_LSB2
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -1548,6 +1548,7 @@ class LightingTab(QScrollArea):
         row = 0
         col = 0
 
+        # First row: RGB Mode and RGB Color dropdowns with buttons
         # Add RGB Mode dropdown
         dropdown1 = ScrollableComboBox()
         dropdown1.setFixedHeight(40)
@@ -1584,6 +1585,26 @@ class LightingTab(QScrollArea):
         self.button_layout.addWidget(dropdown2, row, col)
         col += 1
 
+        # Add first row buttons
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+
+                self.button_layout.addWidget(btn, row, col)
+                col += 1
+                if col >= 15:
+                    col = 0
+                    row += 1
+
+        # Second row: RGB Layer Save dropdown with buttons
+        row += 1
+        col = 0
+
         # Add RGB Layer Save dropdown
         dropdown3 = ScrollableComboBox()
         dropdown3.setFixedHeight(40)
@@ -1602,23 +1623,7 @@ class LightingTab(QScrollArea):
         self.button_layout.addWidget(dropdown3, row, col)
         col += 1
 
-        # Add regular buttons from inversion_keycodes
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setFixedHeight(40)
-                btn.setFixedWidth(40)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-
-                self.button_layout.addWidget(btn, row, col)
-                col += 1
-                if col >= 15:
-                    col = 0
-                    row += 1
-
-        # Add buttons from inversion_keycodes4
+        # Add second row buttons
         for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
