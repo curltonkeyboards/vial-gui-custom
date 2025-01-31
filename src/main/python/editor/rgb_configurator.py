@@ -4,12 +4,11 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
     QComboBox, QColorDialog, QCheckBox
-import struct
+
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
 from vial_device import VialKeyboard
-from protocol.constants import CMD_VIA_SET_KEYCODE
 
 
 class QmkRgblightEffect:
@@ -286,6 +285,10 @@ class VialRGBHandler(BasicHandler):
         self.lbl_rgb_effect = QLabel(tr("RGBConfigurator", "RGB Effect"))
         container.addWidget(self.lbl_rgb_effect, row, 0)
         self.rgb_effect = QComboBox()
+        self.rgb_effect.addItem("0")
+        self.rgb_effect.addItem("1")
+        self.rgb_effect.addItem("2")
+        self.rgb_effect.addItem("3")
         self.rgb_effect.currentIndexChanged.connect(self.on_rgb_effect_changed)
         container.addWidget(self.rgb_effect, row, 1)
 
@@ -311,36 +314,11 @@ class VialRGBHandler(BasicHandler):
         self.rgb_speed.valueChanged.connect(self.on_rgb_speed_changed)
         container.addWidget(self.rgb_speed, row + 3, 1)
 
-        # Add RGB Save buttons section
-        self.lbl_rgb_save = QLabel(tr("RGBConfigurator", "Save RGB Preset"))
-        container.addWidget(self.lbl_rgb_save, row + 4, 0)
-
-        # Create widget for preset buttons
-        preset_widget = QWidget()
-        preset_grid = QGridLayout(preset_widget)
-        preset_grid.setSpacing(5)
-        
-        self.preset_buttons = []
-        for i in range(12):
-            btn = QPushButton(f"Save to {i}")
-            # Store the keycode directly in the lambda
-            btn.clicked.connect(lambda checked, code=0xC9E2 + i: 
-                self.keyboard.usb_send(self.keyboard.dev, 
-                          struct.pack(">BBBBH", CMD_VIA_SET_KEYCODE, 0, 0, 0, code), 
-                          retries=20))
-            row_idx = i // 4
-            col_idx = i % 4
-            preset_grid.addWidget(btn, row_idx, col_idx)
-            self.preset_buttons.append(btn)
-        container.addWidget(preset_widget, row + 4, 1)
-
         self.widgets = [self.lbl_rgb_effect, self.rgb_effect, self.lbl_rgb_brightness, self.rgb_brightness,
-                       self.lbl_rgb_color, self.rgb_color, self.lbl_rgb_speed, self.rgb_speed,
-                       self.lbl_rgb_save, preset_widget]
+                        self.lbl_rgb_color, self.rgb_color, self.lbl_rgb_speed, self.rgb_speed]
 
         self.effects = []
 
-    # Rest of the existing methods remain the same
     def on_rgb_brightness_changed(self, value):
         self.keyboard.set_vialrgb_brightness(value)
 
@@ -370,8 +348,8 @@ class VialRGBHandler(BasicHandler):
 
     def current_color(self):
         return QColor.fromHsvF(self.keyboard.rgb_hsv[0] / 255.0,
-                             self.keyboard.rgb_hsv[1] / 255.0,
-                             1.0)
+                               self.keyboard.rgb_hsv[1] / 255.0,
+                               1.0)
 
     def rebuild_effects(self):
         self.effects = []
