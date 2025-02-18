@@ -1562,6 +1562,7 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
     K("MI_SOFT", "Soft\nSPedal", "Midi Soft Pedal"),
     K("OLED_1", "Screen\nKeyboard\nShift", "Momentarily turn on layer when pressed"),
+    K("MI_TAP", "Set\nBPM", "Set BPM"),
 ]
 
 KEYCODES_MIDI_PEDAL = [
