@@ -2163,7 +2163,7 @@ KEYCODES_RGB_KC_CUSTOM2 = [
 
 KEYCODES_RGBSAVE = [
     K("RGB_LAYERSAVE", "RGB\nLayer\nMode On", "Save RGB settings"),
-    K("RGB_CUSTOM", "RGB\nLayer\nMode Off", "Save RGB settings"),
+    K("RGB_LAYER_CUSTOM", "RGB\nLayer\nMode Off", "Save RGB settings"),
 ]
 
 KEYCODES_EXWHEEL = [

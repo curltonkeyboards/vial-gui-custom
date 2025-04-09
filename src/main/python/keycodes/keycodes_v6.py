@@ -1606,8 +1606,8 @@ class keycodes_v6:
         "RGB_LAYERRECORD9": 0xC9EB, # custom keycodes safe range
         "RGB_LAYERRECORD10": 0xC9EC, # custom keycodes safe range
         "RGB_LAYERRECORD11": 0xC9ED, # custom keycodes safe range
-        "RGB_LAYERSAVE": 0xC9EE, # custom keycodes safe range
         
+        "RGB_LAYERSAVE": 0xC9EE, # custom keycodes safe range       
         "RGB_LAYER_CUSTOM": 0xC9EF, # custom keycodes safe range
 
         "EXWHEEL_TRA": 0xC9F0,
