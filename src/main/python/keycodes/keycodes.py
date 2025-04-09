@@ -2144,7 +2144,6 @@ KEYCODES_RGB_KC_CUSTOM = [
     K("RGB_KC_44", "Solid\nSplash", "RGB Mode: Solid Splash"),
     K("RGB_KC_45", "Solid\nMultiSplash", "RGB Mode: Solid MultiSplash"),
     K("RGB_MIDISWITCH", "RGB\nMIDIswitch\nBeta", "RGB Mode: MIDIswitch Beta"),
-    K("RGB_LAYER_CUSTOM", "RGB\nLayer\nMode", "RGB Mode: Layer Mode"),
 ]
 
 KEYCODES_RGB_KC_CUSTOM2 = [
@@ -2163,7 +2162,8 @@ KEYCODES_RGB_KC_CUSTOM2 = [
 ]
 
 KEYCODES_RGBSAVE = [
-    K("RGB_LAYERSAVE", "Save\nLayer RGB\nSettings", "Save RGB settings"),
+    K("RGB_LAYERSAVE", "RGB\nLayer\nMode On", "Save RGB settings"),
+    K("RGB_CUSTOM", "RGB\nLayer\nMode Off", "Save RGB settings"),
 ]
 
 KEYCODES_EXWHEEL = [
