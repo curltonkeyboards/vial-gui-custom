@@ -173,7 +173,7 @@ class keycodes_v6:
         "KC_ESCAPE": 0x29,
         "KC_BSPACE": 0x2A,
         "KC_TAB": 0x2B,
-        "KC_SPACE": 0x2C,
+        "KC_SPACE": 0xC9FE,
         "KC_MINUS": 0x2D,
         "KC_EQUAL": 0x2E,
         "KC_LBRACKET": 0x2F,
@@ -1628,9 +1628,7 @@ class keycodes_v6:
         "LOAD_SETTINGS_4": 0xC9FC,
         "LOAD_SETTINGS_5": 0xC9FD,
                 
-        "NEW_SPACE": 0xC9FE,        
-                
-                
+
         "QK_KB": 0xC9FF, #custom keycodes safe range
         
         
