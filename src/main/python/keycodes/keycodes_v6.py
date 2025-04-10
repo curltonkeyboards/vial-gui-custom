@@ -1631,7 +1631,7 @@ class keycodes_v6:
         "NEW_SPACE": 0xC9FE,        
                 
                 
-        "QK_KB": 0xC9FF, // custom keycodes safe range
+        "QK_KB": 0xC9FF, #custom keycodes safe range
         
         
        
