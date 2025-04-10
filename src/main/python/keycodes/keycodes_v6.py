@@ -1615,9 +1615,23 @@ class keycodes_v6:
         "EXWHEEL_CHA": 0xC9F2,
         
         "DEFAULT_SETTINGS": 0xC9F3,
+                
         "SAVE_SETTINGS": 0xC9F4,
-        
-        "QK_KB": 0xC9F5, # custom keycodes safe range
+        "SAVE_SETTINGS_2": 0xC9F5,
+        "SAVE_SETTINGS_3": 0xC9F6,
+        "SAVE_SETTINGS_4": 0xC9F7,
+        "SAVE_SETTINGS_5": 0xC9F8,
+                
+        "LOAD_SETTINGS": 0xC9F9,
+        "LOAD_SETTINGS_2": 0xC9FA,
+        "LOAD_SETTINGS_3": 0xC9FB,
+        "LOAD_SETTINGS_4": 0xC9FC,
+        "LOAD_SETTINGS_5": 0xC9FD,
+                
+        "NEW_SPACE": 0xC9FE,        
+                
+                
+        "QK_KB": 0xC9FF, // custom keycodes safe range
         
         
        
