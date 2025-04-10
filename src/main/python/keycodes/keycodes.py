@@ -882,21 +882,6 @@ KEYCODES_SAVE = [
     K("DEFAULT_SETTINGS", "Reset to\nFactory\nSettings", "reset to factory"),
 ]
 
-KEYCODES_SETTINGS = [
-    K("DEFAULT_SETTINGS", "Reset to\nFactory\nSettings", "reset to factory"),
-    
-    K("SAVE_SETTINGS", "Save as\nDefault\nSettings", "save settings"),
-    K("SAVE_SETTINGS_2", "Save as\nPreset 1", "save preset 1"),
-    K("SAVE_SETTINGS_3", "Save as\nPreset 2", "save preset 2"),
-    K("SAVE_SETTINGS_4", "Save as\nPreset 3", "save preset 3"),
-    K("SAVE_SETTINGS_5", "Save as\nPreset 4", "save preset 4"),
-    
-    K("LOAD_SETTINGS", "Load\nDefault\nSettings", "load settings"),
-    K("LOAD_SETTINGS_2", "Load\nPreset 1", "load preset 1"),
-    K("LOAD_SETTINGS_3", "Load\nPreset 2", "load preset 2"),
-    K("LOAD_SETTINGS_4", "Load\nPreset 3", "load preset 3"),
-    K("LOAD_SETTINGS_5", "Load\nPreset 4", "load preset 4"),
-]
 
 KEYCODES_TAP_DANCE = [
     K("TD(0)", "TapDance\n0", "TapDance0"),
