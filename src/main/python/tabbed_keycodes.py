@@ -726,7 +726,7 @@ class midiadvancedTab(QScrollArea):
         
         for keycode in self.keycodes_settings1:
             btn = SquareButton()
-            btn.setFixedSize(80, 80)  # Slightly larger buttons for better visibility
+            btn.setFixedSize(50, 50)  # Slightly larger buttons for better visibility
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
@@ -746,7 +746,7 @@ class midiadvancedTab(QScrollArea):
         
         for keycode in self.keycodes_settings2:
             btn = SquareButton()
-            btn.setFixedSize(80, 80)
+            btn.setFixedSize(50, 50)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
@@ -757,7 +757,7 @@ class midiadvancedTab(QScrollArea):
         
         # Add spacing between rows
         spacer2 = QWidget()
-        spacer2.setFixedHeight(20)
+        spacer2.setFixedHeight(5)
         layout.addWidget(spacer2)
         
         # Third row - KEYCODES_SETTINGS3
@@ -766,7 +766,7 @@ class midiadvancedTab(QScrollArea):
         
         for keycode in self.keycodes_settings3:
             btn = SquareButton()
-            btn.setFixedSize(80, 80)
+            btn.setFixedSize(50, 50)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode

@@ -889,10 +889,10 @@ KEYCODES_SETTINGS1 = [
 ]    
 
 KEYCODES_SETTINGS2 = [
-    K("SAVE_SETTINGS_2", "Save as\nPreset 1", "save preset 1"),
-    K("SAVE_SETTINGS_3", "Save as\nPreset 2", "save preset 2"),
-    K("SAVE_SETTINGS_4", "Save as\nPreset 3", "save preset 3"),
-    K("SAVE_SETTINGS_5", "Save as\nPreset 4", "save preset 4"),
+    K("SAVE_SETTINGS_2", "Save\nto\nPreset 1", "save preset 1"),
+    K("SAVE_SETTINGS_3", "Save\nto\nPreset 2", "save preset 2"),
+    K("SAVE_SETTINGS_4", "Save\nto\nPreset 3", "save preset 3"),
+    K("SAVE_SETTINGS_5", "Save\nto\nPreset 4", "save preset 4"),
 ]
 
 KEYCODES_SETTINGS3 = [
