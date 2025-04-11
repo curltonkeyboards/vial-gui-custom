@@ -693,7 +693,7 @@ class midiadvancedTab(QScrollArea):
         
         # Add 100 pixel spacer below buttons
         spacer = QWidget()
-        spacer.setFixedHeight(100)
+        spacer.setFixedHeight(60)
         self.main_layout.addWidget(spacer)
 
         # Populate all sections
