@@ -9,7 +9,7 @@ from widgets.display_keyboard import DisplayKeyboard
 from widgets.display_keyboard_defs import ansi_100, ansi_80, ansi_70, iso_100, iso_80, iso_70, mods, mods_narrow, midi_layout
 from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
-    KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, \
+    KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE,\
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
@@ -587,7 +587,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3, inversion_keycodes2, CCencoder, velocityshuffle, inversion_keycodesspecial):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3, inversion_keycodes2, CCencoder, velocityshuffle, inversion_keycodesspecial, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3):
         super().__init__(parent)
         self.label = label
         
@@ -624,6 +624,9 @@ class midiadvancedTab(QScrollArea):
         self.ksoctave3 = ksoctave3
         self.kschannel2 = kschannel2
         self.kschannel3 = kschannel3
+        self.keycodes_settings1 = KEYCODES_SETTINGS1
+        self.keycodes_settings2 = KEYCODES_SETTINGS2
+        self.keycodes_settings3 = KEYCODES_SETTINGS3
 
         # Create scroll area content
         self.scroll_content = QWidget()
@@ -646,7 +649,8 @@ class midiadvancedTab(QScrollArea):
             "Show\nKeySplit\nOptions",
             "Show\nAdvanced MIDI\nOptions",
             "Show\nVelocity\nOptions",
-            "Show\nTouch Dial\nOptions"  # New section
+            "Show\nTouch Dial\nOptions",
+            "Show\nSetting\nPresets"  # New section added
         ]
 
         # Create buttons and containers for each section
@@ -700,6 +704,7 @@ class midiadvancedTab(QScrollArea):
         self.populate_advanced_section()
         self.populate_velocity_section()
         self.populate_expression_wheel_section()  # New method call
+        self.populate_settings_presets_section()
 
         self.main_layout.addStretch()
 
@@ -709,6 +714,69 @@ class midiadvancedTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.toggle_section(sections[0])
+        
+    def populate_settings_presets_section(self):
+        """Populate the Setting Presets section with three rows of buttons."""
+        container = self.containers["Show\nSetting\nPresets"]
+        layout = container.layout()
+        
+        # First row - KEYCODES_SETTINGS1 (centered)
+        row1_layout = QHBoxLayout()
+        row1_layout.addStretch(1)  # Add stretch before buttons (for centering)
+        
+        for keycode in self.keycodes_settings1:
+            btn = SquareButton()
+            btn.setFixedSize(80, 80)  # Slightly larger buttons for better visibility
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            row1_layout.addWidget(btn)
+        
+        row1_layout.addStretch(1)  # Add stretch after buttons (for centering)
+        layout.addLayout(row1_layout)
+        
+        # Add spacing between rows
+        spacer1 = QWidget()
+        spacer1.setFixedHeight(20)
+        layout.addWidget(spacer1)
+        
+        # Second row - KEYCODES_SETTINGS2
+        row2_layout = QHBoxLayout()
+        row2_layout.addStretch(1)  # Add stretch before buttons (for centering)
+        
+        for keycode in self.keycodes_settings2:
+            btn = SquareButton()
+            btn.setFixedSize(80, 80)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            row2_layout.addWidget(btn)
+        
+        row2_layout.addStretch(1)  # Add stretch after buttons (for centering)
+        layout.addLayout(row2_layout)
+        
+        # Add spacing between rows
+        spacer2 = QWidget()
+        spacer2.setFixedHeight(20)
+        layout.addWidget(spacer2)
+        
+        # Third row - KEYCODES_SETTINGS3
+        row3_layout = QHBoxLayout()
+        row3_layout.addStretch(1)  # Add stretch before buttons (for centering)
+        
+        for keycode in self.keycodes_settings3:
+            btn = SquareButton()
+            btn.setFixedSize(80, 80)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            row3_layout.addWidget(btn)
+        
+        row3_layout.addStretch(1)  # Add stretch after buttons (for centering)
+        layout.addLayout(row3_layout)
+        
+        # Add final stretch to push everything to the top
+        layout.addStretch()
 
     def populate_keysplit_section(self):
         """Populate the KeySplit section with dropdowns and buttons."""
