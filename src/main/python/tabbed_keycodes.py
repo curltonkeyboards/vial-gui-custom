@@ -1970,9 +1970,9 @@ class KeySplitTab(QScrollArea):
         split_buttons_layout.setAlignment(Qt.AlignCenter)
         
         split_buttons = [
-            ("Channel\nSplit", "MI_Cs"),
-            ("Velocity\nSplit", "MI_Vs"),
-            ("Transpose\nSplit", "MI_Ts")
+            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
         ]
         
         for text, code in split_buttons:
