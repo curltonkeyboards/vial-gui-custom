@@ -2218,17 +2218,19 @@ class ChordProgressionTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(5)
+        self.main_layout.setSpacing(2)  # Reduced spacing
+        self.main_layout.setContentsMargins(5, 5, 5, 5)  # Reduced margins
         self.main_layout.setAlignment(Qt.AlignTop)
         
         # Create tab buttons for keys at the top
         tab_layout = QHBoxLayout()
-        tab_layout.setSpacing(2)  # Small spacing between buttons
+        tab_layout.setSpacing(1)  # Minimal spacing between buttons
+        tab_layout.setContentsMargins(0, 0, 0, 0)  # No margins
         
         self.tab_buttons = []
         for key in self.keys:
             btn = QPushButton(key)
-            btn.setFixedHeight(40)
+            btn.setFixedHeight(30)  # Shorter button height
             btn.clicked.connect(lambda _, k=key: self.show_key(k))
             self.tab_buttons.append(btn)
             tab_layout.addWidget(btn)
@@ -2238,39 +2240,55 @@ class ChordProgressionTab(QScrollArea):
         # Legend for color coding
         legend_layout = QHBoxLayout()
         legend_layout.setAlignment(Qt.AlignCenter)
+        legend_layout.setContentsMargins(0, 2, 0, 2)  # Minimal vertical margins
         
         major_legend = QLabel("■ Major Progressions")
-        major_legend.setStyleSheet("color: #1565C0;")
+        major_legend.setStyleSheet("color: #1565C0; font-size: 10px;")
         legend_layout.addWidget(major_legend)
         
-        legend_layout.addSpacing(20)
+        legend_layout.addSpacing(10)  # Reduced spacing
         
         minor_legend = QLabel("■ Minor Progressions")
-        minor_legend.setStyleSheet("color: #6A1B9A;")
+        minor_legend.setStyleSheet("color: #6A1B9A; font-size: 10px;")
         legend_layout.addWidget(minor_legend)
         
         self.main_layout.addLayout(legend_layout)
         
         # Container for progression buttons
-        self.progressions_container = QWidget()
-        progressions_layout = QVBoxLayout(self.progressions_container)
-        
+       self.progressions_container = QWidget()
+        progressions_layout = QHBoxLayout(self.progressions_container)  # Change to QHBoxLayout
+        progressions_layout.setContentsMargins(0, 0, 0, 0)  # No margins
+
+        progressions_layout.addStretch(1)  # Add left spacer
+
+        # Create a container for the grid
+        grid_container = QWidget()
+        grid_layout = QVBoxLayout(grid_container)
+        grid_layout.setContentsMargins(0, 0, 0, 0)  # No margins
+
         self.progressions_grid = QGridLayout()
-        self.progressions_grid.setSpacing(8)
-        progressions_layout.addLayout(self.progressions_grid)
-        
+        self.progressions_grid.setSpacing(2)  # Minimal spacing between buttons
+        self.progressions_grid.setHorizontalSpacing(2)  # Horizontal spacing
+        self.progressions_grid.setVerticalSpacing(2)  # Vertical spacing
+        grid_layout.addLayout(self.progressions_grid)
+
+        progressions_layout.addWidget(grid_container)
+        progressions_layout.addStretch(1)  # Add right spacer
+
         self.main_layout.addWidget(self.progressions_container)
         
         # Control buttons section at the bottom
         self.controls_container = QWidget()
         controls_layout = QVBoxLayout(self.controls_container)
+        controls_layout.setContentsMargins(0, 5, 0, 0)  # Only top margin
+        
         controls_label = QLabel("Progression Controls")
         controls_label.setAlignment(Qt.AlignCenter)
-        controls_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        controls_label.setStyleSheet("font-size: 12px; font-weight: bold;")
         controls_layout.addWidget(controls_label)
         
         self.controls_grid = QGridLayout()
-        self.controls_grid.setSpacing(8)
+        self.controls_grid.setSpacing(2)  # Minimal spacing
         controls_layout.addLayout(self.controls_grid)
         
         self.main_layout.addWidget(self.controls_container)
@@ -2305,13 +2323,13 @@ class ChordProgressionTab(QScrollArea):
             if item.widget():
                 item.widget().deleteLater()
         
-        # Create control buttons (4 columns)
+        # Create control buttons (6 columns)
         for i, keycode in enumerate(self.control_keycodes):
-            row = i // 4
-            col = i % 4
+            row = i // 6
+            col = i % 6
             btn = QPushButton(Keycode.label(keycode.qmk_id))
-            btn.setFixedSize(120, 50)
-            btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
+            btn.setFixedSize(100, 35)  # Smaller size
+            btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63; font-size: 10px;")
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             self.controls_grid.addWidget(btn, row, col)
@@ -2327,41 +2345,38 @@ class ChordProgressionTab(QScrollArea):
         major_keycodes, minor_keycodes = self.keycode_map[self.current_key]
         
         # Combine keycodes in order they would appear by keycode number
-        # This will keep them in numerical order while maintaining the type information
         progression_buttons = []
         
         for keycode in major_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                # Create a tuple with keycode and is_major flag
                 progression_buttons.append((keycode, True))
                 
         for keycode in minor_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                # Create a tuple with keycode and is_major flag
                 progression_buttons.append((keycode, False))
                 
         # Sort by keycode number to maintain order
         progression_buttons.sort(key=lambda x: x[0].qmk_id)
         
-        # Create progression buttons (4 columns)
+        # Create progression buttons (6 columns)
         for i, (keycode, is_major) in enumerate(progression_buttons):
-            row = i // 4
-            col = i % 4
+            row = i // 6
+            col = i % 6
             btn = QPushButton()
             
-            # Create multi-line label
+            # Create multi-line label with smaller font
             label = Keycode.label(keycode.qmk_id)
             description = Keycode.description(keycode.qmk_id)
             text = f"{label}\n{description}"
             
             btn.setText(text)
-            btn.setFixedSize(160, 60)
+            btn.setFixedSize(120, 50)  # Narrower buttons
             
-            # Apply different styling based on major/minor
+            # Apply different styling based on major/minor with smaller font
             if is_major:
-                btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: left;")
+                btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: left; font-size: 9px;")
             else:
-                btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: left;")
+                btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: left; font-size: 9px;")
                 
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
