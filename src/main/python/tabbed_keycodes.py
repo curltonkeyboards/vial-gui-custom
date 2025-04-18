@@ -2195,22 +2195,35 @@ class ChordProgressionTab(QScrollArea):
         self.label = label
         
         # Define key names for tabs
-        self.keys = ["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"]
-        
-        # Map each key to its corresponding keycode lists (combined)
+        self.keys = [
+            "C Major\nA Minor", 
+            "C# Major\nA# Minor", 
+            "D Major\nB Minor",
+            "D# Major\nC Minor",
+            "E Major\nC# Minor",
+            "F Major\nD Minor",
+            "F# Major\nD# Minor",
+            "G Major\nE Minor",
+            "G# Major\nF Minor",
+            "A Major\nF# Minor",
+            "A# Major\nG Minor",
+            "B Major\nG# Minor"
+        ]
+
+        # Keep the keycode map the same, just update the keys to match the new display format
         self.keycode_map = {
-            "C": (KEYCODES_C_CHORDPROG_MAJOR, KEYCODES_C_CHORDPROG_MINOR),
-            "C#/Db": (KEYCODES_CS_CHORDPROG_MAJOR, KEYCODES_CS_CHORDPROG_MINOR),
-            "D": (KEYCODES_D_CHORDPROG_MAJOR, KEYCODES_D_CHORDPROG_MINOR),
-            "D#/Eb": (KEYCODES_DS_CHORDPROG_MAJOR, KEYCODES_DS_CHORDPROG_MINOR),
-            "E": (KEYCODES_E_CHORDPROG_MAJOR, KEYCODES_E_CHORDPROG_MINOR),
-            "F": (KEYCODES_F_CHORDPROG_MAJOR, KEYCODES_F_CHORDPROG_MINOR),
-            "F#/Gb": (KEYCODES_FS_CHORDPROG_MAJOR, KEYCODES_FS_CHORDPROG_MINOR),
-            "G": (KEYCODES_G_CHORDPROG_MAJOR, KEYCODES_G_CHORDPROG_MINOR),
-            "G#/Ab": (KEYCODES_GS_CHORDPROG_MAJOR, KEYCODES_GS_CHORDPROG_MINOR),
-            "A": (KEYCODES_A_CHORDPROG_MAJOR, KEYCODES_A_CHORDPROG_MINOR),
-            "A#/Bb": (KEYCODES_AS_CHORDPROG_MAJOR, KEYCODES_AS_CHORDPROG_MINOR),
-            "B": (KEYCODES_B_CHORDPROG_MAJOR, KEYCODES_B_CHORDPROG_MINOR),
+            "C Major\nA Minor": (KEYCODES_C_CHORDPROG_MAJOR, KEYCODES_C_CHORDPROG_MINOR),
+            "C# Major\nA# Minor": (KEYCODES_CS_CHORDPROG_MAJOR, KEYCODES_CS_CHORDPROG_MINOR),
+            "D Major\nB Minor": (KEYCODES_D_CHORDPROG_MAJOR, KEYCODES_D_CHORDPROG_MINOR),
+            "D# Major\nC Minor": (KEYCODES_DS_CHORDPROG_MAJOR, KEYCODES_DS_CHORDPROG_MINOR),
+            "E Major\nC# Minor": (KEYCODES_E_CHORDPROG_MAJOR, KEYCODES_E_CHORDPROG_MINOR),
+            "F Major\nD Minor": (KEYCODES_F_CHORDPROG_MAJOR, KEYCODES_F_CHORDPROG_MINOR),
+            "F# Major\nD# Minor": (KEYCODES_FS_CHORDPROG_MAJOR, KEYCODES_FS_CHORDPROG_MINOR),
+            "G Major\nE Minor": (KEYCODES_G_CHORDPROG_MAJOR, KEYCODES_G_CHORDPROG_MINOR),
+            "G# Major\nF Minor": (KEYCODES_GS_CHORDPROG_MAJOR, KEYCODES_GS_CHORDPROG_MINOR),
+            "A Major\nF# Minor": (KEYCODES_A_CHORDPROG_MAJOR, KEYCODES_A_CHORDPROG_MINOR),
+            "A# Major\nG Minor": (KEYCODES_AS_CHORDPROG_MAJOR, KEYCODES_AS_CHORDPROG_MINOR),
+            "B Major\nG# Minor": (KEYCODES_B_CHORDPROG_MAJOR, KEYCODES_B_CHORDPROG_MINOR),
         }
         
         # Add control keycodes at the end
@@ -2255,7 +2268,7 @@ class ChordProgressionTab(QScrollArea):
         self.main_layout.addLayout(legend_layout)
         
         # Container for progression buttons
-       self.progressions_container = QWidget()
+        self.progressions_container = QWidget()
         progressions_layout = QHBoxLayout(self.progressions_container)  # Change to QHBoxLayout
         progressions_layout.setContentsMargins(0, 0, 0, 0)  # No margins
 
