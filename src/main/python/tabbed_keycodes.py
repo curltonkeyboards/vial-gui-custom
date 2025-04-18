@@ -2246,7 +2246,7 @@ class ChordProgressionTab(QScrollArea):
         for key in self.keys:
             btn = QPushButton(key)
             btn.setFixedHeight(40)
-            btn.setStyleSheet("background-color: #FFE0B2;")
+            btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")  # Darker font
             btn.clicked.connect(lambda _, k=key: self.show_key(k))
             self.tab_buttons.append(btn)
             tab_layout.addWidget(btn)
@@ -2272,21 +2272,6 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addLayout(legend_layout)
         
-        # Control buttons section (now placed above progression buttons)
-        self.controls_container = QWidget()
-        controls_layout = QVBoxLayout(self.controls_container)
-        
-        controls_label = QLabel("Progression Controls")
-        controls_label.setAlignment(Qt.AlignCenter)
-        controls_label.setStyleSheet("font-size: 14px; font-weight: bold;")
-        controls_layout.addWidget(controls_label)
-        
-        self.controls_grid = QGridLayout()
-        self.controls_grid.setSpacing(10)
-        controls_layout.addLayout(self.controls_grid)
-        
-        self.main_layout.addWidget(self.controls_container)
-        
         # Container for progression buttons
         self.progressions_container = QWidget()
         progressions_layout = QHBoxLayout(self.progressions_container)
@@ -2309,6 +2294,22 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addWidget(self.progressions_container)
         
+        # Control buttons section at bottom (no title)
+        self.controls_container = QWidget()
+        controls_layout = QHBoxLayout(self.controls_container)
+        
+        # Add stretch before controls
+        controls_layout.addStretch(1)
+        
+        self.controls_grid = QGridLayout()
+        self.controls_grid.setSpacing(10)
+        controls_layout.addLayout(self.controls_grid)
+        
+        # Add stretch after controls
+        controls_layout.addStretch(1)
+        
+        self.main_layout.addWidget(self.controls_container)
+        
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         
@@ -2318,16 +2319,16 @@ class ChordProgressionTab(QScrollArea):
         self.populate_controls()
 
     def show_key(self, key):
-        # Update the active tab button highlight
+        # Update the active tab button highlight - use darker version of yellow instead of blue
         for btn in self.tab_buttons:
             if btn.text() == key:
                 btn.setStyleSheet("""
-                    background-color: #4A90E2;
-                    color: white;
+                    background-color: #D4A76A;  /* Darker version of FFE0B2 */
+                    color: #4A3828;  /* Even darker for text */
                     font-weight: bold;
                 """)
             else:
-                btn.setStyleSheet("background-color: #FFE0B2;")
+                btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
         
         self.current_key = key
         self.recreate_buttons()
@@ -2344,7 +2345,7 @@ class ChordProgressionTab(QScrollArea):
             row = i // 6
             col = i % 6
             btn = QPushButton(Keycode.label(keycode.qmk_id))
-            btn.setFixedSize(120, 50)  # Same size as chord trainer
+            btn.setFixedSize(50, 50)  # 50x50 as requested
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             self.controls_grid.addWidget(btn, row, col)
@@ -2387,11 +2388,11 @@ class ChordProgressionTab(QScrollArea):
             btn.setText(text)
             btn.setFixedSize(120, 50)  # Same size as chord trainer
             
-            # Apply different styling based on major/minor
+            # Apply different styling based on major/minor - centered text
             if is_major:
-                btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: left;")
+                btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: center;")
             else:
-                btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: left;")
+                btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: center;")
                 
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
