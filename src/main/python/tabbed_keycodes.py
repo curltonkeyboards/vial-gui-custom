@@ -2197,7 +2197,7 @@ class ChordProgressionTab(QScrollArea):
         # Define key names for tabs
         self.keys = ["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"]
         
-        # Map each key to its corresponding keycode lists
+        # Map each key to its corresponding keycode lists (combined)
         self.keycode_map = {
             "C": (KEYCODES_C_CHORDPROG_MAJOR, KEYCODES_C_CHORDPROG_MINOR),
             "C#/Db": (KEYCODES_CS_CHORDPROG_MAJOR, KEYCODES_CS_CHORDPROG_MINOR),
@@ -2235,39 +2235,31 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addLayout(tab_layout)
         
-        # Container for major and minor sections side by side
-        self.content_container = QWidget()
-        self.content_layout = QHBoxLayout(self.content_container)
+        # Legend for color coding
+        legend_layout = QHBoxLayout()
+        legend_layout.setAlignment(Qt.AlignCenter)
         
-        # Major chord section (left)
-        self.major_container = QWidget()
-        major_layout = QVBoxLayout(self.major_container)
-        major_label = QLabel("Major Key Progressions")
-        major_label.setAlignment(Qt.AlignCenter)
-        major_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        major_layout.addWidget(major_label)
+        major_legend = QLabel("■ Major Progressions")
+        major_legend.setStyleSheet("color: #1565C0;")
+        legend_layout.addWidget(major_legend)
         
-        self.major_grid = QGridLayout()
-        self.major_grid.setSpacing(8)
-        major_layout.addLayout(self.major_grid)
+        legend_layout.addSpacing(20)
         
-        # Minor chord section (right)
-        self.minor_container = QWidget()
-        minor_layout = QVBoxLayout(self.minor_container)
-        minor_label = QLabel("Minor Key Progressions")
-        minor_label.setAlignment(Qt.AlignCenter)
-        minor_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        minor_layout.addWidget(minor_label)
+        minor_legend = QLabel("■ Minor Progressions")
+        minor_legend.setStyleSheet("color: #6A1B9A;")
+        legend_layout.addWidget(minor_legend)
         
-        self.minor_grid = QGridLayout()
-        self.minor_grid.setSpacing(8)
-        minor_layout.addLayout(self.minor_grid)
+        self.main_layout.addLayout(legend_layout)
         
-        # Add major and minor containers to the content layout
-        self.content_layout.addWidget(self.major_container)
-        self.content_layout.addWidget(self.minor_container)
+        # Container for progression buttons
+        self.progressions_container = QWidget()
+        progressions_layout = QVBoxLayout(self.progressions_container)
         
-        self.main_layout.addWidget(self.content_container)
+        self.progressions_grid = QGridLayout()
+        self.progressions_grid.setSpacing(8)
+        progressions_layout.addLayout(self.progressions_grid)
+        
+        self.main_layout.addWidget(self.progressions_container)
         
         # Control buttons section at the bottom
         self.controls_container = QWidget()
@@ -2326,69 +2318,70 @@ class ChordProgressionTab(QScrollArea):
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
-        while self.major_grid.count():
-            item = self.major_grid.takeAt(0)
+        while self.progressions_grid.count():
+            item = self.progressions_grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
                 
-        while self.minor_grid.count():
-            item = self.minor_grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
         # Get keycodes for current key
         major_keycodes, minor_keycodes = self.keycode_map[self.current_key]
         
-        # Create Major progression buttons (3 columns)
-        for i, keycode in enumerate(major_keycodes):
+        # Combine keycodes in order they would appear by keycode number
+        # This will keep them in numerical order while maintaining the type information
+        progression_buttons = []
+        
+        for keycode in major_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 3
-                col = i % 3
-                btn = QPushButton()
+                # Create a tuple with keycode and is_major flag
+                progression_buttons.append((keycode, True))
                 
-                # Create multi-line label
-                label = Keycode.label(keycode.qmk_id)
-                description = Keycode.description(keycode.qmk_id)
-                text = f"{label}\n{description}"
+        for keycode in minor_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                # Create a tuple with keycode and is_major flag
+                progression_buttons.append((keycode, False))
                 
-                btn.setText(text)
-                btn.setFixedSize(160, 60)
+        # Sort by keycode number to maintain order
+        progression_buttons.sort(key=lambda x: x[0].qmk_id)
+        
+        # Create progression buttons (4 columns)
+        for i, (keycode, is_major) in enumerate(progression_buttons):
+            row = i // 4
+            col = i % 4
+            btn = QPushButton()
+            
+            # Create multi-line label
+            label = Keycode.label(keycode.qmk_id)
+            description = Keycode.description(keycode.qmk_id)
+            text = f"{label}\n{description}"
+            
+            btn.setText(text)
+            btn.setFixedSize(160, 60)
+            
+            # Apply different styling based on major/minor
+            if is_major:
                 btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: left;")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.major_grid.addWidget(btn, row, col)
-
-        # Create Minor progression buttons (3 columns)
-        for i, keycode in enumerate(minor_keycodes):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 3
-                col = i % 3
-                btn = QPushButton()
-                
-                # Create multi-line label
-                label = Keycode.label(keycode.qmk_id)
-                description = Keycode.description(keycode.qmk_id)
-                text = f"{label}\n{description}"
-                
-                btn.setText(text)
-                btn.setFixedSize(160, 60)
+            else:
                 btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: left;")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.minor_grid.addWidget(btn, row, col)
+                
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.progressions_grid.addWidget(btn, row, col)
 
     def relabel_buttons(self):
-        for grid in [self.major_grid, self.minor_grid, self.controls_grid]:
-            for i in range(grid.count()):
-                widget = grid.itemAt(i).widget()
-                if hasattr(widget, 'keycode'):
-                    label = Keycode.label(widget.keycode.qmk_id)
-                    description = Keycode.description(widget.keycode.qmk_id)
-                    widget.setText(f"{label}\n{description}")
+        for i in range(self.progressions_grid.count()):
+            widget = self.progressions_grid.itemAt(i).widget()
+            if hasattr(widget, 'keycode'):
+                label = Keycode.label(widget.keycode.qmk_id)
+                description = Keycode.description(widget.keycode.qmk_id)
+                widget.setText(f"{label}\n{description}")
+        
+        for i in range(self.controls_grid.count()):
+            widget = self.controls_grid.itemAt(i).widget()
+            if hasattr(widget, 'keycode'):
+                widget.setText(Keycode.label(widget.keycode.qmk_id))
 
     def has_buttons(self):
-        return (self.major_grid.count() > 0 or 
-                self.minor_grid.count() > 0)
+        return self.progressions_grid.count() > 0
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
