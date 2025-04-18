@@ -2230,7 +2230,7 @@ class ChordProgressionTab(QScrollArea):
         self.tab_buttons = []
         for key in self.keys:
             btn = QPushButton(key)
-            btn.setFixedHeight(30)  # Shorter button height
+            btn.setFixedHeight(40)  # Shorter button height
             btn.clicked.connect(lambda _, k=key: self.show_key(k))
             self.tab_buttons.append(btn)
             tab_layout.addWidget(btn)
