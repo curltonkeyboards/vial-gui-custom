@@ -9,7 +9,7 @@ from widgets.display_keyboard import DisplayKeyboard
 from widgets.display_keyboard_defs import ansi_100, ansi_80, ansi_70, iso_100, iso_80, iso_70, mods, mods_narrow, midi_layout
 from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
-    KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, \
+    KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, KEYCODES_BASIC, KEYCODES_SHIFTED, KEYCODES_C_CHORDPROG_MINOR, KEYCODES_C_CHORDPROG_MAJOR, KEYCODES_CS_CHORDPROG_MINOR, KEYCODES_CS_CHORDPROG_MAJOR, KEYCODES_D_CHORDPROG_MINOR, KEYCODES_D_CHORDPROG_MAJOR, KEYCODES_DS_CHORDPROG_MINOR, KEYCODES_DS_CHORDPROG_MAJOR, KEYCODES_E_CHORDPROG_MINOR, KEYCODES_E_CHORDPROG_MAJOR, KEYCODES_F_CHORDPROG_MINOR, KEYCODES_F_CHORDPROG_MAJOR, KEYCODES_FS_CHORDPROG_MINOR, KEYCODES_FS_CHORDPROG_MAJOR, KEYCODES_G_CHORDPROG_MINOR, KEYCODES_G_CHORDPROG_MAJOR, KEYCODES_GS_CHORDPROG_MINOR, KEYCODES_GS_CHORDPROG_MAJOR, KEYCODES_A_CHORDPROG_MINOR, KEYCODES_A_CHORDPROG_MAJOR, KEYCODES_AS_CHORDPROG_MINOR, KEYCODES_AS_CHORDPROG_MAJOR, KEYCODES_B_CHORDPROG_MINOR, KEYCODES_B_CHORDPROG_MAJOR, KEYCODES_CHORD_PROG_CONTROLS, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE,\
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
@@ -2186,6 +2186,209 @@ class PianoKeyboard(QWidget):
                         self.black_keys.append(key)
                     if not is_black:
                         white_index += 1
+                        
+class ChordProgressionTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+    
+    def __init__(self, parent, label):
+        super().__init__(parent)
+        self.label = label
+        
+        # Define key names for tabs
+        self.keys = ["C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"]
+        
+        # Map each key to its corresponding keycode lists
+        self.keycode_map = {
+            "C": (KEYCODES_C_CHORDPROG_MAJOR, KEYCODES_C_CHORDPROG_MINOR),
+            "C#/Db": (KEYCODES_CS_CHORDPROG_MAJOR, KEYCODES_CS_CHORDPROG_MINOR),
+            "D": (KEYCODES_D_CHORDPROG_MAJOR, KEYCODES_D_CHORDPROG_MINOR),
+            "D#/Eb": (KEYCODES_DS_CHORDPROG_MAJOR, KEYCODES_DS_CHORDPROG_MINOR),
+            "E": (KEYCODES_E_CHORDPROG_MAJOR, KEYCODES_E_CHORDPROG_MINOR),
+            "F": (KEYCODES_F_CHORDPROG_MAJOR, KEYCODES_F_CHORDPROG_MINOR),
+            "F#/Gb": (KEYCODES_FS_CHORDPROG_MAJOR, KEYCODES_FS_CHORDPROG_MINOR),
+            "G": (KEYCODES_G_CHORDPROG_MAJOR, KEYCODES_G_CHORDPROG_MINOR),
+            "G#/Ab": (KEYCODES_GS_CHORDPROG_MAJOR, KEYCODES_GS_CHORDPROG_MINOR),
+            "A": (KEYCODES_A_CHORDPROG_MAJOR, KEYCODES_A_CHORDPROG_MINOR),
+            "A#/Bb": (KEYCODES_AS_CHORDPROG_MAJOR, KEYCODES_AS_CHORDPROG_MINOR),
+            "B": (KEYCODES_B_CHORDPROG_MAJOR, KEYCODES_B_CHORDPROG_MINOR),
+        }
+        
+        # Add control keycodes at the end
+        self.control_keycodes = KEYCODES_CHORD_PROG_CONTROLS
+        
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(5)
+        self.main_layout.setAlignment(Qt.AlignTop)
+        
+        # Create tab buttons for keys at the top
+        tab_layout = QHBoxLayout()
+        tab_layout.setSpacing(2)  # Small spacing between buttons
+        
+        self.tab_buttons = []
+        for key in self.keys:
+            btn = QPushButton(key)
+            btn.setFixedHeight(40)
+            btn.clicked.connect(lambda _, k=key: self.show_key(k))
+            self.tab_buttons.append(btn)
+            tab_layout.addWidget(btn)
+        
+        self.main_layout.addLayout(tab_layout)
+        
+        # Container for major and minor sections side by side
+        self.content_container = QWidget()
+        self.content_layout = QHBoxLayout(self.content_container)
+        
+        # Major chord section (left)
+        self.major_container = QWidget()
+        major_layout = QVBoxLayout(self.major_container)
+        major_label = QLabel("Major Key Progressions")
+        major_label.setAlignment(Qt.AlignCenter)
+        major_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        major_layout.addWidget(major_label)
+        
+        self.major_grid = QGridLayout()
+        self.major_grid.setSpacing(8)
+        major_layout.addLayout(self.major_grid)
+        
+        # Minor chord section (right)
+        self.minor_container = QWidget()
+        minor_layout = QVBoxLayout(self.minor_container)
+        minor_label = QLabel("Minor Key Progressions")
+        minor_label.setAlignment(Qt.AlignCenter)
+        minor_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        minor_layout.addWidget(minor_label)
+        
+        self.minor_grid = QGridLayout()
+        self.minor_grid.setSpacing(8)
+        minor_layout.addLayout(self.minor_grid)
+        
+        # Add major and minor containers to the content layout
+        self.content_layout.addWidget(self.major_container)
+        self.content_layout.addWidget(self.minor_container)
+        
+        self.main_layout.addWidget(self.content_container)
+        
+        # Control buttons section at the bottom
+        self.controls_container = QWidget()
+        controls_layout = QVBoxLayout(self.controls_container)
+        controls_label = QLabel("Progression Controls")
+        controls_label.setAlignment(Qt.AlignCenter)
+        controls_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        controls_layout.addWidget(controls_label)
+        
+        self.controls_grid = QGridLayout()
+        self.controls_grid.setSpacing(8)
+        controls_layout.addLayout(self.controls_grid)
+        
+        self.main_layout.addWidget(self.controls_container)
+        
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        
+        # Show first key (C) by default
+        self.current_key = self.keys[0]
+        self.show_key(self.current_key)
+        self.populate_controls()
+
+    def show_key(self, key):
+        # Update the active tab button highlight
+        for btn in self.tab_buttons:
+            if btn.text() == key:
+                btn.setStyleSheet("""
+                    background-color: #4A90E2;
+                    color: white;
+                    font-weight: bold;
+                """)
+            else:
+                btn.setStyleSheet("")  # Reset to default
+        
+        self.current_key = key
+        self.recreate_buttons()
+
+    def populate_controls(self):
+        # Clear existing controls
+        while self.controls_grid.count():
+            item = self.controls_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Create control buttons (4 columns)
+        for i, keycode in enumerate(self.control_keycodes):
+            row = i // 4
+            col = i % 4
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
+            btn.setFixedSize(120, 50)
+            btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            self.controls_grid.addWidget(btn, row, col)
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear existing layouts
+        while self.major_grid.count():
+            item = self.major_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        while self.minor_grid.count():
+            item = self.minor_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Get keycodes for current key
+        major_keycodes, minor_keycodes = self.keycode_map[self.current_key]
+        
+        # Create Major progression buttons (3 columns)
+        for i, keycode in enumerate(major_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 3
+                col = i % 3
+                btn = QPushButton()
+                
+                # Create multi-line label
+                label = Keycode.label(keycode.qmk_id)
+                description = Keycode.description(keycode.qmk_id)
+                text = f"{label}\n{description}"
+                
+                btn.setText(text)
+                btn.setFixedSize(160, 60)
+                btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: left;")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.major_grid.addWidget(btn, row, col)
+
+        # Create Minor progression buttons (3 columns)
+        for i, keycode in enumerate(minor_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 3
+                col = i % 3
+                btn = QPushButton()
+                
+                # Create multi-line label
+                label = Keycode.label(keycode.qmk_id)
+                description = Keycode.description(keycode.qmk_id)
+                text = f"{label}\n{description}"
+                
+                btn.setText(text)
+                btn.setFixedSize(160, 60)
+                btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: left;")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.minor_grid.addWidget(btn, row, col)
+
+    def relabel_buttons(self):
+        for grid in [self.major_grid, self.minor_grid, self.controls_grid]:
+            for i in range(grid.count()):
+                widget = grid.itemAt(i).widget()
+                if hasattr(widget, 'keycode'):
+                    label = Keycode.label(widget.keycode.qmk_id)
+                    description = Keycode.description(widget.keycode.qmk_id)
+                    widget.setText(f"{label}\n{description}")
+
+    def has_buttons(self):
+        return (self.major_grid.count() > 0 or 
+                self.minor_grid.count() > 0)
 
 class midiTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -2389,6 +2592,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
             EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
+            ChordProgressionTab(self, "Chord Progressions"),
             midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             SimpleTab(self, " ", KEYCODES_CLEAR),     
