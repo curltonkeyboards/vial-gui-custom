@@ -2267,7 +2267,7 @@ class ChordProgressionTab(QScrollArea):
         legend_layout.addSpacing(20)
         
         minor_legend = QLabel("■ Minor Progressions")
-        minor_legend.setStyleSheet("color: #6A1B9A;")
+        minor_legend.setStyleSheet("color: #7D3C98;")
         legend_layout.addWidget(minor_legend)
         
         self.main_layout.addLayout(legend_layout)
@@ -2325,8 +2325,7 @@ class ChordProgressionTab(QScrollArea):
                 btn.setStyleSheet("""
                     background-color: #D4A76A;  /* Darker version of FFE0B2 */
                     color: #4A3828;  /* Even darker for text */
-                    font-weight: bold;
-                """)
+                """)  # Removed the font-weight: bold; line
             else:
                 btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
         
@@ -2342,7 +2341,7 @@ class ChordProgressionTab(QScrollArea):
         
         # Create control buttons (6 columns like chord trainer)
         for i, keycode in enumerate(self.control_keycodes):
-            row = i // 6
+            row = i // 10
             col = i % 6
             btn = QPushButton(Keycode.label(keycode.qmk_id))
             btn.setFixedSize(50, 50)  # 50x50 as requested
@@ -2392,7 +2391,8 @@ class ChordProgressionTab(QScrollArea):
             if is_major:
                 btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: center;")
             else:
-                btn.setStyleSheet("background-color: #EDE7F6; color: #6A1B9A; text-align: center;")
+                # More vibrant purple background and darker purple text
+                btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98; text-align: center;")
                 
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
