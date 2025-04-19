@@ -2647,6 +2647,9 @@ class midiTab(QScrollArea):
             if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
                 widget.setText(Keycode.label(widget.keycode.qmk_id))
 
+    def has_buttons(self):
+        return True
+
 
 class SimpleTab(Tab):
 
