@@ -2703,6 +2703,7 @@ KEYCODES_CHORD_PROG_CONTROLS = [
     K("PROG_OCTAVE_UP", "Octave\nUp", "Raise progression octave"),
     K("PROG_OCTAVE_DOWN", "Octave\nDown", "Lower progression octave"),
     K("PROG_OCTAVE_RESET", "Octave\nReset", "Reset progression octave to default"),
+    K("MI_TAP", "Set\nBPM", "Set BPM"),
 ]
 
 
