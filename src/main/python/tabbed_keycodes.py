@@ -631,7 +631,7 @@ class midiadvancedTab(QScrollArea):
         # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(60)
+        self.main_layout.setSpacing(20)
 
         # Create buttons layout with stretches
         self.button_layout = QHBoxLayout()
@@ -2246,6 +2246,7 @@ class ChordProgressionTab(QScrollArea):
         for key in self.keys:
             btn = QPushButton(key)
             btn.setFixedHeight(40)
+            btn.setFixedWidth(75)
             btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")  # Darker font
             btn.clicked.connect(lambda _, k=key: self.show_key(k))
             self.tab_buttons.append(btn)
@@ -2385,7 +2386,7 @@ class ChordProgressionTab(QScrollArea):
             text = f"{label}\n{description}"
             
             btn.setText(text)
-            btn.setFixedSize(120, 50)  # Same size as chord trainer
+            btn.setFixedSize(100, 50)  # Same size as chord trainer
             
             # Apply different styling based on major/minor - centered text
             if is_major:
