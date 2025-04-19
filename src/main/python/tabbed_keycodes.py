@@ -2392,15 +2392,18 @@ class ChordProgressionTab(QScrollArea):
             col = i % 8
             btn = QPushButton()
             
-            # Get label and description
-            label = Keycode.label(keycode.qmk_id)  # This is "C Major\nProg\n3"
-            description = Keycode.description(keycode.qmk_id)  # This is the formula and example
+            # Get label (prog name) and description (roman numerals + chords)
+            label = Keycode.label(keycode.qmk_id)  # "C# Prog 1"
+            description = Keycode.description(keycode.qmk_id)  # "i-VII-VI\n(A#m-G#-F#)"
             
-            # Use only the label for button text
-            btn.setText(label)
+            # Extract just the Roman numerals from the description
+            roman_numerals = description.split("\n")[0]  # Get "i-VII-VI" part
             
-            # Set the description as a tooltip
-            btn.setToolTip(description)
+            # Use only the Roman numerals for button text
+            btn.setText(roman_numerals)
+            
+            # Set the full info as tooltip: prog name + description
+            btn.setToolTip(f"{label}\n{description}")
             
             btn.setFixedSize(120, 50)  # Same size as chord trainer
             
@@ -2418,13 +2421,18 @@ class ChordProgressionTab(QScrollArea):
         for i in range(self.progressions_grid.count()):
             widget = self.progressions_grid.itemAt(i).widget()
             if hasattr(widget, 'keycode'):
-                # Only show the label (simple name) on the button
+                # Get label and description
                 label = Keycode.label(widget.keycode.qmk_id)
-                widget.setText(label)
-                
-                # Set the description as tooltip
                 description = Keycode.description(widget.keycode.qmk_id)
-                widget.setToolTip(description)
+                
+                # Extract just the Roman numerals from the description
+                roman_numerals = description.split("\n")[0]
+                
+                # Use only the Roman numerals for button text
+                widget.setText(roman_numerals)
+                
+                # Set the full info as tooltip
+                widget.setToolTip(f"{label}\n{description}")
         
         for i in range(self.controls_grid.count()):
             widget = self.controls_grid.itemAt(i).widget()
