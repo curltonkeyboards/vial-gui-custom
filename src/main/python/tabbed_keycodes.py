@@ -2341,8 +2341,8 @@ class ChordProgressionTab(QScrollArea):
         
         # Create control buttons (6 columns)
         for i, keycode in enumerate(self.control_keycodes):
-            row = i // 6
-            col = i % 6
+            row = i // 10
+            col = i % 10
             btn = QPushButton(Keycode.label(keycode.qmk_id))
             btn.setFixedSize(50, 50)  # 50x50 as requested
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -2386,7 +2386,6 @@ class ChordProgressionTab(QScrollArea):
         # Sort by the numeric progression number
         all_progression_keycodes.sort(key=get_progression_number)
         
-        # Create progression buttons (8 columns)
         for i, (keycode, is_major) in enumerate(all_progression_keycodes):
             row = i // 8  # 8 columns
             col = i % 8
@@ -2403,7 +2402,10 @@ class ChordProgressionTab(QScrollArea):
             btn.setText(roman_numerals)
             
             # Set the full info as tooltip: prog name + description
-            btn.setToolTip(f"{label}\n{description}")
+            # Replace newlines with spaces in both label and description
+            clean_label = label.replace("\n", " ")
+            clean_description = description.replace("\n", " ")
+            btn.setToolTip(f"{clean_label} - {clean_description}")
             
             btn.setFixedSize(120, 50)  # Same size as chord trainer
             
@@ -2431,8 +2433,10 @@ class ChordProgressionTab(QScrollArea):
                 # Use only the Roman numerals for button text
                 widget.setText(roman_numerals)
                 
-                # Set the full info as tooltip
-                widget.setToolTip(f"{label}\n{description}")
+                # Set the full info as tooltip without newlines
+                clean_label = label.replace("\n", " ")
+                clean_description = description.replace("\n", " ")
+                widget.setToolTip(f"{clean_label} - {clean_description}")
         
         for i in range(self.controls_grid.count()):
             widget = self.controls_grid.itemAt(i).widget()
