@@ -2426,8 +2426,8 @@ class midiTab(QScrollArea):
 
         # In midiTab class, restore original control buttons
         self.midi_layout2 = [
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO", "SAVE_SETTINGS", "DEFAULT_SETTINGS"]
-        ]
+            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
+]
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -2435,150 +2435,69 @@ class midiTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(10)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create tab buttons at the top
-        tab_layout = QHBoxLayout()
-        tab_layout.setSpacing(2)
-        
-        # Add stretch before buttons
-        tab_layout.addStretch(1)
-        
-        # Create the two tab buttons
-        self.keyboard_btn = QPushButton("Keyboard")
-        self.keyboard_btn.setFixedHeight(40)
-        self.keyboard_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
-        self.keyboard_btn.clicked.connect(lambda: self.show_tab("keyboard"))
-        
-        self.controls_btn = QPushButton("Controls")
-        self.controls_btn.setFixedHeight(40)
-        self.controls_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
-        self.controls_btn.clicked.connect(lambda: self.show_tab("controls"))
-        
-        tab_layout.addWidget(self.keyboard_btn)
-        tab_layout.addWidget(self.controls_btn)
-        
-        # Add stretch after buttons
-        tab_layout.addStretch(1)
-        
-        self.main_layout.addLayout(tab_layout)
-
-        # Keyboard container
-        self.keyboard_container = QWidget()
-        keyboard_layout = QVBoxLayout(self.keyboard_container)
-        
         # Piano keyboard
         self.piano = PianoKeyboard()
         self.piano.keyPressed.connect(self.keycode_changed)
-        keyboard_layout.addWidget(self.piano)
-        
-        self.main_layout.addWidget(self.keyboard_container)
-        
-        # Controls container
-        self.controls_container = QWidget()
-        controls_layout = QVBoxLayout(self.controls_container)
-        
-        # Control buttons with spacers for centering
-        control_button_layout = QHBoxLayout()
-        
-        # Add stretch before buttons
-        control_button_layout.addStretch(1)
-        
-        # Controls grid
-        button_container = QWidget()
-        button_grid_layout = QGridLayout(button_container)
-        button_grid_layout.setSpacing(10)
-        
-        # Add control buttons to grid
-        row = 0
-        col = 0
+        self.main_layout.addWidget(self.piano)
+
+                # Control buttons
+        control_container = QWidget()
+        control_layout = QHBoxLayout(control_container)
+        control_layout.setAlignment(Qt.AlignCenter)
+
         for item in self.midi_layout2[0]:
-            if item != "KC_NO":  # Skip empty slots
-                btn = QPushButton()
-                btn.setFixedSize(50, 50)
-                
-                if item == "MI_ALLOFF":
-                    btn.setText("All\nNotes\nOff")
-                elif item == "MI_SUS":
-                    btn.setText("Sustain\nPedal")
-                elif item == "MI_CHORD_99":
-                    btn.setText("Smart\nChord")
-                elif item == "SAVE_SETTINGS":
-                    btn.setText("Save\nSettings")
-                elif item == "DEFAULT_SETTINGS":
-                    btn.setText("Reset\nDefault\nSettings")
-                
-                btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
-                button_grid_layout.addWidget(btn, row, col)
-                
-                col += 1
-                if col >= 5:  # 5 buttons per row
-                    col = 0
-                    row += 1
+            btn = QPushButton()
+            btn.setFixedSize(50, 50)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #f0f0f0;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 8px;
+                    color: #333333;
+                    padding: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+            """)
+            if item == "MI_ALLOFF":
+                btn.setText("All\nNotes\nOff")
+            elif item == "MI_SUS":
+                btn.setText("Sustain\nPedal")
+            elif item == "MI_CHORD_99":
+                btn.setText("Smart\nChord")
+            elif item == "SAVE_SETTINGS":
+                btn.setText("Save\nSettings")
+            elif item == "DEFAULT_SETTINGS":
+                btn.setText("Reset\nDefault\nSettings")
+            elif item == "KC_NO":
+                btn.setText("")
+            btn.clicked.connect(lambda _, k=item: self.keycode_changed.emit(k))
+            control_layout.addWidget(btn)
+
+        self.main_layout.addWidget(control_container)
+
+        self.main_layout.addWidget(control_container)
         
-        control_button_layout.addWidget(button_container)
+        self.main_layout.addWidget(control_container)
         
-        # Add stretch after buttons
-        control_button_layout.addStretch(1)
-        
-        controls_layout.addLayout(control_button_layout)
-        
-        # Additional layouts for inversion controls
+        # Additional layouts
         self.dropdown_layout = QVBoxLayout()
-        controls_layout.addLayout(self.dropdown_layout)
-        
+        self.main_layout.addLayout(self.dropdown_layout)
         self.horizontal_dropdown_layout = QHBoxLayout()
         self.dropdown_layout.addLayout(self.horizontal_dropdown_layout)
         
         self.inversion_label = QLabel(" ")
-        controls_layout.addWidget(self.inversion_label)
+        self.main_layout.addWidget(self.inversion_label)
 
-        # Grid for inversion buttons
-        button_section_layout = QHBoxLayout()
-        button_section_layout.addStretch(1)
-        
         self.button_layout = QGridLayout()
-        self.button_layout.setSpacing(10)
-        
-        button_grid_container = QWidget()
-        button_grid_container.setLayout(self.button_layout)
-        
-        button_section_layout.addWidget(button_grid_container)
-        button_section_layout.addStretch(1)
-        
-        controls_layout.addLayout(button_section_layout)
-        
-        self.main_layout.addWidget(self.controls_container)
-        self.controls_container.hide()  # Hide controls initially
-        
+        self.main_layout.addLayout(self.button_layout)
         self.recreate_buttons()
-        
-        # Show keyboard tab by default
-        self.show_tab("keyboard")
-
-    def show_tab(self, tab_name):
-        # Update button styles
-        if tab_name == "keyboard":
-            self.keyboard_btn.setStyleSheet("""
-                background-color: #D4A76A;
-                color: #4A3828;
-            """)
-            self.controls_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
-            
-            # Show/hide containers
-            self.keyboard_container.show()
-            self.controls_container.hide()
-        else:  # controls
-            self.controls_btn.setStyleSheet("""
-                background-color: #D4A76A;
-                color: #4A3828;
-            """)
-            self.keyboard_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
-            
-            # Show/hide containers
-            self.keyboard_container.hide()
-            self.controls_container.show()
+        self.main_layout.addStretch()
 
     def add_header_dropdown(self, header_text, keycodes, layout):
         header_dropdown_layout = QVBoxLayout()
@@ -2604,6 +2523,7 @@ class midiTab(QScrollArea):
             selected_value = dropdown.itemData(selected_index)
         dropdown.setCurrentIndex(0)
 
+        # In midiTab class:
     def recreate_buttons(self, keycode_filter=None):
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
