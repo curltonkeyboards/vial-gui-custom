@@ -2194,6 +2194,13 @@ class ChordProgressionTab(QScrollArea):
         super().__init__(parent)
         self.label = label
         
+        # Display mode for progression buttons:
+        # 0 = Roman Numerals ("i-VII-VI")
+        # 1 = Chord Names ("Am-G-F")
+        # 2 = Name ("The Simple Minor") 
+        # 3 = Key & Number ("A Minor Prog 1")
+        self.display_mode = 0
+        
         # Define key names for tabs
         self.keys = [
             "C Major\nA Minor", 
@@ -2256,20 +2263,29 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addLayout(tab_layout)
         
-        # Legend for color coding
+        # Legend for color coding with toggle button
         legend_layout = QHBoxLayout()
         legend_layout.setAlignment(Qt.AlignCenter)
-        
+
         major_legend = QLabel("■ Major Progressions")
         major_legend.setStyleSheet("color: #1565C0;")
         legend_layout.addWidget(major_legend)
-        
+
         legend_layout.addSpacing(20)
-        
+
+        # Add toggle description button in the middle
+        self.toggle_desc_btn = QPushButton("Showing: Roman Numerals")
+        self.toggle_desc_btn.setFixedSize(170, 30)
+        self.toggle_desc_btn.setStyleSheet("background-color: #F0F0F0;")
+        self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
+        legend_layout.addWidget(self.toggle_desc_btn)
+
+        legend_layout.addSpacing(20)
+
         minor_legend = QLabel("■ Minor Progressions")
         minor_legend.setStyleSheet("color: #7D3C98;")
         legend_layout.addWidget(minor_legend)
-        
+
         self.main_layout.addLayout(legend_layout)
         
         # Container for progression buttons
@@ -2318,6 +2334,18 @@ class ChordProgressionTab(QScrollArea):
         self.show_key(self.current_key)
         self.populate_controls()
 
+    def toggle_button_description(self):
+        # Cycle through display modes (0-3)
+        self.display_mode = (self.display_mode + 1) % 4
+        
+        # Update button text based on the new mode
+        mode_names = ["Showing: Roman Numerals", "Showing: Chord Names", 
+                     "Showing: Names", "Showing: Prog Numbers"]
+        self.toggle_desc_btn.setText(mode_names[self.display_mode])
+        
+        # Refresh the buttons with the new display mode
+        self.relabel_buttons()
+
     def show_key(self, key):
         # Update the active tab button highlight - use darker version of yellow
         for btn in self.tab_buttons:
@@ -2339,7 +2367,7 @@ class ChordProgressionTab(QScrollArea):
             if item.widget():
                 item.widget().deleteLater()
         
-        # Create control buttons (6 columns)
+        # Create control buttons (10 columns)
         for i, keycode in enumerate(self.control_keycodes):
             row = i // 10
             col = i % 10
@@ -2391,18 +2419,39 @@ class ChordProgressionTab(QScrollArea):
             col = i % 8
             btn = QPushButton()
             
-            # Get label (prog name) and description (roman numerals + chords)
-            label = Keycode.label(keycode.qmk_id)  # "C# Prog 1"
-            description = Keycode.description(keycode.qmk_id)  # "i-VII-VI\n(A#m-G#-F#)"
+            # Get label and description
+            label = Keycode.label(keycode.qmk_id)
+            description = Keycode.description(keycode.qmk_id)
             
-            # Extract just the Roman numerals from the description
-            roman_numerals = description.split("\n")[0]  # Get "i-VII-VI" part
+            # Parse parts from description for different display modes
+            # Roman numerals are the first line
+            roman_numerals = description.split("\n")[0]
             
-            # Use only the Roman numerals for button text
-            btn.setText(roman_numerals)
+            # Try to extract chord names from parentheses
+            chord_names = ""
+            for part in description.split("\n"):
+                if "(" in part and ")" in part:
+                    chord_names = part[part.find("(")+1:part.find(")")]
+                    break
             
-            # Set the full info as tooltip: prog name + description
-            # Replace newlines with spaces in both label and description
+            # Try to extract progression name
+            prog_name = ""
+            if ")" in description:
+                parts_after_paren = description.split(")")
+                if len(parts_after_paren) > 1:
+                    prog_name = parts_after_paren[1].replace("\n", " ").strip()
+            
+            # Set button text based on display mode
+            if self.display_mode == 0:  # Roman Numerals
+                btn.setText(roman_numerals)
+            elif self.display_mode == 1:  # Chord Names
+                btn.setText(chord_names if chord_names else roman_numerals)
+            elif self.display_mode == 2:  # Name
+                btn.setText(prog_name if prog_name else roman_numerals)
+            else:  # Key & Number (mode 3)
+                btn.setText(label.replace("\n", " "))
+            
+            # Set the full info as tooltip
             clean_label = label.replace("\n", " ")
             clean_description = description.replace("\n", " ")
             btn.setToolTip(f"{clean_label} - {clean_description}")
@@ -2427,13 +2476,35 @@ class ChordProgressionTab(QScrollArea):
                 label = Keycode.label(widget.keycode.qmk_id)
                 description = Keycode.description(widget.keycode.qmk_id)
                 
-                # Extract just the Roman numerals from the description
+                # Parse parts from description for different display modes
+                # Roman numerals are the first line
                 roman_numerals = description.split("\n")[0]
                 
-                # Use only the Roman numerals for button text
-                widget.setText(roman_numerals)
+                # Try to extract chord names from parentheses
+                chord_names = ""
+                for part in description.split("\n"):
+                    if "(" in part and ")" in part:
+                        chord_names = part[part.find("(")+1:part.find(")")]
+                        break
                 
-                # Set the full info as tooltip without newlines
+                # Try to extract progression name
+                prog_name = ""
+                if ")" in description:
+                    parts_after_paren = description.split(")")
+                    if len(parts_after_paren) > 1:
+                        prog_name = parts_after_paren[1].replace("\n", " ").strip()
+                
+                # Set button text based on display mode
+                if self.display_mode == 0:  # Roman Numerals
+                    widget.setText(roman_numerals)
+                elif self.display_mode == 1:  # Chord Names
+                    widget.setText(chord_names if chord_names else roman_numerals)
+                elif self.display_mode == 2:  # Name
+                    widget.setText(prog_name if prog_name else roman_numerals)
+                else:  # Key & Number (mode 3)
+                    widget.setText(label.replace("\n", " "))
+                
+                # Set the full info as tooltip
                 clean_label = label.replace("\n", " ")
                 clean_description = description.replace("\n", " ")
                 widget.setToolTip(f"{clean_label} - {clean_description}")

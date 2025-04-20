@@ -1637,6 +1637,7 @@ class keycodes_v5:
         "PROG_VOICING_ADVANCED": 0xCA0B,
         "PROG_VOICING_DESCENDING": 0xCA0C,
         "PROG_VOICING_ASCENDING": 0xCA0D,
+        "PROG_VOICING_RANDOM": 0xCA0E,
         
         "C_CHORDPROG1": 0xCA10,
         "CS_CHORDPROG1": 0xCA11,

@@ -2215,7 +2215,7 @@ KEYCODES_RGB_KC_COLOR = [
 ]
 
 KEYCODES_C_CHORDPROG_MINOR = [
-    K("C_CHORDPROG1", "A Minor\nProg\n1", "i-VII-VI\n(Am-G-F)"),
+    K("C_CHORDPROG1", "A Minor\nProg\n1", "i-VII-VI\n(Am-G-F)The\nSimple\nMinor"),
     K("C_CHORDPROG2", "A Minor\nProg\n2", "VI-VII-i\n(F-G-Am)"),
     K("C_CHORDPROG8", "A Minor\nProg\n8", "vi-IV-I-V\n(Am-F-C-G)"),
     K("C_CHORDPROG9", "A Minor\nProg\n9", "i-VII-VI-V\n(Am-G-F-E)"),
@@ -2230,7 +2230,7 @@ KEYCODES_C_CHORDPROG_MINOR = [
 
 # C KEY - MAJOR PROGRESSIONS
 KEYCODES_C_CHORDPROG_MAJOR = [
-    K("C_CHORDPROG3", "C Major\nProg\n3", "I-V-vi-IV\n(C-G-Am-F)"),
+    K("C_CHORDPROG3", "C Maj/A min\nProg\n3", "I-V-vi-IV\n(C-G-Am-F)"),
     K("C_CHORDPROG4", "C Major\nProg\n4", "I-vi-IV-V\n(C-Am-F-G)"),
     K("C_CHORDPROG5", "C Major\nProg\n5", "I-V-vi-iii-IV-I-IV-V\n(C-G-Am-Em-F-C-F-G)"),
     K("C_CHORDPROG6", "C Major\nProg\n6", "I-IV-V\n(C-F-G)"),
@@ -2699,6 +2699,7 @@ KEYCODES_CHORD_PROG_CONTROLS = [
     K("PROG_VOICING_ADVANCED", "Voicing\nStyle\n2", "Use advanced chord voicings for progressions"),
     K("PROG_VOICING_DESCENDING", "Voicing\nStyle\n3", "Use descending voice leading for progressions"),
     K("PROG_VOICING_ASCENDING", "Voicing\nStyle\n4", "Use ascending voice leading for progressions"),
+    K("PROG_VOICING_RANDOM", "Voicing\nStyle\n5", "Use ascending voice leading for progressions"),
     K("PROG_OCTAVE_UP", "Octave\nUp", "Raise progression octave"),
     K("PROG_OCTAVE_DOWN", "Octave\nDown", "Lower progression octave"),
     K("PROG_OCTAVE_RESET", "Octave\nReset", "Reset progression octave to default"),
