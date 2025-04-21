@@ -2423,38 +2423,35 @@ class ChordProgressionTab(QScrollArea):
             label = Keycode.label(keycode.qmk_id)
             description = Keycode.description(keycode.qmk_id)
             
-            # Parse parts from description for different display modes
-            # Roman numerals are the first line
-            roman_numerals = description.split("\n")[0]
+            # Extract roman numerals (everything before the first opening parenthesis)
+            if "(" in description:
+                roman_numerals = description.split("(")[0].strip()
+            else:
+                roman_numerals = description.split("\n")[0].strip()
             
-            # Try to extract chord names from parentheses
+            # Extract chord names (text inside parentheses)
             chord_names = ""
-            for part in description.split("\n"):
-                if "(" in part and ")" in part:
-                    chord_names = part[part.find("(")+1:part.find(")")]
-                    break
+            if "(" in description and ")" in description:
+                chord_names = description[description.find("(")+1:description.find(")")]
             
-            # Try to extract progression name
+            # Extract progression name (everything after the closing parenthesis)
             prog_name = ""
             if ")" in description:
-                parts_after_paren = description.split(")")
-                if len(parts_after_paren) > 1:
-                    prog_name = parts_after_paren[1].replace("\n", "\n").strip()
+                prog_name = description.split(")")[-1].strip()
             
             # Set button text based on display mode
             if self.display_mode == 0:  # Roman Numerals
                 btn.setText(roman_numerals)
             elif self.display_mode == 1:  # Chord Names
-                btn.setText(chord_names if chord_names else roman_numerals)
+                btn.setText(chord_names)
             elif self.display_mode == 2:  # Name
-                btn.setText(prog_name if prog_name else roman_numerals)
+                btn.setText(prog_name)
             else:  # Key & Number (mode 3)
-                btn.setText(label.replace("\n", "\n"))
+                btn.setText(label.replace("\n", " "))
             
-            # Set the full info as tooltip
-            clean_label = label.replace("\n", "\n")
-            clean_description = description.replace("\n", "\n")
-            btn.setToolTip(f"{clean_label} - {clean_description}")
+            # When setting tooltip - replace newlines with spaces only in the label
+            clean_label = label.replace("\n", " ")
+            btn.setToolTip(f"{clean_label} - {description}")
             
             btn.setFixedSize(120, 50)  # Same size as chord trainer
             
@@ -2476,38 +2473,35 @@ class ChordProgressionTab(QScrollArea):
                 label = Keycode.label(widget.keycode.qmk_id)
                 description = Keycode.description(widget.keycode.qmk_id)
                 
-                # Parse parts from description for different display modes
-                # Roman numerals are the first line
-                roman_numerals = description.split("\n")[0]
+                # Extract roman numerals (everything before the first opening parenthesis)
+                if "(" in description:
+                    roman_numerals = description.split("(")[0].strip()
+                else:
+                    roman_numerals = description.split("\n")[0].strip()
                 
-                # Try to extract chord names from parentheses
+                # Extract chord names (text inside parentheses)
                 chord_names = ""
-                for part in description.split("\n"):
-                    if "(" in part and ")" in part:
-                        chord_names = part[part.find("(")+1:part.find(")")]
-                        break
+                if "(" in description and ")" in description:
+                    chord_names = description[description.find("(")+1:description.find(")")]
                 
-                # Try to extract progression name
+                # Extract progression name (everything after the closing parenthesis)
                 prog_name = ""
                 if ")" in description:
-                    parts_after_paren = description.split(")")
-                    if len(parts_after_paren) > 1:
-                        prog_name = parts_after_paren[1].replace("\n", "\n").strip()
+                    prog_name = description.split(")")[-1].strip()
                 
                 # Set button text based on display mode
                 if self.display_mode == 0:  # Roman Numerals
                     widget.setText(roman_numerals)
                 elif self.display_mode == 1:  # Chord Names
-                    widget.setText(chord_names if chord_names else roman_numerals)
+                    widget.setText(chord_names)
                 elif self.display_mode == 2:  # Name
-                    widget.setText(prog_name if prog_name else roman_numerals)
+                    widget.setText(prog_name)
                 else:  # Key & Number (mode 3)
-                    widget.setText(label.replace("\n", "\n"))
+                    widget.setText(label.replace("\n", " "))
                 
-                # Set the full info as tooltip
-                clean_label = label.replace("\n", "\n")
-                clean_description = description.replace("\n", "\n")
-                widget.setToolTip(f"{clean_label} - {clean_description}")
+                # When setting tooltip
+                clean_label = label.replace("\n", " ")
+                widget.setToolTip(f"{clean_label} - {description}")
         
         for i in range(self.controls_grid.count()):
             widget = self.controls_grid.itemAt(i).widget()
