@@ -2223,7 +2223,7 @@ KEYCODES_C_CHORDPROG_MINOR = [
     K("C_CHORDPROG10", "A Minor\nProg\n10", "i-VII\nv-VI\n(Am-G-Em-F)Sensitive\nMinor"),
     K("C_CHORDPROG11", "A Minor\nProg\n11", "vi-V\nIV-V\n(Am-G-F-G)Eternal\nLoop"),
     K("C_CHORDPROG24", "A Minor\nProg\n24", "vim9-IVmaj7\niim9-V6\n(Am9-Fmaj7-Dm9-G6)Smooth\nMinor"),
-    K("C_CHORDPROG29", "A Minor\nProg\n29", "iim7b5\nV7-im7\n(Bm7b5-E7-Am7)Minor\nV-i"),
+    K("C_CHORDPROG29", "A Minor\nProg\n29", "iim7b5\nV7-im7\n(Bm7b5-E7-Am7)Minor\nii-V-i"),
     K("C_CHORDPROG30", "A Minor\nProg\n30", "iim7b5-V7\nim7-IVmaj7\n(Bm7b5-E7-Am7-Dmaj7)Jazz\nWalk"),
     K("C_CHORDPROG31", "A Minor\nProg\n31", "im7-IVmaj7\nVII7-IIIm7b5\n(Am7-Dmaj7-G7-Cm7b5)Autumnal\nFlow"),
     K("C_CHORDPROG32", "A Minor\nProg\n32", "im7-bVImaj7\nbVII7-bIIImaj7\n(Am7-Fmaj7-G7-Cmaj7)Backdoor"),
@@ -2233,7 +2233,7 @@ KEYCODES_C_CHORDPROG_MINOR = [
 KEYCODES_C_CHORDPROG_MAJOR = [
     K("C_CHORDPROG3", "C Major\nProg\n3", "I-V-vi-IV\n(C-G-Am-F)Classic\nFour"),
     K("C_CHORDPROG4", "C Major\nProg\n4", "I-vi-IV-V\n(C-Am-F-G)50s\nChord"),
-    K("C_CHORDPROG5", "C Major\nProg\n5", "I-V-vi-iii-IV\nI-IV-V\n(C-G-Am-Em-F-C-F-G)Canon"),
+    K("C_CHORDPROG5", "C Major\nProg\n5", "I-V-vi-iii-IV\nI-IV-V\n(C-G-Am-Em\nF-C-F-G)Canon"),
     K("C_CHORDPROG6", "C Major\nProg\n6", "I-IV-V\n(C-F-G)Blues"),
     K("C_CHORDPROG7", "C Major\nProg\n7", "I-V-IV-IV\n(C-G-F-F)Rock"),
     K("C_CHORDPROG12", "C Major\nProg\n12", "I-III-IV-iv\n(C-E-F-Fm)Creep"),
@@ -2244,14 +2244,14 @@ KEYCODES_C_CHORDPROG_MAJOR = [
     K("C_CHORDPROG17", "C Major\nProg\n17", "ii7-V7-Imaj7\n(Dm7-G7-Cmaj7)ii-V-I"),
     K("C_CHORDPROG18", "C Major\nProg\n18", "Imaj7-iim7\niiim7-IVmaj7\n(Cmaj7-Dm7-Em7-Fmaj7)City\nProg"),
     K("C_CHORDPROG19", "C Major\nProg\n19", "Imaj7-iim7\nvim7-V\n(Cmaj7-Dm7-Am7-G)Smooth\nFlow"),
-    K("C_CHORDPROG20", "C Major\nProg\n20", "IVmaj7-III7\nvim7-v7\n(Fmaj7-E7-Am7-Gm7)Two\nOf Us"),
-    K("C_CHORDPROG21", "C Major\nProg\n21", "IVmaj7-V-iiim7\nvim7-iim7\nIII7-vim7-v7\n(Fmaj7-G-Em7-Am7-Dm7-E7-Am7-Gm7)Anime"),
-    K("C_CHORDPROG22", "C Major\nProg\n22", "IVmaj7-iiim7\n#iii°7-iim7\nii°7-Imaj7\n(Fmaj7-Em7-Ebdim7-Dm7-Dm7b5-Cmaj7)Urban\nSunset"),
+    K("C_CHORDPROG20", "C Major\nProg\n20", "IVmaj7-III7\nvim7-v7\n(Fmaj7-E7-Am7-Gm7\nFmaj7-E7-Am7)Two\nOf Us"),
+    K("C_CHORDPROG21", "C Major\nProg\n21", "IVmaj7-V-iiim7\nvim7-iim7\nIII7-vim7-v7\n(Fmaj7-G-Em7-Am7\nDm7-E7-Am7-Gm7)Anime"),
+    K("C_CHORDPROG22", "C Major\nProg\n22", "IVmaj7-iiim7\n#iii°7-iim7\nii°7-Imaj7\n(Fmaj7-Em7-Ebdim7\nDm7-Dm7b5-Cmaj7)Urban\nSunset"),
     K("C_CHORDPROG23", "C Major\nProg\n23", "IVmaj7-V7\niiim9-vim7\n(Fmaj7-G7-Em9-Am7)Neo-Pop"),
     K("C_CHORDPROG25", "C Major\nProg\n25", "iiim9-Imaj9\nvim9-iisus4\n(Em9-Cmaj9-Am9-Dsus4)Contemplative"),
     K("C_CHORDPROG26", "C Major\nProg\n26", "Imaj9-IVmaj9\nviiø7-iii7\n(Cmaj9-Fmaj9-Bm7b5-Em7)Neo-Soul"),
-    K("C_CHORDPROG27", "C Major\nProg\n27", "Imaj7-bIII°7\niim7-V7b9-Imaj7\n(Cmaj7-Ebdim7-Dm7-G7b9-Cmaj7)Jazz-Pop"),
-    K("C_CHORDPROG28", "C Major\nProg\n28", "iim7-V7/ii-iim7\nV7/V-V7sus4\nV7-Imaj7\n(Dm7-A7b9-Dm7-D7b9-G7sus4-G7-Cmaj7)Enhanced\nii-V"),
+    K("C_CHORDPROG27", "C Major\nProg\n27", "Imaj7-bIII°7\niim7-V7b9-Imaj7\n(Cmaj7-Ebdim7-Dm7\nG7b9-Cmaj7)Jazz-Pop"),
+    K("C_CHORDPROG28", "C Major\nProg\n28", "iim7-V7/ii-iim7\nV7/V-V7sus4\nV7-Imaj7\n(Dm7-A7b9-Dm7\nD7b9-G7sus4-G7-Cmaj7)Enhanced\nii-V-1"),
 ]
 
 # C# KEY - MINOR PROGRESSIONS
