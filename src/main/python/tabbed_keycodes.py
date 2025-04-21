@@ -485,7 +485,7 @@ class SmartChordTab(QScrollArea):
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id).replace("\n", " ")  # Replace \n with space
+            label = Keycode.label(keycode.qmk_id).replace("\n", "\n")  # Replace \n with space
             keycode_item = QTreeWidgetItem(tree, [label])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
@@ -526,7 +526,7 @@ class SmartChordTab(QScrollArea):
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id).replace("\n", " ")  # Replace \n with space
+            label = Keycode.label(keycode.qmk_id).replace("\n", "\n")  # Replace \n with space
             keycode_item = QTreeWidgetItem(tree, [label])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
@@ -2439,7 +2439,7 @@ class ChordProgressionTab(QScrollArea):
             if ")" in description:
                 parts_after_paren = description.split(")")
                 if len(parts_after_paren) > 1:
-                    prog_name = parts_after_paren[1].replace("\n", " ").strip()
+                    prog_name = parts_after_paren[1].replace("\n", "\n").strip()
             
             # Set button text based on display mode
             if self.display_mode == 0:  # Roman Numerals
@@ -2449,11 +2449,11 @@ class ChordProgressionTab(QScrollArea):
             elif self.display_mode == 2:  # Name
                 btn.setText(prog_name if prog_name else roman_numerals)
             else:  # Key & Number (mode 3)
-                btn.setText(label.replace("\n", " "))
+                btn.setText(label.replace("\n", "\n"))
             
             # Set the full info as tooltip
-            clean_label = label.replace("\n", " ")
-            clean_description = description.replace("\n", " ")
+            clean_label = label.replace("\n", "\n")
+            clean_description = description.replace("\n", "\n")
             btn.setToolTip(f"{clean_label} - {clean_description}")
             
             btn.setFixedSize(120, 50)  # Same size as chord trainer
@@ -2492,7 +2492,7 @@ class ChordProgressionTab(QScrollArea):
                 if ")" in description:
                     parts_after_paren = description.split(")")
                     if len(parts_after_paren) > 1:
-                        prog_name = parts_after_paren[1].replace("\n", " ").strip()
+                        prog_name = parts_after_paren[1].replace("\n", "\n").strip()
                 
                 # Set button text based on display mode
                 if self.display_mode == 0:  # Roman Numerals
@@ -2502,11 +2502,11 @@ class ChordProgressionTab(QScrollArea):
                 elif self.display_mode == 2:  # Name
                     widget.setText(prog_name if prog_name else roman_numerals)
                 else:  # Key & Number (mode 3)
-                    widget.setText(label.replace("\n", " "))
+                    widget.setText(label.replace("\n", "\n"))
                 
                 # Set the full info as tooltip
-                clean_label = label.replace("\n", " ")
-                clean_description = description.replace("\n", " ")
+                clean_label = label.replace("\n", "\n")
+                clean_description = description.replace("\n", "\n")
                 widget.setToolTip(f"{clean_label} - {clean_description}")
         
         for i in range(self.controls_grid.count()):
