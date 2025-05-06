@@ -2642,7 +2642,7 @@ class ChordProgressionTab(QScrollArea):
         for btn in self.difficulty_buttons:
             if btn.text() == difficulty_level:
                 # Highlighted button with gold color (similar to key selectors)
-                btn.setStyleSheet("background-color: #D4A76A; color: #4A3828;")
+                btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
             else:
                     # Default styling - empty stylesheet to use system defaults
                 btn.setStyleSheet("")
