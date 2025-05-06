@@ -1495,8 +1495,18 @@ class LayerTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
+        
+                # Add "Layer Controls" title
+        self.lighting_controls_label = QLabel("Layer Selection")
+        self.lighting_controls_label.setAlignment(Qt.AlignCenter)
+        self.lighting_controls_label.setStyleSheet("font-size: 13px;")
+        self.main_layout.addWidget(self.lighting_controls_label)
+        
+        # Add another spacer (10px)
+        top_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer2)
 
         # First row of dropdowns
         self.row1_layout = QHBoxLayout()
@@ -1549,12 +1559,9 @@ class LayerTab(QScrollArea):
         # Add "Function Buttons" label
         self.function_label = QLabel("Function Buttons")
         self.function_label.setAlignment(Qt.AlignCenter)
-        self.function_label.setStyleSheet("font-size: 12px;")
+        self.function_label.setStyleSheet("font-size: 13px;")
         self.main_layout.addWidget(self.function_label)
         
-        # Small spacer after the label
-        label_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(label_spacer)
         
         # Function Buttons container
         self.button_container = QWidget()
@@ -1992,8 +1999,18 @@ class MacroTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
+        
+                # Add "Macro Controls" title
+        self.lighting_controls_label = QLabel("Macro & Tapdance Controls")
+        self.lighting_controls_label.setAlignment(Qt.AlignCenter)
+        self.lighting_controls_label.setStyleSheet("font-size: 13px;")
+        self.main_layout.addWidget(self.lighting_controls_label)
+        
+        # Add another spacer (10px)
+        top_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer2)
 
         # Row 1: Value buttons (Macro and Tapdance Selection)
         self.value_buttons_layout = QHBoxLayout()
