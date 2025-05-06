@@ -1791,22 +1791,47 @@ class MacroTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        # Layout for buttons using QGridLayout
-        self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
+        # Row 1: Value buttons (Macro and Tapdance Selection)
+        self.value_buttons_layout = QHBoxLayout()
+        
+        # Add horizontal spacer on the left to center the value buttons
+        self.value_buttons_layout.addStretch()
+        
+        # Add the value buttons
+        self.add_value_button("Macro Selection", self.value_buttons_layout)
+        self.add_value_button("Tapdance Selection", self.value_buttons_layout)
+        
+        # Add horizontal spacer on the right to center the value buttons
+        self.value_buttons_layout.addStretch()
+        
+        # Add the value buttons layout to the main layout
+        self.main_layout.addLayout(self.value_buttons_layout)
+        
+        # Row 2: Regular buttons
+        self.button_container = QWidget()
+        self.button_layout = QGridLayout(self.button_container)
+        
+        # Create a horizontal layout for the button container with spacers
+        self.centered_button_layout = QHBoxLayout()
+        self.centered_button_layout.addStretch()  # Left spacer
+        self.centered_button_layout.addWidget(self.button_container)
+        self.centered_button_layout.addStretch()  # Right spacer
+        
+        # Add the centered button layout to the main layout
+        self.main_layout.addLayout(self.centered_button_layout)
 
-        # Populate all buttons including value buttons
+        # Populate all buttons
         self.recreate_buttons()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
 
-    def add_value_button(self, label_text, row, col):
+    def add_value_button(self, label_text, layout):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
         button.setFixedHeight(40)
         button.clicked.connect(lambda: self.open_value_dialog(label_text))
-        self.button_layout.addWidget(button, row, col)
+        layout.addWidget(button)
 
     def open_value_dialog(self, label):
         """Open a dialog to input a value between 0 and the max allowed value."""
@@ -1853,7 +1878,7 @@ class MacroTab(QScrollArea):
                 dialog.accept()
 
     def recreate_buttons(self, keycode_filter=None):
-        # Clear previous widgets
+        # Clear previous widgets in the button layout
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
             if widget is not None:
@@ -1863,13 +1888,7 @@ class MacroTab(QScrollArea):
         col = 0
         max_columns = 15  # Maximum number of columns
     
-        # Add value buttons first (on the left)
-        self.add_value_button("Macro Selection", row, col)
-        col += 1
-        self.add_value_button("Tapdance Selection", row, col)
-        col += 1
-
-        # Add regular buttons after the value buttons
+        # Add regular buttons
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
@@ -1894,7 +1913,7 @@ class MacroTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        # Handle relabeling only for buttons
+        # Handle relabeling only for buttons in the grid layout
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
