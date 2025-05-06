@@ -2327,8 +2327,6 @@ class ChordProgressionTab(QScrollArea):
         for level in self.difficulty_levels:
             btn = QPushButton(level)
             btn.setFixedSize(120, 40)
-            # Theme-matching default color (similar to KeySplit buttons)
-            btn.setStyleSheet("background-color: #f3d1d1; color: #805757;")
             btn.clicked.connect(lambda _, l=level: self.show_difficulty(l))
             self.difficulty_buttons.append(btn)
             difficulty_layout.addWidget(btn)
@@ -2349,7 +2347,6 @@ class ChordProgressionTab(QScrollArea):
         # Add toggle description button in the middle
         self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
         self.toggle_desc_btn.setFixedSize(170, 50)
-        self.toggle_desc_btn.setStyleSheet("background-color: #f3d1d1; color: #805757;")
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         legend_layout.addWidget(self.toggle_desc_btn)
 
@@ -2417,11 +2414,8 @@ class ChordProgressionTab(QScrollArea):
                      "Showing: Names", "Showing: Prog Numbers"]
         self.toggle_desc_btn.setText(mode_names[self.display_mode])
         
-        # Add a brief highlight effect and then revert
-        self.toggle_desc_btn.setStyleSheet("background-color: #D4A76A; color: #4A3828;")
-        
         # Use QTimer to revert the styling after a short delay
-        QTimer.singleShot(200, lambda: self.toggle_desc_btn.setStyleSheet("background-color: #f3d1d1; color: #805757;"))
+        QTimer.singleShot(100, lambda: self.toggle_desc_btn.setStyleSheet(""))
         
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
@@ -2447,8 +2441,8 @@ class ChordProgressionTab(QScrollArea):
                 # Highlighted button with gold color (similar to key selectors)
                 btn.setStyleSheet("background-color: #D4A76A; color: #4A3828;")
             else:
-                # Default styling with theme color
-                btn.setStyleSheet("background-color: #f3d1d1; color: #805757;")
+                    # Default styling - empty stylesheet to use system defaults
+                btn.setStyleSheet("")
         
         self.current_difficulty_level = difficulty_level
         self.recreate_buttons()
