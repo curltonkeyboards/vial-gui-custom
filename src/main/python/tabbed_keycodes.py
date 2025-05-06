@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit
 from PyQt5.QtGui import QPalette, QPainter
 
@@ -2327,7 +2327,17 @@ class ChordProgressionTab(QScrollArea):
         for level in self.difficulty_levels:
             btn = QPushButton(level)
             btn.setFixedSize(120, 30)
-            btn.setStyleSheet("background-color: #E0E0E0; color: #424242;")
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #f0f0f0;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    color: #333333;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
             btn.clicked.connect(lambda _, l=level: self.show_difficulty(l))
             self.difficulty_buttons.append(btn)
             difficulty_layout.addWidget(btn)
@@ -2348,7 +2358,17 @@ class ChordProgressionTab(QScrollArea):
         # Add toggle description button in the middle
         self.toggle_desc_btn = QPushButton("Showing: Roman Numerals")
         self.toggle_desc_btn.setFixedSize(170, 30)
-        self.toggle_desc_btn.setStyleSheet("background-color: #F0F0F0;")
+        self.toggle_desc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                color: #333333;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         legend_layout.addWidget(self.toggle_desc_btn)
 
@@ -2416,6 +2436,30 @@ class ChordProgressionTab(QScrollArea):
                      "Showing: Names", "Showing: Prog Numbers"]
         self.toggle_desc_btn.setText(mode_names[self.display_mode])
         
+        # Add a brief highlight effect and then revert
+        self.toggle_desc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #90CAF9;
+                border: 1px solid #64B5F6;
+                border-radius: 4px;
+                color: #1A237E;
+                font-weight: bold;
+            }
+        """)
+        
+        # Use QTimer to revert the styling after a short delay
+        QTimer.singleShot(200, lambda: self.toggle_desc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0;
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                color: #333333;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """))
+        
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
 
@@ -2437,13 +2481,32 @@ class ChordProgressionTab(QScrollArea):
         # Update the active difficulty button highlight
         for btn in self.difficulty_buttons:
             if btn.text() == difficulty_level:
+                # Highlighted button
                 btn.setStyleSheet("""
-                    background-color: #90CAF9;
-                    color: #1A237E;
-                    font-weight: bold;
+                    QPushButton {
+                        background-color: #90CAF9;
+                        border: 1px solid #64B5F6;
+                        border-radius: 4px;
+                        color: #1A237E;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover {
+                        background-color: #64B5F6;
+                    }
                 """)
             else:
-                btn.setStyleSheet("background-color: #E0E0E0; color: #424242;")
+                # Default styling
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f0f0f0;
+                        border: 1px solid #d0d0d0;
+                        border-radius: 4px;
+                        color: #333333;
+                    }
+                    QPushButton:hover {
+                        background-color: #e0e0e0;
+                    }
+                """)
         
         self.current_difficulty_level = difficulty_level
         self.recreate_buttons()
@@ -2502,56 +2565,83 @@ class ChordProgressionTab(QScrollArea):
         # Sort by the numeric progression number
         all_progression_keycodes.sort(key=get_progression_number)
         
-        for i, (keycode, is_major) in enumerate(all_progression_keycodes):
-            row = i // 8  # 8 columns
-            col = i % 8
-            btn = QPushButton()
+        # Calculate how many rows we'll need
+        total_buttons = len(all_progression_keycodes)
+        cols_per_row = 8  # 8 columns per row
+        total_rows = (total_buttons + cols_per_row - 1) // cols_per_row  # Ceiling division
+        
+        # For each row, calculate buttons and add spacers if needed
+        buttons_added = 0
+        for row in range(total_rows):
+            # Calculate buttons in this row
+            remaining_buttons = total_buttons - buttons_added
+            buttons_in_row = min(remaining_buttons, cols_per_row)
             
-            # Get label and description
-            label = Keycode.label(keycode.qmk_id)
-            description = Keycode.description(keycode.qmk_id)
-            
-            # Extract roman numerals (everything before the first opening parenthesis)
-            if "(" in description:
-                roman_numerals = description.split("(")[0].strip()
+            # If this row has fewer than 8 buttons, calculate spacers
+            if buttons_in_row < cols_per_row:
+                # Calculate how many spacers to add on each side
+                spacers_per_side = (cols_per_row - buttons_in_row) // 2
+                start_col = spacers_per_side
             else:
-                roman_numerals = description.split("\n")[0].strip()
+                start_col = 0
             
-            # Extract chord names (text inside parentheses)
-            chord_names = ""
-            if "(" in description and ")" in description:
-                chord_names = description[description.find("(")+1:description.find(")")]
-            
-            # Extract progression name (everything after the closing parenthesis)
-            prog_name = ""
-            if ")" in description:
-                prog_name = description.split(")")[-1].strip()
-            
-            # Set button text based on display mode
-            if self.display_mode == 0:  # Roman Numerals
-                btn.setText(roman_numerals)
-            elif self.display_mode == 1:  # Chord Names
-                btn.setText(chord_names)
-            elif self.display_mode == 2:  # Name
-                btn.setText(prog_name)
-            else:  # Key & Number (mode 3)
-                btn.setText(label.replace("\n", " "))
-            
-            # When setting tooltip - replace newlines with spaces only in the label
-            clean_label = label.replace("\n", " ")
-            btn.setToolTip(f"{clean_label} - {description}")
-            
-            btn.setFixedSize(120, 50)  # Same size as chord trainer
-            
-            # Apply different styling based on major/minor
-            if is_major:
-                btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: center;")
-            else:
-                btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98; text-align: center;")
+            # Add the buttons for this row
+            for col in range(buttons_in_row):
+                i = buttons_added
+                keycode, is_major = all_progression_keycodes[i]
                 
-            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-            btn.keycode = keycode
-            self.progressions_grid.addWidget(btn, row, col)
+                btn = QPushButton()
+                
+                # Get label and description
+                label = Keycode.label(keycode.qmk_id)
+                description = Keycode.description(keycode.qmk_id)
+                
+                # Extract roman numerals (everything before the first opening parenthesis)
+                if "(" in description:
+                    roman_numerals = description.split("(")[0].strip()
+                else:
+                    roman_numerals = description.split("\n")[0].strip()
+                
+                # Extract chord names (text inside parentheses)
+                chord_names = ""
+                if "(" in description and ")" in description:
+                    chord_names = description[description.find("(")+1:description.find(")")]
+                
+                # Extract progression name (everything after the closing parenthesis)
+                prog_name = ""
+                if ")" in description:
+                    prog_name = description.split(")")[-1].strip()
+                
+                # Set button text based on display mode
+                if self.display_mode == 0:  # Roman Numerals
+                    btn.setText(roman_numerals)
+                elif self.display_mode == 1:  # Chord Names
+                    btn.setText(chord_names)
+                elif self.display_mode == 2:  # Name
+                    btn.setText(prog_name)
+                else:  # Key & Number (mode 3)
+                    btn.setText(label.replace("\n", " "))
+                
+                # When setting tooltip - replace newlines with spaces only in the label
+                clean_label = label.replace("\n", " ")
+                btn.setToolTip(f"{clean_label} - {description}")
+                
+                btn.setFixedSize(120, 50)  # Same size as chord trainer
+                
+                # Apply different styling based on major/minor
+                if is_major:
+                    btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: center;")
+                else:
+                    btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98; text-align: center;")
+                    
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                
+                # Place button in the grid with appropriate offset
+                actual_col = start_col + col
+                self.progressions_grid.addWidget(btn, row, actual_col)
+                
+                buttons_added += 1
 
     def relabel_buttons(self):
         for i in range(self.progressions_grid.count()):
