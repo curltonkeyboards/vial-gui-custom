@@ -489,9 +489,9 @@ class SmartChordTab(QScrollArea):
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            # Try to get the label, replace newlines with spaces
+            # Try to get the description (third value) and replace newlines with spaces
             try:
-                label_text = str(Keycode.label(keycode.qmk_id)).replace("\n", " ").strip()
+                label_text = str(Keycode.description(keycode.qmk_id)).replace("\n", "  ")
             except Exception:
                 # Fallback to QMK ID if anything fails
                 label_text = str(keycode.qmk_id)
@@ -502,7 +502,7 @@ class SmartChordTab(QScrollArea):
             # Force text to be on one line and left-aligned
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
             
-            # Ensure the text is in a single line by setting it again
+            # Ensure the text is set
             keycode_item.setText(0, label_text)
 
     def on_item_selected(self, clicked_item, column):
@@ -548,11 +548,11 @@ class SmartChordTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedSize(40, 40)  # Set fixed size for consistent appearance
+                btn.setFixedSize(50, 50)  # Set fixed size to 50x50 as requested
                 
-                # Try to get the label, replace newlines with spaces
+                # Try to get the description (third value)
                 try:
-                    button_text = str(Keycode.label(keycode.qmk_id)).replace("\n", " ").strip()
+                    button_text = str(Keycode.description(keycode.qmk_id))
                 except Exception:
                     # Fallback to QMK ID if anything fails
                     button_text = str(keycode.qmk_id)
@@ -579,9 +579,9 @@ class SmartChordTab(QScrollArea):
             if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
                 keycode = widget.keycode
                 if keycode:
-                    # Try to get the label, replace newlines with spaces
+                    # Try to get the description (third value)
                     try:
-                        button_text = str(Keycode.label(keycode.qmk_id)).replace("\n", " ").strip()
+                        button_text = str(Keycode.description(keycode.qmk_id))
                     except Exception:
                         # Fallback to QMK ID if anything fails
                         button_text = str(keycode.qmk_id)
@@ -1729,13 +1729,13 @@ class LightingTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top (20px)
-        top_spacer1 = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer1)
         
         # Add "Lighting Controls" title
         self.lighting_controls_label = QLabel("Lighting Controls")
         self.lighting_controls_label.setAlignment(Qt.AlignCenter)
-        self.lighting_controls_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.lighting_controls_label.setStyleSheet("font-size: 14px;")
         self.main_layout.addWidget(self.lighting_controls_label)
         
         # Add another spacer (10px)
@@ -1757,10 +1757,6 @@ class LightingTab(QScrollArea):
         
         self.row1_layout.addStretch()  # Right spacer
         self.main_layout.addLayout(self.row1_layout)
-        
-        # Add a small spacer between rows (exactly 10px as requested)
-        row_spacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(row_spacer1)
         
         # Row 2: Buttons from inversion_keycodes
         self.buttons1_container = QWidget()
@@ -1883,8 +1879,8 @@ class LightingTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(40)
-                btn.setFixedWidth(40)
+                btn.setFixedHeight(50)
+                btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1903,8 +1899,8 @@ class LightingTab(QScrollArea):
         for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(40)
-                btn.setFixedWidth(40)
+                btn.setFixedHeight(50)
+                btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode

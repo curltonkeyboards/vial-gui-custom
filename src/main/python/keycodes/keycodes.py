@@ -790,14 +790,14 @@ KEYCODES_BACKLIGHT = [
     K("RGB_TOG", "RGB\nToggle", "Toggle RGB lighting on or off"),
     K("RGB_MOD", "RGB\nMode +", "Next RGB mode"),
     K("RGB_RMOD", "RGB\nMode -", "Previous RGB mode"),
-    K("RGB_HUI", "Hue +", "Increase hue"),
-    K("RGB_HUD", "Hue -", "Decrease hue"),
-    K("RGB_SAI", "Sat +", "Increase saturation"),
-    K("RGB_SAD", "Sat -", "Decrease saturation"),
-    K("RGB_VAI", "Bright +", "Increase value"),
-    K("RGB_VAD", "Bright -", "Decrease value"),
-    K("RGB_SPI", "Speed +", "Increase RGB effect speed"),
-    K("RGB_SPD", "Speed -", "Decrease RGB effect speed"),
+    K("RGB_HUI", "Hue\n+", "Increase hue"),
+    K("RGB_HUD", "Hue\n-", "Decrease hue"),
+    K("RGB_SAI", "Sat\n+", "Increase saturation"),
+    K("RGB_SAD", "Sat\n-", "Decrease saturation"),
+    K("RGB_VAI", "Bright\n+", "Increase value"),
+    K("RGB_VAD", "Bright\n-", "Decrease value"),
+    K("RGB_SPI", "Speed\n+", "Increase RGB effect speed"),
+    K("RGB_SPD", "Speed\n-", "Decrease RGB effect speed"),
 ]
 
 KEYCODES_MEDIA = [
@@ -1995,7 +1995,7 @@ K("MI_INV_11", "Major 7th", "Major\n7th"),
 ]
 
 KEYCODES_MIDI_CHORD_1 = [
-K("MI_CHORD_0", "", "Major"),
+K("MI_CHORD_0", "Major", "Major"),
 K("MI_CHORD_1", "m", "Minor"),
 K("MI_CHORD_2", "dim", "Diminished"),
 K("MI_CHORD_3", "aug", "Augmented"),
