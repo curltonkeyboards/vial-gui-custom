@@ -406,7 +406,7 @@ class SmartChordTab(QScrollArea):
 
     def __init__(self, parent, label, smartchord_keycodes_0, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, smartchord_keycodes_5, scales_modes_keycodes, inversion_keycodes):
         super().__init__(parent)
-        self.label = label
+        self.label = label     
         self.smartchord_keycodes_0 = smartchord_keycodes_0
         self.smartchord_keycodes_1 = smartchord_keycodes_1
         self.smartchord_keycodes_2 = smartchord_keycodes_2
@@ -489,21 +489,21 @@ class SmartChordTab(QScrollArea):
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            # Use the third value (full name) from the keycode data if available
-            if hasattr(keycode, 'description'):
-                label = keycode.description.replace("\n", " ").strip()
-            else:
-                # Fallback to the standard label but replace newlines with spaces
-                label = Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
+            # Try to get the label, replace newlines with spaces
+            try:
+                label_text = str(Keycode.label(keycode.qmk_id)).replace("\n", " ").strip()
+            except Exception:
+                # Fallback to QMK ID if anything fails
+                label_text = str(keycode.qmk_id)
             
-            keycode_item = QTreeWidgetItem(tree, [label])
+            keycode_item = QTreeWidgetItem(tree, [label_text])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
             # Force text to be on one line and left-aligned
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
             
             # Ensure the text is in a single line by setting it again
-            keycode_item.setText(0, label)
+            keycode_item.setText(0, label_text)
 
     def on_item_selected(self, clicked_item, column):
         """Handle tree item selection and clear other trees' selections."""
@@ -550,10 +550,14 @@ class SmartChordTab(QScrollArea):
                 btn = SquareButton()
                 btn.setFixedSize(40, 40)  # Set fixed size for consistent appearance
                 
-                # Replace any newlines with spaces in button text
-                button_text = Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
-                btn.setText(button_text)
+                # Try to get the label, replace newlines with spaces
+                try:
+                    button_text = str(Keycode.label(keycode.qmk_id)).replace("\n", " ").strip()
+                except Exception:
+                    # Fallback to QMK ID if anything fails
+                    button_text = str(keycode.qmk_id)
                 
+                btn.setText(button_text)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
@@ -572,18 +576,21 @@ class SmartChordTab(QScrollArea):
         """Relabel buttons based on keycodes."""
         for i in range(self.button_layout.count()):
             widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
+            if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
                 keycode = widget.keycode
                 if keycode:
-                    # Replace any newlines with spaces in button text
-                    button_text = Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
+                    # Try to get the label, replace newlines with spaces
+                    try:
+                        button_text = str(Keycode.label(keycode.qmk_id)).replace("\n", " ").strip()
+                    except Exception:
+                        # Fallback to QMK ID if anything fails
+                        button_text = str(keycode.qmk_id)
+                    
                     widget.setText(button_text)
 
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-
-
 
 from PyQt5.QtWidgets import (
     QScrollArea, QVBoxLayout, QGridLayout, QLabel, QMenu, QPushButton, QHBoxLayout, QWidget, QDialog, QLineEdit, QComboBox
