@@ -2199,7 +2199,7 @@ class ChordProgressionTab(QScrollArea):
         # 1 = Chord Names ("Am-G-F")
         # 2 = Name ("The Simple Minor") 
         # 3 = Key & Number ("A Minor Prog 1")
-        self.display_mode = 0
+        self.display_mode = 1  # Default to showing chord names
         
         # Current difficulty level
         # 0 = Basic, 1 = Intermediate, 2 = Advanced
@@ -2326,18 +2326,9 @@ class ChordProgressionTab(QScrollArea):
         self.difficulty_buttons = []
         for level in self.difficulty_levels:
             btn = QPushButton(level)
-            btn.setFixedSize(120, 30)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    border-radius: 4px;
-                    color: #333333;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-            """)
+            btn.setFixedSize(120, 40)
+            # Theme-matching default color (similar to KeySplit buttons)
+            btn.setStyleSheet("background-color: #f3d1d1; color: #805757;")
             btn.clicked.connect(lambda _, l=level: self.show_difficulty(l))
             self.difficulty_buttons.append(btn)
             difficulty_layout.addWidget(btn)
@@ -2356,19 +2347,9 @@ class ChordProgressionTab(QScrollArea):
         legend_layout.addSpacing(20)
 
         # Add toggle description button in the middle
-        self.toggle_desc_btn = QPushButton("Showing: Roman Numerals")
-        self.toggle_desc_btn.setFixedSize(170, 30)
-        self.toggle_desc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f0f0f0;
-                border: 1px solid #d0d0d0;
-                border-radius: 4px;
-                color: #333333;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-            }
-        """)
+        self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
+        self.toggle_desc_btn.setFixedSize(170, 50)
+        self.toggle_desc_btn.setStyleSheet("background-color: #f3d1d1; color: #805757;")
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         legend_layout.addWidget(self.toggle_desc_btn)
 
@@ -2437,28 +2418,10 @@ class ChordProgressionTab(QScrollArea):
         self.toggle_desc_btn.setText(mode_names[self.display_mode])
         
         # Add a brief highlight effect and then revert
-        self.toggle_desc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #90CAF9;
-                border: 1px solid #64B5F6;
-                border-radius: 4px;
-                color: #1A237E;
-                font-weight: bold;
-            }
-        """)
+        self.toggle_desc_btn.setStyleSheet("background-color: #D4A76A; color: #4A3828;")
         
         # Use QTimer to revert the styling after a short delay
-        QTimer.singleShot(200, lambda: self.toggle_desc_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f0f0f0;
-                border: 1px solid #d0d0d0;
-                border-radius: 4px;
-                color: #333333;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-            }
-        """))
+        QTimer.singleShot(200, lambda: self.toggle_desc_btn.setStyleSheet("background-color: #f3d1d1; color: #805757;"))
         
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
@@ -2481,32 +2444,11 @@ class ChordProgressionTab(QScrollArea):
         # Update the active difficulty button highlight
         for btn in self.difficulty_buttons:
             if btn.text() == difficulty_level:
-                # Highlighted button
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #90CAF9;
-                        border: 1px solid #64B5F6;
-                        border-radius: 4px;
-                        color: #1A237E;
-                        font-weight: bold;
-                    }
-                    QPushButton:hover {
-                        background-color: #64B5F6;
-                    }
-                """)
+                # Highlighted button with gold color (similar to key selectors)
+                btn.setStyleSheet("background-color: #D4A76A; color: #4A3828;")
             else:
-                # Default styling
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #f0f0f0;
-                        border: 1px solid #d0d0d0;
-                        border-radius: 4px;
-                        color: #333333;
-                    }
-                    QPushButton:hover {
-                        background-color: #e0e0e0;
-                    }
-                """)
+                # Default styling with theme color
+                btn.setStyleSheet("background-color: #f3d1d1; color: #805757;")
         
         self.current_difficulty_level = difficulty_level
         self.recreate_buttons()
