@@ -631,7 +631,10 @@ class midiadvancedTab(QScrollArea):
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         self.main_layout.setSpacing(20)
-       
+        
+        # Add a spacer at the top to push everything down by 100 pixels
+        top_spacer = QSpacerItem(0, 1, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer)
 
         # Create buttons layout with stretches
         self.button_layout = QHBoxLayout()
@@ -689,7 +692,7 @@ class midiadvancedTab(QScrollArea):
             self.containers[section] = container
 
         self.button_layout.addStretch(1)
-        self.main_layout.insertLayout(1, self.button_layout)
+        self.main_layout.insertLayout(0, self.button_layout)
         
         # Add spacer below buttons
         spacer = QWidget()
@@ -1688,7 +1691,7 @@ class ScrollableComboBox(CenteredComboBox):
         super().showPopup()
         
 class LightingTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)   
+    keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, inversion_keycodes, inversion_keycodes4, smartchord_LSB, smartchord_MSB, smartchord_LSB2):
         super().__init__(parent)
@@ -1698,12 +1701,10 @@ class LightingTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_LSB2 = smartchord_LSB2
-     
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        
         
         # Set the scroll area properties
         self.setWidget(self.scroll_content)
