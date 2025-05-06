@@ -1533,7 +1533,7 @@ class LayerTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
 
         # First row of dropdowns
@@ -1764,7 +1764,7 @@ class LightingTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
 
         # Row 1: Dropdowns (RGB Mode, RGB Color, Record Layer RGB)
@@ -1874,6 +1874,7 @@ class LightingTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1969,7 +1970,7 @@ class MacroTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
 
         # Row 1: Value buttons (Macro and Tapdance Selection)
@@ -2074,8 +2075,8 @@ class MacroTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(40)
-                btn.setFixedWidth(40)
+                btn.setFixedHeight(50)
+                btn.setFixedWidth(50)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode

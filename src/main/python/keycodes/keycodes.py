@@ -1221,7 +1221,7 @@ KEYCODES_MACRO_BASE = [
     K("DYN_REC_START2", "Dynamic\nMacro 2\nRec", "Dynamic Macro 2 Rec Start", alias=["DM_REC2"]),    
     K("DYN_MACRO_PLAY1", "Dynamic\nMacro 1\nPlay", "Dynamic Macro 1 Play", alias=["DM_PLY1"]),
     K("DYN_MACRO_PLAY2", "Dynamic\nMacro 2\nPlay", "Dynamic Macro 2 Play", alias=["DM_PLY2"]),
-    K("DYN_REC_STOP", "Dynamic\nMacro Stop\nRec", "Dynamic Macro Rec Stop", alias=["DM_RSTP"]),
+    K("DYN_REC_STOP", "Stop\nMacro\nRec", "Dynamic Macro Rec Stop", alias=["DM_RSTP"]),
 ]
 
 KEYCODES_EARTRAINER = [
