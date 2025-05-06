@@ -1587,7 +1587,7 @@ class LayerTab(QScrollArea):
         # Add "Function Buttons" label
         self.function_label = QLabel("Function Buttons")
         self.function_label.setAlignment(Qt.AlignCenter)
-        self.function_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.function_label.setStyleSheet("font-size: 12px;")
         self.main_layout.addWidget(self.function_label)
         
         # Small spacer after the label
