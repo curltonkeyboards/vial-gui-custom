@@ -2572,31 +2572,58 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addLayout(tab_layout)
         
-        # Add difficulty level buttons with legends on sides
+        # Add difficulty level buttons with legends on sides (closer to center)
         difficulty_layout = QHBoxLayout()
-        difficulty_layout.setSpacing(10)
+        difficulty_layout.setAlignment(Qt.AlignCenter)
+        difficulty_layout.setSpacing(5)  # Reduced spacing
         
-        # Add major legend on the left
+        # Add major legend on the left - closer to difficulty buttons
         major_legend = QLabel("■ Major Progressions")
         major_legend.setStyleSheet("color: #1565C0;")
-        difficulty_layout.addWidget(major_legend)
         
-        difficulty_layout.addStretch(1)  # Add stretch before difficulty buttons
-        
-        self.difficulty_buttons = []
-        for level in self.difficulty_levels:
-            btn = QPushButton(level)
-            btn.setFixedSize(120, 40)
-            btn.clicked.connect(lambda _, l=level: self.show_difficulty(l))
-            self.difficulty_buttons.append(btn)
-            difficulty_layout.addWidget(btn)
-        
-        difficulty_layout.addStretch(1)  # Add stretch after difficulty buttons
-        
-        # Add minor legend on the right
+        # Add minor legend on the right - closer to difficulty buttons
         minor_legend = QLabel("■ Minor Progressions")
         minor_legend.setStyleSheet("color: #7D3C98;")
-        difficulty_layout.addWidget(minor_legend)
+        
+        self.difficulty_buttons = []
+        
+        # Create a layout that will contain the first button and major legend
+        first_button_layout = QHBoxLayout()
+        first_button_layout.addWidget(major_legend)
+        first_button_layout.addSpacing(5)  # Small space between legend and button
+        
+        # Add first button
+        btn = QPushButton(self.difficulty_levels[0])
+        btn.setFixedSize(120, 40)
+        btn.clicked.connect(lambda _, l=self.difficulty_levels[0]: self.show_difficulty(l))
+        self.difficulty_buttons.append(btn)
+        first_button_layout.addWidget(btn)
+        
+        # Add the first button layout to the difficulty layout
+        difficulty_layout.addLayout(first_button_layout)
+        
+        # Add the middle button directly
+        btn = QPushButton(self.difficulty_levels[1])
+        btn.setFixedSize(120, 40)
+        btn.clicked.connect(lambda _, l=self.difficulty_levels[1]: self.show_difficulty(l))
+        self.difficulty_buttons.append(btn)
+        difficulty_layout.addWidget(btn)
+        
+        # Create a layout that will contain the last button and minor legend
+        last_button_layout = QHBoxLayout()
+        
+        # Add last button
+        btn = QPushButton(self.difficulty_levels[2])
+        btn.setFixedSize(120, 40)
+        btn.clicked.connect(lambda _, l=self.difficulty_levels[2]: self.show_difficulty(l))
+        self.difficulty_buttons.append(btn)
+        last_button_layout.addWidget(btn)
+        
+        last_button_layout.addSpacing(5)  # Small space between button and legend
+        last_button_layout.addWidget(minor_legend)
+        
+        # Add the last button layout to the difficulty layout
+        difficulty_layout.addLayout(last_button_layout)
         
         self.main_layout.addLayout(difficulty_layout)
         self.main_layout.addSpacing(5)  # Add a small space after difficulty buttons
@@ -2643,9 +2670,10 @@ class ChordProgressionTab(QScrollArea):
         toggle_btn_layout = QHBoxLayout()
         toggle_btn_layout.setAlignment(Qt.AlignCenter)
         
-        # Create the toggle description button
+        # Create the toggle description button with light green background
         self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
         self.toggle_desc_btn.setFixedSize(170, 50)
+        self.toggle_desc_btn.setStyleSheet("background-color: #ABEBC6; color: #196F3D;")  # Light green background with darker green text
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         toggle_btn_layout.addWidget(self.toggle_desc_btn)
         
@@ -2669,8 +2697,8 @@ class ChordProgressionTab(QScrollArea):
                      "Showing: Names", "Showing: Prog Numbers"]
         self.toggle_desc_btn.setText(mode_names[self.display_mode])
         
-        # Use QTimer to revert the styling after a short delay
-        QTimer.singleShot(100, lambda: self.toggle_desc_btn.setStyleSheet(""))
+        # Use QTimer to revert the styling after a short delay but keep the green color
+        QTimer.singleShot(100, lambda: self.toggle_desc_btn.setStyleSheet("background-color: #ABEBC6; color: #196F3D;"))
         
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
