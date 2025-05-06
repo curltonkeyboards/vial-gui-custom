@@ -2458,6 +2458,9 @@ class ChordProgressionTab(QScrollArea):
         # 0 = Basic, 1 = Intermediate, 2 = Advanced
         self.current_difficulty = 0
         
+        # Flag to track if dark theme is active
+        self.is_dark_theme = self.detect_dark_theme()
+        
         # Define key names for tabs
         self.keys = [
             "C Major\nA Minor", 
@@ -2538,6 +2541,22 @@ class ChordProgressionTab(QScrollArea):
             },
         }
         
+        # Define color schemes for light and dark themes
+        self.color_schemes = {
+            "light": {
+                "major_bg": "#E3F2FD",
+                "major_fg": "#1565C0",
+                "minor_bg": "#E8DAEF",
+                "minor_fg": "#7D3C98"
+            },
+            "dark": {
+                "major_bg": "#0D47A1",  # Darker blue background
+                "major_fg": "#90CAF9",  # Lighter blue text
+                "minor_bg": "#4A148C",  # Darker purple background
+                "minor_fg": "#CE93D8"   # Lighter purple text
+            }
+        }
+        
         # Difficulty levels
         self.difficulty_levels = ["Basic", "Intermediate", "Advanced"]
         
@@ -2572,10 +2591,21 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addLayout(tab_layout)
         
-        # Add difficulty level buttons
+        # Add difficulty level buttons with legends on sides
         difficulty_layout = QHBoxLayout()
-        difficulty_layout.setAlignment(Qt.AlignCenter)
         difficulty_layout.setSpacing(10)
+        
+        # Get colors based on current theme
+        theme = "dark" if self.is_dark_theme else "light"
+        major_color = self.color_schemes[theme]["major_fg"]
+        minor_color = self.color_schemes[theme]["minor_fg"]
+        
+        # Add major legend on the left
+        major_legend = QLabel("■ Major Progressions")
+        major_legend.setStyleSheet(f"color: {major_color};")
+        difficulty_layout.addWidget(major_legend)
+        
+        difficulty_layout.addStretch(1)  # Add stretch before difficulty buttons
         
         self.difficulty_buttons = []
         for level in self.difficulty_levels:
@@ -2585,32 +2615,15 @@ class ChordProgressionTab(QScrollArea):
             self.difficulty_buttons.append(btn)
             difficulty_layout.addWidget(btn)
         
+        difficulty_layout.addStretch(1)  # Add stretch after difficulty buttons
+        
+        # Add minor legend on the right
+        minor_legend = QLabel("■ Minor Progressions")
+        minor_legend.setStyleSheet(f"color: {minor_color};")
+        difficulty_layout.addWidget(minor_legend)
+        
         self.main_layout.addLayout(difficulty_layout)
         self.main_layout.addSpacing(5)  # Add a small space after difficulty buttons
-        
-        # Legend for color coding with toggle button
-        legend_layout = QHBoxLayout()
-        legend_layout.setAlignment(Qt.AlignCenter)
-
-        major_legend = QLabel("■ Major Progressions")
-        major_legend.setStyleSheet("color: #1565C0;")
-        legend_layout.addWidget(major_legend)
-
-        legend_layout.addSpacing(20)
-
-        # Add toggle description button in the middle
-        self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
-        self.toggle_desc_btn.setFixedSize(170, 50)
-        self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
-        legend_layout.addWidget(self.toggle_desc_btn)
-
-        legend_layout.addSpacing(20)
-
-        minor_legend = QLabel("■ Minor Progressions")
-        minor_legend.setStyleSheet("color: #7D3C98;")
-        legend_layout.addWidget(minor_legend)
-
-        self.main_layout.addLayout(legend_layout)
         
         # Container for progression buttons
         self.progressions_container = QWidget()
@@ -2650,6 +2663,22 @@ class ChordProgressionTab(QScrollArea):
         
         self.main_layout.addWidget(self.controls_container)
         
+        # Add the toggle button at the bottom
+        toggle_btn_layout = QHBoxLayout()
+        toggle_btn_layout.setAlignment(Qt.AlignCenter)
+        
+        # Create the toggle description button
+        self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
+        self.toggle_desc_btn.setFixedSize(170, 50)
+        self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
+        toggle_btn_layout.addWidget(self.toggle_desc_btn)
+        
+        # Add a theme change detection connection to the toggle button
+        # We'll use this as a simple way to detect theme changes
+        self.toggle_desc_btn.installEventFilter(self)
+        
+        self.main_layout.addLayout(toggle_btn_layout)
+        
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         
@@ -2658,6 +2687,57 @@ class ChordProgressionTab(QScrollArea):
         self.current_difficulty_level = self.difficulty_levels[0]
         self.show_difficulty(self.current_difficulty_level)
         self.populate_controls()
+
+    def detect_dark_theme(self):
+        """
+        Detect if dark theme is active by checking the background color
+        of a temporary button. If it's darker than a threshold, assume dark theme.
+        """
+        temp_btn = QPushButton()
+        palette = temp_btn.palette()
+        bg_color = palette.color(QPalette.Button)
+        
+        # Calculate brightness using the formula (0.299*R + 0.587*G + 0.114*B)
+        brightness = (0.299 * bg_color.red() + 
+                      0.587 * bg_color.green() + 
+                      0.114 * bg_color.blue())
+        
+        # If brightness is less than 128 (out of 255), consider it dark theme
+        return brightness < 128
+
+    def eventFilter(self, obj, event):
+        """Handle events for theme change detection"""
+        if obj == self.toggle_desc_btn and event.type() == QEvent.StyleChange:
+            # Theme might have changed, update our theme detection
+            old_theme = self.is_dark_theme
+            self.is_dark_theme = self.detect_dark_theme()
+            
+            # If theme changed, update button styles
+            if old_theme != self.is_dark_theme:
+                self.update_theme_colors()
+                self.recreate_buttons()
+                
+        return super().eventFilter(obj, event)
+    
+    def update_theme_colors(self):
+        """Update colors based on current theme"""
+        theme = "dark" if self.is_dark_theme else "light"
+        
+        # Update the legend colors
+        major_color = self.color_schemes[theme]["major_fg"]
+        minor_color = self.color_schemes[theme]["minor_fg"]
+        
+        # Find and update the legend labels
+        for i in range(self.main_layout.count()):
+            item = self.main_layout.itemAt(i)
+            if isinstance(item, QHBoxLayout):
+                for j in range(item.count()):
+                    widget = item.itemAt(j).widget()
+                    if isinstance(widget, QLabel):
+                        if "Major" in widget.text():
+                            widget.setStyleSheet(f"color: {major_color};")
+                        elif "Minor" in widget.text():
+                            widget.setStyleSheet(f"color: {minor_color};")
 
     def toggle_button_description(self):
         # Cycle through display modes (0-3)
@@ -2673,6 +2753,13 @@ class ChordProgressionTab(QScrollArea):
         
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
+        
+        # Check if theme has changed
+        old_theme = self.is_dark_theme
+        self.is_dark_theme = self.detect_dark_theme()
+        if old_theme != self.is_dark_theme:
+            self.update_theme_colors()
+            self.recreate_buttons()
 
     def show_key(self, key):
         # Update the active tab button highlight - use darker version of yellow
@@ -2760,6 +2847,13 @@ class ChordProgressionTab(QScrollArea):
         cols_per_row = 8  # 8 columns per row
         total_rows = (total_buttons + cols_per_row - 1) // cols_per_row  # Ceiling division
         
+        # Get colors based on current theme
+        theme = "dark" if self.is_dark_theme else "light"
+        major_bg = self.color_schemes[theme]["major_bg"]
+        major_fg = self.color_schemes[theme]["major_fg"]
+        minor_bg = self.color_schemes[theme]["minor_bg"]
+        minor_fg = self.color_schemes[theme]["minor_fg"]
+        
         # For each row, calculate buttons and add spacers if needed
         buttons_added = 0
         for row in range(total_rows):
@@ -2818,11 +2912,11 @@ class ChordProgressionTab(QScrollArea):
                 
                 btn.setFixedSize(110, 60)  # Same size as chord trainer
                 
-                # Apply different styling based on major/minor
+                # Apply different styling based on major/minor and current theme
                 if is_major:
-                    btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: center;")
+                    btn.setStyleSheet(f"background-color: {major_bg}; color: {major_fg}; text-align: center;")
                 else:
-                    btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98; text-align: center;")
+                    btn.setStyleSheet(f"background-color: {minor_bg}; color: {minor_fg}; text-align: center;")
                     
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -2834,6 +2928,13 @@ class ChordProgressionTab(QScrollArea):
                 buttons_added += 1
 
     def relabel_buttons(self):
+        # Get colors based on current theme
+        theme = "dark" if self.is_dark_theme else "light"
+        major_bg = self.color_schemes[theme]["major_bg"]
+        major_fg = self.color_schemes[theme]["major_fg"]
+        minor_bg = self.color_schemes[theme]["minor_bg"]
+        minor_fg = self.color_schemes[theme]["minor_fg"]
+        
         for i in range(self.progressions_grid.count()):
             widget = self.progressions_grid.itemAt(i).widget()
             if hasattr(widget, 'keycode'):
@@ -2870,6 +2971,12 @@ class ChordProgressionTab(QScrollArea):
                 # When setting tooltip
                 clean_label = label.replace("\n", " ")
                 widget.setToolTip(f"{clean_label} - {description}")
+                
+                # Update styling based on whether it's a major or minor button
+                if "background-color: #E3F2FD" in widget.styleSheet():  # If major
+                    widget.setStyleSheet(f"background-color: {major_bg}; color: {major_fg}; text-align: center;")
+                elif "background-color: #E8DAEF" in widget.styleSheet():  # If minor
+                    widget.setStyleSheet(f"background-color: {minor_bg}; color: {minor_fg}; text-align: center;")
         
         for i in range(self.controls_grid.count()):
             widget = self.controls_grid.itemAt(i).widget()
