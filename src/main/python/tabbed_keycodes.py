@@ -483,17 +483,25 @@ class SmartChordTab(QScrollArea):
         
     def get_display_text(self, keycode):
         """Get the appropriate display text based on current toggle state."""
-        if self.show_long_description:
-            # Use the third value/description (long form)
-            if hasattr(keycode, 'description'):
-                return keycode.description.replace("\n", " ").strip()
-        else:
-            # Use the second value/label (short form)
-            if hasattr(keycode, 'label_override'):
-                return keycode.label_override.replace("\n", " ").strip()
-        
-        # Fallback to standard label method
-        return Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
+        try:
+            if self.show_long_description:
+                # Use the third value/description (long form)
+                if hasattr(keycode, 'description') and isinstance(keycode.description, str):
+                    return keycode.description.replace("\n", " ").strip()
+            else:
+                # Use the second value/label (short form)
+                if hasattr(keycode, 'label_override') and isinstance(keycode.label_override, str):
+                    return keycode.label_override.replace("\n", " ").strip()
+            
+            # Fallback to standard label method which should return a string
+            label = Keycode.label(keycode.qmk_id)
+            if isinstance(label, str):
+                return label.replace("\n", " ").strip()
+            else:
+                return str(label)  # Convert to string if it's not already
+        except Exception as e:
+            # If any errors occur, return a safe fallback
+            return keycode.qmk_id
 
     def populate_tree(self):
         """Populate the QTreeWidget with categories and keycodes."""
