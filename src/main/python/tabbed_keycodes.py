@@ -631,10 +631,7 @@ class midiadvancedTab(QScrollArea):
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         self.main_layout.setSpacing(20)
-        
-        # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(top_spacer)
+       
 
         # Create buttons layout with stretches
         self.button_layout = QHBoxLayout()
@@ -1691,7 +1688,7 @@ class ScrollableComboBox(CenteredComboBox):
         super().showPopup()
         
 class LightingTab(QScrollArea):
-    keycode_changed = pyqtSignal(str)
+    keycode_changed = pyqtSignal(str)   
 
     def __init__(self, parent, label, inversion_keycodes, inversion_keycodes4, smartchord_LSB, smartchord_MSB, smartchord_LSB2):
         super().__init__(parent)
@@ -1701,10 +1698,13 @@ class LightingTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_LSB2 = smartchord_LSB2
+        
+        from PyQt5.QtWidgets import QFrame, QListView, QScrollBar
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
+        
         
         # Set the scroll area properties
         self.setWidget(self.scroll_content)
@@ -2622,7 +2622,7 @@ class ChordProgressionTab(QScrollArea):
         # Create the toggle description button with light green background
         self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
         self.toggle_desc_btn.setFixedSize(170, 50)
-        self.toggle_desc_btn.setStyleSheet("background-color: #ABEBC6; color: #196F3D;")  # Light green background with darker green text
+        self.toggle_desc_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")  # Light green background with darker green text
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         toggle_btn_layout.addWidget(self.toggle_desc_btn)
         
@@ -2647,7 +2647,7 @@ class ChordProgressionTab(QScrollArea):
         self.toggle_desc_btn.setText(mode_names[self.display_mode])
         
         # Use QTimer to revert the styling after a short delay but keep the green color
-        QTimer.singleShot(100, lambda: self.toggle_desc_btn.setStyleSheet("background-color: #ABEBC6; color: #196F3D;"))
+        QTimer.singleShot(100, lambda: self.toggle_desc_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;"))
         
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
