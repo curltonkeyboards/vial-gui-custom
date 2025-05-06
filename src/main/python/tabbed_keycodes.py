@@ -1764,50 +1764,79 @@ class LightingTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
 
-        # Row 1: Dropdowns (RGB Mode, RGB Color, Record Layer RGB)
-        self.dropdown_layout = QHBoxLayout()
+        # Row 1: RGB Mode and RGB Color dropdowns
+        self.row1_layout = QHBoxLayout()
+        self.row1_layout.addStretch()  # Left spacer
         
-        # Add horizontal spacer on the left to center the dropdowns
-        self.dropdown_layout.addStretch()
-        
-        # Add the dropdowns with fixed width of 200 pixels
+        # Create and add dropdowns with fixed width
         self.rgb_mode_dropdown = self.create_rgb_mode_dropdown()
         self.rgb_mode_dropdown.setFixedWidth(200)
-        self.dropdown_layout.addWidget(self.rgb_mode_dropdown)
+        self.row1_layout.addWidget(self.rgb_mode_dropdown)
         
         self.rgb_color_dropdown = self.create_rgb_color_dropdown()
         self.rgb_color_dropdown.setFixedWidth(200)
-        self.dropdown_layout.addWidget(self.rgb_color_dropdown)
+        self.row1_layout.addWidget(self.rgb_color_dropdown)
         
-        self.rgb_layer_dropdown = self.create_rgb_layer_dropdown()
-        self.rgb_layer_dropdown.setFixedWidth(200)
-        self.dropdown_layout.addWidget(self.rgb_layer_dropdown)
+        self.row1_layout.addStretch()  # Right spacer
+        self.main_layout.addLayout(self.row1_layout)
         
-        # Add horizontal spacer on the right to center the dropdowns
-        self.dropdown_layout.addStretch()
+        # Add a small spacer between rows
+        row_spacer1 = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(row_spacer1)
         
-        # Add the dropdown layout to the main layout
-        self.main_layout.addLayout(self.dropdown_layout)
-        
-        # Row 2: Buttons
-        self.button_container = QWidget()
-        self.button_layout = QGridLayout(self.button_container)
-        self.button_layout.setHorizontalSpacing(5)
-        self.button_layout.setVerticalSpacing(5)
+        # Row 2: Buttons from inversion_keycodes
+        self.buttons1_container = QWidget()
+        self.buttons1_layout = QGridLayout(self.buttons1_container)
+        self.buttons1_layout.setHorizontalSpacing(5)
+        self.buttons1_layout.setVerticalSpacing(5)
         
         # Create a horizontal layout for the button container with spacers
-        self.centered_button_layout = QHBoxLayout()
-        self.centered_button_layout.addStretch()  # Left spacer
-        self.centered_button_layout.addWidget(self.button_container)
-        self.centered_button_layout.addStretch()  # Right spacer
+        self.centered_buttons1_layout = QHBoxLayout()
+        self.centered_buttons1_layout.addStretch()  # Left spacer
+        self.centered_buttons1_layout.addWidget(self.buttons1_container)
+        self.centered_buttons1_layout.addStretch()  # Right spacer
         
         # Add the centered button layout to the main layout
-        self.main_layout.addLayout(self.centered_button_layout)
+        self.main_layout.addLayout(self.centered_buttons1_layout)
+        
+        # Add a small spacer between rows
+        row_spacer2 = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(row_spacer2)
+        
+        # Add "Layer Lighting Controls" label
+        self.layer_lighting_label = QLabel("Layer Lighting Controls")
+        self.layer_lighting_label.setAlignment(Qt.AlignCenter)
+        self.layer_lighting_label.setStyleSheet("font-size: 14px;")
+        self.main_layout.addWidget(self.layer_lighting_label)
+        
+        # Small spacer after the label
+        label_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(label_spacer)
+        
+        # Row 3: Record Layer RGB dropdown and buttons from inversion_keycodes4
+        self.row3_layout = QHBoxLayout()
+        self.row3_layout.addStretch()  # Left spacer
+        
+        # Add Record Layer RGB dropdown
+        self.rgb_layer_dropdown = self.create_rgb_layer_dropdown()
+        self.rgb_layer_dropdown.setFixedWidth(200)
+        self.row3_layout.addWidget(self.rgb_layer_dropdown)
+        
+        # Create a container for the second set of buttons
+        self.buttons2_container = QWidget()
+        self.buttons2_layout = QGridLayout(self.buttons2_container)
+        self.buttons2_layout.setHorizontalSpacing(5)
+        self.buttons2_layout.setVerticalSpacing(5)
+        
+        self.row3_layout.addWidget(self.buttons2_container)
+        self.row3_layout.addStretch()  # Right spacer
+        
+        self.main_layout.addLayout(self.row3_layout)
 
-        # Populate the buttons
+        # Populate all buttons
         self.populate_buttons()
 
         # Spacer to push everything to the top
@@ -1859,17 +1888,23 @@ class LightingTab(QScrollArea):
         return dropdown
 
     def populate_buttons(self, keycode_filter=None):
-        # Clear previous widgets in button layout
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
+        # Clear previous widgets in buttons1 layout
+        for i in reversed(range(self.buttons1_layout.count())):
+            widget = self.buttons1_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+                
+        # Clear previous widgets in buttons2 layout
+        for i in reversed(range(self.buttons2_layout.count())):
+            widget = self.buttons2_layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
 
+        # Add buttons from inversion_keycodes to the first button grid
         row = 0
         col = 0
         max_columns = 15  # Maximum number of columns
-
-        # Add buttons from inversion_keycodes
+        
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
@@ -1879,23 +1914,27 @@ class LightingTab(QScrollArea):
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
-                self.button_layout.addWidget(btn, row, col)
+                self.buttons1_layout.addWidget(btn, row, col)
                 col += 1
                 # Move to the next row if we reach max columns
                 if col >= max_columns:
                     col = 0
                     row += 1
         
-        # Add buttons from inversion_keycodes4
+        # Add buttons from inversion_keycodes4 to the second button grid
+        row = 0
+        col = 0
+        
         for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
                 btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
-                self.button_layout.addWidget(btn, row, col)
+                self.buttons2_layout.addWidget(btn, row, col)
                 col += 1
                 # Move to the next row if we reach max columns
                 if col >= max_columns:
@@ -1903,28 +1942,30 @@ class LightingTab(QScrollArea):
                     row += 1
 
     def recreate_buttons(self, keycode_filter=None):
-        # Clear and recreate the dropdowns
-        self.dropdown_layout.removeWidget(self.rgb_mode_dropdown)
-        self.dropdown_layout.removeWidget(self.rgb_color_dropdown)
-        self.dropdown_layout.removeWidget(self.rgb_layer_dropdown)
+        # Clear and recreate the dropdowns in row 1
+        self.row1_layout.removeWidget(self.rgb_mode_dropdown)
+        self.row1_layout.removeWidget(self.rgb_color_dropdown)
         
         self.rgb_mode_dropdown.deleteLater()
         self.rgb_color_dropdown.deleteLater()
-        self.rgb_layer_dropdown.deleteLater()
         
         self.rgb_mode_dropdown = self.create_rgb_mode_dropdown()
         self.rgb_mode_dropdown.setFixedWidth(200)
-        self.dropdown_layout.insertWidget(1, self.rgb_mode_dropdown)
+        self.row1_layout.insertWidget(1, self.rgb_mode_dropdown)
         
         self.rgb_color_dropdown = self.create_rgb_color_dropdown()
         self.rgb_color_dropdown.setFixedWidth(200)
-        self.dropdown_layout.insertWidget(2, self.rgb_color_dropdown)
+        self.row1_layout.insertWidget(2, self.rgb_color_dropdown)
+        
+        # Clear and recreate the dropdown in row 3
+        self.row3_layout.removeWidget(self.rgb_layer_dropdown)
+        self.rgb_layer_dropdown.deleteLater()
         
         self.rgb_layer_dropdown = self.create_rgb_layer_dropdown()
         self.rgb_layer_dropdown.setFixedWidth(200)
-        self.dropdown_layout.insertWidget(3, self.rgb_layer_dropdown)
+        self.row3_layout.insertWidget(1, self.rgb_layer_dropdown)
         
-        # Repopulate the buttons
+        # Repopulate all buttons
         self.populate_buttons(keycode_filter)
 
     def reset_dropdown(self, dropdown, header_text):
@@ -1939,15 +1980,25 @@ class LightingTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
+        # Handle relabeling for buttons in first grid
+        for i in range(self.buttons1_layout.count()):
+            widget = self.buttons1_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
+                    
+        # Handle relabeling for buttons in second grid
+        for i in range(self.buttons2_layout.count()):
+            widget = self.buttons2_layout.itemAt(i).widget()
             if isinstance(widget, SquareButton):
                 keycode = widget.keycode
                 if keycode:
                     widget.setText(Keycode.label(keycode.qmk_id))
 
     def has_buttons(self):
-        return self.button_layout.count() > 0
+        """Check if there are buttons or dropdown items."""
+        return (self.buttons1_layout.count() > 0 or self.buttons2_layout.count() > 0)
 
 class MacroTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -2765,7 +2816,7 @@ class ChordProgressionTab(QScrollArea):
                 clean_label = label.replace("\n", " ")
                 btn.setToolTip(f"{clean_label} - {description}")
                 
-                btn.setFixedSize(110, 50)  # Same size as chord trainer
+                btn.setFixedSize(110, 60)  # Same size as chord trainer
                 
                 # Apply different styling based on major/minor
                 if is_major:
