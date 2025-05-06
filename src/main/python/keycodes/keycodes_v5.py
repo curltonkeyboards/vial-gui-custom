@@ -794,14 +794,14 @@ class keycodes_v5:
         "MI_CHANNEL_HOLD_13": 0xC454,
         "MI_CHANNEL_HOLD_14": 0xC455,
         "MI_CHANNEL_HOLD_15": 0xC456,
-        "MI_CHANNEL_HOLD_16": 0xC457,  
+        "MI_CHANNEL_HOLD_16": 0xC457,    
         
         "OLED_1": 0xC458,
         "OLED_2": 0xC459,
         "OLED_3": 0xC45A,
         "OLED_4": 0xC45B,
         "OLED_5": 0xC45C,
-        "OLED_6": 0xC45D,
+        "OLED_6": 0xC45D,        
 
         "RGB_KC_1": 0xC460,
         "RGB_KC_2": 0xC461,
@@ -848,7 +848,7 @@ class keycodes_v5:
         "RGB_KC_43": 0xC48A,
         "RGB_KC_44": 0xC48B,
         "RGB_KC_45": 0xC48C,
-  
+        
         "RGB_KC_COLOR_1": 0xC48D,
         "RGB_KC_COLOR_2": 0xC48E,
         "RGB_KC_COLOR_3": 0xC48F,
@@ -868,7 +868,7 @@ class keycodes_v5:
         "RGB_KC_COLOR_17": 0xC49D,
         "RGB_KC_COLOR_18": 0xC49E,
         "RGB_KC_COLOR_19": 0xC49F,  
-        
+             
         "SMARTCHORD_DOWN": 0xC4A0,
         "SMARTCHORD_UP": 0xC4A1,
         "COLORBLIND_TOGGLE": 0xC4A2,
@@ -946,7 +946,7 @@ class keycodes_v5:
         "MI_SPLIT_A_5": 0xC645,
         "MI_SPLIT_As_5": 0xC646,
         "MI_SPLIT_B_5": 0xC647,
-
+        
         "KS_CHAN_DOWN": 0xC650,
         "KS_CHAN_UP": 0xC651,
         
@@ -968,7 +968,7 @@ class keycodes_v5:
         "MI_CHANNEL_KEYSPLIT_16": 0xC661,
         
         "KS_TOGGLE": 0xC662,
-
+        
         "MI_SPLIT2_C": 0xC670,
         "MI_SPLIT2_Cs": 0xC671,
         "MI_SPLIT2_D": 0xC672,
@@ -1061,7 +1061,7 @@ class keycodes_v5:
         "MI_CHANNEL_KEYSPLIT2_14": 0xC6C7,
         "MI_CHANNEL_KEYSPLIT2_15": 0xC6C8,
         "MI_CHANNEL_KEYSPLIT2_16": 0xC6C9,
-
+        
         "MI_VELOCITY2_0":0xC6CA,
         "MI_VELOCITY2_1":0xC6CB,
         "MI_VELOCITY2_2":0xC6CC,
@@ -1392,7 +1392,6 @@ class keycodes_v5:
         
         "MI_INV_UP": 0xC81C,
         "MI_INV_DOWN": 0xC81D,
-
         
         "MI_TAP":0xC929,
         
@@ -1444,7 +1443,7 @@ class keycodes_v5:
         "MI_CET_17":0xC94C,# Basic 7ths (random -12, simultaneous)
         "MI_CET_18":0xC94D,# All 7ths (random -12, simultaneous)
         "MI_CET_19":0xC94E,# Triads and basic 7ths (random -12, simultaneous)
-        "MI_CET_20":0xC94F,# Triads and all 7ths (random -12, simultaneous)   
+        "MI_CET_20":0xC94F,# Triads and all 7ths (random -12, simultaneous)    
 
         "MI_RVEL_0": 0xC950,
         "MI_RVEL_1": 0xC951,
@@ -1462,7 +1461,7 @@ class keycodes_v5:
         "MI_RVEL_13": 0xC95D,
         "MI_RVEL_14": 0xC95E,
         "MI_RVEL_15": 0xC95F,
-        "MI_RVEL_16": 0xC960,   
+        "MI_RVEL_16": 0xC960,
 
         "MI_CCENCODER_0": 0xC961,
         "MI_CCENCODER_1": 0xC962,
@@ -1608,7 +1607,7 @@ class keycodes_v5:
         "RGB_LAYERRECORD10": 0xC9EC, # custom keycodes safe range
         "RGB_LAYERRECORD11": 0xC9ED, # custom keycodes safe range
         
-        "RGB_LAYERSAVE": 0xC9EE, # custom keycodes safe range        
+        "RGB_LAYERSAVE": 0xC9EE, # custom keycodes safe range       
         "RGB_LAYER_CUSTOM": 0xC9EF, # custom keycodes safe range
 
         "EXWHEEL_TRA": 0xC9F0,
@@ -2146,6 +2145,8 @@ class keycodes_v5:
                         
 
         "QK_KB": 0xCC08, #custom keycodes safe range
+        
+        
        
 
     }
