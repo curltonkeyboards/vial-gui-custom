@@ -416,7 +416,6 @@ class SmartChordTab(QScrollArea):
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
 
-        
         # Store all tree widgets for managing selections
         self.trees = []
 
@@ -440,7 +439,14 @@ class SmartChordTab(QScrollArea):
 
         # Layout for inversion buttons
         self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
+        
+        # Center the button layout
+        button_container = QHBoxLayout()
+        button_container.addStretch(1)  # Left spacer
+        button_container.addLayout(self.button_layout)
+        button_container.addStretch(1)  # Right spacer
+        
+        self.main_layout.addLayout(button_container)
 
         # Populate the inversion buttons
         self.recreate_buttons()
@@ -458,8 +464,6 @@ class SmartChordTab(QScrollArea):
         self.create_keycode_tree(self.smartchord_keycodes_4, "6 Note Chords")
         self.create_keycode_tree(self.smartchord_keycodes_5, "Other")
         self.create_keycode_tree(self.scales_modes_keycodes, "Scales/Modes")
-        
-
 
     def create_keycode_tree(self, keycodes, title):
         """Create a QTreeWidget and add keycodes under it."""
@@ -485,13 +489,21 @@ class SmartChordTab(QScrollArea):
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id).replace("\n", "\n")  # Replace \n with space
+            # Use the third value (full name) from the keycode data if available
+            if hasattr(keycode, 'description'):
+                label = keycode.description.replace("\n", " ").strip()
+            else:
+                # Fallback to the standard label but replace newlines with spaces
+                label = Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
+            
             keycode_item = QTreeWidgetItem(tree, [label])
             keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
 
             # Force text to be on one line and left-aligned
             keycode_item.setTextAlignment(0, Qt.AlignLeft)
-            keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
+            
+            # Ensure the text is in a single line by setting it again
+            keycode_item.setText(0, label)
 
     def on_item_selected(self, clicked_item, column):
         """Handle tree item selection and clear other trees' selections."""
@@ -522,19 +534,6 @@ class SmartChordTab(QScrollArea):
             for tree in self.trees:
                 tree.blockSignals(False)
 
-                
-    def add_keycode_group(self, tree, title, keycodes):
-        """Helper function to add keycodes to a QTreeWidget."""
-        for keycode in keycodes:
-            label = Keycode.label(keycode.qmk_id).replace("\n", "\n")  # Replace \n with space
-            keycode_item = QTreeWidgetItem(tree, [label])
-            keycode_item.setData(0, Qt.UserRole, keycode.qmk_id)  # Store qmk_id for easy access
-
-            # Force text to be on one line and left-aligned
-            keycode_item.setTextAlignment(0, Qt.AlignLeft)
-            keycode_item.setText(0, label)  # Set the label again to ensure no wrapping
-            
-
     def recreate_buttons(self, keycode_filter=None):
         """Recreates the buttons for the inversion keycodes."""
         for i in reversed(range(self.button_layout.count())):
@@ -544,17 +543,23 @@ class SmartChordTab(QScrollArea):
 
         row = 0
         col = 0
+        max_columns = 15  # Limit columns for better appearance
+        
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(40, 40)  # Set fixed size for consistent appearance
+                
+                # Replace any newlines with spaces in button text
+                button_text = Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
+                btn.setText(button_text)
+                
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
 
                 self.button_layout.addWidget(btn, row, col)
                 col += 1
-                if col >= 20:
+                if col >= max_columns:
                     col = 0
                     row += 1
 
@@ -570,12 +575,13 @@ class SmartChordTab(QScrollArea):
             if isinstance(widget, SquareButton):
                 keycode = widget.keycode
                 if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+                    # Replace any newlines with spaces in button text
+                    button_text = Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
+                    widget.setText(button_text)
 
     def has_buttons(self):
         """Check if buttons exist in the layout."""
         return self.button_layout.count() > 0
-       
 
 
 
