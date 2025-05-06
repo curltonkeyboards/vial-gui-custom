@@ -1748,6 +1748,9 @@ class LightingTab(QScrollArea):
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
         self.smartchord_LSB2 = smartchord_LSB2
+        
+        # Import QFrame if it's not already imported
+        from PyQt5.QtWidgets import QFrame, QListView, QScrollBar
 
         # Create a widget for the scroll area content
         self.scroll_content = QWidget()
@@ -1759,9 +1762,19 @@ class LightingTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
-        # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 30, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(top_spacer)
+        # Add a spacer at the top (20px)
+        top_spacer1 = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer1)
+        
+        # Add "Lighting Controls" title
+        self.lighting_controls_label = QLabel("Lighting Controls")
+        self.lighting_controls_label.setAlignment(Qt.AlignCenter)
+        self.lighting_controls_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.main_layout.addWidget(self.lighting_controls_label)
+        
+        # Add another spacer (10px)
+        top_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer2)
 
         # Row 1: RGB Mode and RGB Color dropdowns
         self.row1_layout = QHBoxLayout()
@@ -1779,8 +1792,8 @@ class LightingTab(QScrollArea):
         self.row1_layout.addStretch()  # Right spacer
         self.main_layout.addLayout(self.row1_layout)
         
-        # Add a small spacer between rows
-        row_spacer1 = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        # Add a small spacer between rows (exactly 10px as requested)
+        row_spacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(row_spacer1)
         
         # Row 2: Buttons from inversion_keycodes
@@ -1805,11 +1818,11 @@ class LightingTab(QScrollArea):
         # Add "Layer Lighting Controls" label
         self.layer_lighting_label = QLabel("Layer Lighting Controls")
         self.layer_lighting_label.setAlignment(Qt.AlignCenter)
-        self.layer_lighting_label.setStyleSheet("font-size: 12px;")
+        self.layer_lighting_label.setStyleSheet("font-size: 14px;")
         self.main_layout.addWidget(self.layer_lighting_label)
         
-        # Small spacer after the label
-        label_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        # Small spacer after the label - REDUCED from 10 to 2 pixels
+        label_spacer = QSpacerItem(0, 2, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(label_spacer)
         
         # Row 3: Record Layer RGB dropdown and buttons from inversion_keycodes4
@@ -1904,8 +1917,8 @@ class LightingTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(50)
-                btn.setFixedWidth(50)
+                btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
@@ -1924,8 +1937,8 @@ class LightingTab(QScrollArea):
         for keycode in self.inversion_keycodes4:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 btn = SquareButton()
-                btn.setFixedHeight(50)
-                btn.setFixedWidth(50)
+                btn.setFixedHeight(40)
+                btn.setFixedWidth(40)
                 btn.setText(Keycode.label(keycode.qmk_id))
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
