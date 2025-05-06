@@ -415,6 +415,9 @@ class SmartChordTab(QScrollArea):
         self.smartchord_keycodes_5 = smartchord_keycodes_5
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
+        
+        # Flag to control which description to show (True for long/third value, False for short/second value)
+        self.show_long_description = True
 
         # Store all tree widgets for managing selections
         self.trees = []
@@ -450,9 +453,47 @@ class SmartChordTab(QScrollArea):
 
         # Populate the inversion buttons
         self.recreate_buttons()
+        
+        # Add toggle button at the bottom
+        self.toggle_button = QPushButton("Toggle Chord Description")
+        self.toggle_button.setFixedHeight(40)
+        self.toggle_button.clicked.connect(self.toggle_description)
+        
+        # Center the toggle button
+        toggle_layout = QHBoxLayout()
+        toggle_layout.addStretch(1)
+        toggle_layout.addWidget(self.toggle_button)
+        toggle_layout.addStretch(1)
+        
+        self.main_layout.addLayout(toggle_layout)
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
+        
+    def toggle_description(self):
+        """Toggle between short and long descriptions for buttons."""
+        self.show_long_description = not self.show_long_description
+        self.relabel_buttons()
+        
+        # Update button text to indicate current mode
+        if self.show_long_description:
+            self.toggle_button.setText("Toggle Chord Description (Currently: Full)")
+        else:
+            self.toggle_button.setText("Toggle Chord Description (Currently: Short)")
+        
+    def get_display_text(self, keycode):
+        """Get the appropriate display text based on current toggle state."""
+        if self.show_long_description:
+            # Use the third value/description (long form)
+            if hasattr(keycode, 'description'):
+                return keycode.description.replace("\n", " ").strip()
+        else:
+            # Use the second value/label (short form)
+            if hasattr(keycode, 'label_override'):
+                return keycode.label_override.replace("\n", " ").strip()
+        
+        # Fallback to standard label method
+        return Keycode.label(keycode.qmk_id).replace("\n", " ").strip()
 
     def populate_tree(self):
         """Populate the QTreeWidget with categories and keycodes."""
