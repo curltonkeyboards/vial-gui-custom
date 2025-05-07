@@ -2273,7 +2273,7 @@ KEYCODES_C_CHORDPROG_EXPERT_MAJOR = [
     K("C_CHORDPROG29", "C Major\nProg\n29", "IVmaj7-III7\nvim7-II7\niim7-V7\nImaj7\n(Fmaj7-E7\nAm7-D7\nDm7-G7\nCmaj7)She's\nLovely"),
     K("C_CHORDPROG31", "C Major\nProg\n31", "IVmaj7-V7\niiim9-vim7\n(Fmaj7-G7\nEm9-Am7)Neo-Pop\nTurnaround"),
     K("C_CHORDPROG35", "C Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(Fmaj7-Em7\nEbdim7\nDm7-Dm7b5\nCmaj7)Descending\nDiminished"),
-    K("C_CHORDPROG36", "C Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Cmaj7\nC#dim7-Dm7\nD#dim7-Em7\nEbdim7)Diminished\nBridge"),
+    K("C_CHORDPROG36", "C Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Cmaj7\nC#dim7-Dm7\nEbdim7-Em7\nEbdim7)Diminished\nBridge"),
     K("C_CHORDPROG38", "C Major\nProg\n38", "I-vi-ii\nbVII7-I\n(Cmaj7-Am7\nDm7-Bb7)Backdoor\nProgression"),
     K("C_CHORDPROG39", "C Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(Cmaj7\nEbmaj7\nDm7-Fm6)Modal\nMixture"),
     K("C_CHORDPROG41", "C Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(Cmaj9-C7\nDm7-B7b9\nG7-E7b9\nFmaj7-Fdim7)Complex\n2-5-1-4"),
@@ -2305,7 +2305,7 @@ KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR = [
 KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR = [
     K("CS_CHORDPROG14", "A# Minor\nProg\n14", "i-VII-VI-V\n(A#m-G#-F#-E#)Andalusian\nCadence"),
     K("CS_CHORDPROG15", "A# Minor\nProg\n15", "i-bVI-bVII-V\n(A#m-F#-G#-E#)Harmonic\nTension"),
-    K("CS_CHORDPROG18", "A# Minor\nProg\n18", "i-bVII-VI-V\n(A#m-G-F#-E#)Melancholic\nMinor"),
+    K("CS_CHORDPROG18", "A# Minor\nProg\n18", "i-bVII-VI-V\n(A#m-G#-F#-E#)Melancholic\nMinor"),
     K("CS_CHORDPROG20", "A# Minor\nProg\n20", "i-V-VI-VIm\n(A#m-E#-F#-F#m)Darkening\nMinor"),
     K("CS_CHORDPROG24", "A# Minor\nProg\n24", "im7-bVImaj7\nbVII7-V7\n(A#m7-F#maj7\nG#7-E#7)Jazz\nMinor"),
     K("CS_CHORDPROG27", "A# Minor\nProg\n27", "VI-#viidim\nV7-i-VII\n(F#-G##dim\nE#7-A#m-G#)Diminished\nDominant"),
@@ -2409,7 +2409,7 @@ KEYCODES_D_CHORDPROG_EXPERT_MAJOR = [
     K("D_CHORDPROG38", "D Major\nProg\n38", "I-vi-ii\nbVII7-I\n(Dmaj7-Bm7\nEm7-C7)Backdoor\nProgression"),
     K("D_CHORDPROG39", "D Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(Dmaj7\nFmaj7\nEm7-Gm6)Modal\nMixture"),
     K("D_CHORDPROG41", "D Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(Dmaj9-D7\nEm7-C#7b9\nA7-F#7b9\nGmaj7-Gdim7)Complex\n2-5-1-4"),
-    K("D_CHORDPROG42", "D Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Dmaj7-Bm7\nEm7-Eb7\nDmaj7)Tritone\nSubstitution"),
+    K("D_CHORDPROG42", "D Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Dmaj7-Bm7\nEm7-D#7\nDmaj7)Tritone\nSubstitution"),
 ]
 
 # Eb KEY - MINOR PROGRESSIONS
@@ -2612,12 +2612,12 @@ KEYCODES_F_CHORDPROG_EXPERT_MAJOR = [
 
 # F# KEY - MINOR PROGRESSIONS
 KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR = [
-    K("FS_CHORDPROG1", "D# Minor\nProg\n1", "i-VII-VI\n(D#m-C#-B)Simple\nMinor"),
-    K("FS_CHORDPROG3", "D# Minor\nProg\n3", "VI-VII-i\n(B-C#-D#m)Hopeful\nMinor"),
-    K("FS_CHORDPROG7", "D# Minor\nProg\n7", "i-iv-VII-I\n(D#m-G#m-C#-F#)Natural\nMinor"),
-    K("FS_CHORDPROG9", "D# Minor\nProg\n9", "iv-III-i-VII\n(G#m-F#-D#m-C#)Downward\nMinor"),
-    K("FS_CHORDPROG10", "D# Minor\nProg\n10", "i-VII-v-VI\n(D#m-C#-A#m-B)Sensitive\nMinor"),
-    K("FS_CHORDPROG11", "D# Minor\nProg\n11", "i-v-VI-ii\n(D#m-A#m-B-F)Circular\nMinor"),
+    K("FS_CHORDPROG1", "Eb Minor\nProg\n1", "i-VII-VI\n(Ebm-Db-Cb)Simple\nMinor"),
+    K("FS_CHORDPROG3", "Eb Minor\nProg\n3", "VI-VII-i\n(Cb-Db-Ebm)Hopeful\nMinor"),
+    K("FS_CHORDPROG7", "Eb Minor\nProg\n7", "i-iv-VII-I\n(Ebm-Abm-Db-F#)Natural\nMinor"),
+    K("FS_CHORDPROG9", "Eb Minor\nProg\n9", "iv-III-i-VII\n(Abm-Gb-Ebm-Db)Downward\nMinor"),
+    K("FS_CHORDPROG10", "Eb Minor\nProg\n10", "i-VII-v-VI\n(Ebm-Db-Bbm-Cb)Sensitive\nMinor"),
+    K("FS_CHORDPROG11", "Eb Minor\nProg\n11", "i-v-VI-ii\n(Ebm-Bbm-Cb-Fm)Circular\nMinor"),
 ]
 
 # F# KEY - MAJOR PROGRESSIONS
@@ -2633,12 +2633,12 @@ KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR = [
 
 # F# KEY - INTERMEDIATE MINOR PROGRESSIONS
 KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR = [
-    K("FS_CHORDPROG14", "D# Minor\nProg\n14", "i-VII-VI-V\n(D#m-C#-B-A#)Andalusian\nCadence"),
-    K("FS_CHORDPROG15", "D# Minor\nProg\n15", "i-bVI-bVII-V\n(D#m-B-C#-A#)Harmonic\nTension"),
-    K("FS_CHORDPROG18", "D# Minor\nProg\n18", "i-bVII-VI-V\n(D#m-C#-B-A#)Melancholic\nMinor"),
-    K("FS_CHORDPROG20", "D# Minor\nProg\n20", "i-V-VI-VIm\n(D#m-A#-B-Bm)Darkening\nMinor"),
-    K("FS_CHORDPROG24", "D# Minor\nProg\n24", "im7-bVImaj7\nbVII7-V7\n(D#m7-Bmaj7\nC#7-A#7)Jazz\nMinor"),
-    K("FS_CHORDPROG27", "D# Minor\nProg\n27", "VI-#viidim\nV7-i-VII\n(B-Ddim\nA#7-D#m-C#)Diminished\nDominant"),
+    K("FS_CHORDPROG14", "Eb Minor\nProg\n14", "i-VII-VI-V\n(Ebm-Db-Cb-Bb)Andalusian\nCadence"),
+    K("FS_CHORDPROG15", "Eb Minor\nProg\n15", "i-bVI-bVII-V\n(Ebm-Cb-Db-Bb)Harmonic\nTension"),
+    K("FS_CHORDPROG18", "Eb Minor\nProg\n18", "i-bVII-VI-V\n(Ebm-Db-Cb-Bb)Melancholic\nMinor"),
+    K("FS_CHORDPROG20", "Eb Minor\nProg\n20", "i-V-VI-VIm\n(Ebm-Bb-Cb-Cbm)Darkening\nMinor"),
+    K("FS_CHORDPROG24", "Eb Minor\nProg\n24", "im7-bVImaj7\nbVII7-V7\n(Ebm7-Cbmaj7\nDb7-Bb7)Jazz\nMinor"),
+    K("FS_CHORDPROG27", "Eb Minor\nProg\n27", "VI-#viidim\nV7-i-VII\n(Cb-Edim\nBb7-Ebm-Db)Diminished\nDominant"),
 ]
 
 # F# KEY - INTERMEDIATE MAJOR PROGRESSIONS
@@ -2655,12 +2655,12 @@ KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR = [
 
 # F# KEY - EXPERT MINOR PROGRESSIONS
 KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR = [
-    K("FS_CHORDPROG30", "D# Minor\nProg\n30", "vim9-iiim9\niim9-Imaj9\n(D#m9-A#m9\nG#m9-F#maj9)Bring\nThe 9th"),
-    K("FS_CHORDPROG32", "D# Minor\nProg\n32", "im9-ivaddD\nbVImaj7\nbVII9\n(D#m9-G#madd9\nBmaj7-C#9)Modern\nMinor 9"),
-    K("FS_CHORDPROG33", "D# Minor\nProg\n33", "im9-iim9-vm9\n(D#m9-G#m9\nA#m9)Lo-Fi\nNinths"),
-    K("FS_CHORDPROG34", "D# Minor\nProg\n34", "im9-vm9\nVImaj9-im9\nVImaj9\nviim9\n(D#m9-A#m9\nBmaj9-D#m9\nBmaj9-C#m9)Ninth\nJourney"),
-    K("FS_CHORDPROG37", "D# Minor\nProg\n37", "im9-IVmaj7\niim7b5-V7\n(D#m9-Bmaj7\nG#m7b5-A#7)Minor Jazz\nII-V-I"),
-    K("FS_CHORDPROG40", "D# Minor\nProg\n40", "im9-V7b9\nVImaj9\niim9-vm7\n(D#m9-A#7b9\nBmaj9\nG#m9-A#m7)Altered\nDominant"),
+    K("FS_CHORDPROG30", "Eb Minor\nProg\n30", "vim9-iiim9\niim9-Imaj9\n(Ebm9-Bbm9\nAbm9-Gbmaj9)Bring\nThe 9th"),
+    K("FS_CHORDPROG32", "Eb Minor\nProg\n32", "im9-ivaddD\nbVImaj7\nbVII9\n(Ebm9-Abmadd9\nCbmaj7-Db9)Modern\nMinor 9"),
+    K("FS_CHORDPROG33", "Eb Minor\nProg\n33", "im9-iim9-vm9\n(Ebm9-Abm9\nBbm9)Lo-Fi\nNinths"),
+    K("FS_CHORDPROG34", "Eb Minor\nProg\n34", "im9-vm9\nVImaj9-im9\nVImaj9\nviim9\n(Ebm9-Bbm9\nCbmaj9-Ebm9\nCbmaj9-Dbm9)Ninth\nJourney"),
+    K("FS_CHORDPROG37", "Eb Minor\nProg\n37", "im9-IVmaj7\niim7b5-V7\n(Ebm9-Cbmaj7\nAbm7b5-Bb7)Minor Jazz\nII-V-I"),
+    K("FS_CHORDPROG40", "Eb Minor\nProg\n40", "im9-V7b9\nVImaj9\niim9-vm7\n(Ebm9-Bb7b9\nCbmaj9\nAbm9-Bbm7)Altered\nDominant"),
 ]
 
 # F# KEY - EXPERT MAJOR PROGRESSIONS
@@ -2672,7 +2672,7 @@ KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR = [
     K("FS_CHORDPROG36", "F# Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(F#maj7\nGdim7-G#m7\nAdim7-A#m7\nAdim7)Diminished\nBridge"),
     K("FS_CHORDPROG38", "F# Major\nProg\n38", "I-vi-ii\nbVII7-I\n(F#maj7-D#m7\nG#m7-E7)Backdoor\nProgression"),
     K("FS_CHORDPROG39", "F# Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(F#maj7\nAmaj7\nG#m7-Bm6)Modal\nMixture"),
-    K("FS_CHORDPROG41", "F# Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(F#maj9-F#7\nG#m7-F7b9\nC#7-A#7b9\nBmaj7-Bdim7)Complex\n2-5-1-4"),
+    K("FS_CHORDPROG41", "F# Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(F#maj9-F#7\nG#m7-E#7b9\nC#7-A#7b9\nBmaj7-Bdim7)Complex\n2-5-1-4"),
     K("FS_CHORDPROG42", "F# Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(F#maj7-D#m7\nG#m7-G7\nF#maj7)Tritone\nSubstitution"),
 ]
 
@@ -2734,12 +2734,12 @@ KEYCODES_G_CHORDPROG_EXPERT_MAJOR = [
     K("G_CHORDPROG28", "G Major\nProg\n28", "IVmaj7-V7\niiim7-vim7\niim7-III7\nvim7\n(Cmaj7-D7\nBm7-Em7\nAm7-B7-Em7)Anime\nProgression"),
     K("G_CHORDPROG29", "G Major\nProg\n29", "IVmaj7-III7\nvim7-II7\niim7-V7\nImaj7\n(Cmaj7-B7\nEm7-A7\nAm7-D7\nGmaj7)She's\nLovely"),
     K("G_CHORDPROG31", "G Major\nProg\n31", "IVmaj7-V7\niiim9-vim7\n(Cmaj7-D7\nBm9-Em7)Neo-Pop\nTurnaround"),
-    K("G_CHORDPROG35", "G Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(Cmaj7-Bm7\nBbdim7\nAm7-Am7b5\nGmaj7)Descending\nDiminished"),
-    K("G_CHORDPROG36", "G Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Gmaj7\nG#dim7-Am7\nA#dim7-Bm7\nBbdim7)Diminished\nBridge"),
+    K("G_CHORDPROG35", "G Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(Cmaj7-Bm7\nA#dim7\nAm7-Am7b5\nGmaj7)Descending\nDiminished"),
+    K("G_CHORDPROG36", "G Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Gmaj7\nG#dim7-Am7\nA#dim7-Bm7\nA#dim7)Diminished\nBridge"),
     K("G_CHORDPROG38", "G Major\nProg\n38", "I-vi-ii\nbVII7-I\n(Gmaj7-Em7\nAm7-F7)Backdoor\nProgression"),
     K("G_CHORDPROG39", "G Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(Gmaj7\nBbmaj7\nAm7-Cm6)Modal\nMixture"),
     K("G_CHORDPROG41", "G Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(Gmaj9-G7\nAm7-F#7b9\nD7-B7b9\nCmaj7-Cdim7)Complex\n2-5-1-4"),
-    K("G_CHORDPROG42", "G Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Gmaj7-Em7\nAm7-Ab7\nGmaj7)Tritone\nSubstitution"),
+    K("G_CHORDPROG42", "G Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Gmaj7-Em7\nAm7-G#7\nGmaj7)Tritone\nSubstitution"),
 ]
 
 # Ab KEY - MINOR PROGRESSIONS
@@ -2754,13 +2754,13 @@ KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR = [
 
 # Ab KEY - MAJOR PROGRESSIONS
 KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR = [
-    K("GS_CHORDPROG2", "Ab Major\nProg\n2", "I-IV-V\n(Ab-Db-Eb)Simple\nMajor"),
-    K("GS_CHORDPROG4", "Ab Major\nProg\n4", "I-vi-IV-V\n(Ab-Fm-Db-Eb)50s\nProgression"),
-    K("GS_CHORDPROG5", "Ab Major\nProg\n5", "I-V-vi-IV\n(Ab-Eb-Fm-Db)Classic\nFour-Chord"),
-    K("GS_CHORDPROG6", "Ab Major\nProg\n6", "vi-IV-I-V\n(Fm-Db-Ab-Eb)Axis\nProgression"),
-    K("GS_CHORDPROG8", "Ab Major\nProg\n8", "I-V-IV-IV\n(Ab-Eb-Db-Db)Rock\nProgression"),
-    K("GS_CHORDPROG12", "Ab Major\nProg\n12", "I-ii-vi-V\n(Ab-Bbm-Fm-Eb)Summer\nHit"),
-    K("GS_CHORDPROG13", "Ab Major\nProg\n13", "I-V-vi-iii\nIV-I-IV-V\n(Ab-Eb-Fm-Cm\nDb-Ab-Db-Eb)Canon\nProgression"),
+    K("GS_CHORDPROG2", "G# Major\nProg\n2", "I-IV-V\n(G#-C#-D#)Simple\nMajor"),
+    K("GS_CHORDPROG4", "G# Major\nProg\n4", "I-vi-IV-V\n(G#-E#m-C#-D#)50s\nProgression"),
+    K("GS_CHORDPROG5", "G# Major\nProg\n5", "I-V-vi-IV\n(G#-D#-E#m-C#)Classic\nFour-Chord"),
+    K("GS_CHORDPROG6", "G# Major\nProg\n6", "vi-IV-I-V\n(E#m-C#-G#-D#)Axis\nProgression"),
+    K("GS_CHORDPROG8", "G# Major\nProg\n8", "I-V-IV-IV\n(G#-D#-C#-C#)Rock\nProgression"),
+    K("GS_CHORDPROG12", "G# Major\nProg\n12", "I-ii-vi-V\n(G#-A#m-E#m-D#)Summer\nHit"),
+    K("GS_CHORDPROG13", "G# Major\nProg\n13", "I-V-vi-iii\nIV-I-IV-V\n(G#-D#-E#m-B#m\nC#-G#-C#-D#)Canon\nProgression"),
 ]
 
 # Ab KEY - INTERMEDIATE MINOR PROGRESSIONS
@@ -2775,14 +2775,14 @@ KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR = [
 
 # Ab KEY - INTERMEDIATE MAJOR PROGRESSIONS
 KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR = [
-    K("GS_CHORDPROG16", "Ab Major\nProg\n16", "I-III-IV-iv\n(Ab-C-Db-Dbm)Creep\nProgression"),
-    K("GS_CHORDPROG17", "Ab Major\nProg\n17", "I-III-VII-II\n(Ab-C-Eb-Bb)Pumped\nKicks"),
-    K("GS_CHORDPROG19", "Ab Major\nProg\n19", "I-V-bVII-IV\n(Ab-Eb-Gb-Db)Rebel\nProgression"),
-    K("GS_CHORDPROG21", "Ab Major\nProg\n21", "Isus2-IVsus2\nvi-V\n(Absus2-Dbsus2\nFm-Eb)Ambient\nFloat"),
-    K("GS_CHORDPROG22", "Ab Major\nProg\n22", "IVsus2-Vsus4\nIsus2-vi\n(Dbsus2-Ebsus4\nAbsus2-Fm)Shoegaze\nShimmer"),
-    K("GS_CHORDPROG23", "Ab Major\nProg\n23", "ii7-V7-Imaj7\n(Bbm7-Eb7-\nAbmaj7)2-5-1\nProgression"),
-    K("GS_CHORDPROG25", "Ab Major\nProg\n25", "vi7-ii7-V7\nImaj7\n(Fm7-Bbm7-Eb7\nAbmaj7)6-2-5-1\nProgression"),
-    K("GS_CHORDPROG26", "Ab Major\nProg\n26", "Imaj7-iim7\niiim7-IVadd2\n(Abmaj7-Bbm7\nCm7-Dbadd2)Gentle\nCity"),
+    K("GS_CHORDPROG16", "G# Major\nProg\n16", "I-III-IV-iv\n(G#-B#-C#-C#m)Creep\nProgression"),
+    K("GS_CHORDPROG17", "G# Major\nProg\n17", "I-III-VII-II\n(G#-B#-D#-A#)Pumped\nKicks"),
+    K("GS_CHORDPROG19", "G# Major\nProg\n19", "I-V-bVII-IV\n(G#-D#-F#-C#)Rebel\nProgression"),
+    K("GS_CHORDPROG21", "G# Major\nProg\n21", "Isus2-IVsus2\nvi-V\n(G#sus2-C#sus2\nE#m-D#)Ambient\nFloat"),
+    K("GS_CHORDPROG22", "G# Major\nProg\n22", "IVsus2-Vsus4\nIsus2-vi\n(C#sus2-D#sus4\nG#sus2-E#m)Shoegaze\nShimmer"),
+    K("GS_CHORDPROG23", "G# Major\nProg\n23", "ii7-V7-Imaj7\n(A#m7-D#7-\nG#maj7)2-5-1\nProgression"),
+    K("GS_CHORDPROG25", "G# Major\nProg\n25", "vi7-ii7-V7\nImaj7\n(E#m7-A#m7-D#7\nG#maj7)6-2-5-1\nProgression"),
+    K("GS_CHORDPROG26", "G# Major\nProg\n26", "Imaj7-iim7\niiim7-IVadd2\n(G#maj7-A#m7\nB#m7-C#add2)Gentle\nCity"),
 ]
 
 # Ab KEY - EXPERT MINOR PROGRESSIONS
@@ -2797,15 +2797,15 @@ KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR = [
 
 # Ab KEY - EXPERT MAJOR PROGRESSIONS
 KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR = [
-    K("GS_CHORDPROG28", "Ab Major\nProg\n28", "IVmaj7-V7\niiim7-vim7\niim7-III7\nvim7\n(Dbmaj7-Eb7\nCm7-Fm7\nBbm7-C7-Fm7)Anime\nProgression"),
-    K("GS_CHORDPROG29", "Ab Major\nProg\n29", "IVmaj7-III7\nvim7-II7\niim7-V7\nImaj7\n(Dbmaj7-C7\nFm7-Bb7\nBbm7-Eb7\nAbmaj7)She's\nLovely"),
-    K("GS_CHORDPROG31", "Ab Major\nProg\n31", "IVmaj7-V7\niiim9-vim7\n(Dbmaj7-Eb7\nCm9-Fm7)Neo-Pop\nTurnaround"),
-    K("GS_CHORDPROG35", "Ab Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(Dbmaj7-Cm7\nCbdim7\nBbm7-Bbm7b5\nAbmaj7)Descending\nDiminished"),
-    K("GS_CHORDPROG36", "Ab Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Abmaj7\nAdim7-Bbm7\nBdim7-Cm7\nCbdim7)Diminished\nBridge"),
-    K("GS_CHORDPROG38", "Ab Major\nProg\n38", "I-vi-ii\nbVII7-I\n(Abmaj7-Fm7\nBbm7-Gb7)Backdoor\nProgression"),
-    K("GS_CHORDPROG39", "Ab Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(Abmaj7\nCbmaj7\nBbm7-Dbm6)Modal\nMixture"),
-    K("GS_CHORDPROG41", "Ab Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(Abmaj9-Ab7\nBbm7-G7b9\nEb7-C7b9\nDbmaj7-Dbdim7)Complex\n2-5-1-4"),
-    K("GS_CHORDPROG42", "Ab Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Abmaj7-Fm7\nBbm7-A7\nAbmaj7)Tritone\nSubstitution"),
+    K("GS_CHORDPROG28", "G# Major\nProg\n28", "IVmaj7-V7\niiim7-vim7\niim7-III7\nvim7\n(C#maj7-D#7\nB#m7-E#m7\nA#m7-B#7-E#m7)Anime\nProgression"),
+    K("GS_CHORDPROG29", "G# Major\nProg\n29", "IVmaj7-III7\nvim7-II7\niim7-V7\nImaj7\n(C#maj7-B#7\nE#m7-A#7\nA#m7-D#7\nG#maj7)She's\nLovely"),
+    K("GS_CHORDPROG31", "G# Major\nProg\n31", "IVmaj7-V7\niiim9-vim7\n(C#maj7-D#7\nB#m9-E#m7)Neo-Pop\nTurnaround"),
+    K("GS_CHORDPROG35", "G# Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(C#maj7-B#m7\nA##dim7\nA#m7-A#m7b5\nG#maj7)Descending\nDiminished"),
+    K("GS_CHORDPROG36", "G# Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(G#maj7\nA dim7-A#m7\nA##dim7-B#m7\nA##dim7)Diminished\nBridge"),
+    K("GS_CHORDPROG38", "G# Major\nProg\n38", "I-vi-ii\nbVII7-I\n(G#maj7-E#m7\nA#m7-F#7)Backdoor\nProgression"),
+    K("GS_CHORDPROG39", "G# Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(G#maj7\nB maj7\nA#m7-C#m6)Modal\nMixture"),
+    K("GS_CHORDPROG41", "G# Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(G#maj9-G#7\nA#m7-F##7b9\nD#7-B#7b9\nC#maj7-C#dim7)Complex\n2-5-1-4"),
+    K("GS_CHORDPROG42", "G# Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(G#maj7-E#m7\nA#m7-G7\nG#maj7)Tritone\nSubstitution"),
 ]
 
 # A KEY - MINOR PROGRESSIONS
@@ -2866,12 +2866,12 @@ KEYCODES_A_CHORDPROG_EXPERT_MAJOR = [
     K("A_CHORDPROG28", "A Major\nProg\n28", "IVmaj7-V7\niiim7-vim7\niim7-III7\nvim7\n(Dmaj7-E7\nC#m7-F#m7\nBm7-C#7-F#m7)Anime\nProgression"),
     K("A_CHORDPROG29", "A Major\nProg\n29", "IVmaj7-III7\nvim7-II7\niim7-V7\nImaj7\n(Dmaj7-C#7\nF#m7-B7\nBm7-E7\nAmaj7)She's\nLovely"),
     K("A_CHORDPROG31", "A Major\nProg\n31", "IVmaj7-V7\niiim9-vim7\n(Dmaj7-E7\nC#m9-F#m7)Neo-Pop\nTurnaround"),
-    K("A_CHORDPROG35", "A Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(Dmaj7-C#m7\nCdim7\nBm7-Bm7b5\nAmaj7)Descending\nDiminished"),
-    K("A_CHORDPROG36", "A Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Amaj7\nBbdim7-Bm7\nCdim7-C#m7\nCdim7)Diminished\nBridge"),
+    K("A_CHORDPROG35", "A Major\nProg\n35", "IVmaj7-iiim7\n#iiidim7\niim7-iim7b5\nImaj7\n(Dmaj7-C#m7\nC dim7\nBm7-Bm7b5\nAmaj7)Descending\nDiminished"),
+    K("A_CHORDPROG36", "A Major\nProg\n36", "Imaj7-#idim7\niim7-#iidim7\niiim7\nbiiidim7\n(Amaj7\nA#dim7-Bm7\nC dim7-C#m7\nC dim7)Diminished\nBridge"),
     K("A_CHORDPROG38", "A Major\nProg\n38", "I-vi-ii\nbVII7-I\n(Amaj7-F#m7\nBm7-G7)Backdoor\nProgression"),
     K("A_CHORDPROG39", "A Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(Amaj7\nCmaj7\nBm7-Dm6)Modal\nMixture"),
     K("A_CHORDPROG41", "A Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(Amaj9-A7\nBm7-G#7b9\nE7-C#7b9\nDmaj7-Ddim7)Complex\n2-5-1-4"),
-    K("A_CHORDPROG42", "A Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Amaj7-F#m7\nBm7-Bb7\nAmaj7)Tritone\nSubstitution"),
+    K("A_CHORDPROG42", "A Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Amaj7-F#m7\nBm7-A#7\nAmaj7)Tritone\nSubstitution"),
 ]
 
 # Bb KEY - MINOR PROGRESSIONS
@@ -2922,6 +2922,8 @@ KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR = [
     K("AS_CHORDPROG30", "G Minor\nProg\n30", "vim9-iiim9\niim9-Imaj9\n(Gm9-Dm9\nCm9-Bbmaj9)Bring\nThe 9th"),
     K("AS_CHORDPROG32", "G Minor\nProg\n32", "im9-ivaddD\nbVImaj7\nbVII9\n(Gm9-Cmadd9\nEbmaj7-F9)Modern\nMinor 9"),
     K("AS_CHORDPROG33", "G Minor\nProg\n33", "im9-iim9-vm9\n(Gm9-Cm9\nDm9)Lo-Fi\nNinths"),
+Let me continue with the chord progressions code, following the convention of using flats in flat keys (Bb, Eb) and sharps in sharp keys:
+python# Bb KEY - EXPERT MINOR PROGRESSIONS (continued)
     K("AS_CHORDPROG34", "G Minor\nProg\n34", "im9-vm9\nVImaj9-im9\nVImaj9\nviim9\n(Gm9-Dm9\nEbmaj9-Gm9\nEbmaj9-Fm9)Ninth\nJourney"),
     K("AS_CHORDPROG37", "G Minor\nProg\n37", "im9-IVmaj7\niim7b5-V7\n(Gm9-Ebmaj7\nCm7b5-D7)Minor Jazz\nII-V-I"),
     K("AS_CHORDPROG40", "G Minor\nProg\n40", "im9-V7b9\nVImaj9\niim9-vm7\n(Gm9-D7b9\nEbmaj9\nCm9-Dm7)Altered\nDominant"),
@@ -2937,7 +2939,7 @@ KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR = [
     K("AS_CHORDPROG38", "Bb Major\nProg\n38", "I-vi-ii\nbVII7-I\n(Bbmaj7-Gm7\nCm7-Ab7)Backdoor\nProgression"),
     K("AS_CHORDPROG39", "Bb Major\nProg\n39", "Imaj7\nbIIImaj7\niim7-IVm6\n(Bbmaj7\nDbmaj7\nCm7-Ebm6)Modal\nMixture"),
     K("AS_CHORDPROG41", "Bb Major\nProg\n41", "Imaj9-I7\niim7-VII7b9\nV7-III7b9\nIV-IVdim7\n(Bbmaj9-Bb7\nCm7-A7b9\nF7-D7b9\nEbmaj7-Ebdim7)Complex\n2-5-1-4"),
-    K("AS_CHORDPROG42", "Bb Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Bbmaj7-Gm7\nCm7-B7\nBbmaj7)Tritone\nSubstitution"),
+    K("AS_CHORDPROG42", "Bb Major\nProg\n42", "Imaj7-vi7\nii7-bII7\nImaj7\n(Bbmaj7-Gm7\nCm7-Cb7\nBbmaj7)Tritone\nSubstitution"),
 ]
 
 # B KEY - MINOR PROGRESSIONS
@@ -2968,7 +2970,7 @@ KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR = [
     K("B_CHORDPROG18", "G# Minor\nProg\n18", "i-bVII-VI-V\n(G#m-F#-E-D#)Melancholic\nMinor"),
     K("B_CHORDPROG20", "G# Minor\nProg\n20", "i-V-VI-VIm\n(G#m-D#-E-Em)Darkening\nMinor"),
     K("B_CHORDPROG24", "G# Minor\nProg\n24", "im7-bVImaj7\nbVII7-V7\n(G#m7-Emaj7\nF#7-D#7)Jazz\nMinor"),
-    K("B_CHORDPROG27", "G# Minor\nProg\n27", "VI-#viidim\nV7-i-VII\n(E-Gdim\nD#7-G#m-F#)Diminished\nDominant"),
+    K("B_CHORDPROG27", "G# Minor\nProg\n27", "VI-#viidim\nV7-i-VII\n(E-G dim\nD#7-G#m-F#)Diminished\nDominant"),
 ]
 
 # B KEY - INTERMEDIATE MAJOR PROGRESSIONS

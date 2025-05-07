@@ -1755,7 +1755,7 @@ class LightingTab(QScrollArea):
         # Add "Lighting Controls" title
         self.lighting_controls_label = QLabel("Lighting Controls")
         self.lighting_controls_label.setAlignment(Qt.AlignCenter)
-        self.lighting_controls_label.setStyleSheet("font-size: 14px;")
+        self.lighting_controls_label.setStyleSheet("font-size: 13px;")
         self.main_layout.addWidget(self.lighting_controls_label)
         
         # Add another spacer (10px)
@@ -1800,7 +1800,7 @@ class LightingTab(QScrollArea):
         # Add "Layer Lighting Controls" label
         self.layer_lighting_label = QLabel("Layer Lighting Controls")
         self.layer_lighting_label.setAlignment(Qt.AlignCenter)
-        self.layer_lighting_label.setStyleSheet("font-size: 14px;")
+        self.layer_lighting_label.setStyleSheet("font-size: 13px;")
         self.main_layout.addWidget(self.layer_lighting_label)
         
         # Small spacer after the label - REDUCED from 10 to 2 pixels
@@ -2462,16 +2462,16 @@ class ChordProgressionTab(QScrollArea):
         # Define key names for tabs
         self.keys = [
             "C Major\nA Minor", 
-            "C# Major\nA# Minor", 
+            "C# Major\nBb Minor", 
             "D Major\nB Minor",
-            "D# Major\nC Minor",
+            "Eb Major\nC Minor",
             "E Major\nC# Minor",
             "F Major\nD Minor",
-            "F# Major\nD# Minor",
+            "F# Major\nEb Minor",
             "G Major\nE Minor",
             "G# Major\nF Minor",
             "A Major\nF# Minor",
-            "A# Major\nG Minor",
+            "Bb Major\nG Minor",
             "B Major\nG# Minor"
         ]
 
