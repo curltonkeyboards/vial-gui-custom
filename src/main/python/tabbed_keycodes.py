@@ -491,7 +491,7 @@ class SmartChordTab(QScrollArea):
         for keycode in keycodes:
             # Use the third value (description) and replace newlines with spaces
             try:
-                # Get the description (third value) and replace newlines with spaces
+                # For table items, use the third element (description) with newlines replaced
                 label_text = str(Keycode.description(keycode.qmk_id)).replace("\n", "  ")
             except Exception:
                 # Fallback to QMK ID if anything fails
@@ -551,13 +551,18 @@ class SmartChordTab(QScrollArea):
                 btn = SquareButton()
                 btn.setFixedSize(50, 50)  # Set fixed size to 50x50 as requested
                 
-                # For inversion buttons, use the raw Keycode.description WITHOUT replacing newlines
+                # For inversion buttons, use the second element (label) instead of description
                 try:
-                    button_text = str(Keycode.description(keycode.qmk_id))
-                    # DO NOT replace \n with spaces for inversion buttons
+                    # Try to access the second element directly (the label with preserved newlines)
+                    button_text = str(keycode.label)  # Use label property instead of description
                 except Exception:
-                    # Fallback to QMK ID if anything fails
-                    button_text = str(keycode.qmk_id)
+                    # If there's no direct access, try alternative approach
+                    try:
+                        # Fallback 1: Try to get label via a method if it exists
+                        button_text = str(Keycode.label(keycode.qmk_id))
+                    except Exception:
+                        # Fallback 2: Use QMK ID if all else fails
+                        button_text = str(keycode.qmk_id)
                 
                 btn.setText(button_text)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -581,13 +586,18 @@ class SmartChordTab(QScrollArea):
             if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
                 keycode = widget.keycode
                 if keycode:
-                    # For inversion buttons, use the raw Keycode.description WITHOUT replacing newlines
+                    # For inversion buttons, use the second element (label) instead of description
                     try:
-                        button_text = str(Keycode.description(keycode.qmk_id))
-                        # DO NOT replace \n with spaces for inversion buttons
+                        # Try to access the second element directly (the label with preserved newlines)
+                        button_text = str(keycode.label)  # Use label property instead of description
                     except Exception:
-                        # Fallback to QMK ID if anything fails
-                        button_text = str(keycode.qmk_id)
+                        # If there's no direct access, try alternative approach
+                        try:
+                            # Fallback 1: Try to get label via a method if it exists
+                            button_text = str(Keycode.label(keycode.qmk_id))
+                        except Exception:
+                            # Fallback 2: Use QMK ID if all else fails
+                            button_text = str(keycode.qmk_id)
                     
                     widget.setText(button_text)
 
