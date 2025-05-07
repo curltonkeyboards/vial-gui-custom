@@ -2922,8 +2922,6 @@ KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR = [
     K("AS_CHORDPROG30", "G Minor\nProg\n30", "vim9-iiim9\niim9-Imaj9\n(Gm9-Dm9\nCm9-Bbmaj9)Bring\nThe 9th"),
     K("AS_CHORDPROG32", "G Minor\nProg\n32", "im9-ivaddD\nbVImaj7\nbVII9\n(Gm9-Cmadd9\nEbmaj7-F9)Modern\nMinor 9"),
     K("AS_CHORDPROG33", "G Minor\nProg\n33", "im9-iim9-vm9\n(Gm9-Cm9\nDm9)Lo-Fi\nNinths"),
-Let me continue with the chord progressions code, following the convention of using flats in flat keys (Bb, Eb) and sharps in sharp keys:
-python# Bb KEY - EXPERT MINOR PROGRESSIONS (continued)
     K("AS_CHORDPROG34", "G Minor\nProg\n34", "im9-vm9\nVImaj9-im9\nVImaj9\nviim9\n(Gm9-Dm9\nEbmaj9-Gm9\nEbmaj9-Fm9)Ninth\nJourney"),
     K("AS_CHORDPROG37", "G Minor\nProg\n37", "im9-IVmaj7\niim7b5-V7\n(Gm9-Ebmaj7\nCm7b5-D7)Minor Jazz\nII-V-I"),
     K("AS_CHORDPROG40", "G Minor\nProg\n40", "im9-V7b9\nVImaj9\niim9-vm7\n(Gm9-D7b9\nEbmaj9\nCm9-Dm7)Altered\nDominant"),
