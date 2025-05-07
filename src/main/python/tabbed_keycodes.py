@@ -489,8 +489,9 @@ class SmartChordTab(QScrollArea):
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
         for keycode in keycodes:
-            # Try to get the description (third value) and replace newlines with spaces
+            # Use the third value (description) and replace newlines with spaces
             try:
+                # Get the description (third value) and replace newlines with spaces
                 label_text = str(Keycode.description(keycode.qmk_id)).replace("\n", "  ")
             except Exception:
                 # Fallback to QMK ID if anything fails
@@ -550,9 +551,10 @@ class SmartChordTab(QScrollArea):
                 btn = SquareButton()
                 btn.setFixedSize(50, 50)  # Set fixed size to 50x50 as requested
                 
-                # Try to get the description (third value)
+                # For inversion buttons, use the raw Keycode.description WITHOUT replacing newlines
                 try:
                     button_text = str(Keycode.description(keycode.qmk_id))
+                    # DO NOT replace \n with spaces for inversion buttons
                 except Exception:
                     # Fallback to QMK ID if anything fails
                     button_text = str(keycode.qmk_id)
@@ -579,9 +581,10 @@ class SmartChordTab(QScrollArea):
             if isinstance(widget, SquareButton) and hasattr(widget, 'keycode'):
                 keycode = widget.keycode
                 if keycode:
-                    # Try to get the description (third value)
+                    # For inversion buttons, use the raw Keycode.description WITHOUT replacing newlines
                     try:
                         button_text = str(Keycode.description(keycode.qmk_id))
+                        # DO NOT replace \n with spaces for inversion buttons
                     except Exception:
                         # Fallback to QMK ID if anything fails
                         button_text = str(keycode.qmk_id)
