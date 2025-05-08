@@ -2467,9 +2467,9 @@ class ChordProgressionTab(QScrollArea):
             "Eb Major\nC Minor",
             "E Major\nC# Minor",
             "F Major\nD Minor",
-            "F# Major\nEb Minor",
+            "F# Major\nD# Minor",
             "G Major\nE Minor",
-            "G# Major\nF Minor",
+            "Ab Major\nF Minor",
             "A Major\nF# Minor",
             "Bb Major\nG Minor",
             "B Major\nG# Minor"
@@ -2507,7 +2507,7 @@ class ChordProgressionTab(QScrollArea):
                 "Intermediate": (KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR),
                 "Advanced": (KEYCODES_F_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_CHORDPROG_EXPERT_MINOR)
             },
-            "F# Major\nEb Minor": {
+            "F# Major\nD# Minor": {
                 "Basic": (KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR),
                 "Intermediate": (KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR),
                 "Advanced": (KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR)
@@ -2517,7 +2517,7 @@ class ChordProgressionTab(QScrollArea):
                 "Intermediate": (KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR),
                 "Advanced": (KEYCODES_G_CHORDPROG_EXPERT_MAJOR, KEYCODES_G_CHORDPROG_EXPERT_MINOR)
             },
-            "G# Major\nF Minor": {
+            "Ab Major\nF Minor": {
                 "Basic": (KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR),
                 "Intermediate": (KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR),
                 "Advanced": (KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR)
