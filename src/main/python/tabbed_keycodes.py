@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar
 from PyQt5.QtGui import QPalette, QPainter
 
@@ -471,17 +471,7 @@ class SmartChordTab(QScrollArea):
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
         tree.setFixedHeight(300)
-        tree.setStyleSheet("""
-            QTreeWidget::item:selected {
-                background-color: #c0c0ff;
-            }
-            QTreeWidget::item:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                          stop: 0 #dadbde, stop: 1 #f6f7fa);
-                border: 1px solid #999999;
-                border-radius: 2px;
-            }
-        """)
+        tree.setStyleSheet("border: 2px;")
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # Set selection mode to single selection
@@ -495,37 +485,6 @@ class SmartChordTab(QScrollArea):
 
         # Add the QTreeWidget instance to the horizontal layout
         self.tree_layout.addWidget(tree)
-        
-        # Store currently pressed item for visual feedback
-        tree.pressed_item = None
-        
-        # Add custom event filters for press and release visual feedback
-        tree.viewport().installEventFilter(self)
-
-    def eventFilter(self, obj, event):
-        """Event filter to handle press and release events for tree items"""
-        for tree in self.trees:
-            if obj == tree.viewport():
-                if event.type() == QEvent.MouseButtonPress:
-                    item = tree.itemAt(event.pos())
-                    if item:
-                        # Store the pressed item
-                        tree.pressed_item = item
-                        # Apply visual indent effect
-                        item.setData(0, Qt.UserRole + 1, "pressed")
-                        # Force update
-                        tree.viewport().update()
-                
-                elif event.type() == QEvent.MouseButtonRelease:
-                    # Remove visual indent effect from all items
-                    if hasattr(tree, 'pressed_item') and tree.pressed_item:
-                        tree.pressed_item.setData(0, Qt.UserRole + 1, None)
-                        tree.pressed_item = None
-                        # Force update
-                        tree.viewport().update()
-        
-        # Always return False to allow the event to propagate
-        return False
 
     def add_keycode_group(self, tree, title, keycodes):
         """Helper function to add keycodes to a QTreeWidget."""
