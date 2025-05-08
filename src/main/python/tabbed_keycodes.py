@@ -3038,7 +3038,7 @@ class midiTab(QScrollArea):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 grid_btn = SquareButton()
                 grid_btn.setFixedWidth(150)  # Set maximum width to 200px as requested
-                grid_btn.setMinimumHeight(50)  # Set a minimum height for visibility
+                grid_btn.setFixedHeight(50)  # Set a minimum height for visibility
                 grid_btn.setText(Keycode.label(keycode.qmk_id))
                 grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 grid_btn.keycode = keycode
