@@ -2929,10 +2929,6 @@ class midiTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.main_layout = QVBoxLayout(self.scroll_content)
-        
-        # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(top_spacer)
 
         # Piano keyboard
         self.piano = PianoKeyboard()
@@ -3041,7 +3037,7 @@ class midiTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 grid_btn = SquareButton()
-                grid_btn.setFixedWidth(200)  # Set maximum width to 200px as requested
+                grid_btn.setFixedWidth(150)  # Set maximum width to 200px as requested
                 grid_btn.setMinimumHeight(50)  # Set a minimum height for visibility
                 grid_btn.setText(Keycode.label(keycode.qmk_id))
                 grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
