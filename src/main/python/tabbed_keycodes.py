@@ -2396,7 +2396,7 @@ class PianoKeyboard(QWidget):
         self.black_keys.clear()
 
         key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
-        notes = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
+        notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
         for row in range(2):
             white_index = 0
@@ -2921,7 +2921,7 @@ class midiTab(QScrollArea):
         # In midiTab class, restore original control buttons
         self.midi_layout2 = [
             ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
-]
+        ]
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -2929,13 +2929,17 @@ class midiTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.main_layout = QVBoxLayout(self.scroll_content)
+        
+        # Add a spacer at the top to push everything down by 100 pixels
+        top_spacer = QSpacerItem(0, 100, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer)
 
         # Piano keyboard
         self.piano = PianoKeyboard()
         self.piano.keyPressed.connect(self.keycode_changed)
         self.main_layout.addWidget(self.piano)
 
-                # Control buttons
+        # Control buttons
         control_container = QWidget()
         control_layout = QHBoxLayout(control_container)
         control_layout.setAlignment(Qt.AlignCenter)
@@ -2974,10 +2978,6 @@ class midiTab(QScrollArea):
             control_layout.addWidget(btn)
 
         self.main_layout.addWidget(control_container)
-
-        self.main_layout.addWidget(control_container)
-        
-        self.main_layout.addWidget(control_container)
         
         # Additional layouts
         self.dropdown_layout = QVBoxLayout()
@@ -2988,8 +2988,16 @@ class midiTab(QScrollArea):
         self.inversion_label = QLabel(" ")
         self.main_layout.addWidget(self.inversion_label)
 
+        # Container to center the button grid
+        button_container = QHBoxLayout()
+        button_container.addStretch(1)  # Left spacer
+        
         self.button_layout = QGridLayout()
-        self.main_layout.addLayout(self.button_layout)
+        button_container.addLayout(self.button_layout)
+        
+        button_container.addStretch(1)  # Right spacer
+        self.main_layout.addLayout(button_container)
+        
         self.recreate_buttons()
         self.main_layout.addStretch()
 
@@ -3017,7 +3025,6 @@ class midiTab(QScrollArea):
             selected_value = dropdown.itemData(selected_index)
         dropdown.setCurrentIndex(0)
 
-        # In midiTab class:
     def recreate_buttons(self, keycode_filter=None):
         for i in reversed(range(self.button_layout.count())):
             widget = self.button_layout.itemAt(i).widget()
@@ -3034,7 +3041,8 @@ class midiTab(QScrollArea):
         for keycode in self.inversion_keycodes:
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
                 grid_btn = SquareButton()
-                grid_btn.setRelSize(KEYCODE_BTN_RATIO)
+                grid_btn.setFixedWidth(200)  # Set maximum width to 200px as requested
+                grid_btn.setMinimumHeight(50)  # Set a minimum height for visibility
                 grid_btn.setText(Keycode.label(keycode.qmk_id))
                 grid_btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 grid_btn.keycode = keycode
