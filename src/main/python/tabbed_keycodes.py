@@ -2396,7 +2396,7 @@ class PianoKeyboard(QWidget):
         self.black_keys.clear()
 
         key_pattern = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
-        notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+        notes = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 
         for row in range(2):
             white_index = 0
