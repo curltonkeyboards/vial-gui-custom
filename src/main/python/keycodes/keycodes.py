@@ -512,7 +512,7 @@ KEYCODES_LAYERS = []
 
 KEYCODES_OLED = [
     K("OLED_1", "Screen\nKeyboard\nShift", "Momentarily turn on layer when pressed"),
-    K("OLED_2", "SmartChord\nLight\nMode", "Momentarily turn on layer when pressed"),
+    K("OLED_2", "Smart\nChord\nLight\nMode", "Momentarily turn on layer when pressed"),
    # K("OLED_3", "SmartChord\nPiano\nModes", "Momentarily turn on layer when pressed"),
   #  K("OLED_1", "Hold\nLayer\n3", "Momentarily turn on layer when pressed"),
   #  K("OLED_1", "Hold\nLayer\n4", "Momentarily turn on layer when pressed"),
@@ -1936,7 +1936,7 @@ KEYCODES_MIDI_SMARTCHORDBUTTONS = [
     K("MI_INV_UP", "Inversion\nPosition\n▲", "Inv Up"),
     K("COLORBLIND_TOGGLE", "Colorblind\nMode\nOn/Off", "Colorblind"),
     #K("SMARTCHORDCOLOR_TOGGLE", "Smartchord\nRGB\nOn/Off", "Smartchord LEDs Toggle"),
-    K("OLED_2", "SmartChord\nRGB\nMode", "Toggle Smartchord Light mode"),
+    K("OLED_2", "Smart\nChord\nRGB", "Toggle Smartchord Light mode"),
     K("OLED_1", "Screen\nKeyboard\nShift", "Adjust Keyboard Screen"),
     # K("OLED_3", "SmartChord\nPiano\nModes", "Momentarily turn on layer when pressed"),
     
