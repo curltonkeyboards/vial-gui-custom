@@ -252,10 +252,11 @@ class LayerRGBHandler(BasicHandler):
         self.lbl_layer_buttons = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
         container.addWidget(self.lbl_layer_buttons, row + 1, 0)
         
-        # Create a horizontal layout for layer buttons
+        # Create a grid layout for layer buttons (3 rows x 4 columns)
         self.layer_buttons_widget = QWidget()
-        self.layer_buttons_layout = QHBoxLayout(self.layer_buttons_widget)
+        self.layer_buttons_layout = QGridLayout(self.layer_buttons_widget)
         self.layer_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        self.layer_buttons_layout.setSpacing(2)  # Small spacing between buttons
         container.addWidget(self.layer_buttons_widget, row + 1, 1)
 
         self.layer_buttons = []
@@ -266,18 +267,24 @@ class LayerRGBHandler(BasicHandler):
                        self.lbl_layer_buttons, self.layer_buttons_widget]
 
     def create_layer_buttons(self):
-        """Create buttons for each layer"""
+        """Create buttons for each layer in a 3x4 grid"""
         # Clear existing buttons
         for button in self.layer_buttons:
             button.setParent(None)
         self.layer_buttons.clear()
 
-        # Create new buttons based on layer count
-        for layer in range(self.layer_count):
+        # Create new buttons based on layer count (max 12 layers in 3x4 grid)
+        max_layers = min(self.layer_count, 12)
+        for layer in range(max_layers):
             button = QPushButton(f"Layer {layer}")
             button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
             button.setEnabled(self.per_layer_enabled)
-            self.layer_buttons_layout.addWidget(button)
+            button.setMaximumWidth(70)  # Keep buttons compact
+            
+            # Calculate grid position (3 rows x 4 columns)
+            row = layer // 4
+            col = layer % 4
+            self.layer_buttons_layout.addWidget(button, row, col)
             self.layer_buttons.append(button)
 
     def update_from_keyboard(self):
@@ -345,7 +352,6 @@ class LayerRGBHandler(BasicHandler):
         super().hide()
         for widget in self.widgets:
             widget.setVisible(False)
-
 
 class QmkBacklightHandler(BasicHandler):
 
