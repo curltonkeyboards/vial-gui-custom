@@ -441,7 +441,7 @@ class LayerRGBHandler(BasicHandler):
             self.layer_buttons.append(button)
 
     def update_from_keyboard(self):
-        """Update from keyboard - only update checkbox state on initial load"""
+        """Update from keyboard - NEVER update checkbox after initial load"""
         if not self.valid():
             return
 
@@ -449,7 +449,7 @@ class LayerRGBHandler(BasicHandler):
         self.block_signals()
 
         # Only update checkbox state on the very first load
-        # After that, preserve whatever the user has set
+        # After that, NEVER touch the checkbox regardless of keyboard state
         if not self.initial_load_complete:
             print("LayerRGBHandler: Initial load - checking keyboard state")
             # Try to get per-layer RGB status if methods exist
@@ -461,32 +461,35 @@ class LayerRGBHandler(BasicHandler):
                         self.per_layer_enabled = keyboard_state
                         self.user_set_state = keyboard_state  # Initialize user state
                         print(f"Initial layer RGB status from keyboard: {keyboard_state}")
+                        # Set checkbox state ONLY on initial load
+                        self.layer_rgb_enable.setChecked(self.per_layer_enabled)
                     else:
                         self.per_layer_enabled = False
                         self.user_set_state = False
                         print("No initial layer RGB status data received")
+                        self.layer_rgb_enable.setChecked(False)
                 except Exception as e:
                     print(f"Error getting initial layer RGB status: {e}")
                     self.per_layer_enabled = False
                     self.user_set_state = False
+                    self.layer_rgb_enable.setChecked(False)
             else:
                 # Default values for testing when keyboard methods aren't implemented yet
                 self.per_layer_enabled = False
                 self.user_set_state = False
                 print("Layer RGB methods not implemented on keyboard")
+                self.layer_rgb_enable.setChecked(False)
 
-            # Set checkbox state without triggering signals
-            self.layer_rgb_enable.setChecked(self.per_layer_enabled)
             self.initial_load_complete = True
         else:
             # On subsequent updates (e.g., when other RGB settings change),
-            # preserve the user's checkbox state and don't query the keyboard
-            print("LayerRGBHandler: Subsequent update - preserving user state")
-            if self.user_set_state is not None:
-                self.per_layer_enabled = self.user_set_state
-                self.layer_rgb_enable.setChecked(self.per_layer_enabled)
+            # COMPLETELY IGNORE keyboard state and preserve checkbox as-is
+            print("LayerRGBHandler: Subsequent update - completely ignoring keyboard state, preserving checkbox")
+            # Don't touch the checkbox at all - let it stay exactly as the user set it
+            # Just update our internal state to match the checkbox
+            self.per_layer_enabled = self.layer_rgb_enable.isChecked()
         
-        # Always recreate buttons to ensure they're in sync
+        # Always recreate buttons to ensure they're in sync with current checkbox state
         self.create_layer_buttons()
 
         # Unblock signals after update is complete
@@ -523,6 +526,20 @@ class LayerRGBHandler(BasicHandler):
             else:
                 print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
 
+    def block_signals(self):
+        """Override to ensure checkbox signals are properly blocked"""
+        super().block_signals()
+        # Extra safety - explicitly block the checkbox signal
+        self.layer_rgb_enable.blockSignals(True)
+        print("LayerRGBHandler: Signals blocked")
+
+    def unblock_signals(self):
+        """Override to ensure checkbox signals are properly unblocked"""
+        super().unblock_signals()
+        # Extra safety - explicitly unblock the checkbox signal
+        self.layer_rgb_enable.blockSignals(False)
+        print("LayerRGBHandler: Signals unblocked")
+
     def show(self):
         # Always show all widgets - no conditional visibility
         for w in self.widgets:
@@ -532,7 +549,6 @@ class LayerRGBHandler(BasicHandler):
         # Always show all widgets - no hiding capability
         for w in self.widgets:
             w.show()
-
 
 class RGBConfigurator(BasicEditor):
 
