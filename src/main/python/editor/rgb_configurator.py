@@ -460,14 +460,8 @@ class LayerRGBHandler(BasicHandler):
         self.create_layer_buttons()
 
     def valid(self):
-        # For testing: always show if we have a VialKeyboard, even without layer RGB support
-        if isinstance(self.device, VialKeyboard):
-            return True
-        # Original check for when layer RGB is fully implemented:
-        # return (isinstance(self.device, VialKeyboard) and 
-        #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
-        #         self.device.keyboard.layer_rgb_supported)
-        return False
+        # Always show for VialKeyboard instances
+        return isinstance(self.device, VialKeyboard)
 
     def on_layer_rgb_enable_changed(self, checked):
         self.per_layer_enabled = checked
@@ -487,22 +481,25 @@ class LayerRGBHandler(BasicHandler):
         if self.per_layer_enabled:
             # Try to call the keyboard method if it exists
             if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
-                self.device.keyboard.save_rgb_to_layer(layer)
-                self.update.emit()
+                success = self.device.keyboard.save_rgb_to_layer(layer)
+                if success:
+                    print(f"Successfully saved RGB to layer {layer}")
+                    self.update.emit()
+                else:
+                    print(f"Failed to save RGB to layer {layer}")
             else:
                 print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
 
     def show(self):
-        super().show()
-        # Show widgets if valid (for testing, this should now always be True for VialKeyboards)
-        visible = self.valid()
-        for widget in self.widgets:
-            widget.setVisible(visible)
+        # Always show all widgets - no conditional visibility
+        for w in self.widgets:
+            w.show()
 
     def hide(self):
-        super().hide()
-        for widget in self.widgets:
-            widget.setVisible(False)
+        # Always show all widgets - no hiding capability
+        for w in self.widgets:
+            w.show()
+
 
 class RGBConfigurator(BasicEditor):
 
