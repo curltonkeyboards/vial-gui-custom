@@ -539,15 +539,26 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def save_rgb(self):
         self.usb_send(self.dev, struct.pack(">B", CMD_VIA_LIGHTING_SAVE), retries=20)
 
-    # ADD THE NEW METHODS HERE:
+    def send_custom_hid_command(self, command, data_bytes=None):
+        """Send a custom HID command using your protocol structure"""
+        packet = [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, command, 0]  # 0 for macro_num
+        
+        if data_bytes:
+            packet.extend(data_bytes)
+        
+        # Pad to 32 bytes
+        while len(packet) < 32:
+            packet.append(0)
+        
+        return self.usb_send(self.dev, bytes(packet), retries=20)
+
     def reload_layer_rgb_support(self):
         """Check if keyboard supports per-layer RGB and get initial status"""
         try:
             # Try to get layer RGB status - if it works, we have support
-            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_GET_STATUS), retries=20)
+            data = self.send_custom_hid_command(HID_CMD_LAYER_RGB_GET_STATUS)
             self.layer_rgb_supported = True
-            self.layer_rgb_enabled = bool(data[0])
-            # Layer count should already be set from reload_layers(), but we can get it again
+            self.layer_rgb_enabled = bool(data[5])  # Response data starts at byte 5
             return True
         except:
             self.layer_rgb_supported = False
@@ -560,8 +571,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return None
             
         try:
-            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_GET_STATUS), retries=20)
-            return data  # [enabled_flag, layer_count, reserved...]
+            data = self.send_custom_hid_command(HID_CMD_LAYER_RGB_GET_STATUS)
+            # Return [enabled_flag, layer_count]
+            return [data[5], data[6]]  # Response data starts at byte 5
         except:
             return None
 
@@ -571,7 +583,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
             
         try:
-            self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_ENABLE, int(enabled)), retries=20)
+            self.send_custom_hid_command(HID_CMD_LAYER_RGB_ENABLE, [1 if enabled else 0])
             self.layer_rgb_enabled = enabled
             return True
         except:
@@ -586,7 +598,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
             
         try:
-            self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, layer), retries=20)
+            self.send_custom_hid_command(HID_CMD_LAYER_RGB_SAVE, [layer])
             return True
         except:
             return False
@@ -600,7 +612,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
             
         try:
-            self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_LOAD, layer), retries=20)
+            self.send_custom_hid_command(HID_CMD_LAYER_RGB_LOAD, [layer])
             return True
         except:
             return False

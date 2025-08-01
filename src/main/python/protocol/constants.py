@@ -48,10 +48,10 @@ DYNAMIC_VIAL_COMBO_GET = 0x03
 DYNAMIC_VIAL_COMBO_SET = 0x04
 DYNAMIC_VIAL_KEY_OVERRIDE_GET = 0x05
 DYNAMIC_VIAL_KEY_OVERRIDE_SET = 0x06
-CMD_VIAL_LAYER_RGB_SAVE = 0x0E        # Save current RGB settings to specified layer
-CMD_VIAL_LAYER_RGB_LOAD = 0x0F        # Load RGB settings from specified layer
-CMD_VIAL_LAYER_RGB_ENABLE = 0x10      # Enable/disable per-layer RGB functionality
-CMD_VIAL_LAYER_RGB_GET_STATUS = 0x11  # Get per-layer RGB status and layer count
+HID_CMD_LAYER_RGB_SAVE = 0xBC
+HID_CMD_LAYER_RGB_LOAD = 0xBD
+HID_CMD_LAYER_RGB_ENABLE = 0xBE
+HID_CMD_LAYER_RGB_GET_STATUS = 0xBF
 
 # how much of a macro/keymap buffer we can read/write per packet
 BUFFER_FETCH_CHUNK = 28
