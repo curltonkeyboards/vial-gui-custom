@@ -382,7 +382,7 @@ class VialRGBHandler(BasicHandler):
 
 
 class LayerRGBHandler(BasicHandler):
-    """Handler for per-layer RGB functionality"""
+    """Handler for per-layer RGB functionality - always shows all buttons"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -408,23 +408,20 @@ class LayerRGBHandler(BasicHandler):
         container.addWidget(self.layer_buttons_widget, row + 1, 1)
 
         self.layer_buttons = []
-        self.layer_count = 0
         self.per_layer_enabled = False
 
         self.widgets = [self.lbl_layer_rgb_enable, self.layer_rgb_enable, 
                        self.lbl_layer_buttons, self.layer_buttons_widget]
 
     def create_layer_buttons(self):
-        """Create buttons for each layer in a 3x4 grid"""
+        """Create buttons for each layer in a 3x4 grid - always create 12 buttons regardless of layer count"""
         # Clear existing buttons
         for button in self.layer_buttons:
             button.setParent(None)
         self.layer_buttons.clear()
 
-        # Create new buttons based on layer count (max 12 for 3x4 grid)
-        max_layers = min(self.layer_count, 12)  # Limit to 12 layers for 3x4 grid
-        
-        for layer in range(max_layers):
+        # Always create 12 buttons for 3x4 grid regardless of layer count
+        for layer in range(12):
             button = QPushButton(f"Layer {layer}")
             button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
             button.setEnabled(self.per_layer_enabled)
@@ -439,6 +436,7 @@ class LayerRGBHandler(BasicHandler):
             self.layer_buttons.append(button)
 
     def update_from_keyboard(self):
+        """Update from keyboard - always show all buttons regardless of layer count or support"""
         if not self.valid():
             return
 
@@ -447,20 +445,20 @@ class LayerRGBHandler(BasicHandler):
             data = self.device.keyboard.get_layer_rgb_status()
             if data:
                 self.per_layer_enabled = bool(data[0])
-                self.layer_count = data[1]
+                # Ignore layer count from keyboard - always use fixed number of buttons
             else:
                 self.per_layer_enabled = False
-                self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
         else:
             # Default values for testing when keyboard methods aren't implemented yet
             self.per_layer_enabled = False
-            self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
 
         self.layer_rgb_enable.setChecked(self.per_layer_enabled)
+        
+        # Always create the same number of buttons regardless of keyboard state
         self.create_layer_buttons()
 
     def valid(self):
-        # Always show for VialKeyboard instances
+        # Always return True so buttons are always shown
         return isinstance(self.device, VialKeyboard)
 
     def on_layer_rgb_enable_changed(self, checked):
