@@ -487,12 +487,8 @@ class LayerRGBHandler(BasicHandler):
         if self.per_layer_enabled:
             # Try to call the keyboard method if it exists
             if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
-                success = self.device.keyboard.save_rgb_to_layer(layer)
-                if success:
-                    print(f"Successfully saved RGB to layer {layer}")
-                    self.update.emit()
-                else:
-                    print(f"Failed to save RGB to layer {layer}")
+                self.device.keyboard.save_rgb_to_layer(layer)
+                self.update.emit()
             else:
                 print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
 
@@ -507,7 +503,6 @@ class LayerRGBHandler(BasicHandler):
         super().hide()
         for widget in self.widgets:
             widget.setVisible(False)
-
 
 class RGBConfigurator(BasicEditor):
 
