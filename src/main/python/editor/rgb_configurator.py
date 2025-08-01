@@ -473,6 +473,8 @@ class VialRGBHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
 
 
+# Complete updated RGBConfigurator class
+
 class RGBConfigurator(BasicEditor):
 
     def __init__(self):
@@ -509,11 +511,22 @@ class RGBConfigurator(BasicEditor):
         save_btn.clicked.connect(self.on_save)
         self.addLayout(buttons)
 
+    def on_save(self):
+        self.device.keyboard.save_rgb()
+
     def valid(self):
         return isinstance(self.device, VialKeyboard) and \
                (self.device.keyboard.lighting_qmk_rgblight or self.device.keyboard.lighting_qmk_backlight
                 or self.device.keyboard.lighting_vialrgb or 
                 (hasattr(self.device.keyboard, 'layer_rgb_supported') and self.device.keyboard.layer_rgb_supported))
+
+    def block_signals(self):
+        for h in self.handlers:
+            h.block_signals()
+
+    def unblock_signals(self):
+        for h in self.handlers:
+            h.unblock_signals()
 
     def update_from_keyboard(self):
         self.device.keyboard.reload_rgb()
