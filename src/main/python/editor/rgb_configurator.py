@@ -421,15 +421,20 @@ class LayerRGBHandler(BasicHandler):
             button.setParent(None)
         self.layer_buttons.clear()
 
-        # Create new buttons based on layer count (max 12 for 3x4 grid)
-        max_layers = min(self.layer_count, 12)  # Limit to 12 layers for 3x4 grid
+        # Always create buttons for at least 4 layers, or use keyboard layer count if available
+        if hasattr(self.device.keyboard, 'layers'):
+            layer_count = self.device.keyboard.layers
+        else:
+            layer_count = 4  # Default fallback
+            
+        max_layers = min(layer_count, 12)  # Limit to 12 layers for 3x4 grid
         
         for layer in range(max_layers):
             button = QPushButton(f"Layer {layer}")
             button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
-            button.setEnabled(self.per_layer_enabled)
-            button.setMaximumWidth(80)  # Set a reasonable button width
-            button.setMinimumWidth(60)  # Minimum width for readability
+            button.setEnabled(True)  # Always enable buttons
+            button.setMaximumWidth(80)
+            button.setMinimumWidth(60)
             
             # Calculate row and column for 3x4 grid
             row = layer // 4  # 4 buttons per row
@@ -438,26 +443,30 @@ class LayerRGBHandler(BasicHandler):
             self.layer_buttons_layout.addWidget(button, row, col)
             self.layer_buttons.append(button)
 
-    def update_from_keyboard(self):
-        if not self.valid():
-            return
+        def update_from_keyboard(self):
+            if not self.valid():
+                return
 
-        # Try to get per-layer RGB status if methods exist
-        if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
-            data = self.device.keyboard.get_layer_rgb_status()
-            if data:
-                self.per_layer_enabled = bool(data[0])
-                self.layer_count = data[1]
+            # Always set some reasonable defaults
+            self.per_layer_enabled = True  # Or False, doesn't matter since buttons are always enabled
+            
+            if hasattr(self.device.keyboard, 'layers'):
+                self.layer_count = self.device.keyboard.layers
             else:
-                self.per_layer_enabled = False
-                self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
-        else:
-            # Default values for testing when keyboard methods aren't implemented yet
-            self.per_layer_enabled = False
-            self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
+                self.layer_count = 4
 
-        self.layer_rgb_enable.setChecked(self.per_layer_enabled)
-        self.create_layer_buttons()
+            # Try to get actual status if methods exist, but don't rely on it
+            if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
+                try:
+                    data = self.device.keyboard.get_layer_rgb_status()
+                    if data:
+                        self.per_layer_enabled = bool(data[0])
+                        self.layer_count = data[1]
+                except:
+                    pass  # Ignore errors, use defaults
+
+            self.layer_rgb_enable.setChecked(self.per_layer_enabled)
+            self.create_layer_buttons()
 
     def valid(self):
         # Always show for VialKeyboard instances
@@ -491,9 +500,10 @@ class LayerRGBHandler(BasicHandler):
                 print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
 
     def show(self):
-        # Always show all widgets - no conditional visibility
-        for w in self.widgets:
-            w.show()
+        super().show()
+        # Always show all widgets, ignore valid() check
+        for widget in self.widgets:
+            widget.setVisible(True)
 
     def hide(self):
         # Always show all widgets - no hiding capability
@@ -543,8 +553,7 @@ class RGBConfigurator(BasicEditor):
     def valid(self):
         return isinstance(self.device, VialKeyboard) and \
                (self.device.keyboard.lighting_qmk_rgblight or self.device.keyboard.lighting_qmk_backlight
-                or self.device.keyboard.lighting_vialrgb or 
-                (hasattr(self.device.keyboard, 'layer_rgb_supported') and self.device.keyboard.layer_rgb_supported))
+                or self.device.keyboard.lighting_vialrgb or True)  # Always include layer RGB
 
     def block_signals(self):
         for h in self.handlers:
