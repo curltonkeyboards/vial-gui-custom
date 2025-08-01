@@ -511,24 +511,22 @@ class SmartChordTab(QScrollArea):
         # Get the tree that was clicked
         clicked_tree = clicked_item.treeWidget()
         
-        # Store the currently clicked item's QMK ID
-        qmk_id = clicked_item.data(0, Qt.UserRole)
-        
         # Block signals temporarily to prevent recursion
         for tree in self.trees:
             tree.blockSignals(True)
             
         try:
-            # Clear selection in ALL trees, including the current one
+            # Clear selection in all other trees
             for tree in self.trees:
-                tree.clearSelection()
-                tree.setCurrentItem(None)
+                if tree != clicked_tree:
+                    tree.clearSelection()
+                    tree.setCurrentItem(None)
             
-            # Now, only set the clicked item as selected
+            # Ensure the clicked item is selected
             clicked_item.setSelected(True)
-            clicked_tree.setCurrentItem(clicked_item)
             
-            # Emit the signal with the QMK ID
+            # Get the data from the clicked item
+            qmk_id = clicked_item.data(0, Qt.UserRole)
             if qmk_id:
                 self.keycode_changed.emit(qmk_id)
                 

@@ -536,3 +536,71 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_vialrgb_color(self, h, s, v):
         self.rgb_hsv = (h, s, v)
         self._vialrgb_set_mode()
+    def save_rgb(self):
+        self.usb_send(self.dev, struct.pack(">B", CMD_VIA_LIGHTING_SAVE), retries=20)
+
+    # ADD THE NEW METHODS HERE:
+    def reload_layer_rgb_support(self):
+        """Check if keyboard supports per-layer RGB and get initial status"""
+        try:
+            # Try to get layer RGB status - if it works, we have support
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_GET_STATUS), retries=20)
+            self.layer_rgb_supported = True
+            self.layer_rgb_enabled = bool(data[0])
+            # Layer count should already be set from reload_layers(), but we can get it again
+            return True
+        except:
+            self.layer_rgb_supported = False
+            self.layer_rgb_enabled = False
+            return False
+
+    def get_layer_rgb_status(self):
+        """Get current per-layer RGB status"""
+        if not hasattr(self, 'layer_rgb_supported') or not self.layer_rgb_supported:
+            return None
+            
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_GET_STATUS), retries=20)
+            return data  # [enabled_flag, layer_count, reserved...]
+        except:
+            return None
+
+    def set_layer_rgb_enable(self, enabled):
+        """Enable or disable per-layer RGB functionality"""
+        if not hasattr(self, 'layer_rgb_supported') or not self.layer_rgb_supported:
+            return False
+            
+        try:
+            self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_ENABLE, int(enabled)), retries=20)
+            self.layer_rgb_enabled = enabled
+            return True
+        except:
+            return False
+
+    def save_rgb_to_layer(self, layer):
+        """Save current RGB settings to specified layer"""
+        if not hasattr(self, 'layer_rgb_supported') or not self.layer_rgb_supported:
+            return False
+            
+        if layer >= self.layers:
+            return False
+            
+        try:
+            self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, layer), retries=20)
+            return True
+        except:
+            return False
+
+    def load_rgb_from_layer(self, layer):
+        """Load RGB settings from specified layer (for testing purposes)"""
+        if not hasattr(self, 'layer_rgb_supported') or not self.layer_rgb_supported:
+            return False
+            
+        if layer >= self.layers:
+            return False
+            
+        try:
+            self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_LOAD, layer), retries=20)
+            return True
+        except:
+            return False
