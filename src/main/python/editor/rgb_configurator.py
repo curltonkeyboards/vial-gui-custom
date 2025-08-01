@@ -9,6 +9,8 @@ from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
 from vial_device import VialKeyboard
+from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, CMD_VIAL_LAYER_RGB_LOAD, \
+    CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS
 
 
 class QmkRgblightEffect:
@@ -232,125 +234,7 @@ class QmkRgblightHandler(BasicHandler):
         return QColor.fromHsvF(self.device.keyboard.underglow_color[0] / 255.0,
                                self.device.keyboard.underglow_color[1] / 255.0,
                                self.device.keyboard.underglow_brightness / 255.0)
-                               
-class LayerRGBHandler(BasicHandler):
-    """Handler for per-layer RGB functionality"""
 
-    def __init__(self, container):
-        super().__init__(container)
-
-        row = container.rowCount()
-
-        # Enable per-layer RGB checkbox
-        self.lbl_layer_rgb_enable = QLabel(tr("RGBConfigurator", "Enable Per-Layer RGB"))
-        container.addWidget(self.lbl_layer_rgb_enable, row, 0)
-        self.layer_rgb_enable = QCheckBox()
-        self.layer_rgb_enable.stateChanged.connect(self.on_layer_rgb_enable_changed)
-        container.addWidget(self.layer_rgb_enable, row, 1)
-
-        # Layer buttons container
-        self.lbl_layer_buttons = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
-        container.addWidget(self.lbl_layer_buttons, row + 1, 0)
-        
-        # Create a grid layout for layer buttons (3 rows x 4 columns)
-        self.layer_buttons_widget = QWidget()
-        self.layer_buttons_layout = QGridLayout(self.layer_buttons_widget)
-        self.layer_buttons_layout.setContentsMargins(0, 0, 0, 0)
-        self.layer_buttons_layout.setSpacing(2)  # Small spacing between buttons
-        container.addWidget(self.layer_buttons_widget, row + 1, 1)
-
-        self.layer_buttons = []
-        self.layer_count = 0
-        self.per_layer_enabled = False
-
-        self.widgets = [self.lbl_layer_rgb_enable, self.layer_rgb_enable, 
-                       self.lbl_layer_buttons, self.layer_buttons_widget]
-
-    def create_layer_buttons(self):
-        """Create buttons for each layer in a 3x4 grid"""
-        # Clear existing buttons
-        for button in self.layer_buttons:
-            button.setParent(None)
-        self.layer_buttons.clear()
-
-        # Create new buttons based on layer count (max 12 layers in 3x4 grid)
-        max_layers = min(self.layer_count, 12)
-        for layer in range(max_layers):
-            button = QPushButton(f"Layer {layer}")
-            button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
-            button.setEnabled(self.per_layer_enabled)
-            button.setMaximumWidth(70)  # Keep buttons compact
-            
-            # Calculate grid position (3 rows x 4 columns)
-            row = layer // 4
-            col = layer % 4
-            self.layer_buttons_layout.addWidget(button, row, col)
-            self.layer_buttons.append(button)
-
-    def update_from_keyboard(self):
-        if not self.valid():
-            return
-
-        # Try to get per-layer RGB status if methods exist
-        if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
-            data = self.device.keyboard.get_layer_rgb_status()
-            if data:
-                self.per_layer_enabled = bool(data[0])
-                self.layer_count = data[1]
-            else:
-                self.per_layer_enabled = False
-                self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
-        else:
-            # Default values for testing when keyboard methods aren't implemented yet
-            self.per_layer_enabled = False
-            self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
-
-        self.layer_rgb_enable.setChecked(self.per_layer_enabled)
-        self.create_layer_buttons()
-
-    def valid(self):
-        # For testing: always show if we have a VialKeyboard, even without layer RGB support
-        if isinstance(self.device, VialKeyboard):
-            return True
-        # Original check for when layer RGB is fully implemented:
-        # return (isinstance(self.device, VialKeyboard) and 
-        #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
-        #         self.device.keyboard.layer_rgb_supported)
-        return False
-
-    def on_layer_rgb_enable_changed(self, checked):
-        self.per_layer_enabled = checked
-        
-        # Try to call the keyboard method if it exists
-        if hasattr(self.device.keyboard, 'set_layer_rgb_enable'):
-            self.device.keyboard.set_layer_rgb_enable(checked)
-        else:
-            print(f"Layer RGB enable changed to: {checked} (keyboard method not implemented yet)")
-        
-        # Enable/disable layer buttons
-        for button in self.layer_buttons:
-            button.setEnabled(checked)
-
-    def on_save_to_layer(self, layer):
-        """Save current RGB settings to specified layer"""
-        if self.per_layer_enabled:
-            # Try to call the keyboard method if it exists
-            if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
-                self.device.keyboard.save_rgb_to_layer(layer)
-            else:
-                print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
-
-    def show(self):
-        super().show()
-        # Show widgets if valid (for testing, this should now always be True for VialKeyboards)
-        visible = self.valid()
-        for widget in self.widgets:
-            widget.setVisible(visible)
-
-    def hide(self):
-        super().hide()
-        for widget in self.widgets:
-            widget.setVisible(False)
 
 class QmkBacklightHandler(BasicHandler):
 
@@ -497,7 +381,133 @@ class VialRGBHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
 
 
-# Complete updated RGBConfigurator class
+class LayerRGBHandler(BasicHandler):
+    """Handler for per-layer RGB functionality"""
+
+    def __init__(self, container):
+        super().__init__(container)
+
+        row = container.rowCount()
+
+        # Enable per-layer RGB checkbox
+        self.lbl_layer_rgb_enable = QLabel(tr("RGBConfigurator", "Enable Per-Layer RGB"))
+        container.addWidget(self.lbl_layer_rgb_enable, row, 0)
+        self.layer_rgb_enable = QCheckBox()
+        self.layer_rgb_enable.stateChanged.connect(self.on_layer_rgb_enable_changed)
+        container.addWidget(self.layer_rgb_enable, row, 1)
+
+        # Layer buttons container
+        self.lbl_layer_buttons = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
+        container.addWidget(self.lbl_layer_buttons, row + 1, 0)
+        
+        # Create a grid layout for layer buttons (3 rows x 4 columns)
+        self.layer_buttons_widget = QWidget()
+        self.layer_buttons_layout = QGridLayout(self.layer_buttons_widget)
+        self.layer_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        self.layer_buttons_layout.setSpacing(2)  # Smaller spacing between buttons
+        container.addWidget(self.layer_buttons_widget, row + 1, 1)
+
+        self.layer_buttons = []
+        self.layer_count = 0
+        self.per_layer_enabled = False
+
+        self.widgets = [self.lbl_layer_rgb_enable, self.layer_rgb_enable, 
+                       self.lbl_layer_buttons, self.layer_buttons_widget]
+
+    def create_layer_buttons(self):
+        """Create buttons for each layer in a 3x4 grid"""
+        # Clear existing buttons
+        for button in self.layer_buttons:
+            button.setParent(None)
+        self.layer_buttons.clear()
+
+        # Create new buttons based on layer count (max 12 for 3x4 grid)
+        max_layers = min(self.layer_count, 12)  # Limit to 12 layers for 3x4 grid
+        
+        for layer in range(max_layers):
+            button = QPushButton(f"Layer {layer}")
+            button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
+            button.setEnabled(self.per_layer_enabled)
+            button.setMaximumWidth(80)  # Set a reasonable button width
+            button.setMinimumWidth(60)  # Minimum width for readability
+            
+            # Calculate row and column for 3x4 grid
+            row = layer // 4  # 4 buttons per row
+            col = layer % 4   # Column position within row
+            
+            self.layer_buttons_layout.addWidget(button, row, col)
+            self.layer_buttons.append(button)
+
+    def update_from_keyboard(self):
+        if not self.valid():
+            return
+
+        # Try to get per-layer RGB status if methods exist
+        if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
+            data = self.device.keyboard.get_layer_rgb_status()
+            if data:
+                self.per_layer_enabled = bool(data[0])
+                self.layer_count = data[1]
+            else:
+                self.per_layer_enabled = False
+                self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
+        else:
+            # Default values for testing when keyboard methods aren't implemented yet
+            self.per_layer_enabled = False
+            self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
+
+        self.layer_rgb_enable.setChecked(self.per_layer_enabled)
+        self.create_layer_buttons()
+
+    def valid(self):
+        # For testing: always show if we have a VialKeyboard, even without layer RGB support
+        if isinstance(self.device, VialKeyboard):
+            return True
+        # Original check for when layer RGB is fully implemented:
+        # return (isinstance(self.device, VialKeyboard) and 
+        #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
+        #         self.device.keyboard.layer_rgb_supported)
+        return False
+
+    def on_layer_rgb_enable_changed(self, checked):
+        self.per_layer_enabled = checked
+        
+        # Try to call the keyboard method if it exists
+        if hasattr(self.device.keyboard, 'set_layer_rgb_enable'):
+            self.device.keyboard.set_layer_rgb_enable(checked)
+        else:
+            print(f"Layer RGB enable changed to: {checked} (keyboard method not implemented yet)")
+        
+        # Enable/disable layer buttons
+        for button in self.layer_buttons:
+            button.setEnabled(checked)
+
+    def on_save_to_layer(self, layer):
+        """Save current RGB settings to specified layer"""
+        if self.per_layer_enabled:
+            # Try to call the keyboard method if it exists
+            if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
+                success = self.device.keyboard.save_rgb_to_layer(layer)
+                if success:
+                    print(f"Successfully saved RGB to layer {layer}")
+                    self.update.emit()
+                else:
+                    print(f"Failed to save RGB to layer {layer}")
+            else:
+                print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
+
+    def show(self):
+        super().show()
+        # Show widgets if valid (for testing, this should now always be True for VialKeyboards)
+        visible = self.valid()
+        for widget in self.widgets:
+            widget.setVisible(visible)
+
+    def hide(self):
+        super().hide()
+        for widget in self.widgets:
+            widget.setVisible(False)
+
 
 class RGBConfigurator(BasicEditor):
 
