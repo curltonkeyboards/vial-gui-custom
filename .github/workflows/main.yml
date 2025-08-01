@@ -37,7 +37,7 @@ jobs:
     - uses: actions/checkout@v4  # Updated to v4 for Node.js 20 support
     - uses: actions/setup-python@v5  # Much simpler than manual download
       with:
-        python-version: '3.6.x'
+        python-version: '3.10.x'  # Minimum version available on macOS 14 ARM64
     - name: Setup venv
       run: |
         python3 -m venv venv
