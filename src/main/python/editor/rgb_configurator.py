@@ -413,6 +413,9 @@ class LayerRGBHandler(BasicHandler):
         self.widgets = [self.lbl_layer_rgb_enable, self.layer_rgb_enable, 
                        self.lbl_layer_buttons, self.layer_buttons_widget]
 
+        # Create initial buttons (they will be updated when device connects)
+        self.create_layer_buttons()
+
     def create_layer_buttons(self):
         """Create buttons for each layer in a 3x4 grid - always create 12 buttons regardless of layer count"""
         # Clear existing buttons
@@ -440,22 +443,35 @@ class LayerRGBHandler(BasicHandler):
         if not self.valid():
             return
 
+        # Block signals to prevent triggering state change events during update
+        self.block_signals()
+
         # Try to get per-layer RGB status if methods exist
         if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
-            data = self.device.keyboard.get_layer_rgb_status()
-            if data:
-                self.per_layer_enabled = bool(data[0])
-                # Ignore layer count from keyboard - always use fixed number of buttons
-            else:
+            try:
+                data = self.device.keyboard.get_layer_rgb_status()
+                if data and len(data) > 0:
+                    self.per_layer_enabled = bool(data[0])
+                    print(f"Layer RGB status from keyboard: {self.per_layer_enabled}")
+                else:
+                    self.per_layer_enabled = False
+                    print("No layer RGB status data received")
+            except Exception as e:
+                print(f"Error getting layer RGB status: {e}")
                 self.per_layer_enabled = False
         else:
             # Default values for testing when keyboard methods aren't implemented yet
             self.per_layer_enabled = False
+            print("Layer RGB methods not implemented on keyboard")
 
+        # Set checkbox state without triggering signals
         self.layer_rgb_enable.setChecked(self.per_layer_enabled)
         
         # Always create the same number of buttons regardless of keyboard state
         self.create_layer_buttons()
+
+        # Unblock signals after update is complete
+        self.unblock_signals()
 
     def valid(self):
         # Always return True so buttons are always shown
