@@ -509,6 +509,11 @@ class LayerRGBHandler(BasicHandler):
         for widget in self.widgets:
             widget.setVisible(True)
 
+    def hide(self):
+        super().hide()
+        for widget in self.widgets:
+            widget.setVisible(False)
+
 
 class RGBConfigurator(BasicEditor):
 
