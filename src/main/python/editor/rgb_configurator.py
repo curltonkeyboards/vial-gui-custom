@@ -378,14 +378,7 @@ class VialRGBHandler(BasicHandler):
         self.rgb_color.setStyleSheet("QWidget { background-color: %s}" % self.current_color().name())
 
     def valid(self):
-    # For testing: always show if we have a VialKeyboard, even without layer RGB support
-    if isinstance(self.device, VialKeyboard):
-        return True
-    # Original check for when layer RGB is fully implemented:
-    # return (isinstance(self.device, VialKeyboard) and 
-    #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
-    #         self.device.keyboard.layer_rgb_supported)
-    return False
+        return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
 
 
 class LayerRGBHandler(BasicHandler):
@@ -505,9 +498,10 @@ class LayerRGBHandler(BasicHandler):
 
     def show(self):
         super().show()
-        # All widgets should be visible when show() is called
+        # Show widgets if valid (for testing, this should now always be True for VialKeyboards)
+        visible = self.valid()
         for widget in self.widgets:
-            widget.setVisible(True)
+            widget.setVisible(visible)
 
     def hide(self):
         super().hide()
