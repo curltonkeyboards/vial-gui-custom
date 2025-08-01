@@ -79,12 +79,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         self.reload_layout(sideload_json)
         self.reload_layers()
-    
+
         self.reload_macros_early()
         self.reload_persistent_rgb()
         self.reload_rgb()
         self.reload_settings()
-        self.reload_layer_rgb_support()  # Add this line
+
         self.reload_dynamic()
 
         # based on the number of macros, tapdance, etc, this will generate global keycode arrays
