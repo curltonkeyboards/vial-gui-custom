@@ -284,26 +284,41 @@ class LayerRGBHandler(BasicHandler):
         if not self.valid():
             return
 
-        # Get per-layer RGB status
-        data = self.device.keyboard.get_layer_rgb_status()
-        if data:
-            self.per_layer_enabled = bool(data[0])
-            self.layer_count = data[1]
+        # Try to get per-layer RGB status if methods exist
+        if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
+            data = self.device.keyboard.get_layer_rgb_status()
+            if data:
+                self.per_layer_enabled = bool(data[0])
+                self.layer_count = data[1]
+            else:
+                self.per_layer_enabled = False
+                self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
         else:
+            # Default values for testing when keyboard methods aren't implemented yet
             self.per_layer_enabled = False
-            self.layer_count = self.device.keyboard.layers
+            self.layer_count = self.device.keyboard.layers if hasattr(self.device.keyboard, 'layers') else 4
 
         self.layer_rgb_enable.setChecked(self.per_layer_enabled)
         self.create_layer_buttons()
 
     def valid(self):
-        return (isinstance(self.device, VialKeyboard) and 
-                hasattr(self.device.keyboard, 'layer_rgb_supported') and
-                self.device.keyboard.layer_rgb_supported)
+        # For testing: always show if we have a VialKeyboard, even without layer RGB support
+        if isinstance(self.device, VialKeyboard):
+            return True
+        # Original check for when layer RGB is fully implemented:
+        # return (isinstance(self.device, VialKeyboard) and 
+        #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
+        #         self.device.keyboard.layer_rgb_supported)
+        return False
 
     def on_layer_rgb_enable_changed(self, checked):
         self.per_layer_enabled = checked
-        self.device.keyboard.set_layer_rgb_enable(checked)
+        
+        # Try to call the keyboard method if it exists
+        if hasattr(self.device.keyboard, 'set_layer_rgb_enable'):
+            self.device.keyboard.set_layer_rgb_enable(checked)
+        else:
+            print(f"Layer RGB enable changed to: {checked} (keyboard method not implemented yet)")
         
         # Enable/disable layer buttons
         for button in self.layer_buttons:
@@ -312,12 +327,16 @@ class LayerRGBHandler(BasicHandler):
     def on_save_to_layer(self, layer):
         """Save current RGB settings to specified layer"""
         if self.per_layer_enabled:
-            self.device.keyboard.save_rgb_to_layer(layer)
-            self.update.emit()
+            # Try to call the keyboard method if it exists
+            if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
+                self.device.keyboard.save_rgb_to_layer(layer)
+                self.update.emit()
+            else:
+                print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
 
     def show(self):
         super().show()
-        # Only show if we have layer RGB support
+        # Show widgets if valid (for testing, this should now always be True for VialKeyboards)
         visible = self.valid()
         for widget in self.widgets:
             widget.setVisible(visible)
