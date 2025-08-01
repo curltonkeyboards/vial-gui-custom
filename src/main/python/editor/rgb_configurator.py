@@ -378,14 +378,8 @@ class VialRGBHandler(BasicHandler):
         self.rgb_color.setStyleSheet("QWidget { background-color: %s}" % self.current_color().name())
 
     def valid(self):
-    # For testing: always show if we have a VialKeyboard, even without layer RGB support
-    if isinstance(self.device, VialKeyboard):
-        return True
-    # Original check for when layer RGB is fully implemented:
-    # return (isinstance(self.device, VialKeyboard) and 
-    #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
-    #         self.device.keyboard.layer_rgb_supported)
-    return False
+        return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
+
 
 
 class LayerRGBHandler(BasicHandler):
@@ -466,15 +460,16 @@ class LayerRGBHandler(BasicHandler):
         self.layer_rgb_enable.setChecked(self.per_layer_enabled)
         self.create_layer_buttons()
 
-    def valid(self):
-        # For testing: always show if we have a VialKeyboard, even without layer RGB support
-        if isinstance(self.device, VialKeyboard):
-            return True
-        # Original check for when layer RGB is fully implemented:
-        # return (isinstance(self.device, VialKeyboard) and 
-        #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
-        #         self.device.keyboard.layer_rgb_supported)
-        return False
+
+        def valid(self):
+            # For testing: always show if we have a VialKeyboard, even without layer RGB support
+            if isinstance(self.device, VialKeyboard):
+                return True
+            # Original check for when layer RGB is fully implemented:
+            # return (isinstance(self.device, VialKeyboard) and 
+            #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
+            #         self.device.keyboard.layer_rgb_supported)
+            return False
 
     def on_layer_rgb_enable_changed(self, checked):
         self.per_layer_enabled = checked
@@ -505,10 +500,9 @@ class LayerRGBHandler(BasicHandler):
 
     def show(self):
         super().show()
-        # Show widgets if valid (for testing, this should now always be True for VialKeyboards)
-        visible = self.valid()
+        # All widgets should be visible when show() is called
         for widget in self.widgets:
-            widget.setVisible(visible)
+            widget.setVisible(True)
 
     def hide(self):
         super().hide()
