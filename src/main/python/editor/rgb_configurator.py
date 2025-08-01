@@ -337,7 +337,6 @@ class LayerRGBHandler(BasicHandler):
             # Try to call the keyboard method if it exists
             if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
                 self.device.keyboard.save_rgb_to_layer(layer)
-                self.update.emit()
             else:
                 print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
 
