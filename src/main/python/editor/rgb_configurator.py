@@ -378,7 +378,14 @@ class VialRGBHandler(BasicHandler):
         self.rgb_color.setStyleSheet("QWidget { background-color: %s}" % self.current_color().name())
 
     def valid(self):
-        return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
+    # For testing: always show if we have a VialKeyboard, even without layer RGB support
+    if isinstance(self.device, VialKeyboard):
+        return True
+    # Original check for when layer RGB is fully implemented:
+    # return (isinstance(self.device, VialKeyboard) and 
+    #         hasattr(self.device.keyboard, 'layer_rgb_supported') and
+    #         self.device.keyboard.layer_rgb_supported)
+    return False
 
 
 class LayerRGBHandler(BasicHandler):
