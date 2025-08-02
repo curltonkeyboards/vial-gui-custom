@@ -1526,7 +1526,7 @@ class LoopTab(QScrollArea):
         
         # Only Main Loop Controls (with mute and overdub added)
         main_section = QVBoxLayout()
-        main_section.setSpacing(8)
+        main_section.setSpacing(5)
         
         header = self.create_section_header("Main Loop Controls")
         main_section.addLayout(header)
@@ -1547,7 +1547,7 @@ class LoopTab(QScrollArea):
             # Display as 2 rows: 4 buttons (loops) then 2 buttons (mute/overdub)
             main_container = QWidget()
             main_layout = QVBoxLayout(main_container)
-            main_layout.setSpacing(8)
+            main_layout.setSpacing(5)
             main_layout.setContentsMargins(0, 0, 0, 0)
             
             # Row 1: Main loop controls (4 buttons)
@@ -1609,7 +1609,8 @@ class LoopTab(QScrollArea):
         
         # Left side: Expanded Main Loop Controls
         left_section = QVBoxLayout()
-        left_section.setSpacing(8)
+        left_section.setSpacing(5)
+        left_section.setAlignment(Qt.AlignTop)  # Top align the entire section
         
         # Header for main loop controls
         header = self.create_section_header("Main Loop Controls")
@@ -1618,8 +1619,9 @@ class LoopTab(QScrollArea):
         # Container for all main loop controls with tight spacing
         main_controls_container = QWidget()
         main_controls_layout = QVBoxLayout(main_controls_container)
-        main_controls_layout.setSpacing(8)  # 8px spacing between rows
+        main_controls_layout.setSpacing(5)  # 8px spacing between rows
         main_controls_layout.setContentsMargins(0, 0, 0, 0)
+        main_controls_layout.setAlignment(Qt.AlignTop)  # Top align content
         
         # Row 1: Original main loop controls (4 buttons)
         main_loop_keycodes = [kc for kc in self.basic_keycodes[:4]]
@@ -1639,12 +1641,13 @@ class LoopTab(QScrollArea):
         
         left_section.addWidget(main_controls_container)
         
-        # Add left section with no stretch factor
+        # Add left section with no stretch factor and top alignment
         self.basic_layout.addLayout(left_section, 0)
         
-        # Right side: Global Controls (aligned with main controls)
+        # Right side: Global Controls (top-aligned with main controls)
         right_section = QVBoxLayout()
-        right_section.setSpacing(8)
+        right_section.setSpacing(5)
+        right_section.setAlignment(Qt.AlignTop)  # Top align the entire section
         
         # Header for global controls (same spacing as main controls header)
         header = self.create_section_header("Global Controls")
@@ -1654,10 +1657,11 @@ class LoopTab(QScrollArea):
         if global_keycodes:
             global_container = QWidget()
             global_layout = QVBoxLayout(global_container)
-            global_layout.setSpacing(8)  # 8px spacing between rows to match main controls
+            global_layout.setSpacing(5)  # 8px spacing between rows to match main controls
             global_layout.setContentsMargins(0, 0, 0, 0)
+            global_layout.setAlignment(Qt.AlignTop)  # Top align content - starts from row 1
             
-            # Split into 2 rows of 3 to align with main control button rows
+            # Split into 2 rows of 3 (fills rows 1 and 2, leaving row 3 blank)
             if len(global_keycodes) > 3:
                 global_row1 = self.create_button_row(global_keycodes[:3], 3)
                 global_layout.addWidget(global_row1)
@@ -1669,7 +1673,7 @@ class LoopTab(QScrollArea):
             
             right_section.addWidget(global_container)
         
-        # Add right section with no stretch factor
+        # Add right section with no stretch factor and top alignment
         self.basic_layout.addLayout(right_section, 0)
         
         # Add stretch after sections to center them
@@ -1726,17 +1730,19 @@ class LoopTab(QScrollArea):
         # BeatSkip section
         if skip_keycodes:
             skip_section = QVBoxLayout()
-            skip_section.setSpacing(8)
+            skip_section.setSpacing(5)
+            skip_section.setAlignment(Qt.AlignTop)  # Top align the entire section
             header = self.create_section_header("BeatSkip")
             skip_section.addLayout(header)
             
             # Create a container for beatskip controls
             skip_container = QWidget()
             skip_layout = QVBoxLayout(skip_container)
-            skip_layout.setSpacing(8)  # 8px spacing between rows
+            skip_layout.setSpacing(5)  # 8px spacing between rows
             skip_layout.setContentsMargins(0, 0, 0, 0)
+            skip_layout.setAlignment(Qt.AlignTop)  # Top align content - starts from row 1
             
-            # Split into 2 rows of 4
+            # Split into 2 rows of 4 (starts from top)
             if len(skip_keycodes) > 4:
                 skip_row1 = self.create_button_row(skip_keycodes[:4], 4)
                 skip_layout.addWidget(skip_row1)
@@ -1753,17 +1759,19 @@ class LoopTab(QScrollArea):
         # Speed Controls section
         if speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes:
             speed_section = QVBoxLayout()
-            speed_section.setSpacing(8)
+            speed_section.setSpacing(5)
+            speed_section.setAlignment(Qt.AlignTop)  # Top align the entire section
             header = self.create_section_header("Speed Controls")
             speed_section.addLayout(header)
             
             # Create a container for all speed controls
             speed_container = QWidget()
             speed_layout = QVBoxLayout(speed_container)
-            speed_layout.setSpacing(8)  # 8px spacing between rows
+            speed_layout.setSpacing(5)  # 8px spacing between rows
             speed_layout.setContentsMargins(0, 0, 0, 0)
+            speed_layout.setAlignment(Qt.AlignTop)  # Top align content - starts from row 1
             
-            # Row 1: 3 modifier buttons
+            # Row 1: 3 modifier buttons (starts from top)
             if speed_modifier_keycodes:
                 mod_row = self.create_button_row(speed_modifier_keycodes, 3)
                 speed_layout.addWidget(mod_row)
@@ -1785,17 +1793,19 @@ class LoopTab(QScrollArea):
         # Navigation/Save section
         if nav_keycodes or playback_keycodes or save_keycodes:
             nav_save_section = QVBoxLayout()
-            nav_save_section.setSpacing(8)
+            nav_save_section.setSpacing(5)
+            nav_save_section.setAlignment(Qt.AlignTop)  # Top align the entire section
             header = self.create_section_header("Navigation/Save")
             nav_save_section.addLayout(header)
             
             # Container for navigation/save controls
             nav_save_container = QWidget()
             nav_save_layout = QVBoxLayout(nav_save_container)
-            nav_save_layout.setSpacing(8)  # 8px spacing between rows
+            nav_save_layout.setSpacing(5)  # 8px spacing between rows
             nav_save_layout.setContentsMargins(0, 0, 0, 0)
+            nav_save_layout.setAlignment(Qt.AlignTop)  # Top align content - starts from row 1
             
-            # Row 1: Navigation controls in specific order
+            # Row 1: Navigation controls in specific order (starts from top)
             navigation_ordered = []
             nav_bwd_5s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_BWD_5S"), None)
             nav_bwd_1s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_BWD_1S"), None)
