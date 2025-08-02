@@ -1420,7 +1420,7 @@ class LoopTab(QScrollArea):
         # Basic container with horizontal layout
         self.basic_container = QWidget()
         self.basic_layout = QHBoxLayout(self.basic_container)  # Changed to horizontal
-        self.basic_layout.setSpacing(40)  # Space between left and right sections
+        self.basic_layout.setSpacing(0)  # Space between left and right sections
         self.basic_layout.setContentsMargins(20, 10, 20, 10)
         self.main_layout.addWidget(self.basic_container)
         
