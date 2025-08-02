@@ -1474,7 +1474,7 @@ class LoopTab(QScrollArea):
                 row_layout.setContentsMargins(0, 0, 0, 0)  # No margins
             
             btn = QPushButton(Keycode.label(keycode.qmk_id))
-            btn.setFixedSize(40, 40)  # Set all buttons to 40x40
+            btn.setFixedSize(50, 50)  # Set all buttons to 40x40
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row_layout.addWidget(btn)
