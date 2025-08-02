@@ -1532,8 +1532,11 @@ class LoopTab(QScrollArea):
             main_loop_row = self.create_button_row(main_loop_keycodes, 4)
             left_section.addWidget(main_loop_row)
         
-        # Don't add stretch - let content determine size
-        self.basic_layout.addLayout(left_section, 0)  # stretch factor 0
+        # Add stretch before sections to center them
+        self.basic_layout.addStretch(1)
+        
+        # Add left section with no stretch factor
+        self.basic_layout.addLayout(left_section, 0)
         
         # Right side: Global Controls
         right_section = QVBoxLayout()
@@ -1561,10 +1564,10 @@ class LoopTab(QScrollArea):
             
             right_section.addWidget(global_container)
         
-        # Don't add stretch - let content determine size
-        self.basic_layout.addLayout(right_section, 0)  # stretch factor 0
+        # Add right section with no stretch factor
+        self.basic_layout.addLayout(right_section, 0)
         
-        # Add a single stretch at the end to push everything left if needed
+        # Add stretch after sections to center them
         self.basic_layout.addStretch(1)
 
     def show_advanced(self):
@@ -1627,8 +1630,12 @@ class LoopTab(QScrollArea):
             main_controls_layout.addWidget(octave_row)
         
         left_section.addWidget(main_controls_container)
-        # Don't add stretch
-        self.basic_layout.addLayout(left_section, 0)  # stretch factor 0
+        
+        # Add stretch before sections to center them
+        self.basic_layout.addStretch(1)
+        
+        # Add left section with no stretch factor
+        self.basic_layout.addLayout(left_section, 0)
         
         # Right side: Global Controls (same as before)
         right_section = QVBoxLayout()
@@ -1656,10 +1663,10 @@ class LoopTab(QScrollArea):
             
             right_section.addWidget(global_container)
         
-        # Don't add stretch
-        self.basic_layout.addLayout(right_section, 0)  # stretch factor 0
+        # Add right section with no stretch factor
+        self.basic_layout.addLayout(right_section, 0)
         
-        # Add a single stretch at the end to push everything left if needed
+        # Add stretch after sections to center them
         self.basic_layout.addStretch(1)
 
     def recreate_buttons(self, keycode_filter=None):
