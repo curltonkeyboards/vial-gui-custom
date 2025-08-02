@@ -1502,7 +1502,7 @@ class LoopTab(QScrollArea):
         self.is_advanced_mode = False
         
         # Restore original basic layout
-        self.recreate_basic_for_basic(self.current_keycode_filter)
+        self.recreate_basic_for_basic()
         
         self.toggle_basic.setStyleSheet("""
             background-color: #B8D8EB;
@@ -1570,7 +1570,7 @@ class LoopTab(QScrollArea):
         self.is_advanced_mode = True
         
         # Rebuild basic container for advanced mode with expanded Main Loop Controls
-        self.recreate_basic_for_advanced(self.current_keycode_filter)
+        self.recreate_basic_for_advanced()
         
         self.toggle_advanced.setStyleSheet("""
             background-color: #C9E4CA;
@@ -1678,9 +1678,9 @@ class LoopTab(QScrollArea):
         # === BASIC LAYOUT (HORIZONTAL) ===
         # Start with basic mode layout
         if self.is_advanced_mode:
-            self.recreate_basic_for_advanced(keycode_filter)
+            self.recreate_basic_for_advanced()
         else:
-            self.recreate_basic_for_basic(keycode_filter)
+            self.recreate_basic_for_basic()
 
         # === ADVANCED LAYOUT (MIXED HORIZONTAL/VERTICAL) ===
         
