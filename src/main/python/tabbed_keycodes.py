@@ -1734,7 +1734,7 @@ class LoopTab(QScrollArea):
         
         # Add spacing between sections only if both exist
         if skip_keycodes and (speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes):
-            second_row.addSpacing(60)  # Fixed spacing between sections when both exist
+            second_row.addSpacing(20)  # Fixed spacing between sections when both exist
         
         # Right: Speed Controls
         if speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes:
