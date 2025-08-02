@@ -1458,6 +1458,7 @@ class LoopTab(QScrollArea):
         current_row = 0
         buttons_in_current_row = 0
         row_layout = QHBoxLayout()
+        rows_container = QVBoxLayout()
         
         for keycode in keycodes:
             if buttons_in_current_row == 0:
@@ -1472,14 +1473,18 @@ class LoopTab(QScrollArea):
             buttons_in_current_row += 1
             
             if buttons_in_current_row >= buttons_per_row:
-                main_layout.addLayout(row_layout)
+                rows_container.addLayout(row_layout)
                 buttons_in_current_row = 0
                 current_row += 1
         
         # Add remaining buttons if any
         if buttons_in_current_row > 0:
-            main_layout.addLayout(row_layout)
+            rows_container.addLayout(row_layout)
         
+        # Normal spacing between rows within same button group
+        rows_container.setSpacing(10)
+        
+        main_layout.addLayout(rows_container)
         main_layout.addStretch(1)
         return container
 
@@ -1536,21 +1541,30 @@ class LoopTab(QScrollArea):
         global_keycodes = [kc for kc in self.basic_keycodes[4:10] 
                           if keycode_filter is None or keycode_filter(kc.qmk_id)]
         if global_keycodes:
+            # Create a container for global controls with compact spacing
+            global_container = QWidget()
+            global_layout = QVBoxLayout(global_container)
+            global_layout.setSpacing(5)  # Compact spacing between rows
+            
             # Split into 2 rows of 3
             if len(global_keycodes) > 3:
                 global_row1 = self.create_button_row(global_keycodes[:3], 3)
-                self.basic_layout.addWidget(global_row1)
+                global_layout.addWidget(global_row1)
                 global_row2 = self.create_button_row(global_keycodes[3:], 3)
-                self.basic_layout.addWidget(global_row2)
+                global_layout.addWidget(global_row2)
             else:
                 global_row = self.create_button_row(global_keycodes, 3)
-                self.basic_layout.addWidget(global_row)
+                global_layout.addWidget(global_row)
+            
+            self.basic_layout.addWidget(global_container)
 
         # === ADVANCED LAYOUT ===
         
         # Organize advanced keycodes by category
         mute_keycodes = [kc for kc in self.advanced_keycodes 
                         if kc.qmk_id.startswith("DM_MUTE_") and (keycode_filter is None or keycode_filter(kc.qmk_id))]
+        octave_keycodes = [kc for kc in self.advanced_keycodes 
+                          if kc.qmk_id.startswith("DM_OCT_") and kc.qmk_id != "DM_OCT_MOD" and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         speed_modifier_keycodes = [kc for kc in self.advanced_keycodes 
                                  if kc.qmk_id in ["DM_SPEED_MOD", "DM_SLOW_MOD", "DM_RESET_SPEED"] and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         speed_individual_keycodes = [kc for kc in self.advanced_keycodes 
@@ -1573,47 +1587,91 @@ class LoopTab(QScrollArea):
             mute_row = self.create_button_row(mute_keycodes, 4)
             self.advanced_layout.addWidget(mute_row)
         
+        # Octave Controls
+        if octave_keycodes:
+            header = self.create_section_header("Octave Controls")
+            self.advanced_layout.addLayout(header)
+            octave_row = self.create_button_row(octave_keycodes, 4)
+            self.advanced_layout.addWidget(octave_row)
+        
         # Speed Controls
         if speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes:
             header = self.create_section_header("Speed Controls")
             self.advanced_layout.addLayout(header)
             
-            # Row 1: 3 buttons (speed modifier, slow modifier, reset speed)
-            if speed_modifier_keycodes:
-                speed_mod_row = self.create_button_row(speed_modifier_keycodes, 3)
-                self.advanced_layout.addWidget(speed_mod_row)
+            # Create a container for all speed controls with compact spacing
+            speed_container = QWidget()
+            speed_layout = QVBoxLayout(speed_container)
+            speed_layout.setSpacing(5)  # Compact spacing between rows
             
-            # Row 2: 4 speed buttons
+            # Row 1: 3 modifier buttons
+            if speed_modifier_keycodes:
+                mod_row = self.create_button_row(speed_modifier_keycodes, 3)
+                speed_layout.addWidget(mod_row)
+            
+            # Row 2: 4 speed buttons  
             if speed_individual_keycodes:
                 speed_row = self.create_button_row(speed_individual_keycodes, 4)
-                self.advanced_layout.addWidget(speed_row)
+                speed_layout.addWidget(speed_row)
             
             # Row 3: 4 slow buttons
             if slow_individual_keycodes:
                 slow_row = self.create_button_row(slow_individual_keycodes, 4)
-                self.advanced_layout.addWidget(slow_row)
+                speed_layout.addWidget(slow_row)
+            
+            self.advanced_layout.addWidget(speed_container)
         
         # BeatSkip (2 rows of 4)
         if skip_keycodes:
             header = self.create_section_header("BeatSkip")
             self.advanced_layout.addLayout(header)
+            
+            # Create a container for beatskip controls with compact spacing
+            skip_container = QWidget()
+            skip_layout = QVBoxLayout(skip_container)
+            skip_layout.setSpacing(5)  # Compact spacing between rows
+            
             # Split into 2 rows of 4
             if len(skip_keycodes) > 4:
                 skip_row1 = self.create_button_row(skip_keycodes[:4], 4)
-                self.advanced_layout.addWidget(skip_row1)
+                skip_layout.addWidget(skip_row1)
                 skip_row2 = self.create_button_row(skip_keycodes[4:], 4)
-                self.advanced_layout.addWidget(skip_row2)
+                skip_layout.addWidget(skip_row2)
             else:
                 skip_row = self.create_button_row(skip_keycodes, 4)
-                self.advanced_layout.addWidget(skip_row)
+                skip_layout.addWidget(skip_row)
+            
+            self.advanced_layout.addWidget(skip_container)
         
-        # Playback Controls (include nav buttons)
-        combined_playback = playback_keycodes + nav_keycodes + save_keycodes
-        if combined_playback:
-            header = self.create_section_header("Playback Controls")
+        # Loop Copy/Save Controls
+        if save_keycodes or playback_keycodes:
+            copy_save_keycodes = [kc for kc in playback_keycodes if kc.qmk_id == "DM_COPY"] + save_keycodes
+            if copy_save_keycodes:
+                header = self.create_section_header("Loop Copy/Save")
+                self.advanced_layout.addLayout(header)
+                copy_save_row = self.create_button_row(copy_save_keycodes, 5)
+                self.advanced_layout.addWidget(copy_save_row)
+        
+        # Navigation Controls (specific layout: <nav5, <nav1, play/pause, >nav1, >nav5)
+        navigation_ordered = []
+        
+        # Build the navigation list in the specific order requested
+        nav_bwd_5s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_BWD_5S"), None)
+        nav_bwd_1s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_BWD_1S"), None)
+        play_pause = next((kc for kc in playback_keycodes if kc.qmk_id == "DM_PLAY_PAUSE"), None)
+        nav_fwd_1s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_FWD_1S"), None)
+        nav_fwd_5s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_FWD_5S"), None)
+        
+        # Add buttons in order: <nav5, <nav1, play/pause, >nav1, >nav5
+        for button in [nav_bwd_5s, nav_bwd_1s, play_pause, nav_fwd_1s, nav_fwd_5s]:
+            if button:
+                navigation_ordered.append(button)
+        
+        if navigation_ordered:
+            header = self.create_section_header("Navigation")
             self.advanced_layout.addLayout(header)
-            playback_row = self.create_button_row(combined_playback, 6)
-            self.advanced_layout.addWidget(playback_row)
+            nav_row = self.create_button_row(navigation_ordered, 5)
+            self.advanced_layout.addWidget(nav_row)
 
         # Add stretch to push everything to top
         self.basic_layout.addStretch()
