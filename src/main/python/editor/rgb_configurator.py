@@ -116,6 +116,18 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(43, "Pixel Rain"),
     VialRGBEffect(44, "Pixel Fractal"),
     VialRGBEffect(45, "MIDI Switch Auto Light"),  # Add this line
+    VialRGBEffect(46, "1"),  # Add this line
+    VialRGBEffect(47, "2"),  # Add this line
+    VialRGBEffect(48, "3"),  # Add this line
+    VialRGBEffect(49, "4"),  # Add this line
+    VialRGBEffect(50, "5"),  # Add this line
+    VialRGBEffect(51, "6"),  # Add this line
+    VialRGBEffect(52, "7"),  # Add this line
+    VialRGBEffect(53, "8"),  # Add this line
+    VialRGBEffect(54, "9"),  # Add this line
+    VialRGBEffect(55, "10"),  # Add this line
+    VialRGBEffect(56, "11"),  # Add this line
+    VialRGBEffect(57, "12"),  # Add this line   
 ]
 
 
