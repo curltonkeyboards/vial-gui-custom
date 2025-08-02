@@ -1391,8 +1391,8 @@ class LoopTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(20)  # Spacing between major sections only
-        self.main_layout.setContentsMargins(20, 15, 20, 15)
+        self.main_layout.setSpacing(10)  # Spacing between major sections only
+        self.main_layout.setContentsMargins(10, 15, 20, 15)
         self.main_layout.setAlignment(Qt.AlignTop)
         
         # Toggle buttons matching ear trainer format
@@ -1427,8 +1427,8 @@ class LoopTab(QScrollArea):
         # Advanced container with sophisticated layout
         self.advanced_container = QWidget()
         self.advanced_layout = QVBoxLayout(self.advanced_container)
-        self.advanced_layout.setSpacing(20)  # Space between major advanced sections
-        self.advanced_layout.setContentsMargins(20, 10, 20, 10)
+        self.advanced_layout.setSpacing(10)  # Space between major advanced sections
+        self.advanced_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.addWidget(self.advanced_container)
         self.advanced_container.hide()
         
