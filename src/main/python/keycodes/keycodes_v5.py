@@ -2143,8 +2143,74 @@ class keycodes_v5:
         "AS_CHORDPROG42": 0xCC06,
         "B_CHORDPROG42": 0xCC07,
                         
+        "DM_OCT_1": 0xCC1D,  # Octave doubler toggle for macro 1
+        "DM_OCT_2": 0xCC1E,  # Octave doubler toggle for macro 2  
+        "DM_OCT_3": 0xCC1F,  # Octave doubler toggle for macro 3
+        "DM_OCT_4": 0xCC20,  # Octave doubler toggle for macro 4
+        "DM_OCT_MOD": 0xCC21,  # Octave doubler modifier button
 
-        "QK_KB": 0xCC08, #custom keycodes safe range
+        # Core control buttons:
+        "DM_MUTE": 0xCC10,  # Mute button
+        "DM_OVERDUB": 0xCC15,  # Overdub button
+        "DM_UNSYNC": 0xCC16,  # Unsynced mode toggle
+        "DM_SAMPLE": 0xCC17,  # Sample mode toggle
+        "DM_EDIT_MOD": 0xCC1C,  # Global edit modifier button
+
+        # Dedicated mute keys (0xCC0C-0xCC0F):
+        "DM_MUTE_1": 0xCC0C,  # Dedicated mute key for macro 1
+        "DM_MUTE_2": 0xCC0D,  # Dedicated mute key for macro 2
+        "DM_MUTE_3": 0xCC0E,  # Dedicated mute key for macro 3
+        "DM_MUTE_4": 0xCC0F,  # Dedicated mute key for macro 4
+
+        # Save and copy operations:
+        "DM_COPY": 0xCC22,  # Copy button
+        "DM_SAVE_1": 0xCC23,  # Save macro 1
+        "DM_SAVE_2": 0xCC24,  # Save macro 2  
+        "DM_SAVE_3": 0xCC25,  # Save macro 3
+        "DM_SAVE_4": 0xCC26,  # Save macro 4
+        "DM_SAVE_ALL": 0xCC27,  # Save All Loops button
+
+        # Speed controls:
+        "DM_SPEED_MOD": 0xCC28,  # Speed modifier button (hold + macro to change speed)
+        "DM_SLOW_MOD": 0xCC29,  # Slow modifier button (hold + macro to change speed)
+
+        # Individual speed toggles (0xCC2A-0xCC2D):
+        "DM_SPEED_1": 0xCC2A,  # Individual speed toggle for macro 1
+        "DM_SPEED_2": 0xCC2B,  # Individual speed toggle for macro 2
+        "DM_SPEED_3": 0xCC2C,  # Individual speed toggle for macro 3
+        "DM_SPEED_4": 0xCC2D,  # Individual speed toggle for macro 4
+
+        # Individual slow toggles (0xCC2E-0xCC31):
+        "DM_SLOW_1": 0xCC2E,  # Individual slow toggle for macro 1
+        "DM_SLOW_2": 0xCC2F,  # Individual slow toggle for macro 2
+        "DM_SLOW_3": 0xCC30,  # Individual slow toggle for macro 3
+        "DM_SLOW_4": 0xCC31,  # Individual slow toggle for macro 4
+
+        # Navigation controls:
+        "DM_NAV_BWD_1S": 0xCC3A,  # Navigate backward 1 second
+        "DM_NAV_FWD_1S": 0xCC3B,  # Navigate forward 1 second
+        "DM_NAV_BWD_5S": 0xCC3C,  # Navigate backward 5 seconds
+        "DM_NAV_FWD_5S": 0xCC3D,  # Navigate forward 5 seconds
+        "DM_PLAY_PAUSE": 0xCC3E,  # Global play/pause toggle button
+        "DM_RESET_SPEED": 0xCC3F,  # Reset all speeds and BPM to original
+
+        # Fractional navigation (0xCC40-0xCC47):
+        "DM_SKIP_0_8": 0xCC40,  # Skip to 0/8 (start)
+        "DM_SKIP_1_8": 0xCC41,  # Skip to 1/8 
+        "DM_SKIP_2_8": 0xCC42,  # Skip to 2/8
+        "DM_SKIP_3_8": 0xCC43,  # Skip to 3/8
+        "DM_SKIP_4_8": 0xCC44,  # Skip to 4/8 (middle)
+        "DM_SKIP_5_8": 0xCC45,  # Skip to 5/8
+        "DM_SKIP_6_8": 0xCC46,  # Skip to 6/8
+        "DM_SKIP_7_8": 0xCC47,  # Skip to 7/8
+
+        # Main macro keys (0xCC08-0xCC0B):
+        "DM_MACRO_1": 0xCC08,  # Macro key 1
+        "DM_MACRO_2": 0xCC09,  # Macro key 2
+        "DM_MACRO_3": 0xCC0A,  # Macro key 3
+        "DM_MACRO_4": 0xCC0B,  # Macro key 4
+
+        "QK_KB": 0xCC48, #custom keycodes safe range
         
         
        
