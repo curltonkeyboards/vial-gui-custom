@@ -115,6 +115,7 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(42, "Solid Multisplash"),
     VialRGBEffect(43, "Pixel Rain"),
     VialRGBEffect(44, "Pixel Fractal"),
+    VialRGBEffect(45, "MIDI Switch Auto Light"),  # Add this line
 ]
 
 
