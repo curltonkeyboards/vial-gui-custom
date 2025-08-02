@@ -1417,10 +1417,10 @@ class LoopTab(QScrollArea):
         
         self.main_layout.addLayout(button_layout)
         
-        # Basic container with horizontal layout
+        # Basic container with horizontal layout - reduced spacing
         self.basic_container = QWidget()
         self.basic_layout = QHBoxLayout(self.basic_container)  # Changed to horizontal
-        self.basic_layout.setSpacing(0)  # Space between left and right sections
+        self.basic_layout.setSpacing(30)  # Fixed spacing between left and right sections
         self.basic_layout.setContentsMargins(20, 10, 20, 10)
         self.main_layout.addWidget(self.basic_container)
         
@@ -1532,8 +1532,8 @@ class LoopTab(QScrollArea):
             main_loop_row = self.create_button_row(main_loop_keycodes, 4)
             left_section.addWidget(main_loop_row)
         
-        left_section.addStretch()
-        self.basic_layout.addLayout(left_section)
+        # Don't add stretch - let content determine size
+        self.basic_layout.addLayout(left_section, 0)  # stretch factor 0
         
         # Right side: Global Controls
         right_section = QVBoxLayout()
@@ -1561,8 +1561,11 @@ class LoopTab(QScrollArea):
             
             right_section.addWidget(global_container)
         
-        right_section.addStretch()
-        self.basic_layout.addLayout(right_section)
+        # Don't add stretch - let content determine size
+        self.basic_layout.addLayout(right_section, 0)  # stretch factor 0
+        
+        # Add a single stretch at the end to push everything left if needed
+        self.basic_layout.addStretch(1)
 
     def show_advanced(self):
         self.basic_container.show()  # Keep basic controls visible
@@ -1624,8 +1627,8 @@ class LoopTab(QScrollArea):
             main_controls_layout.addWidget(octave_row)
         
         left_section.addWidget(main_controls_container)
-        left_section.addStretch()
-        self.basic_layout.addLayout(left_section)
+        # Don't add stretch
+        self.basic_layout.addLayout(left_section, 0)  # stretch factor 0
         
         # Right side: Global Controls (same as before)
         right_section = QVBoxLayout()
@@ -1653,8 +1656,11 @@ class LoopTab(QScrollArea):
             
             right_section.addWidget(global_container)
         
-        right_section.addStretch()
-        self.basic_layout.addLayout(right_section)
+        # Don't add stretch
+        self.basic_layout.addLayout(right_section, 0)  # stretch factor 0
+        
+        # Add a single stretch at the end to push everything left if needed
+        self.basic_layout.addStretch(1)
 
     def recreate_buttons(self, keycode_filter=None):
         # Store the current filter
@@ -1734,7 +1740,7 @@ class LoopTab(QScrollArea):
         
         # Add spacing between sections only if both exist
         if skip_keycodes and (speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes):
-            second_row.addSpacing(20)  # Fixed spacing between sections when both exist
+            second_row.addSpacing(60)  # Fixed spacing between sections when both exist
         
         # Right: Speed Controls
         if speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes:
