@@ -1355,6 +1355,7 @@ class ModernButton(QPushButton):
         return '#{:02x}{:02x}{:02x}'.format(*rgb)
 
 import math
+
 class LoopTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
     
@@ -1666,15 +1667,15 @@ class LoopTab(QScrollArea):
         
         # Organize advanced keycodes by category
         octave_keycodes = [kc for kc in self.advanced_keycodes 
-                          if "OCT" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+                          if "OCT" in kc.qmk_id and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         speed_keycodes = [kc for kc in self.advanced_keycodes 
-                         if "SPEED" in kc.qmk_id or "SLOW" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+                         if ("SPEED" in kc.qmk_id or "SLOW" in kc.qmk_id) and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         nav_keycodes = [kc for kc in self.advanced_keycodes 
-                       if "NAV" in kc.qmk_id or "SKIP" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+                       if ("NAV" in kc.qmk_id or "SKIP" in kc.qmk_id) and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         save_keycodes = [kc for kc in self.advanced_keycodes 
-                        if "SAVE" in kc.qmk_id or "COPY" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+                        if ("SAVE" in kc.qmk_id or "COPY" in kc.qmk_id) and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         control_keycodes = [kc for kc in self.advanced_keycodes 
-                           if "PLAY" in kc.qmk_id or "RESET" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+                           if ("PLAY" in kc.qmk_id or "RESET" in kc.qmk_id) and (keycode_filter is None or keycode_filter(kc.qmk_id))]
         
         # Octave Controls
         if octave_keycodes:
