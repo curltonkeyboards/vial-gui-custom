@@ -1449,6 +1449,7 @@ class LoopTab(QScrollArea):
         
         title_label = QLabel(title)
         title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("font-size: 13px;")
         header_layout.addWidget(title_label)
         
         return header_layout
