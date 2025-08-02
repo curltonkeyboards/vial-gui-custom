@@ -1355,7 +1355,6 @@ class ModernButton(QPushButton):
         return '#{:02x}{:02x}{:02x}'.format(*rgb)
 
 import math
-
 class LoopTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
     
@@ -1364,13 +1363,10 @@ class LoopTab(QScrollArea):
         self.label = label
         self.loop_keycodes = loop_keycodes
         
-        # Define basic keycodes (12 buttons total)
+        # Define basic keycodes
         self.basic_keycode_ids = [
-            # Main loop keys (4)
             "DM_MACRO_1", "DM_MACRO_2", "DM_MACRO_3", "DM_MACRO_4",
-            # Dedicated mute keys (4)
             "DM_MUTE_1", "DM_MUTE_2", "DM_MUTE_3", "DM_MUTE_4",
-            # Control buttons (4)
             "DM_MUTE", "DM_OVERDUB", "DM_UNSYNC", "DM_OCT_MOD"
         ]
         
@@ -1389,138 +1385,374 @@ class LoopTab(QScrollArea):
         
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(10)
+        self.main_layout.setSpacing(25)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
         self.main_layout.setAlignment(Qt.AlignTop)
         
-        # Toggle buttons with center alignment
+        # Title section with better spacing
+        title_layout = QHBoxLayout()
+        title_layout.addStretch(1)
+        
+        title_label = QLabel("Loop Control System")
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #2E3440; margin-bottom: 10px;")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_layout.addWidget(title_label)
+        title_layout.addStretch(1)
+        
+        self.main_layout.addLayout(title_layout)
+        
+        # Toggle buttons with improved styling
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(0)  # No spacing between buttons
+        button_layout.addStretch(2)
         
-        # Add stretch before buttons
-        button_layout.addStretch(1)
-        
-        self.toggle_basic = QPushButton("Basic")
+        self.toggle_basic = QPushButton("● Basic Controls")
         self.toggle_basic.clicked.connect(self.show_basic)
-        self.toggle_basic.setFixedSize(120, 40)
+        self.toggle_basic.setFixedSize(140, 45)
+        self.toggle_basic.setStyleSheet("""
+            QPushButton {
+                border: 2px solid #D8DEE9;
+                border-radius: 8px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #ECEFF4;
+            }
+        """)
         button_layout.addWidget(self.toggle_basic)
         
-        self.toggle_advanced = QPushButton("Advanced")
+        button_layout.addSpacing(20)
+        
+        self.toggle_advanced = QPushButton("⚙ Advanced Controls")
         self.toggle_advanced.clicked.connect(self.show_advanced)
-        self.toggle_advanced.setFixedSize(120, 40)
+        self.toggle_advanced.setFixedSize(140, 45)
+        self.toggle_advanced.setStyleSheet("""
+            QPushButton {
+                border: 2px solid #D8DEE9;
+                border-radius: 8px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #ECEFF4;
+            }
+        """)
         button_layout.addWidget(self.toggle_advanced)
         
-        # Add stretch after buttons
-        button_layout.addStretch(1)
-        
+        button_layout.addStretch(2)
         self.main_layout.addLayout(button_layout)
         
-        # Container for basic buttons with horizontal centering
+        # Basic container with sophisticated layout
         self.basic_container = QWidget()
-        basic_outer_layout = QHBoxLayout(self.basic_container)
-        basic_outer_layout.addStretch(1)  # Left spacer
-        self.basic_grid = QGridLayout()
-        self.basic_grid.setSpacing(10)
-        basic_outer_layout.addLayout(self.basic_grid)
-        basic_outer_layout.addStretch(1)  # Right spacer
+        self.basic_layout = QVBoxLayout(self.basic_container)
+        self.basic_layout.setSpacing(30)
+        self.basic_layout.setContentsMargins(40, 20, 40, 20)
         self.main_layout.addWidget(self.basic_container)
         
-        # Container for advanced buttons with horizontal centering
+        # Advanced container with sophisticated layout
         self.advanced_container = QWidget()
-        advanced_outer_layout = QHBoxLayout(self.advanced_container)
-        advanced_outer_layout.addStretch(1)  # Left spacer
-        self.advanced_grid = QGridLayout()
-        self.advanced_grid.setSpacing(10)
-        advanced_outer_layout.addLayout(self.advanced_grid)
-        advanced_outer_layout.addStretch(1)  # Right spacer
+        self.advanced_layout = QVBoxLayout(self.advanced_container)
+        self.advanced_layout.setSpacing(25)
+        self.advanced_layout.setContentsMargins(40, 20, 40, 20)
         self.main_layout.addWidget(self.advanced_container)
         self.advanced_container.hide()
         
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         # Show basic by default and highlight its button
         self.show_basic()
         self.recreate_buttons()
 
+    def create_section_header(self, title, description=""):
+        """Create a styled section header with title and optional description"""
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(5)
+        
+        # Title
+        title_label = QLabel(title)
+        title_label.setStyleSheet("""
+            font-size: 14px; 
+            font-weight: bold; 
+            color: #2E3440;
+            border-bottom: 2px solid #D8DEE9;
+            padding-bottom: 5px;
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(title_label)
+        
+        # Description (if provided)
+        if description:
+            desc_label = QLabel(description)
+            desc_label.setStyleSheet("""
+                font-size: 10px; 
+                color: #5E81AC;
+                font-style: italic;
+            """)
+            desc_label.setAlignment(Qt.AlignCenter)
+            desc_label.setWordWrap(True)
+            header_layout.addWidget(desc_label)
+        
+        return header_layout
+
+    def create_button_row(self, keycodes, buttons_per_row=4, button_size=(85, 65)):
+        """Create a centered row of buttons with proper spacing"""
+        container = QWidget()
+        main_layout = QHBoxLayout(container)
+        main_layout.addStretch(1)
+        
+        # Create rows of buttons
+        current_row = 0
+        buttons_in_current_row = 0
+        row_layout = QHBoxLayout()
+        
+        for keycode in keycodes:
+            if buttons_in_current_row == 0:
+                row_layout = QHBoxLayout()
+                row_layout.setSpacing(15)
+            
+            btn = QPushButton(Keycode.label(keycode.qmk_id))
+            btn.setFixedSize(*button_size)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid #D8DEE9;
+                    border-radius: 6px;
+                    padding: 5px;
+                    font-size: 10px;
+                    background-color: #FBFCFD;
+                }
+                QPushButton:hover {
+                    background-color: #ECEFF4;
+                    border-color: #88C0D0;
+                }
+                QPushButton:pressed {
+                    background-color: #D8DEE9;
+                }
+            """)
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            row_layout.addWidget(btn)
+            
+            buttons_in_current_row += 1
+            
+            if buttons_in_current_row >= buttons_per_row:
+                main_layout.addLayout(row_layout)
+                buttons_in_current_row = 0
+                current_row += 1
+        
+        # Add remaining buttons if any
+        if buttons_in_current_row > 0:
+            main_layout.addLayout(row_layout)
+        
+        main_layout.addStretch(1)
+        return container
+
     def show_basic(self):
         self.basic_container.show()
         self.advanced_container.hide()
         self.toggle_basic.setStyleSheet("""
-            background-color: #B8D8EB;
-            color: #395968;
+            QPushButton {
+                border: 2px solid #5E81AC;
+                border-radius: 8px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+                background-color: #E5E9F0;
+                color: #2E3440;
+            }
         """)
-        self.toggle_advanced.setStyleSheet("")  # Reset to default
+        self.toggle_advanced.setStyleSheet("""
+            QPushButton {
+                border: 2px solid #D8DEE9;
+                border-radius: 8px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #ECEFF4;
+            }
+        """)
 
     def show_advanced(self):
         self.basic_container.hide()
         self.advanced_container.show()
         self.toggle_advanced.setStyleSheet("""
-            background-color: #C9E4CA;
-            color: #4A654B;
+            QPushButton {
+                border: 2px solid #5E81AC;
+                border-radius: 8px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+                background-color: #E5E9F0;
+                color: #2E3440;
+            }
         """)
-        self.toggle_basic.setStyleSheet("")  # Reset to default
+        self.toggle_basic.setStyleSheet("""
+            QPushButton {
+                border: 2px solid #D8DEE9;
+                border-radius: 8px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #ECEFF4;
+            }
+        """)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
-        while self.basic_grid.count():
-            item = self.basic_grid.takeAt(0)
+        while self.basic_layout.count():
+            item = self.basic_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
                 
-        while self.advanced_grid.count():
-            item = self.advanced_grid.takeAt(0)
+        while self.advanced_layout.count():
+            item = self.advanced_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
 
-        # Create Basic buttons in a logical layout
-        # Row 1: Main loop keys (4 buttons)
-        for i, keycode in enumerate(self.basic_keycodes[:4]):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 60)
-                btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.basic_grid.addWidget(btn, 0, i)
+        # === BASIC LAYOUT ===
         
-        # Row 2: Dedicated mute keys (4 buttons)
-        for i, keycode in enumerate(self.basic_keycodes[4:8]):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 60)
-                btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.basic_grid.addWidget(btn, 1, i)
+        # Main Loop Controls Section
+        header = self.create_section_header(
+            "🎵 Main Loop Controls", 
+            "Primary loop recording and playback controls"
+        )
+        self.basic_layout.addLayout(header)
         
-        # Row 3: Control buttons (4 buttons)
-        for i, keycode in enumerate(self.basic_keycodes[8:12]):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 60)
-                btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98;")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.basic_grid.addWidget(btn, 2, i)
+        main_loop_keycodes = [kc for kc in self.basic_keycodes[:4] 
+                             if keycode_filter is None or keycode_filter(kc.qmk_id)]
+        if main_loop_keycodes:
+            main_loop_row = self.create_button_row(main_loop_keycodes, 4, (100, 70))
+            self.basic_layout.addWidget(main_loop_row)
+        
+        # Individual Mute Controls Section
+        header = self.create_section_header(
+            "🔇 Individual Mute Controls", 
+            "Dedicated mute buttons for each loop"
+        )
+        self.basic_layout.addLayout(header)
+        
+        mute_keycodes = [kc for kc in self.basic_keycodes[4:8] 
+                        if keycode_filter is None or keycode_filter(kc.qmk_id)]
+        if mute_keycodes:
+            mute_row = self.create_button_row(mute_keycodes, 4, (90, 60))
+            self.basic_layout.addWidget(mute_row)
+        
+        # Global Control Section
+        header = self.create_section_header(
+            "⚡ Global Controls", 
+            "System-wide loop control functions"
+        )
+        self.basic_layout.addLayout(header)
+        
+        global_keycodes = [kc for kc in self.basic_keycodes[8:12] 
+                          if keycode_filter is None or keycode_filter(kc.qmk_id)]
+        if global_keycodes:
+            global_row = self.create_button_row(global_keycodes, 4, (95, 65))
+            self.basic_layout.addWidget(global_row)
 
-        # Create Advanced buttons (flexible grid layout - 6 columns)
-        for i, keycode in enumerate(self.advanced_keycodes):
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 6
-                col = i % 6
-                btn = QPushButton(Keycode.label(keycode.qmk_id))
-                btn.setFixedSize(80, 60)
-                btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                self.advanced_grid.addWidget(btn, row, col)
+        # === ADVANCED LAYOUT ===
+        
+        # Organize advanced keycodes by category
+        octave_keycodes = [kc for kc in self.advanced_keycodes 
+                          if "OCT" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+        speed_keycodes = [kc for kc in self.advanced_keycodes 
+                         if "SPEED" in kc.qmk_id or "SLOW" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+        nav_keycodes = [kc for kc in self.advanced_keycodes 
+                       if "NAV" in kc.qmk_id or "SKIP" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+        save_keycodes = [kc for kc in self.advanced_keycodes 
+                        if "SAVE" in kc.qmk_id or "COPY" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+        control_keycodes = [kc for kc in self.advanced_keycodes 
+                           if "PLAY" in kc.qmk_id or "RESET" in kc.qmk_id and keycode_filter is None or keycode_filter(kc.qmk_id)]
+        
+        # Octave Controls
+        if octave_keycodes:
+            header = self.create_section_header(
+                "🎼 Octave Controls", 
+                "Transpose loops by octaves for harmonic variation"
+            )
+            self.advanced_layout.addLayout(header)
+            octave_row = self.create_button_row(octave_keycodes, 5, (85, 60))
+            self.advanced_layout.addWidget(octave_row)
+        
+        # Speed Controls
+        if speed_keycodes:
+            header = self.create_section_header(
+                "⏩ Speed Controls", 
+                "Adjust playback speed and tempo of loops"
+            )
+            self.advanced_layout.addLayout(header)
+            speed_row = self.create_button_row(speed_keycodes, 6, (80, 55))
+            self.advanced_layout.addWidget(speed_row)
+        
+        # Navigation Controls
+        if nav_keycodes:
+            header = self.create_section_header(
+                "🧭 Navigation Controls", 
+                "Jump to specific positions within loops"
+            )
+            self.advanced_layout.addLayout(header)
+            nav_row = self.create_button_row(nav_keycodes, 6, (75, 55))
+            self.advanced_layout.addWidget(nav_row)
+        
+        # Playback Controls
+        if control_keycodes:
+            header = self.create_section_header(
+                "▶️ Playback Controls", 
+                "Global playback and system reset functions"
+            )
+            self.advanced_layout.addLayout(header)
+            control_row = self.create_button_row(control_keycodes, 3, (110, 65))
+            self.advanced_layout.addWidget(control_row)
+        
+        # Save & Copy Operations
+        if save_keycodes:
+            header = self.create_section_header(
+                "💾 Save & Copy Operations", 
+                "Store and duplicate your loop creations"
+            )
+            self.advanced_layout.addLayout(header)
+            save_row = self.create_button_row(save_keycodes, 4, (90, 60))
+            self.advanced_layout.addWidget(save_row)
+
+        # Add stretch to push everything to top
+        self.basic_layout.addStretch()
+        self.advanced_layout.addStretch()
+
+    def clear_layout(self, layout):
+        """Helper method to clear a layout completely"""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
 
     def relabel_buttons(self):
-        for grid in [self.basic_grid, self.advanced_grid]:
-            for i in range(grid.count()):
-                widget = grid.itemAt(i).widget()
-                if hasattr(widget, 'keycode'):
-                    widget.setText(Keycode.label(widget.keycode.qmk_id))
+        """Recursively find and relabel all buttons in both containers"""
+        self._relabel_buttons_in_widget(self.basic_container)
+        self._relabel_buttons_in_widget(self.advanced_container)
+    
+    def _relabel_buttons_in_widget(self, widget):
+        """Helper method to recursively relabel buttons in a widget"""
+        if hasattr(widget, 'keycode') and isinstance(widget, QPushButton):
+            widget.setText(Keycode.label(widget.keycode.qmk_id))
+        
+        # Recursively check all child widgets
+        for child in widget.findChildren(QPushButton):
+            if hasattr(child, 'keycode'):
+                child.setText(Keycode.label(child.keycode.qmk_id))
 
     def has_buttons(self):
         return len(self.basic_keycodes) > 0 or len(self.advanced_keycodes) > 0
