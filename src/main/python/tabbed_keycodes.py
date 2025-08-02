@@ -1356,6 +1356,175 @@ class ModernButton(QPushButton):
 
 import math
 
+class LoopTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+    
+    def __init__(self, parent, label, loop_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.loop_keycodes = loop_keycodes
+        
+        # Define basic keycodes (12 buttons total)
+        self.basic_keycode_ids = [
+            # Main loop keys (4)
+            "DM_MACRO_1", "DM_MACRO_2", "DM_MACRO_3", "DM_MACRO_4",
+            # Dedicated mute keys (4)
+            "DM_MUTE_1", "DM_MUTE_2", "DM_MUTE_3", "DM_MUTE_4",
+            # Control buttons (4)
+            "DM_MUTE", "DM_OVERDUB", "DM_UNSYNC", "DM_OCT_MOD"
+        ]
+        
+        # Separate basic and advanced keycodes
+        self.basic_keycodes = []
+        self.advanced_keycodes = []
+        
+        for keycode in loop_keycodes:
+            if keycode.qmk_id in self.basic_keycode_ids:
+                self.basic_keycodes.append(keycode)
+            else:
+                self.advanced_keycodes.append(keycode)
+        
+        # Sort basic keycodes by the order defined in basic_keycode_ids
+        self.basic_keycodes.sort(key=lambda x: self.basic_keycode_ids.index(x.qmk_id))
+        
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(10)
+        self.main_layout.setAlignment(Qt.AlignTop)
+        
+        # Toggle buttons with center alignment
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(0)  # No spacing between buttons
+        
+        # Add stretch before buttons
+        button_layout.addStretch(1)
+        
+        self.toggle_basic = QPushButton("Basic")
+        self.toggle_basic.clicked.connect(self.show_basic)
+        self.toggle_basic.setFixedSize(120, 40)
+        button_layout.addWidget(self.toggle_basic)
+        
+        self.toggle_advanced = QPushButton("Advanced")
+        self.toggle_advanced.clicked.connect(self.show_advanced)
+        self.toggle_advanced.setFixedSize(120, 40)
+        button_layout.addWidget(self.toggle_advanced)
+        
+        # Add stretch after buttons
+        button_layout.addStretch(1)
+        
+        self.main_layout.addLayout(button_layout)
+        
+        # Container for basic buttons with horizontal centering
+        self.basic_container = QWidget()
+        basic_outer_layout = QHBoxLayout(self.basic_container)
+        basic_outer_layout.addStretch(1)  # Left spacer
+        self.basic_grid = QGridLayout()
+        self.basic_grid.setSpacing(10)
+        basic_outer_layout.addLayout(self.basic_grid)
+        basic_outer_layout.addStretch(1)  # Right spacer
+        self.main_layout.addWidget(self.basic_container)
+        
+        # Container for advanced buttons with horizontal centering
+        self.advanced_container = QWidget()
+        advanced_outer_layout = QHBoxLayout(self.advanced_container)
+        advanced_outer_layout.addStretch(1)  # Left spacer
+        self.advanced_grid = QGridLayout()
+        self.advanced_grid.setSpacing(10)
+        advanced_outer_layout.addLayout(self.advanced_grid)
+        advanced_outer_layout.addStretch(1)  # Right spacer
+        self.main_layout.addWidget(self.advanced_container)
+        self.advanced_container.hide()
+        
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        
+        # Show basic by default and highlight its button
+        self.show_basic()
+        self.recreate_buttons()
+
+    def show_basic(self):
+        self.basic_container.show()
+        self.advanced_container.hide()
+        self.toggle_basic.setStyleSheet("""
+            background-color: #B8D8EB;
+            color: #395968;
+        """)
+        self.toggle_advanced.setStyleSheet("")  # Reset to default
+
+    def show_advanced(self):
+        self.basic_container.hide()
+        self.advanced_container.show()
+        self.toggle_advanced.setStyleSheet("""
+            background-color: #C9E4CA;
+            color: #4A654B;
+        """)
+        self.toggle_basic.setStyleSheet("")  # Reset to default
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear existing layouts
+        while self.basic_grid.count():
+            item = self.basic_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        while self.advanced_grid.count():
+            item = self.advanced_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Create Basic buttons in a logical layout
+        # Row 1: Main loop keys (4 buttons)
+        for i, keycode in enumerate(self.basic_keycodes[:4]):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(80, 60)
+                btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.basic_grid.addWidget(btn, 0, i)
+        
+        # Row 2: Dedicated mute keys (4 buttons)
+        for i, keycode in enumerate(self.basic_keycodes[4:8]):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(80, 60)
+                btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.basic_grid.addWidget(btn, 1, i)
+        
+        # Row 3: Control buttons (4 buttons)
+        for i, keycode in enumerate(self.basic_keycodes[8:12]):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(80, 60)
+                btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98;")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.basic_grid.addWidget(btn, 2, i)
+
+        # Create Advanced buttons (flexible grid layout - 6 columns)
+        for i, keycode in enumerate(self.advanced_keycodes):
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                row = i // 6
+                col = i % 6
+                btn = QPushButton(Keycode.label(keycode.qmk_id))
+                btn.setFixedSize(80, 60)
+                btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                self.advanced_grid.addWidget(btn, row, col)
+
+    def relabel_buttons(self):
+        for grid in [self.basic_grid, self.advanced_grid]:
+            for i in range(grid.count()):
+                widget = grid.itemAt(i).widget()
+                if hasattr(widget, 'keycode'):
+                    widget.setText(Keycode.label(widget.keycode.qmk_id))
+
+    def has_buttons(self):
+        return len(self.basic_keycodes) > 0 or len(self.advanced_keycodes) > 0
+
 class EarTrainerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
@@ -3112,6 +3281,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),            
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
+            LoopTab(self, "Loop Control", KEYCODES_LOOP_BUTTONS),  # ADD THIS LINE
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
             EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
