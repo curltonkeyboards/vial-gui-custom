@@ -3028,6 +3028,72 @@ KEYCODES_CHORD_PROG_CONTROLS = [
     K("MI_TAP", "Set\nBPM", "Set BPM"),
 ]
 
+KEYCODES_LOOP_BUTTONS = [
+    # Main macro keys
+    K("DM_MACRO_1", "Loop\n1", "Main loop/macro key 1"),
+    K("DM_MACRO_2", "Loop\n2", "Main loop/macro key 2"),
+    K("DM_MACRO_3", "Loop\n3", "Main loop/macro key 3"),
+    K("DM_MACRO_4", "Loop\n4", "Main loop/macro key 4"),
+    
+    # Core control buttons
+    K("DM_MUTE", "Mute\nButton", "Global mute button"),
+    K("DM_OVERDUB", "Overdub\nButton", "Overdub recording button"),
+    K("DM_UNSYNC", "Unsynced\nMode", "Toggle unsynced mode"),
+    K("DM_SAMPLE", "Sample\nMode", "Toggle sample mode"),
+    K("DM_EDIT_MOD", "Global\nEdit", "Global edit modifier button"),
+    K("DM_PLAY_PAUSE", "Play\nPause", "Global play/pause toggle"),
+    
+    # Dedicated mute keys
+    K("DM_MUTE_1", "Mute\nLoop 1", "Dedicated mute for loop 1"),
+    K("DM_MUTE_2", "Mute\nLoop 2", "Dedicated mute for loop 2"),
+    K("DM_MUTE_3", "Mute\nLoop 3", "Dedicated mute for loop 3"),
+    K("DM_MUTE_4", "Mute\nLoop 4", "Dedicated mute for loop 4"),
+    
+    # Octave doubler controls
+    K("DM_OCT_1", "Octave\nLoop 1", "Octave doubler toggle for loop 1"),
+    K("DM_OCT_2", "Octave\nLoop 2", "Octave doubler toggle for loop 2"),
+    K("DM_OCT_3", "Octave\nLoop 3", "Octave doubler toggle for loop 3"),
+    K("DM_OCT_4", "Octave\nLoop 4", "Octave doubler toggle for loop 4"),
+    K("DM_OCT_MOD", "Octave\nModifier", "Octave doubler modifier button"),
+    
+    # Speed controls
+    K("DM_SPEED_MOD", "Speed\nModifier", "Speed modifier button (hold + loop)"),
+    K("DM_SLOW_MOD", "Slow\nModifier", "Slow modifier button (hold + loop)"),
+    K("DM_SPEED_1", "Speed\nLoop 1", "Individual speed toggle for loop 1"),
+    K("DM_SPEED_2", "Speed\nLoop 2", "Individual speed toggle for loop 2"),
+    K("DM_SPEED_3", "Speed\nLoop 3", "Individual speed toggle for loop 3"),
+    K("DM_SPEED_4", "Speed\nLoop 4", "Individual speed toggle for loop 4"),
+    K("DM_SLOW_1", "Slow\nLoop 1", "Individual slow toggle for loop 1"),
+    K("DM_SLOW_2", "Slow\nLoop 2", "Individual slow toggle for loop 2"),
+    K("DM_SLOW_3", "Slow\nLoop 3", "Individual slow toggle for loop 3"),
+    K("DM_SLOW_4", "Slow\nLoop 4", "Individual slow toggle for loop 4"),
+    K("DM_RESET_SPEED", "Reset\nSpeed", "Reset all speeds and BPM to original"),
+    
+    # Navigation controls
+    K("DM_NAV_BWD_1S", "Nav\n◀ 1s", "Navigate backward 1 second"),
+    K("DM_NAV_FWD_1S", "Nav\n1s ▶", "Navigate forward 1 second"),
+    K("DM_NAV_BWD_5S", "Nav\n◀ 5s", "Navigate backward 5 seconds"),
+    K("DM_NAV_FWD_5S", "Nav\n5s ▶", "Navigate forward 5 seconds"),
+    
+    # Fractional navigation
+    K("DM_SKIP_0_8", "Skip\n0/8", "Skip to start (0/8)"),
+    K("DM_SKIP_1_8", "Skip\n1/8", "Skip to 1/8 position"),
+    K("DM_SKIP_2_8", "Skip\n2/8", "Skip to 2/8 position"),
+    K("DM_SKIP_3_8", "Skip\n3/8", "Skip to 3/8 position"),
+    K("DM_SKIP_4_8", "Skip\n4/8", "Skip to middle (4/8)"),
+    K("DM_SKIP_5_8", "Skip\n5/8", "Skip to 5/8 position"),
+    K("DM_SKIP_6_8", "Skip\n6/8", "Skip to 6/8 position"),
+    K("DM_SKIP_7_8", "Skip\n7/8", "Skip to 7/8 position"),
+    
+    # Save and copy operations
+    K("DM_COPY", "Copy\nLoop", "Copy loop operation"),
+    K("DM_SAVE_1", "Save\nLoop 1", "Save loop 1 to file"),
+    K("DM_SAVE_2", "Save\nLoop 2", "Save loop 2 to file"),
+    K("DM_SAVE_3", "Save\nLoop 3", "Save loop 3 to file"),
+    K("DM_SAVE_4", "Save\nLoop 4", "Save loop 4 to file"),
+    K("DM_SAVE_ALL", "Save\nAll", "Save all loops to file"),
+]
+
 
 
 KEYCODES_HIDDEN = []
