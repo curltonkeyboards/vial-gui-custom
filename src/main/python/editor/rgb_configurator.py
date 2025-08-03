@@ -116,30 +116,28 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(43, "Pixel Rain"),
     VialRGBEffect(44, "Pixel Fractal"),
     VialRGBEffect(45, "MIDI Switch Auto Light"),  # Add this line
-    VialRGBEffect(46, "1"),  # Add this line
-    VialRGBEffect(47, "2"),  # Add this line
-    VialRGBEffect(48, "3"),  # Add this line
-    VialRGBEffect(49, "4"),  # Add this line
-    VialRGBEffect(50, "5"),  # Add this line
-    VialRGBEffect(51, "6"),  # Add this line
-    VialRGBEffect(52, "7"),  # Add this line
-    VialRGBEffect(53, "8"),  # Add this line
-    VialRGBEffect(54, "9"),  # Add this line
-    VialRGBEffect(55, "10"),  # Add this line
-    VialRGBEffect(56, "11"),  # Add this line
-    VialRGBEffect(57, "12"),  # Add this line
-    VialRGBEffect(58, "13"),  # Add this line
-    VialRGBEffect(59, "14"),  # Add this line
-    VialRGBEffect(60, "15"),  # Add this line
-    VialRGBEffect(61, "16"),  # Add this line
-    VialRGBEffect(62, "17"),  # Add this line
-    VialRGBEffect(63, "18"),  # Add this line
-    VialRGBEffect(64, "19"),  # Add this line
-    VialRGBEffect(65, "20"),  # Add this line
-    VialRGBEffect(66, "21"),  # Add this line
-    VialRGBEffect(67, "22"),  # Add this line       
+    VialRGBEffect(46, "Reactive Lightning"),
+    VialRGBEffect(47, "Reactive Ripple"),
+    VialRGBEffect(48, "Reactive Fireworks"),
+    VialRGBEffect(49, "Comet Trail"),
+    VialRGBEffect(50, "Tetris Vertical"),
+    VialRGBEffect(51, "Tetris Horizontal"),
+    VialRGBEffect(52, "Fireplace"),
+    VialRGBEffect(53, "Pong"),
+    VialRGBEffect(54, "L/R Sweep Static"),
+    VialRGBEffect(55, "L/R Sweep Rainbow"),
+    VialRGBEffect(56, "L/R Sweep Random"),
+    VialRGBEffect(57, "BPM Pulse Fade"),
+    VialRGBEffect(58, "13"),
+    VialRGBEffect(59, "14"),
+    VialRGBEffect(60, "15"),
+    VialRGBEffect(61, "16"),
+    VialRGBEffect(62, "17"),
+    VialRGBEffect(63, "18"),
+    VialRGBEffect(64, "19"),
+    VialRGBEffect(65, "20"),
+    VialRGBEffect(66, "21"),   
 ]
-
 
 class BasicHandler(QObject):
 
