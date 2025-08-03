@@ -127,7 +127,17 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(54, "9"),  # Add this line
     VialRGBEffect(55, "10"),  # Add this line
     VialRGBEffect(56, "11"),  # Add this line
-    VialRGBEffect(57, "12"),  # Add this line   
+    VialRGBEffect(57, "12"),  # Add this line
+    VialRGBEffect(58, "13"),  # Add this line
+    VialRGBEffect(59, "14"),  # Add this line
+    VialRGBEffect(60, "15"),  # Add this line
+    VialRGBEffect(61, "16"),  # Add this line
+    VialRGBEffect(62, "17"),  # Add this line
+    VialRGBEffect(63, "18"),  # Add this line
+    VialRGBEffect(64, "19"),  # Add this line
+    VialRGBEffect(65, "20"),  # Add this line
+    VialRGBEffect(66, "21"),  # Add this line
+    VialRGBEffect(67, "22"),  # Add this line       
 ]
 
 
