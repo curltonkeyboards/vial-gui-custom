@@ -147,6 +147,11 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(74, "BPM All Disco"),
     VialRGBEffect(75, "BPM All Backlight"),
     VialRGBEffect(76, "BPM All Disco Backlight"), 
+    VialRGBEffect(77, "Loop Heatmap Classic"),
+    VialRGBEffect(78, "Loop Heatmap"), 
+    VialRGBEffect(79, "Loop Zones"),
+    VialRGBEffect(80, "Loop Channels"),
+    
 ]
 
 class BasicHandler(QObject):
