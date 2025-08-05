@@ -147,12 +147,12 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(74, "BPM All Disco"),
     VialRGBEffect(75, "BPM All Backlight"),
     VialRGBEffect(76, "BPM All Disco Backlight"), 
-    VialRGBEffect(77, "Loop Heatmap 1"),
-    VialRGBEffect(78, "Loop Heatmap 2"), 
-    VialRGBEffect(79, "Loop Loop Zones"),
-    VialRGBEffect(80, "Loop Channel Waves"),
-    VialRGBEffect(81, "Loop Channel Zones"),
-    VialRGBEffect(82, "Loop Loop Waves"),
+    VialRGBEffect(77, "Channel Colors"),
+    VialRGBEffect(78, "Channel Colors Backlight"),
+    VialRGBEffect(79, "Loop Zones"),
+    VialRGBEffect(80, "Loop Zones Backlight"),
+    VialRGBEffect(81, "Truekey Wide"),
+    VialRGBEffect(82, "Truekey Wide Backlight"),
 
     
 ]
