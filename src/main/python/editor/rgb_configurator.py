@@ -153,6 +153,12 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(80, "Loop Zones Backlight"),
     VialRGBEffect(81, "Truekey Wide"),
     VialRGBEffect(82, "Truekey Wide Backlight"),
+    VialRGBEffect(83, "Truekey Basic"),
+    VialRGBEffect(84, "Truekey Basic Backlight"),
+    VialRGBEffect(85, "Truekey Heatmap Narrow"),
+    VialRGBEffect(86, "Truekey Heatmap Narrow Backlight"),
+    VialRGBEffect(87, "Truekey Heatmap Wide"),
+    VialRGBEffect(88, "Truekey Heatmap Wide Backlight"),
 
     
 ]
