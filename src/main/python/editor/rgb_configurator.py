@@ -159,6 +159,12 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(86, "Truekey Heatmap Narrow Backlight"),
     VialRGBEffect(87, "Truekey Heatmap Wide"),
     VialRGBEffect(88, "Truekey Heatmap Wide Backlight"),
+    VialRGBEffect(89, "Quadrants Sustain"),
+    VialRGBEffect(90, "Quadrants Sustain Backlight"),
+    VialRGBEffect(91, "Truekey Sustain"),
+    VialRGBEffect(92, "Truekey Sustain Backlight"),
+    VialRGBEffect(93, "Truekey Subwoof"),
+    VialRGBEffect(94, "Truekey Line"),
 
     
 ]
