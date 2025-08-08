@@ -165,6 +165,7 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(92, "Truekey Sustain Backlight"),
     VialRGBEffect(93, "Truekey Subwoof"),
     VialRGBEffect(94, "Truekey Line"),
+    VialRGBEffect(95, "Truekey Row"),
 
     
 ]
