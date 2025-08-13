@@ -70,9 +70,12 @@ jobs:
       run: |
         python -m venv venv
         . .\venv\Scripts\activate.ps1
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools==59.6.0 wheel
         pip install "Cython>=0.29.0,<3.0.0"
-        pip install -r requirements.txt
+        pip install hidapi==0.14.0
+        pip install altgraph==0.17 fbs==0.9.0 future==0.18.2 keyboard==0.13.5 macholib==1.14 pefile==2019.4.18 PyInstaller==3.4 PyQt5==5.9.2 sip==4.19.8 certifi
+        pip install "pywin32==303; sys_platform == 'win32'"
+        pip install https://github.com/danthedeckie/simpleeval/archive/refs/heads/master.zip
     - name: Install NSIS
       run: |
         Invoke-WebRequest "https://github.com/vial-kb/vial-deps/releases/download/v1/nsis-3.06.1-setup.exe" -UserAgent "wget" -OutFile nsis-3.06.1-setup.exe
