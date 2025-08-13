@@ -10,10 +10,7 @@ from widgets.clickable_label import ClickableLabel
 from util import tr
 from vial_device import VialKeyboard
 from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, CMD_VIAL_LAYER_RGB_LOAD, \
-    CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, \
-    CMD_VIAL_CUSTOM_ANIM_GET_PARAM, CMD_VIAL_CUSTOM_ANIM_SET_ALL, CMD_VIAL_CUSTOM_ANIM_GET_ALL, \
-    CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, \
-    CMD_VIAL_CUSTOM_ANIM_GET_STATUS
+    CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS
 
 
 class QmkRgblightEffect:
@@ -118,7 +115,7 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(42, "Solid Multisplash"),
     VialRGBEffect(43, "Pixel Rain"),
     VialRGBEffect(44, "Pixel Fractal"),
-    VialRGBEffect(45, "MIDI Switch Auto Light"),
+    VialRGBEffect(45, "MIDI Switch Auto Light"),  # Add this line
     VialRGBEffect(46, "Reactive Lightning"),
     VialRGBEffect(47, "Reactive Ripple"),
     VialRGBEffect(48, "Reactive Fireworks"),
@@ -169,53 +166,9 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(93, "Truekey Subwoof"),
     VialRGBEffect(94, "Truekey Line"),
     VialRGBEffect(95, "Truekey Row"),
-    # Custom Slot Effects
-    VialRGBEffect(96, "Custom Slot 0"),
-    VialRGBEffect(97, "Custom Slot 1"),
-    VialRGBEffect(98, "Custom Slot 2"),
-    VialRGBEffect(99, "Custom Slot 3"),
-    VialRGBEffect(100, "Custom Slot 4"),
-    VialRGBEffect(101, "Custom Slot 5"),
-    VialRGBEffect(102, "Custom Slot 6"),
-    VialRGBEffect(103, "Custom Slot 7"),
-    VialRGBEffect(104, "Custom Slot 8"),
-    VialRGBEffect(105, "Custom Slot 9"),
+
+    
 ]
-
-
-# Custom Lights Configuration Constants
-CUSTOM_LIGHT_LIVE_POSITIONS = [
-    "TrueKey", "Zone", "Quadrant", "Note Row Col0", "Note Row Col13", 
-    "Note Col Row0", "Note Col Row4", "Note Row Mixed", "Note Col Mixed"
-]
-
-CUSTOM_LIGHT_MACRO_POSITIONS = [
-    "TrueKey", "Zone", "Quadrant", "Note Row Col0", "Note Row Col13",
-    "Note Col Row0", "Note Col Row4", "Loop Row Col0", "Loop Row Col13", 
-    "Loop Row Alt", "Loop Col"
-]
-
-CUSTOM_LIGHT_ANIMATIONS = [
-    "None", "Heat", "Sustain", "Moving Dots Row", "Moving Dots Col"
-]
-
-CUSTOM_LIGHT_BACKGROUNDS = [
-    "None", "Static", "BPM Pulse Fade", "BPM All Disco"
-]
-
-CUSTOM_LIGHT_COLOR_TYPES = [
-    "Base", "Channel", "Macro", "Heat"
-]
-
-CUSTOM_LIGHT_PULSE_MODES = [
-    "None", "Live Only", "Macro Only", "All"
-]
-
-CUSTOM_LIGHT_PRESETS = [
-    "Classic TrueKey", "Heat Effects", "Moving Dots", "BPM Disco",
-    "Zone Lighting", "Sustain Mode", "Performance Setup"
-]
-
 
 class BasicHandler(QObject):
 
@@ -649,249 +602,6 @@ class LayerRGBHandler(BasicHandler):
         for w in self.widgets:
             w.show()
 
-
-class CustomLightsHandler(BasicHandler):
-    """Handler for custom animation slot configuration"""
-
-    def __init__(self, container):
-        super().__init__(container)
-
-        row = container.rowCount()
-
-        # Slot selector
-        self.lbl_slot = QLabel(tr("RGBConfigurator", "Slot"))
-        container.addWidget(self.lbl_slot, row, 0)
-        self.slot_selector = QComboBox()
-        for i in range(10):
-            self.slot_selector.addItem(f"Slot {i}")
-        self.slot_selector.currentIndexChanged.connect(self.on_slot_changed)
-        container.addWidget(self.slot_selector, row, 1)
-
-        # Live Position
-        self.lbl_live_position = QLabel(tr("RGBConfigurator", "Live Position"))
-        container.addWidget(self.lbl_live_position, row + 1, 0)
-        self.live_position = QComboBox()
-        for pos in CUSTOM_LIGHT_LIVE_POSITIONS:
-            self.live_position.addItem(pos)
-        self.live_position.currentIndexChanged.connect(self.on_live_position_changed)
-        container.addWidget(self.live_position, row + 1, 1)
-
-        # Live Animation
-        self.lbl_live_animation = QLabel(tr("RGBConfigurator", "Live Animation"))
-        container.addWidget(self.lbl_live_animation, row + 2, 0)
-        self.live_animation = QComboBox()
-        for anim in CUSTOM_LIGHT_ANIMATIONS:
-            self.live_animation.addItem(anim)
-        self.live_animation.currentIndexChanged.connect(self.on_live_animation_changed)
-        container.addWidget(self.live_animation, row + 2, 1)
-
-        # Macro Position
-        self.lbl_macro_position = QLabel(tr("RGBConfigurator", "Macro Position"))
-        container.addWidget(self.lbl_macro_position, row + 3, 0)
-        self.macro_position = QComboBox()
-        for pos in CUSTOM_LIGHT_MACRO_POSITIONS:
-            self.macro_position.addItem(pos)
-        self.macro_position.currentIndexChanged.connect(self.on_macro_position_changed)
-        container.addWidget(self.macro_position, row + 3, 1)
-
-        # Macro Animation
-        self.lbl_macro_animation = QLabel(tr("RGBConfigurator", "Macro Animation"))
-        container.addWidget(self.lbl_macro_animation, row + 4, 0)
-        self.macro_animation = QComboBox()
-        for anim in CUSTOM_LIGHT_ANIMATIONS:
-            self.macro_animation.addItem(anim)
-        self.macro_animation.currentIndexChanged.connect(self.on_macro_animation_changed)
-        container.addWidget(self.macro_animation, row + 4, 1)
-
-        # Background
-        self.lbl_background = QLabel(tr("RGBConfigurator", "Background"))
-        container.addWidget(self.lbl_background, row + 5, 0)
-        self.background = QComboBox()
-        for bg in CUSTOM_LIGHT_BACKGROUNDS:
-            self.background.addItem(bg)
-        self.background.currentIndexChanged.connect(self.on_background_changed)
-        container.addWidget(self.background, row + 5, 1)
-
-        # Color Type
-        self.lbl_color_type = QLabel(tr("RGBConfigurator", "Color Type"))
-        container.addWidget(self.lbl_color_type, row + 6, 0)
-        self.color_type = QComboBox()
-        for color in CUSTOM_LIGHT_COLOR_TYPES:
-            self.color_type.addItem(color)
-        self.color_type.currentIndexChanged.connect(self.on_color_type_changed)
-        container.addWidget(self.color_type, row + 6, 1)
-
-        # Pulse Mode
-        self.lbl_pulse_mode = QLabel(tr("RGBConfigurator", "Pulse Mode"))
-        container.addWidget(self.lbl_pulse_mode, row + 7, 0)
-        self.pulse_mode = QComboBox()
-        for pulse in CUSTOM_LIGHT_PULSE_MODES:
-            self.pulse_mode.addItem(pulse)
-        self.pulse_mode.currentIndexChanged.connect(self.on_pulse_mode_changed)
-        container.addWidget(self.pulse_mode, row + 7, 1)
-
-        # Wide Influence
-        self.lbl_wide_influence = QLabel(tr("RGBConfigurator", "Wide Influence"))
-        container.addWidget(self.lbl_wide_influence, row + 8, 0)
-        self.wide_influence = QCheckBox()
-        self.wide_influence.stateChanged.connect(self.on_wide_influence_changed)
-        container.addWidget(self.wide_influence, row + 8, 1)
-
-        # Buttons
-        buttons_widget = QWidget()
-        buttons_layout = QHBoxLayout(buttons_widget)
-        buttons_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.save_button = QPushButton(tr("RGBConfigurator", "Save"))
-        self.save_button.clicked.connect(self.on_save)
-        buttons_layout.addWidget(self.save_button)
-        
-        self.preset_button = QComboBox()
-        self.preset_button.addItem("Load Preset...")
-        for preset in CUSTOM_LIGHT_PRESETS:
-            self.preset_button.addItem(preset)
-        self.preset_button.currentIndexChanged.connect(self.on_load_preset)
-        buttons_layout.addWidget(self.preset_button)
-        
-        container.addWidget(buttons_widget, row + 9, 0, 1, 2)
-
-        self.widgets = [
-            self.lbl_slot, self.slot_selector,
-            self.lbl_live_position, self.live_position,
-            self.lbl_live_animation, self.live_animation,
-            self.lbl_macro_position, self.macro_position,
-            self.lbl_macro_animation, self.macro_animation,
-            self.lbl_background, self.background,
-            self.lbl_color_type, self.color_type,
-            self.lbl_pulse_mode, self.pulse_mode,
-            self.lbl_wide_influence, self.wide_influence,
-            buttons_widget
-        ]
-
-        self.current_slot = 0
-
-    def update_from_keyboard(self):
-        """Update UI from keyboard state"""
-        if not self.valid():
-            return
-
-        self.block_signals()
-        
-        # Get current slot configuration
-        try:
-            if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                config = self.device.keyboard.get_custom_slot_config(self.current_slot)
-                if config:
-                    self.live_position.setCurrentIndex(min(config[0], len(CUSTOM_LIGHT_LIVE_POSITIONS) - 1))
-                    self.macro_position.setCurrentIndex(min(config[1], len(CUSTOM_LIGHT_MACRO_POSITIONS) - 1))
-                    self.live_animation.setCurrentIndex(min(config[2], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                    self.macro_animation.setCurrentIndex(min(config[3], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                    self.wide_influence.setChecked(bool(config[4]))
-                    self.background.setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
-                    self.pulse_mode.setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_PULSE_MODES) - 1))
-                    self.color_type.setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
-                else:
-                    self.set_defaults()
-            else:
-                self.set_defaults()
-        except Exception as e:
-            print(f"Error updating custom lights from keyboard: {e}")
-            # Set defaults if error
-            self.set_defaults()
-
-        self.unblock_signals()
-
-    def set_defaults(self):
-        """Set default values for all controls"""
-        self.live_position.setCurrentIndex(0)  # TrueKey
-        self.macro_position.setCurrentIndex(0)  # TrueKey
-        self.live_animation.setCurrentIndex(0)  # None
-        self.macro_animation.setCurrentIndex(0)  # None
-        self.background.setCurrentIndex(0)  # None
-        self.color_type.setCurrentIndex(1)  # Channel
-        self.pulse_mode.setCurrentIndex(3)  # All
-        self.wide_influence.setChecked(False)
-
-    def valid(self):
-        """Check if custom lights are supported"""
-        return isinstance(self.device, VialKeyboard) and \
-               hasattr(self.device.keyboard, 'custom_lights_supported') and \
-               self.device.keyboard.custom_lights_supported
-
-    def on_slot_changed(self, index):
-        """Handle slot selection change"""
-        self.current_slot = index
-        self.update_from_keyboard()
-
-    def on_live_position_changed(self, index):
-        """Handle live position change"""
-        self.send_parameter_change(0, index)
-
-    def on_macro_position_changed(self, index):
-        """Handle macro position change"""
-        self.send_parameter_change(1, index)
-
-    def on_live_animation_changed(self, index):
-        """Handle live animation change"""
-        self.send_parameter_change(2, index)
-
-    def on_macro_animation_changed(self, index):
-        """Handle macro animation change"""
-        self.send_parameter_change(3, index)
-
-    def on_wide_influence_changed(self, checked):
-        """Handle wide influence toggle"""
-        self.send_parameter_change(4, 1 if checked else 0)
-
-    def on_background_changed(self, index):
-        """Handle background change"""
-        self.send_parameter_change(5, index)
-
-    def on_pulse_mode_changed(self, index):
-        """Handle pulse mode change"""
-        self.send_parameter_change(6, index)
-
-    def on_color_type_changed(self, index):
-        """Handle color type change"""
-        self.send_parameter_change(7, index)
-
-    def send_parameter_change(self, param_index, value):
-        """Send parameter change to keyboard"""
-        try:
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(self.current_slot, param_index, value)
-                self.update.emit()
-        except Exception as e:
-            print(f"Error setting custom slot parameter: {e}")
-
-    def on_save(self):
-        """Save all custom slot configurations to EEPROM"""
-        try:
-            if hasattr(self.device.keyboard, 'save_custom_slots'):
-                self.device.keyboard.save_custom_slots()
-                print("Custom slots saved to EEPROM")
-        except Exception as e:
-            print(f"Error saving custom slots: {e}")
-
-    def on_load_preset(self, index):
-        """Load a preset configuration"""
-        if index == 0:  # "Load Preset..." header
-            return
-            
-        preset_index = index - 1  # Adjust for header
-        try:
-            if hasattr(self.device.keyboard, 'load_custom_slot_preset'):
-                self.device.keyboard.load_custom_slot_preset(self.current_slot, preset_index)
-                self.update_from_keyboard()
-                self.update.emit()
-                print(f"Loaded preset {preset_index} to slot {self.current_slot}")
-        except Exception as e:
-            print(f"Error loading preset: {e}")
-        
-        # Reset combo box to header
-        self.preset_button.setCurrentIndex(0)
-
-
 class RGBConfigurator(BasicEditor):
 
     def __init__(self):
@@ -913,17 +623,12 @@ class RGBConfigurator(BasicEditor):
         self.handler_vialrgb = VialRGBHandler(self.container)
         self.handler_vialrgb.update.connect(self.update_from_keyboard)
         
-        # Add the per-layer RGB handler
+        # Add the new per-layer RGB handler
         self.handler_layer_rgb = LayerRGBHandler(self.container)
         self.handler_layer_rgb.update.connect(self.update_from_keyboard)
         
-        # Add the custom lights handler
-        self.handler_custom_lights = CustomLightsHandler(self.container)
-        self.handler_custom_lights.update.connect(self.update_from_keyboard)
-        
         self.handlers = [self.handler_backlight, self.handler_rgblight, 
-                        self.handler_vialrgb, self.handler_layer_rgb,
-                        self.handler_custom_lights]
+                        self.handler_vialrgb, self.handler_layer_rgb]
 
         self.addStretch()
         buttons = QHBoxLayout()
@@ -940,8 +645,7 @@ class RGBConfigurator(BasicEditor):
         return isinstance(self.device, VialKeyboard) and \
                (self.device.keyboard.lighting_qmk_rgblight or self.device.keyboard.lighting_qmk_backlight
                 or self.device.keyboard.lighting_vialrgb or 
-                (hasattr(self.device.keyboard, 'layer_rgb_supported') and self.device.keyboard.layer_rgb_supported) or
-                (hasattr(self.device.keyboard, 'custom_lights_supported') and self.device.keyboard.custom_lights_supported))
+                (hasattr(self.device.keyboard, 'layer_rgb_supported') and self.device.keyboard.layer_rgb_supported))
 
     def block_signals(self):
         for h in self.handlers:
