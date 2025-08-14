@@ -544,7 +544,7 @@ class VialRGBHandler(BasicHandler):
 
 
 class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button"""
+    """Handler for the Rescan LED Positions button - uses VialKeyboard infrastructure"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -578,43 +578,19 @@ class RescanButtonHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Rescan LED positions on the keyboard"""
+        """Rescan LED positions on the keyboard using VialKeyboard infrastructure"""
         try:
-            success = self.rescan_led_positions()
-            if success:
-                print("LED positions rescanned successfully")
-                self.update.emit()
+            if hasattr(self.device.keyboard, 'rescan_led_positions'):
+                success = self.device.keyboard.rescan_led_positions()
+                if success:
+                    print("LED positions rescanned successfully")
+                    self.update.emit()
+                else:
+                    print("Failed to rescan LED positions")
             else:
-                print("Failed to rescan LED positions")
+                print("Rescan LED positions method not implemented on keyboard")
         except Exception as e:
             print(f"Error rescanning LED positions: {e}")
-
-    def rescan_led_positions(self):
-        """Send command to rescan LED positions"""
-        try:
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS, [])
-            return data and len(data) > 0 and data[0] == 0x01
-        except Exception as e:
-            print(f"Error sending rescan LED positions command: {e}")
-            return False
-
-    def _send_vial_command(self, command, data):
-        """Send a Vial command and return response"""
-        try:
-            # Prepare packet: [0xFE, command, ...data, padding to 32 bytes]
-            packet = [CMD_VIA_VIAL_PREFIX, command] + data
-            packet += [0] * (32 - len(packet))  # Pad to 32 bytes
-            
-            # Send command
-            self.device.dev.write(packet)
-            
-            # Read response
-            response = self.device.dev.read(32, timeout_ms=1000)
-            return response
-            
-        except Exception as e:
-            print(f"Error sending Vial command 0x{command:02X}: {e}")
-            return None
 
 
 class LayerRGBHandler(BasicHandler):
@@ -691,9 +667,9 @@ class LayerRGBHandler(BasicHandler):
             # Try to get per-layer RGB status if methods exist
             if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
                 try:
-                    data = self.device.keyboard.get_layer_rgb_status()
-                    if data and len(data) > 0:
-                        keyboard_state = bool(data[0])
+                    status = self.device.keyboard.get_layer_rgb_status()
+                    if status is not None:
+                        keyboard_state = bool(status)
                         self.per_layer_enabled = keyboard_state
                         self.user_set_state = keyboard_state  # Initialize user state
                         print(f"Initial layer RGB status from keyboard: {keyboard_state}")
@@ -788,7 +764,7 @@ class LayerRGBHandler(BasicHandler):
 
 
 class CustomLightsHandler(BasicHandler):
-    """Handler for custom animation slot configuration - tabbed interface with presets"""
+    """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -909,30 +885,34 @@ class CustomLightsHandler(BasicHandler):
         self.slot_tabs.append(tab_widget)
 
     def update_from_keyboard(self):
-        """Update UI from keyboard state"""
+        """Update UI from keyboard state using VialKeyboard infrastructure"""
         self.block_signals()
         
         # Update all slots
         for slot in range(12):
             try:
-                config = self.get_custom_slot_config(slot)
-                if config:
-                    widgets = self.slot_widgets[slot]
-                    
-                    # Find matching live animation preset
-                    live_pos, live_anim, influence = config[0], config[2], bool(config[4])
-                    live_preset_idx = self.find_live_preset_index(live_pos, live_anim, influence)
-                    widgets['live_animation'].setCurrentIndex(live_preset_idx)
-                    
-                    # Find matching macro animation preset
-                    macro_pos, macro_anim = config[1], config[3]
-                    macro_preset_idx = self.find_macro_preset_index(macro_pos, macro_anim, influence)
-                    widgets['macro_animation'].setCurrentIndex(macro_preset_idx)
-                    
-                    widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
-                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+                    config = self.device.keyboard.get_custom_slot_config(slot)
+                    if config:
+                        widgets = self.slot_widgets[slot]
+                        
+                        # Find matching live animation preset
+                        live_pos, live_anim, influence = config[0], config[2], bool(config[4])
+                        live_preset_idx = self.find_live_preset_index(live_pos, live_anim, influence)
+                        widgets['live_animation'].setCurrentIndex(live_preset_idx)
+                        
+                        # Find matching macro animation preset
+                        macro_pos, macro_anim = config[1], config[3]
+                        macro_preset_idx = self.find_macro_preset_index(macro_pos, macro_anim, influence)
+                        widgets['macro_animation'].setCurrentIndex(macro_preset_idx)
+                        
+                        widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
+                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
+                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                    else:
+                        self.set_slot_defaults(slot)
                 else:
+                    print(f"Custom slot config methods not implemented on keyboard")
                     self.set_slot_defaults(slot)
             except Exception as e:
                 print(f"Error updating custom lights slot {slot}: {e}")
@@ -981,34 +961,54 @@ class CustomLightsHandler(BasicHandler):
             for widget in widgets.values():
                 widget.blockSignals(False)
 
-    # Event handlers
+    # Event handlers using VialKeyboard infrastructure
     def on_live_animation_changed(self, slot, index):
         """Handle live animation preset change"""
         if index < len(LIVE_ANIMATION_PRESETS):
             _, position, animation, influence = LIVE_ANIMATION_PRESETS[index]
-            self.send_parameter_change(slot, 0, position)    # live_positioning
-            self.send_parameter_change(slot, 2, animation)   # live_animation
-            self.send_parameter_change(slot, 4, 1 if influence else 0)  # influence
+            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+                self.device.keyboard.set_custom_slot_parameter(slot, 0, position)    # live_positioning
+                self.device.keyboard.set_custom_slot_parameter(slot, 2, animation)   # live_animation
+                self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if influence else 0)  # influence
+                self.update.emit()
+            else:
+                print(f"Live animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
 
     def on_macro_animation_changed(self, slot, index):
         """Handle macro animation preset change"""
         if index < len(MACRO_ANIMATION_PRESETS):
             _, position, animation, influence = MACRO_ANIMATION_PRESETS[index]
-            self.send_parameter_change(slot, 1, position)    # macro_positioning
-            self.send_parameter_change(slot, 3, animation)   # macro_animation
-            self.send_parameter_change(slot, 4, 1 if influence else 0)  # influence
+            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+                self.device.keyboard.set_custom_slot_parameter(slot, 1, position)    # macro_positioning
+                self.device.keyboard.set_custom_slot_parameter(slot, 3, animation)   # macro_animation
+                self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if influence else 0)  # influence
+                self.update.emit()
+            else:
+                print(f"Macro animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
 
     def on_background_changed(self, slot, index):
         """Handle background change"""
-        self.send_parameter_change(slot, 5, index)
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 5, index)
+            self.update.emit()
+        else:
+            print(f"Background changed: slot {slot}, index {index}")
 
     def on_sustain_mode_changed(self, slot, index):
         """Handle sustain mode change"""
-        self.send_parameter_change(slot, 6, index)
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 6, index)
+            self.update.emit()
+        else:
+            print(f"Sustain mode changed: slot {slot}, index {index}")
 
     def on_color_type_changed(self, slot, index):
         """Handle color type change"""
-        self.send_parameter_change(slot, 7, index)
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
+            self.update.emit()
+        else:
+            print(f"Color type changed: slot {slot}, index {index}")
 
     def on_save_slot(self, slot):
         """Save current settings for a slot (with auto-enable)"""
@@ -1024,7 +1024,7 @@ class CustomLightsHandler(BasicHandler):
             macro_idx = widgets['macro_animation'].currentIndex()
             _, macro_pos, macro_anim, _ = MACRO_ANIMATION_PRESETS[macro_idx]  # Use live influence for both
             
-            # Send all parameters for this slot
+            # Create parameters array
             params = [
                 live_pos,                                    # live_positioning
                 macro_pos,                                   # macro_positioning
@@ -1037,12 +1037,15 @@ class CustomLightsHandler(BasicHandler):
                 1                                           # enabled (always enabled when saving)
             ]
             
-            success = self.set_all_slot_parameters(slot, params)
-            if success:
-                print(f"Saved all settings to slot {slot + 1}")
-                self.update.emit()
+            if hasattr(self.device.keyboard, 'set_all_custom_slot_parameters'):
+                success = self.device.keyboard.set_all_custom_slot_parameters(slot, params)
+                if success:
+                    print(f"Saved all settings to slot {slot + 1}")
+                    self.update.emit()
+                else:
+                    print(f"Failed to save settings to slot {slot + 1}")
             else:
-                print(f"Failed to save settings to slot {slot + 1}")
+                print(f"Save slot {slot + 1} with params: {params} (keyboard method not implemented)")
                 
         except Exception as e:
             print(f"Error saving slot {slot + 1} settings: {e}")
@@ -1050,13 +1053,17 @@ class CustomLightsHandler(BasicHandler):
     def on_reset_slot(self, slot):
         """Reset a slot to defaults"""
         try:
-            success = self.reset_custom_slot(slot)
-            if success:
-                self.set_slot_defaults(slot)
-                self.update.emit()
-                print(f"Reset slot {slot + 1} to defaults")
+            if hasattr(self.device.keyboard, 'reset_custom_slot'):
+                success = self.device.keyboard.reset_custom_slot(slot)
+                if success:
+                    self.set_slot_defaults(slot)
+                    self.update.emit()
+                    print(f"Reset slot {slot + 1} to defaults")
+                else:
+                    print(f"Failed to reset slot {slot + 1}")
             else:
-                print(f"Failed to reset slot {slot + 1}")
+                print(f"Reset slot {slot + 1} to defaults (keyboard method not implemented)")
+                self.set_slot_defaults(slot)
         except Exception as e:
             print(f"Error resetting slot {slot + 1}: {e}")
 
@@ -1067,144 +1074,21 @@ class CustomLightsHandler(BasicHandler):
             
         preset_index = index - 1  # Adjust for header
         try:
-            success = self.load_custom_slot_preset(slot, preset_index)
-            if success:
-                # Update the UI for this slot
-                config = self.get_custom_slot_config(slot)
-                if config:
-                    widgets = self.slot_widgets[slot]
-                    self.block_signals()
-                    
-                    # Find matching presets
-                    live_pos, live_anim, influence = config[0], config[2], bool(config[4])
-                    live_preset_idx = self.find_live_preset_index(live_pos, live_anim, influence)
-                    widgets['live_animation'].setCurrentIndex(live_preset_idx)
-                    
-                    macro_pos, macro_anim = config[1], config[3]
-                    macro_preset_idx = self.find_macro_preset_index(macro_pos, macro_anim, influence)
-                    widgets['macro_animation'].setCurrentIndex(macro_preset_idx)
-                    
-                    widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
-                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
-                    self.unblock_signals()
-                
-                self.update.emit()
-                print(f"Loaded preset {preset_index} to slot {slot + 1}")
+            if hasattr(self.device.keyboard, 'load_custom_slot_preset'):
+                success = self.device.keyboard.load_custom_slot_preset(slot, preset_index)
+                if success:
+                    # Update the UI for this slot
+                    self.update_from_keyboard()
+                    print(f"Loaded preset {preset_index} to slot {slot + 1}")
+                else:
+                    print(f"Failed to load preset {preset_index}")
             else:
-                print(f"Failed to load preset {preset_index}")
+                print(f"Load preset {preset_index} to slot {slot + 1} (keyboard method not implemented)")
         except Exception as e:
             print(f"Error loading preset: {e}")
         
         # Reset combo box to header
         self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
-
-    def send_parameter_change(self, slot, param_index, value):
-        """Send parameter change to keyboard"""
-        try:
-            success = self.set_custom_slot_parameter(slot, param_index, value)
-            if success:
-                print(f"Set slot {slot + 1} param {param_index} to {value}")
-                self.update.emit()
-            else:
-                print(f"Failed to set slot {slot + 1} param {param_index} to {value}")
-        except Exception as e:
-            print(f"Error setting custom slot parameter: {e}")
-
-    # Simple HID command methods
-    def get_custom_slot_config(self, slot):
-        """Get all parameters for a custom animation slot"""
-        try:
-            if slot >= 12:
-                return None
-                
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_GET_ALL, [slot])
-            if data and len(data) > 2 and data[0] == 0x01:
-                return data[3:11]  # 8 parameters starting at index 3
-            return None
-        except Exception as e:
-            print(f"Error getting custom slot {slot} config: {e}")
-            return None
-
-    def set_custom_slot_parameter(self, slot, param_index, value):
-        """Set a single parameter for a custom animation slot"""
-        try:
-            if slot >= 12 or param_index >= 9:
-                return False
-                
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_PARAM, [slot, param_index, value])
-            return data and len(data) > 0 and data[0] == 0x01
-        except Exception as e:
-            print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
-            return False
-
-    def set_all_slot_parameters(self, slot, params):
-        """Set all parameters for a slot at once"""
-        try:
-            if slot >= 12 or len(params) != 9:
-                return False
-                
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_ALL, [slot] + params)
-            return data and len(data) > 0 and data[0] == 0x01
-        except Exception as e:
-            print(f"Error setting all parameters for slot {slot}: {e}")
-            return False
-
-    def reset_custom_slot(self, slot):
-        """Reset a slot to defaults"""
-        try:
-            if slot >= 12:
-                return False
-                
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, [slot])
-            return data and len(data) > 0 and data[0] == 0x01
-        except Exception as e:
-            print(f"Error resetting slot {slot}: {e}")
-            return False
-
-    def load_custom_slot_preset(self, slot, preset_index):
-        """Load a preset configuration into a slot"""
-        try:
-            if slot >= 12:
-                return False
-
-            # Define preset configurations (updated for new structure)
-            presets = [
-                [0, 0, 0, 0, 0, 1, 0, 1, 1],  # Classic TrueKey + enabled
-                [0, 0, 1, 1, 0, 1, 3, 3, 1],  # Heat Effects + enabled
-                [1, 1, 3, 3, 0, 2, 3, 1, 1],  # Moving Dots + enabled
-                [2, 2, 0, 0, 1, 3, 0, 2, 1],  # BPM Disco + enabled
-                [1, 1, 0, 0, 0, 0, 3, 1, 1],  # Zone Lighting + enabled
-                [0, 0, 2, 2, 1, 0, 0, 1, 1],  # Sustain Mode + enabled
-                [0, 2, 1, 0, 0, 2, 1, 1, 1],  # Performance Setup + enabled
-            ]
-            
-            if preset_index >= len(presets):
-                return False
-                
-            return self.set_all_slot_parameters(slot, presets[preset_index])
-            
-        except Exception as e:
-            print(f"Error loading preset {preset_index} to slot {slot}: {e}")
-            return False
-
-    def _send_vial_command(self, command, data):
-        """Send a Vial command and return response"""
-        try:
-            # Prepare packet: [0xFE, command, ...data, padding to 32 bytes]
-            packet = [CMD_VIA_VIAL_PREFIX, command] + data
-            packet += [0] * (32 - len(packet))  # Pad to 32 bytes
-            
-            # Send command
-            self.device.dev.write(packet)
-            
-            # Read response
-            response = self.device.dev.read(32, timeout_ms=1000)
-            return response
-            
-        except Exception as e:
-            print(f"Error sending Vial command 0x{command:02X}: {e}")
-            return None
 
 
 class RGBConfigurator(BasicEditor):
@@ -1273,6 +1157,10 @@ class RGBConfigurator(BasicEditor):
         # Check for layer RGB support
         if hasattr(self.device.keyboard, 'reload_layer_rgb_support'):
             self.device.keyboard.reload_layer_rgb_support()
+
+        # Check for custom lights support  
+        if hasattr(self.device.keyboard, 'reload_custom_lights_support'):
+            self.device.keyboard.reload_custom_lights_support()
 
         self.block_signals()
 
