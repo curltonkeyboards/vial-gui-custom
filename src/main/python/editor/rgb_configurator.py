@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QColorDialog, QCheckBox
+    QComboBox, QColorDialog, QCheckBox, QTabWidget
 
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
@@ -13,7 +13,7 @@ from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, CMD
     CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, \
     CMD_VIAL_CUSTOM_ANIM_GET_PARAM, CMD_VIAL_CUSTOM_ANIM_SET_ALL, CMD_VIAL_CUSTOM_ANIM_GET_ALL, \
     CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, \
-    CMD_VIAL_CUSTOM_ANIM_GET_STATUS
+    CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS
 
 
 class QmkRgblightEffect:
@@ -169,17 +169,19 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(93, "Truekey Subwoof"),
     VialRGBEffect(94, "Truekey Line"),
     VialRGBEffect(95, "Truekey Row"),
-    # Custom Slot Effects
-    VialRGBEffect(96, "Custom Slot 0"),
-    VialRGBEffect(97, "Custom Slot 1"),
-    VialRGBEffect(98, "Custom Slot 2"),
-    VialRGBEffect(99, "Custom Slot 3"),
-    VialRGBEffect(100, "Custom Slot 4"),
-    VialRGBEffect(101, "Custom Slot 5"),
-    VialRGBEffect(102, "Custom Slot 6"),
-    VialRGBEffect(103, "Custom Slot 7"),
-    VialRGBEffect(104, "Custom Slot 8"),
-    VialRGBEffect(105, "Custom Slot 9"),
+    # Custom Slot Effects (12 slots)
+    VialRGBEffect(96, "Custom Slot 1"),
+    VialRGBEffect(97, "Custom Slot 2"),
+    VialRGBEffect(98, "Custom Slot 3"),
+    VialRGBEffect(99, "Custom Slot 4"),
+    VialRGBEffect(100, "Custom Slot 5"),
+    VialRGBEffect(101, "Custom Slot 6"),
+    VialRGBEffect(102, "Custom Slot 7"),
+    VialRGBEffect(103, "Custom Slot 8"),
+    VialRGBEffect(104, "Custom Slot 9"),
+    VialRGBEffect(105, "Custom Slot 10"),
+    VialRGBEffect(106, "Custom Slot 11"),
+    VialRGBEffect(107, "Custom Slot 12"),
 ]
 
 
@@ -260,7 +262,6 @@ MACRO_ANIMATION_PRESETS = [
     ("Column Zone Wide", 1, 4, True),     # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_COL, wide influence
 ]
 
-# Keep existing constants but rename pulse mode
 CUSTOM_LIGHT_BACKGROUNDS = [
     "None", "Static", "BPM Pulse Fade", "BPM All Disco"
 ]
@@ -269,7 +270,7 @@ CUSTOM_LIGHT_COLOR_TYPES = [
     "Base", "Channel", "Macro", "Heat"
 ]
 
-CUSTOM_LIGHT_SUSTAIN_MODES = [  # Renamed from PULSE_MODES
+CUSTOM_LIGHT_SUSTAIN_MODES = [
     "None", "Live Only", "Macro Only", "All"
 ]
 
@@ -542,6 +543,80 @@ class VialRGBHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
 
 
+class RescanButtonHandler(BasicHandler):
+    """Handler for the Rescan LED Positions button"""
+
+    def __init__(self, container):
+        super().__init__(container)
+
+        row = container.rowCount()
+
+        # Centered rescan button
+        rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
+        rescan_button.clicked.connect(self.on_rescan_led_positions)
+        rescan_button.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 8px; }")
+        rescan_button.setMinimumHeight(30)
+        
+        # Center the button using a horizontal layout
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(rescan_button)
+        button_layout.addStretch()
+        
+        button_widget = QWidget()
+        button_widget.setLayout(button_layout)
+        container.addWidget(button_widget, row, 0, 1, 2)
+
+        self.widgets = [button_widget]
+
+    def update_from_keyboard(self):
+        # No updates needed for this button
+        pass
+
+    def valid(self):
+        # Always show the rescan button
+        return isinstance(self.device, VialKeyboard)
+
+    def on_rescan_led_positions(self):
+        """Rescan LED positions on the keyboard"""
+        try:
+            success = self.rescan_led_positions()
+            if success:
+                print("LED positions rescanned successfully")
+                self.update.emit()
+            else:
+                print("Failed to rescan LED positions")
+        except Exception as e:
+            print(f"Error rescanning LED positions: {e}")
+
+    def rescan_led_positions(self):
+        """Send command to rescan LED positions"""
+        try:
+            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS, [])
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error sending rescan LED positions command: {e}")
+            return False
+
+    def _send_vial_command(self, command, data):
+        """Send a Vial command and return response"""
+        try:
+            # Prepare packet: [0xFE, command, ...data, padding to 32 bytes]
+            packet = [CMD_VIA_VIAL_PREFIX, command] + data
+            packet += [0] * (32 - len(packet))  # Pad to 32 bytes
+            
+            # Send command
+            self.device.dev.write(packet)
+            
+            # Read response
+            response = self.device.dev.read(32, timeout_ms=1000)
+            return response
+            
+        except Exception as e:
+            print(f"Error sending Vial command 0x{command:02X}: {e}")
+            return None
+
+
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
 
@@ -712,8 +787,6 @@ class LayerRGBHandler(BasicHandler):
             w.show()
 
 
-from PyQt5.QtWidgets import QTabWidget
-
 class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - tabbed interface with presets"""
 
@@ -730,11 +803,11 @@ class CustomLightsHandler(BasicHandler):
         self.tab_widget = QTabWidget()
         container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
 
-        # Create tabs for each slot (12 slots now)
+        # Create tabs for each slot (12 slots)
         self.slot_tabs = []
         self.slot_widgets = {}
         
-        for slot in range(12):  # Changed to 12 slots
+        for slot in range(12):
             self.create_slot_tab(slot)
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
@@ -804,7 +877,7 @@ class CustomLightsHandler(BasicHandler):
         # Buttons
         buttons_layout = QHBoxLayout()
         
-        save_button = QPushButton(tr("RGBConfigurator", "Save"))  # Renamed from "Apply Changes"
+        save_button = QPushButton(tr("RGBConfigurator", "Save"))
         save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
         buttons_layout.addWidget(save_button)
         
@@ -840,7 +913,7 @@ class CustomLightsHandler(BasicHandler):
         self.block_signals()
         
         # Update all slots
-        for slot in range(12):  # Changed to 12 slots
+        for slot in range(12):
             try:
                 config = self.get_custom_slot_config(slot)
                 if config:
@@ -896,14 +969,14 @@ class CustomLightsHandler(BasicHandler):
 
     def block_signals(self):
         """Block signals for all widgets"""
-        for slot in range(12):  # Changed to 12 slots
+        for slot in range(12):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
-        for slot in range(12):  # Changed to 12 slots
+        for slot in range(12):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(False)
@@ -1042,7 +1115,7 @@ class CustomLightsHandler(BasicHandler):
     def get_custom_slot_config(self, slot):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 12:  # Changed to 12 slots
+            if slot >= 12:
                 return None
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_GET_ALL, [slot])
@@ -1056,7 +1129,7 @@ class CustomLightsHandler(BasicHandler):
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 12 or param_index >= 9:  # Changed to 12 slots
+            if slot >= 12 or param_index >= 9:
                 return False
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_PARAM, [slot, param_index, value])
@@ -1068,7 +1141,7 @@ class CustomLightsHandler(BasicHandler):
     def set_all_slot_parameters(self, slot, params):
         """Set all parameters for a slot at once"""
         try:
-            if slot >= 12 or len(params) != 9:  # Changed to 12 slots
+            if slot >= 12 or len(params) != 9:
                 return False
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_ALL, [slot] + params)
@@ -1080,7 +1153,7 @@ class CustomLightsHandler(BasicHandler):
     def reset_custom_slot(self, slot):
         """Reset a slot to defaults"""
         try:
-            if slot >= 12:  # Changed to 12 slots
+            if slot >= 12:
                 return False
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, [slot])
@@ -1092,7 +1165,7 @@ class CustomLightsHandler(BasicHandler):
     def load_custom_slot_preset(self, slot, preset_index):
         """Load a preset configuration into a slot"""
         try:
-            if slot >= 12:  # Changed to 12 slots
+            if slot >= 12:
                 return False
 
             # Define preset configurations (updated for new structure)
@@ -1133,6 +1206,7 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error sending Vial command 0x{command:02X}: {e}")
             return None
 
+
 class RGBConfigurator(BasicEditor):
 
     def __init__(self):
@@ -1154,17 +1228,21 @@ class RGBConfigurator(BasicEditor):
         self.handler_vialrgb = VialRGBHandler(self.container)
         self.handler_vialrgb.update.connect(self.update_from_keyboard)
         
+        # Add the rescan button handler BEFORE the layer RGB handler
+        self.handler_rescan = RescanButtonHandler(self.container)
+        self.handler_rescan.update.connect(self.update_from_keyboard)
+        
         # Add the per-layer RGB handler
         self.handler_layer_rgb = LayerRGBHandler(self.container)
         self.handler_layer_rgb.update.connect(self.update_from_keyboard)
         
-        # Add the custom lights handler RIGHT AFTER layer RGB
+        # Add the custom lights handler
         self.handler_custom_lights = CustomLightsHandler(self.container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
         
         self.handlers = [self.handler_backlight, self.handler_rgblight, 
-                        self.handler_vialrgb, self.handler_layer_rgb,
-                        self.handler_custom_lights]
+                        self.handler_vialrgb, self.handler_rescan,
+                        self.handler_layer_rgb, self.handler_custom_lights]
 
         self.addStretch()
         buttons = QHBoxLayout()
@@ -1178,7 +1256,7 @@ class RGBConfigurator(BasicEditor):
         self.device.keyboard.save_rgb()
 
     def valid(self):
-        # Always show RGB configurator for VialKeyboard (includes custom lights)
+        # Always show RGB configurator for VialKeyboard
         return isinstance(self.device, VialKeyboard)
 
     def block_signals(self):
