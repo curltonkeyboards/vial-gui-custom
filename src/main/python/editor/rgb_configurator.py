@@ -650,246 +650,348 @@ class LayerRGBHandler(BasicHandler):
             w.show()
 
 
+from PyQt5.QtWidgets import QTabWidget
+
 class CustomLightsHandler(BasicHandler):
-    """Handler for custom animation slot configuration - always visible"""
+    """Handler for custom animation slot configuration - tabbed interface"""
 
     def __init__(self, container):
         super().__init__(container)
 
         row = container.rowCount()
 
-        # Slot selector
-        self.lbl_slot = QLabel(tr("RGBConfigurator", "Slot"))
-        container.addWidget(self.lbl_slot, row, 0)
-        self.slot_selector = QComboBox()
-        for i in range(10):
-            self.slot_selector.addItem(f"Slot {i}")
-        self.slot_selector.currentIndexChanged.connect(self.on_slot_changed)
-        container.addWidget(self.slot_selector, row, 1)
+        # Custom Lights label
+        self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
+        container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
+
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
+
+        # Create tabs for each slot
+        self.slot_tabs = []
+        self.slot_widgets = {}
+        
+        for slot in range(10):
+            self.create_slot_tab(slot)
+
+        self.widgets = [self.lbl_custom_lights, self.tab_widget]
+
+    def create_slot_tab(self, slot):
+        """Create a tab for a single slot"""
+        # Create tab widget
+        tab_widget = QWidget()
+        self.tab_widget.addTab(tab_widget, f"Slot {slot}")
+        
+        # Create layout for this tab
+        layout = QGridLayout(tab_widget)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+
+        # Enabled checkbox
+        enabled_cb = QCheckBox(tr("RGBConfigurator", "Enabled"))
+        enabled_cb.setChecked(True)  # Default enabled
+        enabled_cb.stateChanged.connect(lambda checked, s=slot: self.on_slot_enabled_changed(s, checked))
+        layout.addWidget(enabled_cb, 0, 0, 1, 2)
+
+        # Live Controls section
+        live_label = QLabel(tr("RGBConfigurator", "Live Controls:"))
+        live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(live_label, 1, 0, 1, 2)
 
         # Live Position
-        self.lbl_live_position = QLabel(tr("RGBConfigurator", "Live Position"))
-        container.addWidget(self.lbl_live_position, row + 1, 0)
-        self.live_position = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
+        live_position = QComboBox()
         for pos in CUSTOM_LIGHT_LIVE_POSITIONS:
-            self.live_position.addItem(pos)
-        self.live_position.currentIndexChanged.connect(self.on_live_position_changed)
-        container.addWidget(self.live_position, row + 1, 1)
+            live_position.addItem(pos)
+        live_position.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_position_changed(s, idx))
+        layout.addWidget(live_position, 2, 1)
 
         # Live Animation
-        self.lbl_live_animation = QLabel(tr("RGBConfigurator", "Live Animation"))
-        container.addWidget(self.lbl_live_animation, row + 2, 0)
-        self.live_animation = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Animation:")), 3, 0)
+        live_animation = QComboBox()
         for anim in CUSTOM_LIGHT_ANIMATIONS:
-            self.live_animation.addItem(anim)
-        self.live_animation.currentIndexChanged.connect(self.on_live_animation_changed)
-        container.addWidget(self.live_animation, row + 2, 1)
+            live_animation.addItem(anim)
+        live_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_animation_changed(s, idx))
+        layout.addWidget(live_animation, 3, 1)
+
+        # Macro Controls section
+        macro_label = QLabel(tr("RGBConfigurator", "Macro Controls:"))
+        macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(macro_label, 4, 0, 1, 2)
 
         # Macro Position
-        self.lbl_macro_position = QLabel(tr("RGBConfigurator", "Macro Position"))
-        container.addWidget(self.lbl_macro_position, row + 3, 0)
-        self.macro_position = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 5, 0)
+        macro_position = QComboBox()
         for pos in CUSTOM_LIGHT_MACRO_POSITIONS:
-            self.macro_position.addItem(pos)
-        self.macro_position.currentIndexChanged.connect(self.on_macro_position_changed)
-        container.addWidget(self.macro_position, row + 3, 1)
+            macro_position.addItem(pos)
+        macro_position.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_position_changed(s, idx))
+        layout.addWidget(macro_position, 5, 1)
 
         # Macro Animation
-        self.lbl_macro_animation = QLabel(tr("RGBConfigurator", "Macro Animation"))
-        container.addWidget(self.lbl_macro_animation, row + 4, 0)
-        self.macro_animation = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Animation:")), 6, 0)
+        macro_animation = QComboBox()
         for anim in CUSTOM_LIGHT_ANIMATIONS:
-            self.macro_animation.addItem(anim)
-        self.macro_animation.currentIndexChanged.connect(self.on_macro_animation_changed)
-        container.addWidget(self.macro_animation, row + 4, 1)
+            macro_animation.addItem(anim)
+        macro_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_animation_changed(s, idx))
+        layout.addWidget(macro_animation, 6, 1)
+
+        # Effects section
+        effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
+        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(effects_label, 7, 0, 1, 2)
 
         # Background
-        self.lbl_background = QLabel(tr("RGBConfigurator", "Background"))
-        container.addWidget(self.lbl_background, row + 5, 0)
-        self.background = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 8, 0)
+        background = QComboBox()
         for bg in CUSTOM_LIGHT_BACKGROUNDS:
-            self.background.addItem(bg)
-        self.background.currentIndexChanged.connect(self.on_background_changed)
-        container.addWidget(self.background, row + 5, 1)
+            background.addItem(bg)
+        background.currentIndexChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
+        layout.addWidget(background, 8, 1)
 
         # Color Type
-        self.lbl_color_type = QLabel(tr("RGBConfigurator", "Color Type"))
-        container.addWidget(self.lbl_color_type, row + 6, 0)
-        self.color_type = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 9, 0)
+        color_type = QComboBox()
         for color in CUSTOM_LIGHT_COLOR_TYPES:
-            self.color_type.addItem(color)
-        self.color_type.currentIndexChanged.connect(self.on_color_type_changed)
-        container.addWidget(self.color_type, row + 6, 1)
+            color_type.addItem(color)
+        color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
+        layout.addWidget(color_type, 9, 1)
 
         # Pulse Mode
-        self.lbl_pulse_mode = QLabel(tr("RGBConfigurator", "Pulse Mode"))
-        container.addWidget(self.lbl_pulse_mode, row + 7, 0)
-        self.pulse_mode = QComboBox()
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Pulse Mode:")), 10, 0)
+        pulse_mode = QComboBox()
         for pulse in CUSTOM_LIGHT_PULSE_MODES:
-            self.pulse_mode.addItem(pulse)
-        self.pulse_mode.currentIndexChanged.connect(self.on_pulse_mode_changed)
-        container.addWidget(self.pulse_mode, row + 7, 1)
+            pulse_mode.addItem(pulse)
+        pulse_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_pulse_mode_changed(s, idx))
+        layout.addWidget(pulse_mode, 10, 1)
 
         # Wide Influence
-        self.lbl_wide_influence = QLabel(tr("RGBConfigurator", "Wide Influence"))
-        container.addWidget(self.lbl_wide_influence, row + 8, 0)
-        self.wide_influence = QCheckBox()
-        self.wide_influence.stateChanged.connect(self.on_wide_influence_changed)
-        container.addWidget(self.wide_influence, row + 8, 1)
+        wide_influence = QCheckBox(tr("RGBConfigurator", "Wide Influence"))
+        wide_influence.stateChanged.connect(lambda checked, s=slot: self.on_wide_influence_changed(s, checked))
+        layout.addWidget(wide_influence, 11, 0, 1, 2)
 
         # Buttons
-        buttons_widget = QWidget()
-        buttons_layout = QHBoxLayout(buttons_widget)
-        buttons_layout.setContentsMargins(0, 0, 0, 0)
+        buttons_layout = QHBoxLayout()
         
-        self.save_button = QPushButton(tr("RGBConfigurator", "Save"))
-        self.save_button.clicked.connect(self.on_save)
-        buttons_layout.addWidget(self.save_button)
+        apply_button = QPushButton(tr("RGBConfigurator", "Apply Changes"))
+        apply_button.clicked.connect(lambda checked, s=slot: self.on_apply_slot(s))
+        buttons_layout.addWidget(apply_button)
         
-        self.preset_button = QComboBox()
-        self.preset_button.addItem("Load Preset...")
+        reset_button = QPushButton(tr("RGBConfigurator", "Reset to Default"))
+        reset_button.clicked.connect(lambda checked, s=slot: self.on_reset_slot(s))
+        buttons_layout.addWidget(reset_button)
+        
+        preset_combo = QComboBox()
+        preset_combo.addItem("Load Preset...")
         for preset in CUSTOM_LIGHT_PRESETS:
-            self.preset_button.addItem(preset)
-        self.preset_button.currentIndexChanged.connect(self.on_load_preset)
-        buttons_layout.addWidget(self.preset_button)
+            preset_combo.addItem(preset)
+        preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
+        buttons_layout.addWidget(preset_combo)
         
-        container.addWidget(buttons_widget, row + 9, 0, 1, 2)
+        buttons_widget = QWidget()
+        buttons_widget.setLayout(buttons_layout)
+        layout.addWidget(buttons_widget, 12, 0, 1, 2)
 
-        self.widgets = [
-            self.lbl_slot, self.slot_selector,
-            self.lbl_live_position, self.live_position,
-            self.lbl_live_animation, self.live_animation,
-            self.lbl_macro_position, self.macro_position,
-            self.lbl_macro_animation, self.macro_animation,
-            self.lbl_background, self.background,
-            self.lbl_color_type, self.color_type,
-            self.lbl_pulse_mode, self.pulse_mode,
-            self.lbl_wide_influence, self.wide_influence,
-            buttons_widget
-        ]
+        # Store widgets for this slot
+        self.slot_widgets[slot] = {
+            'enabled': enabled_cb,
+            'live_position': live_position,
+            'live_animation': live_animation,
+            'macro_position': macro_position,
+            'macro_animation': macro_animation,
+            'background': background,
+            'color_type': color_type,
+            'pulse_mode': pulse_mode,
+            'wide_influence': wide_influence,
+            'preset_combo': preset_combo
+        }
 
-        self.current_slot = 0
+        self.slot_tabs.append(tab_widget)
 
     def update_from_keyboard(self):
         """Update UI from keyboard state"""
         self.block_signals()
         
-        # Try to get current slot configuration
-        try:
-            config = self.get_custom_slot_config(self.current_slot)
-            if config:
-                self.live_position.setCurrentIndex(min(config[0], len(CUSTOM_LIGHT_LIVE_POSITIONS) - 1))
-                self.macro_position.setCurrentIndex(min(config[1], len(CUSTOM_LIGHT_MACRO_POSITIONS) - 1))
-                self.live_animation.setCurrentIndex(min(config[2], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                self.macro_animation.setCurrentIndex(min(config[3], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                self.wide_influence.setChecked(bool(config[4]))
-                self.background.setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
-                self.pulse_mode.setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_PULSE_MODES) - 1))
-                self.color_type.setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
-            else:
-                self.set_defaults()
-        except Exception as e:
-            print(f"Error updating custom lights from keyboard: {e}")
-            self.set_defaults()
+        # Update all slots
+        for slot in range(10):
+            try:
+                config = self.get_custom_slot_config(slot)
+                if config:
+                    widgets = self.slot_widgets[slot]
+                    widgets['live_position'].setCurrentIndex(min(config[0], len(CUSTOM_LIGHT_LIVE_POSITIONS) - 1))
+                    widgets['macro_position'].setCurrentIndex(min(config[1], len(CUSTOM_LIGHT_MACRO_POSITIONS) - 1))
+                    widgets['live_animation'].setCurrentIndex(min(config[2], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
+                    widgets['macro_animation'].setCurrentIndex(min(config[3], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
+                    widgets['wide_influence'].setChecked(bool(config[4]))
+                    widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
+                    widgets['pulse_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_PULSE_MODES) - 1))
+                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                    widgets['enabled'].setChecked(bool(config[8]) if len(config) > 8 else True)
+                else:
+                    self.set_slot_defaults(slot)
+            except Exception as e:
+                print(f"Error updating custom lights slot {slot}: {e}")
+                self.set_slot_defaults(slot)
 
         self.unblock_signals()
 
-    def set_defaults(self):
-        """Set default values for all controls"""
-        self.live_position.setCurrentIndex(0)  # TrueKey
-        self.macro_position.setCurrentIndex(0)  # TrueKey
-        self.live_animation.setCurrentIndex(0)  # None
-        self.macro_animation.setCurrentIndex(0)  # None
-        self.background.setCurrentIndex(0)  # None
-        self.color_type.setCurrentIndex(1)  # Channel
-        self.pulse_mode.setCurrentIndex(3)  # All
-        self.wide_influence.setChecked(False)
+    def set_slot_defaults(self, slot):
+        """Set default values for a slot"""
+        widgets = self.slot_widgets[slot]
+        widgets['live_position'].setCurrentIndex(0)  # TrueKey
+        widgets['macro_position'].setCurrentIndex(0)  # TrueKey
+        widgets['live_animation'].setCurrentIndex(0)  # None
+        widgets['macro_animation'].setCurrentIndex(0)  # None
+        widgets['background'].setCurrentIndex(0)  # None
+        widgets['color_type'].setCurrentIndex(1)  # Channel
+        widgets['pulse_mode'].setCurrentIndex(3)  # All
+        widgets['wide_influence'].setChecked(False)
+        widgets['enabled'].setChecked(True)
 
     def valid(self):
         """Always return True - always show custom lights section"""
         return isinstance(self.device, VialKeyboard)
 
-    def on_slot_changed(self, index):
-        """Handle slot selection change"""
-        self.current_slot = index
-        self.update_from_keyboard()
+    def block_signals(self):
+        """Block signals for all widgets"""
+        for slot in range(10):
+            widgets = self.slot_widgets[slot]
+            for widget in widgets.values():
+                widget.blockSignals(True)
 
-    def on_live_position_changed(self, index):
+    def unblock_signals(self):
+        """Unblock signals for all widgets"""
+        for slot in range(10):
+            widgets = self.slot_widgets[slot]
+            for widget in widgets.values():
+                widget.blockSignals(False)
+
+    # Event handlers
+    def on_slot_enabled_changed(self, slot, checked):
+        """Handle slot enabled/disabled"""
+        self.send_parameter_change(slot, 8, 1 if checked else 0)
+
+    def on_live_position_changed(self, slot, index):
         """Handle live position change"""
-        self.send_parameter_change(0, index)
+        self.send_parameter_change(slot, 0, index)
 
-    def on_macro_position_changed(self, index):
+    def on_macro_position_changed(self, slot, index):
         """Handle macro position change"""
-        self.send_parameter_change(1, index)
+        self.send_parameter_change(slot, 1, index)
 
-    def on_live_animation_changed(self, index):
+    def on_live_animation_changed(self, slot, index):
         """Handle live animation change"""
-        self.send_parameter_change(2, index)
+        self.send_parameter_change(slot, 2, index)
 
-    def on_macro_animation_changed(self, index):
+    def on_macro_animation_changed(self, slot, index):
         """Handle macro animation change"""
-        self.send_parameter_change(3, index)
+        self.send_parameter_change(slot, 3, index)
 
-    def on_wide_influence_changed(self, checked):
+    def on_wide_influence_changed(self, slot, checked):
         """Handle wide influence toggle"""
-        self.send_parameter_change(4, 1 if checked else 0)
+        self.send_parameter_change(slot, 4, 1 if checked else 0)
 
-    def on_background_changed(self, index):
+    def on_background_changed(self, slot, index):
         """Handle background change"""
-        self.send_parameter_change(5, index)
+        self.send_parameter_change(slot, 5, index)
 
-    def on_pulse_mode_changed(self, index):
+    def on_pulse_mode_changed(self, slot, index):
         """Handle pulse mode change"""
-        self.send_parameter_change(6, index)
+        self.send_parameter_change(slot, 6, index)
 
-    def on_color_type_changed(self, index):
+    def on_color_type_changed(self, slot, index):
         """Handle color type change"""
-        self.send_parameter_change(7, index)
+        self.send_parameter_change(slot, 7, index)
 
-    def send_parameter_change(self, param_index, value):
-        """Send parameter change to keyboard"""
+    def on_apply_slot(self, slot):
+        """Apply current settings for a slot"""
         try:
-            success = self.set_custom_slot_parameter(self.current_slot, param_index, value)
+            # Force update from current UI state
+            widgets = self.slot_widgets[slot]
+            
+            # Send all parameters for this slot
+            params = [
+                widgets['live_position'].currentIndex(),
+                widgets['macro_position'].currentIndex(),
+                widgets['live_animation'].currentIndex(),
+                widgets['macro_animation'].currentIndex(),
+                1 if widgets['wide_influence'].isChecked() else 0,
+                widgets['background'].currentIndex(),
+                widgets['pulse_mode'].currentIndex(),
+                widgets['color_type'].currentIndex(),
+                1 if widgets['enabled'].isChecked() else 0
+            ]
+            
+            success = self.set_all_slot_parameters(slot, params)
             if success:
-                print(f"Set slot {self.current_slot} param {param_index} to {value}")
+                print(f"Applied all settings to slot {slot}")
                 self.update.emit()
             else:
-                print(f"Failed to set slot {self.current_slot} param {param_index} to {value}")
+                print(f"Failed to apply settings to slot {slot}")
+                
         except Exception as e:
-            print(f"Error setting custom slot parameter: {e}")
+            print(f"Error applying slot {slot} settings: {e}")
 
-    def on_save(self):
-        """Save all custom slot configurations to EEPROM"""
+    def on_reset_slot(self, slot):
+        """Reset a slot to defaults"""
         try:
-            success = self.save_custom_slots()
+            success = self.reset_custom_slot(slot)
             if success:
-                print("Custom slots saved to EEPROM")
+                self.set_slot_defaults(slot)
+                self.update.emit()
+                print(f"Reset slot {slot} to defaults")
             else:
-                print("Failed to save custom slots")
+                print(f"Failed to reset slot {slot}")
         except Exception as e:
-            print(f"Error saving custom slots: {e}")
+            print(f"Error resetting slot {slot}: {e}")
 
-    def on_load_preset(self, index):
+    def on_load_preset(self, slot, index):
         """Load a preset configuration"""
         if index == 0:  # "Load Preset..." header
             return
             
         preset_index = index - 1  # Adjust for header
         try:
-            success = self.load_custom_slot_preset(self.current_slot, preset_index)
+            success = self.load_custom_slot_preset(slot, preset_index)
             if success:
-                self.update_from_keyboard()
+                # Update the UI for this slot
+                config = self.get_custom_slot_config(slot)
+                if config:
+                    widgets = self.slot_widgets[slot]
+                    self.block_signals()
+                    widgets['live_position'].setCurrentIndex(min(config[0], len(CUSTOM_LIGHT_LIVE_POSITIONS) - 1))
+                    widgets['macro_position'].setCurrentIndex(min(config[1], len(CUSTOM_LIGHT_MACRO_POSITIONS) - 1))
+                    widgets['live_animation'].setCurrentIndex(min(config[2], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
+                    widgets['macro_animation'].setCurrentIndex(min(config[3], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
+                    widgets['wide_influence'].setChecked(bool(config[4]))
+                    widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
+                    widgets['pulse_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_PULSE_MODES) - 1))
+                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                    self.unblock_signals()
+                
                 self.update.emit()
-                print(f"Loaded preset {preset_index} to slot {self.current_slot}")
+                print(f"Loaded preset {preset_index} to slot {slot}")
             else:
                 print(f"Failed to load preset {preset_index}")
         except Exception as e:
             print(f"Error loading preset: {e}")
         
         # Reset combo box to header
-        self.preset_button.setCurrentIndex(0)
+        self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
 
-    # Simple HID command methods - no detection needed
+    def send_parameter_change(self, slot, param_index, value):
+        """Send parameter change to keyboard"""
+        try:
+            success = self.set_custom_slot_parameter(slot, param_index, value)
+            if success:
+                print(f"Set slot {slot} param {param_index} to {value}")
+                self.update.emit()
+            else:
+                print(f"Failed to set slot {slot} param {param_index} to {value}")
+        except Exception as e:
+            print(f"Error setting custom slot parameter: {e}")
+
+    # Simple HID command methods
     def get_custom_slot_config(self, slot):
         """Get all parameters for a custom animation slot"""
         try:
@@ -916,13 +1018,28 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
             return False
 
-    def save_custom_slots(self):
-        """Save all custom slot configurations to EEPROM"""
+    def set_all_slot_parameters(self, slot, params):
+        """Set all parameters for a slot at once"""
         try:
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SAVE, [])
+            if slot >= 10 or len(params) != 9:
+                return False
+                
+            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_ALL, [slot] + params)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
-            print(f"Error saving custom slots: {e}")
+            print(f"Error setting all parameters for slot {slot}: {e}")
+            return False
+
+    def reset_custom_slot(self, slot):
+        """Reset a slot to defaults"""
+        try:
+            if slot >= 10:
+                return False
+                
+            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, [slot])
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error resetting slot {slot}: {e}")
             return False
 
     def load_custom_slot_preset(self, slot, preset_index):
@@ -933,22 +1050,19 @@ class CustomLightsHandler(BasicHandler):
 
             # Define preset configurations
             presets = [
-                [0, 0, 0, 0, 0, 1, 0, 1],  # Classic TrueKey
-                [0, 0, 1, 1, 0, 1, 3, 3],  # Heat Effects  
-                [1, 1, 3, 3, 0, 2, 3, 1],  # Moving Dots
-                [2, 2, 0, 0, 1, 3, 0, 2],  # BPM Disco
-                [1, 1, 0, 0, 0, 0, 3, 1],  # Zone Lighting
-                [0, 0, 2, 2, 1, 0, 0, 1],  # Sustain Mode
-                [0, 2, 1, 0, 0, 2, 1, 1],  # Performance Setup
+                [0, 0, 0, 0, 0, 1, 0, 1, 1],  # Classic TrueKey + enabled
+                [0, 0, 1, 1, 0, 1, 3, 3, 1],  # Heat Effects + enabled
+                [1, 1, 3, 3, 0, 2, 3, 1, 1],  # Moving Dots + enabled
+                [2, 2, 0, 0, 1, 3, 0, 2, 1],  # BPM Disco + enabled
+                [1, 1, 0, 0, 0, 0, 3, 1, 1],  # Zone Lighting + enabled
+                [0, 0, 2, 2, 1, 0, 0, 1, 1],  # Sustain Mode + enabled
+                [0, 2, 1, 0, 0, 2, 1, 1, 1],  # Performance Setup + enabled
             ]
             
             if preset_index >= len(presets):
                 return False
                 
-            # Use set_all command
-            params = [slot] + presets[preset_index]
-            data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_ALL, params)
-            return data and len(data) > 0 and data[0] == 0x01
+            return self.set_all_slot_parameters(slot, presets[preset_index])
             
         except Exception as e:
             print(f"Error loading preset {preset_index} to slot {slot}: {e}")
@@ -997,7 +1111,7 @@ class RGBConfigurator(BasicEditor):
         self.handler_layer_rgb = LayerRGBHandler(self.container)
         self.handler_layer_rgb.update.connect(self.update_from_keyboard)
         
-        # Add the custom lights handler
+        # Add the custom lights handler RIGHT AFTER layer RGB
         self.handler_custom_lights = CustomLightsHandler(self.container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
         
