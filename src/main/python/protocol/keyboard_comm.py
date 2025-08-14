@@ -673,11 +673,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error loading preset {preset_index} to slot {slot}: {e}")
             return False      
             
-     def rescan_led_positions(self):
-            """Rescan LED positions on the keyboard"""
-            try:
-                data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS), retries=20)
-                return data and len(data) > 0 and data[0] == 0x01
-            except Exception as e:
-                print(f"Error rescanning LED positions: {e}")
-                return False           
+    def rescan_led_positions(self):
+        """Rescan LED positions on the keyboard"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error rescanning LED positions: {e}")
+            return False
