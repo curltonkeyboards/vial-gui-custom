@@ -183,22 +183,84 @@ VIALRGB_EFFECTS = [
 ]
 
 
-# Custom Lights Configuration Constants
-CUSTOM_LIGHT_LIVE_POSITIONS = [
-    "TrueKey", "Zone", "Quadrant", "Note Row Col0", "Note Row Col13", 
-    "Note Col Row0", "Note Col Row4", "Note Row Mixed", "Note Col Mixed"
+# Preset definitions combining position + animation + influence
+LIVE_ANIMATION_PRESETS = [
+    # TrueKey presets
+    ("TrueKey Normal", 0, 0, False),      # LIVE_POS_TRUEKEY, LIVE_ANIM_NONE, no influence
+    ("TrueKey Wide", 0, 0, True),         # LIVE_POS_TRUEKEY, LIVE_ANIM_NONE, wide influence
+    ("TrueKey Heat1", 0, 1, False),       # LIVE_POS_TRUEKEY, LIVE_ANIM_HEAT, no influence
+    ("TrueKey Heat1 Wide", 0, 1, True),   # LIVE_POS_TRUEKEY, LIVE_ANIM_HEAT, wide influence
+    ("TrueKey Heat2", 0, 2, False),       # LIVE_POS_TRUEKEY, LIVE_ANIM_SUSTAIN, no influence
+    ("TrueKey Heat2 Wide", 0, 2, True),   # LIVE_POS_TRUEKEY, LIVE_ANIM_SUSTAIN, wide influence
+    
+    # Zone presets
+    ("Zone Normal", 1, 0, False),         # LIVE_POS_ZONE, LIVE_ANIM_NONE, no influence
+    ("Zone Wide", 1, 0, True),            # LIVE_POS_ZONE, LIVE_ANIM_NONE, wide influence
+    ("Zone Heat", 1, 1, False),           # LIVE_POS_ZONE, LIVE_ANIM_HEAT, no influence
+    ("Zone Heat Wide", 1, 1, True),       # LIVE_POS_ZONE, LIVE_ANIM_HEAT, wide influence
+    
+    # Quadrant presets
+    ("Quadrant Normal", 2, 0, False),     # LIVE_POS_QUADRANT, LIVE_ANIM_NONE, no influence
+    ("Quadrant Wide", 2, 0, True),        # LIVE_POS_QUADRANT, LIVE_ANIM_NONE, wide influence
+    
+    # Row presets (only work with row animations)
+    ("Row Left", 3, 3, False),            # LIVE_POS_NOTE_ROW_COL0, LIVE_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Left Wide", 3, 3, True),        # LIVE_POS_NOTE_ROW_COL0, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
+    ("Row Right", 4, 3, False),           # LIVE_POS_NOTE_ROW_COL13, LIVE_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Right Wide", 4, 3, True),       # LIVE_POS_NOTE_ROW_COL13, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
+    ("Row Mixed", 7, 3, False),           # LIVE_POS_NOTE_ROW_MIXED, LIVE_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Mixed Wide", 7, 3, True),       # LIVE_POS_NOTE_ROW_MIXED, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
+    ("Row Zone", 1, 3, False),            # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Zone Wide", 1, 3, True),        # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
+    
+    # Column presets (only work with column animations)
+    ("Column Top", 5, 4, False),          # LIVE_POS_NOTE_COL_ROW0, LIVE_ANIM_MOVING_DOTS_COL, no influence
+    ("Column Top Wide", 5, 4, True),      # LIVE_POS_NOTE_COL_ROW0, LIVE_ANIM_MOVING_DOTS_COL, wide influence
+    ("Column Bottom", 6, 4, False),       # LIVE_POS_NOTE_COL_ROW4, LIVE_ANIM_MOVING_DOTS_COL, no influence
+    ("Column Bottom Wide", 6, 4, True),   # LIVE_POS_NOTE_COL_ROW4, LIVE_ANIM_MOVING_DOTS_COL, wide influence
+    ("Column Mixed", 8, 4, False),        # LIVE_POS_NOTE_COL_MIXED, LIVE_ANIM_MOVING_DOTS_COL, no influence
+    ("Column Mixed Wide", 8, 4, True),    # LIVE_POS_NOTE_COL_MIXED, LIVE_ANIM_MOVING_DOTS_COL, wide influence
+    ("Column Zone", 1, 4, False),         # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_COL, no influence
+    ("Column Zone Wide", 1, 4, True),     # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_COL, wide influence
 ]
 
-CUSTOM_LIGHT_MACRO_POSITIONS = [
-    "TrueKey", "Zone", "Quadrant", "Note Row Col0", "Note Row Col13",
-    "Note Col Row0", "Note Col Row4", "Loop Row Col0", "Loop Row Col13", 
-    "Loop Row Alt", "Loop Col"
+MACRO_ANIMATION_PRESETS = [
+    # TrueKey presets
+    ("TrueKey Normal", 0, 0, False),      # MACRO_POS_TRUEKEY, MACRO_ANIM_NONE, no influence
+    ("TrueKey Wide", 0, 0, True),         # MACRO_POS_TRUEKEY, MACRO_ANIM_NONE, wide influence
+    ("TrueKey Heat1", 0, 1, False),       # MACRO_POS_TRUEKEY, MACRO_ANIM_HEAT, no influence
+    ("TrueKey Heat1 Wide", 0, 1, True),   # MACRO_POS_TRUEKEY, MACRO_ANIM_HEAT, wide influence
+    ("TrueKey Heat2", 0, 2, False),       # MACRO_POS_TRUEKEY, MACRO_ANIM_SUSTAIN, no influence
+    ("TrueKey Heat2 Wide", 0, 2, True),   # MACRO_POS_TRUEKEY, MACRO_ANIM_SUSTAIN, wide influence
+    
+    # Zone presets
+    ("Zone Normal", 1, 0, False),         # MACRO_POS_ZONE, MACRO_ANIM_NONE, no influence
+    ("Zone Wide", 1, 0, True),            # MACRO_POS_ZONE, MACRO_ANIM_NONE, wide influence
+    ("Zone Heat", 1, 1, False),           # MACRO_POS_ZONE, MACRO_ANIM_HEAT, no influence
+    ("Zone Heat Wide", 1, 1, True),       # MACRO_POS_ZONE, MACRO_ANIM_HEAT, wide influence
+    
+    # Loop Zones (Quadrant)
+    ("Loop Zones", 2, 0, False),          # MACRO_POS_QUADRANT, MACRO_ANIM_NONE, no influence
+    ("Loop Zones Wide", 2, 0, True),      # MACRO_POS_QUADRANT, MACRO_ANIM_NONE, wide influence
+    
+    # Row presets (only work with row animations)
+    ("Row Left", 7, 3, False),            # MACRO_POS_LOOP_ROW_COL0, MACRO_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Left Wide", 7, 3, True),        # MACRO_POS_LOOP_ROW_COL0, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
+    ("Row Right", 8, 3, False),           # MACRO_POS_LOOP_ROW_COL13, MACRO_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Right Wide", 8, 3, True),       # MACRO_POS_LOOP_ROW_COL13, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
+    ("Row Alt", 9, 3, False),             # MACRO_POS_LOOP_ROW_ALT, MACRO_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Alt Wide", 9, 3, True),         # MACRO_POS_LOOP_ROW_ALT, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
+    ("Row Zone", 1, 3, False),            # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_ROW, no influence
+    ("Row Zone Wide", 1, 3, True),        # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
+    
+    # Column presets (only work with column animations)
+    ("Column Loops", 10, 4, False),       # MACRO_POS_LOOP_COL, MACRO_ANIM_MOVING_DOTS_COL, no influence
+    ("Column Loops Wide", 10, 4, True),   # MACRO_POS_LOOP_COL, MACRO_ANIM_MOVING_DOTS_COL, wide influence
+    ("Column Zone", 1, 4, False),         # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_COL, no influence
+    ("Column Zone Wide", 1, 4, True),     # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_COL, wide influence
 ]
 
-CUSTOM_LIGHT_ANIMATIONS = [
-    "None", "Heat", "Sustain", "Moving Dots Row", "Moving Dots Col"
-]
-
+# Keep existing constants but rename pulse mode
 CUSTOM_LIGHT_BACKGROUNDS = [
     "None", "Static", "BPM Pulse Fade", "BPM All Disco"
 ]
@@ -207,7 +269,7 @@ CUSTOM_LIGHT_COLOR_TYPES = [
     "Base", "Channel", "Macro", "Heat"
 ]
 
-CUSTOM_LIGHT_PULSE_MODES = [
+CUSTOM_LIGHT_SUSTAIN_MODES = [  # Renamed from PULSE_MODES
     "None", "Live Only", "Macro Only", "All"
 ]
 
@@ -653,7 +715,7 @@ class LayerRGBHandler(BasicHandler):
 from PyQt5.QtWidgets import QTabWidget
 
 class CustomLightsHandler(BasicHandler):
-    """Handler for custom animation slot configuration - tabbed interface"""
+    """Handler for custom animation slot configuration - tabbed interface with presets"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -668,11 +730,11 @@ class CustomLightsHandler(BasicHandler):
         self.tab_widget = QTabWidget()
         container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
 
-        # Create tabs for each slot
+        # Create tabs for each slot (12 slots now)
         self.slot_tabs = []
         self.slot_widgets = {}
         
-        for slot in range(10):
+        for slot in range(12):  # Changed to 12 slots
             self.create_slot_tab(slot)
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
@@ -681,101 +743,70 @@ class CustomLightsHandler(BasicHandler):
         """Create a tab for a single slot"""
         # Create tab widget
         tab_widget = QWidget()
-        self.tab_widget.addTab(tab_widget, f"Slot {slot}")
+        self.tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
         
         # Create layout for this tab
         layout = QGridLayout(tab_widget)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
 
-        # Enabled checkbox
-        enabled_cb = QCheckBox(tr("RGBConfigurator", "Enabled"))
-        enabled_cb.setChecked(True)  # Default enabled
-        enabled_cb.stateChanged.connect(lambda checked, s=slot: self.on_slot_enabled_changed(s, checked))
-        layout.addWidget(enabled_cb, 0, 0, 1, 2)
-
-        # Live Controls section
-        live_label = QLabel(tr("RGBConfigurator", "Live Controls:"))
+        # Live Animation section
+        live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(live_label, 1, 0, 1, 2)
+        layout.addWidget(live_label, 0, 0, 1, 2)
 
-        # Live Position
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
-        live_position = QComboBox()
-        for pos in CUSTOM_LIGHT_LIVE_POSITIONS:
-            live_position.addItem(pos)
-        live_position.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_position_changed(s, idx))
-        layout.addWidget(live_position, 2, 1)
-
-        # Live Animation
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Animation:")), 3, 0)
         live_animation = QComboBox()
-        for anim in CUSTOM_LIGHT_ANIMATIONS:
-            live_animation.addItem(anim)
+        for preset_name, _, _, _ in LIVE_ANIMATION_PRESETS:
+            live_animation.addItem(preset_name)
         live_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_animation_changed(s, idx))
-        layout.addWidget(live_animation, 3, 1)
+        layout.addWidget(live_animation, 1, 0, 1, 2)
 
-        # Macro Controls section
-        macro_label = QLabel(tr("RGBConfigurator", "Macro Controls:"))
+        # Macro Animation section
+        macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(macro_label, 4, 0, 1, 2)
+        layout.addWidget(macro_label, 2, 0, 1, 2)
 
-        # Macro Position
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 5, 0)
-        macro_position = QComboBox()
-        for pos in CUSTOM_LIGHT_MACRO_POSITIONS:
-            macro_position.addItem(pos)
-        macro_position.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_position_changed(s, idx))
-        layout.addWidget(macro_position, 5, 1)
-
-        # Macro Animation
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Animation:")), 6, 0)
         macro_animation = QComboBox()
-        for anim in CUSTOM_LIGHT_ANIMATIONS:
-            macro_animation.addItem(anim)
+        for preset_name, _, _, _ in MACRO_ANIMATION_PRESETS:
+            macro_animation.addItem(preset_name)
         macro_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_animation_changed(s, idx))
-        layout.addWidget(macro_animation, 6, 1)
+        layout.addWidget(macro_animation, 3, 0, 1, 2)
 
         # Effects section
         effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 7, 0, 1, 2)
+        layout.addWidget(effects_label, 4, 0, 1, 2)
 
         # Background
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 8, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 5, 0)
         background = QComboBox()
         for bg in CUSTOM_LIGHT_BACKGROUNDS:
             background.addItem(bg)
         background.currentIndexChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-        layout.addWidget(background, 8, 1)
+        layout.addWidget(background, 5, 1)
 
         # Color Type
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 9, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 6, 0)
         color_type = QComboBox()
         for color in CUSTOM_LIGHT_COLOR_TYPES:
             color_type.addItem(color)
         color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 9, 1)
+        layout.addWidget(color_type, 6, 1)
 
-        # Pulse Mode
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Pulse Mode:")), 10, 0)
-        pulse_mode = QComboBox()
-        for pulse in CUSTOM_LIGHT_PULSE_MODES:
-            pulse_mode.addItem(pulse)
-        pulse_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_pulse_mode_changed(s, idx))
-        layout.addWidget(pulse_mode, 10, 1)
-
-        # Wide Influence
-        wide_influence = QCheckBox(tr("RGBConfigurator", "Wide Influence"))
-        wide_influence.stateChanged.connect(lambda checked, s=slot: self.on_wide_influence_changed(s, checked))
-        layout.addWidget(wide_influence, 11, 0, 1, 2)
+        # Sustain Mode (renamed from Pulse Mode)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 7, 0)
+        sustain_mode = QComboBox()
+        for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
+            sustain_mode.addItem(sustain)
+        sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
+        layout.addWidget(sustain_mode, 7, 1)
 
         # Buttons
         buttons_layout = QHBoxLayout()
         
-        apply_button = QPushButton(tr("RGBConfigurator", "Apply Changes"))
-        apply_button.clicked.connect(lambda checked, s=slot: self.on_apply_slot(s))
-        buttons_layout.addWidget(apply_button)
+        save_button = QPushButton(tr("RGBConfigurator", "Save"))  # Renamed from "Apply Changes"
+        save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
+        buttons_layout.addWidget(save_button)
         
         reset_button = QPushButton(tr("RGBConfigurator", "Reset to Default"))
         reset_button.clicked.connect(lambda checked, s=slot: self.on_reset_slot(s))
@@ -790,19 +821,15 @@ class CustomLightsHandler(BasicHandler):
         
         buttons_widget = QWidget()
         buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 12, 0, 1, 2)
+        layout.addWidget(buttons_widget, 8, 0, 1, 2)
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
-            'enabled': enabled_cb,
-            'live_position': live_position,
             'live_animation': live_animation,
-            'macro_position': macro_position,
             'macro_animation': macro_animation,
             'background': background,
             'color_type': color_type,
-            'pulse_mode': pulse_mode,
-            'wide_influence': wide_influence,
+            'sustain_mode': sustain_mode,
             'preset_combo': preset_combo
         }
 
@@ -813,20 +840,25 @@ class CustomLightsHandler(BasicHandler):
         self.block_signals()
         
         # Update all slots
-        for slot in range(10):
+        for slot in range(12):  # Changed to 12 slots
             try:
                 config = self.get_custom_slot_config(slot)
                 if config:
                     widgets = self.slot_widgets[slot]
-                    widgets['live_position'].setCurrentIndex(min(config[0], len(CUSTOM_LIGHT_LIVE_POSITIONS) - 1))
-                    widgets['macro_position'].setCurrentIndex(min(config[1], len(CUSTOM_LIGHT_MACRO_POSITIONS) - 1))
-                    widgets['live_animation'].setCurrentIndex(min(config[2], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                    widgets['macro_animation'].setCurrentIndex(min(config[3], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                    widgets['wide_influence'].setChecked(bool(config[4]))
+                    
+                    # Find matching live animation preset
+                    live_pos, live_anim, influence = config[0], config[2], bool(config[4])
+                    live_preset_idx = self.find_live_preset_index(live_pos, live_anim, influence)
+                    widgets['live_animation'].setCurrentIndex(live_preset_idx)
+                    
+                    # Find matching macro animation preset
+                    macro_pos, macro_anim = config[1], config[3]
+                    macro_preset_idx = self.find_macro_preset_index(macro_pos, macro_anim, influence)
+                    widgets['macro_animation'].setCurrentIndex(macro_preset_idx)
+                    
                     widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
-                    widgets['pulse_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_PULSE_MODES) - 1))
+                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                     widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
-                    widgets['enabled'].setChecked(bool(config[8]) if len(config) > 8 else True)
                 else:
                     self.set_slot_defaults(slot)
             except Exception as e:
@@ -835,18 +867,28 @@ class CustomLightsHandler(BasicHandler):
 
         self.unblock_signals()
 
+    def find_live_preset_index(self, position, animation, influence):
+        """Find the index of a live preset matching the given parameters"""
+        for i, (_, pos, anim, inf) in enumerate(LIVE_ANIMATION_PRESETS):
+            if pos == position and anim == animation and inf == influence:
+                return i
+        return 0  # Default to first preset if no match
+
+    def find_macro_preset_index(self, position, animation, influence):
+        """Find the index of a macro preset matching the given parameters"""
+        for i, (_, pos, anim, inf) in enumerate(MACRO_ANIMATION_PRESETS):
+            if pos == position and anim == animation and inf == influence:
+                return i
+        return 0  # Default to first preset if no match
+
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
         widgets = self.slot_widgets[slot]
-        widgets['live_position'].setCurrentIndex(0)  # TrueKey
-        widgets['macro_position'].setCurrentIndex(0)  # TrueKey
-        widgets['live_animation'].setCurrentIndex(0)  # None
-        widgets['macro_animation'].setCurrentIndex(0)  # None
-        widgets['background'].setCurrentIndex(0)  # None
-        widgets['color_type'].setCurrentIndex(1)  # Channel
-        widgets['pulse_mode'].setCurrentIndex(3)  # All
-        widgets['wide_influence'].setChecked(False)
-        widgets['enabled'].setChecked(True)
+        widgets['live_animation'].setCurrentIndex(0)      # TrueKey Normal
+        widgets['macro_animation'].setCurrentIndex(0)     # TrueKey Normal
+        widgets['background'].setCurrentIndex(0)          # None
+        widgets['color_type'].setCurrentIndex(1)          # Channel
+        widgets['sustain_mode'].setCurrentIndex(3)        # All
 
     def valid(self):
         """Always return True - always show custom lights section"""
@@ -854,83 +896,83 @@ class CustomLightsHandler(BasicHandler):
 
     def block_signals(self):
         """Block signals for all widgets"""
-        for slot in range(10):
+        for slot in range(12):  # Changed to 12 slots
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
-        for slot in range(10):
+        for slot in range(12):  # Changed to 12 slots
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(False)
 
     # Event handlers
-    def on_slot_enabled_changed(self, slot, checked):
-        """Handle slot enabled/disabled"""
-        self.send_parameter_change(slot, 8, 1 if checked else 0)
-
-    def on_live_position_changed(self, slot, index):
-        """Handle live position change"""
-        self.send_parameter_change(slot, 0, index)
-
-    def on_macro_position_changed(self, slot, index):
-        """Handle macro position change"""
-        self.send_parameter_change(slot, 1, index)
-
     def on_live_animation_changed(self, slot, index):
-        """Handle live animation change"""
-        self.send_parameter_change(slot, 2, index)
+        """Handle live animation preset change"""
+        if index < len(LIVE_ANIMATION_PRESETS):
+            _, position, animation, influence = LIVE_ANIMATION_PRESETS[index]
+            self.send_parameter_change(slot, 0, position)    # live_positioning
+            self.send_parameter_change(slot, 2, animation)   # live_animation
+            self.send_parameter_change(slot, 4, 1 if influence else 0)  # influence
 
     def on_macro_animation_changed(self, slot, index):
-        """Handle macro animation change"""
-        self.send_parameter_change(slot, 3, index)
-
-    def on_wide_influence_changed(self, slot, checked):
-        """Handle wide influence toggle"""
-        self.send_parameter_change(slot, 4, 1 if checked else 0)
+        """Handle macro animation preset change"""
+        if index < len(MACRO_ANIMATION_PRESETS):
+            _, position, animation, influence = MACRO_ANIMATION_PRESETS[index]
+            self.send_parameter_change(slot, 1, position)    # macro_positioning
+            self.send_parameter_change(slot, 3, animation)   # macro_animation
+            self.send_parameter_change(slot, 4, 1 if influence else 0)  # influence
 
     def on_background_changed(self, slot, index):
         """Handle background change"""
         self.send_parameter_change(slot, 5, index)
 
-    def on_pulse_mode_changed(self, slot, index):
-        """Handle pulse mode change"""
+    def on_sustain_mode_changed(self, slot, index):
+        """Handle sustain mode change"""
         self.send_parameter_change(slot, 6, index)
 
     def on_color_type_changed(self, slot, index):
         """Handle color type change"""
         self.send_parameter_change(slot, 7, index)
 
-    def on_apply_slot(self, slot):
-        """Apply current settings for a slot"""
+    def on_save_slot(self, slot):
+        """Save current settings for a slot (with auto-enable)"""
         try:
             # Force update from current UI state
             widgets = self.slot_widgets[slot]
             
+            # Get live animation preset
+            live_idx = widgets['live_animation'].currentIndex()
+            _, live_pos, live_anim, influence = LIVE_ANIMATION_PRESETS[live_idx]
+            
+            # Get macro animation preset
+            macro_idx = widgets['macro_animation'].currentIndex()
+            _, macro_pos, macro_anim, _ = MACRO_ANIMATION_PRESETS[macro_idx]  # Use live influence for both
+            
             # Send all parameters for this slot
             params = [
-                widgets['live_position'].currentIndex(),
-                widgets['macro_position'].currentIndex(),
-                widgets['live_animation'].currentIndex(),
-                widgets['macro_animation'].currentIndex(),
-                1 if widgets['wide_influence'].isChecked() else 0,
-                widgets['background'].currentIndex(),
-                widgets['pulse_mode'].currentIndex(),
-                widgets['color_type'].currentIndex(),
-                1 if widgets['enabled'].isChecked() else 0
+                live_pos,                                    # live_positioning
+                macro_pos,                                   # macro_positioning
+                live_anim,                                   # live_animation
+                macro_anim,                                  # macro_animation
+                1 if influence else 0,                       # influence
+                widgets['background'].currentIndex(),        # background_mode
+                widgets['sustain_mode'].currentIndex(),      # sustain_mode (was pulse_mode)
+                widgets['color_type'].currentIndex(),        # color_type
+                1                                           # enabled (always enabled when saving)
             ]
             
             success = self.set_all_slot_parameters(slot, params)
             if success:
-                print(f"Applied all settings to slot {slot}")
+                print(f"Saved all settings to slot {slot + 1}")
                 self.update.emit()
             else:
-                print(f"Failed to apply settings to slot {slot}")
+                print(f"Failed to save settings to slot {slot + 1}")
                 
         except Exception as e:
-            print(f"Error applying slot {slot} settings: {e}")
+            print(f"Error saving slot {slot + 1} settings: {e}")
 
     def on_reset_slot(self, slot):
         """Reset a slot to defaults"""
@@ -939,11 +981,11 @@ class CustomLightsHandler(BasicHandler):
             if success:
                 self.set_slot_defaults(slot)
                 self.update.emit()
-                print(f"Reset slot {slot} to defaults")
+                print(f"Reset slot {slot + 1} to defaults")
             else:
-                print(f"Failed to reset slot {slot}")
+                print(f"Failed to reset slot {slot + 1}")
         except Exception as e:
-            print(f"Error resetting slot {slot}: {e}")
+            print(f"Error resetting slot {slot + 1}: {e}")
 
     def on_load_preset(self, slot, index):
         """Load a preset configuration"""
@@ -959,18 +1001,23 @@ class CustomLightsHandler(BasicHandler):
                 if config:
                     widgets = self.slot_widgets[slot]
                     self.block_signals()
-                    widgets['live_position'].setCurrentIndex(min(config[0], len(CUSTOM_LIGHT_LIVE_POSITIONS) - 1))
-                    widgets['macro_position'].setCurrentIndex(min(config[1], len(CUSTOM_LIGHT_MACRO_POSITIONS) - 1))
-                    widgets['live_animation'].setCurrentIndex(min(config[2], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                    widgets['macro_animation'].setCurrentIndex(min(config[3], len(CUSTOM_LIGHT_ANIMATIONS) - 1))
-                    widgets['wide_influence'].setChecked(bool(config[4]))
+                    
+                    # Find matching presets
+                    live_pos, live_anim, influence = config[0], config[2], bool(config[4])
+                    live_preset_idx = self.find_live_preset_index(live_pos, live_anim, influence)
+                    widgets['live_animation'].setCurrentIndex(live_preset_idx)
+                    
+                    macro_pos, macro_anim = config[1], config[3]
+                    macro_preset_idx = self.find_macro_preset_index(macro_pos, macro_anim, influence)
+                    widgets['macro_animation'].setCurrentIndex(macro_preset_idx)
+                    
                     widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
-                    widgets['pulse_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_PULSE_MODES) - 1))
+                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                     widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
                     self.unblock_signals()
                 
                 self.update.emit()
-                print(f"Loaded preset {preset_index} to slot {slot}")
+                print(f"Loaded preset {preset_index} to slot {slot + 1}")
             else:
                 print(f"Failed to load preset {preset_index}")
         except Exception as e:
@@ -984,10 +1031,10 @@ class CustomLightsHandler(BasicHandler):
         try:
             success = self.set_custom_slot_parameter(slot, param_index, value)
             if success:
-                print(f"Set slot {slot} param {param_index} to {value}")
+                print(f"Set slot {slot + 1} param {param_index} to {value}")
                 self.update.emit()
             else:
-                print(f"Failed to set slot {slot} param {param_index} to {value}")
+                print(f"Failed to set slot {slot + 1} param {param_index} to {value}")
         except Exception as e:
             print(f"Error setting custom slot parameter: {e}")
 
@@ -995,7 +1042,7 @@ class CustomLightsHandler(BasicHandler):
     def get_custom_slot_config(self, slot):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 10:
+            if slot >= 12:  # Changed to 12 slots
                 return None
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_GET_ALL, [slot])
@@ -1009,7 +1056,7 @@ class CustomLightsHandler(BasicHandler):
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 10 or param_index >= 9:
+            if slot >= 12 or param_index >= 9:  # Changed to 12 slots
                 return False
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_PARAM, [slot, param_index, value])
@@ -1021,7 +1068,7 @@ class CustomLightsHandler(BasicHandler):
     def set_all_slot_parameters(self, slot, params):
         """Set all parameters for a slot at once"""
         try:
-            if slot >= 10 or len(params) != 9:
+            if slot >= 12 or len(params) != 9:  # Changed to 12 slots
                 return False
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_SET_ALL, [slot] + params)
@@ -1033,7 +1080,7 @@ class CustomLightsHandler(BasicHandler):
     def reset_custom_slot(self, slot):
         """Reset a slot to defaults"""
         try:
-            if slot >= 10:
+            if slot >= 12:  # Changed to 12 slots
                 return False
                 
             data = self._send_vial_command(CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, [slot])
@@ -1045,10 +1092,10 @@ class CustomLightsHandler(BasicHandler):
     def load_custom_slot_preset(self, slot, preset_index):
         """Load a preset configuration into a slot"""
         try:
-            if slot >= 10:
+            if slot >= 12:  # Changed to 12 slots
                 return False
 
-            # Define preset configurations
+            # Define preset configurations (updated for new structure)
             presets = [
                 [0, 0, 0, 0, 0, 1, 0, 1, 1],  # Classic TrueKey + enabled
                 [0, 0, 1, 1, 0, 1, 3, 3, 1],  # Heat Effects + enabled
