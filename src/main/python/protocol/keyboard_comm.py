@@ -16,7 +16,10 @@ from protocol.constants import CMD_VIA_GET_PROTOCOL_VERSION, CMD_VIA_GET_KEYBOAR
     CMD_VIAL_GET_ENCODER, CMD_VIAL_SET_ENCODER, CMD_VIAL_GET_UNLOCK_STATUS, CMD_VIAL_UNLOCK_START, CMD_VIAL_UNLOCK_POLL, \
     CMD_VIAL_LOCK, CMD_VIAL_QMK_SETTINGS_QUERY, CMD_VIAL_QMK_SETTINGS_GET, CMD_VIAL_QMK_SETTINGS_SET, \
     CMD_VIAL_QMK_SETTINGS_RESET, BUFFER_FETCH_CHUNK, VIAL_PROTOCOL_QMK_SETTINGS, \
-    CMD_VIAL_LAYER_RGB_SAVE, CMD_VIAL_LAYER_RGB_LOAD, CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS
+    CMD_VIAL_LAYER_RGB_SAVE, CMD_VIAL_LAYER_RGB_LOAD, CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS, \
+    CMD_VIAL_CUSTOM_ANIM_SET_PARAM, CMD_VIAL_CUSTOM_ANIM_GET_PARAM, CMD_VIAL_CUSTOM_ANIM_SET_ALL, \
+    CMD_VIAL_CUSTOM_ANIM_GET_ALL, CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, \
+    CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS
 from protocol.dynamic import ProtocolDynamic
 from protocol.key_override import ProtocolKeyOverride
 from protocol.macro import ProtocolMacro
@@ -605,3 +608,68 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except:
             # Always return success for GUI so buttons remain functional
             return True
+            
+    def get_custom_slot_config(self, slot):
+        """Get all parameters for a custom animation slot"""
+        try:
+            if slot >= 10:
+                return None
+                
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot), retries=20)
+            if data and len(data) > 2 and data[0] == 0x01:
+                return data[3:11]  # 8 parameters starting at index 3
+            return None
+        except Exception as e:
+            print(f"Error getting custom slot {slot} config: {e}")
+            return None
+
+    def set_custom_slot_parameter(self, slot, param_index, value):
+        """Set a single parameter for a custom animation slot"""
+        try:
+            if slot >= 10 or param_index >= 9:
+                return False
+                
+            data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
+            return False
+
+    def save_custom_slots(self):
+        """Save all custom slot configurations to EEPROM"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SAVE), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error saving custom slots: {e}")
+            return False
+
+    def load_custom_slot_preset(self, slot, preset_index):
+        """Load a preset configuration into a slot"""
+        try:
+            if slot >= 10:
+                return False
+
+            # Define preset configurations
+            presets = [
+                [0, 0, 0, 0, 0, 1, 0, 1, 1],  # Classic TrueKey + enabled
+                [0, 0, 1, 1, 0, 1, 3, 3, 1],  # Heat Effects + enabled
+                [1, 1, 3, 3, 0, 2, 3, 1, 1],  # Moving Dots + enabled
+                [2, 2, 0, 0, 1, 3, 0, 2, 1],  # BPM Disco + enabled
+                [1, 1, 0, 0, 0, 0, 3, 1, 1],  # Zone Lighting + enabled
+                [0, 0, 2, 2, 1, 0, 0, 1, 1],  # Sustain Mode + enabled
+                [0, 2, 1, 0, 0, 2, 1, 1, 1],  # Performance Setup + enabled
+            ]
+            
+            if preset_index >= len(presets):
+                return False
+                
+            # Use set_all command: slot + 9 parameter bytes
+            params = [slot] + presets[preset_index]
+            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(params), CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_ALL, *params), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+            
+        except Exception as e:
+            print(f"Error loading preset {preset_index} to slot {slot}: {e}")
+            return False            
+            
