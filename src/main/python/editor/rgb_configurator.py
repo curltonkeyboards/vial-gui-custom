@@ -554,7 +554,7 @@ class RescanButtonHandler(BasicHandler):
         # Centered rescan button
         rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
         rescan_button.clicked.connect(self.on_rescan_led_positions)
-        rescan_button.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 8px; }")
+        rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
         rescan_button.setMinimumHeight(30)
         
         # Center the button using a horizontal layout
