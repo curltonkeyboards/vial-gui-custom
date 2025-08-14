@@ -584,14 +584,13 @@ class RescanButtonHandler(BasicHandler):
                 success = self.device.keyboard.rescan_led_positions()
                 if success:
                     print("LED positions rescanned successfully")
-                    self.update.emit()
+                    # REMOVED: self.update.emit() - this was causing RGB state corruption
                 else:
                     print("Failed to rescan LED positions")
             else:
                 print("Rescan LED positions method not implemented on keyboard")
         except Exception as e:
             print(f"Error rescanning LED positions: {e}")
-
 
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
@@ -761,7 +760,6 @@ class LayerRGBHandler(BasicHandler):
         # Always show all widgets - no hiding capability
         for w in self.widgets:
             w.show()
-
 
 class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
@@ -961,7 +959,7 @@ class CustomLightsHandler(BasicHandler):
             for widget in widgets.values():
                 widget.blockSignals(False)
 
-    # Event handlers using VialKeyboard infrastructure
+    # Event handlers using VialKeyboard infrastructure - NO UPDATE CALLS
     def on_live_animation_changed(self, slot, index):
         """Handle live animation preset change"""
         if index < len(LIVE_ANIMATION_PRESETS):
@@ -970,7 +968,6 @@ class CustomLightsHandler(BasicHandler):
                 self.device.keyboard.set_custom_slot_parameter(slot, 0, position)    # live_positioning
                 self.device.keyboard.set_custom_slot_parameter(slot, 2, animation)   # live_animation
                 self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if influence else 0)  # influence
-                self.update.emit()
             else:
                 print(f"Live animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
 
@@ -982,7 +979,6 @@ class CustomLightsHandler(BasicHandler):
                 self.device.keyboard.set_custom_slot_parameter(slot, 1, position)    # macro_positioning
                 self.device.keyboard.set_custom_slot_parameter(slot, 3, animation)   # macro_animation
                 self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if influence else 0)  # influence
-                self.update.emit()
             else:
                 print(f"Macro animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
 
@@ -990,7 +986,6 @@ class CustomLightsHandler(BasicHandler):
         """Handle background change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 5, index)
-            self.update.emit()
         else:
             print(f"Background changed: slot {slot}, index {index}")
 
@@ -998,7 +993,6 @@ class CustomLightsHandler(BasicHandler):
         """Handle sustain mode change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 6, index)
-            self.update.emit()
         else:
             print(f"Sustain mode changed: slot {slot}, index {index}")
 
@@ -1006,7 +1000,6 @@ class CustomLightsHandler(BasicHandler):
         """Handle color type change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
-            self.update.emit()
         else:
             print(f"Color type changed: slot {slot}, index {index}")
 
@@ -1041,7 +1034,6 @@ class CustomLightsHandler(BasicHandler):
                 success = self.device.keyboard.set_all_custom_slot_parameters(slot, params)
                 if success:
                     print(f"Saved all settings to slot {slot + 1}")
-                    self.update.emit()
                 else:
                     print(f"Failed to save settings to slot {slot + 1}")
             else:
@@ -1057,7 +1049,6 @@ class CustomLightsHandler(BasicHandler):
                 success = self.device.keyboard.reset_custom_slot(slot)
                 if success:
                     self.set_slot_defaults(slot)
-                    self.update.emit()
                     print(f"Reset slot {slot + 1} to defaults")
                 else:
                     print(f"Failed to reset slot {slot + 1}")
@@ -1077,8 +1068,6 @@ class CustomLightsHandler(BasicHandler):
             if hasattr(self.device.keyboard, 'load_custom_slot_preset'):
                 success = self.device.keyboard.load_custom_slot_preset(slot, preset_index)
                 if success:
-                    # Update the UI for this slot
-                    self.update_from_keyboard()
                     print(f"Loaded preset {preset_index} to slot {slot + 1}")
                 else:
                     print(f"Failed to load preset {preset_index}")
@@ -1089,7 +1078,6 @@ class CustomLightsHandler(BasicHandler):
         
         # Reset combo box to header
         self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
-
 
 class RGBConfigurator(BasicEditor):
 
