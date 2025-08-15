@@ -263,7 +263,62 @@ MACRO_ANIMATION_PRESETS = [
 ]
 
 CUSTOM_LIGHT_BACKGROUNDS = [
-    "None", "Static", "BPM Pulse Fade", "BPM All Disco"
+
+    "None",
+
+    "Basic",
+    "Basic 2",
+    "Basic 3", 
+    "Basic 4",
+    "Basic 5",
+    "Basic 6",
+
+    "Autolight",
+    "Autolight 2",
+    "Autolight 3",
+    "Autolight 4", 
+    "Autolight 5",
+    "Autolight 6",
+
+    "BPM Pulse Fade",
+    "BPM Pulse Fade 2",
+    "BPM Pulse Fade 3",
+    "BPM Pulse Fade 4",
+    "BPM Pulse Fade 5", 
+    "BPM Pulse Fade 6",
+    "BPM Pulse Fade Disco",
+
+    "BPM Quadrants",
+    "BPM Quadrants 2",
+    "BPM Quadrants 3",
+    "BPM Quadrants 4",
+    "BPM Quadrants 5",
+    "BPM Quadrants 6", 
+    "BPM Quadrants Disco",
+
+    "BPM Row",
+    "BPM Row 2",
+    "BPM Row 3",
+    "BPM Row 4",
+    "BPM Row 5",
+    "BPM Row 6",
+    "BPM Row Disco",
+
+    "BPM Column", 
+    "BPM Column 2",
+    "BPM Column 3",
+    "BPM Column 4",
+    "BPM Column 5",
+    "BPM Column 6",
+    "BPM Column Disco",
+
+    "BPM All",
+    "BPM All 2", 
+    "BPM All 3",
+    "BPM All 4",
+    "BPM All 5",
+    "BPM All 6",
+    "BPM All Disco"
 ]
 
 CUSTOM_LIGHT_COLOR_TYPES = [
