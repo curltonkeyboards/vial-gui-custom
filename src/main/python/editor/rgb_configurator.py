@@ -544,7 +544,7 @@ class VialRGBHandler(BasicHandler):
 
 
 class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button - uses VialKeyboard infrastructure"""
+    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -578,19 +578,16 @@ class RescanButtonHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Rescan LED positions on the keyboard using VialKeyboard infrastructure"""
+        """Rescan LED positions - ONLY sends HID command, does NOTHING else"""
         try:
             if hasattr(self.device.keyboard, 'rescan_led_positions'):
-                success = self.device.keyboard.rescan_led_positions()
-                if success:
-                    print("LED positions rescanned successfully")
-                    # REMOVED: self.update.emit() - this was causing RGB state corruption
-                else:
-                    print("Failed to rescan LED positions")
+                self.device.keyboard.rescan_led_positions()
+                print("Rescan LED command sent")
             else:
-                print("Rescan LED positions method not implemented on keyboard")
+                print("Rescan LED method not available")
         except Exception as e:
-            print(f"Error rescanning LED positions: {e}")
+            print(f"Error sending rescan LED command: {e}")
+        # INTENTIONALLY: No update calls, no signals, no other actions
 
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
@@ -1100,9 +1097,9 @@ class RGBConfigurator(BasicEditor):
         self.handler_vialrgb = VialRGBHandler(self.container)
         self.handler_vialrgb.update.connect(self.update_from_keyboard)
         
-        # Add the rescan button handler BEFORE the layer RGB handler
+        # Add the rescan button handler - NO UPDATE CONNECTION
         self.handler_rescan = RescanButtonHandler(self.container)
-        self.handler_rescan.update.connect(self.update_from_keyboard)
+        # REMOVED: self.handler_rescan.update.connect(self.update_from_keyboard)
         
         # Add the per-layer RGB handler
         self.handler_layer_rgb = LayerRGBHandler(self.container)
