@@ -860,45 +860,72 @@ class CustomLightsHandler(BasicHandler):
         live_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_animation_changed(s, idx))
         layout.addWidget(live_animation, 1, 0, 1, 2)
 
+        # Live Animation Speed slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 2, 0)
+        live_speed = QSlider(QtCore.Qt.Horizontal)
+        live_speed.setMinimum(0)
+        live_speed.setMaximum(255)
+        live_speed.setValue(128)  # Default speed
+        live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
+        layout.addWidget(live_speed, 2, 1)
+
         # Macro Animation section
         macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(macro_label, 2, 0, 1, 2)
+        layout.addWidget(macro_label, 3, 0, 1, 2)
 
         macro_animation = QComboBox()
         for preset_name, _, _, _ in MACRO_ANIMATION_PRESETS:
             macro_animation.addItem(preset_name)
         macro_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_animation_changed(s, idx))
-        layout.addWidget(macro_animation, 3, 0, 1, 2)
+        layout.addWidget(macro_animation, 4, 0, 1, 2)
+
+        # Macro Animation Speed slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 5, 0)
+        macro_speed = QSlider(QtCore.Qt.Horizontal)
+        macro_speed.setMinimum(0)
+        macro_speed.setMaximum(255)
+        macro_speed.setValue(128)  # Default speed
+        macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
+        layout.addWidget(macro_speed, 5, 1)
 
         # Effects section
         effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 4, 0, 1, 2)
+        layout.addWidget(effects_label, 6, 0, 1, 2)
 
         # Background
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 5, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 7, 0)
         background = QComboBox()
         for bg in CUSTOM_LIGHT_BACKGROUNDS:
             background.addItem(bg)
         background.currentIndexChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-        layout.addWidget(background, 5, 1)
+        layout.addWidget(background, 7, 1)
+
+        # Background Brightness slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 8, 0)
+        background_brightness = QSlider(QtCore.Qt.Horizontal)
+        background_brightness.setMinimum(0)
+        background_brightness.setMaximum(100)
+        background_brightness.setValue(30)  # Default 30%
+        background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
+        layout.addWidget(background_brightness, 8, 1)
 
         # Color Type
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 6, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 9, 0)
         color_type = QComboBox()
         for color in CUSTOM_LIGHT_COLOR_TYPES:
             color_type.addItem(color)
         color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 6, 1)
+        layout.addWidget(color_type, 9, 1)
 
         # Sustain Mode (renamed from Pulse Mode)
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 7, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 10, 0)
         sustain_mode = QComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-        layout.addWidget(sustain_mode, 7, 1)
+        layout.addWidget(sustain_mode, 10, 1)
 
         # Buttons
         buttons_layout = QHBoxLayout()
@@ -920,13 +947,16 @@ class CustomLightsHandler(BasicHandler):
         
         buttons_widget = QWidget()
         buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 8, 0, 1, 2)
+        layout.addWidget(buttons_widget, 11, 0, 1, 2)
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
             'live_animation': live_animation,
+            'live_speed': live_speed,
             'macro_animation': macro_animation,
+            'macro_speed': macro_speed,
             'background': background,
+            'background_brightness': background_brightness,
             'color_type': color_type,
             'sustain_mode': sustain_mode,
             'preset_combo': preset_combo
@@ -943,7 +973,7 @@ class CustomLightsHandler(BasicHandler):
             try:
                 if hasattr(self.device.keyboard, 'get_custom_slot_config'):
                     config = self.device.keyboard.get_custom_slot_config(slot)
-                    if config:
+                    if config and len(config) >= 12:  # Now expecting 12 parameters
                         widgets = self.slot_widgets[slot]
                         
                         # Find matching live animation preset
@@ -959,6 +989,10 @@ class CustomLightsHandler(BasicHandler):
                         widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                         widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                        # config[8] is enabled - not shown in UI
+                        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
+                        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
+                        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)  # Macro speed
                     else:
                         self.set_slot_defaults(slot)
                 else:
@@ -988,8 +1022,11 @@ class CustomLightsHandler(BasicHandler):
         """Set default values for a slot"""
         widgets = self.slot_widgets[slot]
         widgets['live_animation'].setCurrentIndex(0)      # TrueKey Normal
+        widgets['live_speed'].setValue(128)               # Default live speed
         widgets['macro_animation'].setCurrentIndex(0)     # TrueKey Normal
+        widgets['macro_speed'].setValue(128)              # Default macro speed
         widgets['background'].setCurrentIndex(0)          # None
+        widgets['background_brightness'].setValue(30)     # 30% background brightness
         widgets['color_type'].setCurrentIndex(1)          # Channel
         widgets['sustain_mode'].setCurrentIndex(3)        # All
 
@@ -1023,6 +1060,13 @@ class CustomLightsHandler(BasicHandler):
             else:
                 print(f"Live animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
 
+    def on_live_speed_changed(self, slot, value):
+        """Handle live animation speed change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 10, value)  # Parameter 10: live speed
+        else:
+            print(f"Live speed changed: slot {slot}, speed {value}")
+
     def on_macro_animation_changed(self, slot, index):
         """Handle macro animation preset change"""
         if index < len(MACRO_ANIMATION_PRESETS):
@@ -1034,12 +1078,26 @@ class CustomLightsHandler(BasicHandler):
             else:
                 print(f"Macro animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
 
+    def on_macro_speed_changed(self, slot, value):
+        """Handle macro animation speed change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 11, value)  # Parameter 11: macro speed
+        else:
+            print(f"Macro speed changed: slot {slot}, speed {value}")
+
     def on_background_changed(self, slot, index):
         """Handle background change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 5, index)
         else:
             print(f"Background changed: slot {slot}, index {index}")
+
+    def on_background_brightness_changed(self, slot, value):
+        """Handle background brightness change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 9, value)  # Parameter 9: background brightness
+        else:
+            print(f"Background brightness changed: slot {slot}, brightness {value}%")
 
     def on_sustain_mode_changed(self, slot, index):
         """Handle sustain mode change"""
@@ -1069,17 +1127,20 @@ class CustomLightsHandler(BasicHandler):
             macro_idx = widgets['macro_animation'].currentIndex()
             _, macro_pos, macro_anim, _ = MACRO_ANIMATION_PRESETS[macro_idx]  # Use live influence for both
             
-            # Create parameters array
+            # Create parameters array with 12 parameters
             params = [
-                live_pos,                                    # live_positioning
-                macro_pos,                                   # macro_positioning
-                live_anim,                                   # live_animation
-                macro_anim,                                  # macro_animation
-                1 if influence else 0,                       # influence
-                widgets['background'].currentIndex(),        # background_mode
-                widgets['sustain_mode'].currentIndex(),      # sustain_mode (was pulse_mode)
-                widgets['color_type'].currentIndex(),        # color_type
-                1                                           # enabled (always enabled when saving)
+                live_pos,                                    # 0: live_positioning
+                macro_pos,                                   # 1: macro_positioning
+                live_anim,                                   # 2: live_animation
+                macro_anim,                                  # 3: macro_animation
+                1 if influence else 0,                       # 4: influence
+                widgets['background'].currentIndex(),        # 5: background_mode
+                widgets['sustain_mode'].currentIndex(),      # 6: sustain_mode (was pulse_mode)
+                widgets['color_type'].currentIndex(),        # 7: color_type
+                1,                                          # 8: enabled (always enabled when saving)
+                widgets['background_brightness'].value(),    # 9: background_brightness
+                widgets['live_speed'].value(),               # 10: live_speed
+                widgets['macro_speed'].value()               # 11: macro_speed
             ]
             
             if hasattr(self.device.keyboard, 'set_all_custom_slot_parameters'):
