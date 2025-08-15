@@ -705,17 +705,17 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error rescanning LED positions: {e}")
             return False
             
-            def set_custom_slot_live_speed(self, slot, speed):
-    """Set live animation speed for a custom animation slot (0-255)"""
-    try:
-        if slot >= 10 or speed > 255:
-            return False
+    def set_custom_slot_live_speed(self, slot, speed):
+        """Set live animation speed for a custom animation slot (0-255)"""
+        try:
+            if slot >= 10 or speed > 255:
+                return False
+                
+            return self.set_custom_slot_parameter(slot, 10, speed)  # Parameter index 10
             
-        return self.set_custom_slot_parameter(slot, 10, speed)  # Parameter index 10
-        
-    except Exception as e:
-        print(f"Error setting live speed for slot {slot}: {e}")
-        return False
+        except Exception as e:
+            print(f"Error setting live speed for slot {slot}: {e}")
+            return False
 
     def get_custom_slot_live_speed(self, slot):
         """Get live animation speed for a custom animation slot"""
