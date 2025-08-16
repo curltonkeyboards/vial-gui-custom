@@ -824,25 +824,20 @@ class CustomLightsHandler(BasicHandler):
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(live_label, 0, 0, 1, 3)
 
-        # Live Effect and Style dropdowns side by side
+        # Live Effect and Style dropdowns below each other
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
         live_effect = QComboBox()
         for effect in LIVE_EFFECTS:
             live_effect.addItem(effect)
         live_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
-        layout.addWidget(live_effect, 1, 1)
+        layout.addWidget(live_effect, 1, 1, 1, 2)
 
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 1, 2)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
         live_style = QComboBox()
         for style in LIVE_STYLES:
             live_style.addItem(style)
         live_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
-        layout.addWidget(live_style, 1, 3)
-
-        # Wide Influence checkbox
-        wide_influence = QCheckBox(tr("RGBConfigurator", "Wide Influence"))
-        wide_influence.stateChanged.connect(lambda checked, s=slot: self.on_wide_influence_changed(s, checked))
-        layout.addWidget(wide_influence, 2, 1, 1, 2)
+        layout.addWidget(live_style, 2, 1, 1, 2)
 
         # Live Animation Speed slider
         layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
@@ -851,74 +846,74 @@ class CustomLightsHandler(BasicHandler):
         live_speed.setMaximum(255)
         live_speed.setValue(128)  # Default speed
         live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-        layout.addWidget(live_speed, 3, 1, 1, 3)
+        layout.addWidget(live_speed, 3, 1, 1, 2)
 
         # Macro Animation section
         macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(macro_label, 4, 0, 1, 3)
 
-        # Macro Effect and Style dropdowns side by side
+        # Macro Effect and Style dropdowns below each other
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
         macro_effect = QComboBox()
         for effect in MACRO_EFFECTS:
             macro_effect.addItem(effect)
         macro_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
-        layout.addWidget(macro_effect, 5, 1)
+        layout.addWidget(macro_effect, 5, 1, 1, 2)
 
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 5, 2)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 6, 0)
         macro_style = QComboBox()
         for style in MACRO_STYLES:
             macro_style.addItem(style)
         macro_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
-        layout.addWidget(macro_style, 5, 3)
+        layout.addWidget(macro_style, 6, 1, 1, 2)
 
         # Macro Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 6, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
         macro_speed = QSlider(QtCore.Qt.Horizontal)
         macro_speed.setMinimum(0)
         macro_speed.setMaximum(255)
         macro_speed.setValue(128)  # Default speed
         macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-        layout.addWidget(macro_speed, 6, 1, 1, 3)
+        layout.addWidget(macro_speed, 7, 1, 1, 2)
 
         # Effects section
         effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 7, 0, 1, 3)
+        layout.addWidget(effects_label, 8, 0, 1, 3)
 
         # Background
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 8, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
         background = QComboBox()
         for bg in CUSTOM_LIGHT_BACKGROUNDS:
             background.addItem(bg)
         background.currentIndexChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-        layout.addWidget(background, 8, 1, 1, 2)
+        layout.addWidget(background, 9, 1, 1, 2)
 
         # Background Brightness slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 9, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
         background_brightness = QSlider(QtCore.Qt.Horizontal)
         background_brightness.setMinimum(0)
         background_brightness.setMaximum(100)
         background_brightness.setValue(30)  # Default 30%
         background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
-        layout.addWidget(background_brightness, 9, 1, 1, 3)
+        layout.addWidget(background_brightness, 10, 1, 1, 2)
 
         # Color Type
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 10, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 11, 0)
         color_type = QComboBox()
         for color in CUSTOM_LIGHT_COLOR_TYPES:
             color_type.addItem(color)
         color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 10, 1, 1, 2)
+        layout.addWidget(color_type, 11, 1, 1, 2)
 
         # Sustain Mode
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 11, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 12, 0)
         sustain_mode = QComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-        layout.addWidget(sustain_mode, 11, 1, 1, 2)
+        layout.addWidget(sustain_mode, 12, 1, 1, 2)
 
         # Buttons
         buttons_layout = QHBoxLayout()
@@ -940,7 +935,7 @@ class CustomLightsHandler(BasicHandler):
         
         buttons_widget = QWidget()
         buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 12, 0, 1, 4)
+        layout.addWidget(buttons_widget, 13, 0, 1, 3)
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
@@ -950,7 +945,6 @@ class CustomLightsHandler(BasicHandler):
             'macro_effect': macro_effect,
             'macro_style': macro_style,
             'macro_speed': macro_speed,
-            'wide_influence': wide_influence,
             'background': background,
             'background_brightness': background_brightness,
             'color_type': color_type,
@@ -978,7 +972,7 @@ class CustomLightsHandler(BasicHandler):
                         widgets['macro_effect'].setCurrentIndex(min(config[3], len(MACRO_EFFECTS) - 1)) # macro_animation
                         widgets['macro_style'].setCurrentIndex(min(config[1], len(MACRO_STYLES) - 1))   # macro_positioning
                         
-                        widgets['wide_influence'].setChecked(bool(config[4]))  # influence
+                        # Skip config[4] (influence) - no longer used
                         widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                         widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
@@ -1006,7 +1000,6 @@ class CustomLightsHandler(BasicHandler):
         widgets['macro_effect'].setCurrentIndex(0)        # None
         widgets['macro_style'].setCurrentIndex(0)         # TrueKey
         widgets['macro_speed'].setValue(128)              # Default macro speed
-        widgets['wide_influence'].setChecked(False)       # No wide influence
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness
         widgets['color_type'].setCurrentIndex(1)          # Channel
@@ -1148,20 +1141,20 @@ class CustomLightsHandler(BasicHandler):
         
         # Define preset configurations as individual parameter sets
         presets = [
-            # Classic TrueKey: live(TrueKey,None), macro(TrueKey,None), no influence, Basic bg, All sustain, Channel color
-            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 0, 'macro_anim': 0, 'influence': False, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 128, 'macro_speed': 128},
-            # Heat Effects: live(TrueKey,Heat), macro(TrueKey,Heat), influence, Basic bg, All sustain, Heat color
-            {'live_pos': 0, 'live_anim': 1, 'macro_pos': 0, 'macro_anim': 1, 'influence': True, 'background': 1, 'sustain': 3, 'color': 3, 'bg_brightness': 25, 'live_speed': 200, 'macro_speed': 200},
-            # Moving Dots: live(Zone,Moving Dots Row), macro(Zone,Moving Dots Row), influence, Basic bg, All sustain, Channel color
-            {'live_pos': 1, 'live_anim': 3, 'macro_pos': 1, 'macro_anim': 3, 'influence': True, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 35, 'live_speed': 150, 'macro_speed': 150},
-            # BPM Disco: live(Quadrant,None), macro(Quadrant,None), no influence, BPM All Disco bg, All sustain, Macro color
-            {'live_pos': 2, 'live_anim': 0, 'macro_pos': 2, 'macro_anim': 0, 'influence': False, 'background': 46, 'sustain': 3, 'color': 2, 'bg_brightness': 40, 'live_speed': 100, 'macro_speed': 100},
-            # Zone Lighting: live(Zone,None), macro(Zone,None), no influence, None bg, All sustain, Base color
-            {'live_pos': 1, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 0, 'influence': False, 'background': 0, 'sustain': 3, 'color': 0, 'bg_brightness': 0, 'live_speed': 128, 'macro_speed': 128},
-            # Sustain Mode: live(TrueKey,Sustain), macro(TrueKey,Sustain), no influence, None bg, All sustain, Channel color
-            {'live_pos': 0, 'live_anim': 2, 'macro_pos': 0, 'macro_anim': 2, 'influence': False, 'background': 0, 'sustain': 3, 'color': 1, 'bg_brightness': 0, 'live_speed': 80, 'macro_speed': 80},
-            # Performance Setup: live(TrueKey,None), macro(Zone,Heat), influence, Basic bg, All sustain, Channel color
-            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 1, 'influence': True, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 180, 'macro_speed': 180},
+            # Classic TrueKey: live(TrueKey,None), macro(TrueKey,None), Basic bg, All sustain, Channel color
+            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 0, 'macro_anim': 0, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 128, 'macro_speed': 128},
+            # Heat Effects: live(TrueKey,Heat), macro(TrueKey,Heat), Basic bg, All sustain, Heat color
+            {'live_pos': 0, 'live_anim': 1, 'macro_pos': 0, 'macro_anim': 1, 'background': 1, 'sustain': 3, 'color': 3, 'bg_brightness': 25, 'live_speed': 200, 'macro_speed': 200},
+            # Moving Dots: live(Zone,Moving Dots Row), macro(Zone,Moving Dots Row), Basic bg, All sustain, Channel color
+            {'live_pos': 1, 'live_anim': 3, 'macro_pos': 1, 'macro_anim': 3, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 35, 'live_speed': 150, 'macro_speed': 150},
+            # BPM Disco: live(Quadrant,None), macro(Quadrant,None), BPM All Disco bg, All sustain, Macro color
+            {'live_pos': 2, 'live_anim': 0, 'macro_pos': 2, 'macro_anim': 0, 'background': 46, 'sustain': 3, 'color': 2, 'bg_brightness': 40, 'live_speed': 100, 'macro_speed': 100},
+            # Zone Lighting: live(Zone,None), macro(Zone,None), None bg, All sustain, Base color
+            {'live_pos': 1, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 0, 'background': 0, 'sustain': 3, 'color': 0, 'bg_brightness': 0, 'live_speed': 128, 'macro_speed': 128},
+            # Sustain Mode: live(TrueKey,Sustain), macro(TrueKey,Sustain), None bg, All sustain, Channel color
+            {'live_pos': 0, 'live_anim': 2, 'macro_pos': 0, 'macro_anim': 2, 'background': 0, 'sustain': 3, 'color': 1, 'bg_brightness': 0, 'live_speed': 80, 'macro_speed': 80},
+            # Performance Setup: live(TrueKey,None), macro(Zone,Heat), Basic bg, All sustain, Channel color
+            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 1, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 180, 'macro_speed': 180},
         ]
         
         if preset_index >= len(presets):
@@ -1175,7 +1168,7 @@ class CustomLightsHandler(BasicHandler):
                 success = self.device.keyboard.set_custom_slot_all_parameters(
                     slot, 
                     preset['live_pos'], preset['macro_pos'], preset['live_anim'], preset['macro_anim'],
-                    1 if preset['influence'] else 0, preset['background'], preset['sustain'], 
+                    0, preset['background'], preset['sustain'], 
                     preset['color'], 1, preset['bg_brightness'], preset['live_speed'], preset['macro_speed']
                 )
                 if success:
@@ -1185,7 +1178,6 @@ class CustomLightsHandler(BasicHandler):
                     widgets['live_style'].setCurrentIndex(preset['live_pos'])
                     widgets['macro_effect'].setCurrentIndex(preset['macro_anim'])
                     widgets['macro_style'].setCurrentIndex(preset['macro_pos'])
-                    widgets['wide_influence'].setChecked(preset['influence'])
                     widgets['background'].setCurrentIndex(preset['background'])
                     widgets['sustain_mode'].setCurrentIndex(preset['sustain'])
                     widgets['color_type'].setCurrentIndex(preset['color'])
