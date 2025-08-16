@@ -24,44 +24,45 @@ class QmkRgblightEffect:
         self.color_picker = color_picker
 
 
-QMK_RGBLIGHT_EFFECTS = [
-    QmkRgblightEffect(0, "All Off", False),
-    QmkRgblightEffect(1, "Solid Color", True),
-    QmkRgblightEffect(2, "Breathing 1", True),
-    QmkRgblightEffect(3, "Breathing 2", True),
-    QmkRgblightEffect(4, "Breathing 3", True),
-    QmkRgblightEffect(5, "Breathing 4", True),
-    QmkRgblightEffect(6, "Rainbow Mood 1", False),
-    QmkRgblightEffect(7, "Rainbow Mood 2", False),
-    QmkRgblightEffect(8, "Rainbow Mood 3", False),
-    QmkRgblightEffect(9, "Rainbow Swirl 1", False),
-    QmkRgblightEffect(10, "Rainbow Swirl 2", False),
-    QmkRgblightEffect(11, "Rainbow Swirl 3", False),
-    QmkRgblightEffect(12, "Rainbow Swirl 4", False),
-    QmkRgblightEffect(13, "Rainbow Swirl 5", False),
-    QmkRgblightEffect(14, "Rainbow Swirl 6", False),
-    QmkRgblightEffect(15, "Snake 1", True),
-    QmkRgblightEffect(16, "Snake 2", True),
-    QmkRgblightEffect(17, "Snake 3", True),
-    QmkRgblightEffect(18, "Snake 4", True),
-    QmkRgblightEffect(19, "Snake 5", True),
-    QmkRgblightEffect(20, "Snake 6", True),
-    QmkRgblightEffect(21, "Knight 1", True),
-    QmkRgblightEffect(22, "Knight 2", True),
-    QmkRgblightEffect(23, "Knight 3", True),
-    QmkRgblightEffect(24, "Christmas", True),
-    QmkRgblightEffect(25, "Gradient 1", True),
-    QmkRgblightEffect(26, "Gradient 2", True),
-    QmkRgblightEffect(27, "Gradient 3", True),
-    QmkRgblightEffect(28, "Gradient 4", True),
-    QmkRgblightEffect(29, "Gradient 5", True),
-    QmkRgblightEffect(30, "Gradient 6", True),
-    QmkRgblightEffect(31, "Gradient 7", True),
-    QmkRgblightEffect(32, "Gradient 8", True),
-    QmkRgblightEffect(33, "Gradient 9", True),
-    QmkRgblightEffect(34, "Gradient 10", True),
-    QmkRgblightEffect(35, "RGB Test", True),
-    QmkRgblightEffect(36, "Alternating", True),
+# Live Animation Effects (animations only)
+LIVE_ANIMATION_EFFECTS = [
+    ("None", 0),
+    ("Heat", 1), 
+    ("Sustain", 2),
+    ("Moving Dots Row", 3),
+    ("Moving Dots Column", 4),
+]
+
+# Live Animation Styles (positions only) 
+LIVE_ANIMATION_STYLES = [
+    ("TrueKey", 0),
+    ("Zone", 1),
+    ("Quadrant", 2),
+    ("Note Row Col0", 3),
+    ("Note Row Col13", 4),
+    ("Note Col Row0", 5),
+    ("Note Col Row4", 6),
+    ("Note Row Mixed", 7),
+    ("Note Col Mixed", 8),
+]
+
+MACRO_ANIMATION_EFFECTS = [
+    ("None", 0),
+    ("Heat", 1),
+    ("Sustain", 2), 
+    ("Moving Dots Row", 3),
+    ("Moving Dots Column", 4),
+]
+
+# Macro Animation Styles (positions only)
+MACRO_ANIMATION_STYLES = [
+    ("TrueKey", 0),
+    ("Zone", 1),
+    ("Quadrant", 2),
+    ("Loop Row Col0", 7),
+    ("Loop Row Col13", 8),
+    ("Loop Row Alt", 9),
+    ("Loop Col", 10),
 ]
 
 
@@ -633,16 +634,28 @@ class RescanButtonHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Rescan LED positions - ONLY sends HID command, does NOTHING else"""
+        """Rescan LED positions and force RGB state refresh"""
         try:
             if hasattr(self.device.keyboard, 'rescan_led_positions'):
                 self.device.keyboard.rescan_led_positions()
                 print("Rescan LED command sent")
+                
+                # Wait for firmware to finish intensive processing
+                import time
+                time.sleep(1.0)
+                
+                # Force a complete RGB reload to clear any corrupted cached state
+                self.device.keyboard.reload_rgb()
+                
+                # Force GUI update with fresh data
+                # Find the RGB configurator and update it
+                if hasattr(self, 'parent') and hasattr(self.parent, 'update_from_keyboard'):
+                    self.parent.update_from_keyboard()
+                    
             else:
                 print("Rescan LED method not available")
         except Exception as e:
             print(f"Error sending rescan LED command: {e}")
-        # INTENTIONALLY: No update calls, no signals, no other actions
 
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
@@ -854,48 +867,65 @@ class CustomLightsHandler(BasicHandler):
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(live_label, 0, 0, 1, 2)
 
-        live_animation = QComboBox()
-        for preset_name, _, _, _ in LIVE_ANIMATION_PRESETS:
-            live_animation.addItem(preset_name)
-        live_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_animation_changed(s, idx))
-        layout.addWidget(live_animation, 1, 0, 1, 2)
+        # Live Effect and Style dropdowns
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
+        live_effect = QComboBox()
+        for effect_name, _ in LIVE_ANIMATION_EFFECTS:
+            live_effect.addItem(effect_name)
+        live_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
+        layout.addWidget(live_effect, 1, 1)
 
-        # Live Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 2, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
+        live_style = QComboBox()
+        for style_name, _ in LIVE_ANIMATION_STYLES:
+            live_style.addItem(style_name)
+        live_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
+        layout.addWidget(live_style, 2, 1)
+
+        # Live Animation Speed slider (was row 2, now row 3)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
         live_speed = QSlider(QtCore.Qt.Horizontal)
         live_speed.setMinimum(0)
         live_speed.setMaximum(255)
-        live_speed.setValue(128)  # Default speed
+        live_speed.setValue(128)
         live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-        layout.addWidget(live_speed, 2, 1)
+        layout.addWidget(live_speed, 3, 1)
 
         # Macro Animation section
         macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(macro_label, 3, 0, 1, 2)
 
-        macro_animation = QComboBox()
-        for preset_name, _, _, _ in MACRO_ANIMATION_PRESETS:
-            macro_animation.addItem(preset_name)
-        macro_animation.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_animation_changed(s, idx))
-        layout.addWidget(macro_animation, 4, 0, 1, 2)
+        # Macro Effect and Style dropdowns
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 4, 0)
+        macro_effect = QComboBox()
+        for effect_name, _ in MACRO_ANIMATION_EFFECTS:
+            macro_effect.addItem(effect_name)
+        macro_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
+        layout.addWidget(macro_effect, 4, 1)
 
-        # Macro Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 5, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 5, 0)
+        macro_style = QComboBox()
+        for style_name, _ in MACRO_ANIMATION_STYLES:
+            macro_style.addItem(style_name)
+        macro_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
+        layout.addWidget(macro_style, 5, 1)
+
+        # Macro Animation Speed slider (was row 5, now row 6)  
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 6, 0)
         macro_speed = QSlider(QtCore.Qt.Horizontal)
         macro_speed.setMinimum(0)
         macro_speed.setMaximum(255)
-        macro_speed.setValue(128)  # Default speed
+        macro_speed.setValue(128)
         macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-        layout.addWidget(macro_speed, 5, 1)
-
-        # Effects section
+        layout.addWidget(macro_speed, 6, 1)
+                # Effects section
         effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 6, 0, 1, 2)
+        layout.addWidget(effects_label, 7, 0, 1, 2)
 
         # Background
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 7, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 8, 0)
         background = QComboBox()
         for bg in CUSTOM_LIGHT_BACKGROUNDS:
             background.addItem(bg)
@@ -951,9 +981,11 @@ class CustomLightsHandler(BasicHandler):
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
-            'live_animation': live_animation,
+            'live_effect': live_effect,
+            'live_style': live_style,
             'live_speed': live_speed,
-            'macro_animation': macro_animation,
+            'macro_effect': macro_effect,
+            'macro_style': macro_style,
             'macro_speed': macro_speed,
             'background': background,
             'background_brightness': background_brightness,
@@ -1114,46 +1146,55 @@ class CustomLightsHandler(BasicHandler):
             print(f"Color type changed: slot {slot}, index {index}")
 
     def on_save_slot(self, slot):
-        """Save current settings for a slot (with auto-enable)"""
+        """Save current slot configuration to EEPROM"""
         try:
-            # Force update from current UI state
-            widgets = self.slot_widgets[slot]
-            
-            # Get live animation preset
-            live_idx = widgets['live_animation'].currentIndex()
-            _, live_pos, live_anim, influence = LIVE_ANIMATION_PRESETS[live_idx]
-            
-            # Get macro animation preset
-            macro_idx = widgets['macro_animation'].currentIndex()
-            _, macro_pos, macro_anim, _ = MACRO_ANIMATION_PRESETS[macro_idx]  # Use live influence for both
-            
-            # Create parameters array with 12 parameters
-            params = [
-                live_pos,                                    # 0: live_positioning
-                macro_pos,                                   # 1: macro_positioning
-                live_anim,                                   # 2: live_animation
-                macro_anim,                                  # 3: macro_animation
-                1 if influence else 0,                       # 4: influence
-                widgets['background'].currentIndex(),        # 5: background_mode
-                widgets['sustain_mode'].currentIndex(),      # 6: sustain_mode (was pulse_mode)
-                widgets['color_type'].currentIndex(),        # 7: color_type
-                1,                                          # 8: enabled (always enabled when saving)
-                widgets['background_brightness'].value(),    # 9: background_brightness
-                widgets['live_speed'].value(),               # 10: live_speed
-                widgets['macro_speed'].value()               # 11: macro_speed
-            ]
-            
-            if hasattr(self.device.keyboard, 'set_all_custom_slot_parameters'):
-                success = self.device.keyboard.set_all_custom_slot_parameters(slot, params)
+            if hasattr(self.device.keyboard, 'save_custom_slot'):
+                success = self.device.keyboard.save_custom_slot(slot)
                 if success:
-                    print(f"Saved all settings to slot {slot + 1}")
+                    print(f"Saved slot {slot + 1} to EEPROM")
                 else:
-                    print(f"Failed to save settings to slot {slot + 1}")
+                    print(f"Failed to save slot {slot + 1}")
             else:
-                print(f"Save slot {slot + 1} with params: {params} (keyboard method not implemented)")
-                
+                print(f"Save slot {slot + 1} (keyboard method not implemented)")
+                    
         except Exception as e:
-            print(f"Error saving slot {slot + 1} settings: {e}")
+            print(f"Error saving slot {slot + 1}: {e}")
+            
+    def on_live_effect_changed(self, slot, index):
+        """Handle live animation effect change"""
+        if index < len(LIVE_ANIMATION_EFFECTS):
+            _, animation = LIVE_ANIMATION_EFFECTS[index]
+            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+                self.device.keyboard.set_custom_slot_parameter(slot, 2, animation)   # live_animation
+            else:
+                print(f"Live effect changed: slot {slot}, animation {animation}")
+
+    def on_live_style_changed(self, slot, index):
+        """Handle live animation style change"""
+        if index < len(LIVE_ANIMATION_STYLES):
+            _, position = LIVE_ANIMATION_STYLES[index]
+            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+                self.device.keyboard.set_custom_slot_parameter(slot, 0, position)    # live_positioning
+            else:
+                print(f"Live style changed: slot {slot}, position {position}")
+
+    def on_macro_effect_changed(self, slot, index):
+        """Handle macro animation effect change"""
+        if index < len(MACRO_ANIMATION_EFFECTS):
+            _, animation = MACRO_ANIMATION_EFFECTS[index]
+            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+                self.device.keyboard.set_custom_slot_parameter(slot, 3, animation)   # macro_animation
+            else:
+                print(f"Macro effect changed: slot {slot}, animation {animation}")
+
+    def on_macro_style_changed(self, slot, index):
+        """Handle macro animation style change"""
+        if index < len(MACRO_ANIMATION_STYLES):
+            _, position = MACRO_ANIMATION_STYLES[index]
+            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+                self.device.keyboard.set_custom_slot_parameter(slot, 1, position)    # macro_positioning
+            else:
+                print(f"Macro style changed: slot {slot}, position {position}")
 
     def on_reset_slot(self, slot):
         """Reset a slot to defaults"""

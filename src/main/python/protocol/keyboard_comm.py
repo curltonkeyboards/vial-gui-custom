@@ -634,6 +634,18 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
             return False
+            
+    def save_custom_slot(self, slot):
+        """Save a specific custom slot configuration to EEPROM"""
+        try:
+            if slot >= 12:  # Support up to 12 slots
+                return False
+                
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SAVE, slot), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error saving custom slot {slot}: {e}")
+            return False        
 
     def save_custom_slots(self):
         """Save all custom slot configurations to EEPROM"""
