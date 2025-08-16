@@ -1008,15 +1008,15 @@ class CustomLightsHandler(BasicHandler):
                     if config and len(config) >= 12:  # Now expecting 12 parameters
                         widgets = self.slot_widgets[slot]
                         
-                        # Find matching live animation preset
-                        live_pos, live_anim, influence = config[0], config[2], bool(config[4])
-                        live_preset_idx = self.find_live_preset_index(live_pos, live_anim, influence)
-                        widgets['live_animation'].setCurrentIndex(live_preset_idx)
-                        
-                        # Find matching macro animation preset
+                        # Set live effect and style separately
+                        live_pos, live_anim = config[0], config[2]
+                        widgets['live_effect'].setCurrentIndex(self.find_effect_index(LIVE_ANIMATION_EFFECTS, live_anim))
+                        widgets['live_style'].setCurrentIndex(self.find_style_index(LIVE_ANIMATION_STYLES, live_pos))
+
+                        # Set macro effect and style separately  
                         macro_pos, macro_anim = config[1], config[3]
-                        macro_preset_idx = self.find_macro_preset_index(macro_pos, macro_anim, influence)
-                        widgets['macro_animation'].setCurrentIndex(macro_preset_idx)
+                        widgets['macro_effect'].setCurrentIndex(self.find_effect_index(MACRO_ANIMATION_EFFECTS, macro_anim))
+                        widgets['macro_style'].setCurrentIndex(self.find_style_index(MACRO_ANIMATION_STYLES, macro_pos))
                         
                         widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
@@ -1052,10 +1052,12 @@ class CustomLightsHandler(BasicHandler):
 
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
-        widgets = self.slot_widgets[slot]
-        widgets['live_animation'].setCurrentIndex(0)      # TrueKey Normal
+        widgets = self.slot_widgets[slot] 
         widgets['live_speed'].setValue(128)               # Default live speed
-        widgets['macro_animation'].setCurrentIndex(0)     # TrueKey Normal
+        widgets['live_effect'].setCurrentIndex(0)         # None
+        widgets['live_style'].setCurrentIndex(0)          # TrueKey
+        widgets['macro_effect'].setCurrentIndex(0)        # None  
+        widgets['macro_style'].setCurrentIndex(0)         # TrueKey    # TrueKey Normal
         widgets['macro_speed'].setValue(128)              # Default macro speed
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness

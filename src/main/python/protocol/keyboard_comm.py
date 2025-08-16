@@ -635,6 +635,20 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
             return False
             
+    def find_effect_index(self, effects_list, animation_value):
+        """Find the index of an effect matching the animation value"""
+        for i, (_, anim) in enumerate(effects_list):
+            if anim == animation_value:
+                return i
+        return 0  # Default to first effect
+
+    def find_style_index(self, styles_list, position_value):
+        """Find the index of a style matching the position value"""
+        for i, (_, pos) in enumerate(styles_list):
+            if pos == position_value:
+                return i
+        return 0  # Default to first style
+            
     def save_custom_slot(self, slot):
         """Save a specific custom slot configuration to EEPROM"""
         try:
