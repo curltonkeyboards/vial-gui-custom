@@ -24,45 +24,44 @@ class QmkRgblightEffect:
         self.color_picker = color_picker
 
 
-# Live Animation Effects (animations only)
-LIVE_ANIMATION_EFFECTS = [
-    ("None", 0),
-    ("Heat", 1), 
-    ("Sustain", 2),
-    ("Moving Dots Row", 3),
-    ("Moving Dots Column", 4),
-]
-
-# Live Animation Styles (positions only) 
-LIVE_ANIMATION_STYLES = [
-    ("TrueKey", 0),
-    ("Zone", 1),
-    ("Quadrant", 2),
-    ("Note Row Col0", 3),
-    ("Note Row Col13", 4),
-    ("Note Col Row0", 5),
-    ("Note Col Row4", 6),
-    ("Note Row Mixed", 7),
-    ("Note Col Mixed", 8),
-]
-
-MACRO_ANIMATION_EFFECTS = [
-    ("None", 0),
-    ("Heat", 1),
-    ("Sustain", 2), 
-    ("Moving Dots Row", 3),
-    ("Moving Dots Column", 4),
-]
-
-# Macro Animation Styles (positions only)
-MACRO_ANIMATION_STYLES = [
-    ("TrueKey", 0),
-    ("Zone", 1),
-    ("Quadrant", 2),
-    ("Loop Row Col0", 7),
-    ("Loop Row Col13", 8),
-    ("Loop Row Alt", 9),
-    ("Loop Col", 10),
+QMK_RGBLIGHT_EFFECTS = [
+    QmkRgblightEffect(0, "All Off", False),
+    QmkRgblightEffect(1, "Solid Color", True),
+    QmkRgblightEffect(2, "Breathing 1", True),
+    QmkRgblightEffect(3, "Breathing 2", True),
+    QmkRgblightEffect(4, "Breathing 3", True),
+    QmkRgblightEffect(5, "Breathing 4", True),
+    QmkRgblightEffect(6, "Rainbow Mood 1", False),
+    QmkRgblightEffect(7, "Rainbow Mood 2", False),
+    QmkRgblightEffect(8, "Rainbow Mood 3", False),
+    QmkRgblightEffect(9, "Rainbow Swirl 1", False),
+    QmkRgblightEffect(10, "Rainbow Swirl 2", False),
+    QmkRgblightEffect(11, "Rainbow Swirl 3", False),
+    QmkRgblightEffect(12, "Rainbow Swirl 4", False),
+    QmkRgblightEffect(13, "Rainbow Swirl 5", False),
+    QmkRgblightEffect(14, "Rainbow Swirl 6", False),
+    QmkRgblightEffect(15, "Snake 1", True),
+    QmkRgblightEffect(16, "Snake 2", True),
+    QmkRgblightEffect(17, "Snake 3", True),
+    QmkRgblightEffect(18, "Snake 4", True),
+    QmkRgblightEffect(19, "Snake 5", True),
+    QmkRgblightEffect(20, "Snake 6", True),
+    QmkRgblightEffect(21, "Knight 1", True),
+    QmkRgblightEffect(22, "Knight 2", True),
+    QmkRgblightEffect(23, "Knight 3", True),
+    QmkRgblightEffect(24, "Christmas", True),
+    QmkRgblightEffect(25, "Gradient 1", True),
+    QmkRgblightEffect(26, "Gradient 2", True),
+    QmkRgblightEffect(27, "Gradient 3", True),
+    QmkRgblightEffect(28, "Gradient 4", True),
+    QmkRgblightEffect(29, "Gradient 5", True),
+    QmkRgblightEffect(30, "Gradient 6", True),
+    QmkRgblightEffect(31, "Gradient 7", True),
+    QmkRgblightEffect(32, "Gradient 8", True),
+    QmkRgblightEffect(33, "Gradient 9", True),
+    QmkRgblightEffect(34, "Gradient 10", True),
+    QmkRgblightEffect(35, "RGB Test", True),
+    QmkRgblightEffect(36, "Alternating", True),
 ]
 
 
@@ -186,101 +185,63 @@ VIALRGB_EFFECTS = [
 ]
 
 
-# Preset definitions combining position + animation + influence
-LIVE_ANIMATION_PRESETS = [
-    # TrueKey presets
-    ("TrueKey Normal", 0, 0, False),      # LIVE_POS_TRUEKEY, LIVE_ANIM_NONE, no influence
-    ("TrueKey Wide", 0, 0, True),         # LIVE_POS_TRUEKEY, LIVE_ANIM_NONE, wide influence
-    ("TrueKey Heat1", 0, 1, False),       # LIVE_POS_TRUEKEY, LIVE_ANIM_HEAT, no influence
-    ("TrueKey Heat1 Wide", 0, 1, True),   # LIVE_POS_TRUEKEY, LIVE_ANIM_HEAT, wide influence
-    ("TrueKey Heat2", 0, 2, False),       # LIVE_POS_TRUEKEY, LIVE_ANIM_SUSTAIN, no influence
-    ("TrueKey Heat2 Wide", 0, 2, True),   # LIVE_POS_TRUEKEY, LIVE_ANIM_SUSTAIN, wide influence
-    
-    # Zone presets
-    ("Zone Normal", 1, 0, False),         # LIVE_POS_ZONE, LIVE_ANIM_NONE, no influence
-    ("Zone Wide", 1, 0, True),            # LIVE_POS_ZONE, LIVE_ANIM_NONE, wide influence
-    ("Zone Heat", 1, 1, False),           # LIVE_POS_ZONE, LIVE_ANIM_HEAT, no influence
-    ("Zone Heat Wide", 1, 1, True),       # LIVE_POS_ZONE, LIVE_ANIM_HEAT, wide influence
-    
-    # Quadrant presets
-    ("Quadrant Normal", 2, 0, False),     # LIVE_POS_QUADRANT, LIVE_ANIM_NONE, no influence
-    ("Quadrant Wide", 2, 0, True),        # LIVE_POS_QUADRANT, LIVE_ANIM_NONE, wide influence
-    
-    # Row presets (only work with row animations)
-    ("Row Left", 3, 3, False),            # LIVE_POS_NOTE_ROW_COL0, LIVE_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Left Wide", 3, 3, True),        # LIVE_POS_NOTE_ROW_COL0, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
-    ("Row Right", 4, 3, False),           # LIVE_POS_NOTE_ROW_COL13, LIVE_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Right Wide", 4, 3, True),       # LIVE_POS_NOTE_ROW_COL13, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
-    ("Row Mixed", 7, 3, False),           # LIVE_POS_NOTE_ROW_MIXED, LIVE_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Mixed Wide", 7, 3, True),       # LIVE_POS_NOTE_ROW_MIXED, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
-    ("Row Zone", 1, 3, False),            # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Zone Wide", 1, 3, True),        # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_ROW, wide influence
-    
-    # Column presets (only work with column animations)
-    ("Column Top", 5, 4, False),          # LIVE_POS_NOTE_COL_ROW0, LIVE_ANIM_MOVING_DOTS_COL, no influence
-    ("Column Top Wide", 5, 4, True),      # LIVE_POS_NOTE_COL_ROW0, LIVE_ANIM_MOVING_DOTS_COL, wide influence
-    ("Column Bottom", 6, 4, False),       # LIVE_POS_NOTE_COL_ROW4, LIVE_ANIM_MOVING_DOTS_COL, no influence
-    ("Column Bottom Wide", 6, 4, True),   # LIVE_POS_NOTE_COL_ROW4, LIVE_ANIM_MOVING_DOTS_COL, wide influence
-    ("Column Mixed", 8, 4, False),        # LIVE_POS_NOTE_COL_MIXED, LIVE_ANIM_MOVING_DOTS_COL, no influence
-    ("Column Mixed Wide", 8, 4, True),    # LIVE_POS_NOTE_COL_MIXED, LIVE_ANIM_MOVING_DOTS_COL, wide influence
-    ("Column Zone", 1, 4, False),         # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_COL, no influence
-    ("Column Zone Wide", 1, 4, True),     # LIVE_POS_ZONE, LIVE_ANIM_MOVING_DOTS_COL, wide influence
+# Separate effect and style arrays for custom lights
+LIVE_EFFECTS = [
+    "None",               # LIVE_ANIM_NONE
+    "Heat",               # LIVE_ANIM_HEAT  
+    "Sustain",            # LIVE_ANIM_SUSTAIN
+    "Moving Dots Row",    # LIVE_ANIM_MOVING_DOTS_ROW
+    "Moving Dots Col"     # LIVE_ANIM_MOVING_DOTS_COL
 ]
 
-MACRO_ANIMATION_PRESETS = [
-    # TrueKey presets
-    ("TrueKey Normal", 0, 0, False),      # MACRO_POS_TRUEKEY, MACRO_ANIM_NONE, no influence
-    ("TrueKey Wide", 0, 0, True),         # MACRO_POS_TRUEKEY, MACRO_ANIM_NONE, wide influence
-    ("TrueKey Heat1", 0, 1, False),       # MACRO_POS_TRUEKEY, MACRO_ANIM_HEAT, no influence
-    ("TrueKey Heat1 Wide", 0, 1, True),   # MACRO_POS_TRUEKEY, MACRO_ANIM_HEAT, wide influence
-    ("TrueKey Heat2", 0, 2, False),       # MACRO_POS_TRUEKEY, MACRO_ANIM_SUSTAIN, no influence
-    ("TrueKey Heat2 Wide", 0, 2, True),   # MACRO_POS_TRUEKEY, MACRO_ANIM_SUSTAIN, wide influence
-    
-    # Zone presets
-    ("Zone Normal", 1, 0, False),         # MACRO_POS_ZONE, MACRO_ANIM_NONE, no influence
-    ("Zone Wide", 1, 0, True),            # MACRO_POS_ZONE, MACRO_ANIM_NONE, wide influence
-    ("Zone Heat", 1, 1, False),           # MACRO_POS_ZONE, MACRO_ANIM_HEAT, no influence
-    ("Zone Heat Wide", 1, 1, True),       # MACRO_POS_ZONE, MACRO_ANIM_HEAT, wide influence
-    
-    # Loop Zones (Quadrant)
-    ("Loop Zones", 2, 0, False),          # MACRO_POS_QUADRANT, MACRO_ANIM_NONE, no influence
-    ("Loop Zones Wide", 2, 0, True),      # MACRO_POS_QUADRANT, MACRO_ANIM_NONE, wide influence
-    
-    # Row presets (only work with row animations)
-    ("Row Left", 7, 3, False),            # MACRO_POS_LOOP_ROW_COL0, MACRO_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Left Wide", 7, 3, True),        # MACRO_POS_LOOP_ROW_COL0, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
-    ("Row Right", 8, 3, False),           # MACRO_POS_LOOP_ROW_COL13, MACRO_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Right Wide", 8, 3, True),       # MACRO_POS_LOOP_ROW_COL13, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
-    ("Row Alt", 9, 3, False),             # MACRO_POS_LOOP_ROW_ALT, MACRO_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Alt Wide", 9, 3, True),         # MACRO_POS_LOOP_ROW_ALT, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
-    ("Row Zone", 1, 3, False),            # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_ROW, no influence
-    ("Row Zone Wide", 1, 3, True),        # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_ROW, wide influence
-    
-    # Column presets (only work with column animations)
-    ("Column Loops", 10, 4, False),       # MACRO_POS_LOOP_COL, MACRO_ANIM_MOVING_DOTS_COL, no influence
-    ("Column Loops Wide", 10, 4, True),   # MACRO_POS_LOOP_COL, MACRO_ANIM_MOVING_DOTS_COL, wide influence
-    ("Column Zone", 1, 4, False),         # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_COL, no influence
-    ("Column Zone Wide", 1, 4, True),     # MACRO_POS_ZONE, MACRO_ANIM_MOVING_DOTS_COL, wide influence
+LIVE_STYLES = [
+    "TrueKey",            # LIVE_POS_TRUEKEY
+    "Zone",               # LIVE_POS_ZONE
+    "Quadrant",           # LIVE_POS_QUADRANT
+    "Note Row Col0",      # LIVE_POS_NOTE_ROW_COL0
+    "Note Row Col13",     # LIVE_POS_NOTE_ROW_COL13
+    "Note Col Row0",      # LIVE_POS_NOTE_COL_ROW0
+    "Note Col Row4",      # LIVE_POS_NOTE_COL_ROW4
+    "Note Row Mixed",     # LIVE_POS_NOTE_ROW_MIXED
+    "Note Col Mixed"      # LIVE_POS_NOTE_COL_MIXED
+]
+
+MACRO_EFFECTS = [
+    "None",               # MACRO_ANIM_NONE
+    "Heat",               # MACRO_ANIM_HEAT
+    "Sustain",            # MACRO_ANIM_SUSTAIN
+    "Moving Dots Row",    # MACRO_ANIM_MOVING_DOTS_ROW
+    "Moving Dots Col"     # MACRO_ANIM_MOVING_DOTS_COL
+]
+
+MACRO_STYLES = [
+    "TrueKey",            # MACRO_POS_TRUEKEY
+    "Zone",               # MACRO_POS_ZONE
+    "Quadrant",           # MACRO_POS_QUADRANT
+    "Note Row Col0",      # MACRO_POS_NOTE_ROW_COL0
+    "Note Row Col13",     # MACRO_POS_NOTE_ROW_COL13
+    "Note Col Row0",      # MACRO_POS_NOTE_COL_ROW0
+    "Note Col Row4",      # MACRO_POS_NOTE_COL_ROW4
+    "Loop Row Col0",      # MACRO_POS_LOOP_ROW_COL0
+    "Loop Row Col13",     # MACRO_POS_LOOP_ROW_COL13
+    "Loop Row Alt",       # MACRO_POS_LOOP_ROW_ALT
+    "Loop Col"            # MACRO_POS_LOOP_COL
 ]
 
 CUSTOM_LIGHT_BACKGROUNDS = [
-
     "None",
-
     "Basic",
     "Basic 2",
     "Basic 3", 
     "Basic 4",
     "Basic 5",
     "Basic 6",
-
     "Autolight",
     "Autolight 2",
     "Autolight 3",
     "Autolight 4", 
     "Autolight 5",
     "Autolight 6",
-
     "BPM Pulse Fade",
     "BPM Pulse Fade 2",
     "BPM Pulse Fade 3",
@@ -288,7 +249,6 @@ CUSTOM_LIGHT_BACKGROUNDS = [
     "BPM Pulse Fade 5", 
     "BPM Pulse Fade 6",
     "BPM Pulse Fade Disco",
-
     "BPM Quadrants",
     "BPM Quadrants 2",
     "BPM Quadrants 3",
@@ -296,7 +256,6 @@ CUSTOM_LIGHT_BACKGROUNDS = [
     "BPM Quadrants 5",
     "BPM Quadrants 6", 
     "BPM Quadrants Disco",
-
     "BPM Row",
     "BPM Row 2",
     "BPM Row 3",
@@ -304,7 +263,6 @@ CUSTOM_LIGHT_BACKGROUNDS = [
     "BPM Row 5",
     "BPM Row 6",
     "BPM Row Disco",
-
     "BPM Column", 
     "BPM Column 2",
     "BPM Column 3",
@@ -312,7 +270,6 @@ CUSTOM_LIGHT_BACKGROUNDS = [
     "BPM Column 5",
     "BPM Column 6",
     "BPM Column Disco",
-
     "BPM All",
     "BPM All 2", 
     "BPM All 3",
@@ -865,64 +822,70 @@ class CustomLightsHandler(BasicHandler):
         # Live Animation section
         live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(live_label, 0, 0, 1, 2)
+        layout.addWidget(live_label, 0, 0, 1, 3)
 
-        # Live Effect and Style dropdowns
+        # Live Effect and Style dropdowns side by side
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
         live_effect = QComboBox()
-        for effect_name, _ in LIVE_ANIMATION_EFFECTS:
-            live_effect.addItem(effect_name)
+        for effect in LIVE_EFFECTS:
+            live_effect.addItem(effect)
         live_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
         layout.addWidget(live_effect, 1, 1)
 
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 1, 2)
         live_style = QComboBox()
-        for style_name, _ in LIVE_ANIMATION_STYLES:
-            live_style.addItem(style_name)
+        for style in LIVE_STYLES:
+            live_style.addItem(style)
         live_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
-        layout.addWidget(live_style, 2, 1)
+        layout.addWidget(live_style, 1, 3)
 
-        # Live Animation Speed slider (was row 2, now row 3)
+        # Wide Influence checkbox
+        wide_influence = QCheckBox(tr("RGBConfigurator", "Wide Influence"))
+        wide_influence.stateChanged.connect(lambda checked, s=slot: self.on_wide_influence_changed(s, checked))
+        layout.addWidget(wide_influence, 2, 1, 1, 2)
+
+        # Live Animation Speed slider
         layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
         live_speed = QSlider(QtCore.Qt.Horizontal)
         live_speed.setMinimum(0)
         live_speed.setMaximum(255)
-        live_speed.setValue(128)
+        live_speed.setValue(128)  # Default speed
         live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-        layout.addWidget(live_speed, 3, 1)
+        layout.addWidget(live_speed, 3, 1, 1, 3)
 
         # Macro Animation section
         macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(macro_label, 3, 0, 1, 2)
+        layout.addWidget(macro_label, 4, 0, 1, 3)
 
-        # Macro Effect and Style dropdowns
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 4, 0)
+        # Macro Effect and Style dropdowns side by side
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
         macro_effect = QComboBox()
-        for effect_name, _ in MACRO_ANIMATION_EFFECTS:
-            macro_effect.addItem(effect_name)
+        for effect in MACRO_EFFECTS:
+            macro_effect.addItem(effect)
         macro_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
-        layout.addWidget(macro_effect, 4, 1)
+        layout.addWidget(macro_effect, 5, 1)
 
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 5, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 5, 2)
         macro_style = QComboBox()
-        for style_name, _ in MACRO_ANIMATION_STYLES:
-            macro_style.addItem(style_name)
+        for style in MACRO_STYLES:
+            macro_style.addItem(style)
         macro_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
-        layout.addWidget(macro_style, 5, 1)
+        layout.addWidget(macro_style, 5, 3)
 
-        # Macro Animation Speed slider (was row 5, now row 6)  
+        # Macro Animation Speed slider
         layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 6, 0)
         macro_speed = QSlider(QtCore.Qt.Horizontal)
         macro_speed.setMinimum(0)
         macro_speed.setMaximum(255)
-        macro_speed.setValue(128)
+        macro_speed.setValue(128)  # Default speed
         macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-        layout.addWidget(macro_speed, 6, 1)
-                # Effects section
+        layout.addWidget(macro_speed, 6, 1, 1, 3)
+
+        # Effects section
         effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 7, 0, 1, 2)
+        layout.addWidget(effects_label, 7, 0, 1, 3)
 
         # Background
         layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 8, 0)
@@ -930,32 +893,32 @@ class CustomLightsHandler(BasicHandler):
         for bg in CUSTOM_LIGHT_BACKGROUNDS:
             background.addItem(bg)
         background.currentIndexChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-        layout.addWidget(background, 7, 1)
+        layout.addWidget(background, 8, 1, 1, 2)
 
         # Background Brightness slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 8, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 9, 0)
         background_brightness = QSlider(QtCore.Qt.Horizontal)
         background_brightness.setMinimum(0)
         background_brightness.setMaximum(100)
         background_brightness.setValue(30)  # Default 30%
         background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
-        layout.addWidget(background_brightness, 8, 1)
+        layout.addWidget(background_brightness, 9, 1, 1, 3)
 
         # Color Type
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 9, 0)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 10, 0)
         color_type = QComboBox()
         for color in CUSTOM_LIGHT_COLOR_TYPES:
             color_type.addItem(color)
         color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 9, 1)
+        layout.addWidget(color_type, 10, 1, 1, 2)
 
-        # Sustain Mode (renamed from Pulse Mode)
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 10, 0)
+        # Sustain Mode
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 11, 0)
         sustain_mode = QComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-        layout.addWidget(sustain_mode, 10, 1)
+        layout.addWidget(sustain_mode, 11, 1, 1, 2)
 
         # Buttons
         buttons_layout = QHBoxLayout()
@@ -977,7 +940,7 @@ class CustomLightsHandler(BasicHandler):
         
         buttons_widget = QWidget()
         buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 11, 0, 1, 2)
+        layout.addWidget(buttons_widget, 12, 0, 1, 4)
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
@@ -987,6 +950,7 @@ class CustomLightsHandler(BasicHandler):
             'macro_effect': macro_effect,
             'macro_style': macro_style,
             'macro_speed': macro_speed,
+            'wide_influence': wide_influence,
             'background': background,
             'background_brightness': background_brightness,
             'color_type': color_type,
@@ -1005,19 +969,16 @@ class CustomLightsHandler(BasicHandler):
             try:
                 if hasattr(self.device.keyboard, 'get_custom_slot_config'):
                     config = self.device.keyboard.get_custom_slot_config(slot)
-                    if config and len(config) >= 12:  # Now expecting 12 parameters
+                    if config and len(config) >= 12:  # Expecting 12 parameters
                         widgets = self.slot_widgets[slot]
                         
-                        # Set live effect and style separately
-                        live_pos, live_anim = config[0], config[2]
-                        widgets['live_effect'].setCurrentIndex(self.find_effect_index(LIVE_ANIMATION_EFFECTS, live_anim))
-                        widgets['live_style'].setCurrentIndex(self.find_style_index(LIVE_ANIMATION_STYLES, live_pos))
-
-                        # Set macro effect and style separately  
-                        macro_pos, macro_anim = config[1], config[3]
-                        widgets['macro_effect'].setCurrentIndex(self.find_effect_index(MACRO_ANIMATION_EFFECTS, macro_anim))
-                        widgets['macro_style'].setCurrentIndex(self.find_style_index(MACRO_ANIMATION_STYLES, macro_pos))
+                        # Set individual effect and style dropdowns
+                        widgets['live_effect'].setCurrentIndex(min(config[2], len(LIVE_EFFECTS) - 1))  # live_animation
+                        widgets['live_style'].setCurrentIndex(min(config[0], len(LIVE_STYLES) - 1))    # live_positioning
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], len(MACRO_EFFECTS) - 1)) # macro_animation
+                        widgets['macro_style'].setCurrentIndex(min(config[1], len(MACRO_STYLES) - 1))   # macro_positioning
                         
+                        widgets['wide_influence'].setChecked(bool(config[4]))  # influence
                         widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                         widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
@@ -1036,29 +997,16 @@ class CustomLightsHandler(BasicHandler):
 
         self.unblock_signals()
 
-    def find_live_preset_index(self, position, animation, influence):
-        """Find the index of a live preset matching the given parameters"""
-        for i, (_, pos, anim, inf) in enumerate(LIVE_ANIMATION_PRESETS):
-            if pos == position and anim == animation and inf == influence:
-                return i
-        return 0  # Default to first preset if no match
-
-    def find_macro_preset_index(self, position, animation, influence):
-        """Find the index of a macro preset matching the given parameters"""
-        for i, (_, pos, anim, inf) in enumerate(MACRO_ANIMATION_PRESETS):
-            if pos == position and anim == animation and inf == influence:
-                return i
-        return 0  # Default to first preset if no match
-
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
-        widgets = self.slot_widgets[slot] 
-        widgets['live_speed'].setValue(128)               # Default live speed
+        widgets = self.slot_widgets[slot]
         widgets['live_effect'].setCurrentIndex(0)         # None
         widgets['live_style'].setCurrentIndex(0)          # TrueKey
-        widgets['macro_effect'].setCurrentIndex(0)        # None  
-        widgets['macro_style'].setCurrentIndex(0)         # TrueKey    # TrueKey Normal
+        widgets['live_speed'].setValue(128)               # Default live speed
+        widgets['macro_effect'].setCurrentIndex(0)        # None
+        widgets['macro_style'].setCurrentIndex(0)         # TrueKey
         widgets['macro_speed'].setValue(128)              # Default macro speed
+        widgets['wide_influence'].setChecked(False)       # No wide influence
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness
         widgets['color_type'].setCurrentIndex(1)          # Channel
@@ -1083,16 +1031,19 @@ class CustomLightsHandler(BasicHandler):
                 widget.blockSignals(False)
 
     # Event handlers using VialKeyboard infrastructure - NO UPDATE CALLS
-    def on_live_animation_changed(self, slot, index):
-        """Handle live animation preset change"""
-        if index < len(LIVE_ANIMATION_PRESETS):
-            _, position, animation, influence = LIVE_ANIMATION_PRESETS[index]
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(slot, 0, position)    # live_positioning
-                self.device.keyboard.set_custom_slot_parameter(slot, 2, animation)   # live_animation
-                self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if influence else 0)  # influence
-            else:
-                print(f"Live animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
+    def on_live_effect_changed(self, slot, index):
+        """Handle live effect change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 2, index)  # live_animation
+        else:
+            print(f"Live effect changed: slot {slot}, effect {index}")
+
+    def on_live_style_changed(self, slot, index):
+        """Handle live style change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 0, index)  # live_positioning
+        else:
+            print(f"Live style changed: slot {slot}, style {index}")
 
     def on_live_speed_changed(self, slot, value):
         """Handle live animation speed change"""
@@ -1101,16 +1052,19 @@ class CustomLightsHandler(BasicHandler):
         else:
             print(f"Live speed changed: slot {slot}, speed {value}")
 
-    def on_macro_animation_changed(self, slot, index):
-        """Handle macro animation preset change"""
-        if index < len(MACRO_ANIMATION_PRESETS):
-            _, position, animation, influence = MACRO_ANIMATION_PRESETS[index]
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(slot, 1, position)    # macro_positioning
-                self.device.keyboard.set_custom_slot_parameter(slot, 3, animation)   # macro_animation
-                self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if influence else 0)  # influence
-            else:
-                print(f"Macro animation changed: slot {slot}, position {position}, animation {animation}, influence {influence}")
+    def on_macro_effect_changed(self, slot, index):
+        """Handle macro effect change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 3, index)  # macro_animation
+        else:
+            print(f"Macro effect changed: slot {slot}, effect {index}")
+
+    def on_macro_style_changed(self, slot, index):
+        """Handle macro style change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 1, index)  # macro_positioning
+        else:
+            print(f"Macro style changed: slot {slot}, style {index}")
 
     def on_macro_speed_changed(self, slot, value):
         """Handle macro animation speed change"""
@@ -1118,6 +1072,13 @@ class CustomLightsHandler(BasicHandler):
             self.device.keyboard.set_custom_slot_parameter(slot, 11, value)  # Parameter 11: macro speed
         else:
             print(f"Macro speed changed: slot {slot}, speed {value}")
+
+    def on_wide_influence_changed(self, slot, checked):
+        """Handle wide influence checkbox change"""
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if checked else 0)  # influence
+        else:
+            print(f"Wide influence changed: slot {slot}, checked {checked}")
 
     def on_background_changed(self, slot, index):
         """Handle background change"""
@@ -1161,42 +1122,6 @@ class CustomLightsHandler(BasicHandler):
                     
         except Exception as e:
             print(f"Error saving slot {slot + 1}: {e}")
-            
-    def on_live_effect_changed(self, slot, index):
-        """Handle live animation effect change"""
-        if index < len(LIVE_ANIMATION_EFFECTS):
-            _, animation = LIVE_ANIMATION_EFFECTS[index]
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(slot, 2, animation)   # live_animation
-            else:
-                print(f"Live effect changed: slot {slot}, animation {animation}")
-
-    def on_live_style_changed(self, slot, index):
-        """Handle live animation style change"""
-        if index < len(LIVE_ANIMATION_STYLES):
-            _, position = LIVE_ANIMATION_STYLES[index]
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(slot, 0, position)    # live_positioning
-            else:
-                print(f"Live style changed: slot {slot}, position {position}")
-
-    def on_macro_effect_changed(self, slot, index):
-        """Handle macro animation effect change"""
-        if index < len(MACRO_ANIMATION_EFFECTS):
-            _, animation = MACRO_ANIMATION_EFFECTS[index]
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(slot, 3, animation)   # macro_animation
-            else:
-                print(f"Macro effect changed: slot {slot}, animation {animation}")
-
-    def on_macro_style_changed(self, slot, index):
-        """Handle macro animation style change"""
-        if index < len(MACRO_ANIMATION_STYLES):
-            _, position = MACRO_ANIMATION_STYLES[index]
-            if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-                self.device.keyboard.set_custom_slot_parameter(slot, 1, position)    # macro_positioning
-            else:
-                print(f"Macro style changed: slot {slot}, position {position}")
 
     def on_reset_slot(self, slot):
         """Reset a slot to defaults"""
@@ -1215,15 +1140,58 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error resetting slot {slot + 1}: {e}")
 
     def on_load_preset(self, slot, index):
-        """Load a preset configuration"""
+        """Load a preset configuration - now sets individual parameters"""
         if index == 0:  # "Load Preset..." header
             return
             
         preset_index = index - 1  # Adjust for header
+        
+        # Define preset configurations as individual parameter sets
+        presets = [
+            # Classic TrueKey: live(TrueKey,None), macro(TrueKey,None), no influence, Basic bg, All sustain, Channel color
+            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 0, 'macro_anim': 0, 'influence': False, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 128, 'macro_speed': 128},
+            # Heat Effects: live(TrueKey,Heat), macro(TrueKey,Heat), influence, Basic bg, All sustain, Heat color
+            {'live_pos': 0, 'live_anim': 1, 'macro_pos': 0, 'macro_anim': 1, 'influence': True, 'background': 1, 'sustain': 3, 'color': 3, 'bg_brightness': 25, 'live_speed': 200, 'macro_speed': 200},
+            # Moving Dots: live(Zone,Moving Dots Row), macro(Zone,Moving Dots Row), influence, Basic bg, All sustain, Channel color
+            {'live_pos': 1, 'live_anim': 3, 'macro_pos': 1, 'macro_anim': 3, 'influence': True, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 35, 'live_speed': 150, 'macro_speed': 150},
+            # BPM Disco: live(Quadrant,None), macro(Quadrant,None), no influence, BPM All Disco bg, All sustain, Macro color
+            {'live_pos': 2, 'live_anim': 0, 'macro_pos': 2, 'macro_anim': 0, 'influence': False, 'background': 46, 'sustain': 3, 'color': 2, 'bg_brightness': 40, 'live_speed': 100, 'macro_speed': 100},
+            # Zone Lighting: live(Zone,None), macro(Zone,None), no influence, None bg, All sustain, Base color
+            {'live_pos': 1, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 0, 'influence': False, 'background': 0, 'sustain': 3, 'color': 0, 'bg_brightness': 0, 'live_speed': 128, 'macro_speed': 128},
+            # Sustain Mode: live(TrueKey,Sustain), macro(TrueKey,Sustain), no influence, None bg, All sustain, Channel color
+            {'live_pos': 0, 'live_anim': 2, 'macro_pos': 0, 'macro_anim': 2, 'influence': False, 'background': 0, 'sustain': 3, 'color': 1, 'bg_brightness': 0, 'live_speed': 80, 'macro_speed': 80},
+            # Performance Setup: live(TrueKey,None), macro(Zone,Heat), influence, Basic bg, All sustain, Channel color
+            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 1, 'influence': True, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 180, 'macro_speed': 180},
+        ]
+        
+        if preset_index >= len(presets):
+            return
+            
+        preset = presets[preset_index]
+        
         try:
-            if hasattr(self.device.keyboard, 'load_custom_slot_preset'):
-                success = self.device.keyboard.load_custom_slot_preset(slot, preset_index)
+            # Set all parameters using individual calls
+            if hasattr(self.device.keyboard, 'set_custom_slot_all_parameters'):
+                success = self.device.keyboard.set_custom_slot_all_parameters(
+                    slot, 
+                    preset['live_pos'], preset['macro_pos'], preset['live_anim'], preset['macro_anim'],
+                    1 if preset['influence'] else 0, preset['background'], preset['sustain'], 
+                    preset['color'], 1, preset['bg_brightness'], preset['live_speed'], preset['macro_speed']
+                )
                 if success:
+                    # Update GUI to reflect the loaded preset
+                    widgets = self.slot_widgets[slot]
+                    widgets['live_effect'].setCurrentIndex(preset['live_anim'])
+                    widgets['live_style'].setCurrentIndex(preset['live_pos'])
+                    widgets['macro_effect'].setCurrentIndex(preset['macro_anim'])
+                    widgets['macro_style'].setCurrentIndex(preset['macro_pos'])
+                    widgets['wide_influence'].setChecked(preset['influence'])
+                    widgets['background'].setCurrentIndex(preset['background'])
+                    widgets['sustain_mode'].setCurrentIndex(preset['sustain'])
+                    widgets['color_type'].setCurrentIndex(preset['color'])
+                    widgets['background_brightness'].setValue(preset['bg_brightness'])
+                    widgets['live_speed'].setValue(preset['live_speed'])
+                    widgets['macro_speed'].setValue(preset['macro_speed'])
                     print(f"Loaded preset {preset_index} to slot {slot + 1}")
                 else:
                     print(f"Failed to load preset {preset_index}")

@@ -617,7 +617,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot), retries=20)
             if data and len(data) > 2 and data[0] == 0x01:
-                return data[3:15]  # 12 parameters starting at index 3 (changed from 3:13)
+                return data[3:15]  # 12 parameters starting at index 3
             return None
         except Exception as e:
             print(f"Error getting custom slot {slot} config: {e}")
@@ -626,7 +626,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 10 or param_index >= 12:  # Changed from >= 10 to >= 12
+            if slot >= 10 or param_index >= 12:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
@@ -634,20 +634,23 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
             return False
-            
-    def find_effect_index(self, effects_list, animation_value):
-        """Find the index of an effect matching the animation value"""
-        for i, (_, anim) in enumerate(effects_list):
-            if anim == animation_value:
-                return i
-        return 0  # Default to first effect
 
-    def find_style_index(self, styles_list, position_value):
-        """Find the index of a style matching the position value"""
-        for i, (_, pos) in enumerate(styles_list):
-            if pos == position_value:
-                return i
-        return 0  # Default to first style
+    def set_custom_slot_all_parameters(self, slot, live_pos, macro_pos, live_anim, macro_anim, influence, 
+                                     background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed):
+        """Set all parameters for a custom animation slot"""
+        try:
+            if slot >= 10:
+                return False
+                
+            # Use set_all command: slot + 12 parameter bytes
+            params = [slot, live_pos, macro_pos, live_anim, macro_anim, influence, 
+                     background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed]
+            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(params), CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_ALL, *params), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+            
+        except Exception as e:
+            print(f"Error setting all parameters for slot {slot}: {e}")
+            return False
             
     def save_custom_slot(self, slot):
         """Save a specific custom slot configuration to EEPROM"""
@@ -670,57 +673,17 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error saving custom slots: {e}")
             return False
 
-    def load_custom_slot_preset(self, slot, preset_index):
-        """Load a preset configuration into a slot"""
+    def reset_custom_slot(self, slot):
+        """Reset a custom slot to default values"""
         try:
             if slot >= 10:
                 return False
-
-            # Define preset configurations - now with 12 parameters including speeds
-            presets = [
-                [0, 0, 0, 0, 0, 1, 0, 1, 1, 30, 128, 128],  # Classic TrueKey + enabled + 30% bg + default speeds
-                [0, 0, 1, 1, 0, 1, 3, 3, 1, 25, 200, 200],  # Heat Effects + enabled + 25% bg + fast speeds
-                [1, 1, 3, 3, 0, 2, 3, 1, 1, 35, 150, 150],  # Moving Dots + enabled + 35% bg + medium speeds
-                [2, 2, 0, 0, 1, 3, 0, 2, 1, 40, 100, 100],  # BPM Disco + enabled + 40% bg + slow speeds
-                [1, 1, 0, 0, 0, 0, 3, 1, 1, 0, 128, 128],   # Zone Lighting + enabled + 0% bg + default speeds
-                [0, 0, 2, 2, 1, 0, 0, 1, 1, 0, 80, 80],     # Sustain Mode + enabled + 0% bg + slow speeds
-                [0, 2, 1, 0, 0, 2, 1, 1, 1, 30, 180, 180],  # Performance Setup + enabled + 30% bg + fast speeds
-            ]
-            
-            if preset_index >= len(presets):
-                return False
                 
-            # Use set_all command: slot + 12 parameter bytes (changed from 10)
-            params = [slot] + presets[preset_index]
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(params), CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_ALL, *params), retries=20)
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, slot), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
-            
         except Exception as e:
-            print(f"Error loading preset {preset_index} to slot {slot}: {e}")
+            print(f"Error resetting custom slot {slot}: {e}")
             return False
-
-    def set_custom_slot_background_brightness(self, slot, brightness):
-        """Set background brightness for a custom animation slot (0-100%)"""
-        try:
-            if slot >= 10 or brightness > 100:
-                return False
-                
-            return self.set_custom_slot_parameter(slot, 9, brightness)  # Parameter index 9
-            
-        except Exception as e:
-            print(f"Error setting background brightness for slot {slot}: {e}")
-            return False
-
-    def get_custom_slot_background_brightness(self, slot):
-        """Get background brightness for a custom animation slot"""
-        try:
-            config = self.get_custom_slot_config(slot)
-            if config and len(config) >= 10:
-                return config[9]  # Background brightness is parameter 9
-            return 30  # Default value
-        except Exception as e:
-            print(f"Error getting background brightness for slot {slot}: {e}")
-            return 30    
             
     def rescan_led_positions(self):
         """Rescan LED positions on the keyboard"""
@@ -730,49 +693,3 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error rescanning LED positions: {e}")
             return False
-            
-    def set_custom_slot_live_speed(self, slot, speed):
-        """Set live animation speed for a custom animation slot (0-255)"""
-        try:
-            if slot >= 10 or speed > 255:
-                return False
-                
-            return self.set_custom_slot_parameter(slot, 10, speed)  # Parameter index 10
-            
-        except Exception as e:
-            print(f"Error setting live speed for slot {slot}: {e}")
-            return False
-
-    def get_custom_slot_live_speed(self, slot):
-        """Get live animation speed for a custom animation slot"""
-        try:
-            config = self.get_custom_slot_config(slot)
-            if config and len(config) >= 11:
-                return config[10]  # Live speed is parameter 10
-            return 128  # Default value
-        except Exception as e:
-            print(f"Error getting live speed for slot {slot}: {e}")
-            return 128
-
-    def set_custom_slot_macro_speed(self, slot, speed):
-        """Set macro animation speed for a custom animation slot (0-255)"""
-        try:
-            if slot >= 10 or speed > 255:
-                return False
-                
-            return self.set_custom_slot_parameter(slot, 11, speed)  # Parameter index 11
-            
-        except Exception as e:
-            print(f"Error setting macro speed for slot {slot}: {e}")
-            return False
-
-    def get_custom_slot_macro_speed(self, slot):
-        """Get macro animation speed for a custom animation slot"""
-        try:
-            config = self.get_custom_slot_config(slot)
-            if config and len(config) >= 12:
-                return config[11]  # Macro speed is parameter 11
-            return 128  # Default value
-        except Exception as e:
-            print(f"Error getting macro speed for slot {slot}: {e}")
-            return 128
