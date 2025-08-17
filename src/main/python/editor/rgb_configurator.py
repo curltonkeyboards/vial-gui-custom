@@ -229,56 +229,85 @@ MACRO_STYLES = [
 ]
 
 CUSTOM_LIGHT_BACKGROUNDS = [
-    "None",
-    "Basic",
-    "Basic 2",
-    "Basic 3", 
-    "Basic 4",
-    "Basic 5",
-    "Basic 6",
-    "Autolight",
-    "Autolight 2",
-    "Autolight 3",
-    "Autolight 4", 
-    "Autolight 5",
-    "Autolight 6",
-    "BPM Pulse Fade",
-    "BPM Pulse Fade 2",
-    "BPM Pulse Fade 3",
-    "BPM Pulse Fade 4",
-    "BPM Pulse Fade 5", 
-    "BPM Pulse Fade 6",
-    "BPM Pulse Fade Disco",
-    "BPM Quadrants",
-    "BPM Quadrants 2",
-    "BPM Quadrants 3",
-    "BPM Quadrants 4",
-    "BPM Quadrants 5",
-    "BPM Quadrants 6", 
-    "BPM Quadrants Disco",
-    "BPM Row",
-    "BPM Row 2",
-    "BPM Row 3",
-    "BPM Row 4",
-    "BPM Row 5",
-    "BPM Row 6",
-    "BPM Row Disco",
-    "BPM Column", 
-    "BPM Column 2",
-    "BPM Column 3",
-    "BPM Column 4",
-    "BPM Column 5",
-    "BPM Column 6",
-    "BPM Column Disco",
-    "BPM All",
-    "BPM All 2", 
-    "BPM All 3",
-    "BPM All 4",
-    "BPM All 5",
-    "BPM All 6",
-    "BPM All Disco"
+    "None",                           # 0
+    "Basic",                          # 1
+    "Basic 2",                        # 2
+    "Basic 3",                        # 3
+    "Basic 4",                        # 4
+    "Basic 5",                        # 5
+    "Basic 6",                        # 6
+    "Autolight",                      # 7
+    "Autolight 2",                    # 8
+    "Autolight 3",                    # 9
+    "Autolight 4",                    # 10
+    "Autolight 5",                    # 11
+    "Autolight 6",                    # 12
+    
+    # BPM PULSE FADE (13-23)
+    "BPM Pulse Fade",                 # 13
+    "BPM Pulse Fade 2",               # 14
+    "BPM Pulse Fade Desaturated",     # 15
+    "BPM Pulse Fade Disco",           # 16
+    "BPM Pulse Fade Solid Background", # 17
+    "BPM Pulse Fade Solid Background 2", # 18
+    "BPM Pulse Fade Solid Disco",     # 19
+    "BPM Pulse Fade Solid Pattern",   # 20
+    "BPM Pulse Fade Autolight",       # 21
+    "BPM Pulse Fade Autolight 2",     # 22
+    "BPM Pulse Fade Autolight Disco", # 23
+    
+    # BPM QUADRANTS (24-34)
+    "BPM Quadrants",                  # 24
+    "BPM Quadrants 2",                # 25
+    "BPM Quadrants Desaturated",      # 26
+    "BPM Quadrants Disco",            # 27
+    "BPM Quadrants Solid Background", # 28
+    "BPM Quadrants Solid Background 2", # 29
+    "BPM Quadrants Solid Disco",      # 30
+    "BPM Quadrants Solid Pattern",    # 31
+    "BPM Quadrants Autolight",        # 32
+    "BPM Quadrants Autolight 2",      # 33
+    "BPM Quadrants Autolight Disco",  # 34
+    
+    # BPM ROW (35-45)
+    "BPM Row",                        # 35
+    "BPM Row 2",                      # 36
+    "BPM Row Desaturated",            # 37
+    "BPM Row Disco",                  # 38
+    "BPM Row Solid Background",       # 39
+    "BPM Row Solid Background 2",     # 40
+    "BPM Row Solid Disco",            # 41
+    "BPM Row Solid Pattern",          # 42
+    "BPM Row Autolight",              # 43
+    "BPM Row Autolight 2",            # 44
+    "BPM Row Autolight Disco",        # 45
+    
+    # BPM COLUMN (46-56)
+    "BPM Column",                     # 46
+    "BPM Column 2",                   # 47
+    "BPM Column Desaturated",         # 48
+    "BPM Column Disco",               # 49
+    "BPM Column Solid Background",    # 50
+    "BPM Column Solid Background 2",  # 51
+    "BPM Column Solid Disco",         # 52
+    "BPM Column Solid Pattern",       # 53
+    "BPM Column Autolight",           # 54
+    "BPM Column Autolight 2",         # 55
+    "BPM Column Autolight Disco",     # 56
+    
+    # BPM ALL (57-67)
+    "BPM All",                        # 57
+    "BPM All 2",                      # 58
+    "BPM All Desaturated",            # 59
+    "BPM All Disco",                  # 60
+    "BPM All Solid Background",       # 61
+    "BPM All Solid Background 2",     # 62
+    "BPM All Solid Disco",            # 63
+    "BPM All Solid Pattern",          # 64
+    "BPM All Autolight",              # 65
+    "BPM All Autolight 2",            # 66
+    "BPM All Autolight Disco"         # 67
 ]
-
 CUSTOM_LIGHT_COLOR_TYPES = [
     "Base", "Channel", "Macro", "Heat"
 ]
