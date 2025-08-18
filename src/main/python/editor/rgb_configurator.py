@@ -187,11 +187,16 @@ VIALRGB_EFFECTS = [
 
 # Separate effect and style arrays for custom lights
 LIVE_EFFECTS = [
-    "None",               # LIVE_ANIM_NONE
-    "Heat",               # LIVE_ANIM_HEAT  
-    "Sustain",            # LIVE_ANIM_SUSTAIN
-    "Moving Dots Row",    # LIVE_ANIM_MOVING_DOTS_ROW
-    "Moving Dots Col"     # LIVE_ANIM_MOVING_DOTS_COL
+    "None",               # MACRO_ANIM_NONE
+    "Wide",               # MACRO_ANIM_HEAT
+    "Sustain",            # MACRO_ANIM_SUSTAIN
+    "Horizontal Dots",    # MACRO_ANIM_MOVING_DOTS_ROW
+    "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Heatmap",
+    "Ripples",
+    "Waves",
+    "Fireworks",
+    "Spirals"
 ]
 
 LIVE_STYLES = [
@@ -208,10 +213,15 @@ LIVE_STYLES = [
 
 MACRO_EFFECTS = [
     "None",               # MACRO_ANIM_NONE
-    "Heat",               # MACRO_ANIM_HEAT
+    "Wide",               # MACRO_ANIM_HEAT
     "Sustain",            # MACRO_ANIM_SUSTAIN
-    "Moving Dots Row",    # MACRO_ANIM_MOVING_DOTS_ROW
-    "Moving Dots Col"     # MACRO_ANIM_MOVING_DOTS_COL
+    "Horizontal Dots",    # MACRO_ANIM_MOVING_DOTS_ROW
+    "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Heatmap",
+    "Ripples",
+    "Waves",
+    "Fireworks",
+    "Spirals"
 ]
 
 MACRO_STYLES = [
