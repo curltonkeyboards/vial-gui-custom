@@ -149,9 +149,14 @@ VIALRGB_EFFECTS = [
 LIVE_EFFECTS = [
     "None",               # MACRO_ANIM_NONE
     "Wide",               # MACRO_ANIM_HEAT
-    "Sustain",            # MACRO_ANIM_SUSTAIN
+    "Sustain Glow",            # MACRO_ANIM_SUSTAIN
     "Horizontal Dots",    # MACRO_ANIM_MOVING_DOTS_ROW
     "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 1",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 2",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 3",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 4",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots All",     # MACRO_ANIM_MOVING_DOTS_COL    
     "Heatmap",
     "Ripples",
     "Waves",
@@ -174,9 +179,14 @@ LIVE_STYLES = [
 MACRO_EFFECTS = [
     "None",               # MACRO_ANIM_NONE
     "Wide",               # MACRO_ANIM_HEAT
-    "Sustain",            # MACRO_ANIM_SUSTAIN
+    "Sustain Glow",            # MACRO_ANIM_SUSTAIN
     "Horizontal Dots",    # MACRO_ANIM_MOVING_DOTS_ROW
     "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 1",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 2",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 3",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots 4",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Diagonal Dots All",     # MACRO_ANIM_MOVING_DOTS_COL
     "Heatmap",
     "Ripples",
     "Waves",
