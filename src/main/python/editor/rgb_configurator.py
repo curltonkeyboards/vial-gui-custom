@@ -154,9 +154,9 @@ LIVE_EFFECTS = [
     "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
     "Diagonal Dots 1",     # MACRO_ANIM_MOVING_DOTS_COL
     "Diagonal Dots 2",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 3",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 4",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots All",     # MACRO_ANIM_MOVING_DOTS_COL    
+    "Cross Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "X Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Firework",     # MACRO_ANIM_MOVING_DOTS_COL    
     "Heatmap",
     "Ripples",
     "Waves",
@@ -184,9 +184,9 @@ MACRO_EFFECTS = [
     "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
     "Diagonal Dots 1",     # MACRO_ANIM_MOVING_DOTS_COL
     "Diagonal Dots 2",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 3",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 4",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots All",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Cross Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "X Dots",     # MACRO_ANIM_MOVING_DOTS_COL
+    "Firework",     # MACRO_ANIM_MOVING_DOTS_COL    
     "Heatmap",
     "Ripples",
     "Waves",
