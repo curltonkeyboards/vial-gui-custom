@@ -147,25 +147,44 @@ VIALRGB_EFFECTS = [
 
 # Separate effect and style arrays for custom lights
 LIVE_EFFECTS = [
-    "None",               # MACRO_ANIM_NONE
+    "Simple",               # MACRO_ANIM_NONE
     "Wide",               # MACRO_ANIM_HEAT
     "Wider",               # MACRO_ANIM_HEAT
     "Heatmap",
     "Heatmap 2",            # MACRO_ANIM_SUSTAIN
-    "Horizontal Dots",    # MACRO_ANIM_MOVING_DOTS_ROW
-    "Horizontal Dots Long",    # MACRO_ANIM_MOVING_DOTS_ROW
-    "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Vertical Dots Long",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 1",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 2",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Cross 1",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Cross 2",     # MACRO_ANIM_MOVING_DOTS_COL
-    "X Dots",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Firework",     # MACRO_ANIM_MOVING_DOTS_COL    
-    "Ripples",
-    "Waves",
-    "Fireworks",
-    "Spirals"
+    "COLUMN",
+    "ROW",
+    "CROSS",
+    "CROSS_2",
+    "MOVING_DOTS1_ROW",   
+    "MOVING_DOTS2_ROW",
+    "MOVING_DOTS1_COL", 
+    "MOVING_DOTS2_COL",  
+    "MOVING_DOTS_DIAG_TL_BR",    
+    "MOVING_DOTS_DIAG_TL_BR_NO_FADE",    
+    "MOVING_DOTS_DIAG_TR_BL",   
+    "MOVING_DOTS_DIAG_TR_BL_NO_FADE",   
+    "MOVING_DOTS_ALL_ORTHOGONAL", 
+    "MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE", 
+    "MOVING_DOTS_ALL_DIAGONAL", 
+    "MOVING_DOTS_ALL_DIAGONAL_NO_FADE",
+    "RIPPLE_SMALL_1",
+    "RIPPLE_MED_1",
+    "RIPPLE_LARGE_1",
+    "RIPPLE_MASSIVE_1",
+    "RIPPLE_SMALL_2",
+    "RIPPLE_MED_2",
+    "ROW_BURST_1",
+    "ROW_BURST_2",
+    "COLUMN_BURST_1",
+    "COLUMN_BURST_2",
+    "OUTWARD_BURST_1",
+    "OUTWARD_BURST_2",
+    "VOLUME_UP_DOWN_1",
+    "VOLUME_UP_DOWN_2",
+    "VOLUME_LEFT_RIGHT_1",
+    "VOLUME_LEFT_RIGHT_2",
+    "VOLUME_LEFT_RIGHT_3"
 ]
 
 LIVE_STYLES = [
@@ -181,25 +200,44 @@ LIVE_STYLES = [
 ]
 
 MACRO_EFFECTS = [
-    "None",               # MACRO_ANIM_NONE
+    "Simple",               # MACRO_ANIM_NONE
     "Wide",               # MACRO_ANIM_HEAT
     "Wider",               # MACRO_ANIM_HEAT
     "Heatmap",
     "Heatmap 2",            # MACRO_ANIM_SUSTAIN
-    "Horizontal Dots",    # MACRO_ANIM_MOVING_DOTS_ROW
-    "Horizontal Dots Long",    # MACRO_ANIM_MOVING_DOTS_ROW
-    "Vertical Dots",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Vertical Dots Long",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 1",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Diagonal Dots 2",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Cross 1",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Cross 2",     # MACRO_ANIM_MOVING_DOTS_COL
-    "X Dots",     # MACRO_ANIM_MOVING_DOTS_COL
-    "Firework",     # MACRO_ANIM_MOVING_DOTS_COL    
-    "Ripples",
-    "Waves",
-    "Fireworks",
-    "Spirals"
+    "COLUMN",
+    "ROW",
+    "CROSS",
+    "CROSS_2",
+    "MOVING_DOTS1_ROW",   
+    "MOVING_DOTS2_ROW",
+    "MOVING_DOTS1_COL", 
+    "MOVING_DOTS2_COL",  
+    "MOVING_DOTS_DIAG_TL_BR",    
+    "MOVING_DOTS_DIAG_TL_BR_NO_FADE",    
+    "MOVING_DOTS_DIAG_TR_BL",   
+    "MOVING_DOTS_DIAG_TR_BL_NO_FADE",   
+    "MOVING_DOTS_ALL_ORTHOGONAL", 
+    "MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE", 
+    "MOVING_DOTS_ALL_DIAGONAL", 
+    "MOVING_DOTS_ALL_DIAGONAL_NO_FADE",
+    "RIPPLE_SMALL_1",
+    "RIPPLE_MED_1",
+    "RIPPLE_LARGE_1",
+    "RIPPLE_MASSIVE_1",
+    "RIPPLE_SMALL_2",
+    "RIPPLE_MED_2",
+    "ROW_BURST_1",
+    "ROW_BURST_2",
+    "COLUMN_BURST_1",
+    "COLUMN_BURST_2",
+    "OUTWARD_BURST_1",
+    "OUTWARD_BURST_2",
+    "VOLUME_UP_DOWN_1",
+    "VOLUME_UP_DOWN_2",
+    "VOLUME_LEFT_RIGHT_1",
+    "VOLUME_LEFT_RIGHT_2",
+    "VOLUME_LEFT_RIGHT_3"
 ]
 
 MACRO_STYLES = [
