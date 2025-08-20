@@ -228,26 +228,26 @@ LIVE_EFFECTS = [
     "Volume Left Right Large Solo",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_SOLO
     "Volume Left Right Large Wide",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE
     "Volume Left Right Large Wide Solo",                # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
-    "Peak Volume Up Down Small",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1
-    "Peak Volume Up Down Small Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_SOLO
-    "Peak Volume Up Down Small Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE
-    "Peak Volume Up Down Small Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE_SOLO
-    "Peak Volume Up Down Large",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2
-    "Peak Volume Up Down Large Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_SOLO
-    "Peak Volume Up Down Large Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE
-    "Peak Volume Up Down Large Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE_SOLO
-    "Peak Volume Left Right Small",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1
-    "Peak Volume Left Right Small Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_SOLO
-    "Peak Volume Left Right Small Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE
-    "Peak Volume Left Right Small Wide Solo",           # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
-    "Peak Volume Left Right Med",                       # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2
-    "Peak Volume Left Right Med Solo",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_SOLO
-    "Peak Volume Left Right Med Wide",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE
-    "Peak Volume Left Right Med Wide Solo",             # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
-    "Peak Volume Left Right Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
-    "Peak Volume Left Right Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
-    "Peak Volume Left Right Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
-    "Peak Volume Left Right Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
+    "Collapsing Up Down Small",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1
+    "Collapsing Up Down Small Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_SOLO
+    "Collapsing Up Down Small Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE
+    "Collapsing Up Down Small Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE_SOLO
+    "Collapsing Up Down Large",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2
+    "Collapsing Up Down Large Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_SOLO
+    "Collapsing Up Down Large Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE
+    "Collapsing Up Down Large Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE_SOLO
+    "Collapsing Left Right Small",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1
+    "Collapsing Left Right Small Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_SOLO
+    "Collapsing Left Right Small Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE
+    "Collapsing Left Right Small Wide Solo",           # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
+    "Collapsing Left Right Med",                       # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2
+    "Collapsing Left Right Med Solo",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_SOLO
+    "Collapsing Left Right Med Wide",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE
+    "Collapsing Left Right Med Wide Solo",             # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
+    "Collapsing Left Right Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
+    "Collapsing Left Right Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
+    "Collapsing Left Right Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
+    "Collapsing Left Right Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
 ]
 
 LIVE_STYLES = [
@@ -345,26 +345,26 @@ MACRO_EFFECTS = [
     "Volume Left Right Large Solo",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_SOLO
     "Volume Left Right Large Wide",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE
     "Volume Left Right Large Wide Solo",                # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
-    "Peak Volume Up Down Small",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1
-    "Peak Volume Up Down Small Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_SOLO
-    "Peak Volume Up Down Small Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE
-    "Peak Volume Up Down Small Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE_SOLO
-    "Peak Volume Up Down Large",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2
-    "Peak Volume Up Down Large Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_SOLO
-    "Peak Volume Up Down Large Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE
-    "Peak Volume Up Down Large Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE_SOLO
-    "Peak Volume Left Right Small",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1
-    "Peak Volume Left Right Small Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_SOLO
-    "Peak Volume Left Right Small Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE
-    "Peak Volume Left Right Small Wide Solo",           # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
-    "Peak Volume Left Right Med",                       # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2
-    "Peak Volume Left Right Med Solo",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_SOLO
-    "Peak Volume Left Right Med Wide",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE
-    "Peak Volume Left Right Med Wide Solo",             # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
-    "Peak Volume Left Right Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
-    "Peak Volume Left Right Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
-    "Peak Volume Left Right Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
-    "Peak Volume Left Right Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
+    "Collapsing Up Down Small",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1
+    "Collapsing Up Down Small Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_SOLO
+    "Collapsing Up Down Small Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE
+    "Collapsing Up Down Small Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE_SOLO
+    "Collapsing Up Down Large",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2
+    "Collapsing Up Down Large Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_SOLO
+    "Collapsing Up Down Large Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE
+    "Collapsing Up Down Large Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE_SOLO
+    "Collapsing Left Right Small",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1
+    "Collapsing Left Right Small Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_SOLO
+    "Collapsing Left Right Small Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE
+    "Collapsing Left Right Small Wide Solo",           # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
+    "Collapsing Left Right Med",                       # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2
+    "Collapsing Left Right Med Solo",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_SOLO
+    "Collapsing Left Right Med Wide",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE
+    "Collapsing Left Right Med Wide Solo",             # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
+    "Collapsing Left Right Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
+    "Collapsing Left Right Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
+    "Collapsing Left Right Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
+    "Collapsing Left Right Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
 ]
 
 MACRO_STYLES = [
