@@ -60,9 +60,9 @@ jobs:
     # Install Visual C++ redistributables to fix msvcr100.dll missing error
     - name: Install Visual C++ Redistributables
       run: |
-        choco install vcredist2010 vcredist2012 -y
+        choco install vcredist2012 -y
       shell: powershell
-    
+        
     - uses: actions/setup-python@v5  # Updated to v5 for Node.js 20 support
       with:
         python-version: '3.6.x'
