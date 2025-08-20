@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QColorDialog, QCheckBox, QTabWidget
+    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction
 
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
@@ -145,110 +145,236 @@ VIALRGB_EFFECTS = [
 ]
 
 
-LIVE_EFFECTS = [
-    "Simple",                                           # LIVE_ANIM_NONE
-    "Simple Solo",                                      # LIVE_ANIM_NONE_SOLO
-    "Wide",                                             # LIVE_ANIM_WIDE1
-    "Wide Solo",                                        # LIVE_ANIM_WIDE1_SOLO
-    "Wider",                                            # LIVE_ANIM_WIDE2
-    "Wider Solo",                                       # LIVE_ANIM_WIDE2_SOLO
-    "Heatmap",                                          # LIVE_ANIM_HEAT
-    "Heatmap 2",                                        # LIVE_ANIM_SUSTAIN
-    "Column Short",                                     # LIVE_ANIM_COLUMN
-    "Column Short Solo",                                # LIVE_ANIM_COLUMN_SOLO
-    "Row Short",                                        # LIVE_ANIM_ROW
-    "Row Short Solo",                                   # LIVE_ANIM_ROW_SOLO
-    "Cross Short",                                      # LIVE_ANIM_CROSS
-    "Cross Short Solo",                                 # LIVE_ANIM_CROSS_SOLO
-    "Criss Cross",                                      # LIVE_ANIM_CROSS_2
-    "Criss Cross Solo",                                 # LIVE_ANIM_CROSS_2_SOLO
-    "Horizontal Dots Short",                            # LIVE_ANIM_MOVING_DOTS1_ROW
-    "Horizontal Dots Short Solo",                       # LIVE_ANIM_MOVING_DOTS1_ROW_SOLO
-    "Horizontal Dots Long",                             # LIVE_ANIM_MOVING_DOTS2_ROW
-    "Horizontal Dots Long Solo",                        # LIVE_ANIM_MOVING_DOTS2_ROW_SOLO
-    "Vertical Dots Short",                              # LIVE_ANIM_MOVING_DOTS1_COL
-    "Vertical Dots Short Solo",                         # LIVE_ANIM_MOVING_DOTS1_COL_SOLO
-    "Vertical Dots Long",                               # LIVE_ANIM_MOVING_DOTS2_COL
-    "Vertical Dots Long Solo",                          # LIVE_ANIM_MOVING_DOTS2_COL_SOLO
-    "Diagonal Dots 1",                                  # LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE
-    "Diagonal Dots 1 Solo",                             # LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE_SOLO
-    "Diagonal Dots 2",                                  # LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE
-    "Diagonal Dots 2 Solo",                             # LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE_SOLO
-    "Cross Dots Short",                                 # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL
-    "Cross Dots Short Solo",                            # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_SOLO
-    "Cross Dots Long",                                  # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE
-    "Cross Dots Long Solo",                             # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE_SOLO
-    "Diagonal Burst",                                   # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL
-    "Diagonal Burst Solo",                              # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_SOLO
-    "Criss Cross Dots",                                 # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE
-    "Criss Cross Dots Solo",                            # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE_SOLO
-    "Ripple Small",                                     # LIVE_ANIM_RIPPLE_SMALL_1
-    "Ripple Small Solo",                                # LIVE_ANIM_RIPPLE_SMALL_1_SOLO
-    "Ripple Med",                                       # LIVE_ANIM_RIPPLE_MED_1
-    "Ripple Med Solo",                                  # LIVE_ANIM_RIPPLE_MED_1_SOLO
-    "Ripple Large",                                     # LIVE_ANIM_RIPPLE_LARGE_1
-    "Ripple Large Solo",                                # LIVE_ANIM_RIPPLE_LARGE_1_SOLO
-    "Ripple Massive",                                   # LIVE_ANIM_RIPPLE_MASSIVE_1
-    "Ripple Massive Solo",                              # LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO
-    "Reverse Ripple Small",                             # LIVE_ANIM_RIPPLE_SMALL_2
-    "Reverse Ripple Med",                               # LIVE_ANIM_RIPPLE_MED_2
-    "Reverse Ripple Large",                             # LIVE_ANIM_RIPPLE_LARGE_2
-    "Reverse Ripple Massive",                           # LIVE_ANIM_RIPPLE_MASSIVE_2
-    "Expanding Row Short",                              # LIVE_ANIM_ROW_BURST_1
-    "Expanding Row Short Solo",                         # LIVE_ANIM_ROW_BURST_1_SOLO
-    "Expanding Row Long",                               # LIVE_ANIM_ROW_BURST_2
-    "Expanding Row Long Solo",                          # LIVE_ANIM_ROW_BURST_2_SOLO
-    "Expanding Column Short",                           # LIVE_ANIM_COLUMN_BURST_1
-    "Expanding Column Short Solo",                      # LIVE_ANIM_COLUMN_BURST_1_SOLO
-    "Expanding Column Long",                            # LIVE_ANIM_COLUMN_BURST_2
-    "Expanding Column Long Solo",                       # LIVE_ANIM_COLUMN_BURST_2_SOLO
-    "Outward Burst Small",                              # LIVE_ANIM_OUTWARD_BURST_SMALL_1
-    "Outward Burst Small Solo",                         # LIVE_ANIM_OUTWARD_BURST_SMALL_2
-    "Outward Burst Med",                                # LIVE_ANIM_OUTWARD_BURST_1
-    "Outward Burst Med Solo",                           # LIVE_ANIM_OUTWARD_BURST_2
-    "Outward Burst Large",                              # LIVE_ANIM_OUTWARD_BURST_LARGE_1
-    "Outward Burst Large Solo",                         # LIVE_ANIM_OUTWARD_BURST_LARGE_2
-    "Volume Column Small",                             # LIVE_ANIM_VOLUME_UP_DOWN_1
-    "Volume Column Small Solo",                        # LIVE_ANIM_VOLUME_UP_DOWN_1_SOLO
-    "Volume Column Small Wide",                        # LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE
-    "Volume Column Small Wide Solo",                   # LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE_SOLO
-    "Volume Column Large",                             # LIVE_ANIM_VOLUME_UP_DOWN_2
-    "Volume Column Large Solo",                        # LIVE_ANIM_VOLUME_UP_DOWN_2_SOLO
-    "Volume Column Large Wide",                        # LIVE_ANIM_VOLUME_UP_DOWN_2_WIDE
-    "Volume Column Large Wide Solo",                   # LIVE_ANIM_VOLUME_UP_DOWN_2_WIDE_SOLO
-    "Volume Row Small",                          # LIVE_ANIM_VOLUME_LEFT_RIGHT_1
-    "Volume Row Small Solo",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_1_SOLO
-    "Volume Row Small Wide",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_1_WIDE
-    "Volume Row Small Wide Solo",                # LIVE_ANIM_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
-    "Volume Row Med",                            # LIVE_ANIM_VOLUME_LEFT_RIGHT_2
-    "Volume Row Med Solo",                       # LIVE_ANIM_VOLUME_LEFT_RIGHT_2_SOLO
-    "Volume Row Med Wide",                       # LIVE_ANIM_VOLUME_LEFT_RIGHT_2_WIDE
-    "Volume Row Med Wide Solo",                  # LIVE_ANIM_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
-    "Volume Row Large",                          # LIVE_ANIM_VOLUME_LEFT_RIGHT_3
-    "Volume Row Large Solo",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_SOLO
-    "Volume Row Large Wide",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE
-    "Volume Row Large Wide Solo",                # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
-    "Collapsing Column Small",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1
-    "Collapsing Column Small Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_SOLO
-    "Collapsing Column Small Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE
-    "Collapsing Column Small Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE_SOLO
-    "Collapsing Column Large",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2
-    "Collapsing Column Large Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_SOLO
-    "Collapsing Column Large Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE
-    "Collapsing Column Large Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE_SOLO
-    "Collapsing Row Small",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1
-    "Collapsing Row Small Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_SOLO
-    "Collapsing Row Small Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE
-    "Collapsing Row Small Wide Solo",           # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
-    "Collapsing Row Med",                       # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2
-    "Collapsing Row Med Solo",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_SOLO
-    "Collapsing Row Med Wide",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE
-    "Collapsing Row Med Wide Solo",             # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
-    "Collapsing Row Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
-    "Collapsing Row Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
-    "Collapsing Row Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
-    "Collapsing Row Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
-]
+# Hierarchical structure for effects
+LIVE_EFFECTS_HIERARCHY = {
+    "Simple": [
+        {"name": "Simple", "index": 0},
+        {"name": "Simple Solo", "index": 1},
+    ],
+    "Wide": [
+        {"name": "Wide", "index": 2},
+        {"name": "Wide Solo", "index": 3},
+        {"name": "Wider", "index": 4},
+        {"name": "Wider Solo", "index": 5},
+    ],
+    "Heatmap": [
+        {"name": "Heatmap", "index": 6},
+        {"name": "Heatmap 2", "index": 7},
+    ],
+    "Column": [
+        {"name": "Column Short", "index": 8},
+        {"name": "Column Short Solo", "index": 9},
+    ],
+    "Row": [
+        {"name": "Row Short", "index": 10},
+        {"name": "Row Short Solo", "index": 11},
+    ],
+    "Cross": [
+        {"name": "Cross Short", "index": 12},
+        {"name": "Cross Short Solo", "index": 13},
+        {"name": "Criss Cross", "index": 14},
+        {"name": "Criss Cross Solo", "index": 15},
+    ],
+    "Horizontal Dots": [
+        {"name": "Horizontal Dots Short", "index": 16},
+        {"name": "Horizontal Dots Short Solo", "index": 17},
+        {"name": "Horizontal Dots Long", "index": 18},
+        {"name": "Horizontal Dots Long Solo", "index": 19},
+    ],
+    "Vertical Dots": [
+        {"name": "Vertical Dots Short", "index": 20},
+        {"name": "Vertical Dots Short Solo", "index": 21},
+        {"name": "Vertical Dots Long", "index": 22},
+        {"name": "Vertical Dots Long Solo", "index": 23},
+    ],
+    "Diagonal Dots": [
+        {"name": "Diagonal Dots 1", "index": 24},
+        {"name": "Diagonal Dots 1 Solo", "index": 25},
+        {"name": "Diagonal Dots 2", "index": 26},
+        {"name": "Diagonal Dots 2 Solo", "index": 27},
+    ],
+    "Cross Dots": [
+        {"name": "Cross Dots Short", "index": 28},
+        {"name": "Cross Dots Short Solo", "index": 29},
+        {"name": "Cross Dots Long", "index": 30},
+        {"name": "Cross Dots Long Solo", "index": 31},
+    ],
+    "Diagonal Burst": [
+        {"name": "Diagonal Burst", "index": 32},
+        {"name": "Diagonal Burst Solo", "index": 33},
+    ],
+    "Criss Cross Dots": [
+        {"name": "Criss Cross Dots", "index": 34},
+        {"name": "Criss Cross Dots Solo", "index": 35},
+    ],
+    "Ripple": [
+        {"name": "Ripple Small", "index": 36},
+        {"name": "Ripple Small Solo", "index": 37},
+        {"name": "Ripple Med", "index": 38},
+        {"name": "Ripple Med Solo", "index": 39},
+        {"name": "Ripple Large", "index": 40},
+        {"name": "Ripple Large Solo", "index": 41},
+        {"name": "Ripple Massive", "index": 42},
+        {"name": "Ripple Massive Solo", "index": 43},
+    ],
+    "Reverse Ripple": [
+        {"name": "Reverse Ripple Small", "index": 44},
+        {"name": "Reverse Ripple Med", "index": 45},
+        {"name": "Reverse Ripple Large", "index": 46},
+        {"name": "Reverse Ripple Massive", "index": 47},
+    ],
+    "Expanding Row": [
+        {"name": "Expanding Row Short", "index": 48},
+        {"name": "Expanding Row Short Solo", "index": 49},
+        {"name": "Expanding Row Long", "index": 50},
+        {"name": "Expanding Row Long Solo", "index": 51},
+    ],
+    "Expanding Column": [
+        {"name": "Expanding Column Short", "index": 52},
+        {"name": "Expanding Column Short Solo", "index": 53},
+        {"name": "Expanding Column Long", "index": 54},
+        {"name": "Expanding Column Long Solo", "index": 55},
+    ],
+    "Outward Burst": [
+        {"name": "Outward Burst Small", "index": 56},
+        {"name": "Outward Burst Small Solo", "index": 57},
+        {"name": "Outward Burst Med", "index": 58},
+        {"name": "Outward Burst Med Solo", "index": 59},
+        {"name": "Outward Burst Large", "index": 60},
+        {"name": "Outward Burst Large Solo", "index": 61},
+    ],
+    "Volume Column": [
+        {"name": "Volume Column Small", "index": 62},
+        {"name": "Volume Column Small Solo", "index": 63},
+        {"name": "Volume Column Small Wide", "index": 64},
+        {"name": "Volume Column Small Wide Solo", "index": 65},
+        {"name": "Volume Column Large", "index": 66},
+        {"name": "Volume Column Large Solo", "index": 67},
+        {"name": "Volume Column Large Wide", "index": 68},
+        {"name": "Volume Column Large Wide Solo", "index": 69},
+    ],
+    "Volume Row": [
+        {"name": "Volume Row Small", "index": 70},
+        {"name": "Volume Row Small Solo", "index": 71},
+        {"name": "Volume Row Small Wide", "index": 72},
+        {"name": "Volume Row Small Wide Solo", "index": 73},
+        {"name": "Volume Row Med", "index": 74},
+        {"name": "Volume Row Med Solo", "index": 75},
+        {"name": "Volume Row Med Wide", "index": 76},
+        {"name": "Volume Row Med Wide Solo", "index": 77},
+        {"name": "Volume Row Large", "index": 78},
+        {"name": "Volume Row Large Solo", "index": 79},
+        {"name": "Volume Row Large Wide", "index": 80},
+        {"name": "Volume Row Large Wide Solo", "index": 81},
+    ],
+    "Collapsing Column": [
+        {"name": "Collapsing Column Small", "index": 82},
+        {"name": "Collapsing Column Small Solo", "index": 83},
+        {"name": "Collapsing Column Small Wide", "index": 84},
+        {"name": "Collapsing Column Small Wide Solo", "index": 85},
+        {"name": "Collapsing Column Large", "index": 86},
+        {"name": "Collapsing Column Large Solo", "index": 87},
+        {"name": "Collapsing Column Large Wide", "index": 88},
+        {"name": "Collapsing Column Large Wide Solo", "index": 89},
+    ],
+    "Collapsing Row": [
+        {"name": "Collapsing Row Small", "index": 90},
+        {"name": "Collapsing Row Small Solo", "index": 91},
+        {"name": "Collapsing Row Small Wide", "index": 92},
+        {"name": "Collapsing Row Small Wide Solo", "index": 93},
+        {"name": "Collapsing Row Med", "index": 94},
+        {"name": "Collapsing Row Med Solo", "index": 95},
+        {"name": "Collapsing Row Med Wide", "index": 96},
+        {"name": "Collapsing Row Med Wide Solo", "index": 97},
+        {"name": "Collapsing Row Large", "index": 98},
+        {"name": "Collapsing Row Large Solo", "index": 99},
+        {"name": "Collapsing Row Large Wide", "index": 100},
+        {"name": "Collapsing Row Large Wide Solo", "index": 101},
+    ]
+}
+
+# Hierarchical structure for backgrounds
+BACKGROUNDS_HIERARCHY = {
+    "None": [
+        {"name": "None", "index": 0},
+    ],
+    "Basic": [
+        {"name": "Basic", "index": 1},
+        {"name": "Basic 2", "index": 2},
+        {"name": "Basic 3", "index": 3},
+        {"name": "Basic 4", "index": 4},
+        {"name": "Basic 5", "index": 5},
+        {"name": "Basic 6", "index": 6},
+    ],
+    "Autolight": [
+        {"name": "Autolight", "index": 7},
+        {"name": "Autolight 2", "index": 8},
+        {"name": "Autolight 3", "index": 9},
+        {"name": "Autolight 4", "index": 10},
+        {"name": "Autolight 5", "index": 11},
+        {"name": "Autolight 6", "index": 12},
+    ],
+    "BPM Pulse Fade": [
+        {"name": "BPM Pulse Fade", "index": 13},
+        {"name": "BPM Pulse Fade 2", "index": 14},
+        {"name": "BPM Pulse Fade Desaturated", "index": 15},
+        {"name": "BPM Pulse Fade Disco", "index": 16},
+        {"name": "BPM Pulse Fade Solid Background", "index": 17},
+        {"name": "BPM Pulse Fade Solid Background 2", "index": 18},
+        {"name": "BPM Pulse Fade Solid Disco", "index": 19},
+        {"name": "BPM Pulse Fade Autolight", "index": 20},
+        {"name": "BPM Pulse Fade Autolight 2", "index": 21},
+        {"name": "BPM Pulse Fade Autolight Disco", "index": 22},
+    ],
+    "BPM Quadrants": [
+        {"name": "BPM Quadrants", "index": 23},
+        {"name": "BPM Quadrants 2", "index": 24},
+        {"name": "BPM Quadrants Desaturated", "index": 25},
+        {"name": "BPM Quadrants Disco", "index": 26},
+        {"name": "BPM Quadrants Solid Background", "index": 27},
+        {"name": "BPM Quadrants Solid Background 2", "index": 28},
+        {"name": "BPM Quadrants Solid Disco", "index": 29},
+        {"name": "BPM Quadrants Autolight", "index": 30},
+        {"name": "BPM Quadrants Autolight 2", "index": 31},
+        {"name": "BPM Quadrants Autolight Disco", "index": 32},
+    ],
+    "BPM Row": [
+        {"name": "BPM Row", "index": 33},
+        {"name": "BPM Row 2", "index": 34},
+        {"name": "BPM Row Desaturated", "index": 35},
+        {"name": "BPM Row Disco", "index": 36},
+        {"name": "BPM Row Solid Background", "index": 37},
+        {"name": "BPM Row Solid Background 2", "index": 38},
+        {"name": "BPM Row Solid Disco", "index": 39},
+        {"name": "BPM Row Autolight", "index": 40},
+        {"name": "BPM Row Autolight 2", "index": 41},
+        {"name": "BPM Row Autolight Disco", "index": 42},
+    ],
+    "BPM Column": [
+        {"name": "BPM Column", "index": 43},
+        {"name": "BPM Column 2", "index": 44},
+        {"name": "BPM Column Desaturated", "index": 45},
+        {"name": "BPM Column Disco", "index": 46},
+        {"name": "BPM Column Solid Background", "index": 47},
+        {"name": "BPM Column Solid Background 2", "index": 48},
+        {"name": "BPM Column Solid Disco", "index": 49},
+        {"name": "BPM Column Autolight", "index": 50},
+        {"name": "BPM Column Autolight 2", "index": 51},
+        {"name": "BPM Column Autolight Disco", "index": 52},
+    ],
+    "BPM All": [
+        {"name": "BPM All", "index": 53},
+        {"name": "BPM All 2", "index": 54},
+        {"name": "BPM All Desaturated", "index": 55},
+        {"name": "BPM All Disco", "index": 56},
+        {"name": "BPM All Solid Background", "index": 57},
+        {"name": "BPM All Solid Background 2", "index": 58},
+        {"name": "BPM All Solid Disco", "index": 59},
+        {"name": "BPM All Autolight", "index": 60},
+        {"name": "BPM All Autolight 2", "index": 61},
+        {"name": "BPM All Autolight Disco", "index": 62},
+    ]
+}
 
 LIVE_STYLES = [
     "TrueKey",            # LIVE_POS_TRUEKEY
@@ -260,111 +386,6 @@ LIVE_STYLES = [
     "Bottom",      # LIVE_POS_NOTE_COL_ROW4
     "Left & Right",     # LIVE_POS_NOTE_ROW_MIXED
     "Top & Bottom"      # LIVE_POS_NOTE_COL_MIXED
-]
-
-MACRO_EFFECTS = [
-    "Simple",                                           # LIVE_ANIM_NONE
-    "Simple Solo",                                      # LIVE_ANIM_NONE_SOLO
-    "Wide",                                             # LIVE_ANIM_WIDE1
-    "Wide Solo",                                        # LIVE_ANIM_WIDE1_SOLO
-    "Wider",                                            # LIVE_ANIM_WIDE2
-    "Wider Solo",                                       # LIVE_ANIM_WIDE2_SOLO
-    "Heatmap",                                          # LIVE_ANIM_HEAT
-    "Heatmap 2",                                        # LIVE_ANIM_SUSTAIN
-    "Column Short",                                     # LIVE_ANIM_COLUMN
-    "Column Short Solo",                                # LIVE_ANIM_COLUMN_SOLO
-    "Row Short",                                        # LIVE_ANIM_ROW
-    "Row Short Solo",                                   # LIVE_ANIM_ROW_SOLO
-    "Cross Short",                                      # LIVE_ANIM_CROSS
-    "Cross Short Solo",                                 # LIVE_ANIM_CROSS_SOLO
-    "Criss Cross",                                      # LIVE_ANIM_CROSS_2
-    "Criss Cross Solo",                                 # LIVE_ANIM_CROSS_2_SOLO
-    "Horizontal Dots Short",                            # LIVE_ANIM_MOVING_DOTS1_ROW
-    "Horizontal Dots Short Solo",                       # LIVE_ANIM_MOVING_DOTS1_ROW_SOLO
-    "Horizontal Dots Long",                             # LIVE_ANIM_MOVING_DOTS2_ROW
-    "Horizontal Dots Long Solo",                        # LIVE_ANIM_MOVING_DOTS2_ROW_SOLO
-    "Vertical Dots Short",                              # LIVE_ANIM_MOVING_DOTS1_COL
-    "Vertical Dots Short Solo",                         # LIVE_ANIM_MOVING_DOTS1_COL_SOLO
-    "Vertical Dots Long",                               # LIVE_ANIM_MOVING_DOTS2_COL
-    "Vertical Dots Long Solo",                          # LIVE_ANIM_MOVING_DOTS2_COL_SOLO
-    "Diagonal Dots 1",                                  # LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE
-    "Diagonal Dots 1 Solo",                             # LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE_SOLO
-    "Diagonal Dots 2",                                  # LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE
-    "Diagonal Dots 2 Solo",                             # LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE_SOLO
-    "Cross Dots Short",                                 # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL
-    "Cross Dots Short Solo",                            # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_SOLO
-    "Cross Dots Long",                                  # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE
-    "Cross Dots Long Solo",                             # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE_SOLO
-    "Diagonal Burst",                                   # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL
-    "Diagonal Burst Solo",                              # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_SOLO
-    "Criss Cross Dots",                                 # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE
-    "Criss Cross Dots Solo",                            # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE_SOLO
-    "Ripple Small",                                     # LIVE_ANIM_RIPPLE_SMALL_1
-    "Ripple Small Solo",                                # LIVE_ANIM_RIPPLE_SMALL_1_SOLO
-    "Ripple Med",                                       # LIVE_ANIM_RIPPLE_MED_1
-    "Ripple Med Solo",                                  # LIVE_ANIM_RIPPLE_MED_1_SOLO
-    "Ripple Large",                                     # LIVE_ANIM_RIPPLE_LARGE_1
-    "Ripple Large Solo",                                # LIVE_ANIM_RIPPLE_LARGE_1_SOLO
-    "Ripple Massive",                                   # LIVE_ANIM_RIPPLE_MASSIVE_1
-    "Ripple Massive Solo",                              # LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO
-    "Reverse Ripple Small",                             # LIVE_ANIM_RIPPLE_SMALL_2
-    "Reverse Ripple Med",                               # LIVE_ANIM_RIPPLE_MED_2
-    "Reverse Ripple Large",                             # LIVE_ANIM_RIPPLE_LARGE_2
-    "Reverse Ripple Massive",                           # LIVE_ANIM_RIPPLE_MASSIVE_2
-    "Expanding Row Short",                              # LIVE_ANIM_ROW_BURST_1
-    "Expanding Row Short Solo",                         # LIVE_ANIM_ROW_BURST_1_SOLO
-    "Expanding Row Long",                               # LIVE_ANIM_ROW_BURST_2
-    "Expanding Row Long Solo",                          # LIVE_ANIM_ROW_BURST_2_SOLO
-    "Expanding Column Short",                           # LIVE_ANIM_COLUMN_BURST_1
-    "Expanding Column Short Solo",                      # LIVE_ANIM_COLUMN_BURST_1_SOLO
-    "Expanding Column Long",                            # LIVE_ANIM_COLUMN_BURST_2
-    "Expanding Column Long Solo",                       # LIVE_ANIM_COLUMN_BURST_2_SOLO
-    "Outward Burst Small",                              # LIVE_ANIM_OUTWARD_BURST_SMALL_1
-    "Outward Burst Small Solo",                         # LIVE_ANIM_OUTWARD_BURST_SMALL_2
-    "Outward Burst Med",                                # LIVE_ANIM_OUTWARD_BURST_1
-    "Outward Burst Med Solo",                           # LIVE_ANIM_OUTWARD_BURST_2
-    "Outward Burst Large",                              # LIVE_ANIM_OUTWARD_BURST_LARGE_1
-    "Outward Burst Large Solo",                         # LIVE_ANIM_OUTWARD_BURST_LARGE_2
-    "Volume Column Small",                             # LIVE_ANIM_VOLUME_UP_DOWN_1
-    "Volume Column Small Solo",                        # LIVE_ANIM_VOLUME_UP_DOWN_1_SOLO
-    "Volume Column Small Wide",                        # LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE
-    "Volume Column Small Wide Solo",                   # LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE_SOLO
-    "Volume Column Large",                             # LIVE_ANIM_VOLUME_UP_DOWN_2
-    "Volume Column Large Solo",                        # LIVE_ANIM_VOLUME_UP_DOWN_2_SOLO
-    "Volume Column Large Wide",                        # LIVE_ANIM_VOLUME_UP_DOWN_2_WIDE
-    "Volume Column Large Wide Solo",                   # LIVE_ANIM_VOLUME_UP_DOWN_2_WIDE_SOLO
-    "Volume Row Small",                          # LIVE_ANIM_VOLUME_LEFT_RIGHT_1
-    "Volume Row Small Solo",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_1_SOLO
-    "Volume Row Small Wide",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_1_WIDE
-    "Volume Row Small Wide Solo",                # LIVE_ANIM_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
-    "Volume Row Med",                            # LIVE_ANIM_VOLUME_LEFT_RIGHT_2
-    "Volume Row Med Solo",                       # LIVE_ANIM_VOLUME_LEFT_RIGHT_2_SOLO
-    "Volume Row Med Wide",                       # LIVE_ANIM_VOLUME_LEFT_RIGHT_2_WIDE
-    "Volume Row Med Wide Solo",                  # LIVE_ANIM_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
-    "Volume Row Large",                          # LIVE_ANIM_VOLUME_LEFT_RIGHT_3
-    "Volume Row Large Solo",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_SOLO
-    "Volume Row Large Wide",                     # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE
-    "Volume Row Large Wide Solo",                # LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
-    "Collapsing Column Small",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1
-    "Collapsing Column Small Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_SOLO
-    "Collapsing Column Small Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE
-    "Collapsing Column Small Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_1_WIDE_SOLO
-    "Collapsing Column Large",                        # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2
-    "Collapsing Column Large Solo",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_SOLO
-    "Collapsing Column Large Wide",                   # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE
-    "Collapsing Column Large Wide Solo",              # LIVE_ANIM_PEAK_VOLUME_UP_DOWN_2_WIDE_SOLO
-    "Collapsing Row Small",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1
-    "Collapsing Row Small Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_SOLO
-    "Collapsing Row Small Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE
-    "Collapsing Row Small Wide Solo",           # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO
-    "Collapsing Row Med",                       # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2
-    "Collapsing Row Med Solo",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_SOLO
-    "Collapsing Row Med Wide",                  # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE
-    "Collapsing Row Med Wide Solo",             # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO
-    "Collapsing Row Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
-    "Collapsing Row Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
-    "Collapsing Row Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
-    "Collapsing Row Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO 
 ]
 
 MACRO_STYLES = [
@@ -381,82 +402,6 @@ MACRO_STYLES = [
     "Loop Col"            # MACRO_POS_LOOP_COL
 ]
 
-CUSTOM_LIGHT_BACKGROUNDS = [
-    "None",                           # 0
-    "Basic",                          # 1
-    "Basic 2",                        # 2
-    "Basic 3",                        # 3
-    "Basic 4",                        # 4
-    "Basic 5",                        # 5
-    "Basic 6",                        # 6
-    "Autolight",                      # 7
-    "Autolight 2",                    # 8
-    "Autolight 3",                    # 9
-    "Autolight 4",                    # 10
-    "Autolight 5",                    # 11
-    "Autolight 6",                    # 12
-    
-    # BPM PULSE FADE (13-22)
-    "BPM Pulse Fade",                 # 13
-    "BPM Pulse Fade 2",               # 14
-    "BPM Pulse Fade Desaturated",     # 15
-    "BPM Pulse Fade Disco",           # 16
-    "BPM Pulse Fade Solid Background", # 17
-    "BPM Pulse Fade Solid Background 2", # 18
-    "BPM Pulse Fade Solid Disco",     # 19
-    "BPM Pulse Fade Autolight",       # 20
-    "BPM Pulse Fade Autolight 2",     # 21
-    "BPM Pulse Fade Autolight Disco", # 22
-    
-    # BPM QUADRANTS (23-32)
-    "BPM Quadrants",                  # 23
-    "BPM Quadrants 2",                # 24
-    "BPM Quadrants Desaturated",      # 25
-    "BPM Quadrants Disco",            # 26
-    "BPM Quadrants Solid Background", # 27
-    "BPM Quadrants Solid Background 2", # 28
-    "BPM Quadrants Solid Disco",      # 29
-    "BPM Quadrants Autolight",        # 30
-    "BPM Quadrants Autolight 2",      # 31
-    "BPM Quadrants Autolight Disco",  # 32
-    
-    # BPM ROW (33-42)
-    "BPM Row",                        # 33
-    "BPM Row 2",                      # 34
-    "BPM Row Desaturated",            # 35
-    "BPM Row Disco",                  # 36
-    "BPM Row Solid Background",       # 37
-    "BPM Row Solid Background 2",     # 38
-    "BPM Row Solid Disco",            # 39
-    "BPM Row Autolight",              # 40
-    "BPM Row Autolight 2",            # 41
-    "BPM Row Autolight Disco",        # 42
-    
-    # BPM COLUMN (43-52)
-    "BPM Column",                     # 43
-    "BPM Column 2",                   # 44
-    "BPM Column Desaturated",         # 45
-    "BPM Column Disco",               # 46
-    "BPM Column Solid Background",    # 47
-    "BPM Column Solid Background 2",  # 48
-    "BPM Column Solid Disco",         # 49
-    "BPM Column Autolight",           # 50
-    "BPM Column Autolight 2",         # 51
-    "BPM Column Autolight Disco",     # 52
-    
-    # BPM ALL (53-62)
-    "BPM All",                        # 53
-    "BPM All 2",                      # 54
-    "BPM All Desaturated",            # 55
-    "BPM All Disco",                  # 56
-    "BPM All Solid Background",       # 57
-    "BPM All Solid Background 2",     # 58
-    "BPM All Solid Disco",            # 59
-    "BPM All Autolight",              # 60
-    "BPM All Autolight 2",            # 61
-    "BPM All Autolight Disco"         # 62
-]
-
 CUSTOM_LIGHT_COLOR_TYPES = [
     "Base", "Channel", "Macro", "Heat"
 ]
@@ -469,6 +414,92 @@ CUSTOM_LIGHT_PRESETS = [
     "Classic TrueKey", "Heat Effects", "Moving Dots", "BPM Disco",
     "Zone Lighting", "Sustain Mode", "Performance Setup"
 ]
+
+
+class HierarchicalDropdown(QPushButton):
+    """Custom dropdown that supports hierarchical menus"""
+    
+    valueChanged = pyqtSignal(int)
+    
+    def __init__(self, hierarchy_dict, parent=None):
+        super().__init__(parent)
+        self.hierarchy = hierarchy_dict
+        self.current_index = 0
+        self.current_text = ""
+        self.setText("Select...")
+        self.setStyleSheet("""
+            QPushButton {
+                text-align: left;
+                padding: 4px 8px;
+                border: 1px solid #ccc;
+                background: white;
+            }
+            QPushButton::menu-indicator {
+                subcontrol-origin: padding;
+                subcontrol-position: center right;
+                right: 8px;
+            }
+        """)
+        
+        # Build the menu
+        self.menu = QMenu(self)
+        self.build_menu()
+        self.setMenu(self.menu)
+    
+    def build_menu(self):
+        """Build hierarchical menu from dictionary"""
+        self.menu.clear()
+        
+        for category, items in self.hierarchy.items():
+            if len(items) == 1:
+                # Single item - add directly
+                action = QAction(items[0]["name"], self)
+                action.triggered.connect(lambda checked, idx=items[0]["index"], name=items[0]["name"]: 
+                                       self.select_item(idx, name))
+                self.menu.addAction(action)
+            else:
+                # Multiple items - create submenu
+                submenu = QMenu(category, self)
+                for item in items:
+                    action = QAction(item["name"], submenu)
+                    action.triggered.connect(lambda checked, idx=item["index"], name=item["name"]: 
+                                           self.select_item(idx, name))
+                    submenu.addAction(action)
+                self.menu.addMenu(submenu)
+    
+    def select_item(self, index, name):
+        """Handle item selection"""
+        self.current_index = index
+        self.current_text = name
+        self.setText(name)
+        self.valueChanged.emit(index)
+    
+    def setCurrentIndex(self, index):
+        """Set current selection by index"""
+        # Find the item with this index
+        for category, items in self.hierarchy.items():
+            for item in items:
+                if item["index"] == index:
+                    self.current_index = index
+                    self.current_text = item["name"]
+                    self.setText(item["name"])
+                    return
+        
+        # If not found, set to first item
+        if self.hierarchy:
+            first_category = list(self.hierarchy.keys())[0]
+            first_item = self.hierarchy[first_category][0]
+            self.current_index = first_item["index"]
+            self.current_text = first_item["name"]
+            self.setText(first_item["name"])
+    
+    def currentIndex(self):
+        """Get current index"""
+        return self.current_index
+    
+    def blockSignals(self, block):
+        """Override to maintain compatibility"""
+        super().blockSignals(block)
 
 
 class BasicHandler(QObject):
@@ -1002,12 +1033,10 @@ class CustomLightsHandler(BasicHandler):
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(live_label, 0, 0, 1, 3)
 
-        # Live Effect and Style dropdowns below each other
+        # Live Effect - hierarchical dropdown
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
-        live_effect = QComboBox()
-        for effect in LIVE_EFFECTS:
-            live_effect.addItem(effect)
-        live_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
+        live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
+        live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
         layout.addWidget(live_effect, 1, 1, 1, 2)
 
         layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
@@ -1031,12 +1060,10 @@ class CustomLightsHandler(BasicHandler):
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(macro_label, 4, 0, 1, 3)
 
-        # Macro Effect and Style dropdowns below each other
+        # Macro Effect - hierarchical dropdown (same as live effects)
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
-        macro_effect = QComboBox()
-        for effect in MACRO_EFFECTS:
-            macro_effect.addItem(effect)
-        macro_effect.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
+        macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
+        macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
         layout.addWidget(macro_effect, 5, 1, 1, 2)
 
         layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 6, 0)
@@ -1060,12 +1087,10 @@ class CustomLightsHandler(BasicHandler):
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(effects_label, 8, 0, 1, 3)
 
-        # Background
+        # Background - hierarchical dropdown
         layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
-        background = QComboBox()
-        for bg in CUSTOM_LIGHT_BACKGROUNDS:
-            background.addItem(bg)
-        background.currentIndexChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
+        background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
+        background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
         layout.addWidget(background, 9, 1, 1, 2)
 
         # Background Brightness slider
@@ -1145,13 +1170,13 @@ class CustomLightsHandler(BasicHandler):
                         widgets = self.slot_widgets[slot]
                         
                         # Set individual effect and style dropdowns
-                        widgets['live_effect'].setCurrentIndex(min(config[2], len(LIVE_EFFECTS) - 1))  # live_animation
+                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
                         widgets['live_style'].setCurrentIndex(min(config[0], len(LIVE_STYLES) - 1))    # live_positioning
-                        widgets['macro_effect'].setCurrentIndex(min(config[3], len(MACRO_EFFECTS) - 1)) # macro_animation
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
                         widgets['macro_style'].setCurrentIndex(min(config[1], len(MACRO_STYLES) - 1))   # macro_positioning
                         
                         # Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], len(CUSTOM_LIGHT_BACKGROUNDS) - 1))
+                        widgets['background'].setCurrentIndex(min(config[5], 62))  # backgrounds go 0-62
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                         widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
                         # config[8] is enabled - not shown in UI
@@ -1243,13 +1268,6 @@ class CustomLightsHandler(BasicHandler):
             self.device.keyboard.set_custom_slot_parameter(slot, 11, value)  # Parameter 11: macro speed
         else:
             print(f"Macro speed changed: slot {slot}, speed {value}")
-
-    def on_wide_influence_changed(self, slot, checked):
-        """Handle wide influence checkbox change"""
-        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 4, 1 if checked else 0)  # influence
-        else:
-            print(f"Wide influence changed: slot {slot}, checked {checked}")
 
     def on_background_changed(self, slot, index):
         """Handle background change"""
