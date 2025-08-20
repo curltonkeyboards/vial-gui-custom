@@ -154,56 +154,56 @@ LIVE_EFFECTS = [
     "Wider Solo",                                       # LIVE_ANIM_WIDE2_SOLO
     "Heatmap",                                          # LIVE_ANIM_HEAT
     "Heatmap 2",                                        # LIVE_ANIM_SUSTAIN
-    "Column",                                           # LIVE_ANIM_COLUMN
-    "Column Solo",                                      # LIVE_ANIM_COLUMN_SOLO
-    "Row",                                              # LIVE_ANIM_ROW
-    "Row Solo",                                         # LIVE_ANIM_ROW_SOLO
-    "Cross",                                            # LIVE_ANIM_CROSS
-    "Cross Solo",                                       # LIVE_ANIM_CROSS_SOLO
-    "Cross 2",                                          # LIVE_ANIM_CROSS_2
-    "Moving Dots 1 Row",                                # LIVE_ANIM_MOVING_DOTS1_ROW
-    "Moving Dots 1 Row Solo",                           # LIVE_ANIM_MOVING_DOTS1_ROW_SOLO
-    "Moving Dots 2 Row",                                # LIVE_ANIM_MOVING_DOTS2_ROW
-    "Moving Dots 2 Row Solo",                           # LIVE_ANIM_MOVING_DOTS2_ROW_SOLO
-    "Moving Dots 1 Col",                                # LIVE_ANIM_MOVING_DOTS1_COL
-    "Moving Dots 1 Col Solo",                           # LIVE_ANIM_MOVING_DOTS1_COL_SOLO
-    "Moving Dots 2 Col",                                # LIVE_ANIM_MOVING_DOTS2_COL
-    "Moving Dots 2 Col Solo",                           # LIVE_ANIM_MOVING_DOTS2_COL_SOLO
-    "Moving Dots Diag TL-BR No Fade",                   # LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE
-    "Moving Dots Diag TR-BL No Fade",                   # LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE
-    "Moving Dots All Orthogonal",                       # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL
-    "Moving Dots All Orthogonal Solo",                  # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_SOLO
-    "Moving Dots All Orthogonal No Fade",               # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE
-    "Moving Dots All Orthogonal No Fade Solo",          # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE_SOLO
-    "Moving Dots All Diagonal",                         # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL
-    "Moving Dots All Diagonal Solo",                    # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_SOLO
-    "Moving Dots All Diagonal No Fade",                 # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE
-    "Ripple Small 1",                                   # LIVE_ANIM_RIPPLE_SMALL_1
-    "Ripple Small 1 Solo",                              # LIVE_ANIM_RIPPLE_SMALL_1_SOLO
-    "Ripple Med 1",                                     # LIVE_ANIM_RIPPLE_MED_1
-    "Ripple Med 1 Solo",                                # LIVE_ANIM_RIPPLE_MED_1_SOLO
-    "Ripple Large 1",                                   # LIVE_ANIM_RIPPLE_LARGE_1
-    "Ripple Large 1 Solo",                              # LIVE_ANIM_RIPPLE_LARGE_1_SOLO
-    "Ripple Massive 1",                                 # LIVE_ANIM_RIPPLE_MASSIVE_1
-    "Ripple Massive 1 Solo",                            # LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO
-    "Ripple Small 2",                                   # LIVE_ANIM_RIPPLE_SMALL_2
-    "Ripple Med 2",                                     # LIVE_ANIM_RIPPLE_MED_2
-    "Ripple Large 2",                                   # LIVE_ANIM_RIPPLE_LARGE_2
-    "Ripple Massive 2",                                 # LIVE_ANIM_RIPPLE_MASSIVE_2
-    "Row Burst 1",                                      # LIVE_ANIM_ROW_BURST_1
-    "Row Burst 1 Solo",                                 # LIVE_ANIM_ROW_BURST_1_SOLO
-    "Row Burst 2",                                      # LIVE_ANIM_ROW_BURST_2
-    "Row Burst 2 Solo",                                 # LIVE_ANIM_ROW_BURST_2_SOLO
-    "Column Burst 1",                                   # LIVE_ANIM_COLUMN_BURST_1
-    "Column Burst 1 Solo",                              # LIVE_ANIM_COLUMN_BURST_1_SOLO
-    "Column Burst 2",                                   # LIVE_ANIM_COLUMN_BURST_2
-    "Column Burst 2 Solo",                              # LIVE_ANIM_COLUMN_BURST_2_SOLO
-    "Outward Burst Small 1",                            # LIVE_ANIM_OUTWARD_BURST_SMALL_1
-    "Outward Burst Small 2",                            # LIVE_ANIM_OUTWARD_BURST_SMALL_2
-    "Outward Burst 1",                                  # LIVE_ANIM_OUTWARD_BURST_1
-    "Outward Burst 2",                                  # LIVE_ANIM_OUTWARD_BURST_2
-    "Outward Burst Large 1",                            # LIVE_ANIM_OUTWARD_BURST_LARGE_1
-    "Outward Burst Large 2",                            # LIVE_ANIM_OUTWARD_BURST_LARGE_2
+    "Column Short",                                           # LIVE_ANIM_COLUMN
+    "Column Short Solo",                                      # LIVE_ANIM_COLUMN_SOLO
+    "Row Short",                                              # LIVE_ANIM_ROW
+    "Row Short Solo",                                         # LIVE_ANIM_ROW_SOLO
+    "Cross Short",                                            # LIVE_ANIM_CROSS
+    "Cross Short Solo",                                       # LIVE_ANIM_CROSS_SOLO
+    "Criss Cross",                                          # LIVE_ANIM_CROSS_2
+    "Horizontal Dots Short",                                # LIVE_ANIM_MOVING_DOTS1_ROW
+    "Horizontal Dots Short Solo",                           # LIVE_ANIM_MOVING_DOTS1_ROW_SOLO
+    "Horizontal Dots Long",                              # LIVE_ANIM_MOVING_DOTS2_ROW
+    "Horizontal Dots Long Solo",                           # LIVE_ANIM_MOVING_DOTS2_ROW_SOLO
+    "Vertical Dots Short",                                # LIVE_ANIM_MOVING_DOTS1_COL
+    "Vertical Dots Short Solo",                           # LIVE_ANIM_MOVING_DOTS1_COL_SOLO
+    "Vertical Dots Long",                                # LIVE_ANIM_MOVING_DOTS2_COL
+    "Vertical Dots Long Solo",                           # LIVE_ANIM_MOVING_DOTS2_COL_SOLO
+    "Diagonal Dots 1",                   # LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE
+    "Diagonal Dots 2",                   # LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE
+    "Cross Dots Short",                       # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL
+    "Cross Dots Short Solo",                  # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_SOLO
+    "Cross Dots Long",               # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE
+    "Cross Dots Long Solo",          # LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE_SOLO
+    "Diagonal Burst",                         # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL
+    "Diagonal Burst Solo",                    # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_SOLO
+    "Criss Cross Dots",                 # LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE
+    "Ripple Small",                                   # LIVE_ANIM_RIPPLE_SMALL_1
+    "Ripple SmallSolo",                              # LIVE_ANIM_RIPPLE_SMALL_1_SOLO
+    "Ripple Med",                                     # LIVE_ANIM_RIPPLE_MED_1
+    "Ripple Med Solo",                                # LIVE_ANIM_RIPPLE_MED_1_SOLO
+    "Ripple Large",                                   # LIVE_ANIM_RIPPLE_LARGE_1
+    "Ripple Large Solo",                              # LIVE_ANIM_RIPPLE_LARGE_1_SOLO
+    "Ripple Massive",                                 # LIVE_ANIM_RIPPLE_MASSIVE_1
+    "Ripple Massive Solo",                            # LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO
+    "Reverse Ripple Small",                                   # LIVE_ANIM_RIPPLE_SMALL_2
+    "Reverse Ripple Med",                                     # LIVE_ANIM_RIPPLE_MED_2
+    "Reverse Ripple Large",                                   # LIVE_ANIM_RIPPLE_LARGE_2
+    "Reverse Ripple Massive",                                 # LIVE_ANIM_RIPPLE_MASSIVE_2
+    "Expanding Row Short",                                      # LIVE_ANIM_ROW_BURST_1
+    "Expanding Row Short Solo",                                 # LIVE_ANIM_ROW_BURST_1_SOLO
+    "Expanding Row Long",                                      # LIVE_ANIM_ROW_BURST_2
+    "Expanding Row Long Solo",                                 # LIVE_ANIM_ROW_BURST_2_SOLO
+    "Expanding Column Short",                                   # LIVE_ANIM_COLUMN_BURST_1
+    "Expanding Column Short Solo",                              # LIVE_ANIM_COLUMN_BURST_1_SOLO
+    "Expanding Column Long",                                   # LIVE_ANIM_COLUMN_BURST_2
+    "Expanding Column Long Solo",                              # LIVE_ANIM_COLUMN_BURST_2_SOLO
+    "Outward Burst Small",                            # LIVE_ANIM_OUTWARD_BURST_SMALL_1
+    "Outward Burst Small Solo",                            # LIVE_ANIM_OUTWARD_BURST_SMALL_2
+    "Outward Burst Med",                                  # LIVE_ANIM_OUTWARD_BURST_1
+    "Outward Burst Med Solo",                                  # LIVE_ANIM_OUTWARD_BURST_2
+    "Outward Burst Large",                            # LIVE_ANIM_OUTWARD_BURST_LARGE_1
+    "Outward Burst Large Solo",                            # LIVE_ANIM_OUTWARD_BURST_LARGE_2
     "Volume Up Down 1",                                 # LIVE_ANIM_VOLUME_UP_DOWN_1
     "Volume Up Down 1 Wide",                            # LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE
     "Volume Up Down 2",                                 # LIVE_ANIM_VOLUME_UP_DOWN_2
@@ -220,12 +220,12 @@ LIVE_STYLES = [
     "TrueKey",            # LIVE_POS_TRUEKEY
     "Zone",               # LIVE_POS_ZONE
     "Quadrant",           # LIVE_POS_QUADRANT
-    "Note Row Col0",      # LIVE_POS_NOTE_ROW_COL0
-    "Note Row Col13",     # LIVE_POS_NOTE_ROW_COL13
-    "Note Col Row0",      # LIVE_POS_NOTE_COL_ROW0
-    "Note Col Row4",      # LIVE_POS_NOTE_COL_ROW4
-    "Note Row Mixed",     # LIVE_POS_NOTE_ROW_MIXED
-    "Note Col Mixed"      # LIVE_POS_NOTE_COL_MIXED
+    "Left",      # LIVE_POS_NOTE_ROW_COL0
+    "Right",     # LIVE_POS_NOTE_ROW_COL13
+    "Top",      # LIVE_POS_NOTE_COL_ROW0
+    "Bottom",      # LIVE_POS_NOTE_COL_ROW4
+    "Left & Right",     # LIVE_POS_NOTE_ROW_MIXED
+    "Top & Bottom"      # LIVE_POS_NOTE_COL_MIXED
 ]
 
 MACRO_EFFECTS = [
