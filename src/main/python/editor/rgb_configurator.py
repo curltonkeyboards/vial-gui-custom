@@ -364,7 +364,7 @@ MACRO_EFFECTS = [
     "Collapsing Left Right Large",                     # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3
     "Collapsing Left Right Large Solo",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_SOLO
     "Collapsing Left Right Large Wide",                # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE
-    "Collapsing Left Right Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO
+    "Collapsing Left Right Large Wide Solo"            # LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_3_WIDE_SOLO 
 ]
 
 MACRO_STYLES = [
