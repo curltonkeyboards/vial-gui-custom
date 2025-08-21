@@ -436,31 +436,161 @@ BACKGROUNDS_HIERARCHY = {
     ]
 }
 
-LIVE_STYLES = [
-    "TrueKey",            # LIVE_POS_TRUEKEY
-    "Zone",               # LIVE_POS_ZONE
-    "Quadrant",           # LIVE_POS_QUADRANT
-    "Left",      # LIVE_POS_NOTE_ROW_COL0
-    "Right",     # LIVE_POS_NOTE_ROW_COL13
-    "Top",      # LIVE_POS_NOTE_COL_ROW0
-    "Bottom",      # LIVE_POS_NOTE_COL_ROW4
-    "Left & Right",     # LIVE_POS_NOTE_ROW_MIXED
-    "Top & Bottom"      # LIVE_POS_NOTE_COL_MIXED
-]
+# Hierarchical structure for live positioning styles
+LIVE_STYLES_HIERARCHY = {
+    "Basic Positions": [
+        {"name": "TrueKey", "index": 0},
+        {"name": "Zone", "index": 1},
+        {"name": "Quadrant", "index": 2},
+    ],
+    "Edge Positions": [
+        {"name": "Left", "index": 3},
+        {"name": "Right", "index": 4},
+        {"name": "Top", "index": 5},
+        {"name": "Bottom", "index": 6},
+        {"name": "Left & Right", "index": 7},
+        {"name": "Top & Bottom", "index": 8},
+    ],
+    "Single Dots": [
+        {"name": "Top Dot", "index": 9},
+        {"name": "Left Dot", "index": 12},
+        {"name": "Right Dot", "index": 15},
+        {"name": "Bottom Dot", "index": 18},
+        {"name": "Center Dot", "index": 21},
+        {"name": "Top Left Dot", "index": 24},
+        {"name": "Top Right Dot", "index": 27},
+        {"name": "Bottom Left Dot", "index": 30},
+        {"name": "Bottom Right Dot", "index": 33},
+    ],
+    "Dot Areas": [
+        {"name": "Top Dot Square", "index": 10},
+        {"name": "Top Dot Large", "index": 11},
+        {"name": "Left Dot Square", "index": 13},
+        {"name": "Left Dot Large", "index": 14},
+        {"name": "Right Dot Square", "index": 16},
+        {"name": "Right Dot Large", "index": 17},
+        {"name": "Bottom Dot Square", "index": 19},
+        {"name": "Bottom Dot Large", "index": 20},
+        {"name": "Center Dot Square", "index": 22},
+        {"name": "Center Dot Large", "index": 23},
+        {"name": "Top Left Dot Square", "index": 25},
+        {"name": "Top Left Dot Large", "index": 26},
+        {"name": "Top Right Dot Square", "index": 28},
+        {"name": "Top Right Dot Large", "index": 29},
+        {"name": "Bottom Left Dot Square", "index": 31},
+        {"name": "Bottom Left Dot Large", "index": 32},
+        {"name": "Bottom Right Dot Square", "index": 34},
+        {"name": "Bottom Right Dot Large", "index": 35},
+    ],
+    "Random Dots": [
+        {"name": "Random Corner Dots", "index": 36},
+        {"name": "Random Corner Dots Square", "index": 37},
+        {"name": "Random Corner Dots Large", "index": 38},
+        {"name": "Random Edge Dots", "index": 39},
+        {"name": "Random Edge Dots Square", "index": 40},
+        {"name": "Random Edge Dots Large", "index": 41},
+        {"name": "Random All Dots", "index": 42},
+        {"name": "Random All Dots Square", "index": 43},
+        {"name": "Random All Dots Large", "index": 44},
+    ]
+}
 
-MACRO_STYLES = [
-    "TrueKey",            # MACRO_POS_TRUEKEY
-    "Zone",               # MACRO_POS_ZONE
-    "Quadrant",           # MACRO_POS_QUADRANT
-    "Note Row Col0",      # MACRO_POS_NOTE_ROW_COL0
-    "Note Row Col13",     # MACRO_POS_NOTE_ROW_COL13
-    "Note Col Row0",      # MACRO_POS_NOTE_COL_ROW0
-    "Note Col Row4",      # MACRO_POS_NOTE_COL_ROW4
-    "Loop Row Col0",      # MACRO_POS_LOOP_ROW_COL0
-    "Loop Row Col13",     # MACRO_POS_LOOP_ROW_COL13
-    "Loop Row Alt",       # MACRO_POS_LOOP_ROW_ALT
-    "Loop Col"            # MACRO_POS_LOOP_COL
-]
+# Hierarchical structure for macro positioning styles
+MACRO_STYLES_HIERARCHY = {
+    "Basic Positions": [
+        {"name": "TrueKey", "index": 0},
+        {"name": "Zone", "index": 1},
+        {"name": "Quadrant", "index": 2},
+    ],
+    "Note Positions": [
+        {"name": "Note Row Left", "index": 3},
+        {"name": "Note Row Right", "index": 4},
+        {"name": "Note Col Top", "index": 5},
+        {"name": "Note Col Bottom", "index": 6},
+        {"name": "Note Row Mixed", "index": 7},
+        {"name": "Note Col Mixed", "index": 8},
+    ],
+    "Loop Positions": [
+        {"name": "Loop Row Left", "index": 9},
+        {"name": "Loop Row Right", "index": 10},
+        {"name": "Loop Row Alt", "index": 11},
+        {"name": "Loop Col", "index": 12},
+        {"name": "Loop Block 3x3", "index": 13},
+    ],
+    "Single Dots": [
+        {"name": "Top Dot", "index": 14},
+        {"name": "Left Dot", "index": 17},
+        {"name": "Right Dot", "index": 20},
+        {"name": "Bottom Dot", "index": 23},
+        {"name": "Center Dot", "index": 26},
+        {"name": "Top Left Dot", "index": 29},
+        {"name": "Top Right Dot", "index": 32},
+        {"name": "Bottom Left Dot", "index": 35},
+        {"name": "Bottom Right Dot", "index": 38},
+    ],
+    "Dot Areas": [
+        {"name": "Top Dot Square", "index": 15},
+        {"name": "Top Dot Large", "index": 16},
+        {"name": "Left Dot Square", "index": 18},
+        {"name": "Left Dot Large", "index": 19},
+        {"name": "Right Dot Square", "index": 21},
+        {"name": "Right Dot Large", "index": 22},
+        {"name": "Bottom Dot Square", "index": 24},
+        {"name": "Bottom Dot Large", "index": 25},
+        {"name": "Center Dot Square", "index": 27},
+        {"name": "Center Dot Large", "index": 28},
+        {"name": "Top Left Dot Square", "index": 30},
+        {"name": "Top Left Dot Large", "index": 31},
+        {"name": "Top Right Dot Square", "index": 33},
+        {"name": "Top Right Dot Large", "index": 34},
+        {"name": "Bottom Left Dot Square", "index": 36},
+        {"name": "Bottom Left Dot Large", "index": 37},
+        {"name": "Bottom Right Dot Square", "index": 39},
+        {"name": "Bottom Right Dot Large", "index": 40},
+    ],
+    "Random Dots": [
+        {"name": "Random Corner Dots", "index": 41},
+        {"name": "Random Corner Dots Square", "index": 42},
+        {"name": "Random Corner Dots Large", "index": 43},
+        {"name": "Random Edge Dots", "index": 44},
+        {"name": "Random Edge Dots Square", "index": 45},
+        {"name": "Random Edge Dots Large", "index": 46},
+        {"name": "Random All Dots", "index": 47},
+        {"name": "Random All Dots Square", "index": 48},
+        {"name": "Random All Dots Large", "index": 49},
+    ],
+    "Loop Single Dots": [
+        {"name": "Loop Top Dot", "index": 50},
+        {"name": "Loop Left Dot", "index": 53},
+        {"name": "Loop Right Dot", "index": 56},
+        {"name": "Loop Bottom Dot", "index": 59},
+        {"name": "Loop Center Dot", "index": 62},
+        {"name": "Loop Top Left Dot", "index": 65},
+        {"name": "Loop Top Right Dot", "index": 68},
+        {"name": "Loop Bottom Left Dot", "index": 71},
+        {"name": "Loop Bottom Right Dot", "index": 74},
+    ],
+    "Loop Dot Areas": [
+        {"name": "Loop Top Dot Square", "index": 51},
+        {"name": "Loop Top Dot Large", "index": 52},
+        {"name": "Loop Left Dot Square", "index": 54},
+        {"name": "Loop Left Dot Large", "index": 55},
+        {"name": "Loop Right Dot Square", "index": 57},
+        {"name": "Loop Right Dot Large", "index": 58},
+        {"name": "Loop Bottom Dot Square", "index": 60},
+        {"name": "Loop Bottom Dot Large", "index": 61},
+        {"name": "Loop Center Dot Square", "index": 63},
+        {"name": "Loop Center Dot Large", "index": 64},
+        {"name": "Loop Top Left Dot Square", "index": 66},
+        {"name": "Loop Top Left Dot Large", "index": 67},
+        {"name": "Loop Top Right Dot Square", "index": 69},
+        {"name": "Loop Top Right Dot Large", "index": 70},
+        {"name": "Loop Bottom Left Dot Square", "index": 72},
+        {"name": "Loop Bottom Left Dot Large", "index": 73},
+        {"name": "Loop Bottom Right Dot Square", "index": 75},
+        {"name": "Loop Bottom Right Dot Large", "index": 76},
+    ]
+}
 
 CUSTOM_LIGHT_COLOR_TYPES = [
     "Base", "Channel", "Macro", "Heat"
@@ -1077,7 +1207,7 @@ class CustomLightsHandler(BasicHandler):
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
 
-    def create_slot_tab(self, slot):
+def create_slot_tab(self, slot):
         """Create a tab for a single slot"""
         # Create tab widget
         tab_widget = QWidget()
@@ -1099,11 +1229,10 @@ class CustomLightsHandler(BasicHandler):
         live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
         layout.addWidget(live_effect, 1, 1, 1, 2)
 
+        # Live Style - hierarchical dropdown
         layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
-        live_style = QComboBox()
-        for style in LIVE_STYLES:
-            live_style.addItem(style)
-        live_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
+        live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
+        live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
         layout.addWidget(live_style, 2, 1, 1, 2)
 
         # Live Animation Speed slider
@@ -1126,11 +1255,10 @@ class CustomLightsHandler(BasicHandler):
         macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
         layout.addWidget(macro_effect, 5, 1, 1, 2)
 
+        # Macro Style - hierarchical dropdown
         layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 6, 0)
-        macro_style = QComboBox()
-        for style in MACRO_STYLES:
-            macro_style.addItem(style)
-        macro_style.currentIndexChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
+        macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
+        macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
         layout.addWidget(macro_style, 6, 1, 1, 2)
 
         # Macro Animation Speed slider
@@ -1216,7 +1344,6 @@ class CustomLightsHandler(BasicHandler):
         }
 
         self.slot_tabs.append(tab_widget)
-
     def update_from_keyboard(self):
         """Update UI from keyboard state using VialKeyboard infrastructure"""
         self.block_signals()
@@ -1229,17 +1356,16 @@ class CustomLightsHandler(BasicHandler):
                     if config and len(config) >= 12:  # Expecting 12 parameters
                         widgets = self.slot_widgets[slot]
                         
-                        # Set individual effect and style dropdowns
+                        # Set individual effect and style dropdowns with updated ranges
                         widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
-                        widgets['live_style'].setCurrentIndex(min(config[0], len(LIVE_STYLES) - 1))    # live_positioning
+                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
                         widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
-                        widgets['macro_style'].setCurrentIndex(min(config[1], len(MACRO_STYLES) - 1))   # macro_positioning
+                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
                         
                         # Skip config[4] (influence) - no longer used
-# Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], 106))  # FIXED: was 62, now 106
-                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # This one is correct
-                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # This one is correct
+                        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
+                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # color_type
                         # config[8] is enabled - not shown in UI
                         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
                         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
