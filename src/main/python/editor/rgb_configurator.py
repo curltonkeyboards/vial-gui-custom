@@ -373,6 +373,26 @@ BACKGROUNDS_HIERARCHY = {
         {"name": "BPM All Autolight", "index": 60},
         {"name": "BPM All Autolight 2", "index": 61},
         {"name": "BPM All Autolight Disco", "index": 62},
+    ],
+    "Cycle Effects": [
+        {"name": "Cycle All", "index": 63},
+        {"name": "Cycle Left Right", "index": 64},
+        {"name": "Cycle Up Down", "index": 65},
+        {"name": "Cycle All Fast", "index": 72},
+        {"name": "Cycle Left Right Slow", "index": 73},
+    ],
+    "Ripple Effects": [
+        {"name": "Cycle Out In", "index": 66},
+        {"name": "Cycle Out In Dual", "index": 67},
+        {"name": "Rainbow Pinwheel", "index": 68},
+    ],
+    "Wave Effects": [
+        {"name": "Wave Left Right", "index": 70},
+        {"name": "Diagonal Wave", "index": 71},
+    ],
+    "Breathing Effects": [
+        {"name": "Breathing", "index": 69},
+        {"name": "Breathing Slow", "index": 74},
     ]
 }
 
