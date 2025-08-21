@@ -386,24 +386,24 @@ BACKGROUNDS_HIERARCHY = {
         {"name": "Cycle Left Right Desaturated", "index": 88},
         {"name": "Cycle Up Down", "index": 61},
         {"name": "Cycle Up Down Desaturated", "index": 89},
-    ],
-    "Ripple Effects": [
         {"name": "Cycle Out In", "index": 62},
         {"name": "Cycle Out In Desaturated", "index": 90},
         {"name": "Cycle Out In Dual", "index": 63},
         {"name": "Cycle Out In Dual Desaturated", "index": 91},
-        {"name": "Rainbow Pinwheel", "index": 64},
-        {"name": "Rainbow Pinwheel Desaturated", "index": 92},
     ],
     "Wave Effects": [
         {"name": "Wave Left Right", "index": 66},
         {"name": "Wave Left Right Desaturated", "index": 94},
         {"name": "Diagonal Wave", "index": 67},
         {"name": "Diagonal Wave Desaturated", "index": 95},
+        {"name": "Hue Wave", "index": 73},
+        {"name": "Hue Wave Desaturated", "index": 101},
     ],
     "Breathing Effects": [
         {"name": "Breathing", "index": 65},
         {"name": "Breathing Desaturated", "index": 93},
+        {"name": "Hue Breathing", "index": 71},
+        {"name": "Hue Breathing Desaturated", "index": 99},
     ],
     "Gradient Effects": [
         {"name": "Gradient Up Down", "index": 68},
@@ -413,17 +413,15 @@ BACKGROUNDS_HIERARCHY = {
         {"name": "Gradient Diagonal", "index": 70},
         {"name": "Gradient Diagonal Desaturated", "index": 98},
     ],
-    "Hue Effects": [
-        {"name": "Hue Breathing", "index": 71},
-        {"name": "Hue Breathing Desaturated", "index": 99},
+    "Pendulum Effects": [
         {"name": "Hue Pendulum", "index": 72},
         {"name": "Hue Pendulum Desaturated", "index": 100},
-        {"name": "Hue Wave", "index": 73},
-        {"name": "Hue Wave Desaturated", "index": 101},
     ],
     "Rainbow Effects": [
         {"name": "Rainbow Moving Chevron", "index": 74},
         {"name": "Rainbow Moving Chevron Desaturated", "index": 102},
+        {"name": "Rainbow Pinwheel", "index": 64},
+        {"name": "Rainbow Pinwheel Desaturated", "index": 92},
     ],
     "Band Effects": [
         {"name": "Band Pinwheel Sat", "index": 75},
