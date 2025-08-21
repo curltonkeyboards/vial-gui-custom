@@ -294,7 +294,6 @@ LIVE_EFFECTS_HIERARCHY = {
 }
 
 # Hierarchical structure for backgrounds
-# Hierarchical structure for backgrounds
 BACKGROUNDS_HIERARCHY = {
     "None": [
         {"name": "None", "index": 0},
@@ -318,60 +317,6 @@ BACKGROUNDS_HIERARCHY = {
         {"name": "Autolight 3 Desaturated", "index": 85},
         {"name": "Autolight 4", "index": 8},
         {"name": "Autolight 4 Desaturated", "index": 86},
-    ],
-    "Cycle Effects": [
-        {"name": "Cycle All", "index": 59},
-        {"name": "Cycle All Desaturated", "index": 87},
-        {"name": "Cycle Left Right", "index": 60},
-        {"name": "Cycle Left Right Desaturated", "index": 88},
-        {"name": "Cycle Up Down", "index": 61},
-        {"name": "Cycle Up Down Desaturated", "index": 89},
-        {"name": "Cycle Out In", "index": 62},
-        {"name": "Cycle Out In Desaturated", "index": 90},
-        {"name": "Cycle Out In Dual", "index": 63},
-        {"name": "Cycle Out In Dual Desaturated", "index": 91},
-    ],
-    "Wave Effects": [
-        {"name": "Wave Left Right", "index": 66},
-        {"name": "Wave Left Right Desaturated", "index": 94},
-        {"name": "Diagonal Wave", "index": 67},
-        {"name": "Diagonal Wave Desaturated", "index": 95},
-        {"name": "Hue Wave", "index": 73},
-        {"name": "Hue Wave Desaturated", "index": 101},
-    ],
-    "Breathing Effects": [
-        {"name": "Breathing", "index": 65},
-        {"name": "Breathing Desaturated", "index": 93},
-        {"name": "Hue Breathing", "index": 71},
-        {"name": "Hue Breathing Desaturated", "index": 99},
-    ],
-    "Gradient Effects": [
-        {"name": "Gradient Up Down", "index": 68},
-        {"name": "Gradient Up Down Desaturated", "index": 96},
-        {"name": "Gradient Left Right", "index": 69},
-        {"name": "Gradient Left Right Desaturated", "index": 97},
-        {"name": "Gradient Diagonal", "index": 70},
-        {"name": "Gradient Diagonal Desaturated", "index": 98},
-    ],
-    "Pendulum Effects": [
-        {"name": "Hue Pendulum", "index": 72},
-        {"name": "Hue Pendulum Desaturated", "index": 100},
-    ],
-    "Rainbow Effects": [
-        {"name": "Rainbow Moving Chevron", "index": 74},
-        {"name": "Rainbow Moving Chevron Desaturated", "index": 102},
-        {"name": "Rainbow Pinwheel", "index": 64},
-        {"name": "Rainbow Pinwheel Desaturated", "index": 92},
-    ],
-    "Band Effects": [
-        {"name": "Band Pinwheel Sat", "index": 75},
-        {"name": "Band Pinwheel Sat Desaturated", "index": 103},
-        {"name": "Band Pinwheel Val", "index": 76},
-        {"name": "Band Pinwheel Val Desaturated", "index": 104},
-        {"name": "Band Spiral Sat", "index": 77},
-        {"name": "Band Spiral Sat Desaturated", "index": 105},
-        {"name": "Band Spiral Val", "index": 78},
-        {"name": "Band Spiral Val Desaturated", "index": 106},
     ],
     "BPM Pulse Fade": [
         {"name": "BPM Pulse Fade", "index": 9},
@@ -432,6 +377,62 @@ BACKGROUNDS_HIERARCHY = {
         {"name": "BPM All Autolight", "index": 56},
         {"name": "BPM All Autolight 2", "index": 57},
         {"name": "BPM All Autolight Disco", "index": 58},
+    ],
+    "Cycle Effects": [
+        {"name": "Cycle All", "index": 59},
+        {"name": "Cycle All Desaturated", "index": 87},
+        {"name": "Cycle Left Right", "index": 60},
+        {"name": "Cycle Left Right Desaturated", "index": 88},
+        {"name": "Cycle Up Down", "index": 61},
+        {"name": "Cycle Up Down Desaturated", "index": 89},
+    ],
+    "Ripple Effects": [
+        {"name": "Cycle Out In", "index": 62},
+        {"name": "Cycle Out In Desaturated", "index": 90},
+        {"name": "Cycle Out In Dual", "index": 63},
+        {"name": "Cycle Out In Dual Desaturated", "index": 91},
+        {"name": "Rainbow Pinwheel", "index": 64},
+        {"name": "Rainbow Pinwheel Desaturated", "index": 92},
+    ],
+    "Wave Effects": [
+        {"name": "Wave Left Right", "index": 66},
+        {"name": "Wave Left Right Desaturated", "index": 94},
+        {"name": "Diagonal Wave", "index": 67},
+        {"name": "Diagonal Wave Desaturated", "index": 95},
+    ],
+    "Breathing Effects": [
+        {"name": "Breathing", "index": 65},
+        {"name": "Breathing Desaturated", "index": 93},
+    ],
+    "Gradient Effects": [
+        {"name": "Gradient Up Down", "index": 68},
+        {"name": "Gradient Up Down Desaturated", "index": 96},
+        {"name": "Gradient Left Right", "index": 69},
+        {"name": "Gradient Left Right Desaturated", "index": 97},
+        {"name": "Gradient Diagonal", "index": 70},
+        {"name": "Gradient Diagonal Desaturated", "index": 98},
+    ],
+    "Hue Effects": [
+        {"name": "Hue Breathing", "index": 71},
+        {"name": "Hue Breathing Desaturated", "index": 99},
+        {"name": "Hue Pendulum", "index": 72},
+        {"name": "Hue Pendulum Desaturated", "index": 100},
+        {"name": "Hue Wave", "index": 73},
+        {"name": "Hue Wave Desaturated", "index": 101},
+    ],
+    "Rainbow Effects": [
+        {"name": "Rainbow Moving Chevron", "index": 74},
+        {"name": "Rainbow Moving Chevron Desaturated", "index": 102},
+    ],
+    "Band Effects": [
+        {"name": "Band Pinwheel Sat", "index": 75},
+        {"name": "Band Pinwheel Sat Desaturated", "index": 103},
+        {"name": "Band Pinwheel Val", "index": 76},
+        {"name": "Band Pinwheel Val Desaturated", "index": 104},
+        {"name": "Band Spiral Sat", "index": 77},
+        {"name": "Band Spiral Sat Desaturated", "index": 105},
+        {"name": "Band Spiral Val", "index": 78},
+        {"name": "Band Spiral Val Desaturated", "index": 106},
     ]
 }
 
@@ -1235,9 +1236,10 @@ class CustomLightsHandler(BasicHandler):
                         widgets['macro_style'].setCurrentIndex(min(config[1], len(MACRO_STYLES) - 1))   # macro_positioning
                         
                         # Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], 62))  # backgrounds go 0-62
-                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+# Skip config[4] (influence) - no longer used
+                        widgets['background'].setCurrentIndex(min(config[5], 106))  # FIXED: was 62, now 106
+                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # This one is correct
+                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # This one is correct
                         # config[8] is enabled - not shown in UI
                         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
                         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
