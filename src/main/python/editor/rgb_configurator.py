@@ -607,9 +607,58 @@ MACRO_STYLES_HIERARCHY = {
     ]
 }
 
+# 1. UPDATE CUSTOM_LIGHT_COLOR_TYPES list (should have 17 items total):
 CUSTOM_LIGHT_COLOR_TYPES = [
-    "Base", "Channel", "Macro", "Heat"
+    "Base",              # 0
+    "Channel",           # 1  
+    "Macro",             # 2
+    "Heat",              # 3
+    "Rainbow",           # 4
+    "Channel Distance",  # 5
+    "Macro Split",       # 6
+    "Macro Distance",    # 7
+    "Disco Live",        # 8
+    "Disco All",         # 9
+    "Channel SAT",       # 10
+    "Macro SAT",         # 11
+    "Velocity Colors",   # 12
+    "Time Shift",        # 13
+    "Beat Sync",         # 14
+    "Temperature Gradient", # 15
+    "Spectrum Cycle"     # 16
 ]
+
+CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY = {
+    "Basic Colors": [
+        {"name": "Base", "index": 0},
+        {"name": "Channel", "index": 1},
+        {"name": "Macro", "index": 2},
+        {"name": "Heat", "index": 3},
+    ],
+    "Rainbow & Random": [
+        {"name": "Rainbow", "index": 4},
+        {"name": "Disco Live", "index": 8},
+        {"name": "Disco All", "index": 9},
+        {"name": "Spectrum Cycle", "index": 16},
+    ],
+    "Distance Effects": [
+        {"name": "Channel Distance", "index": 5},
+        {"name": "Macro Distance", "index": 7},
+        {"name": "Temperature Gradient", "index": 15},
+    ],
+    "Macro Variations": [
+        {"name": "Macro Split", "index": 6},
+        {"name": "Macro SAT", "index": 11},
+    ],
+    "Saturation Effects": [
+        {"name": "Channel SAT", "index": 10},
+        {"name": "Velocity Colors", "index": 12},
+    ],
+    "Dynamic Effects": [
+        {"name": "Time Shift", "index": 13},
+        {"name": "Beat Sync", "index": 14},
+    ]
+}
 
 CUSTOM_LIGHT_SUSTAIN_MODES = [
     "None", "Live Only", "Macro Only", "All"
@@ -1396,6 +1445,7 @@ def create_slot_tab(self, slot):
 
         self.unblock_signals()
 
+# 4. UPDATE set_slot_defaults method validation:
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
         widgets = self.slot_widgets[slot]
@@ -1407,7 +1457,7 @@ def create_slot_tab(self, slot):
         widgets['macro_speed'].setValue(128)              # Default macro speed
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness
-        widgets['color_type'].setCurrentIndex(1)          # Channel
+        widgets['color_type'].setCurrentIndex(1)          # Channel (safe default)
         widgets['sustain_mode'].setCurrentIndex(3)        # All
 
     def valid(self):
@@ -1495,7 +1545,9 @@ def create_slot_tab(self, slot):
     def on_color_type_changed(self, slot, index):
         """Handle color type change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
+            # Ensure index is within valid range (0-16)
+            valid_index = min(index, 16)
+            self.device.keyboard.set_custom_slot_parameter(slot, 7, valid_index)
         else:
             print(f"Color type changed: slot {slot}, index {index}")
 
@@ -1654,20 +1706,39 @@ class RGBConfigurator(BasicEditor):
             h.unblock_signals()
 
     def update_from_keyboard(self):
-        self.device.keyboard.reload_rgb()
-        
-        # Check for layer RGB support
-        if hasattr(self.device.keyboard, 'reload_layer_rgb_support'):
-            self.device.keyboard.reload_layer_rgb_support()
-
-        # Check for custom lights support  
-        if hasattr(self.device.keyboard, 'reload_custom_lights_support'):
-            self.device.keyboard.reload_custom_lights_support()
-
+        """Update UI from keyboard state using VialKeyboard infrastructure"""
         self.block_signals()
-
-        for h in self.handlers:
-            h.update_from_keyboard()
+        
+        # Update all slots
+        for slot in range(12):
+            try:
+                if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+                    config = self.device.keyboard.get_custom_slot_config(slot)
+                    if config and len(config) >= 12:  # Expecting 12 parameters
+                        widgets = self.slot_widgets[slot]
+                        
+                        # Set individual effect and style dropdowns with updated ranges
+                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
+                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
+                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
+                        
+                        # Skip config[4] (influence) - no longer used
+                        widgets['background'].setCurrentIndex(min(config[5], 120))  # background_mode (0-120)
+                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
+                        widgets['color_type'].setCurrentIndex(min(config[7], 16))  # color_type (0-16) *** UPDATED ***
+                        # config[8] is enabled - not shown in UI
+                        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
+                        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
+                        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)  # Macro speed
+                    else:
+                        self.set_slot_defaults(slot)
+                else:
+                    print(f"Custom slot config methods not implemented on keyboard")
+                    self.set_slot_defaults(slot)
+            except Exception as e:
+                print(f"Error updating custom lights slot {slot}: {e}")
+                self.set_slot_defaults(slot)
 
         self.unblock_signals()
 
