@@ -661,12 +661,7 @@ CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY = {
 }
 
 CUSTOM_LIGHT_SUSTAIN_MODES = [
-    "None", "Live Only", "Macro Only", "All"
-]
-
-CUSTOM_LIGHT_PRESETS = [
-    "Classic TrueKey", "Heat Effects", "Moving Dots", "BPM Disco",
-    "Zone Lighting", "Sustain Mode", "Performance Setup"
+    "All", "Macro Only", "Live Only", "None"
 ]
 
 
@@ -1271,143 +1266,143 @@ class CustomLightsHandler(BasicHandler):
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
 
-    def create_slot_tab(self, slot):
-            """Create a tab for a single slot"""
-            # Create tab widget
-            tab_widget = QWidget()
-            self.tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
-            
-            # Create layout for this tab
-            layout = QGridLayout(tab_widget)
-            layout.setContentsMargins(10, 10, 10, 10)
-            layout.setSpacing(5)
+def create_slot_tab(self, slot):
+        """Create a tab for a single slot"""
+        # Create tab widget
+        tab_widget = QWidget()
+        self.tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
+        
+        # Create layout for this tab
+        layout = QGridLayout(tab_widget)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
 
-            # Live Animation section
-            live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
-            live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(live_label, 0, 0, 1, 3)
+        # Live Animation section
+        live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
+        live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(live_label, 0, 0, 1, 3)
 
-            # Live Effect - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
-            live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
-            live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
-            layout.addWidget(live_effect, 1, 1, 1, 2)
+        # Live Effect - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
+        live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
+        live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
+        layout.addWidget(live_effect, 1, 1, 1, 2)
 
-            # Live Style - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
-            live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
-            live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
-            layout.addWidget(live_style, 2, 1, 1, 2)
+        # Live Style - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
+        live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
+        live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
+        layout.addWidget(live_style, 2, 1, 1, 2)
 
-            # Live Animation Speed slider
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
-            live_speed = QSlider(QtCore.Qt.Horizontal)
-            live_speed.setMinimum(0)
-            live_speed.setMaximum(255)
-            live_speed.setValue(128)  # Default speed
-            live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-            layout.addWidget(live_speed, 3, 1, 1, 2)
+        # Live Animation Speed slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
+        live_speed = QSlider(QtCore.Qt.Horizontal)
+        live_speed.setMinimum(0)
+        live_speed.setMaximum(255)
+        live_speed.setValue(128)  # Default speed
+        live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
+        layout.addWidget(live_speed, 3, 1, 1, 2)
 
-            # Macro Animation section
-            macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
-            macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(macro_label, 4, 0, 1, 3)
+        # Macro Animation section
+        macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
+        macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(macro_label, 4, 0, 1, 3)
 
-            # Macro Effect - hierarchical dropdown (same as live effects)
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
-            macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
-            macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
-            layout.addWidget(macro_effect, 5, 1, 1, 2)
+        # Macro Effect - hierarchical dropdown (same as live effects)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
+        macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
+        macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
+        layout.addWidget(macro_effect, 5, 1, 1, 2)
 
-            # Macro Style - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 6, 0)
-            macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
-            macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
-            layout.addWidget(macro_style, 6, 1, 1, 2)
+        # Macro Style - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 6, 0)
+        macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
+        macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
+        layout.addWidget(macro_style, 6, 1, 1, 2)
 
-            # Macro Animation Speed slider
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
-            macro_speed = QSlider(QtCore.Qt.Horizontal)
-            macro_speed.setMinimum(0)
-            macro_speed.setMaximum(255)
-            macro_speed.setValue(128)  # Default speed
-            macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-            layout.addWidget(macro_speed, 7, 1, 1, 2)
+        # Macro Animation Speed slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
+        macro_speed = QSlider(QtCore.Qt.Horizontal)
+        macro_speed.setMinimum(0)
+        macro_speed.setMaximum(255)
+        macro_speed.setValue(128)  # Default speed
+        macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
+        layout.addWidget(macro_speed, 7, 1, 1, 2)
 
-            # Effects section
-            effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
-            effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(effects_label, 8, 0, 1, 3)
+        # Effects section
+        effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
+        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(effects_label, 8, 0, 1, 3)
 
-            # Background - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
-            background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
-            background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-            layout.addWidget(background, 9, 1, 1, 2)
+        # Background - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
+        background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
+        background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
+        layout.addWidget(background, 9, 1, 1, 2)
 
-            # Background Brightness slider
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
-            background_brightness = QSlider(QtCore.Qt.Horizontal)
-            background_brightness.setMinimum(0)
-            background_brightness.setMaximum(100)
-            background_brightness.setValue(30)  # Default 30%
-            background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
-            layout.addWidget(background_brightness, 10, 1, 1, 2)
+        # Background Brightness slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
+        background_brightness = QSlider(QtCore.Qt.Horizontal)
+        background_brightness.setMinimum(0)
+        background_brightness.setMaximum(100)
+        background_brightness.setValue(30)  # Default 30%
+        background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
+        layout.addWidget(background_brightness, 10, 1, 1, 2)
 
-            # Color Type
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 11, 0)
-            color_type = QComboBox()
-            for color in CUSTOM_LIGHT_COLOR_TYPES:
-                color_type.addItem(color)
-            color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-            layout.addWidget(color_type, 11, 1, 1, 2)
+        # Color Type
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 11, 0)
+        color_type = QComboBox()
+        for color in CUSTOM_LIGHT_COLOR_TYPES:
+            color_type.addItem(color)
+        color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
+        layout.addWidget(color_type, 11, 1, 1, 2)
 
-            # Sustain Mode
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 12, 0)
-            sustain_mode = QComboBox()
-            for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
-                sustain_mode.addItem(sustain)
-            sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-            layout.addWidget(sustain_mode, 12, 1, 1, 2)
+        # Sustain Mode
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 12, 0)
+        sustain_mode = QComboBox()
+        for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
+            sustain_mode.addItem(sustain)
+        sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
+        layout.addWidget(sustain_mode, 12, 1, 1, 2)
 
-            # Buttons
-            buttons_layout = QHBoxLayout()
-            
-            save_button = QPushButton(tr("RGBConfigurator", "Save"))
-            save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
-            buttons_layout.addWidget(save_button)
-            
-            reset_button = QPushButton(tr("RGBConfigurator", "Reset to Default"))
-            reset_button.clicked.connect(lambda checked, s=slot: self.on_reset_slot(s))
-            buttons_layout.addWidget(reset_button)
-            
-            preset_combo = QComboBox()
-            preset_combo.addItem("Load Preset...")
-            for preset in CUSTOM_LIGHT_PRESETS:
-                preset_combo.addItem(preset)
-            preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
-            buttons_layout.addWidget(preset_combo)
-            
-            buttons_widget = QWidget()
-            buttons_widget.setLayout(buttons_layout)
-            layout.addWidget(buttons_widget, 13, 0, 1, 3)
+        # Buttons
+        buttons_layout = QHBoxLayout()
+        
+        save_button = QPushButton(tr("RGBConfigurator", "Save"))
+        save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
+        buttons_layout.addWidget(save_button)
+        
+        reset_button = QPushButton(tr("RGBConfigurator", "Reset to Default"))
+        reset_button.clicked.connect(lambda checked, s=slot: self.on_reset_slot(s))
+        buttons_layout.addWidget(reset_button)
+        
+        preset_combo = QComboBox()
+        preset_combo.addItem("Load Preset...")
+        for preset in CUSTOM_LIGHT_PRESETS:
+            preset_combo.addItem(preset)
+        preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
+        buttons_layout.addWidget(preset_combo)
+        
+        buttons_widget = QWidget()
+        buttons_widget.setLayout(buttons_layout)
+        layout.addWidget(buttons_widget, 13, 0, 1, 3)
 
-            # Store widgets for this slot
-            self.slot_widgets[slot] = {
-                'live_effect': live_effect,
-                'live_style': live_style,
-                'live_speed': live_speed,
-                'macro_effect': macro_effect,
-                'macro_style': macro_style,
-                'macro_speed': macro_speed,
-                'background': background,
-                'background_brightness': background_brightness,
-                'color_type': color_type,
-                'sustain_mode': sustain_mode,
-                'preset_combo': preset_combo
-            }
+        # Store widgets for this slot
+        self.slot_widgets[slot] = {
+            'live_effect': live_effect,
+            'live_style': live_style,
+            'live_speed': live_speed,
+            'macro_effect': macro_effect,
+            'macro_style': macro_style,
+            'macro_speed': macro_speed,
+            'background': background,
+            'background_brightness': background_brightness,
+            'color_type': color_type,
+            'sustain_mode': sustain_mode,
+            'preset_combo': preset_combo
+        }
 
-            self.slot_tabs.append(tab_widget)
+        self.slot_tabs.append(tab_widget)
     def update_from_keyboard(self):
         """Update UI from keyboard state using VialKeyboard infrastructure"""
         self.block_signals()
@@ -1427,9 +1422,9 @@ class CustomLightsHandler(BasicHandler):
                         widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
                         
                         # Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+                        widgets['background'].setCurrentIndex(min(config[5], 120))  # background_mode (0-120)
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
-                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # color_type
+                        widgets['color_type'].setCurrentIndex(min(config[7], 16))  # color_type (0-16) *** UPDATED ***
                         # config[8] is enabled - not shown in UI
                         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
                         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
@@ -1445,7 +1440,6 @@ class CustomLightsHandler(BasicHandler):
 
         self.unblock_signals()
 
-# 4. UPDATE set_slot_defaults method validation:
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
         widgets = self.slot_widgets[slot]
@@ -1706,39 +1700,20 @@ class RGBConfigurator(BasicEditor):
             h.unblock_signals()
 
     def update_from_keyboard(self):
-        """Update UI from keyboard state using VialKeyboard infrastructure"""
-        self.block_signals()
+        self.device.keyboard.reload_rgb()
         
-        # Update all slots
-        for slot in range(12):
-            try:
-                if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                    config = self.device.keyboard.get_custom_slot_config(slot)
-                    if config and len(config) >= 12:  # Expecting 12 parameters
-                        widgets = self.slot_widgets[slot]
-                        
-                        # Set individual effect and style dropdowns with updated ranges
-                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
-                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
-                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
-                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
-                        
-                        # Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], 120))  # background_mode (0-120)
-                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
-                        widgets['color_type'].setCurrentIndex(min(config[7], 16))  # color_type (0-16) *** UPDATED ***
-                        # config[8] is enabled - not shown in UI
-                        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
-                        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
-                        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)  # Macro speed
-                    else:
-                        self.set_slot_defaults(slot)
-                else:
-                    print(f"Custom slot config methods not implemented on keyboard")
-                    self.set_slot_defaults(slot)
-            except Exception as e:
-                print(f"Error updating custom lights slot {slot}: {e}")
-                self.set_slot_defaults(slot)
+        # Check for layer RGB support
+        if hasattr(self.device.keyboard, 'reload_layer_rgb_support'):
+            self.device.keyboard.reload_layer_rgb_support()
+
+        # Check for custom lights support  
+        if hasattr(self.device.keyboard, 'reload_custom_lights_support'):
+            self.device.keyboard.reload_custom_lights_support()
+
+        self.block_signals()
+
+        for h in self.handlers:
+            h.update_from_keyboard()
 
         self.unblock_signals()
 
