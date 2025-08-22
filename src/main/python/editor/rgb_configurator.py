@@ -1274,7 +1274,7 @@ class CustomLightsHandler(BasicHandler):
             layout.addWidget(live_effect, 1, 1, 1, 2)
 
             # Live Style - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 2, 0)
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
             live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
             live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
             layout.addWidget(live_style, 2, 1, 1, 2)
@@ -1300,7 +1300,7 @@ class CustomLightsHandler(BasicHandler):
             layout.addWidget(macro_effect, 5, 1, 1, 2)
 
             # Macro Style - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Style:")), 6, 0)
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
             macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
             macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
             layout.addWidget(macro_style, 6, 1, 1, 2)
@@ -1315,7 +1315,7 @@ class CustomLightsHandler(BasicHandler):
             layout.addWidget(macro_speed, 7, 1, 1, 2)
 
             # Effects section
-            effects_label = QLabel(tr("RGBConfigurator", "Effects:"))
+            effects_label = QLabel(tr("RGBConfigurator", "Background:"))
             effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
             layout.addWidget(effects_label, 8, 0, 1, 3)
 
@@ -1334,11 +1334,13 @@ class CustomLightsHandler(BasicHandler):
             background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
             layout.addWidget(background_brightness, 10, 1, 1, 2)
 
-            # Color Type
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 11, 0)
+            effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
+            effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(effects_label, 11, 0, 1, 3)
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 11, 0)
             color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
             color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-            layout.addWidget(color_type, 11, 1, 1, 2)
+            layout.addWidget(color_type, 12, 1, 1, 2)
 
             # Sustain Mode
             layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 12, 0)
@@ -1346,7 +1348,7 @@ class CustomLightsHandler(BasicHandler):
             for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
                 sustain_mode.addItem(sustain)
             sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-            layout.addWidget(sustain_mode, 12, 1, 1, 2)
+            layout.addWidget(sustain_mode, 13, 1, 1, 2)
 
             # Buttons
             buttons_layout = QHBoxLayout()
