@@ -674,19 +674,6 @@ class HierarchicalDropdown(QPushButton):
         self.current_index = 0
         self.current_text = ""
         self.setText("Select...")
-        self.setStyleSheet("""
-            QPushButton {
-                text-align: left;
-                padding: 4px 8px;
-                border: 1px solid #ccc;
-                background: white;
-            }
-            QPushButton::menu-indicator {
-                subcontrol-origin: padding;
-                subcontrol-position: center right;
-                right: 8px;
-            }
-        """)
         
         # Build the menu
         self.menu = QMenu(self)
