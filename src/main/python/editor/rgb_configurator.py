@@ -607,27 +607,7 @@ MACRO_STYLES_HIERARCHY = {
     ]
 }
 
-# 1. UPDATE CUSTOM_LIGHT_COLOR_TYPES list (should have 17 items total):
-CUSTOM_LIGHT_COLOR_TYPES = [
-    "Base",              # 0
-    "Channel",           # 1  
-    "Macro",             # 2
-    "Heat",              # 3
-    "Rainbow",           # 4
-    "Channel Distance",  # 5
-    "Macro Split",       # 6
-    "Macro Distance",    # 7
-    "Disco Live",        # 8
-    "Disco All",         # 9
-    "Channel SAT",       # 10
-    "Macro SAT",         # 11
-    "Velocity Colors",   # 12
-    "Time Shift",        # 13
-    "Beat Sync",         # 14
-    "Temperature Gradient", # 15
-    "Spectrum Cycle"     # 16
-]
-
+# Hierarchical structure for color types
 CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY = {
     "Basic Colors": [
         {"name": "Base", "index": 0},
@@ -660,8 +640,34 @@ CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY = {
     ]
 }
 
+# Keep the old list for backward compatibility in validation functions
+CUSTOM_LIGHT_COLOR_TYPES = [
+    "Base",              # 0
+    "Channel",           # 1  
+    "Macro",             # 2
+    "Heat",              # 3
+    "Rainbow",           # 4
+    "Channel Distance",  # 5
+    "Macro Split",       # 6
+    "Macro Distance",    # 7
+    "Disco Live",        # 8
+    "Disco All",         # 9
+    "Channel SAT",       # 10
+    "Macro SAT",         # 11
+    "Velocity Colors",   # 12
+    "Time Shift",        # 13
+    "Beat Sync",         # 14
+    "Temperature Gradient", # 15
+    "Spectrum Cycle"     # 16
+]
+
 CUSTOM_LIGHT_SUSTAIN_MODES = [
-    "All", "Macro Only", "Live Only", "None"
+    "None", "Live Only", "Macro Only", "All"
+]
+
+CUSTOM_LIGHT_PRESETS = [
+    "Classic TrueKey", "Heat Effects", "Moving Dots", "BPM Disco",
+    "Zone Lighting", "Sustain Mode", "Performance Setup"
 ]
 
 
@@ -1351,10 +1357,8 @@ def create_slot_tab(self, slot):
 
         # Color Type
         layout.addWidget(QLabel(tr("RGBConfigurator", "Color Type:")), 11, 0)
-        color_type = QComboBox()
-        for color in CUSTOM_LIGHT_COLOR_TYPES:
-            color_type.addItem(color)
-        color_type.currentIndexChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
+        color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
+        color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
         layout.addWidget(color_type, 11, 1, 1, 2)
 
         # Sustain Mode
@@ -1422,9 +1426,9 @@ def create_slot_tab(self, slot):
                         widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
                         
                         # Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], 120))  # background_mode (0-120)
+                        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
                         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
-                        widgets['color_type'].setCurrentIndex(min(config[7], 16))  # color_type (0-16) *** UPDATED ***
+                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # color_type
                         # config[8] is enabled - not shown in UI
                         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
                         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
@@ -1451,7 +1455,7 @@ def create_slot_tab(self, slot):
         widgets['macro_speed'].setValue(128)              # Default macro speed
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness
-        widgets['color_type'].setCurrentIndex(1)          # Channel (safe default)
+        widgets['color_type'].setCurrentIndex(1)          # Channel
         widgets['sustain_mode'].setCurrentIndex(3)        # All
 
     def valid(self):
@@ -1539,9 +1543,7 @@ def create_slot_tab(self, slot):
     def on_color_type_changed(self, slot, index):
         """Handle color type change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            # Ensure index is within valid range (0-16)
-            valid_index = min(index, 16)
-            self.device.keyboard.set_custom_slot_parameter(slot, 7, valid_index)
+            self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
         else:
             print(f"Color type changed: slot {slot}, index {index}")
 
