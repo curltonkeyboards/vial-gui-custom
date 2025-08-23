@@ -1255,6 +1255,47 @@ class CustomLightsHandler(BasicHandler):
             self.create_slot_tab(slot)
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
+        
+
+    def on_load_from_keyboard(self, slot):
+        """Load current RAM settings from keyboard into this slot's GUI"""
+        try:
+            if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+                # Get current RAM settings from the keyboard
+                config = self.device.keyboard.get_custom_slot_config(slot)
+                if config and len(config) >= 12:
+                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
+                    
+                    # Block signals to prevent triggering changes while updating
+                    self.block_signals()
+                    
+                    widgets = self.slot_widgets[slot]
+                    
+                    # Update all GUI controls with the current RAM settings
+                    widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
+                    widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning
+                    widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation  
+                    widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning
+                    widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
+                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                    widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
+                    widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
+                    widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
+                    
+                    # Unblock signals
+                    self.unblock_signals()
+                    
+                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
+                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
+                    
+                else:
+                    print(f"No current settings available to load for slot {slot + 1}")
+            else:
+                print(f"Load from keyboard not available - keyboard methods not implemented")
+                
+        except Exception as e:
+            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
 
     def create_slot_tab(self, slot):
             """Create a tab for a single slot"""
@@ -1310,7 +1351,7 @@ class CustomLightsHandler(BasicHandler):
             macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
             layout.addWidget(macro_style, 6, 1, 1, 2)
 
-            # Macro Animation Speed slider
+# Macro Animation Speed slider
             layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
             macro_speed = QSlider(QtCore.Qt.Horizontal)
             macro_speed.setMinimum(0)
@@ -1339,23 +1380,26 @@ class CustomLightsHandler(BasicHandler):
             background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
             layout.addWidget(background_brightness, 10, 1, 1, 2)
 
+            # Effect Colours section header
             effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
             effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
             layout.addWidget(effects_label, 11, 0, 1, 3)
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 11, 0)
+
+            # Colour Scheme - moved to row 12
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
             color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
             color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
             layout.addWidget(color_type, 12, 1, 1, 2)
 
-            # Sustain Mode
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 12, 0)
+            # Sustain Mode - moved to row 13
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
             sustain_mode = QComboBox()
             for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
                 sustain_mode.addItem(sustain)
             sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
             layout.addWidget(sustain_mode, 13, 1, 1, 2)
 
-            # Buttons
+            # Buttons - moved to row 14
             buttons_layout = QHBoxLayout()
             
             save_button = QPushButton(tr("RGBConfigurator", "Save"))
@@ -1375,7 +1419,7 @@ class CustomLightsHandler(BasicHandler):
             
             buttons_widget = QWidget()
             buttons_widget.setLayout(buttons_layout)
-            layout.addWidget(buttons_widget, 13, 0, 1, 3)
+            layout.addWidget(buttons_widget, 14, 0, 1, 3)
 
             # Store widgets for this slot
             self.slot_widgets[slot] = {
@@ -1655,46 +1699,6 @@ class RGBConfigurator(BasicEditor):
         buttons.addWidget(save_btn)
         save_btn.clicked.connect(self.on_save)
         self.addLayout(buttons)
-
-    def on_load_from_keyboard(self, slot):
-        """Load current RAM settings from keyboard into this slot's GUI"""
-        try:
-            if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                # Get current RAM settings from the keyboard
-                config = self.device.keyboard.get_custom_slot_config(slot)
-                if config and len(config) >= 12:
-                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
-                    
-                    # Block signals to prevent triggering changes while updating
-                    self.block_signals()
-                    
-                    widgets = self.slot_widgets[slot]
-                    
-                    # Update all GUI controls with the current RAM settings
-                    widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
-                    widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning
-                    widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation  
-                    widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning
-                    widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
-                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
-                    widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
-                    widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
-                    widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-                    
-                    # Unblock signals
-                    self.unblock_signals()
-                    
-                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
-                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
-                    
-                else:
-                    print(f"No current settings available to load for slot {slot + 1}")
-            else:
-                print(f"Load from keyboard not available - keyboard methods not implemented")
-                
-        except Exception as e:
-            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
 
     def on_save(self):
         self.device.keyboard.save_rgb()
