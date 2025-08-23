@@ -146,6 +146,7 @@ VIALRGB_EFFECTS = [
 
 
 # Hierarchical structure for effects
+# Hierarchical structure for effects - COMPLETE REWRITE WITH SHIFTED INDICES
 LIVE_EFFECTS_HIERARCHY = {
     "Simple": [
         {"name": "Simple", "index": 0},
@@ -219,77 +220,81 @@ LIVE_EFFECTS_HIERARCHY = {
     ],
     "Reverse Ripple": [
         {"name": "Reverse Ripple Small", "index": 44},
+        {"name": "Reverse Ripple Small Solo", "index": 48},
         {"name": "Reverse Ripple Med", "index": 45},
+        {"name": "Reverse Ripple Med Solo", "index": 49},
         {"name": "Reverse Ripple Large", "index": 46},
+        {"name": "Reverse Ripple Large Solo", "index": 50},
         {"name": "Reverse Ripple Massive", "index": 47},
+        {"name": "Reverse Ripple Massive Solo", "index": 51},
     ],
     "Expanding Row": [
-        {"name": "Expanding Row Short", "index": 48},
-        {"name": "Expanding Row Short Solo", "index": 49},
-        {"name": "Expanding Row Long", "index": 50},
-        {"name": "Expanding Row Long Solo", "index": 51},
+        {"name": "Expanding Row Short", "index": 52},
+        {"name": "Expanding Row Short Solo", "index": 53},
+        {"name": "Expanding Row Long", "index": 54},
+        {"name": "Expanding Row Long Solo", "index": 55},
     ],
     "Expanding Column": [
-        {"name": "Expanding Column Short", "index": 52},
-        {"name": "Expanding Column Short Solo", "index": 53},
-        {"name": "Expanding Column Long", "index": 54},
-        {"name": "Expanding Column Long Solo", "index": 55},
+        {"name": "Expanding Column Short", "index": 56},
+        {"name": "Expanding Column Short Solo", "index": 57},
+        {"name": "Expanding Column Long", "index": 58},
+        {"name": "Expanding Column Long Solo", "index": 59},
     ],
     "Outward Burst": [
-        {"name": "Outward Burst Small", "index": 56},
-        {"name": "Outward Burst Small Solo", "index": 57},
-        {"name": "Outward Burst Med", "index": 58},
-        {"name": "Outward Burst Med Solo", "index": 59},
-        {"name": "Outward Burst Large", "index": 60},
-        {"name": "Outward Burst Large Solo", "index": 61},
+        {"name": "Outward Burst Small", "index": 60},
+        {"name": "Outward Burst Small Solo", "index": 61},
+        {"name": "Outward Burst Med", "index": 62},
+        {"name": "Outward Burst Med Solo", "index": 63},
+        {"name": "Outward Burst Large", "index": 64},
+        {"name": "Outward Burst Large Solo", "index": 65},
     ],
     "Volume Column": [
-        {"name": "Volume Column Small", "index": 62},
-        {"name": "Volume Column Small Solo", "index": 63},
-        {"name": "Volume Column Small Wide", "index": 64},
-        {"name": "Volume Column Small Wide Solo", "index": 65},
-        {"name": "Volume Column Large", "index": 66},
-        {"name": "Volume Column Large Solo", "index": 67},
-        {"name": "Volume Column Large Wide", "index": 68},
-        {"name": "Volume Column Large Wide Solo", "index": 69},
+        {"name": "Volume Column Small", "index": 66},
+        {"name": "Volume Column Small Solo", "index": 67},
+        {"name": "Volume Column Small Wide", "index": 68},
+        {"name": "Volume Column Small Wide Solo", "index": 69},
+        {"name": "Volume Column Large", "index": 70},
+        {"name": "Volume Column Large Solo", "index": 71},
+        {"name": "Volume Column Large Wide", "index": 72},
+        {"name": "Volume Column Large Wide Solo", "index": 73},
     ],
     "Volume Row": [
-        {"name": "Volume Row Small", "index": 70},
-        {"name": "Volume Row Small Solo", "index": 71},
-        {"name": "Volume Row Small Wide", "index": 72},
-        {"name": "Volume Row Small Wide Solo", "index": 73},
-        {"name": "Volume Row Med", "index": 74},
-        {"name": "Volume Row Med Solo", "index": 75},
-        {"name": "Volume Row Med Wide", "index": 76},
-        {"name": "Volume Row Med Wide Solo", "index": 77},
-        {"name": "Volume Row Large", "index": 78},
-        {"name": "Volume Row Large Solo", "index": 79},
-        {"name": "Volume Row Large Wide", "index": 80},
-        {"name": "Volume Row Large Wide Solo", "index": 81},
+        {"name": "Volume Row Small", "index": 74},
+        {"name": "Volume Row Small Solo", "index": 75},
+        {"name": "Volume Row Small Wide", "index": 76},
+        {"name": "Volume Row Small Wide Solo", "index": 77},
+        {"name": "Volume Row Med", "index": 78},
+        {"name": "Volume Row Med Solo", "index": 79},
+        {"name": "Volume Row Med Wide", "index": 80},
+        {"name": "Volume Row Med Wide Solo", "index": 81},
+        {"name": "Volume Row Large", "index": 82},
+        {"name": "Volume Row Large Solo", "index": 83},
+        {"name": "Volume Row Large Wide", "index": 84},
+        {"name": "Volume Row Large Wide Solo", "index": 85},
     ],
     "Collapsing Column": [
-        {"name": "Collapsing Column Small", "index": 82},
-        {"name": "Collapsing Column Small Solo", "index": 83},
-        {"name": "Collapsing Column Small Wide", "index": 84},
-        {"name": "Collapsing Column Small Wide Solo", "index": 85},
-        {"name": "Collapsing Column Large", "index": 86},
-        {"name": "Collapsing Column Large Solo", "index": 87},
-        {"name": "Collapsing Column Large Wide", "index": 88},
-        {"name": "Collapsing Column Large Wide Solo", "index": 89},
+        {"name": "Collapsing Column Small", "index": 86},
+        {"name": "Collapsing Column Small Solo", "index": 87},
+        {"name": "Collapsing Column Small Wide", "index": 88},
+        {"name": "Collapsing Column Small Wide Solo", "index": 89},
+        {"name": "Collapsing Column Large", "index": 90},
+        {"name": "Collapsing Column Large Solo", "index": 91},
+        {"name": "Collapsing Column Large Wide", "index": 92},
+        {"name": "Collapsing Column Large Wide Solo", "index": 93},
     ],
     "Collapsing Row": [
-        {"name": "Collapsing Row Small", "index": 90},
-        {"name": "Collapsing Row Small Solo", "index": 91},
-        {"name": "Collapsing Row Small Wide", "index": 92},
-        {"name": "Collapsing Row Small Wide Solo", "index": 93},
-        {"name": "Collapsing Row Med", "index": 94},
-        {"name": "Collapsing Row Med Solo", "index": 95},
-        {"name": "Collapsing Row Med Wide", "index": 96},
-        {"name": "Collapsing Row Med Wide Solo", "index": 97},
-        {"name": "Collapsing Row Large", "index": 98},
-        {"name": "Collapsing Row Large Solo", "index": 99},
-        {"name": "Collapsing Row Large Wide", "index": 100},
-        {"name": "Collapsing Row Large Wide Solo", "index": 101},
+        {"name": "Collapsing Row Small", "index": 94},
+        {"name": "Collapsing Row Small Solo", "index": 95},
+        {"name": "Collapsing Row Small Wide", "index": 96},
+        {"name": "Collapsing Row Small Wide Solo", "index": 97},
+        {"name": "Collapsing Row Med", "index": 98},
+        {"name": "Collapsing Row Med Solo", "index": 99},
+        {"name": "Collapsing Row Med Wide", "index": 100},
+        {"name": "Collapsing Row Med Wide Solo", "index": 101},
+        {"name": "Collapsing Row Large", "index": 102},
+        {"name": "Collapsing Row Large Solo", "index": 103},
+        {"name": "Collapsing Row Large Wide", "index": 104},
+        {"name": "Collapsing Row Large Wide Solo", "index": 105},
     ]
 }
 
@@ -1357,9 +1362,9 @@ class CustomLightsHandler(BasicHandler):
             save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
             buttons_layout.addWidget(save_button)
             
-            reset_button = QPushButton(tr("RGBConfigurator", "Reset to Default"))
-            reset_button.clicked.connect(lambda checked, s=slot: self.on_reset_slot(s))
-            buttons_layout.addWidget(reset_button)
+            load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
+            load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
+            buttons_layout.addWidget(load_button)
             
             preset_combo = QComboBox()
             preset_combo.addItem("Load Preset...")
@@ -1543,22 +1548,6 @@ class CustomLightsHandler(BasicHandler):
         except Exception as e:
             print(f"Error saving slot {slot + 1}: {e}")
 
-    def on_reset_slot(self, slot):
-        """Reset a slot to defaults"""
-        try:
-            if hasattr(self.device.keyboard, 'reset_custom_slot'):
-                success = self.device.keyboard.reset_custom_slot(slot)
-                if success:
-                    self.set_slot_defaults(slot)
-                    print(f"Reset slot {slot + 1} to defaults")
-                else:
-                    print(f"Failed to reset slot {slot + 1}")
-            else:
-                print(f"Reset slot {slot + 1} to defaults (keyboard method not implemented)")
-                self.set_slot_defaults(slot)
-        except Exception as e:
-            print(f"Error resetting slot {slot + 1}: {e}")
-
     def on_load_preset(self, slot, index):
         """Load a preset configuration - now sets individual parameters"""
         if index == 0:  # "Load Preset..." header
@@ -1666,6 +1655,46 @@ class RGBConfigurator(BasicEditor):
         buttons.addWidget(save_btn)
         save_btn.clicked.connect(self.on_save)
         self.addLayout(buttons)
+
+    def on_load_from_keyboard(self, slot):
+        """Load current RAM settings from keyboard into this slot's GUI"""
+        try:
+            if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+                # Get current RAM settings from the keyboard
+                config = self.device.keyboard.get_custom_slot_config(slot)
+                if config and len(config) >= 12:
+                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
+                    
+                    # Block signals to prevent triggering changes while updating
+                    self.block_signals()
+                    
+                    widgets = self.slot_widgets[slot]
+                    
+                    # Update all GUI controls with the current RAM settings
+                    widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
+                    widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning
+                    widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation  
+                    widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning
+                    widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
+                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+                    widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
+                    widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
+                    widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
+                    
+                    # Unblock signals
+                    self.unblock_signals()
+                    
+                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
+                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
+                    
+                else:
+                    print(f"No current settings available to load for slot {slot + 1}")
+            else:
+                print(f"Load from keyboard not available - keyboard methods not implemented")
+                
+        except Exception as e:
+            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
 
     def on_save(self):
         self.device.keyboard.save_rgb()
