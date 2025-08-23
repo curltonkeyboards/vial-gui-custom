@@ -158,63 +158,71 @@ VIALRGB_EFFECTS = [
 LIVE_EFFECTS_HIERARCHY = {
     "Simple": [
         {"name": "Simple", "index": 0},
-        {"name": "Simple Solo", "index": 1},
+        {"name": "Simple Solo", "index": 1}
     ],
     "Wide": [
         {"name": "Wide", "index": 2},
         {"name": "Wide Solo", "index": 3},
         {"name": "Wider", "index": 4},
-        {"name": "Wider Solo", "index": 5},
+        {"name": "Wider Solo", "index": 5}
     ],
     "Heatmap": [
         {"name": "Heatmap", "index": 6},
-        {"name": "Heatmap 2", "index": 7},
+        {"name": "Heatmap 2", "index": 7}
     ],
     "Column": [
         {"name": "Column Short", "index": 8},
-        {"name": "Column Short Solo", "index": 9},
+        {"name": "Column Short Solo", "index": 9}
     ],
     "Row": [
         {"name": "Row Short", "index": 10},
-        {"name": "Row Short Solo", "index": 11},
+        {"name": "Row Short Solo", "index": 11}
     ],
     "Cross": [
         {"name": "Cross Short", "index": 12},
         {"name": "Cross Short Solo", "index": 13},
         {"name": "Criss Cross", "index": 14},
-        {"name": "Criss Cross Solo", "index": 15},
+        {"name": "Criss Cross Solo", "index": 15}
     ],
     "Horizontal Dots": [
         {"name": "Horizontal Dots Short", "index": 16},
         {"name": "Horizontal Dots Short Solo", "index": 17},
         {"name": "Horizontal Dots Long", "index": 18},
         {"name": "Horizontal Dots Long Solo", "index": 19},
+        {"name": "Horizontal Dots Short Reverse", "index": 106},
+        {"name": "Horizontal Dots Short Reverse Solo", "index": 107},
+        {"name": "Horizontal Dots Long Reverse", "index": 108},
+        {"name": "Horizontal Dots Long Reverse Solo", "index": 109}
     ],
     "Vertical Dots": [
         {"name": "Vertical Dots Short", "index": 20},
         {"name": "Vertical Dots Short Solo", "index": 21},
         {"name": "Vertical Dots Long", "index": 22},
         {"name": "Vertical Dots Long Solo", "index": 23},
+        {"name": "Vertical Dots Short Reverse", "index": 110},
+        {"name": "Vertical Dots Short Reverse Solo", "index": 111},
+        {"name": "Vertical Dots Long Reverse", "index": 112},
+        {"name": "Vertical Dots Long Reverse Solo", "index": 113}
     ],
     "Diagonal Dots": [
         {"name": "Diagonal Dots 1", "index": 24},
         {"name": "Diagonal Dots 1 Solo", "index": 25},
         {"name": "Diagonal Dots 2", "index": 26},
-        {"name": "Diagonal Dots 2 Solo", "index": 27},
+        {"name": "Diagonal Dots 2 Solo", "index": 27}
     ],
     "Cross Dots": [
         {"name": "Cross Dots Short", "index": 28},
         {"name": "Cross Dots Short Solo", "index": 29},
         {"name": "Cross Dots Long", "index": 30},
-        {"name": "Cross Dots Long Solo", "index": 31},
+        {"name": "Cross Dots Long Solo", "index": 31}
     ],
     "Diagonal Burst": [
         {"name": "Diagonal Burst", "index": 32},
-        {"name": "Diagonal Burst Solo", "index": 33},
+        {"name": "Diagonal Burst Solo", "index": 33}
     ],
     "Criss Cross Dots": [
         {"name": "Criss Cross Dots", "index": 34},
-        {"name": "Criss Cross Dots Solo", "index": 35},
+        {"name": "Criss Cross Dots Solo", "index": 35}
     ],
     "Ripple": [
         {"name": "Ripple Small", "index": 36},
@@ -224,7 +232,7 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Ripple Large", "index": 40},
         {"name": "Ripple Large Solo", "index": 41},
         {"name": "Ripple Massive", "index": 42},
-        {"name": "Ripple Massive Solo", "index": 43},
+        {"name": "Ripple Massive Solo", "index": 43}
     ],
     "Reverse Ripple": [
         {"name": "Reverse Ripple Small", "index": 44},
@@ -234,19 +242,19 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Reverse Ripple Large", "index": 46},
         {"name": "Reverse Ripple Large Solo", "index": 50},
         {"name": "Reverse Ripple Massive", "index": 47},
-        {"name": "Reverse Ripple Massive Solo", "index": 51},
+        {"name": "Reverse Ripple Massive Solo", "index": 51}
     ],
     "Expanding Row": [
         {"name": "Expanding Row Short", "index": 52},
         {"name": "Expanding Row Short Solo", "index": 53},
         {"name": "Expanding Row Long", "index": 54},
-        {"name": "Expanding Row Long Solo", "index": 55},
+        {"name": "Expanding Row Long Solo", "index": 55}
     ],
     "Expanding Column": [
         {"name": "Expanding Column Short", "index": 56},
         {"name": "Expanding Column Short Solo", "index": 57},
         {"name": "Expanding Column Long", "index": 58},
-        {"name": "Expanding Column Long Solo", "index": 59},
+        {"name": "Expanding Column Long Solo", "index": 59}
     ],
     "Outward Burst": [
         {"name": "Outward Burst Small", "index": 60},
@@ -254,7 +262,7 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Outward Burst Med", "index": 62},
         {"name": "Outward Burst Med Solo", "index": 63},
         {"name": "Outward Burst Large", "index": 64},
-        {"name": "Outward Burst Large Solo", "index": 65},
+        {"name": "Outward Burst Large Solo", "index": 65}
     ],
     "Volume Column": [
         {"name": "Volume Column Small", "index": 66},
@@ -264,7 +272,7 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Volume Column Large", "index": 70},
         {"name": "Volume Column Large Solo", "index": 71},
         {"name": "Volume Column Large Wide", "index": 72},
-        {"name": "Volume Column Large Wide Solo", "index": 73},
+        {"name": "Volume Column Large Wide Solo", "index": 73}
     ],
     "Volume Row": [
         {"name": "Volume Row Small", "index": 74},
@@ -278,7 +286,7 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Volume Row Large", "index": 82},
         {"name": "Volume Row Large Solo", "index": 83},
         {"name": "Volume Row Large Wide", "index": 84},
-        {"name": "Volume Row Large Wide Solo", "index": 85},
+        {"name": "Volume Row Large Wide Solo", "index": 85}
     ],
     "Collapsing Column": [
         {"name": "Collapsing Column Small", "index": 86},
@@ -288,7 +296,7 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Collapsing Column Large", "index": 90},
         {"name": "Collapsing Column Large Solo", "index": 91},
         {"name": "Collapsing Column Large Wide", "index": 92},
-        {"name": "Collapsing Column Large Wide Solo", "index": 93},
+        {"name": "Collapsing Column Large Wide Solo", "index": 93}
     ],
     "Collapsing Row": [
         {"name": "Collapsing Row Small", "index": 94},
@@ -302,9 +310,72 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Collapsing Row Large", "index": 102},
         {"name": "Collapsing Row Large Solo", "index": 103},
         {"name": "Collapsing Row Large Wide", "index": 104},
-        {"name": "Collapsing Row Large Wide Solo", "index": 105},
+        {"name": "Collapsing Row Large Wide Solo", "index": 105}
+    ],
+    "3-Pixel Columns": [
+        {"name": "3-Pixel Columns Expand", "index": 114},
+        {"name": "3-Pixel Columns Expand Solo", "index": 115},
+        {"name": "3-Pixel Columns Expand No Fade", "index": 116},
+        {"name": "3-Pixel Columns Expand No Fade Solo", "index": 117},
+        {"name": "3-Pixel Columns Reverse", "index": 118},
+        {"name": "3-Pixel Columns Reverse Solo", "index": 119},
+        {"name": "3-Pixel Columns Reverse No Fade", "index": 120},
+        {"name": "3-Pixel Columns Reverse No Fade Solo", "index": 121}
+    ],
+    "3-Pixel Rows": [
+        {"name": "3-Pixel Rows Expand", "index": 122},
+        {"name": "3-Pixel Rows Expand Solo", "index": 123},
+        {"name": "3-Pixel Rows Expand No Fade", "index": 124},
+        {"name": "3-Pixel Rows Expand No Fade Solo", "index": 125},
+        {"name": "3-Pixel Rows Reverse", "index": 126},
+        {"name": "3-Pixel Rows Reverse Solo", "index": 127},
+        {"name": "3-Pixel Rows Reverse No Fade", "index": 128},
+        {"name": "3-Pixel Rows Reverse No Fade Solo", "index": 129}
+    ],
+    "8-Pixel Columns": [
+        {"name": "8-Pixel Columns Expand", "index": 130},
+        {"name": "8-Pixel Columns Expand Solo", "index": 131},
+        {"name": "8-Pixel Columns Expand No Fade", "index": 132},
+        {"name": "8-Pixel Columns Expand No Fade Solo", "index": 133},
+        {"name": "8-Pixel Columns Reverse", "index": 134},
+        {"name": "8-Pixel Columns Reverse Solo", "index": 135},
+        {"name": "8-Pixel Columns Reverse No Fade", "index": 136},
+        {"name": "8-Pixel Columns Reverse No Fade Solo", "index": 137}
+    ],
+    "8-Pixel Rows": [
+        {"name": "8-Pixel Rows Expand", "index": 138},
+        {"name": "8-Pixel Rows Expand Solo", "index": 139},
+        {"name": "8-Pixel Rows Expand No Fade", "index": 140},
+        {"name": "8-Pixel Rows Expand No Fade Solo", "index": 141},
+        {"name": "8-Pixel Rows Reverse", "index": 142},
+        {"name": "8-Pixel Rows Reverse Solo", "index": 143},
+        {"name": "8-Pixel Rows Reverse No Fade", "index": 144},
+        {"name": "8-Pixel Rows Reverse No Fade Solo", "index": 145}
+    ],
+    "All Orthogonal": [
+        {"name": "All Orthogonal Dots Reverse", "index": 146},
+        {"name": "All Orthogonal Dots Reverse Solo", "index": 147},
+        {"name": "All Orthogonal Dots Reverse No Fade", "index": 148},
+        {"name": "All Orthogonal Dots Reverse No Fade Solo", "index": 149},
+        {"name": "All Orthogonal 3-Pixel Expand", "index": 150},
+        {"name": "All Orthogonal 3-Pixel Expand Solo", "index": 151},
+        {"name": "All Orthogonal 3-Pixel Expand No Fade", "index": 152},
+        {"name": "All Orthogonal 3-Pixel Expand No Fade Solo", "index": 153},
+        {"name": "All Orthogonal 3-Pixel Reverse", "index": 154},
+        {"name": "All Orthogonal 3-Pixel Reverse Solo", "index": 155},
+        {"name": "All Orthogonal 3-Pixel Reverse No Fade", "index": 156},
+        {"name": "All Orthogonal 3-Pixel Reverse No Fade Solo", "index": 157},
+        {"name": "All Orthogonal 8-Pixel Expand", "index": 158},
+        {"name": "All Orthogonal 8-Pixel Expand Solo", "index": 159},
+        {"name": "All Orthogonal 8-Pixel Expand No Fade", "index": 160},
+        {"name": "All Orthogonal 8-Pixel Expand No Fade Solo", "index": 161},
+        {"name": "All Orthogonal 8-Pixel Reverse", "index": 162},
+        {"name": "All Orthogonal 8-Pixel Reverse Solo", "index": 163},
+        {"name": "All Orthogonal 8-Pixel Reverse No Fade", "index": 164},
+        {"name": "All Orthogonal 8-Pixel Reverse No Fade Solo", "index": 165}
     ]
 }
+
 
 # Hierarchical structure for backgrounds
 BACKGROUNDS_HIERARCHY = {
