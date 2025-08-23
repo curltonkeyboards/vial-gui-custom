@@ -142,14 +142,14 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(66, "Custom Slot 10"),
     VialRGBEffect(67, "Custom Slot 11"),
     VialRGBEffect(68, "Custom Slot 12"),
-    VialRGBEffect(69, "Random Lights - Loop Controlled 1"),
-    VialRGBEffect(70, "Random Lights - Loop Controlled 2"),
-    VialRGBEffect(71, "Random Lights - Loop Controlled 3"),
-    VialRGBEffect(72, "Random Lights - Loop Controlled 4"),
-    VialRGBEffect(73, "Random Lights - BPM Controlled 1"),
-    VialRGBEffect(74, "Random Lights - BPM Controlled 2"),
-    VialRGBEffect(75, "Random Lights - BPM Controlled 3"),
-    VialRGBEffect(76, "Random Lights - BPM Controlled 4"),
+    VialRGBEffect(69, "Random Lights - Loop Controlled 1-50"),
+    VialRGBEffect(70, "Random Lights - Loop Controlled Random"),
+    VialRGBEffect(71, "Random Lights - Loop Controlled Crazy"),
+    VialRGBEffect(72, "Random Lights - BPM Controlled 1-50"),
+    VialRGBEffect(73, "Random Lights - BPM Controlled Random"),
+    VialRGBEffect(74, "Random Lights - BPM Controlled Crazy"),
+    VialRGBEffect(75, "Random Lights - Manual Random"),
+    VialRGBEffect(76, "Random Lights - Manual Crazy"),
 ]
 
 
