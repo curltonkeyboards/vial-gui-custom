@@ -1398,7 +1398,7 @@ class CustomLightsHandler(BasicHandler):
         self.unblock_slot_signals(slot)
 
     def block_slot_signals(self, slot):
-        """Block signals for a specific slot's widgets"""
+        """Block signals for a specific slot'ss widgets"""
         if slot in self.slot_widgets:
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
