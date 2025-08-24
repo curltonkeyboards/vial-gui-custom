@@ -1332,274 +1332,215 @@ class CustomLightsHandler(BasicHandler):
         
         for slot in range(12):
             self.create_slot_tab(slot)
-        
-        # Connect tab change handler AFTER all tabs are created
-        self.tab_widget.currentChanged.connect(self.on_tab_changed)
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
         
-        # Track if we've loaded EEPROM for each slot
-        self.slot_loaded_from_eeprom = [False] * 12
 
-    def on_tab_changed(self, index):
-        """Called when user switches tabs - load and DISPLAY the EEPROM settings for that slot (read-only)"""
-        if 0 <= index < 12:
-            print(f"Tab changed to slot {index + 1} - displaying EEPROM settings")
-            self.display_slot_eeprom_settings(index)
-
-    def get_current_slot(self):
-        """Get the currently active tab/slot"""
-        return self.tab_widget.currentIndex()
-
-    def display_slot_eeprom_settings(self, slot):
-        """Display the EEPROM settings for a specific slot (read-only, no setting of values)"""
+    def on_load_from_keyboard(self, slot):
+        """Load current RAM settings from keyboard into this slot's GUI"""
         try:
             if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                # Get the saved EEPROM settings for this specific slot
+                # Get current RAM settings from the keyboard
                 config = self.device.keyboard.get_custom_slot_config(slot)
                 if config and len(config) >= 12:
-                    print(f"Displaying EEPROM settings for slot {slot + 1}")
-                    self.update_slot_gui(slot, config)
-                    print(f"EEPROM settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
+                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
+                    
+                    # Block signals to prevent triggering changes while updating
+                    self.block_signals()
+                    
+                    widgets = self.slot_widgets[slot]
+                    
+                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
+                    widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning
+                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation  
+                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning
+                    widgets['background'].setCurrentIndex(min(config[5], 121))  # background_mode
+                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
+                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
+                    widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
+                    widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
+                    widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
+                    
+                    # Unblock signals
+                    self.unblock_signals()
+                    
+                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
+                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
+                    
                 else:
-                    print(f"No EEPROM settings available for slot {slot + 1}")
-                    self.set_slot_defaults(slot)
-            else:
-                print(f"EEPROM methods not implemented for slot {slot + 1}")
-                self.set_slot_defaults(slot)
-                
-        except Exception as e:
-            print(f"Error displaying slot {slot + 1} EEPROM settings: {e}")
-            self.set_slot_defaults(slot)
-
-    def update_slot_gui(self, slot, config):
-        """Update GUI for a specific slot with given config (read-only display)"""
-        if slot not in self.slot_widgets:
-            return
-            
-        # Block signals to prevent triggering changes while updating
-        self.block_slot_signals(slot)
-        
-        widgets = self.slot_widgets[slot]
-        
-        # Update all GUI controls with the config data
-        widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
-        widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning
-        widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation  
-        widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning
-        widgets['background'].setCurrentIndex(min(config[5], 121))  # background_mode
-        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
-        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
-        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
-        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-        
-        # Unblock signals
-        self.unblock_slot_signals(slot)
-
-    def block_slot_signals(self, slot):
-        """Block signals for a specific slot'ss widgets"""
-        if slot in self.slot_widgets:
-            widgets = self.slot_widgets[slot]
-            for widget in widgets.values():
-                widget.blockSignals(True)
-
-    def unblock_slot_signals(self, slot):
-        """Unblock signals for a specific slot's widgets"""
-        if slot in self.slot_widgets:
-            widgets = self.slot_widgets[slot]
-            for widget in widgets.values():
-                widget.blockSignals(False)
-
-    def on_load_from_keyboard(self):
-        """Load CURRENT LIVE settings from keyboard into the CURRENTLY ACTIVE tab's GUI"""
-        current_slot = self.get_current_slot()
-        try:
-            if hasattr(self.device.keyboard, 'get_current_live_rgb_settings'):
-                # Get the current live RGB settings (whatever is currently active)
-                live_settings = self.device.keyboard.get_current_live_rgb_settings()
-                if live_settings and len(live_settings) >= 12:
-                    print(f"Loading current LIVE keyboard settings into slot {current_slot + 1} GUI")
-                    self.update_slot_gui(current_slot, live_settings)
-                    print(f"Successfully loaded live settings into slot {current_slot + 1} GUI")
-                    print(f"Live settings: Live({live_settings[0]},{live_settings[2]}), Macro({live_settings[1]},{live_settings[3]}), BG({live_settings[5]}), Colors({live_settings[7]})")
-                else:
-                    print(f"No current live settings available to load for slot {current_slot + 1}")
-            elif hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                # Fallback: get current active slot's settings 
-                # (This assumes the keyboard has some "current active slot" concept)
-                if hasattr(self.device.keyboard, 'get_current_active_slot'):
-                    active_slot = self.device.keyboard.get_current_active_slot()
-                    config = self.device.keyboard.get_custom_slot_config(active_slot)
-                else:
-                    # Default to slot 0 as the "current" settings
-                    config = self.device.keyboard.get_custom_slot_config(0)
-                
-                if config and len(config) >= 12:
-                    print(f"Loading current active settings into slot {current_slot + 1} GUI")
-                    self.update_slot_gui(current_slot, config)
-                    print(f"Successfully loaded active settings into slot {current_slot + 1} GUI")
-                else:
-                    print(f"No current active settings available")
+                    print(f"No current settings available to load for slot {slot + 1}")
             else:
                 print(f"Load from keyboard not available - keyboard methods not implemented")
                 
         except Exception as e:
-            print(f"Error loading live settings for slot {current_slot + 1}: {e}")
+            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
 
     def create_slot_tab(self, slot):
-        """Create a tab for a single slot"""
-        # Create tab widget
-        tab_widget = QWidget()
-        self.tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
-        
-        # Create layout for this tab
-        layout = QGridLayout(tab_widget)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+            """Create a tab for a single slot"""
+            # Create tab widget
+            tab_widget = QWidget()
+            self.tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
+            
+            # Create layout for this tab
+            layout = QGridLayout(tab_widget)
+            layout.setContentsMargins(10, 10, 10, 10)
+            layout.setSpacing(5)
 
-        # Live Animation section
-        live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
-        live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(live_label, 0, 0, 1, 3)
+            # Live Animation section
+            live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
+            live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(live_label, 0, 0, 1, 3)
 
-        # Live Effect - hierarchical dropdown
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
-        live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
-        live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
-        layout.addWidget(live_effect, 1, 1, 1, 2)
+            # Live Effect - hierarchical dropdown
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
+            live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
+            live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
+            layout.addWidget(live_effect, 1, 1, 1, 2)
 
-        # Live Style - hierarchical dropdown
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
-        live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
-        live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
-        layout.addWidget(live_style, 2, 1, 1, 2)
+            # Live Style - hierarchical dropdown
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
+            live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
+            live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
+            layout.addWidget(live_style, 2, 1, 1, 2)
 
-        # Live Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
-        live_speed = QSlider(QtCore.Qt.Horizontal)
-        live_speed.setMinimum(0)
-        live_speed.setMaximum(255)
-        live_speed.setValue(128)  # Default speed
-        live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-        layout.addWidget(live_speed, 3, 1, 1, 2)
+            # Live Animation Speed slider
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
+            live_speed = QSlider(QtCore.Qt.Horizontal)
+            live_speed.setMinimum(0)
+            live_speed.setMaximum(255)
+            live_speed.setValue(128)  # Default speed
+            live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
+            layout.addWidget(live_speed, 3, 1, 1, 2)
 
-        # Macro Animation section
-        macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
-        macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(macro_label, 4, 0, 1, 3)
+            # Macro Animation section
+            macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
+            macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(macro_label, 4, 0, 1, 3)
 
-        # Macro Effect - hierarchical dropdown (same as live effects)
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
-        macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
-        macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
-        layout.addWidget(macro_effect, 5, 1, 1, 2)
+            # Macro Effect - hierarchical dropdown (same as live effects)
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
+            macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
+            macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
+            layout.addWidget(macro_effect, 5, 1, 1, 2)
 
-        # Macro Style - hierarchical dropdown
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
-        macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
-        macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
-        layout.addWidget(macro_style, 6, 1, 1, 2)
+            # Macro Style - hierarchical dropdown
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
+            macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
+            macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
+            layout.addWidget(macro_style, 6, 1, 1, 2)
 
-        # Macro Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
-        macro_speed = QSlider(QtCore.Qt.Horizontal)
-        macro_speed.setMinimum(0)
-        macro_speed.setMaximum(255)
-        macro_speed.setValue(128)  # Default speed
-        macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-        layout.addWidget(macro_speed, 7, 1, 1, 2)
+# Macro Animation Speed slider
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
+            macro_speed = QSlider(QtCore.Qt.Horizontal)
+            macro_speed.setMinimum(0)
+            macro_speed.setMaximum(255)
+            macro_speed.setValue(128)  # Default speed
+            macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
+            layout.addWidget(macro_speed, 7, 1, 1, 2)
 
-        # Effects section
-        effects_label = QLabel(tr("RGBConfigurator", "Background:"))
-        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 8, 0, 1, 3)
+            # Effects section
+            effects_label = QLabel(tr("RGBConfigurator", "Background:"))
+            effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(effects_label, 8, 0, 1, 3)
 
-        # Background - hierarchical dropdown
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
-        background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
-        background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-        layout.addWidget(background, 9, 1, 1, 2)
+            # Background - hierarchical dropdown
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
+            background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
+            background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
+            layout.addWidget(background, 9, 1, 1, 2)
 
-        # Background Brightness slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
-        background_brightness = QSlider(QtCore.Qt.Horizontal)
-        background_brightness.setMinimum(0)
-        background_brightness.setMaximum(100)
-        background_brightness.setValue(30)  # Default 30%
-        background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
-        layout.addWidget(background_brightness, 10, 1, 1, 2)
+            # Background Brightness slider
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
+            background_brightness = QSlider(QtCore.Qt.Horizontal)
+            background_brightness.setMinimum(0)
+            background_brightness.setMaximum(100)
+            background_brightness.setValue(30)  # Default 30%
+            background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
+            layout.addWidget(background_brightness, 10, 1, 1, 2)
 
-        # Effect Colours section header
-        effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
-        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 11, 0, 1, 3)
+            # Effect Colours section header
+            effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
+            effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(effects_label, 11, 0, 1, 3)
 
-        # Colour Scheme - moved to row 12
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
-        color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
-        color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 12, 1, 1, 2)
+            # Colour Scheme - moved to row 12
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
+            color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
+            color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
+            layout.addWidget(color_type, 12, 1, 1, 2)
 
-        # Sustain Mode - moved to row 13
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
-        sustain_mode = QComboBox()
-        for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
-            sustain_mode.addItem(sustain)
-        sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-        layout.addWidget(sustain_mode, 13, 1, 1, 2)
+            # Sustain Mode - moved to row 13
+            layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
+            sustain_mode = QComboBox()
+            for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
+                sustain_mode.addItem(sustain)
+            sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
+            layout.addWidget(sustain_mode, 13, 1, 1, 2)
 
-        # Buttons - moved to row 14
-        buttons_layout = QHBoxLayout()
-        
-        save_button = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
-        save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
-        buttons_layout.addWidget(save_button)
-        
-        # Load from keyboard button - gets LIVE settings
-        load_button = QPushButton(tr("RGBConfigurator", "Load Live Settings from Keyboard"))
-        load_button.clicked.connect(self.on_load_from_keyboard)  # No slot parameter - uses current tab
-        buttons_layout.addWidget(load_button)
-        
-        preset_combo = QComboBox()
-        preset_combo.addItem("Load Preset...")
-        for preset in CUSTOM_LIGHT_PRESETS:
-            preset_combo.addItem(preset)
-        preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
-        buttons_layout.addWidget(preset_combo)
-        
-        buttons_widget = QWidget()
-        buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 14, 0, 1, 3)
+            # Buttons - moved to row 14
+            buttons_layout = QHBoxLayout()
+            
+            save_button = QPushButton(tr("RGBConfigurator", "Save"))
+            save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
+            buttons_layout.addWidget(save_button)
+            
+            load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
+            load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
+            buttons_layout.addWidget(load_button)
+            
+            preset_combo = QComboBox()
+            preset_combo.addItem("Load Preset...")
+            for preset in CUSTOM_LIGHT_PRESETS:
+                preset_combo.addItem(preset)
+            preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
+            buttons_layout.addWidget(preset_combo)
+            
+            buttons_widget = QWidget()
+            buttons_widget.setLayout(buttons_layout)
+            layout.addWidget(buttons_widget, 14, 0, 1, 3)
 
-        # Store widgets for this slot
-        self.slot_widgets[slot] = {
-            'live_effect': live_effect,
-            'live_style': live_style,
-            'live_speed': live_speed,
-            'macro_effect': macro_effect,
-            'macro_style': macro_style,
-            'macro_speed': macro_speed,
-            'background': background,
-            'background_brightness': background_brightness,
-            'color_type': color_type,
-            'sustain_mode': sustain_mode,
-            'preset_combo': preset_combo
-        }
+            # Store widgets for this slot
+            self.slot_widgets[slot] = {
+                'live_effect': live_effect,
+                'live_style': live_style,
+                'live_speed': live_speed,
+                'macro_effect': macro_effect,
+                'macro_style': macro_style,
+                'macro_speed': macro_speed,
+                'background': background,
+                'background_brightness': background_brightness,
+                'color_type': color_type,
+                'sustain_mode': sustain_mode,
+                'preset_combo': preset_combo
+            }
 
-        self.slot_tabs.append(tab_widget)
-
+            self.slot_tabs.append(tab_widget)
     def update_from_keyboard(self):
-        """Update UI from keyboard state - display EEPROM settings for all slots"""
+        """Update UI from keyboard state using VialKeyboard infrastructure"""
         self.block_signals()
         
-        # Update all slots with their EEPROM settings
+        # Update all slots
         for slot in range(12):
             try:
                 if hasattr(self.device.keyboard, 'get_custom_slot_config'):
                     config = self.device.keyboard.get_custom_slot_config(slot)
-                    if config and len(config) >= 12:
-                        self.update_slot_gui(slot, config)
+                    if config and len(config) >= 12:  # Expecting 12 parameters
+                        widgets = self.slot_widgets[slot]
+                        
+                        # Set individual effect and style dropdowns with updated ranges
+                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
+                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
+                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
+                        
+                        # Skip config[4] (influence) - no longer used
+                        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
+                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # color_type
+                        # config[8] is enabled - not shown in UI
+                        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
+                        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
+                        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)  # Macro speed
                     else:
                         self.set_slot_defaults(slot)
                 else:
@@ -1608,10 +1549,6 @@ class CustomLightsHandler(BasicHandler):
             except Exception as e:
                 print(f"Error updating custom lights slot {slot}: {e}")
                 self.set_slot_defaults(slot)
-
-        # Also display the current tab's EEPROM settings
-        current_slot = self.get_current_slot()
-        self.display_slot_eeprom_settings(current_slot)
 
         self.unblock_signals()
 
@@ -1636,79 +1573,83 @@ class CustomLightsHandler(BasicHandler):
     def block_signals(self):
         """Block signals for all widgets"""
         for slot in range(12):
-            self.block_slot_signals(slot)
+            widgets = self.slot_widgets[slot]
+            for widget in widgets.values():
+                widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
         for slot in range(12):
-            self.unblock_slot_signals(slot)
+            widgets = self.slot_widgets[slot]
+            for widget in widgets.values():
+                widget.blockSignals(False)
 
-    # Event handlers - these MODIFY the current slot's settings in RAM
+    # Event handlers using VialKeyboard infrastructure - NO UPDATE CALLS
     def on_live_effect_changed(self, slot, index):
-        """Handle live effect change - modifies RAM settings"""
+        """Handle live effect change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 2, index)  # live_animation
         else:
             print(f"Live effect changed: slot {slot}, effect {index}")
 
     def on_live_style_changed(self, slot, index):
-        """Handle live style change - modifies RAM settings"""
+        """Handle live style change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 0, index)  # live_positioning
         else:
             print(f"Live style changed: slot {slot}, style {index}")
 
     def on_live_speed_changed(self, slot, value):
-        """Handle live animation speed change - modifies RAM settings"""
+        """Handle live animation speed change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 10, value)  # Parameter 10: live speed
         else:
             print(f"Live speed changed: slot {slot}, speed {value}")
 
     def on_macro_effect_changed(self, slot, index):
-        """Handle macro effect change - modifies RAM settings"""
+        """Handle macro effect change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 3, index)  # macro_animation
         else:
             print(f"Macro effect changed: slot {slot}, effect {index}")
 
     def on_macro_style_changed(self, slot, index):
-        """Handle macro style change - modifies RAM settings"""
+        """Handle macro style change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 1, index)  # macro_positioning
         else:
             print(f"Macro style changed: slot {slot}, style {index}")
 
     def on_macro_speed_changed(self, slot, value):
-        """Handle macro animation speed change - modifies RAM settings"""
+        """Handle macro animation speed change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 11, value)  # Parameter 11: macro speed
         else:
             print(f"Macro speed changed: slot {slot}, speed {value}")
 
     def on_background_changed(self, slot, index):
-        """Handle background change - modifies RAM settings"""
+        """Handle background change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 5, index)
         else:
             print(f"Background changed: slot {slot}, index {index}")
 
     def on_background_brightness_changed(self, slot, value):
-        """Handle background brightness change - modifies RAM settings"""
+        """Handle background brightness change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 9, value)  # Parameter 9: background brightness
         else:
             print(f"Background brightness changed: slot {slot}, brightness {value}%")
 
     def on_sustain_mode_changed(self, slot, index):
-        """Handle sustain mode change - modifies RAM settings"""
+        """Handle sustain mode change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 6, index)
         else:
             print(f"Sustain mode changed: slot {slot}, index {index}")
 
     def on_color_type_changed(self, slot, index):
-        """Handle color type change - modifies RAM settings"""
+        """Handle color type change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
         else:
@@ -1730,7 +1671,7 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error saving slot {slot + 1}: {e}")
 
     def on_load_preset(self, slot, index):
-        """Load a preset configuration - modifies RAM settings"""
+        """Load a preset configuration - now sets individual parameters"""
         if index == 0:  # "Load Preset..." header
             return
             
@@ -1770,11 +1711,17 @@ class CustomLightsHandler(BasicHandler):
                 )
                 if success:
                     # Update GUI to reflect the loaded preset
-                    self.update_slot_gui(slot, [
-                        preset['live_pos'], preset['macro_pos'], preset['live_anim'], preset['macro_anim'],
-                        0, preset['background'], preset['sustain'], 
-                        preset['color'], 1, preset['bg_brightness'], preset['live_speed'], preset['macro_speed']
-                    ])
+                    widgets = self.slot_widgets[slot]
+                    widgets['live_effect'].setCurrentIndex(preset['live_anim'])
+                    widgets['live_style'].setCurrentIndex(preset['live_pos'])
+                    widgets['macro_effect'].setCurrentIndex(preset['macro_anim'])
+                    widgets['macro_style'].setCurrentIndex(preset['macro_pos'])
+                    widgets['background'].setCurrentIndex(preset['background'])
+                    widgets['sustain_mode'].setCurrentIndex(preset['sustain'])
+                    widgets['color_type'].setCurrentIndex(preset['color'])
+                    widgets['background_brightness'].setValue(preset['bg_brightness'])
+                    widgets['live_speed'].setValue(preset['live_speed'])
+                    widgets['macro_speed'].setValue(preset['macro_speed'])
                     print(f"Loaded preset {preset_index} to slot {slot + 1}")
                 else:
                     print(f"Failed to load preset {preset_index}")
@@ -1784,8 +1731,8 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error loading preset: {e}")
         
         # Reset combo box to header
-        self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)      
-        
+        self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
+
 class RGBConfigurator(BasicEditor):
 
     def __init__(self):
