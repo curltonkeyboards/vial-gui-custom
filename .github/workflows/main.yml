@@ -59,8 +59,12 @@ jobs:
     
     - name: Install Visual C++ Redistributables
       run: |
-        choco install vcredist2010 vcredist2012 --ignore-checksums -y
+        # Try installing only vcredist2012 first, and make it non-blocking
+        choco install vcredist2012 --ignore-checksums -y
+        # If you need vcredist2010, try this alternative approach:
+        # choco install vcredist2010 -y || echo "vcredist2010 failed, continuing anyway"
       shell: powershell
+      continue-on-error: true  # Don't fail the job if this step fails
         
     - uses: actions/setup-python@v5  # Updated to v5 for Node.js 20 support
       with:
