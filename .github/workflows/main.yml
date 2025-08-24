@@ -57,14 +57,23 @@ jobs:
     steps:
     - uses: actions/checkout@v4  # Updated to v4 for Node.js 20 support
     
-    - name: Install Visual C++ Redistributables
+    - name: Install Visual C++ Redistributables - Direct Download
       run: |
-        # Try installing only vcredist2012 first, and make it non-blocking
-        choco install vcredist2012 --ignore-checksums -y
-        # If you need vcredist2010, try this alternative approach:
-        # choco install vcredist2010 -y || echo "vcredist2010 failed, continuing anyway"
+        # Download and install VC++ 2010 x64 redistributable directly
+        Invoke-WebRequest -Uri "https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x64.exe" -OutFile "vcredist_x64_2010.exe"
+        Start-Process -FilePath "vcredist_x64_2010.exe" -ArgumentList "/quiet" -Wait
+        
+        # Download and install VC++ 2010 x86 redistributable directly
+        Invoke-WebRequest -Uri "https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe" -OutFile "vcredist_x86_2010.exe"
+        Start-Process -FilePath "vcredist_x86_2010.exe" -ArgumentList "/quiet" -Wait
+        
+        # Also install 2012 redistributables
+        Invoke-WebRequest -Uri "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe" -OutFile "vcredist_x64_2012.exe"
+        Start-Process -FilePath "vcredist_x64_2012.exe" -ArgumentList "/quiet" -Wait
+        
+        Invoke-WebRequest -Uri "https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x86.exe" -OutFile "vcredist_x86_2012.exe"
+        Start-Process -FilePath "vcredist_x86_2012.exe" -ArgumentList "/quiet" -Wait
       shell: powershell
-      continue-on-error: true  # Don't fail the job if this step fails
         
     - uses: actions/setup-python@v5  # Updated to v5 for Node.js 20 support
       with:
