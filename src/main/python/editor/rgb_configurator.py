@@ -1325,9 +1325,6 @@ class CustomLightsHandler(BasicHandler):
         # Create tab widget
         self.tab_widget = QTabWidget()
         container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
-        
-        # Connect tab change handler
-        self.tab_widget.currentChanged.connect(self.on_tab_changed)
 
         # Create tabs for each slot (12 slots)
         self.slot_tabs = []
@@ -1335,6 +1332,9 @@ class CustomLightsHandler(BasicHandler):
         
         for slot in range(12):
             self.create_slot_tab(slot)
+        
+        # Connect tab change handler AFTER all tabs are created
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
         
@@ -1784,8 +1784,7 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error loading preset: {e}")
         
         # Reset combo box to header
-        self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
-        
+        self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)      
         
 class RGBConfigurator(BasicEditor):
 
