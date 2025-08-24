@@ -1383,13 +1383,13 @@ class CustomLightsHandler(BasicHandler):
         widgets = self.slot_widgets[slot]
         
         # Update all GUI controls with the config data
-        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
-        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning
-        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation  
-        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning
-        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+        widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
+        widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning
+        widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation  
+        widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning
+        widgets['background'].setCurrentIndex(min(config[5], 121))  # background_mode
         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))
+        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
