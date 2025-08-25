@@ -708,3 +708,35 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error getting custom slot {slot} RAM state: {e}")
             return None
+
+    def get_current_playing_state(self):
+        """Get the currently playing RGB parameters"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_GET_CURRENT_PLAYING), retries=20)
+            if data and len(data) > 2 and data[0] == 0x01:
+                return {
+                    'active_slot': data[1],
+                    'is_randomize': data[2] == 1,
+                    'parameters': data[3:15]  # 12 parameters
+                }
+            return None
+        except Exception as e:
+            print(f"Error getting current playing state: {e}")
+            return None
+            
+    def on_load_from_keyboard(self, slot):
+        """Load current PLAYING settings from keyboard into this slot's GUI"""
+        self.block_signals()
+        
+        try:
+            current_state = self.device.keyboard.get_current_playing_state()
+            if current_state:
+                # Update GUI with currently playing parameters
+                self.update_slot_widgets(slot, current_state['parameters'])
+                print(f"Loaded playing state from slot {current_state['active_slot']} to GUI slot {slot}")
+            else:
+                print("No current playing state available")
+        except Exception as e:
+            print(f"Error loading current playing state: {e}")
+            
+        self.unblock_signals()
