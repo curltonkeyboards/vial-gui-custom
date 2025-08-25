@@ -1338,42 +1338,9 @@ class CustomLightsHandler(BasicHandler):
 
     def on_load_from_keyboard(self, slot):
         """Load current RAM settings from keyboard into this slot's GUI"""
-        try:
-            if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                # Get current RAM settings from the keyboard
-                config = self.device.keyboard.get_custom_slot_config(slot)
-                if config and len(config) >= 12:
-                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
-                    
-                    # Block signals to prevent triggering changes while updating
-                    self.block_signals()
-                    
-                    widgets = self.slot_widgets[slot]
-                    
-                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
-                    widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning
-                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation  
-                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning
-                    widgets['background'].setCurrentIndex(min(config[5], 121))  # background_mode
-                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
-                    widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
-                    widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
-                    widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-                    
-                    # Unblock signals
-                    self.unblock_signals()
-                    
-                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
-                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
-                    
-                else:
-                    print(f"No current settings available to load for slot {slot + 1}")
-            else:
-                print(f"Load from keyboard not available - keyboard methods not implemented")
-                
-        except Exception as e:
-            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
+        self.block_signals()
+        self.load_slot_from_ram(slot)  # Load from RAM
+        self.unblock_signals()
 
     def update_from_keyboard(self):
         """Load current RAM state for active effect"""
@@ -1402,23 +1369,23 @@ class CustomLightsHandler(BasicHandler):
             
         self.unblock_signals()
     
-    def load_slot_from_ram(self, slot):
-        """Load slot settings from current RAM state"""
-        try:
-            config = self.device.keyboard.get_custom_slot_ram_state(slot)  # New method
-            if config and len(config) >= 12:
-                self.update_slot_widgets(slot, config)
-        except Exception as e:
-            print(f"Error loading RAM state for slot {slot}: {e}")
-    
     def load_slot_from_eeprom(self, slot):
         """Load slot settings from EEPROM"""
         try:
-            config = self.device.keyboard.get_custom_slot_config(slot)  # Existing method
+            config = self.device.keyboard.get_custom_slot_config(slot, from_eeprom=True)  # Explicit EEPROM
             if config and len(config) >= 12:
                 self.update_slot_widgets(slot, config)
         except Exception as e:
             print(f"Error loading EEPROM state for slot {slot}: {e}")
+
+    def load_slot_from_ram(self, slot):
+        """Load slot settings from current RAM state"""
+        try:
+            config = self.device.keyboard.get_custom_slot_config(slot, from_eeprom=False)  # Explicit RAM
+            if config and len(config) >= 12:
+                self.update_slot_widgets(slot, config)
+        except Exception as e:
+            print(f"Error loading RAM state for slot {slot}: {e}")
     
     def update_slot_widgets(self, slot, config):
         """Update GUI widgets for a slot with given config"""
