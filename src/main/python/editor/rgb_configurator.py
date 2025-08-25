@@ -1325,7 +1325,7 @@ class CustomLightsHandler(BasicHandler):
         # Create tab widget
         self.tab_widget = QTabWidget()
         container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
-        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+
         # Create tabs for each slot (12 slots)
         self.slot_tabs = []
         self.slot_widgets = {}
@@ -1335,89 +1335,46 @@ class CustomLightsHandler(BasicHandler):
 
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
         
-    def on_tab_changed(self, tab_index):
-        """Called when user switches to a different tab - reload EEPROM data for that slot"""
-        if not self.valid() or not hasattr(self.device.keyboard, 'get_custom_slot_config'):
-            return
-            
-        try:
-            # Load EEPROM data for the newly selected tab
-            config = self.device.keyboard.get_custom_slot_config(tab_index)
-            
-            if config and len(config) >= 12:
-                self.block_signals()
-                
-                widgets = self.slot_widgets[tab_index]
-                
-                # Load the actual EEPROM data for this specific slot
-                widgets['live_effect'].setCurrentIndex(min(config[2], 165))
-                widgets['live_style'].setCurrentIndex(min(config[0], 23))
-                widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
-                widgets['macro_style'].setCurrentIndex(min(config[1], 34))
-                widgets['background'].setCurrentIndex(min(config[5], 121))
-                widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
-                widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
-                widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
-                widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-                
-                self.unblock_signals()
-                
-                print(f"Loaded EEPROM data for slot {tab_index} into GUI tab")
-            else:
-                # Set defaults if no EEPROM data
-                self.set_slot_defaults(tab_index)
-                
-        except Exception as e:
-            print(f"Error loading EEPROM data for tab {tab_index}: {e}")
-            self.set_slot_defaults(tab_index)
-            
+
     def on_load_from_keyboard(self, slot):
-        """Load settings from the last active custom slot into the currently open GUI tab (TEMPORARY - no EEPROM save)"""
+        """Load current RAM settings from keyboard into this slot's GUI"""
         try:
-            # Get which custom slot was last active on the keyboard
-            last_active_slot = 0  # Default to slot 0
-            
-            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                try:
-                    status = self.device.keyboard.get_custom_animation_status()
-                    if status and len(status) >= 3:
-                        last_active_slot = status[2]
-                        print(f"Loading from last active slot {last_active_slot} into GUI tab {slot + 1} (TEMPORARY)")
-                except:
-                    print("Could not get status, loading from slot 0 (TEMPORARY)")
-            
             if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                config = self.device.keyboard.get_custom_slot_config(last_active_slot)
-                
+                # Get current RAM settings from the keyboard
+                config = self.device.keyboard.get_custom_slot_config(slot)
                 if config and len(config) >= 12:
+                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
+                    
+                    # Block signals to prevent triggering changes while updating
                     self.block_signals()
                     
                     widgets = self.slot_widgets[slot]
                     
-                    # Only update GUI - NO EEPROM saving
-                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))
-                    widgets['live_style'].setCurrentIndex(min(config[0], 23))
-                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
-                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))
-                    widgets['background'].setCurrentIndex(min(config[5], 121))
+                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
+                    widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning
+                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation  
+                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning
+                    widgets['background'].setCurrentIndex(min(config[5], 121))  # background_mode
                     widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                     widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
                     widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
                     widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
                     widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
                     
+                    # Unblock signals
                     self.unblock_signals()
                     
-                    print(f"Temporarily loaded settings from slot {last_active_slot} into GUI tab {slot + 1}")
-                    print("NOTE: These are temporary changes. Switch tabs or restart to see original EEPROM data.")
+                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
+                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
                     
                 else:
-                    print(f"No settings available from slot {last_active_slot}")
-                    
+                    print(f"No current settings available to load for slot {slot + 1}")
+            else:
+                print(f"Load from keyboard not available - keyboard methods not implemented")
+                
         except Exception as e:
-            print(f"Error loading settings: {e}")
-        
+            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
+
     def create_slot_tab(self, slot):
             """Create a tab for a single slot"""
             # Create tab widget
@@ -1524,18 +1481,18 @@ class CustomLightsHandler(BasicHandler):
             buttons_layout = QHBoxLayout()
             
             save_button = QPushButton(tr("RGBConfigurator", "Save"))
-            save_button.clicked.connect(lambda checked: self.on_save_slot(self.tab_widget.currentIndex()))
+            save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
             buttons_layout.addWidget(save_button)
             
             load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
-            load_button.clicked.connect(lambda checked: self.on_load_from_keyboard(self.tab_widget.currentIndex()))
+            load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
             buttons_layout.addWidget(load_button)
             
             preset_combo = QComboBox()
             preset_combo.addItem("Load Preset...")
             for preset in CUSTOM_LIGHT_PRESETS:
                 preset_combo.addItem(preset)
-            preset_combo.currentIndexChanged.connect(lambda idx: self.on_load_preset(self.tab_widget.currentIndex(), idx))
+            preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
             buttons_layout.addWidget(preset_combo)
             
             buttons_widget = QWidget()
@@ -1569,12 +1526,12 @@ class CustomLightsHandler(BasicHandler):
                     config = self.device.keyboard.get_custom_slot_config(slot)
                     if config and len(config) >= 12:  # Expecting 12 parameters
                         widgets = self.slot_widgets[slot]
-
+                        
                         # Set individual effect and style dropdowns with updated ranges
-                        widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
-                        widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning (0-44)
-                        widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation
-                        widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning (0-74)
+                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
+                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
+                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
                         
                         # Skip config[4] (influence) - no longer used
                         widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
@@ -1627,270 +1584,91 @@ class CustomLightsHandler(BasicHandler):
             for widget in widgets.values():
                 widget.blockSignals(False)
 
-    def get_active_custom_slot(self):
-        """Get the currently active custom slot from the keyboard"""
-        try:
-            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                status = self.device.keyboard.get_custom_animation_status()
-                if status and len(status) >= 3:
-                    active_slot = status[2]  # Index 2 contains the active slot
-                    print(f"Currently active custom slot: {active_slot}")
-                    return active_slot
-        except Exception as e:
-            print(f"Error getting active custom slot: {e}")
-        
-        # Default to slot 0 if we can't get the status
-        print("Defaulting to slot 0")
-        return 0
-
-    def get_active_custom_slot(self):
-        """Get the currently active custom slot from the keyboard based on RGB mode"""
-        try:
-            # Get the current RGB mode from the keyboard
-            if hasattr(self.device.keyboard, 'rgb_mode'):
-                rgb_mode = self.device.keyboard.rgb_mode
-                print(f"Current RGB mode: {rgb_mode}")
-                
-                # Custom slots correspond to RGB modes 57-68 (Custom Slot 1-12)
-                # Map to 0-indexed slots (0-11)
-                if 57 <= rgb_mode <= 68:
-                    active_slot = rgb_mode - 57  # Convert to 0-indexed (57->0, 58->1, etc.)
-                    print(f"RGB mode {rgb_mode} corresponds to custom slot {active_slot}")
-                    self.last_known_custom_slot = active_slot  # Remember this slot
-                    return active_slot
-                else:
-                    # Not a custom slot mode, return the last known custom slot
-                    if hasattr(self, 'last_known_custom_slot'):
-                        print(f"RGB mode {rgb_mode} is not a custom slot, using last known custom slot {self.last_known_custom_slot}")
-                        return self.last_known_custom_slot
-                    else:
-                        # No previous custom slot known, default to 0
-                        print(f"RGB mode {rgb_mode} is not a custom slot, defaulting to slot 0")
-                        self.last_known_custom_slot = 0
-                        return 0
-                        
-        except Exception as e:
-            print(f"Error getting RGB mode: {e}")
-        
-        # Default to slot 0 if we can't get the RGB mode
-        if not hasattr(self, 'last_known_custom_slot'):
-            self.last_known_custom_slot = 0
-        print(f"Error getting RGB mode, using last known custom slot {self.last_known_custom_slot}")
-        return self.last_known_custom_slot
-
-    # Event handlers using VialKeyboard infrastructure - ALWAYS TARGET ACTIVE EFFECT
+    # Event handlers using VialKeyboard infrastructure - NO UPDATE CALLS
     def on_live_effect_changed(self, slot, index):
-        """Handle live effect change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle live effect change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 2, index)  # live_animation
-            print(f"Live effect changed: GUI tab {slot}, but targeting active slot {active_slot}, effect {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 2, index)  # live_animation
         else:
-            print(f"Live effect changed: GUI tab {slot}, would target active slot {active_slot}, effect {index}")
+            print(f"Live effect changed: slot {slot}, effect {index}")
 
     def on_live_style_changed(self, slot, index):
-        """Handle live style change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle live style change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 0, index)  # live_positioning
-            print(f"Live style changed: GUI tab {slot}, but targeting active slot {active_slot}, style {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 0, index)  # live_positioning
         else:
-            print(f"Live style changed: GUI tab {slot}, would target active slot {active_slot}, style {index}")
+            print(f"Live style changed: slot {slot}, style {index}")
 
     def on_live_speed_changed(self, slot, value):
-        """Handle live animation speed change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle live animation speed change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 10, value)  # Parameter 10: live speed
-            print(f"Live speed changed: GUI tab {slot}, but targeting active slot {active_slot}, speed {value}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 10, value)  # Parameter 10: live speed
         else:
-            print(f"Live speed changed: GUI tab {slot}, would target active slot {active_slot}, speed {value}")
+            print(f"Live speed changed: slot {slot}, speed {value}")
 
     def on_macro_effect_changed(self, slot, index):
-        """Handle macro effect change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle macro effect change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 3, index)  # macro_animation
-            print(f"Macro effect changed: GUI tab {slot}, but targeting active slot {active_slot}, effect {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 3, index)  # macro_animation
         else:
-            print(f"Macro effect changed: GUI tab {slot}, would target active slot {active_slot}, effect {index}")
+            print(f"Macro effect changed: slot {slot}, effect {index}")
 
     def on_macro_style_changed(self, slot, index):
-        """Handle macro style change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle macro style change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 1, index)  # macro_positioning
-            print(f"Macro style changed: GUI tab {slot}, but targeting active slot {active_slot}, style {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 1, index)  # macro_positioning
         else:
-            print(f"Macro style changed: GUI tab {slot}, would target active slot {active_slot}, style {index}")
+            print(f"Macro style changed: slot {slot}, style {index}")
 
     def on_macro_speed_changed(self, slot, value):
-        """Handle macro animation speed change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle macro animation speed change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 11, value)  # Parameter 11: macro speed
-            print(f"Macro speed changed: GUI tab {slot}, but targeting active slot {active_slot}, speed {value}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 11, value)  # Parameter 11: macro speed
         else:
-            print(f"Macro speed changed: GUI tab {slot}, would target active slot {active_slot}, speed {value}")
+            print(f"Macro speed changed: slot {slot}, speed {value}")
 
     def on_background_changed(self, slot, index):
-        """Handle background change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle background change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 5, index)
-            print(f"Background changed: GUI tab {slot}, but targeting active slot {active_slot}, index {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 5, index)
         else:
-            print(f"Background changed: GUI tab {slot}, would target active slot {active_slot}, index {index}")
+            print(f"Background changed: slot {slot}, index {index}")
 
     def on_background_brightness_changed(self, slot, value):
-        """Handle background brightness change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle background brightness change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 9, value)  # Parameter 9: background brightness
-            print(f"Background brightness changed: GUI tab {slot}, but targeting active slot {active_slot}, brightness {value}%")
+            self.device.keyboard.set_custom_slot_parameter(slot, 9, value)  # Parameter 9: background brightness
         else:
-            print(f"Background brightness changed: GUI tab {slot}, would target active slot {active_slot}, brightness {value}%")
+            print(f"Background brightness changed: slot {slot}, brightness {value}%")
 
     def on_sustain_mode_changed(self, slot, index):
-        """Handle sustain mode change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle sustain mode change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 6, index)
-            print(f"Sustain mode changed: GUI tab {slot}, but targeting active slot {active_slot}, index {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 6, index)
         else:
-            print(f"Sustain mode changed: GUI tab {slot}, would target active slot {active_slot}, index {index}")
+            print(f"Sustain mode changed: slot {slot}, index {index}")
 
     def on_color_type_changed(self, slot, index):
-        """Handle color type change - targets currently active effect"""
-        active_slot = self.get_active_custom_slot()
+        """Handle color type change"""
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 7, index)
-            print(f"Color type changed: GUI tab {slot}, but targeting active slot {active_slot}, index {index}")
+            self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
         else:
-            print(f"Color type changed: GUI tab {slot}, would target active slot {active_slot}, index {index}")
+            print(f"Color type changed: slot {slot}, index {index}")
 
     def on_save_slot(self, slot):
-        """Save current GUI tab configuration to the specified slot's EEPROM"""
+        """Save current slot configuration to EEPROM"""
         try:
-            # Get all current GUI values from the specified slot
-            widgets = self.slot_widgets[slot]
-            
-            # Gather all current GUI values
-            live_pos = widgets['live_style'].currentIndex()
-            macro_pos = widgets['macro_style'].currentIndex() 
-            live_anim = widgets['live_effect'].currentIndex()
-            macro_anim = widgets['macro_effect'].currentIndex()
-            influence = 0  # Not used anymore, always 0
-            background = widgets['background'].currentIndex()
-            sustain = widgets['sustain_mode'].currentIndex()
-            color_type = widgets['color_type'].currentIndex()
-            enabled = 1  # Always enabled
-            bg_brightness = widgets['background_brightness'].value()
-            live_speed = widgets['live_speed'].value()
-            macro_speed = widgets['macro_speed'].value()
-            
-            # Send all parameters to the keyboard for this slot
-            if hasattr(self.device.keyboard, 'set_custom_slot_all_parameters'):
-                success = self.device.keyboard.set_custom_slot_all_parameters(
-                    slot, 
-                    live_pos, macro_pos, live_anim, macro_anim,
-                    influence, background, sustain, 
-                    color_type, enabled, bg_brightness, live_speed, macro_speed
-                )
-                
+            if hasattr(self.device.keyboard, 'save_custom_slot'):
+                success = self.device.keyboard.save_custom_slot(slot)
                 if success:
-                    # Now save this specific slot to EEPROM
-                    if hasattr(self.device.keyboard, 'save_custom_slot'):
-                        save_success = self.device.keyboard.save_custom_slot(slot)
-                        if save_success:
-                            print(f"Successfully saved GUI settings from tab {slot + 1} to slot {slot} EEPROM")
-                        else:
-                            print(f"Failed to save slot {slot + 1} to EEPROM")
-                    else:
-                        print(f"Save slot {slot + 1} to EEPROM (keyboard method not implemented)")
+                    print(f"Saved slot {slot + 1} to EEPROM")
                 else:
-                    print(f"Failed to send GUI settings to keyboard slot {slot}")
+                    print(f"Failed to save slot {slot + 1}")
+            else:
+                print(f"Save slot {slot + 1} (keyboard method not implemented)")
                     
-            else:
-                print(f"Save GUI tab {slot + 1} to slot {slot} EEPROM (keyboard methods not implemented)")
-                
         except Exception as e:
-            print(f"Error saving GUI tab {slot + 1} to slot {slot}: {e}")
-
-    def on_load_preset(self, slot, index):
-        """Load preset into current GUI tab and save to last active custom slot's EEPROM"""
-        if index == 0:  # "Load Preset..." header
-            return
-            
-        preset_index = index - 1  # Adjust for header
-        
-        # Get which custom slot was last active on the keyboard
-        last_active_slot = 0  # Default to slot 0
-        
-        if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-            try:
-                status = self.device.keyboard.get_custom_animation_status()
-                if status and len(status) >= 3:
-                    last_active_slot = status[2]  # Get the last active custom slot
-                    print(f"Last active custom slot was: {last_active_slot}")
-            except:
-                print("Could not get custom animation status, defaulting to slot 0")
-        
-        # Define preset configurations as individual parameter sets
-        presets = [
-            # Classic TrueKey
-            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 0, 'macro_anim': 0, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 128, 'macro_speed': 128},
-            # Heat Effects
-            {'live_pos': 0, 'live_anim': 1, 'macro_pos': 0, 'macro_anim': 1, 'background': 1, 'sustain': 3, 'color': 3, 'bg_brightness': 25, 'live_speed': 200, 'macro_speed': 200},
-            # Moving Dots
-            {'live_pos': 1, 'live_anim': 3, 'macro_pos': 1, 'macro_anim': 3, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 35, 'live_speed': 150, 'macro_speed': 150},
-            # BPM Disco
-            {'live_pos': 2, 'live_anim': 0, 'macro_pos': 2, 'macro_anim': 0, 'background': 46, 'sustain': 3, 'color': 2, 'bg_brightness': 40, 'live_speed': 100, 'macro_speed': 100},
-            # Zone Lighting
-            {'live_pos': 1, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 0, 'background': 0, 'sustain': 3, 'color': 0, 'bg_brightness': 0, 'live_speed': 128, 'macro_speed': 128},
-            # Sustain Mode
-            {'live_pos': 0, 'live_anim': 2, 'macro_pos': 0, 'macro_anim': 2, 'background': 0, 'sustain': 3, 'color': 1, 'bg_brightness': 0, 'live_speed': 80, 'macro_speed': 80},
-            # Performance Setup
-            {'live_pos': 0, 'live_anim': 0, 'macro_pos': 1, 'macro_anim': 1, 'background': 1, 'sustain': 3, 'color': 1, 'bg_brightness': 30, 'live_speed': 180, 'macro_speed': 180},
-        ]
-        
-        if preset_index >= len(presets):
-            return
-            
-        preset = presets[preset_index]
-        
-        try:
-            # Set all parameters to the last active slot's EEPROM (not the current GUI tab)
-            if hasattr(self.device.keyboard, 'set_custom_slot_all_parameters'):
-                success = self.device.keyboard.set_custom_slot_all_parameters(
-                    last_active_slot,  # Save TO the last active slot, not the GUI tab
-                    preset['live_pos'], preset['macro_pos'], preset['live_anim'], preset['macro_anim'],
-                    0, preset['background'], preset['sustain'], 
-                    preset['color'], 1, preset['bg_brightness'], preset['live_speed'], preset['macro_speed']
-                )
-                if success:
-                    # Update current GUI tab to show the loaded preset
-                    widgets = self.slot_widgets[slot]  # slot is the current GUI tab
-                    widgets['live_effect'].setCurrentIndex(preset['live_anim'])
-                    widgets['live_style'].setCurrentIndex(preset['live_pos'])
-                    widgets['macro_effect'].setCurrentIndex(preset['macro_anim'])
-                    widgets['macro_style'].setCurrentIndex(preset['macro_pos'])
-                    widgets['background'].setCurrentIndex(preset['background'])
-                    widgets['sustain_mode'].setCurrentIndex(preset['sustain'])
-                    widgets['color_type'].setCurrentIndex(preset['color'])
-                    widgets['background_brightness'].setValue(preset['bg_brightness'])
-                    widgets['live_speed'].setValue(preset['live_speed'])
-                    widgets['macro_speed'].setValue(preset['macro_speed'])
-                    print(f"Loaded preset {preset_index} into GUI tab {slot + 1} and saved to last active slot {last_active_slot}")
-                else:
-                    print(f"Failed to load preset {preset_index}")
-            else:
-                print(f"Load preset {preset_index} to GUI tab {slot + 1} and last active slot {last_active_slot} (keyboard method not implemented)")
-        except Exception as e:
-            print(f"Error loading preset: {e}")
-        
-        # Reset combo box to header
-        self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
+            print(f"Error saving slot {slot + 1}: {e}")
 
     def on_load_preset(self, slot, index):
         """Load a preset configuration - now sets individual parameters"""

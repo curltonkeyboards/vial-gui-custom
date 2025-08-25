@@ -612,7 +612,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_custom_slot_config(self, slot):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 50:  # Changed from 10 to 50
+            if slot >= 12:
                 return None
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot), retries=20)
@@ -626,7 +626,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 50 or param_index >= 12:  # Changed from 10 to 50
+            if slot >= 12 or param_index >= 12:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
@@ -639,7 +639,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                                      background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed):
         """Set all parameters for a custom animation slot"""
         try:
-            if slot >= 50:  # Changed from 10 to 50
+            if slot >= 12:
                 return False
                 
             # Use set_all command: slot + 12 parameter bytes
@@ -655,7 +655,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def save_custom_slot(self, slot):
         """Save a specific custom slot configuration to EEPROM"""
         try:
-            if slot >= 50:  # Changed from 12 to 50
+            if slot >= 12:  # Support up to 12 slots
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SAVE, slot), retries=20)
@@ -664,18 +664,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error saving custom slot {slot}: {e}")
             return False        
 
-    def reset_custom_slot(self, slot):
-        """Reset a custom slot to default values"""
-        try:
-            if slot >= 50:  # Changed from 10 to 50
-                return False
-                
-            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, slot), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
-        except Exception as e:
-            print(f"Error resetting custom slot {slot}: {e}")
-            return False
-
     def save_custom_slots(self):
         """Save all custom slot configurations to EEPROM"""
         try:
@@ -683,6 +671,18 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
             print(f"Error saving custom slots: {e}")
+            return False
+
+    def reset_custom_slot(self, slot):
+        """Reset a custom slot to default values"""
+        try:
+            if slot >= 12:
+                return False
+                
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, slot), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error resetting custom slot {slot}: {e}")
             return False
             
     def rescan_led_positions(self):
