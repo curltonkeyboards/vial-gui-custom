@@ -1325,7 +1325,7 @@ class CustomLightsHandler(BasicHandler):
         # Create tab widget
         self.tab_widget = QTabWidget()
         container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
-        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+
         # Create tabs for each slot (12 slots)
         self.slot_tabs = []
         self.slot_widgets = {}
@@ -1336,58 +1336,29 @@ class CustomLightsHandler(BasicHandler):
         self.widgets = [self.lbl_custom_lights, self.tab_widget]
         
 
-    def on_tab_changed(self, index):
-        """Called when user switches tabs - load EEPROM data for that slot"""
-        # Add null checks
-        if not self.device or not hasattr(self.device, 'keyboard') or not self.device.keyboard:
-            return
-            
-        if hasattr(self.device.keyboard, 'get_custom_slot_eeprom_config'):
-            config = self.device.keyboard.get_custom_slot_eeprom_config(index)
+    def load_slot_from_eeprom(self, slot):
+        """Load slot settings from EEPROM"""
+        try:
+            config = self.device.keyboard.get_custom_slot_config(slot, from_eeprom=True)  # Explicit EEPROM
             if config and len(config) >= 12:
-                self.load_config_into_slot_gui(index, config)
+                self.update_slot_widgets(slot, config)
+        except Exception as e:
+            print(f"Error loading EEPROM state for slot {slot}: {e}")
+
+    def load_slot_from_ram(self, slot):
+        """Load slot settings from current RAM state"""
+        try:
+            config = self.device.keyboard.get_custom_slot_config(slot, from_eeprom=False)  # Explicit RAM
+            if config and len(config) >= 12:
+                self.update_slot_widgets(slot, config)
+        except Exception as e:
+            print(f"Error loading RAM state for slot {slot}: {e}")
 
     def on_load_from_keyboard(self, slot):
-        """Load current active RAM settings into this slot's GUI"""
-        # Add null checks here too
-        if not self.device or not hasattr(self.device, 'keyboard') or not self.device.keyboard:
-            return
-            
-        try:
-            if hasattr(self.device.keyboard, 'get_active_ram_config'):
-                config, source_slot = self.device.keyboard.get_active_ram_config()
-                if config and len(config) >= 12:
-                    print(f"Loading active RAM settings (from slot {source_slot}) into slot {slot + 1} GUI")
-                    self.load_config_into_slot_gui(slot, config)
-                else:
-                    print(f"No active RAM settings available to load for slot {slot + 1}")
-            else:
-                print("Load from keyboard not available - keyboard methods not implemented")
-        except Exception as e:
-            print(f"Error loading active settings for slot {slot + 1}: {e}")
-    
-    def load_config_into_slot_gui(self, slot, config):
-        """Load configuration data into specified slot's GUI"""
-        if slot >= 12 or slot not in self.slot_widgets:
-            return
-            
+        """Load current RAM settings from keyboard into this slot's GUI"""
         self.block_signals()
-        try:
-            widgets = self.slot_widgets[slot]
-            
-            widgets['live_style'].setCurrentIndex(min(config[0], 23))
-            widgets['macro_style'].setCurrentIndex(min(config[1], 34))
-            widgets['live_effect'].setCurrentIndex(min(config[2], 165))
-            widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
-            widgets['background'].setCurrentIndex(min(config[5], 121))
-            widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-            widgets['color_type'].setCurrentIndex(min(config[7], 64))
-            widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
-            widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
-            widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-            
-        finally:
-            self.unblock_signals()
+        self.load_slot_from_ram(slot)  # Load from RAM
+        self.unblock_signals()
 
     def create_slot_tab(self, slot):
             """Create a tab for a single slot"""
@@ -1530,16 +1501,41 @@ class CustomLightsHandler(BasicHandler):
 
             self.slot_tabs.append(tab_widget)
     def update_from_keyboard(self):
-        """Update all slots from their EEPROM data"""
+        """Update UI from keyboard state using VialKeyboard infrastructure"""
         self.block_signals()
-        try:
-            for slot in range(12):
-                if hasattr(self.device.keyboard, 'get_custom_slot_eeprom_config'):
-                    config = self.device.keyboard.get_custom_slot_eeprom_config(slot)
-                    if config and len(config) >= 12:
-                        self.load_config_into_slot_gui(slot, config)
-        finally:
-            self.unblock_signals()
+        
+        # Update all slots
+        for slot in range(12):
+            try:
+                if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+                    config = self.device.keyboard.get_custom_slot_config(slot)
+                    if config and len(config) >= 12:  # Expecting 12 parameters
+                        widgets = self.slot_widgets[slot]
+                        
+                        # Set individual effect and style dropdowns with updated ranges
+                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
+                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
+                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
+                        
+                        # Skip config[4] (influence) - no longer used
+                        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
+                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
+                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # color_type
+                        # config[8] is enabled - not shown in UI
+                        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
+                        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
+                        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)  # Macro speed
+                    else:
+                        self.set_slot_defaults(slot)
+                else:
+                    print(f"Custom slot config methods not implemented on keyboard")
+                    self.set_slot_defaults(slot)
+            except Exception as e:
+                print(f"Error updating custom lights slot {slot}: {e}")
+                self.set_slot_defaults(slot)
+
+        self.unblock_signals()
 
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
@@ -1721,6 +1717,7 @@ class CustomLightsHandler(BasicHandler):
         
         # Reset combo box to header
         self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
+
 
 class RGBConfigurator(BasicEditor):
 
