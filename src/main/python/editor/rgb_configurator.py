@@ -1337,24 +1337,36 @@ class CustomLightsHandler(BasicHandler):
         
 
     def on_load_from_keyboard(self, slot):
-        """Load current RAM settings from keyboard into this slot's GUI"""
+        """Load settings from the last active custom slot into the currently open GUI tab"""
         try:
+            # Get which custom slot was last active on the keyboard
+            last_active_slot = 0  # Default to slot 0
+            
+            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                try:
+                    status = self.device.keyboard.get_custom_animation_status()
+                    if status and len(status) >= 3:
+                        last_active_slot = status[2]  # Get the last active custom slot
+                        print(f"Last active custom slot was: {last_active_slot}")
+                except:
+                    print("Could not get custom animation status, defaulting to slot 0")
+            
+            # Always load FROM the last active slot, regardless of current GUI tab
             if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                # Get current RAM settings from the keyboard
-                config = self.device.keyboard.get_custom_slot_config(slot)
+                config = self.device.keyboard.get_custom_slot_config(last_active_slot)
+                print(f"Loading settings from last active slot {last_active_slot} into GUI tab {slot + 1}")
+                
                 if config and len(config) >= 12:
-                    print(f"Loading current keyboard settings into slot {slot + 1} GUI")
-                    
                     # Block signals to prevent triggering changes while updating
                     self.block_signals()
                     
-                    widgets = self.slot_widgets[slot]
+                    widgets = self.slot_widgets[slot]  # slot is the current GUI tab
                     
-                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
-                    widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning
-                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation  
-                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning
-                    widgets['background'].setCurrentIndex(min(config[5], 121))  # background_mode
+                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))
+                    widgets['live_style'].setCurrentIndex(min(config[0], 23))
+                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
+                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))
+                    widgets['background'].setCurrentIndex(min(config[5], 121))
                     widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
                     widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
                     widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
@@ -1364,16 +1376,15 @@ class CustomLightsHandler(BasicHandler):
                     # Unblock signals
                     self.unblock_signals()
                     
-                    print(f"Successfully loaded keyboard settings into slot {slot + 1} GUI")
-                    print(f"Settings: Live({config[0]},{config[2]}), Macro({config[1]},{config[3]}), BG({config[5]}), Colors({config[7]})")
+                    print(f"Successfully loaded settings from slot {last_active_slot} into GUI tab {slot + 1}")
                     
                 else:
-                    print(f"No current settings available to load for slot {slot + 1}")
+                    print(f"No settings available from slot {last_active_slot}")
             else:
-                print(f"Load from keyboard not available - keyboard methods not implemented")
-                
+                print("get_custom_slot_config method not available")
+                    
         except Exception as e:
-            print(f"Error loading settings from keyboard for slot {slot + 1}: {e}")
+            print(f"Error loading settings: {e}")
 
     def create_slot_tab(self, slot):
             """Create a tab for a single slot"""
