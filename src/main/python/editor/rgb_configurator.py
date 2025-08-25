@@ -1699,58 +1699,19 @@ class CustomLightsHandler(BasicHandler):
             print(f"Color type changed: slot {slot}, index {index}")
 
     def on_save_slot(self, slot):
-        """Save current GUI tab's settings to the last active custom slot's EEPROM"""
+        """Save current slot configuration to EEPROM"""
         try:
-            # Get which custom slot was last active on the keyboard
-            last_active_slot = 0  # Default to slot 0
-            
-            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                try:
-                    status = self.device.keyboard.get_custom_animation_status()
-                    if status and len(status) >= 3:
-                        last_active_slot = status[2]  # Get the last active custom slot
-                        print(f"Last active custom slot was: {last_active_slot}")
-                except:
-                    print("Could not get custom animation status, defaulting to slot 0")
-            
-            # Get settings from current GUI tab
-            widgets = self.slot_widgets[slot]  # slot is the current GUI tab
-            
-            # Set all parameters to the last active slot's EEPROM using current GUI values
-            if hasattr(self.device.keyboard, 'set_custom_slot_all_parameters'):
-                success = self.device.keyboard.set_custom_slot_all_parameters(
-                    last_active_slot,  # Save TO the last active slot, not the GUI tab
-                    widgets['live_style'].currentIndex(),      # live_pos
-                    widgets['macro_style'].currentIndex(),     # macro_pos  
-                    widgets['live_effect'].currentIndex(),     # live_anim
-                    widgets['macro_effect'].currentIndex(),    # macro_anim
-                    0,  # influence (unused)
-                    widgets['background'].currentIndex(),      # background
-                    widgets['sustain_mode'].currentIndex(),    # sustain
-                    widgets['color_type'].currentIndex(),      # color_type
-                    1,  # enabled
-                    widgets['background_brightness'].value(),  # bg_brightness
-                    widgets['live_speed'].value(),            # live_speed
-                    widgets['macro_speed'].value()            # macro_speed
-                )
-                
+            if hasattr(self.device.keyboard, 'save_custom_slot'):
+                success = self.device.keyboard.save_custom_slot(slot)
                 if success:
-                    # Now save to EEPROM
-                    if hasattr(self.device.keyboard, 'save_custom_slot'):
-                        save_success = self.device.keyboard.save_custom_slot(last_active_slot)
-                        if save_success:
-                            print(f"Saved GUI tab {slot + 1} settings to last active slot {last_active_slot} EEPROM")
-                        else:
-                            print(f"Failed to save to EEPROM for slot {last_active_slot}")
-                    else:
-                        print(f"Saved GUI tab {slot + 1} settings to last active slot {last_active_slot} (no EEPROM save method)")
+                    print(f"Saved slot {slot + 1} to EEPROM")
                 else:
-                    print(f"Failed to set parameters for slot {last_active_slot}")
+                    print(f"Failed to save slot {slot + 1}")
             else:
-                print(f"Save GUI tab {slot + 1} to last active slot {last_active_slot} (keyboard method not implemented)")
-                        
+                print(f"Save slot {slot + 1} (keyboard method not implemented)")
+                    
         except Exception as e:
-            print(f"Error saving GUI tab {slot + 1} settings: {e}")
+            print(f"Error saving slot {slot + 1}: {e}")
 
     def on_load_preset(self, slot, index):
         """Load preset into current GUI tab and save to last active custom slot's EEPROM"""
