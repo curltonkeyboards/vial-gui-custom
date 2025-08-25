@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-
 CMD_VIA_GET_PROTOCOL_VERSION = 0x01
 CMD_VIA_GET_KEYBOARD_VALUE = 0x02
 CMD_VIA_SET_KEYBOARD_VALUE = 0x03
@@ -62,10 +61,8 @@ CMD_VIAL_CUSTOM_ANIM_RESET_SLOT = 0xC6
 CMD_VIAL_CUSTOM_ANIM_GET_STATUS = 0xC7
 CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS = 0xC8
 CMD_VIAL_CUSTOM_ANIM_GET_RAM_STATE = 0xC9
-CMD_VIAL_CUSTOM_GET_CURRENT_PLAYING = 0xCA
 # how much of a macro/keymap buffer we can read/write per packet
 BUFFER_FETCH_CHUNK = 28
-
 # When did we get support for advanced macros (including delays in macros)
 VIAL_PROTOCOL_ADVANCED_MACROS = 2
 # Support for safe matrix tester (with unlock)
