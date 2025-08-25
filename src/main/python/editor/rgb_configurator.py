@@ -1372,51 +1372,51 @@ class CustomLightsHandler(BasicHandler):
             print(f"Error loading EEPROM data for tab {tab_index}: {e}")
             self.set_slot_defaults(tab_index)
             
-def on_load_from_keyboard(self, slot):
-    """Load settings from the last active custom slot into the currently open GUI tab (TEMPORARY - no EEPROM save)"""
-    try:
-        # Get which custom slot was last active on the keyboard
-        last_active_slot = 0  # Default to slot 0
-        
-        if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-            try:
-                status = self.device.keyboard.get_custom_animation_status()
-                if status and len(status) >= 3:
-                    last_active_slot = status[2]
-                    print(f"Loading from last active slot {last_active_slot} into GUI tab {slot + 1} (TEMPORARY)")
-            except:
-                print("Could not get status, loading from slot 0 (TEMPORARY)")
-        
-        if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-            config = self.device.keyboard.get_custom_slot_config(last_active_slot)
+    def on_load_from_keyboard(self, slot):
+        """Load settings from the last active custom slot into the currently open GUI tab (TEMPORARY - no EEPROM save)"""
+        try:
+            # Get which custom slot was last active on the keyboard
+            last_active_slot = 0  # Default to slot 0
             
-            if config and len(config) >= 12:
-                self.block_signals()
+            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                try:
+                    status = self.device.keyboard.get_custom_animation_status()
+                    if status and len(status) >= 3:
+                        last_active_slot = status[2]
+                        print(f"Loading from last active slot {last_active_slot} into GUI tab {slot + 1} (TEMPORARY)")
+                except:
+                    print("Could not get status, loading from slot 0 (TEMPORARY)")
+            
+            if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+                config = self.device.keyboard.get_custom_slot_config(last_active_slot)
                 
-                widgets = self.slot_widgets[slot]
-                
-                # Only update GUI - NO EEPROM saving
-                widgets['live_effect'].setCurrentIndex(min(config[2], 165))
-                widgets['live_style'].setCurrentIndex(min(config[0], 23))
-                widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
-                widgets['macro_style'].setCurrentIndex(min(config[1], 34))
-                widgets['background'].setCurrentIndex(min(config[5], 121))
-                widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-                widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
-                widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
-                widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
-                widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-                
-                self.unblock_signals()
-                
-                print(f"Temporarily loaded settings from slot {last_active_slot} into GUI tab {slot + 1}")
-                print("NOTE: These are temporary changes. Switch tabs or restart to see original EEPROM data.")
-                
-            else:
-                print(f"No settings available from slot {last_active_slot}")
-                
-    except Exception as e:
-        print(f"Error loading settings: {e}")
+                if config and len(config) >= 12:
+                    self.block_signals()
+                    
+                    widgets = self.slot_widgets[slot]
+                    
+                    # Only update GUI - NO EEPROM saving
+                    widgets['live_effect'].setCurrentIndex(min(config[2], 165))
+                    widgets['live_style'].setCurrentIndex(min(config[0], 23))
+                    widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
+                    widgets['macro_style'].setCurrentIndex(min(config[1], 34))
+                    widgets['background'].setCurrentIndex(min(config[5], 121))
+                    widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
+                    widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
+                    widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
+                    widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
+                    widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
+                    
+                    self.unblock_signals()
+                    
+                    print(f"Temporarily loaded settings from slot {last_active_slot} into GUI tab {slot + 1}")
+                    print("NOTE: These are temporary changes. Switch tabs or restart to see original EEPROM data.")
+                    
+                else:
+                    print(f"No settings available from slot {last_active_slot}")
+                    
+        except Exception as e:
+            print(f"Error loading settings: {e}")
         
     def create_slot_tab(self, slot):
             """Create a tab for a single slot"""
