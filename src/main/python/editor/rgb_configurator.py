@@ -1348,33 +1348,20 @@ class CustomLightsHandler(BasicHandler):
     def load_slot_from_ram(self, slot):
         """Load slot settings from current RAM state"""
         try:
-            config = self.device.keyboard.get_custom_slot_config(slot, from_eeprom=False)  # Explicit RAM
+            config = self.device.keyboard.get_custom_slot_ram_state(slot)  # Use the correct method name
             if config and len(config) >= 12:
                 self.update_slot_widgets(slot, config)
         except Exception as e:
             print(f"Error loading RAM state for slot {slot}: {e}")
 
-    def on_load_from_keyboard(self, slot):
-        """Load current PLAYING settings from keyboard into this slot's GUI"""
-        self.block_signals()
-        
+    def load_slot_from_eeprom(self, slot):
+        """Load slot settings from EEPROM"""
         try:
-            # Get which slot is currently active and its live parameters
-            if hasattr(self.device.keyboard, 'get_current_playing_state'):
-                current_data = self.device.keyboard.get_current_playing_state()
-                if current_data:
-                    # Update the GUI with the currently playing parameters
-                    self.update_slot_widgets(slot, current_data)
-                    print(f"Loaded current playing state to slot {slot} GUI")
-                else:
-                    print("No current playing state available")
-            else:
-                print("get_current_playing_state method not available")
-                
+            config = self.device.keyboard.get_custom_slot_config(slot)  # Remove the from_eeprom parameter
+            if config and len(config) >= 12:
+                self.update_slot_widgets(slot, config)
         except Exception as e:
-            print(f"Error loading current playing state: {e}")
-            
-        self.unblock_signals()
+            print(f"Error loading EEPROM state for slot {slot}: {e}")
 
     def create_slot_tab(self, slot):
             """Create a tab for a single slot"""
