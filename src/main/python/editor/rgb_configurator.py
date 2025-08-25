@@ -1643,6 +1643,41 @@ class CustomLightsHandler(BasicHandler):
         print("Defaulting to slot 0")
         return 0
 
+    def get_active_custom_slot(self):
+        """Get the currently active custom slot from the keyboard based on RGB mode"""
+        try:
+            # Get the current RGB mode from the keyboard
+            if hasattr(self.device.keyboard, 'rgb_mode'):
+                rgb_mode = self.device.keyboard.rgb_mode
+                print(f"Current RGB mode: {rgb_mode}")
+                
+                # Custom slots correspond to RGB modes 57-68 (Custom Slot 1-12)
+                # Map to 0-indexed slots (0-11)
+                if 57 <= rgb_mode <= 68:
+                    active_slot = rgb_mode - 57  # Convert to 0-indexed (57->0, 58->1, etc.)
+                    print(f"RGB mode {rgb_mode} corresponds to custom slot {active_slot}")
+                    self.last_known_custom_slot = active_slot  # Remember this slot
+                    return active_slot
+                else:
+                    # Not a custom slot mode, return the last known custom slot
+                    if hasattr(self, 'last_known_custom_slot'):
+                        print(f"RGB mode {rgb_mode} is not a custom slot, using last known custom slot {self.last_known_custom_slot}")
+                        return self.last_known_custom_slot
+                    else:
+                        # No previous custom slot known, default to 0
+                        print(f"RGB mode {rgb_mode} is not a custom slot, defaulting to slot 0")
+                        self.last_known_custom_slot = 0
+                        return 0
+                        
+        except Exception as e:
+            print(f"Error getting RGB mode: {e}")
+        
+        # Default to slot 0 if we can't get the RGB mode
+        if not hasattr(self, 'last_known_custom_slot'):
+            self.last_known_custom_slot = 0
+        print(f"Error getting RGB mode, using last known custom slot {self.last_known_custom_slot}")
+        return self.last_known_custom_slot
+
     # Event handlers using VialKeyboard infrastructure - ALWAYS TARGET ACTIVE EFFECT
     def on_live_effect_changed(self, slot, index):
         """Handle live effect change - targets currently active effect"""
