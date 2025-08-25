@@ -1569,12 +1569,12 @@ class CustomLightsHandler(BasicHandler):
                     config = self.device.keyboard.get_custom_slot_config(slot)
                     if config and len(config) >= 12:  # Expecting 12 parameters
                         widgets = self.slot_widgets[slot]
-                        
+
                         # Set individual effect and style dropdowns with updated ranges
-                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
-                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
-                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
-                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
+                        widgets['live_effect'].setCurrentIndex(min(config[2], 165))  # live_animation
+                        widgets['live_style'].setCurrentIndex(min(config[0], 23))    # live_positioning (0-44)
+                        widgets['macro_effect'].setCurrentIndex(min(config[3], 165)) # macro_animation
+                        widgets['macro_style'].setCurrentIndex(min(config[1], 34))   # macro_positioning (0-74)
                         
                         # Skip config[4] (influence) - no longer used
                         widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
