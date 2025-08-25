@@ -1325,7 +1325,7 @@ class CustomLightsHandler(BasicHandler):
         # Create tab widget
         self.tab_widget = QTabWidget()
         container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
-
+        self.current_randomize_slot = None
         # Create tabs for each slot (12 slots)
         self.slot_tabs = []
         self.slot_widgets = {}
@@ -1413,7 +1413,7 @@ class CustomLightsHandler(BasicHandler):
             macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
             macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
             layout.addWidget(macro_style, 6, 1, 1, 2)
-
+            
 # Macro Animation Speed slider
             layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
             macro_speed = QSlider(QtCore.Qt.Horizontal)
@@ -1483,7 +1483,7 @@ class CustomLightsHandler(BasicHandler):
             buttons_widget = QWidget()
             buttons_widget.setLayout(buttons_layout)
             layout.addWidget(buttons_widget, 14, 0, 1, 3)
-
+            self.tab_widget.currentChanged.connect(self.on_tab_changed)
             # Store widgets for this slot
             self.slot_widgets[slot] = {
                 'live_effect': live_effect,
@@ -1500,42 +1500,73 @@ class CustomLightsHandler(BasicHandler):
             }
 
             self.slot_tabs.append(tab_widget)
+            
+    def on_tab_changed(self, index):
+        """Handle tab switching - load EEPROM state"""
+        if self.current_randomize_slot is None:  # Only in normal mode
+            self.block_signals()
+            self.load_slot_from_eeprom(index)
+            self.unblock_signals()        
+            
+            
     def update_from_keyboard(self):
-        """Update UI from keyboard state using VialKeyboard infrastructure"""
+        """Load current RAM state for active effect"""
         self.block_signals()
         
-        # Update all slots
-        for slot in range(12):
-            try:
-                if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                    config = self.device.keyboard.get_custom_slot_config(slot)
-                    if config and len(config) >= 12:  # Expecting 12 parameters
-                        widgets = self.slot_widgets[slot]
-                        
-                        # Set individual effect and style dropdowns with updated ranges
-                        widgets['live_effect'].setCurrentIndex(min(config[2], 101))  # live_animation
-                        widgets['live_style'].setCurrentIndex(min(config[0], 44))    # live_positioning (0-44)
-                        widgets['macro_effect'].setCurrentIndex(min(config[3], 101)) # macro_animation
-                        widgets['macro_style'].setCurrentIndex(min(config[1], 74))   # macro_positioning (0-74)
-                        
-                        # Skip config[4] (influence) - no longer used
-                        widgets['background'].setCurrentIndex(min(config[5], 106))  # background_mode
-                        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))  # pulse_mode
-                        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES) - 1))  # color_type
-                        # config[8] is enabled - not shown in UI
-                        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)  # Background brightness
-                        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)  # Live speed
-                        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)  # Macro speed
-                    else:
-                        self.set_slot_defaults(slot)
+        try:
+            # Check if randomize mode is active
+            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                status = self.device.keyboard.get_custom_animation_status()
+                randomize_active = status[6] if len(status) > 6 else 0
+                active_slot = status[2] if len(status) > 2 else 0
+                
+                if randomize_active:
+                    # In randomize mode - load RAM state of randomize slot
+                    self.current_randomize_slot = active_slot
+                    self.load_slot_from_ram(active_slot)
+                    # Switch GUI to show the randomize slot tab
+                    self.tab_widget.setCurrentIndex(active_slot)
                 else:
-                    print(f"Custom slot config methods not implemented on keyboard")
-                    self.set_slot_defaults(slot)
-            except Exception as e:
-                print(f"Error updating custom lights slot {slot}: {e}")
-                self.set_slot_defaults(slot)
-
+                    self.current_randomize_slot = None
+                    # In normal mode - load EEPROM state of current tab
+                    current_tab = self.tab_widget.currentIndex()
+                    self.load_slot_from_eeprom(current_tab)
+        except Exception as e:
+            print(f"Error in update_from_keyboard: {e}")
+            
         self.unblock_signals()
+    
+    def load_slot_from_ram(self, slot):
+        """Load slot settings from current RAM state"""
+        try:
+            config = self.device.keyboard.get_custom_slot_ram_state(slot)  # New method
+            if config and len(config) >= 12:
+                self.update_slot_widgets(slot, config)
+        except Exception as e:
+            print(f"Error loading RAM state for slot {slot}: {e}")
+    
+    def load_slot_from_eeprom(self, slot):
+        """Load slot settings from EEPROM"""
+        try:
+            config = self.device.keyboard.get_custom_slot_config(slot)  # Existing method
+            if config and len(config) >= 12:
+                self.update_slot_widgets(slot, config)
+        except Exception as e:
+            print(f"Error loading EEPROM state for slot {slot}: {e}")
+    
+    def update_slot_widgets(self, slot, config):
+        """Update GUI widgets for a slot with given config"""
+        widgets = self.slot_widgets[slot]
+        widgets['live_effect'].setCurrentIndex(min(config[2], 165))
+        widgets['live_style'].setCurrentIndex(min(config[0], 23))
+        widgets['macro_effect'].setCurrentIndex(min(config[3], 165))
+        widgets['macro_style'].setCurrentIndex(min(config[1], 34))
+        widgets['background'].setCurrentIndex(min(config[5], 121))
+        widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
+        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
+        widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
+        widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
+        widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
 
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
