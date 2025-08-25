@@ -608,20 +608,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except:
             # Always return success for GUI so buttons remain functional
             return True
-            
-    def get_custom_slot_config(self, slot):
-        """Get all parameters for a custom animation slot"""
-        try:
-            if slot >= 10:
-                return None
-                
-            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot), retries=20)
-            if data and len(data) > 2 and data[0] == 0x01:
-                return data[3:15]  # 12 parameters starting at index 3
-            return None
-        except Exception as e:
-            print(f"Error getting custom slot {slot} config: {e}")
-            return None
 
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
