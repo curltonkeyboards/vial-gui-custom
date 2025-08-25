@@ -693,3 +693,28 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error rescanning LED positions: {e}")
             return False
+            
+    def get_custom_slot_eeprom_config(self, slot):
+        """Get EEPROM configuration for a specific slot (for tab switching)"""
+        try:
+            if slot >= 12:
+                return None
+                
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_LOAD_EEPROM_SLOT, slot), retries=20)
+            if data and len(data) > 2 and data[0] == 0x01:
+                return data[3:15]  # 12 parameters starting at index 3
+            return None
+        except Exception as e:
+            print(f"Error getting EEPROM config for slot {slot}: {e}")
+            return None
+
+    def get_active_ram_config(self):
+        """Get current active RAM configuration (for 'load from keyboard')"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ACTIVE_RAM), retries=20)
+            if data and len(data) > 2 and data[0] == 0x01:
+                return data[3:15], data[1]  # Return config and source slot
+            return None, None
+        except Exception as e:
+            print(f"Error getting active RAM config: {e}")
+            return None, None
