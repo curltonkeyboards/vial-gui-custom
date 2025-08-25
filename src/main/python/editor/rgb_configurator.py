@@ -1338,13 +1338,21 @@ class CustomLightsHandler(BasicHandler):
 
     def on_tab_changed(self, index):
         """Called when user switches tabs - load EEPROM data for that slot"""
+        # Add null checks
+        if not self.device or not hasattr(self.device, 'keyboard') or not self.device.keyboard:
+            return
+            
         if hasattr(self.device.keyboard, 'get_custom_slot_eeprom_config'):
             config = self.device.keyboard.get_custom_slot_eeprom_config(index)
             if config and len(config) >= 12:
                 self.load_config_into_slot_gui(index, config)
-    
+
     def on_load_from_keyboard(self, slot):
         """Load current active RAM settings into this slot's GUI"""
+        # Add null checks here too
+        if not self.device or not hasattr(self.device, 'keyboard') or not self.device.keyboard:
+            return
+            
         try:
             if hasattr(self.device.keyboard, 'get_active_ram_config'):
                 config, source_slot = self.device.keyboard.get_active_ram_config()
