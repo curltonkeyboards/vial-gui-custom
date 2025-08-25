@@ -609,14 +609,13 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             # Always return success for GUI so buttons remain functional
             return True
             
-    def get_custom_slot_config(self, slot, from_eeprom=True):
+    def get_custom_slot_config(self, slot):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 12:
+            if slot >= 10:
                 return None
-            
-            source = 1 if from_eeprom else 0  # 1 = EEPROM, 0 = RAM
-            data = self.usb_send(self.dev, struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot, source), retries=20)
+                
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot), retries=20)
             if data and len(data) > 2 and data[0] == 0x01:
                 return data[3:15]  # 12 parameters starting at index 3
             return None
@@ -624,14 +623,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error getting custom slot {slot} config: {e}")
             return None
 
-    def get_custom_slot_ram_state(self, slot):
-        """Get current RAM state for a custom animation slot"""
-        return self.get_custom_slot_config(slot, from_eeprom=False)
-
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 12 or param_index >= 12:
+            if slot >= 10 or param_index >= 12:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
@@ -644,7 +639,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                                      background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed):
         """Set all parameters for a custom animation slot"""
         try:
-            if slot >= 12:
+            if slot >= 10:
                 return False
                 
             # Use set_all command: slot + 12 parameter bytes
@@ -681,7 +676,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def reset_custom_slot(self, slot):
         """Reset a custom slot to default values"""
         try:
-            if slot >= 12:
+            if slot >= 10:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, slot), retries=20)
