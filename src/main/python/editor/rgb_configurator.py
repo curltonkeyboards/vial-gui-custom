@@ -1481,18 +1481,18 @@ class CustomLightsHandler(BasicHandler):
             buttons_layout = QHBoxLayout()
             
             save_button = QPushButton(tr("RGBConfigurator", "Save"))
-            save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
+            save_button.clicked.connect(lambda checked: self.on_save_slot(self.tab_widget.currentIndex()))
             buttons_layout.addWidget(save_button)
             
             load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
-            load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
+            load_button.clicked.connect(lambda checked: self.on_load_from_keyboard(self.tab_widget.currentIndex()))
             buttons_layout.addWidget(load_button)
             
             preset_combo = QComboBox()
             preset_combo.addItem("Load Preset...")
             for preset in CUSTOM_LIGHT_PRESETS:
                 preset_combo.addItem(preset)
-            preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
+            preset_combo.currentIndexChanged.connect(lambda idx: self.on_load_preset(self.tab_widget.currentIndex(), idx))
             buttons_layout.addWidget(preset_combo)
             
             buttons_widget = QWidget()
