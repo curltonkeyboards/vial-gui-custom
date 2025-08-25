@@ -724,19 +724,3 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error getting current playing state: {e}")
             return None
             
-    def on_load_from_keyboard(self, slot):
-        """Load current PLAYING settings from keyboard into this slot's GUI"""
-        self.block_signals()
-        
-        try:
-            current_state = self.device.keyboard.get_current_playing_state()
-            if current_state:
-                # Update GUI with currently playing parameters
-                self.update_slot_widgets(slot, current_state['parameters'])
-                print(f"Loaded playing state from slot {current_state['active_slot']} to GUI slot {slot}")
-            else:
-                print("No current playing state available")
-        except Exception as e:
-            print(f"Error loading current playing state: {e}")
-            
-        self.unblock_signals()
