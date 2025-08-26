@@ -1724,16 +1724,36 @@ class CustomLightsHandler(BasicHandler):
 
 
     def on_save_slot(self, slot):
-        """Save current slot configuration to EEPROM - save the TAB slot, not active slot"""
+        """Save current GUI configuration to the tab slot's EEPROM"""
         try:
-            # Note: Save saves the TAB slot to EEPROM, not the active slot
-            # This makes sense - you're saving the configuration you see in the GUI
-            if hasattr(self.device.keyboard, 'save_custom_slot'):
-                success = self.device.keyboard.save_custom_slot(slot)
+            # Get current GUI state for this tab
+            widgets = self.slot_widgets[slot]
+            
+            # Collect all parameters from GUI
+            live_pos = widgets['live_style'].currentIndex()
+            macro_pos = widgets['macro_style'].currentIndex() 
+            live_anim = widgets['live_effect'].currentIndex()
+            macro_anim = widgets['macro_effect'].currentIndex()
+            influence = 0  # You might need to add this widget
+            background = widgets['background'].currentIndex()
+            sustain = widgets['sustain_mode'].currentIndex()
+            color_type = widgets['color_type'].currentIndex()
+            enabled = 1  # You might need to add this widget
+            bg_brightness = widgets['background_brightness'].value()
+            live_speed = widgets['live_speed'].value()
+            macro_speed = widgets['macro_speed'].value()
+            
+            # Send GUI state directly to the tab slot and save to EEPROM
+            if hasattr(self.device.keyboard, 'set_custom_slot_all_parameters'):
+                success = self.device.keyboard.set_custom_slot_all_parameters(
+                    slot, live_pos, macro_pos, live_anim, macro_anim, influence,
+                    background, sustain, color_type, enabled, bg_brightness, 
+                    live_speed, macro_speed
+                )
                 if success:
-                    print(f"Saved tab slot {slot + 1} to EEPROM")
+                    print(f"Saved GUI state to tab slot {slot + 1} EEPROM")
                 else:
-                    print(f"Failed to save tab slot {slot + 1}")
+                    print(f"Failed to save to tab slot {slot + 1}")
             else:
                 print(f"Save slot {slot + 1} (keyboard method not implemented)")
                     
