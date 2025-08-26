@@ -215,22 +215,18 @@ class ThruLoopConfigurator(BasicEditor):
         basic_layout.addWidget(self.loop_channel, 0, 1)
         
         # Send Restart Messages and Alternate Restart Mode (side by side)
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Restart Settings:")), 1, 0, 1, 2)
-        
         self.sync_midi = QCheckBox(tr("ThruLoopConfigurator", "Send Restart Messages"))
-        basic_layout.addWidget(self.sync_midi, 2, 0)
+        basic_layout.addWidget(self.sync_midi, 1, 0)
         
         self.alternate_restart = QCheckBox(tr("ThruLoopConfigurator", "Alternate Restart Mode"))
-        basic_layout.addWidget(self.alternate_restart, 2, 1)
+        basic_layout.addWidget(self.alternate_restart, 1, 1)
         
         # Disable ThruLoop and CC Loop Recording (side by side)
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Loop Controls:")), 3, 0, 1, 2)
-        
         self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
-        basic_layout.addWidget(self.loop_enabled, 4, 0)
+        basic_layout.addWidget(self.loop_enabled, 2, 0)
         
         self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
-        basic_layout.addWidget(self.cc_loop_recording, 4, 1)
+        basic_layout.addWidget(self.cc_loop_recording, 2, 1)
         
         # LoopChop Settings (more compact) - ASSIGN TO SELF
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
@@ -268,9 +264,13 @@ class ThruLoopConfigurator(BasicEditor):
         self.nav_widget.setLayout(nav_layout)
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 4)
         
-        # Main Functions Table (bigger to prevent cutoff)
+        # Tables side by side
+        tables_layout = QHBoxLayout()
+        main_layout.addLayout(tables_layout)
+        
+        # Main Functions Table
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
-        main_layout.addWidget(self.main_group)
+        tables_layout.addWidget(self.main_group)
         self.main_table = self.create_main_function_table()
         main_group_layout = QVBoxLayout()
         main_group_layout.addWidget(self.main_table)
@@ -278,7 +278,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Overdub Functions Table  
         self.overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
-        main_layout.addWidget(self.overdub_group)
+        tables_layout.addWidget(self.overdub_group)
         self.overdub_table = self.create_function_table()
         overdub_group_layout = QVBoxLayout()
         overdub_group_layout.addWidget(self.overdub_table)
@@ -335,6 +335,7 @@ class ThruLoopConfigurator(BasicEditor):
         button._cc_value = 128  # Default to "None" (128)
         
         menu = QMenu()
+        menu.setMinimumWidth(120)  # Match button width
         
         # Add "None" option
         none_action = menu.addAction("None")
@@ -349,6 +350,7 @@ class ThruLoopConfigurator(BasicEditor):
             range_name = f"CC {range_start}-{range_end}"
             
             submenu = menu.addMenu(range_name)
+            submenu.setMinimumWidth(120)  # Match button width
             
             for cc_num in range(range_start, min(range_start + 10, 128)):
                 action = submenu.addAction(f"CC# {cc_num}")
@@ -379,7 +381,7 @@ class ThruLoopConfigurator(BasicEditor):
         table = QTableWidget(5, 4)  # 5 functions x 4 loops
         table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
         table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
+            "Overdub Start Recording", "Overdub Stop Recording", "Overdub Start Playing", "Overdub Stop Playing", "Overdub Clear"
         ])
         
         # Fill table with CC buttons (not combo boxes)
@@ -389,8 +391,20 @@ class ThruLoopConfigurator(BasicEditor):
                 table.setCellWidget(row, col, cc_button)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(200)
-        table.setMinimumWidth(600)
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        # Calculate and set exact size to prevent white space
+        table.resizeColumnsToContents()
+        table.resizeRowsToContents()
+        
+        # Set fixed size based on content
+        width = table.verticalHeader().width() + table.horizontalHeader().length() + table.frameWidth() * 2
+        height = table.horizontalHeader().height() + table.verticalHeader().length() + table.frameWidth() * 2
+        table.setFixedSize(width, height)
+        
         return table
     
     def create_main_function_table(self):
@@ -407,9 +421,20 @@ class ThruLoopConfigurator(BasicEditor):
                 table.setCellWidget(row, col, cc_button)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(280)
-        table.setMinimumWidth(600)
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        table.setSizeAdjustPolicy(QTableWidget.AdjustToContents)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        # Calculate and set exact size to prevent white space
+        table.resizeColumnsToContents()
         table.resizeRowsToContents()
+        
+        # Set fixed size based on content
+        width = table.verticalHeader().width() + table.horizontalHeader().length() + table.frameWidth() * 2
+        height = table.horizontalHeader().height() + table.verticalHeader().length() + table.frameWidth() * 2
+        table.setFixedSize(width, height)
+        
         return table
     
     def on_loop_enabled_changed(self):
@@ -607,7 +632,8 @@ class ThruLoopConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-
+            
+            
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
