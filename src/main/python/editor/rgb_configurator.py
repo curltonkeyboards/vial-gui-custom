@@ -1314,59 +1314,57 @@ class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
     def __init__(self, container):
-        super().__init__(container)
+            super().__init__(container)
 
-        row = container.rowCount()
+            row = container.rowCount()
 
-        # Custom Lights label
-        self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
-        container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
+            # Custom Lights label
+            self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
+            container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
 
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
-        self.current_randomize_slot = None
-        # Create tabs for each slot (12 slots)
-        self.slot_tabs = []
-        self.slot_widgets = {}
+            # Create tab widget
+            self.tab_widget = QTabWidget()
+            container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
+            
+            # Track the currently active slot (for parameter changes)
+            self.current_active_slot = None
+            self.current_randomize_slot = None
+            
+            # Create tabs for each slot (12 slots)
+            self.slot_tabs = []
+            self.slot_widgets = {}
+            
+            for slot in range(12):
+                self.create_slot_tab(slot)
+
+            self.widgets = [self.lbl_custom_lights, self.tab_widget]
         
-        for slot in range(12):
-            self.create_slot_tab(slot)
 
-        self.widgets = [self.lbl_custom_lights, self.tab_widget]
-        
+    def get_currently_active_slot(self):
+        """Get the slot number that is currently active for RGB effects"""
+        if self.current_randomize_slot is not None:
+            # In randomize mode, active slot is the randomize slot
+            return self.current_randomize_slot
+        else:
+            # In normal mode, need to determine active slot from RGB effect
+            # You may need to implement get_current_custom_slot() in keyboard class
+            if hasattr(self.device.keyboard, 'get_current_custom_slot'):
+                return self.device.keyboard.get_current_custom_slot()
+            else:
+                # Fallback: assume current tab is active (may not be correct)
+                return self.tab_widget.currentIndex()
 
     def on_load_from_keyboard(self, slot):
-        """Load current RAM settings from keyboard into this slot's GUI"""
-        self.block_signals()
-        self.load_slot_from_ram(slot)  # Load from RAM
-        self.unblock_signals()
-
-    def update_from_keyboard(self):
-        """Load current RAM state for active effect"""
+        """Load current RAM settings from CURRENTLY ACTIVE slot into this tab's GUI"""
         self.block_signals()
         
-        try:
-            # Check if randomize mode is active
-            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                status = self.device.keyboard.get_custom_animation_status()
-                randomize_active = status[6] if len(status) > 6 else 0
-                active_slot = status[2] if len(status) > 2 else 0
-                
-                if randomize_active:
-                    # In randomize mode - load RAM state of randomize slot
-                    self.current_randomize_slot = active_slot
-                    self.load_slot_from_ram(active_slot)
-                    # Switch GUI to show the randomize slot tab
-                    self.tab_widget.setCurrentIndex(active_slot)
-                else:
-                    self.current_randomize_slot = None
-                    # In normal mode - load EEPROM state of current tab
-                    current_tab = self.tab_widget.currentIndex()
-                    self.load_slot_from_eeprom(current_tab)
-        except Exception as e:
-            print(f"Error in update_from_keyboard: {e}")
-            
+        # Get the currently active slot (not the tab slot)
+        active_slot = self.get_currently_active_slot()
+        print(f"Loading from active slot {active_slot} into tab {slot}")
+        
+        # Load RAM state from the active slot and display in current tab
+        self.load_slot_from_ram(active_slot)
+        
         self.unblock_signals()
     
     def load_slot_from_eeprom(self, slot):
@@ -1543,14 +1541,14 @@ class CustomLightsHandler(BasicHandler):
             self.slot_tabs.append(tab_widget)
             
     def on_tab_changed(self, index):
-        """Handle tab switching - load EEPROM state"""
-        if self.current_randomize_slot is None:  # Only in normal mode
-            self.block_signals()
-            self.load_slot_from_eeprom(index)
-            self.unblock_signals()
+        """Handle tab switching - load EEPROM state for the tab"""
+        print(f"Tab changed to {index}, loading EEPROM state")
+        self.block_signals()
+        self.load_slot_from_eeprom(index)
+        self.unblock_signals()
             
     def update_from_keyboard(self):
-        """Load current RAM state for active effect"""
+        """Load current state and track active slot"""
         self.block_signals()
         
         try:
@@ -1561,16 +1559,23 @@ class CustomLightsHandler(BasicHandler):
                 active_slot = status[2] if len(status) > 2 else 0
                 
                 if randomize_active:
-                    # In randomize mode - load RAM state of randomize slot
+                    # In randomize mode - track randomize slot as active
                     self.current_randomize_slot = active_slot
-                    self.load_slot_from_ram(active_slot)
-                    # Switch GUI to show the randomize slot tab
-                    self.tab_widget.setCurrentIndex(active_slot)
+                    self.current_active_slot = active_slot
+                    print(f"Randomize mode active, active slot: {active_slot}")
                 else:
+                    # In normal mode - determine active slot
                     self.current_randomize_slot = None
-                    # In normal mode - load EEPROM state of current tab
-                    current_tab = self.tab_widget.currentIndex()
-                    self.load_slot_from_eeprom(current_tab)
+                    self.current_active_slot = self.get_currently_active_slot()
+                    print(f"Normal mode, active slot: {self.current_active_slot}")
+                    
+                # Always load EEPROM state for current tab (tab switching behavior)
+                current_tab = self.tab_widget.currentIndex()
+                self.load_slot_from_eeprom(current_tab)
+            else:
+                self.current_randomize_slot = None
+                self.current_active_slot = self.tab_widget.currentIndex()
+                
         except Exception as e:
             print(f"Error in update_from_keyboard: {e}")
             
@@ -1608,86 +1613,119 @@ class CustomLightsHandler(BasicHandler):
             for widget in widgets.values():
                 widget.blockSignals(False)
 
-    # Event handlers using VialKeyboard infrastructure - NO UPDATE CALLS
+    # Event handlers - ALL MODIFIED to send to active slot, not tab slot
     def on_live_effect_changed(self, slot, index):
-        """Handle live effect change"""
+        """Handle live effect change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Live effect changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 2, index)  # live_animation
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 2, index)
         else:
-            print(f"Live effect changed: slot {slot}, effect {index}")
+            print(f"Live effect changed: tab {slot} -> active slot {active_slot}, effect {index}")
 
     def on_live_style_changed(self, slot, index):
-        """Handle live style change"""
+        """Handle live style change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Live style changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 0, index)  # live_positioning
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 0, index)
         else:
-            print(f"Live style changed: slot {slot}, style {index}")
+            print(f"Live style changed: tab {slot} -> active slot {active_slot}, style {index}")
 
     def on_live_speed_changed(self, slot, value):
-        """Handle live animation speed change"""
+        """Handle live animation speed change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Live speed changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 10, value)  # Parameter 10: live speed
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 10, value)
         else:
-            print(f"Live speed changed: slot {slot}, speed {value}")
+            print(f"Live speed changed: tab {slot} -> active slot {active_slot}, speed {value}")
 
     def on_macro_effect_changed(self, slot, index):
-        """Handle macro effect change"""
+        """Handle macro effect change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Macro effect changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 3, index)  # macro_animation
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 3, index)
         else:
-            print(f"Macro effect changed: slot {slot}, effect {index}")
+            print(f"Macro effect changed: tab {slot} -> active slot {active_slot}, effect {index}")
 
     def on_macro_style_changed(self, slot, index):
-        """Handle macro style change"""
+        """Handle macro style change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Macro style changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 1, index)  # macro_positioning
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 1, index)
         else:
-            print(f"Macro style changed: slot {slot}, style {index}")
+            print(f"Macro style changed: tab {slot} -> active slot {active_slot}, style {index}")
 
     def on_macro_speed_changed(self, slot, value):
-        """Handle macro animation speed change"""
+        """Handle macro animation speed change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Macro speed changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 11, value)  # Parameter 11: macro speed
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 11, value)
         else:
-            print(f"Macro speed changed: slot {slot}, speed {value}")
+            print(f"Macro speed changed: tab {slot} -> active slot {active_slot}, speed {value}")
 
     def on_background_changed(self, slot, index):
-        """Handle background change"""
+        """Handle background change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Background changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 5, index)
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 5, index)
         else:
-            print(f"Background changed: slot {slot}, index {index}")
+            print(f"Background changed: tab {slot} -> active slot {active_slot}, index {index}")
 
     def on_background_brightness_changed(self, slot, value):
-        """Handle background brightness change"""
+        """Handle background brightness change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Background brightness changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 9, value)  # Parameter 9: background brightness
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 9, value)
         else:
-            print(f"Background brightness changed: slot {slot}, brightness {value}%")
+            print(f"Background brightness changed: tab {slot} -> active slot {active_slot}, brightness {value}%")
 
     def on_sustain_mode_changed(self, slot, index):
-        """Handle sustain mode change"""
+        """Handle sustain mode change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Sustain mode changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 6, index)
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 6, index)
         else:
-            print(f"Sustain mode changed: slot {slot}, index {index}")
+            print(f"Sustain mode changed: tab {slot} -> active slot {active_slot}, index {index}")
 
     def on_color_type_changed(self, slot, index):
-        """Handle color type change"""
+        """Handle color type change - send to ACTIVE slot, not tab slot"""
+        active_slot = self.get_currently_active_slot()
+        print(f"Color type changed on tab {slot}, sending to active slot {active_slot}")
+        
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(slot, 7, index)
+            self.device.keyboard.set_custom_slot_parameter(active_slot, 7, index)
         else:
-            print(f"Color type changed: slot {slot}, index {index}")
+            print(f"Color type changed: tab {slot} -> active slot {active_slot}, index {index}")
+
 
     def on_save_slot(self, slot):
-        """Save current slot configuration to EEPROM"""
+        """Save current slot configuration to EEPROM - save the TAB slot, not active slot"""
         try:
+            # Note: Save saves the TAB slot to EEPROM, not the active slot
+            # This makes sense - you're saving the configuration you see in the GUI
             if hasattr(self.device.keyboard, 'save_custom_slot'):
                 success = self.device.keyboard.save_custom_slot(slot)
                 if success:
-                    print(f"Saved slot {slot + 1} to EEPROM")
+                    print(f"Saved tab slot {slot + 1} to EEPROM")
                 else:
-                    print(f"Failed to save slot {slot + 1}")
+                    print(f"Failed to save tab slot {slot + 1}")
             else:
                 print(f"Save slot {slot + 1} (keyboard method not implemented)")
                     

@@ -698,3 +698,41 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error rescanning LED positions: {e}")
             return False
+            
+
+
+    def get_custom_animation_status(self):
+        """Get custom animation status including active slot"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_STATUS), retries=20)
+            if data and len(data) >= 12:
+                # Parse the response:
+                # data[0] = 0x01 (success)
+                # data[1] = NUM_CUSTOM_SLOTS (50)  
+                # data[2] = current_custom_slot
+                # data[3-9] = enabled mask (7 bytes for 50 slots)
+                # data[10] = NUM_CUSTOM_PARAMETERS (12)
+                # data[11] = randomize_active flag
+                return data[1:]  # Return everything except the success byte
+            return bytes([50, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0])  # Safe defaults
+        except Exception as e:
+            print(f"Error getting custom animation status: {e}")
+            return bytes([50, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0])  # Safe defaults
+
+    def get_current_custom_slot(self):
+        """Get the currently active custom slot number"""
+        try:
+            status = self.get_custom_animation_status()
+            if len(status) > 1:
+                return status[1]  # Active slot is at index 1 (was index 2 before)
+                
+            # Fallback: derive from RGB mode
+            current_mode = self.rgb_mode
+            if 57 <= current_mode <= 68:
+                return current_mode - 57
+            if current_mode in [69, 70, 71, 72, 73, 74, 75, 76]:  # Randomize modes
+                return 11  # RANDOMIZE_SLOT
+            return 0
+        except Exception as e:
+            print(f"Error getting current custom slot: {e}")
+            return 0
