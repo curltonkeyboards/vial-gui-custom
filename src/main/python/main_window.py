@@ -31,6 +31,10 @@ from util import tr, EXAMPLE_KEYBOARDS, KeycodeDisplay, EXAMPLE_KEYBOARD_PREFIX
 from vial_device import VialKeyboard
 from editor.matrix_test import MatrixTest
 
+# Import the new modules
+from midiswitchsettings import KeyboardConfigurator
+from thruloop import ThruLoopConfigurator
+
 import themes
 
 
@@ -80,9 +84,15 @@ class MainWindow(QMainWindow):
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
+        
+        # Initialize the new configurators
+        self.keyboard_configurator = KeyboardConfigurator()
+        self.thruloop_configurator = ThruLoopConfigurator()
 
+        # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
-                        (self.rgb_configurator, "Lighting"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
+                        (self.rgb_configurator, "Lighting"), (self.keyboard_configurator, "MIDI Settings"), 
+                        (self.thruloop_configurator, "ThruLoop"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
                         (self.matrix_tester, "Matrix tester"), (self.firmware_flasher, "Firmware updater")]
 
@@ -287,9 +297,10 @@ class MainWindow(QMainWindow):
             Unlocker.unlock(self.autorefresh.current_device.keyboard)
             self.autorefresh.current_device.keyboard.reload()
 
+        # Updated to include the new configurators in the rebuild process
         for e in [self.layout_editor, self.keymap_editor, self.firmware_flasher, self.macro_recorder,
                   self.tap_dance, self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
-                  self.rgb_configurator]:
+                  self.rgb_configurator, self.keyboard_configurator, self.thruloop_configurator]:
             e.rebuild(self.autorefresh.current_device)
 
     def refresh_tabs(self):
