@@ -303,7 +303,7 @@ class ThruLoopConfigurator(BasicEditor):
         self.addLayout(buttons_layout)
         
         # Apply stylesheet to prevent bold focus styling
-        self.setStyleSheet("""
+        main_widget.setStyleSheet("""
             QCheckBox:focus {
                 font-weight: normal;
                 outline: none;
@@ -578,7 +578,6 @@ class ThruLoopConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
