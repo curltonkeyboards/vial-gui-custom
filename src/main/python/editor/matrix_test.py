@@ -209,7 +209,6 @@ class ThruLoopConfigurator(BasicEditor):
         self.loop_channel = QComboBox()
         self.loop_channel.setMinimumWidth(150)
         self.loop_channel.setMaximumHeight(25)
-        self.loop_channel.view().setMaximumHeight(200)  # Add scroll for dropdown
         for i in range(1, 17):
             self.loop_channel.addItem(f"Channel {i}", i)
         self.loop_channel.setCurrentIndex(15)  # Default to channel 16
@@ -325,15 +324,56 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_separate_loopchop_changed()
     
     def create_cc_combo(self):
-        combo = QComboBox()
-        combo.setMinimumWidth(120)  # Make combo boxes wider
-        combo.setMaximumHeight(25)  # Limit height
-        combo.view().setMaximumHeight(200)  # Add scroll bar for dropdown
-        combo.addItem("None", 128)
-        for i in range(128):
-            combo.addItem(f"CC# {i}", i)
-        combo.setCurrentIndex(0)  # Default to "None"
-        return combo
+        """Create a hierarchical CC selector using QPushButton + QMenu"""
+        from PyQt5.QtWidgets import QMenu
+        
+        button = QPushButton("None")
+        button.setMinimumWidth(120)
+        button.setMaximumHeight(25)
+        
+        # Store the current CC value
+        button._cc_value = 128  # Default to "None" (128)
+        
+        menu = QMenu()
+        
+        # Add "None" option
+        none_action = menu.addAction("None")
+        none_action.setData(128)
+        none_action.triggered.connect(lambda: self._set_cc_value(button, 128, "None"))
+        
+        menu.addSeparator()
+        
+        # Create hierarchical CC submenus
+        for range_start in range(0, 128, 10):
+            range_end = min(range_start + 9, 127)
+            range_name = f"CC {range_start}-{range_end}"
+            
+            submenu = menu.addMenu(range_name)
+            
+            for cc_num in range(range_start, min(range_start + 10, 128)):
+                action = submenu.addAction(f"CC# {cc_num}")
+                action.setData(cc_num)
+                action.triggered.connect(lambda checked, num=cc_num: self._set_cc_value(button, num, f"CC# {num}"))
+        
+        button.setMenu(menu)
+        return button
+    
+    def _set_cc_value(self, button, value, text):
+        """Helper to set CC value and update button text"""
+        button._cc_value = value
+        button.setText(text)
+    
+    def get_cc_value(self, button):
+        """Get the current CC value from a CC button"""
+        return getattr(button, '_cc_value', 128)
+    
+    def set_cc_value(self, button, value):
+        """Set the CC value for a button"""
+        button._cc_value = value
+        if value == 128:
+            button.setText("None")
+        else:
+            button.setText(f"CC# {value}")
     
     def create_function_table(self):
         table = QTableWidget(5, 4)  # 5 functions x 4 loops
@@ -342,15 +382,15 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
         ])
         
-        # Fill table with CC combo boxes
+        # Fill table with CC buttons (not combo boxes)
         for row in range(5):
             for col in range(4):
-                combo = self.create_cc_combo()
-                table.setCellWidget(row, col, combo)
+                cc_button = self.create_cc_combo()
+                table.setCellWidget(row, col, cc_button)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.setMaximumHeight(200)
-        table.setMinimumWidth(600)  # Make table wider
+        table.setMinimumWidth(600)
         return table
     
     def create_main_function_table(self):
@@ -360,16 +400,16 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
         
-        # Fill table with CC combo boxes
+        # Fill table with CC buttons (not combo boxes)
         for row in range(6):
             for col in range(4):
-                combo = self.create_cc_combo()
-                table.setCellWidget(row, col, combo)
+                cc_button = self.create_cc_combo()
+                table.setCellWidget(row, col, cc_button)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(280)  # Increased height to prevent cutoff
-        table.setMinimumWidth(600)  # Make table wider
-        table.resizeRowsToContents()  # Auto-resize rows
+        table.setMaximumHeight(280)
+        table.setMinimumWidth(600)
+        table.resizeRowsToContents()
         return table
     
     def on_loop_enabled_changed(self):
@@ -412,21 +452,12 @@ class ThruLoopConfigurator(BasicEditor):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to send command: {str(e)}")
     
-    def get_cc_value(self, combo):
-        return combo.currentData()
-    
-    def set_cc_value(self, combo, value):
-        for i in range(combo.count()):
-            if combo.itemData(i) == value:
-                combo.setCurrentIndex(i)
-                break
-    
     def get_table_cc_values(self, table):
         values = []
         for row in range(table.rowCount()):
             for col in range(table.columnCount()):
-                combo = table.cellWidget(row, col)
-                values.append(self.get_cc_value(combo))
+                button = table.cellWidget(row, col)
+                values.append(self.get_cc_value(button))
         return values
     
     def set_table_cc_values(self, table, values):
@@ -434,24 +465,24 @@ class ThruLoopConfigurator(BasicEditor):
         for row in range(table.rowCount()):
             for col in range(table.columnCount()):
                 if idx < len(values):
-                    combo = table.cellWidget(row, col)
-                    self.set_cc_value(combo, values[idx])
+                    button = table.cellWidget(row, col)
+                    self.set_cc_value(button, values[idx])
                     idx += 1
     
     def get_restart_cc_values(self):
         """Get restart CCs from the main table (last row)"""
         restart_values = []
         for col in range(4):
-            combo = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
-            restart_values.append(self.get_cc_value(combo))
+            button = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
+            restart_values.append(self.get_cc_value(button))
         return restart_values
     
     def set_restart_cc_values(self, values):
         """Set restart CCs in the main table (last row)"""
         for col in range(4):
             if col < len(values):
-                combo = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
-                self.set_cc_value(combo, values[col])
+                button = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
+                self.set_cc_value(button, values[col])
     
     def on_save(self):
         """Save all configuration to keyboard"""
@@ -475,8 +506,8 @@ class ThruLoopConfigurator(BasicEditor):
             main_values = []
             for row in range(5):  # Only first 5 rows (excluding restart)
                 for col in range(4):
-                    combo = self.main_table.cellWidget(row, col)
-                    main_values.append(self.get_cc_value(combo))
+                    button = self.main_table.cellWidget(row, col)
+                    main_values.append(self.get_cc_value(button))
             self.send_hid_packet(self.HID_CMD_SET_MAIN_LOOP_CCS, 0, main_values)
             
             # 3. Send overdub CCs  
@@ -488,8 +519,8 @@ class ThruLoopConfigurator(BasicEditor):
                 1 if self.separate_loopchop.isChecked() else 0,
                 self.get_cc_value(self.master_cc),
             ]
-            for combo in self.nav_combos:
-                nav_config_data.append(self.get_cc_value(combo))
+            for button in self.nav_combos:
+                nav_config_data.append(self.get_cc_value(button))
             
             self.send_hid_packet(self.HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_config_data)
             
@@ -521,7 +552,7 @@ class ThruLoopConfigurator(BasicEditor):
             "mainCCs": [self.get_cc_value(self.main_table.cellWidget(row, col)) 
                        for row in range(5) for col in range(4)],  # First 5 rows only
             "overdubCCs": self.get_table_cc_values(self.overdub_table),
-            "navCCs": [self.get_cc_value(combo) for combo in self.nav_combos]
+            "navCCs": [self.get_cc_value(button) for button in self.nav_combos]
         }
         return config
     
@@ -551,8 +582,8 @@ class ThruLoopConfigurator(BasicEditor):
         for row in range(5):
             for col in range(4):
                 if idx < len(main_ccs):
-                    combo = self.main_table.cellWidget(row, col)
-                    self.set_cc_value(combo, main_ccs[idx])
+                    button = self.main_table.cellWidget(row, col)
+                    self.set_cc_value(button, main_ccs[idx])
                     idx += 1
         
         # Set overdub table CCs
@@ -561,9 +592,9 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Set navigation CCs
         nav_ccs = config.get("navCCs", [128] * 8)
-        for i, combo in enumerate(self.nav_combos):
+        for i, button in enumerate(self.nav_combos):
             if i < len(nav_ccs):
-                self.set_cc_value(combo, nav_ccs[i])
+                self.set_cc_value(button, nav_ccs[i])
         
         # Update UI state
         self.on_loop_enabled_changed()
@@ -576,7 +607,6 @@ class ThruLoopConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-
 
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
