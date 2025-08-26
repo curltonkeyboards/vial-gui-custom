@@ -198,11 +198,11 @@ class ThruLoopConfigurator(BasicEditor):
         top_row_layout = QHBoxLayout()
         main_layout.addLayout(top_row_layout)
         
-        # Basic Settings Group
-        basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
+        # Basic Settings Group - ASSIGN TO SELF
+        self.basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
         basic_layout = QGridLayout()
-        basic_group.setLayout(basic_layout)
-        top_row_layout.addWidget(basic_group)
+        self.basic_group.setLayout(basic_layout)
+        top_row_layout.addWidget(self.basic_group)
         
         # ThruLoop Channel
         basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "ThruLoop Channel")), 0, 0)
@@ -233,13 +233,13 @@ class ThruLoopConfigurator(BasicEditor):
         self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
         basic_layout.addWidget(self.cc_loop_recording, 4, 1)
         
-        # LoopChop Settings (more compact)
-        loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
+        # LoopChop Settings (more compact) - ASSIGN TO SELF
+        self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
         loopchop_layout = QGridLayout()
         loopchop_layout.setSpacing(5)  # Reduce spacing
         loopchop_layout.setContentsMargins(10, 10, 10, 10)  # Smaller margins
-        loopchop_group.setLayout(loopchop_layout)
-        top_row_layout.addWidget(loopchop_group)
+        self.loopchop_group.setLayout(loopchop_layout)
+        top_row_layout.addWidget(self.loopchop_group)
         
         # Separate CCs for LoopChop checkbox
         self.separate_loopchop = QCheckBox(tr("ThruLoopConfigurator", "Separate CCs for LoopChop"))
@@ -270,22 +270,20 @@ class ThruLoopConfigurator(BasicEditor):
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 4)
         
         # Main Functions Table (bigger to prevent cutoff)
-        main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
-        main_layout.addWidget(main_group)
+        self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
+        main_layout.addWidget(self.main_group)
         self.main_table = self.create_main_function_table()
         main_group_layout = QVBoxLayout()
         main_group_layout.addWidget(self.main_table)
-        main_group.setLayout(main_group_layout)
-        self.main_group = main_group
+        self.main_group.setLayout(main_group_layout)
         
         # Overdub Functions Table  
-        overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
-        main_layout.addWidget(overdub_group)
+        self.overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
+        main_layout.addWidget(self.overdub_group)
         self.overdub_table = self.create_function_table()
         overdub_group_layout = QVBoxLayout()
         overdub_group_layout.addWidget(self.overdub_table)
-        overdub_group.setLayout(overdub_group_layout)
-        self.overdub_group = overdub_group
+        self.overdub_group.setLayout(overdub_group_layout)
         
         # Buttons
         self.addStretch()
@@ -578,6 +576,8 @@ class ThruLoopConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
+
+
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
