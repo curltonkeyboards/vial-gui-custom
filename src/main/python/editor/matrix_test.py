@@ -158,6 +158,396 @@ class MatrixTest(BasicEditor):
         self.grabber.releaseKeyboard()
         self.timer.stop()
 
+class ThruLoopConfigurator(BasicEditor):
+    
+    def __init__(self):
+        super().__init__()
+        
+        # HID Command constants (0xB0-0xB5 range)
+        self.HID_CMD_SET_LOOP_CONFIG = 0xB0
+        self.HID_CMD_SET_MAIN_LOOP_CCS = 0xB1
+        self.HID_CMD_SET_OVERDUB_CCS = 0xB2
+        self.HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
+        self.HID_CMD_GET_ALL_CONFIG = 0xB4
+        self.HID_CMD_RESET_LOOP_CONFIG = 0xB5
+        
+        self.MANUFACTURER_ID = 0x7D
+        self.SUB_ID = 0x00
+        self.DEVICE_ID = 0x4D
+        
+        # Initialize references to None - will be set in setup_ui
+        self.single_loopchop_label = None
+        self.master_cc = None
+        self.single_loopchop_widgets = []
+        self.nav_widget = None
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        self.addStretch()
+        
+        main_widget = QWidget()
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        main_widget.setMinimumWidth(1000)  # Make it wider
+        main_layout = QVBoxLayout()
+        main_widget.setLayout(main_layout)
+        self.addWidget(main_widget)
+        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+        
+        # Basic Settings Group
+        basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
+        basic_layout = QGridLayout()
+        basic_group.setLayout(basic_layout)
+        main_layout.addWidget(basic_group)
+        
+        # ThruLoop Channel
+        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "ThruLoop Channel")), 0, 0)
+        self.loop_channel = QComboBox()
+        self.loop_channel.setMinimumWidth(150)
+        for i in range(1, 17):
+            self.loop_channel.addItem(f"Channel {i}", i)
+        self.loop_channel.setCurrentIndex(15)  # Default to channel 16
+        basic_layout.addWidget(self.loop_channel, 0, 1)
+        
+        # Send Restart Messages
+        self.sync_midi = QCheckBox(tr("ThruLoopConfigurator", "Send Restart Messages"))
+        basic_layout.addWidget(self.sync_midi, 1, 0, 1, 2)
+        
+        # Alternate Restart Mode
+        self.alternate_restart = QCheckBox(tr("ThruLoopConfigurator", "Alternate Restart Mode"))
+        basic_layout.addWidget(self.alternate_restart, 2, 0, 1, 2)
+        
+        # CC Loop Recording
+        self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
+        basic_layout.addWidget(self.cc_loop_recording, 3, 0, 1, 2)
+        
+        # Disable ThruLoop
+        self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
+        basic_layout.addWidget(self.loop_enabled, 4, 0, 1, 2)
+        
+        # Main Functions Table
+        main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
+        main_layout.addWidget(main_group)
+        self.main_table = self.create_main_function_table()
+        main_group_layout = QVBoxLayout()
+        main_group_layout.addWidget(self.main_table)
+        main_group.setLayout(main_group_layout)
+        self.main_group = main_group
+        
+        # Overdub Functions Table  
+        overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
+        main_layout.addWidget(overdub_group)
+        self.overdub_table = self.create_function_table()
+        overdub_group_layout = QVBoxLayout()
+        overdub_group_layout.addWidget(self.overdub_table)
+        overdub_group.setLayout(overdub_group_layout)
+        self.overdub_group = overdub_group
+        
+        # LoopChop Settings
+        loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
+        loopchop_layout = QGridLayout()
+        loopchop_group.setLayout(loopchop_layout)
+        main_layout.addWidget(loopchop_group)
+        self.loopchop_group = loopchop_group
+        
+        # Separate CCs for LoopChop checkbox
+        self.separate_loopchop = QCheckBox(tr("ThruLoopConfigurator", "Separate CCs for LoopChop"))
+        loopchop_layout.addWidget(self.separate_loopchop, 0, 0, 1, 2)
+        
+        # Single LoopChop CC - Always visible
+        self.single_loopchop_label = QLabel(tr("ThruLoopConfigurator", "Loop Chop"))
+        loopchop_layout.addWidget(self.single_loopchop_label, 1, 0)
+        self.master_cc = self.create_cc_combo()
+        loopchop_layout.addWidget(self.master_cc, 1, 1)
+        
+        # Individual LoopChop CCs (8 navigation CCs) - Always visible
+        nav_layout = QGridLayout()
+        self.nav_combos = []
+        for i in range(8):
+            row = i // 4
+            col = i % 4
+            nav_layout.addWidget(QLabel(f"{i}/8"), row * 2, col)
+            combo = self.create_cc_combo()
+            nav_layout.addWidget(combo, row * 2 + 1, col)
+            self.nav_combos.append(combo)
+        
+        self.nav_widget = QWidget()
+        self.nav_widget.setLayout(nav_layout)
+        loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 2)
+        
+        # Buttons
+        self.addStretch()
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+        
+        save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
+        save_btn.clicked.connect(self.on_save)
+        buttons_layout.addWidget(save_btn)
+        
+        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))  
+        load_btn.clicked.connect(self.on_load_from_keyboard)
+        buttons_layout.addWidget(load_btn)
+        
+        self.addLayout(buttons_layout)
+        
+        # Connect signals AFTER all widgets are created
+        self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
+        self.separate_loopchop.stateChanged.connect(self.on_separate_loopchop_changed)
+        
+        # Initialize UI state AFTER all widgets and connections are set up
+        self.on_loop_enabled_changed()
+        self.on_separate_loopchop_changed()
+    
+    def create_cc_combo(self):
+        combo = QComboBox()
+        combo.setMinimumWidth(120)  # Make combo boxes wider
+        combo.addItem("None", 128)
+        for i in range(128):
+            combo.addItem(f"CC# {i}", i)
+        combo.setCurrentIndex(0)  # Default to "None"
+        return combo
+    
+    def create_function_table(self):
+        table = QTableWidget(5, 4)  # 5 functions x 4 loops
+        table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
+        table.setVerticalHeaderLabels([
+            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
+        ])
+        
+        # Fill table with CC combo boxes
+        for row in range(5):
+            for col in range(4):
+                combo = self.create_cc_combo()
+                table.setCellWidget(row, col, combo)
+        
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.setMaximumHeight(200)
+        table.setMinimumWidth(600)  # Make table wider
+        return table
+    
+    def create_main_function_table(self):
+        table = QTableWidget(6, 4)  # 6 functions x 4 loops (added Restart row)
+        table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
+        table.setVerticalHeaderLabels([
+            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
+        ])
+        
+        # Fill table with CC combo boxes
+        for row in range(6):
+            for col in range(4):
+                combo = self.create_cc_combo()
+                table.setCellWidget(row, col, combo)
+        
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.setMaximumHeight(240)  # Slightly taller for extra row
+        table.setMinimumWidth(600)  # Make table wider
+        return table
+    
+    def on_loop_enabled_changed(self):
+        # When checked, ThruLoop is disabled (reversed logic from webapp)
+        enabled = not self.loop_enabled.isChecked()
+        self.main_group.setEnabled(enabled)
+        self.overdub_group.setEnabled(enabled) 
+        self.loopchop_group.setEnabled(enabled)
+    
+    def on_separate_loopchop_changed(self):
+        # Show/hide based on checkbox state but don't completely hide widgets
+        separate = self.separate_loopchop.isChecked()
+        # Enable/disable instead of hide/show
+        if self.single_loopchop_label:
+            self.single_loopchop_label.setEnabled(not separate)
+        if self.master_cc:
+            self.master_cc.setEnabled(not separate)
+        if self.nav_widget:
+            self.nav_widget.setEnabled(separate)
+    
+    def send_hid_packet(self, command, macro_num, data):
+        """Send HID packet to device"""
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+        
+        packet = bytearray(32)
+        packet[0] = self.MANUFACTURER_ID
+        packet[1] = self.SUB_ID  
+        packet[2] = self.DEVICE_ID
+        packet[3] = command
+        packet[4] = macro_num
+        packet[5] = 0  # Status
+        
+        # Copy data payload (max 26 bytes)
+        data_len = min(len(data), 26)
+        packet[6:6+data_len] = data[:data_len]
+        
+        try:
+            self.device.keyboard.via_command(packet)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to send command: {str(e)}")
+    
+    def get_cc_value(self, combo):
+        return combo.currentData()
+    
+    def set_cc_value(self, combo, value):
+        for i in range(combo.count()):
+            if combo.itemData(i) == value:
+                combo.setCurrentIndex(i)
+                break
+    
+    def get_table_cc_values(self, table):
+        values = []
+        for row in range(table.rowCount()):
+            for col in range(table.columnCount()):
+                combo = table.cellWidget(row, col)
+                values.append(self.get_cc_value(combo))
+        return values
+    
+    def set_table_cc_values(self, table, values):
+        idx = 0
+        for row in range(table.rowCount()):
+            for col in range(table.columnCount()):
+                if idx < len(values):
+                    combo = table.cellWidget(row, col)
+                    self.set_cc_value(combo, values[idx])
+                    idx += 1
+    
+    def get_restart_cc_values(self):
+        """Get restart CCs from the main table (last row)"""
+        restart_values = []
+        for col in range(4):
+            combo = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
+            restart_values.append(self.get_cc_value(combo))
+        return restart_values
+    
+    def set_restart_cc_values(self, values):
+        """Set restart CCs in the main table (last row)"""
+        for col in range(4):
+            if col < len(values):
+                combo = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
+                self.set_cc_value(combo, values[col])
+    
+    def on_save(self):
+        """Save all configuration to keyboard"""
+        try:
+            # 1. Send basic loop configuration
+            loop_config_data = [
+                0 if self.loop_enabled.isChecked() else 1,  # Reversed logic
+                self.loop_channel.currentData(),
+                1 if self.sync_midi.isChecked() else 0,
+                1 if self.alternate_restart.isChecked() else 0,
+            ]
+            # Add restart CCs from main table instead
+            restart_values = self.get_restart_cc_values()
+            loop_config_data.extend(restart_values)
+            # Add CC loop recording
+            loop_config_data.append(1 if self.cc_loop_recording.isChecked() else 0)
+            
+            self.send_hid_packet(self.HID_CMD_SET_LOOP_CONFIG, 0, loop_config_data)
+            
+            # 2. Send main loop CCs (excluding restart row)
+            main_values = []
+            for row in range(5):  # Only first 5 rows (excluding restart)
+                for col in range(4):
+                    combo = self.main_table.cellWidget(row, col)
+                    main_values.append(self.get_cc_value(combo))
+            self.send_hid_packet(self.HID_CMD_SET_MAIN_LOOP_CCS, 0, main_values)
+            
+            # 3. Send overdub CCs  
+            overdub_values = self.get_table_cc_values(self.overdub_table)
+            self.send_hid_packet(self.HID_CMD_SET_OVERDUB_CCS, 0, overdub_values)
+            
+            # 4. Send navigation configuration
+            nav_config_data = [
+                1 if self.separate_loopchop.isChecked() else 0,
+                self.get_cc_value(self.master_cc),
+            ]
+            for combo in self.nav_combos:
+                nav_config_data.append(self.get_cc_value(combo))
+            
+            self.send_hid_packet(self.HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_config_data)
+            
+            QMessageBox.information(self, "Success", "ThruLoop configuration saved successfully!")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save configuration: {str(e)}")
+    
+    def on_load_from_keyboard(self):
+        """Load configuration from keyboard"""
+        try:
+            self.send_hid_packet(self.HID_CMD_GET_ALL_CONFIG, 0, [])
+            QMessageBox.information(self, "Info", "Load request sent to keyboard")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load from keyboard: {str(e)}")
+    
+    def get_current_config(self):
+        """Get current UI configuration as dictionary"""
+        config = {
+            "version": "1.0",
+            "loopEnabled": not self.loop_enabled.isChecked(),  # Reversed for file storage
+            "loopChannel": self.loop_channel.currentData(), 
+            "syncMidi": self.sync_midi.isChecked(),
+            "alternateRestart": self.alternate_restart.isChecked(),
+            "ccLoopRecording": self.cc_loop_recording.isChecked(),
+            "separateLoopChopCC": self.separate_loopchop.isChecked(),
+            "masterCC": self.get_cc_value(self.master_cc),
+            "restartCCs": self.get_restart_cc_values(),
+            "mainCCs": [self.get_cc_value(self.main_table.cellWidget(row, col)) 
+                       for row in range(5) for col in range(4)],  # First 5 rows only
+            "overdubCCs": self.get_table_cc_values(self.overdub_table),
+            "navCCs": [self.get_cc_value(combo) for combo in self.nav_combos]
+        }
+        return config
+    
+    def apply_config(self, config):
+        """Apply configuration dictionary to UI"""
+        self.loop_enabled.setChecked(not config.get("loopEnabled", True))  # Reversed
+        
+        # Set channel
+        for i in range(self.loop_channel.count()):
+            if self.loop_channel.itemData(i) == config.get("loopChannel", 16):
+                self.loop_channel.setCurrentIndex(i)
+                break
+        
+        self.sync_midi.setChecked(config.get("syncMidi", False))
+        self.alternate_restart.setChecked(config.get("alternateRestart", False))
+        self.cc_loop_recording.setChecked(config.get("ccLoopRecording", False))
+        self.separate_loopchop.setChecked(config.get("separateLoopChopCC", False))
+        self.set_cc_value(self.master_cc, config.get("masterCC", 128))
+        
+        # Set restart CCs
+        restart_ccs = config.get("restartCCs", [128] * 4)
+        self.set_restart_cc_values(restart_ccs)
+        
+        # Set main table CCs (first 5 rows only)
+        main_ccs = config.get("mainCCs", [128] * 20)
+        idx = 0
+        for row in range(5):
+            for col in range(4):
+                if idx < len(main_ccs):
+                    combo = self.main_table.cellWidget(row, col)
+                    self.set_cc_value(combo, main_ccs[idx])
+                    idx += 1
+        
+        # Set overdub table CCs
+        overdub_ccs = config.get("overdubCCs", [128] * 20)  
+        self.set_table_cc_values(self.overdub_table, overdub_ccs)
+        
+        # Set navigation CCs
+        nav_ccs = config.get("navCCs", [128] * 8)
+        for i, combo in enumerate(self.nav_combos):
+            if i < len(nav_ccs):
+                self.set_cc_value(combo, nav_ccs[i])
+        
+        # Update UI state
+        self.on_loop_enabled_changed()
+        self.on_separate_loopchop_changed()
+    
+    def valid(self):
+        return isinstance(self.device, VialKeyboard)
+    
+    def rebuild(self, device):
+        super().rebuild(device)
+        if not self.valid():
+            return
+
 
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
@@ -182,7 +572,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.addStretch()
         
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        main_widget.setMinimumWidth(1000)  # Make it wider
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
@@ -197,6 +588,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Transpose
         basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 0, 0)
         self.transpose_number = QComboBox()
+        self.transpose_number.setMinimumWidth(120)  # Make wider
         for i in range(-64, 65):
             self.transpose_number.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number.setCurrentIndex(64)  # Default to 0
@@ -205,6 +597,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Channel
         basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 2)
         self.channel_number = QComboBox()
+        self.channel_number.setMinimumWidth(120)  # Make wider
         for i in range(16):
             self.channel_number.addItem(str(i + 1), i)
         basic_layout.addWidget(self.channel_number, 0, 3)
@@ -212,6 +605,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Velocity
         basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 0, 4)
         self.velocity_number = QComboBox()
+        self.velocity_number.setMinimumWidth(120)  # Make wider
         for i in range(1, 128):
             self.velocity_number.addItem(str(i), i)
         self.velocity_number.setCurrentIndex(126)  # Default to 127
@@ -226,6 +620,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Unsynced Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Unsynced Mode:")), 0, 0)
         self.unsynced_mode = QComboBox()
+        self.unsynced_mode.setMinimumWidth(120)  # Make wider
         self.unsynced_mode.addItem("Off", False)
         self.unsynced_mode.addItem("On", True)
         loop_layout.addWidget(self.unsynced_mode, 0, 1)
@@ -233,6 +628,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Sample Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sample Mode:")), 0, 2)
         self.sample_mode = QComboBox()
+        self.sample_mode.setMinimumWidth(120)  # Make wider
         self.sample_mode.addItem("Off", False)
         self.sample_mode.addItem("On", True)
         loop_layout.addWidget(self.sample_mode, 0, 3)
@@ -240,6 +636,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Loop Messaging
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Loop Messaging:")), 1, 0)
         self.loop_messaging_enabled = QComboBox()
+        self.loop_messaging_enabled.setMinimumWidth(120)  # Make wider
         self.loop_messaging_enabled.addItem("Off", False)
         self.loop_messaging_enabled.addItem("On", True)
         loop_layout.addWidget(self.loop_messaging_enabled, 1, 1)
@@ -247,6 +644,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Messaging Channel
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Messaging Channel:")), 1, 2)
         self.loop_messaging_channel = QComboBox()
+        self.loop_messaging_channel.setMinimumWidth(120)  # Make wider
         for i in range(1, 17):
             self.loop_messaging_channel.addItem(str(i), i)
         self.loop_messaging_channel.setCurrentIndex(15)  # Default to 16
@@ -255,6 +653,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Sync MIDI Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync MIDI Mode:")), 2, 0)
         self.sync_midi_mode = QComboBox()
+        self.sync_midi_mode.setMinimumWidth(120)  # Make wider
         self.sync_midi_mode.addItem("Off", False)
         self.sync_midi_mode.addItem("On", True)
         loop_layout.addWidget(self.sync_midi_mode, 2, 1)
@@ -262,6 +661,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Restart Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Restart Mode:")), 2, 2)
         self.alternate_restart_mode = QComboBox()
+        self.alternate_restart_mode.setMinimumWidth(120)  # Make wider
         self.alternate_restart_mode.addItem("Restart CC", False)
         self.alternate_restart_mode.addItem("Stop+Start", True)
         loop_layout.addWidget(self.alternate_restart_mode, 2, 3)
@@ -275,6 +675,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Velocity Interval
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")), 0, 0)
         self.velocity_sensitivity = QComboBox()
+        self.velocity_sensitivity.setMinimumWidth(120)  # Make wider
         for i in range(1, 11):
             self.velocity_sensitivity.addItem(str(i), i)
         advanced_layout.addWidget(self.velocity_sensitivity, 0, 1)
@@ -282,6 +683,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # CC Interval
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")), 0, 2)
         self.cc_sensitivity = QComboBox()
+        self.cc_sensitivity.setMinimumWidth(120)  # Make wider
         for i in range(1, 17):
             self.cc_sensitivity.addItem(str(i), i)
         advanced_layout.addWidget(self.cc_sensitivity, 0, 3)
@@ -289,6 +691,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Velocity Shuffle
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Shuffle:")), 1, 0)
         self.random_velocity_modifier = QComboBox()
+        self.random_velocity_modifier.setMinimumWidth(120)  # Make wider
         for i in range(17):
             self.random_velocity_modifier.addItem(str(i), i)
         advanced_layout.addWidget(self.random_velocity_modifier, 1, 1)
@@ -296,6 +699,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # OLED Keyboard
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "OLED Keyboard:")), 1, 2)
         self.oled_keyboard = QComboBox()
+        self.oled_keyboard.setMinimumWidth(120)  # Make wider
         self.oled_keyboard.addItem("Style 1", 0)
         self.oled_keyboard.addItem("Style 2", 12)
         advanced_layout.addWidget(self.oled_keyboard, 1, 3)
@@ -303,6 +707,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # SmartChord Lights
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Lights:")), 2, 0)
         self.smart_chord_light = QComboBox()
+        self.smart_chord_light.setMinimumWidth(120)  # Make wider
         self.smart_chord_light.addItem("On", 0)
         self.smart_chord_light.addItem("Off", 3)
         advanced_layout.addWidget(self.smart_chord_light, 2, 1)
@@ -310,6 +715,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # SC Light Mode
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SC Light Mode:")), 2, 2)
         self.smart_chord_light_mode = QComboBox()
+        self.smart_chord_light_mode.setMinimumWidth(120)  # Make wider
         self.smart_chord_light_mode.addItem("Custom", 0)
         self.smart_chord_light_mode.addItem("Off", 2)
         self.smart_chord_light_mode.addItem("Guitar Low E", 3)
@@ -319,6 +725,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # RGB Layer Mode
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 0)
         self.custom_layer_animations = QComboBox()
+        self.custom_layer_animations.setMinimumWidth(120)  # Make wider
         self.custom_layer_animations.addItem("Off", False)
         self.custom_layer_animations.addItem("On", True)
         advanced_layout.addWidget(self.custom_layer_animations, 3, 1)
@@ -326,6 +733,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Colorblind Mode
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 3, 2)
         self.colorblind_mode = QComboBox()
+        self.colorblind_mode.setMinimumWidth(120)  # Make wider
         self.colorblind_mode.addItem("Off", 0)
         self.colorblind_mode.addItem("On", 1)
         advanced_layout.addWidget(self.colorblind_mode, 3, 3)
@@ -333,6 +741,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # CC Loop Recording
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 4, 0)
         self.cc_loop_recording = QComboBox()
+        self.cc_loop_recording.setMinimumWidth(120)  # Make wider
         self.cc_loop_recording.addItem("Off", False)
         self.cc_loop_recording.addItem("On", True)
         advanced_layout.addWidget(self.cc_loop_recording, 4, 1)
@@ -340,6 +749,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # True Sustain
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 2)
         self.true_sustain = QComboBox()
+        self.true_sustain.setMinimumWidth(120)  # Make wider
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 3)
@@ -353,6 +763,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Channel Mode
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 0)
         self.key_split_status = QComboBox()
+        self.key_split_status.setMinimumWidth(120)  # Make wider
         self.key_split_status.addItem("Disable Keysplit", 0)
         self.key_split_status.addItem("KeySplit On", 1)
         self.key_split_status.addItem("TripleSplit On", 2)
@@ -361,6 +772,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Transpose Mode
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 0, 2)
         self.key_split_transpose_status = QComboBox()
+        self.key_split_transpose_status.setMinimumWidth(120)  # Make wider
         self.key_split_transpose_status.addItem("Disable Keysplit", 0)
         self.key_split_transpose_status.addItem("KeySplit On", 1)
         self.key_split_transpose_status.addItem("TripleSplit On", 2)
@@ -369,6 +781,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Velocity Mode
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 0, 4)
         self.key_split_velocity_status = QComboBox()
+        self.key_split_velocity_status.setMinimumWidth(120)  # Make wider
         self.key_split_velocity_status.addItem("Disable Keysplit", 0)
         self.key_split_velocity_status.addItem("KeySplit On", 1)
         self.key_split_velocity_status.addItem("TripleSplit On", 2)
@@ -385,12 +798,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 0)
         self.key_split_channel = QComboBox()
+        self.key_split_channel.setMinimumWidth(120)  # Make wider
         for i in range(16):
             self.key_split_channel.addItem(str(i + 1), i)
         keysplit_layout.addWidget(self.key_split_channel, 1, 1)
         
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 0)
         self.transpose_number2 = QComboBox()
+        self.transpose_number2.setMinimumWidth(120)  # Make wider
         for i in range(-64, 65):
             self.transpose_number2.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number2.setCurrentIndex(64)  # Default to 0
@@ -398,6 +813,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 3, 0)
         self.velocity_number2 = QComboBox()
+        self.velocity_number2.setMinimumWidth(120)  # Make wider
         for i in range(1, 128):
             self.velocity_number2.addItem(str(i), i)
         self.velocity_number2.setCurrentIndex(126)  # Default to 127
@@ -408,12 +824,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 2)
         self.key_split2_channel = QComboBox()
+        self.key_split2_channel.setMinimumWidth(120)  # Make wider
         for i in range(16):
             self.key_split2_channel.addItem(str(i + 1), i)
         keysplit_layout.addWidget(self.key_split2_channel, 1, 3)
         
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 2)
         self.transpose_number3 = QComboBox()
+        self.transpose_number3.setMinimumWidth(120)  # Make wider
         for i in range(-64, 65):
             self.transpose_number3.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number3.setCurrentIndex(64)  # Default to 0
@@ -421,17 +839,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 3, 2)
         self.velocity_number3 = QComboBox()
+        self.velocity_number3.setMinimumWidth(120)  # Make wider
         for i in range(1, 128):
             self.velocity_number3.addItem(str(i), i)
         self.velocity_number3.setCurrentIndex(126)  # Default to 127
         keysplit_layout.addWidget(self.velocity_number3, 3, 3)
         
-        # Buttons
+        # Buttons (removed file save/load buttons)
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
         
-        # Default and File buttons
+        # Default buttons
         save_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save as Default"))
         save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
         buttons_layout.addWidget(save_default_btn)
@@ -443,14 +862,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         reset_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"))
         reset_btn.clicked.connect(self.on_reset)
         buttons_layout.addWidget(reset_btn)
-        
-        save_file_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save to File"))
-        save_file_btn.clicked.connect(self.on_save_to_file)
-        buttons_layout.addWidget(save_file_btn)
-        
-        load_file_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load from File"))
-        load_file_btn.clicked.connect(self.on_load_from_file)
-        buttons_layout.addWidget(load_file_btn)
         
         self.addLayout(buttons_layout)
         
@@ -565,7 +976,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.cc_loop_recording, settings.get("cclooprecording", False))
         set_combo_by_data(self.true_sustain, settings.get("truesustain", False))
     
-    # Rest of the methods remain the same as original...
     def pack_basic_data(self, settings):
         """Pack basic settings into 26-byte structure"""
         data = bytearray(26)
@@ -700,432 +1110,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "truesustain": False
         }
         self.apply_settings(defaults)
-    
-    def on_save_to_file(self):
-        """Save current configuration to JSON file"""
-        try:
-            config = {
-                "version": "1.0",
-                "settings": self.get_current_settings()
-            }
-            filename, _ = QFileDialog.getSaveFileName(
-                self, "Save Keyboard Configuration", "", "JSON Files (*.json)"
-            )
-            if filename:
-                with open(filename, 'w') as f:
-                    json.dump(config, f, indent=2)
-                QMessageBox.information(self, "Success", "Configuration saved to file!")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save to file: {str(e)}")
-    
-    def on_load_from_file(self):
-        """Load configuration from JSON file"""
-        try:
-            filename, _ = QFileDialog.getOpenFileName(
-                self, "Load Keyboard Configuration", "", "JSON Files (*.json)"
-            )
-            if filename:
-                with open(filename, 'r') as f:
-                    config = json.load(f)
-                if "settings" in config:
-                    self.apply_settings(config["settings"])
-                    QMessageBox.information(self, "Success", "Configuration loaded from file!")
-                else:
-                    QMessageBox.critical(self, "Error", "Invalid configuration file format")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load from file: {str(e)}")
-    
-    def valid(self):
-        return isinstance(self.device, VialKeyboard)
-    
-    def rebuild(self, device):
-        super().rebuild(device)
-        if not self.valid():
-            return
-            
-class ThruLoopConfigurator(BasicEditor):
-    
-    def __init__(self):
-        super().__init__()
-        
-        # HID Command constants (0xB0-0xB5 range)
-        self.HID_CMD_SET_LOOP_CONFIG = 0xB0
-        self.HID_CMD_SET_MAIN_LOOP_CCS = 0xB1
-        self.HID_CMD_SET_OVERDUB_CCS = 0xB2
-        self.HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
-        self.HID_CMD_GET_ALL_CONFIG = 0xB4
-        self.HID_CMD_RESET_LOOP_CONFIG = 0xB5
-        
-        self.MANUFACTURER_ID = 0x7D
-        self.SUB_ID = 0x00
-        self.DEVICE_ID = 0x4D
-        
-        # Initialize references to None - will be set in setup_ui
-        self.single_loopchop_label = None
-        self.master_cc = None
-        self.single_loopchop_widgets = []
-        self.nav_widget = None
-        
-        self.setup_ui()
-        
-    def setup_ui(self):
-        self.addStretch()
-        
-        main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
-        
-        # Basic Settings Group
-        basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
-        basic_layout = QGridLayout()
-        basic_group.setLayout(basic_layout)
-        main_layout.addWidget(basic_group)
-        
-        # ThruLoop Channel
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "ThruLoop Channel")), 0, 0)
-        self.loop_channel = QComboBox()
-        for i in range(1, 17):
-            self.loop_channel.addItem(f"Channel {i}", i)
-        self.loop_channel.setCurrentIndex(15)  # Default to channel 16
-        basic_layout.addWidget(self.loop_channel, 0, 1)
-        
-        # Send Restart Messages
-        self.sync_midi = QCheckBox(tr("ThruLoopConfigurator", "Send Restart Messages"))
-        basic_layout.addWidget(self.sync_midi, 1, 0, 1, 2)
-        
-        # Alternate Restart Mode
-        self.alternate_restart = QCheckBox(tr("ThruLoopConfigurator", "Alternate Restart Mode"))
-        basic_layout.addWidget(self.alternate_restart, 2, 0, 1, 2)
-        
-        # CC Loop Recording
-        self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
-        basic_layout.addWidget(self.cc_loop_recording, 3, 0, 1, 2)
-        
-        # Disable ThruLoop
-        self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
-        basic_layout.addWidget(self.loop_enabled, 4, 0, 1, 2)
-        
-        # Restart CCs
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Restart CCs")), 5, 0, 1, 2)
-        self.restart_combos = []
-        for i in range(4):
-            basic_layout.addWidget(QLabel(f"Loop {i+1}"), 6, i if i < 2 else i-2)
-            combo = self.create_cc_combo()
-            basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
-            self.restart_combos.append(combo)
-        
-        # Main Functions Table
-        main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
-        main_layout.addWidget(main_group)
-        self.main_table = self.create_function_table()
-        main_group_layout = QVBoxLayout()
-        main_group_layout.addWidget(self.main_table)
-        main_group.setLayout(main_group_layout)
-        self.main_group = main_group
-        
-        # Overdub Functions Table  
-        overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
-        main_layout.addWidget(overdub_group)
-        self.overdub_table = self.create_function_table()
-        overdub_group_layout = QVBoxLayout()
-        overdub_group_layout.addWidget(self.overdub_table)
-        overdub_group.setLayout(overdub_group_layout)
-        self.overdub_group = overdub_group
-        
-        # LoopChop Settings
-        loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
-        loopchop_layout = QGridLayout()
-        loopchop_group.setLayout(loopchop_layout)
-        main_layout.addWidget(loopchop_group)
-        self.loopchop_group = loopchop_group
-        
-        # Separate CCs for LoopChop checkbox
-        self.separate_loopchop = QCheckBox(tr("ThruLoopConfigurator", "Separate CCs for LoopChop"))
-        loopchop_layout.addWidget(self.separate_loopchop, 0, 0, 1, 2)
-        
-        # Single LoopChop CC - Store references properly
-        self.single_loopchop_label = QLabel(tr("ThruLoopConfigurator", "Loop Chop"))
-        loopchop_layout.addWidget(self.single_loopchop_label, 1, 0)
-        self.master_cc = self.create_cc_combo()
-        loopchop_layout.addWidget(self.master_cc, 1, 1)
-        
-        # Store widgets for show/hide operations
-        self.single_loopchop_widgets = [self.single_loopchop_label, self.master_cc]
-        
-        # Individual LoopChop CCs (8 navigation CCs)
-        nav_layout = QGridLayout()
-        self.nav_combos = []
-        for i in range(8):
-            row = i // 4
-            col = i % 4
-            nav_layout.addWidget(QLabel(f"{i}/8"), row * 2, col)
-            combo = self.create_cc_combo()
-            nav_layout.addWidget(combo, row * 2 + 1, col)
-            self.nav_combos.append(combo)
-        
-        self.nav_widget = QWidget()
-        self.nav_widget.setLayout(nav_layout)
-        loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 2)
-        
-        # Buttons
-        self.addStretch()
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addStretch()
-        
-        save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
-        save_btn.clicked.connect(self.on_save)
-        buttons_layout.addWidget(save_btn)
-        
-        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))  
-        load_btn.clicked.connect(self.on_load_from_keyboard)
-        buttons_layout.addWidget(load_btn)
-        
-        save_file_btn = QPushButton(tr("ThruLoopConfigurator", "Save to File"))
-        save_file_btn.clicked.connect(self.on_save_to_file)
-        buttons_layout.addWidget(save_file_btn)
-        
-        load_file_btn = QPushButton(tr("ThruLoopConfigurator", "Load from File"))
-        load_file_btn.clicked.connect(self.on_load_from_file)
-        buttons_layout.addWidget(load_file_btn)
-        
-        self.addLayout(buttons_layout)
-        
-        # Connect signals AFTER all widgets are created
-        self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
-        self.separate_loopchop.stateChanged.connect(self.on_separate_loopchop_changed)
-        
-        # Initialize UI state AFTER all widgets and connections are set up
-        self.on_loop_enabled_changed()
-        self.on_separate_loopchop_changed()
-    
-    def create_cc_combo(self):
-        combo = QComboBox()
-        combo.addItem("None", 128)
-        for i in range(128):
-            combo.addItem(f"CC# {i}", i)
-        combo.setCurrentIndex(0)  # Default to "None"
-        return combo
-    
-    def create_function_table(self):
-        table = QTableWidget(5, 4)  # 5 functions x 4 loops
-        table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
-        table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
-        ])
-        
-        # Fill table with CC combo boxes
-        for row in range(5):
-            for col in range(4):
-                combo = self.create_cc_combo()
-                table.setCellWidget(row, col, combo)
-        
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(200)
-        return table
-    
-    def on_loop_enabled_changed(self):
-        # When checked, ThruLoop is disabled (reversed logic from webapp)
-        enabled = not self.loop_enabled.isChecked()
-        self.main_group.setEnabled(enabled)
-        self.overdub_group.setEnabled(enabled) 
-        self.loopchop_group.setEnabled(enabled)
-        for combo in self.restart_combos:
-            combo.setEnabled(enabled)
-    
-    def on_separate_loopchop_changed(self):
-        separate = self.separate_loopchop.isChecked()
-        for widget in self.single_loopchop_widgets:
-            if widget is not None:  # Safety check
-                widget.setVisible(not separate)
-        if self.nav_widget is not None:  # Safety check
-            self.nav_widget.setVisible(separate)
-    
-    # ... rest of the methods remain the same ...
-    def send_hid_packet(self, command, macro_num, data):
-        """Send HID packet to device"""
-        if not self.device or not isinstance(self.device, VialKeyboard):
-            return
-        
-        packet = bytearray(32)
-        packet[0] = self.MANUFACTURER_ID
-        packet[1] = self.SUB_ID  
-        packet[2] = self.DEVICE_ID
-        packet[3] = command
-        packet[4] = macro_num
-        packet[5] = 0  # Status
-        
-        # Copy data payload (max 26 bytes)
-        data_len = min(len(data), 26)
-        packet[6:6+data_len] = data[:data_len]
-        
-        try:
-            self.device.keyboard.via_command(packet)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to send command: {str(e)}")
-    
-    def get_cc_value(self, combo):
-        return combo.currentData()
-    
-    def set_cc_value(self, combo, value):
-        for i in range(combo.count()):
-            if combo.itemData(i) == value:
-                combo.setCurrentIndex(i)
-                break
-    
-    def get_table_cc_values(self, table):
-        values = []
-        for row in range(table.rowCount()):
-            for col in range(table.columnCount()):
-                combo = table.cellWidget(row, col)
-                values.append(self.get_cc_value(combo))
-        return values
-    
-    def set_table_cc_values(self, table, values):
-        idx = 0
-        for row in range(table.rowCount()):
-            for col in range(table.columnCount()):
-                if idx < len(values):
-                    combo = table.cellWidget(row, col)
-                    self.set_cc_value(combo, values[idx])
-                    idx += 1
-    
-    def on_save(self):
-        """Save all configuration to keyboard"""
-        try:
-            # 1. Send basic loop configuration
-            loop_config_data = [
-                0 if self.loop_enabled.isChecked() else 1,  # Reversed logic
-                self.loop_channel.currentData(),
-                1 if self.sync_midi.isChecked() else 0,
-                1 if self.alternate_restart.isChecked() else 0,
-            ]
-            # Add restart CCs
-            for combo in self.restart_combos:
-                loop_config_data.append(self.get_cc_value(combo))
-            # Add CC loop recording
-            loop_config_data.append(1 if self.cc_loop_recording.isChecked() else 0)
-            
-            self.send_hid_packet(self.HID_CMD_SET_LOOP_CONFIG, 0, loop_config_data)
-            
-            # 2. Send main loop CCs
-            main_values = self.get_table_cc_values(self.main_table)
-            self.send_hid_packet(self.HID_CMD_SET_MAIN_LOOP_CCS, 0, main_values)
-            
-            # 3. Send overdub CCs  
-            overdub_values = self.get_table_cc_values(self.overdub_table)
-            self.send_hid_packet(self.HID_CMD_SET_OVERDUB_CCS, 0, overdub_values)
-            
-            # 4. Send navigation configuration
-            nav_config_data = [
-                1 if self.separate_loopchop.isChecked() else 0,
-                self.get_cc_value(self.master_cc),
-            ]
-            for combo in self.nav_combos:
-                nav_config_data.append(self.get_cc_value(combo))
-            
-            self.send_hid_packet(self.HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_config_data)
-            
-            QMessageBox.information(self, "Success", "ThruLoop configuration saved successfully!")
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save configuration: {str(e)}")
-    
-    def on_load_from_keyboard(self):
-        """Load configuration from keyboard"""
-        try:
-            self.send_hid_packet(self.HID_CMD_GET_ALL_CONFIG, 0, [])
-            QMessageBox.information(self, "Info", "Load request sent to keyboard")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load from keyboard: {str(e)}")
-    
-    def get_current_config(self):
-        """Get current UI configuration as dictionary"""
-        config = {
-            "version": "1.0",
-            "loopEnabled": not self.loop_enabled.isChecked(),  # Reversed for file storage
-            "loopChannel": self.loop_channel.currentData(), 
-            "syncMidi": self.sync_midi.isChecked(),
-            "alternateRestart": self.alternate_restart.isChecked(),
-            "ccLoopRecording": self.cc_loop_recording.isChecked(),
-            "separateLoopChopCC": self.separate_loopchop.isChecked(),
-            "masterCC": self.get_cc_value(self.master_cc),
-            "restartCCs": [self.get_cc_value(combo) for combo in self.restart_combos],
-            "mainCCs": self.get_table_cc_values(self.main_table),
-            "overdubCCs": self.get_table_cc_values(self.overdub_table),
-            "navCCs": [self.get_cc_value(combo) for combo in self.nav_combos]
-        }
-        return config
-    
-    def apply_config(self, config):
-        """Apply configuration dictionary to UI"""
-        self.loop_enabled.setChecked(not config.get("loopEnabled", True))  # Reversed
-        
-        # Set channel
-        for i in range(self.loop_channel.count()):
-            if self.loop_channel.itemData(i) == config.get("loopChannel", 16):
-                self.loop_channel.setCurrentIndex(i)
-                break
-        
-        self.sync_midi.setChecked(config.get("syncMidi", False))
-        self.alternate_restart.setChecked(config.get("alternateRestart", False))
-        self.cc_loop_recording.setChecked(config.get("ccLoopRecording", False))
-        self.separate_loopchop.setChecked(config.get("separateLoopChopCC", False))
-        self.set_cc_value(self.master_cc, config.get("masterCC", 128))
-        
-        # Set restart CCs
-        restart_ccs = config.get("restartCCs", [128] * 4)
-        for i, combo in enumerate(self.restart_combos):
-            if i < len(restart_ccs):
-                self.set_cc_value(combo, restart_ccs[i])
-        
-        # Set main table CCs
-        main_ccs = config.get("mainCCs", [128] * 20)
-        self.set_table_cc_values(self.main_table, main_ccs)
-        
-        # Set overdub table CCs
-        overdub_ccs = config.get("overdubCCs", [128] * 20)  
-        self.set_table_cc_values(self.overdub_table, overdub_ccs)
-        
-        # Set navigation CCs
-        nav_ccs = config.get("navCCs", [128] * 8)
-        for i, combo in enumerate(self.nav_combos):
-            if i < len(nav_ccs):
-                self.set_cc_value(combo, nav_ccs[i])
-        
-        # Update UI state
-        self.on_loop_enabled_changed()
-        self.on_separate_loopchop_changed()
-    
-    def on_save_to_file(self):
-        """Save configuration to JSON file"""
-        try:
-            config = self.get_current_config()
-            filename, _ = QFileDialog.getSaveFileName(
-                self, "Save ThruLoop Configuration", "", "JSON Files (*.json)"
-            )
-            if filename:
-                with open(filename, 'w') as f:
-                    json.dump(config, f, indent=2)
-                QMessageBox.information(self, "Success", "Configuration saved to file!")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save to file: {str(e)}")
-    
-    def on_load_from_file(self):
-        """Load configuration from JSON file"""
-        try:
-            filename, _ = QFileDialog.getOpenFileName(
-                self, "Load ThruLoop Configuration", "", "JSON Files (*.json)"
-            )
-            if filename:
-                with open(filename, 'r') as f:
-                    config = json.load(f)
-                self.apply_config(config)
-                QMessageBox.information(self, "Success", "Configuration loaded from file!")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load from file: {str(e)}")
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
