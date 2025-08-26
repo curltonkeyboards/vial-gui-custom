@@ -417,6 +417,7 @@ class KeyboardConfigurator(BasicEditor):
         set_combo_by_data(self.cc_loop_recording, settings.get("cclooprecording", False))
         set_combo_by_data(self.true_sustain, settings.get("truesustain", False))
     
+    # Rest of the methods remain the same as original...
     def pack_basic_data(self, settings):
         """Pack basic settings into 26-byte structure"""
         data = bytearray(26)

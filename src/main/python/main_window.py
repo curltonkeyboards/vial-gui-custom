@@ -33,6 +33,7 @@ from editor.matrix_test import MatrixTest
 
 # Import the new modules
 from midiswitchsettings import KeyboardConfigurator
+from thruloop import ThruLoopConfigurator
 
 import themes
 
@@ -86,6 +87,7 @@ class MainWindow(QMainWindow):
         
         # Initialize the new configurators
         self.keyboard_configurator = KeyboardConfigurator()
+        self.thruloop_configurator = ThruLoopConfigurator()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),

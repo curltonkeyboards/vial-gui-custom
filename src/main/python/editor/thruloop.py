@@ -29,6 +29,12 @@ class ThruLoopConfigurator(BasicEditor):
         self.SUB_ID = 0x00
         self.DEVICE_ID = 0x4D
         
+        # Initialize references to None - will be set in setup_ui
+        self.single_loopchop_label = None
+        self.master_cc = None
+        self.single_loopchop_widgets = []
+        self.nav_widget = None
+        
         self.setup_ui()
         
     def setup_ui(self):
@@ -69,7 +75,6 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Disable ThruLoop
         self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
-        self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
         basic_layout.addWidget(self.loop_enabled, 4, 0, 1, 2)
         
         # Restart CCs
@@ -108,14 +113,16 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Separate CCs for LoopChop checkbox
         self.separate_loopchop = QCheckBox(tr("ThruLoopConfigurator", "Separate CCs for LoopChop"))
-        self.separate_loopchop.stateChanged.connect(self.on_separate_loopchop_changed)
         loopchop_layout.addWidget(self.separate_loopchop, 0, 0, 1, 2)
         
-        # Single LoopChop CC
-        loopchop_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Loop Chop")), 1, 0)
+        # Single LoopChop CC - Store references properly
+        self.single_loopchop_label = QLabel(tr("ThruLoopConfigurator", "Loop Chop"))
+        loopchop_layout.addWidget(self.single_loopchop_label, 1, 0)
         self.master_cc = self.create_cc_combo()
         loopchop_layout.addWidget(self.master_cc, 1, 1)
-        self.single_loopchop_widgets = [loopchop_layout.itemAtPosition(1, 0).widget(), self.master_cc]
+        
+        # Store widgets for show/hide operations
+        self.single_loopchop_widgets = [self.single_loopchop_label, self.master_cc]
         
         # Individual LoopChop CCs (8 navigation CCs)
         nav_layout = QGridLayout()
@@ -128,10 +135,9 @@ class ThruLoopConfigurator(BasicEditor):
             nav_layout.addWidget(combo, row * 2 + 1, col)
             self.nav_combos.append(combo)
         
-        nav_widget = QWidget()
-        nav_widget.setLayout(nav_layout)
-        loopchop_layout.addWidget(nav_widget, 2, 0, 1, 2)
-        self.nav_widget = nav_widget
+        self.nav_widget = QWidget()
+        self.nav_widget.setLayout(nav_layout)
+        loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 2)
         
         # Buttons
         self.addStretch()
@@ -156,7 +162,11 @@ class ThruLoopConfigurator(BasicEditor):
         
         self.addLayout(buttons_layout)
         
-        # Initialize UI state
+        # Connect signals AFTER all widgets are created
+        self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
+        self.separate_loopchop.stateChanged.connect(self.on_separate_loopchop_changed)
+        
+        # Initialize UI state AFTER all widgets and connections are set up
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
     
@@ -197,9 +207,12 @@ class ThruLoopConfigurator(BasicEditor):
     def on_separate_loopchop_changed(self):
         separate = self.separate_loopchop.isChecked()
         for widget in self.single_loopchop_widgets:
-            widget.setVisible(not separate)
-        self.nav_widget.setVisible(separate)
+            if widget is not None:  # Safety check
+                widget.setVisible(not separate)
+        if self.nav_widget is not None:  # Safety check
+            self.nav_widget.setVisible(separate)
     
+    # ... rest of the methods remain the same ...
     def send_hid_packet(self, command, macro_num, data):
         """Send HID packet to device"""
         if not self.device or not isinstance(self.device, VialKeyboard):
