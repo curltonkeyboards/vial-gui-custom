@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import struct
+import json
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, \
     QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, \
     QMessageBox, QHeaderView
-import json
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -72,6 +72,15 @@ class ThruLoopConfigurator(BasicEditor):
         self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
         basic_layout.addWidget(self.loop_enabled, 4, 0, 1, 2)
         
+        # Restart CCs
+        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Restart CCs")), 5, 0, 1, 2)
+        self.restart_combos = []
+        for i in range(4):
+            basic_layout.addWidget(QLabel(f"Loop {i+1}"), 6, i if i < 2 else i-2)
+            combo = self.create_cc_combo()
+            basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
+            self.restart_combos.append(combo)
+        
         # Main Functions Table
         main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         main_layout.addWidget(main_group)
@@ -124,17 +133,8 @@ class ThruLoopConfigurator(BasicEditor):
         loopchop_layout.addWidget(nav_widget, 2, 0, 1, 2)
         self.nav_widget = nav_widget
         
-        # Restart CCs (add to basic group)
-        restart_layout = QGridLayout()
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Restart CCs")), 5, 0, 1, 2)
-        self.restart_combos = []
-        for i in range(4):
-            basic_layout.addWidget(QLabel(f"Loop {i+1}"), 6, i if i < 2 else i-2)
-            combo = self.create_cc_combo()
-            basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
-            self.restart_combos.append(combo)
-        
         # Buttons
+        self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
         
@@ -154,8 +154,7 @@ class ThruLoopConfigurator(BasicEditor):
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
         
-        main_layout.addLayout(buttons_layout)
-        self.addStretch()
+        self.addLayout(buttons_layout)
         
         # Initialize UI state
         self.on_loop_enabled_changed()

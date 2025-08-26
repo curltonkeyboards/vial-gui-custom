@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import struct
+import json
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, \
     QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QFileDialog, QMessageBox, QSpinBox
-import json
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -279,33 +279,32 @@ class KeyboardConfigurator(BasicEditor):
         keysplit_layout.addWidget(self.velocity_number3, 3, 3)
         
         # Buttons
-        buttons_layout = QVBoxLayout()
+        self.addStretch()
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
         
         # Default and File buttons
-        default_file_layout = QHBoxLayout()
-        default_file_layout.addStretch()
-        
         save_default_btn = QPushButton(tr("KeyboardConfigurator", "Save as Default"))
         save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
-        default_file_layout.addWidget(save_default_btn)
+        buttons_layout.addWidget(save_default_btn)
         
         load_default_btn = QPushButton(tr("KeyboardConfigurator", "Load Default"))
         load_default_btn.clicked.connect(lambda: self.on_load_slot(0))
-        default_file_layout.addWidget(load_default_btn)
+        buttons_layout.addWidget(load_default_btn)
         
         reset_btn = QPushButton(tr("KeyboardConfigurator", "Reset to Defaults"))
         reset_btn.clicked.connect(self.on_reset)
-        default_file_layout.addWidget(reset_btn)
+        buttons_layout.addWidget(reset_btn)
         
         save_file_btn = QPushButton(tr("KeyboardConfigurator", "Save to File"))
         save_file_btn.clicked.connect(self.on_save_to_file)
-        default_file_layout.addWidget(save_file_btn)
+        buttons_layout.addWidget(save_file_btn)
         
         load_file_btn = QPushButton(tr("KeyboardConfigurator", "Load from File"))
         load_file_btn.clicked.connect(self.on_load_from_file)
-        default_file_layout.addWidget(load_file_btn)
+        buttons_layout.addWidget(load_file_btn)
         
-        buttons_layout.addLayout(default_file_layout)
+        self.addLayout(buttons_layout)
         
         # Save slot buttons
         save_slots_layout = QHBoxLayout()
@@ -314,7 +313,7 @@ class KeyboardConfigurator(BasicEditor):
             btn = QPushButton(tr("KeyboardConfigurator", f"Save to Slot {i}"))
             btn.clicked.connect(lambda checked, slot=i: self.on_save_slot(slot))
             save_slots_layout.addWidget(btn)
-        buttons_layout.addLayout(save_slots_layout)
+        self.addLayout(save_slots_layout)
         
         # Load slot buttons
         load_slots_layout = QHBoxLayout()
@@ -323,10 +322,7 @@ class KeyboardConfigurator(BasicEditor):
             btn = QPushButton(tr("KeyboardConfigurator", f"Load Slot {i}"))
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
-        buttons_layout.addLayout(load_slots_layout)
-        
-        main_layout.addLayout(buttons_layout)
-        self.addStretch()
+        self.addLayout(load_slots_layout)
         
     def send_hid_packet(self, command, data):
         """Send HID packet to device"""
