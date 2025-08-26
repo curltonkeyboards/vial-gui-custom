@@ -31,7 +31,8 @@ from util import tr, EXAMPLE_KEYBOARDS, KeycodeDisplay, EXAMPLE_KEYBOARD_PREFIX
 from vial_device import VialKeyboard
 from editor.matrix_test import MatrixTest
 
-from thruloop import ThruLoopConfigurator
+# Import the new modules
+from midiswitchsettings import KeyboardConfigurator
 
 import themes
 
@@ -82,8 +83,9 @@ class MainWindow(QMainWindow):
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
-
-        self.thruloop_configurator = ThruLoopConfigurator()
+        
+        # Initialize the new configurators
+        self.keyboard_configurator = KeyboardConfigurator()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
