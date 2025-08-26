@@ -1362,11 +1362,19 @@ class CustomLightsHandler(BasicHandler):
         active_slot = self.get_currently_active_slot()
         print(f"Loading from active slot {active_slot} into tab {slot}")
         
-        # Load RAM state from the active slot and display in current tab
-        self.load_slot_from_ram(active_slot)
+        # Get the RAM data from the active slot
+        try:
+            config = self.device.keyboard.get_custom_slot_config(active_slot, from_eeprom=False)  # Load from RAM
+            if config and len(config) >= 12:
+                # Update the GUI widgets for the CURRENT TAB (slot), not the active slot
+                self.update_slot_widgets(slot, config)  # Use slot (current tab), not active_slot
+            else:
+                print(f"Failed to get RAM config for active slot {active_slot}")
+        except Exception as e:
+            print(f"Error loading RAM state for active slot {active_slot}: {e}")
         
         self.unblock_signals()
-    
+        
     def load_slot_from_eeprom(self, slot):
         """Load slot settings from EEPROM"""
         try:
