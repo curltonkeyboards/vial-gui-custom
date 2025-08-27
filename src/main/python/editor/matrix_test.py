@@ -158,12 +158,13 @@ class MatrixTest(BasicEditor):
         self.grabber.releaseKeyboard()
         self.timer.stop()
 
+
 class ThruLoopConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
         
-        # HID Command constants (0xB0-0xB5 range)
+        # HID Command constants (0xB0-0xB5 range) - SAME AS WEBAPP
         self.HID_CMD_SET_LOOP_CONFIG = 0xB0
         self.HID_CMD_SET_MAIN_LOOP_CCS = 0xB1
         self.HID_CMD_SET_OVERDUB_CCS = 0xB2
@@ -171,6 +172,7 @@ class ThruLoopConfigurator(BasicEditor):
         self.HID_CMD_GET_ALL_CONFIG = 0xB4
         self.HID_CMD_RESET_LOOP_CONFIG = 0xB5
         
+        # SAME AS WEBAPP
         self.MANUFACTURER_ID = 0x7D
         self.SUB_ID = 0x00
         self.DEVICE_ID = 0x4D
@@ -324,63 +326,33 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_separate_loopchop_changed()
     
     def create_cc_combo(self):
-        """Create a hierarchical CC selector using QPushButton + QMenu"""
-        from PyQt5.QtWidgets import QMenu
-        
-        button = QPushButton("None")
-        button.setMinimumWidth(120)
-        button.setMaximumHeight(25)
-        
-        # Store the current CC value
-        button._cc_value = 128  # Default to "None" (128)
-        
-        menu = QMenu()
+        """Create a CC selector combobox"""
+        combo = QComboBox()
+        combo.setMinimumWidth(120)
+        combo.setMaximumHeight(25)
         
         # Add "None" option
-        none_action = menu.addAction("None")
-        none_action.setData(128)
-        none_action.triggered.connect(lambda: self._set_cc_value(button, 128, "None"))
+        combo.addItem("None", 128)
         
-        menu.addSeparator()
-        
-        # Create hierarchical CC submenus
-        for range_start in range(0, 128, 10):
-            range_end = min(range_start + 9, 127)
-            range_name = f"CC {range_start}-{range_end}"
+        # Add CC options
+        for cc_num in range(128):
+            combo.addItem(f"CC# {cc_num}", cc_num)
             
-            submenu = menu.addMenu(range_name)
-            
-            for cc_num in range(range_start, min(range_start + 10, 128)):
-                action = submenu.addAction(f"CC# {cc_num}")
-                action.setData(cc_num)
-                action.triggered.connect(lambda checked, num=cc_num: self._set_cc_value(button, num, f"CC# {num}"))
-        
-        button.setMenu(menu)
-        return button
+        combo.setCurrentIndex(0)  # Default to "None"
+        return combo
     
-    def _set_cc_value(self, button, value, text):
-        """Helper to set CC value and update button text"""
-        button._cc_value = value
-        button.setText(text)
+    def get_cc_value(self, combo):
+        """Get the current CC value from a CC combo"""
+        return combo.currentData()
     
-    def get_cc_value(self, button):
-        """Get the current CC value from a CC button/combo"""
-        if hasattr(button, '_cc_value'):
-            return getattr(button, '_cc_value', 128)
-        elif hasattr(button, 'currentData'):
-            return button.currentData() if button.currentData() is not None else 128
-        elif hasattr(button, 'value'):
-            return button.value()
-        else:
-            return 128  # Default to "None"
-    
-    def set_cc_value(self, button, value):
-        """Set the CC value for a button"""
-        button._cc_value = value
-        if value == 128:
-            button.setText("None")
-        else:
-            button.setText(f"CC# {value}")
+    def set_cc_value(self, combo, value):
+        """Set the CC value for a combo"""
+        for i in range(combo.count()):
+            if combo.itemData(i) == value:
+                combo.setCurrentIndex(i)
+                return
+        # If not found, set to None
+        combo.setCurrentIndex(0)
     
     def create_function_table(self):
         table = QTableWidget(5, 4)  # 5 functions x 4 loops
@@ -389,11 +361,11 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
         ])
         
-        # Fill table with CC buttons (not combo boxes)
+        # Fill table with CC combos
         for row in range(5):
             for col in range(4):
-                cc_button = self.create_cc_combo()
-                table.setCellWidget(row, col, cc_button)
+                cc_combo = self.create_cc_combo()
+                table.setCellWidget(row, col, cc_combo)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.setMaximumHeight(200)
@@ -407,11 +379,11 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
         
-        # Fill table with CC buttons (not combo boxes)
+        # Fill table with CC combos
         for row in range(6):
             for col in range(4):
-                cc_button = self.create_cc_combo()
-                table.setCellWidget(row, col, cc_button)
+                cc_combo = self.create_cc_combo()
+                table.setCellWidget(row, col, cc_combo)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.setMaximumHeight(280)
@@ -438,14 +410,15 @@ class ThruLoopConfigurator(BasicEditor):
             self.nav_widget.setEnabled(separate)
     
     def send_hid_packet(self, command, macro_num, data):
-        """Send HID packet to device"""
+        """Send HID packet to device - EXACTLY LIKE WEBAPP"""
         if not self.device or not isinstance(self.device, VialKeyboard):
-            return
+            raise RuntimeError("Device not connected")
         
+        # Create 32-byte packet EXACTLY like webapp
         packet = bytearray(32)
-        packet[0] = self.MANUFACTURER_ID
-        packet[1] = self.SUB_ID  
-        packet[2] = self.DEVICE_ID
+        packet[0] = self.MANUFACTURER_ID  # 0x7D
+        packet[1] = self.SUB_ID           # 0x00
+        packet[2] = self.DEVICE_ID        # 0x4D
         packet[3] = command
         packet[4] = macro_num
         packet[5] = 0  # Status
@@ -455,16 +428,17 @@ class ThruLoopConfigurator(BasicEditor):
         packet[6:6+data_len] = data[:data_len]
         
         try:
-            self.device.keyboard.via_command(packet)
+            # Send via Vial's via_command method
+            self.device.keyboard.via_command(bytes(packet))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to send command: {str(e)}")
+            raise RuntimeError(f"Failed to send command: {str(e)}")
     
     def get_table_cc_values(self, table):
         values = []
         for row in range(table.rowCount()):
             for col in range(table.columnCount()):
-                button = table.cellWidget(row, col)
-                values.append(self.get_cc_value(button))
+                combo = table.cellWidget(row, col)
+                values.append(self.get_cc_value(combo))
         return values
     
     def set_table_cc_values(self, table, values):
@@ -472,79 +446,70 @@ class ThruLoopConfigurator(BasicEditor):
         for row in range(table.rowCount()):
             for col in range(table.columnCount()):
                 if idx < len(values):
-                    button = table.cellWidget(row, col)
-                    self.set_cc_value(button, values[idx])
+                    combo = table.cellWidget(row, col)
+                    self.set_cc_value(combo, values[idx])
                     idx += 1
     
     def get_restart_cc_values(self):
         """Get restart CCs from the main table (last row)"""
         restart_values = []
         for col in range(4):
-            button = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
-            restart_values.append(self.get_cc_value(button))
+            combo = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
+            restart_values.append(self.get_cc_value(combo))
         return restart_values
     
     def set_restart_cc_values(self, values):
         """Set restart CCs in the main table (last row)"""
         for col in range(4):
             if col < len(values):
-                button = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
-                self.set_cc_value(button, values[col])
+                combo = self.main_table.cellWidget(5, col)  # Row 5 is the Restart row
+                self.set_cc_value(combo, values[col])
     
     def on_save(self):
-        """Save all configuration to keyboard - matches webapp exactly"""
+        """Save all configuration to keyboard"""
         try:
-            # 1. Send basic loop configuration (0xB0)
+            # 1. Send basic loop configuration
             loop_config_data = [
-                0 if self.loop_enabled.isChecked() else 1,  # Reversed logic like webapp
+                0 if self.loop_enabled.isChecked() else 1,  # Reversed logic
                 self.loop_channel.currentData(),
                 1 if self.sync_midi.isChecked() else 0,
                 1 if self.alternate_restart.isChecked() else 0,
             ]
-            
-            # Add restart CCs (4 values)
+            # Add restart CCs from main table instead
             restart_values = self.get_restart_cc_values()
             loop_config_data.extend(restart_values)
-            
-            # Add CC loop recording flag
+            # Add CC loop recording
             loop_config_data.append(1 if self.cc_loop_recording.isChecked() else 0)
             
-            if not self.send_hid_packet(0xB0, 0, 0, loop_config_data):
-                return
+            self.send_hid_packet(self.HID_CMD_SET_LOOP_CONFIG, 0, loop_config_data)
             
-            # 2. Send main loop CCs (0xB1) - 20 values (5 functions × 4 loops)
+            # 2. Send main loop CCs (excluding restart row)
             main_values = []
             for row in range(5):  # Only first 5 rows (excluding restart)
                 for col in range(4):
-                    button = self.main_table.cellWidget(row, col)
-                    main_values.append(self.get_cc_value(button))
+                    combo = self.main_table.cellWidget(row, col)
+                    main_values.append(self.get_cc_value(combo))
+            self.send_hid_packet(self.HID_CMD_SET_MAIN_LOOP_CCS, 0, main_values)
             
-            if not self.send_hid_packet(0xB1, 0, 0, main_values):
-                return
-            
-            # 3. Send overdub CCs (0xB2) - 20 values (5 functions × 4 loops)
+            # 3. Send overdub CCs  
             overdub_values = self.get_table_cc_values(self.overdub_table)
-            if not self.send_hid_packet(0xB2, 0, 0, overdub_values):
-                return
+            self.send_hid_packet(self.HID_CMD_SET_OVERDUB_CCS, 0, overdub_values)
             
-            # 4. Send navigation configuration (0xB3)
+            # 4. Send navigation configuration
             nav_config_data = [
                 1 if self.separate_loopchop.isChecked() else 0,
                 self.get_cc_value(self.master_cc),
             ]
-            for button in self.nav_combos:
-                nav_config_data.append(self.get_cc_value(button))
+            for combo in self.nav_combos:
+                nav_config_data.append(self.get_cc_value(combo))
             
-            if not self.send_hid_packet(0xB3, 0, 0, nav_config_data):
-                return
+            self.send_hid_packet(self.HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_config_data)
             
-            parent = getattr(self, 'layout_editor', None)
-            QMessageBox.information(parent, "Success", "ThruLoop configuration saved successfully!")
+            QMessageBox.information(self, "Success", "ThruLoop configuration saved successfully!")
             
         except Exception as e:
-            parent = getattr(self, 'layout_editor', None)
-            QMessageBox.critical(parent, "Error", f"Failed to save configuration: {str(e)}")
-            
+            QMessageBox.critical(self, "Error", f"Failed to save configuration: {str(e)}")
+    
     def on_load_from_keyboard(self):
         """Load configuration from keyboard"""
         try:
@@ -568,7 +533,7 @@ class ThruLoopConfigurator(BasicEditor):
             "mainCCs": [self.get_cc_value(self.main_table.cellWidget(row, col)) 
                        for row in range(5) for col in range(4)],  # First 5 rows only
             "overdubCCs": self.get_table_cc_values(self.overdub_table),
-            "navCCs": [self.get_cc_value(button) for button in self.nav_combos]
+            "navCCs": [self.get_cc_value(combo) for combo in self.nav_combos]
         }
         return config
     
@@ -598,8 +563,8 @@ class ThruLoopConfigurator(BasicEditor):
         for row in range(5):
             for col in range(4):
                 if idx < len(main_ccs):
-                    button = self.main_table.cellWidget(row, col)
-                    self.set_cc_value(button, main_ccs[idx])
+                    combo = self.main_table.cellWidget(row, col)
+                    self.set_cc_value(combo, main_ccs[idx])
                     idx += 1
         
         # Set overdub table CCs
@@ -608,9 +573,9 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Set navigation CCs
         nav_ccs = config.get("navCCs", [128] * 8)
-        for i, button in enumerate(self.nav_combos):
+        for i, combo in enumerate(self.nav_combos):
             if i < len(nav_ccs):
-                self.set_cc_value(button, nav_ccs[i])
+                self.set_cc_value(combo, nav_ccs[i])
         
         # Update UI state
         self.on_loop_enabled_changed()
@@ -624,12 +589,13 @@ class ThruLoopConfigurator(BasicEditor):
         if not self.valid():
             return
 
+
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
         
-        # HID Command constants (0xB6-0xBB range)
+        # HID Command constants (0xB6-0xBB range) - SAME AS WEBAPP
         self.HID_CMD_SET_KEYBOARD_CONFIG = 0xB6
         self.HID_CMD_GET_KEYBOARD_CONFIG = 0xB7
         self.HID_CMD_RESET_KEYBOARD_CONFIG = 0xB8
@@ -637,6 +603,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
         self.HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
         
+        # SAME AS WEBAPP
         self.MANUFACTURER_ID = 0x7D
         self.SUB_ID = 0x00
         self.DEVICE_ID = 0x4D
@@ -920,7 +887,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_number3.setCurrentIndex(126)  # Default to 127
         keysplit_layout.addWidget(self.velocity_number3, 3, 3)
         
-        # Buttons (removed file save/load buttons)
+        # Buttons
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
@@ -958,33 +925,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             load_slots_layout.addWidget(btn)
         self.addLayout(load_slots_layout)
         
-    def send_hid_packet(self, command, macro_num, status, data=None):
-        """Send HID packet to device - matches webapp format exactly"""
+    def send_hid_packet(self, command, data):
+        """Send HID packet to device - EXACTLY LIKE WEBAPP"""
         if not self.device or not isinstance(self.device, VialKeyboard):
-            return False
+            raise RuntimeError("Device not connected")
         
-        # Create 32-byte packet exactly like webapp
+        # Create 32-byte packet EXACTLY like webapp
         packet = bytearray(32)
-        packet[0] = 0x7D  # MANUFACTURER_ID
-        packet[1] = 0x00  # SUB_ID  
-        packet[2] = 0x4D  # DEVICE_ID
+        packet[0] = self.MANUFACTURER_ID  # 0x7D
+        packet[1] = self.SUB_ID           # 0x00
+        packet[2] = self.DEVICE_ID        # 0x4D
         packet[3] = command
-        packet[4] = macro_num
-        packet[5] = status
+        packet[4] = 0  # Macro num
+        packet[5] = 0  # Status
         
-        # Copy data payload (max 26 bytes) exactly like webapp
-        if data and len(data) > 0:
-            data_len = min(len(data), 26)
-            packet[6:6+data_len] = data[:data_len]
+        # Copy data payload (max 26 bytes)
+        data_len = min(len(data), 26)
+        packet[6:6+data_len] = data[:data_len]
         
         try:
-            # Send via the keyboard's via_command method
+            # Send via Vial's via_command method
             self.device.keyboard.via_command(bytes(packet))
-            return True
         except Exception as e:
-            parent = getattr(self, 'layout_editor', None)
-            QMessageBox.critical(parent, "Error", f"Failed to send command: {str(e)}")
-            return False
+            raise RuntimeError(f"Failed to send command: {str(e)}")
     
     def get_current_settings(self):
         """Get current UI settings as dictionary"""
@@ -1058,7 +1021,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.true_sustain, settings.get("truesustain", False))
     
     def pack_basic_data(self, settings):
-        """Pack basic settings into 26-byte structure"""
+        """Pack basic settings into 26-byte structure - EXACTLY LIKE WEBAPP"""
         data = bytearray(26)
         
         # Pack 32-bit integers (little endian)
@@ -1089,7 +1052,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 15-byte structure"""
+        """Pack advanced settings into 15-byte structure - EXACTLY LIKE WEBAPP"""
         data = bytearray(15)
         
         offset = 0
@@ -1112,37 +1075,31 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def on_save_slot(self, slot):
-        """Save current settings to slot - matches webapp exactly"""
+        """Save current settings to slot"""
         try:
             settings = self.get_current_settings()
             
-            # Pack and send basic data with slot number (matches webapp)
+            # Pack and send basic data with slot number
             basic_data = self.pack_basic_data(settings)
-            data_with_slot = [slot] + list(basic_data)
+            data_with_slot = bytearray([slot]) + basic_data
+            self.send_hid_packet(self.HID_CMD_SAVE_KEYBOARD_SLOT, data_with_slot)
             
-            if not self.send_hid_packet(0xB9, 0, 0, data_with_slot):
-                return
-                
             # Small delay then send advanced data
-            import time
-            time.sleep(0.05)
-            
-            advanced_data = self.pack_advanced_data(settings)
-            if not self.send_hid_packet(0xBB, 0, 0, list(advanced_data)):
-                return
+            QtCore.QTimer.singleShot(50, lambda: self._send_advanced_data(settings))
             
             slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            parent = getattr(self, 'layout_editor', None)
-            QMessageBox.information(parent, "Success", f"Settings saved as {slot_name}")
+            QMessageBox.information(self, "Success", f"Settings saved as {slot_name}")
             
         except Exception as e:
-            parent = getattr(self, 'layout_editor', None)
-            QMessageBox.critical(parent, "Error", f"Failed to save to slot {slot}: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to save to slot {slot}: {str(e)}")
     
     def _send_advanced_data(self, settings):
         """Send advanced data (helper for save operations)"""
-        advanced_data = self.pack_advanced_data(settings)
-        self.send_hid_packet(self.HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, advanced_data)
+        try:
+            advanced_data = self.pack_advanced_data(settings)
+            self.send_hid_packet(self.HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, advanced_data)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to send advanced data: {str(e)}")
     
     def on_load_slot(self, slot):
         """Load settings from slot"""
