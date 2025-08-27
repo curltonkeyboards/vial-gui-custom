@@ -736,3 +736,121 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error getting current custom slot: {e}")
             return 0
+            
+    def set_thruloop_config(self, loop_config_data):
+        """Set basic ThruLoop configuration"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B" + "B" * len(loop_config_data), 
+                                                      CMD_VIAL_THRULOOP_SET_CONFIG, *loop_config_data), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting ThruLoop config: {e}")
+            return False
+
+    def set_thruloop_main_ccs(self, cc_values):
+        """Set main loop CC values"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B" + "B" * len(cc_values),
+                                                      CMD_VIAL_THRULOOP_SET_MAIN_CCS, *cc_values), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting ThruLoop main CCs: {e}")
+            return False
+
+    def set_thruloop_overdub_ccs(self, cc_values):
+        """Set overdub CC values"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B" + "B" * len(cc_values),
+                                                      CMD_VIAL_THRULOOP_SET_OVERDUB_CCS, *cc_values), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting ThruLoop overdub CCs: {e}")
+            return False
+
+    def set_thruloop_navigation(self, nav_data):
+        """Set ThruLoop navigation configuration"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B" + "B" * len(nav_data),
+                                                      CMD_VIAL_THRULOOP_SET_NAVIGATION, *nav_data), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting ThruLoop navigation: {e}")
+            return False
+
+    def get_thruloop_config(self):
+        """Get all ThruLoop configuration"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B", CMD_VIAL_THRULOOP_GET_CONFIG), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error getting ThruLoop config: {e}")
+            return False
+
+    def reset_thruloop_config(self):
+        """Reset ThruLoop configuration to defaults"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B", CMD_VIAL_THRULOOP_RESET), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error resetting ThruLoop config: {e}")
+            return False
+
+    def set_midi_config(self, config_data):
+        """Set MIDIswitch basic configuration (26 bytes)"""
+        try:
+            # Pack the 26-byte config data
+            format_str = "B" + "B" * len(config_data)
+            data = self.usb_send(self.dev, struct.pack(format_str, CMD_VIAL_MIDI_SET_CONFIG, *config_data), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting MIDI config: {e}")
+            return False
+
+    def set_midi_advanced_config(self, advanced_data):
+        """Set MIDIswitch advanced configuration (15 bytes)"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B" + "B" * len(advanced_data),
+                                                      CMD_VIAL_MIDI_SET_ADVANCED, *advanced_data), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error setting MIDI advanced config: {e}")
+            return False
+
+    def save_midi_slot(self, slot, config_data):
+        """Save MIDIswitch configuration to slot"""
+        try:
+            # Slot number + 26 bytes of config data
+            slot_data = [slot] + list(config_data)
+            data = self.usb_send(self.dev, struct.pack("B" + "B" * len(slot_data),
+                                                      CMD_VIAL_MIDI_SAVE_SLOT, *slot_data), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error saving MIDI slot {slot}: {e}")
+            return False
+
+    def load_midi_slot(self, slot):
+        """Load MIDIswitch configuration from slot"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIAL_MIDI_LOAD_SLOT, slot), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error loading MIDI slot {slot}: {e}")
+            return False
+
+    def reset_midi_config(self):
+        """Reset MIDIswitch configuration to defaults"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B", CMD_VIAL_MIDI_RESET_CONFIG), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error resetting MIDI config: {e}")
+            return False
+
+    def get_midi_config(self):
+        """Get MIDIswitch configuration"""
+        try:
+            data = self.usb_send(self.dev, struct.pack("B", CMD_VIAL_MIDI_GET_CONFIG), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            print(f"Error getting MIDI config: {e}")
+            return False
