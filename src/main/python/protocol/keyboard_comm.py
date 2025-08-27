@@ -30,6 +30,30 @@ from util import MSG_LEN, hid_send
 SUPPORTED_VIA_PROTOCOL = [-1, 9]
 SUPPORTED_VIAL_PROTOCOL = [-1, 0, 1, 2, 3, 4, 5, 6]
 
+# Add these methods to your VialKeyboard class
+
+# HID Header constants (from your firmware)
+HID_MANUFACTURER_ID = 0x7D
+HID_SUB_ID = 0x00
+HID_DEVICE_ID = 0x4D
+HID_PACKET_SIZE = 32
+
+# ThruLoop Commands (0xB0-0xB5) - matching your updated firmware
+HID_CMD_SET_LOOP_CONFIG = 0xB0
+HID_CMD_SET_MAIN_LOOP_CCS = 0xB1  
+HID_CMD_SET_OVERDUB_CCS = 0xB2
+HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
+HID_CMD_GET_ALL_CONFIG = 0xB4
+HID_CMD_RESET_LOOP_CONFIG = 0xB5
+
+# MIDIswitch Commands (0xB6-0xBB) - matching your updated firmware
+HID_CMD_SET_KEYBOARD_CONFIG = 0xB6
+HID_CMD_GET_KEYBOARD_CONFIG = 0xB7
+HID_CMD_RESET_KEYBOARD_CONFIG = 0xB8
+HID_CMD_SAVE_KEYBOARD_SLOT = 0xB9
+HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
+HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
+
 
 class ProtocolError(Exception):
     pass
@@ -737,12 +761,30 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             print(f"Error getting current custom slot: {e}")
             return 0
             
+ 
+    def _create_hid_packet(self, command, macro_num, data):
+        """Create a properly formatted 32-byte HID packet"""
+        packet = bytearray(HID_PACKET_SIZE)
+        packet[0] = HID_MANUFACTURER_ID
+        packet[1] = HID_SUB_ID
+        packet[2] = HID_DEVICE_ID
+        packet[3] = command
+        packet[4] = macro_num
+        packet[5] = 0  # Status
+        
+        # Copy data payload (max 26 bytes)
+        if data:
+            data_len = min(len(data), HID_PACKET_SIZE - 6)
+            packet[6:6+data_len] = data[:data_len]
+        
+        return bytes(packet)
+
     def set_thruloop_config(self, loop_config_data):
         """Set basic ThruLoop configuration"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(loop_config_data), 
-                                                      CMD_VIA_VIAL_PREFIX, CMD_VIAL_THRULOOP_SET_CONFIG, *loop_config_data), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SET_LOOP_CONFIG, 0, loop_config_data)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error setting ThruLoop config: {e}")
             return False
@@ -750,9 +792,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_thruloop_main_ccs(self, cc_values):
         """Set main loop CC values"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(cc_values),
-                                                      CMD_VIA_VIAL_PREFIX, CMD_VIAL_THRULOOP_SET_MAIN_CCS, *cc_values), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SET_MAIN_LOOP_CCS, 0, cc_values)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error setting ThruLoop main CCs: {e}")
             return False
@@ -760,9 +802,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_thruloop_overdub_ccs(self, cc_values):
         """Set overdub CC values"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(cc_values),
-                                                      CMD_VIA_VIAL_PREFIX, CMD_VIAL_THRULOOP_SET_OVERDUB_CCS, *cc_values), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SET_OVERDUB_CCS, 0, cc_values)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error setting ThruLoop overdub CCs: {e}")
             return False
@@ -770,9 +812,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_thruloop_navigation(self, nav_data):
         """Set ThruLoop navigation configuration"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(nav_data),
-                                                      CMD_VIA_VIAL_PREFIX, CMD_VIAL_THRULOOP_SET_NAVIGATION, *nav_data), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_data)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error setting ThruLoop navigation: {e}")
             return False
@@ -780,8 +822,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_thruloop_config(self):
         """Get all ThruLoop configuration"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_THRULOOP_GET_CONFIG), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_GET_ALL_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error getting ThruLoop config: {e}")
             return False
@@ -789,8 +832,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def reset_thruloop_config(self):
         """Reset ThruLoop configuration to defaults"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_THRULOOP_RESET), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_RESET_LOOP_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error resetting ThruLoop config: {e}")
             return False
@@ -798,10 +842,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_midi_config(self, config_data):
         """Set MIDIswitch basic configuration (26 bytes)"""
         try:
-            # Pack the 26-byte config data
-            format_str = "BB" + "B" * len(config_data)
-            data = self.usb_send(self.dev, struct.pack(format_str, CMD_VIA_VIAL_PREFIX, CMD_VIAL_MIDI_SET_CONFIG, *config_data), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_CONFIG, 0, config_data)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error setting MIDI config: {e}")
             return False
@@ -809,9 +852,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_midi_advanced_config(self, advanced_data):
         """Set MIDIswitch advanced configuration (15 bytes)"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(advanced_data),
-                                                      CMD_VIA_VIAL_PREFIX, CMD_VIAL_MIDI_SET_ADVANCED, *advanced_data), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, advanced_data)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error setting MIDI advanced config: {e}")
             return False
@@ -821,9 +864,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             # Slot number + 26 bytes of config data
             slot_data = [slot] + list(config_data)
-            data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(slot_data),
-                                                      CMD_VIA_VIAL_PREFIX, CMD_VIAL_MIDI_SAVE_SLOT, *slot_data), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_SAVE_KEYBOARD_SLOT, 0, slot_data)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error saving MIDI slot {slot}: {e}")
             return False
@@ -831,8 +874,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def load_midi_slot(self, slot):
         """Load MIDIswitch configuration from slot"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_MIDI_LOAD_SLOT, slot), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_LOAD_KEYBOARD_SLOT, 0, [slot])
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error loading MIDI slot {slot}: {e}")
             return False
@@ -840,8 +884,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def reset_midi_config(self):
         """Reset MIDIswitch configuration to defaults"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_MIDI_RESET_CONFIG), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_RESET_KEYBOARD_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error resetting MIDI config: {e}")
             return False
@@ -849,8 +894,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_midi_config(self):
         """Get MIDIswitch configuration"""
         try:
-            data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_MIDI_GET_CONFIG), retries=20)
-            return data and len(data) > 0 and data[0] == 0x01
+            packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
         except Exception as e:
             print(f"Error getting MIDI config: {e}")
             return False
