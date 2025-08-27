@@ -95,6 +95,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.layer_rgb_enabled = False
 
         self.via_protocol = self.vial_protocol = self.keyboard_id = -1
+        self.config_handler = ConfigPacketHandler(self)
 
     def reload(self, sideload_json=None):
         """ Load information about the keyboard: number of layers, physical key layout """
@@ -760,17 +761,17 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
          
     def _create_hid_packet(self, command, macro_num, data):
         """Create a properly formatted 32-byte HID packet"""
-        packet = bytearray(HID_PACKET_SIZE)
-        packet[0] = HID_MANUFACTURER_ID
-        packet[1] = HID_SUB_ID
-        packet[2] = HID_DEVICE_ID
+        packet = bytearray(32)
+        packet[0] = 0x7D  # HID_MANUFACTURER_ID
+        packet[1] = 0x00  # HID_SUB_ID
+        packet[2] = 0x4D  # HID_DEVICE_ID
         packet[3] = command
         packet[4] = macro_num
         packet[5] = 0  # Status
         
         # Copy data payload (max 26 bytes)
         if data:
-            data_len = min(len(data), HID_PACKET_SIZE - 6)
+            data_len = min(len(data), 32 - 6)
             packet[6:6+data_len] = data[:data_len]
         
         return bytes(packet)
@@ -896,3 +897,219 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             print(f"Error getting MIDI config: {e}")
             return False
+            
+    def request_thruloop_config_async(self, callback):
+        """Request ThruLoop config with async multi-packet handling"""
+        try:
+            # Start expecting multi-packet response
+            self.config_handler.start_thruloop_config_request(callback)
+            
+            # Send request
+            packet = self._create_hid_packet(HID_CMD_GET_ALL_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
+        except Exception as e:
+            print(f"Error requesting ThruLoop config: {e}")
+            self.config_handler.reset()
+            return False
+
+    def request_keyboard_config_async(self, callback):
+        """Request keyboard config with async multi-packet handling"""
+        try:
+            # Start expecting multi-packet response  
+            self.config_handler.start_keyboard_config_request(callback)
+            
+            # Send request
+            packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0  # Check status byte
+        except Exception as e:
+            print(f"Error requesting keyboard config: {e}")
+            self.config_handler.reset()
+            return False
+
+    # Override usb_send to intercept config responses
+    def usb_send(self, dev, data, retries=20):
+        response = hid_send(dev, data, retries)
+        
+        # Check if this is a config response we're expecting
+        if (len(response) >= 4 and response[0] == 0x7D and 
+            response[1] == 0x00 and response[2] == 0x4D):
+            command = response[3]
+            
+            # Let config handler process it
+            if self.config_handler.handle_received_packet(command, response):
+                # Config handler processed it successfully
+                pass
+        
+        return response
+            
+class ConfigPacketHandler:
+    """Handles multi-packet configuration responses"""
+    
+    def __init__(self, keyboard):
+        self.keyboard = keyboard
+        self.reset()
+        
+    def reset(self):
+        self.expecting_packets = False
+        self.packet_type = None
+        self.received_packets = {}
+        self.expected_packet_commands = []
+        self.callback = None
+        
+    def start_thruloop_config_request(self, callback):
+        """Start expecting ThruLoop config packets"""
+        self.reset()
+        self.expecting_packets = True
+        self.packet_type = "thruloop"
+        self.expected_packet_commands = [
+            HID_CMD_SET_LOOP_CONFIG,
+            HID_CMD_SET_MAIN_LOOP_CCS, 
+            HID_CMD_SET_OVERDUB_CCS,
+            HID_CMD_SET_NAVIGATION_CONFIG
+        ]
+        self.callback = callback
+        
+    def start_keyboard_config_request(self, callback):
+        """Start expecting keyboard config packets"""
+        self.reset()
+        self.expecting_packets = True
+        self.packet_type = "keyboard"
+        self.expected_packet_commands = [
+            HID_CMD_GET_KEYBOARD_CONFIG,
+            HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED
+        ]
+        self.callback = callback
+        
+    def handle_received_packet(self, command, data):
+        """Process a received configuration packet"""
+        if not self.expecting_packets:
+            return False
+            
+        if command in self.expected_packet_commands:
+            self.received_packets[command] = data
+            
+            # Check if we have all expected packets
+            if len(self.received_packets) == len(self.expected_packet_commands):
+                self._process_complete_config()
+                return True
+                
+        return False
+        
+    def _process_complete_config(self):
+        """Process complete configuration when all packets received"""
+        if self.packet_type == "thruloop":
+            config = self._parse_thruloop_config()
+        elif self.packet_type == "keyboard":
+            config = self._parse_keyboard_config()
+        else:
+            config = None
+            
+        if self.callback and config:
+            self.callback(config)
+            
+        self.reset()
+        
+    def _parse_thruloop_config(self):
+        """Parse ThruLoop configuration from received packets"""
+        config = {}
+        
+        # Parse basic loop config packet
+        if HID_CMD_SET_LOOP_CONFIG in self.received_packets:
+            data = self.received_packets[HID_CMD_SET_LOOP_CONFIG][6:]  # Skip header
+            config['loopEnabled'] = data[0] != 0
+            config['loopChannel'] = data[1] 
+            config['syncMidi'] = data[2] != 0
+            config['alternateRestart'] = data[3] != 0
+            config['restartCCs'] = list(data[4:8])
+            if len(data) > 8:
+                config['ccLoopRecording'] = data[8] != 0
+            else:
+                config['ccLoopRecording'] = False
+                
+        # Parse main loop CCs
+        if HID_CMD_SET_MAIN_LOOP_CCS in self.received_packets:
+            data = self.received_packets[HID_CMD_SET_MAIN_LOOP_CCS][6:]  # Skip header
+            config['mainCCs'] = list(data[:20])  # 5 functions × 4 loops = 20 CCs
+            
+        # Parse overdub CCs  
+        if HID_CMD_SET_OVERDUB_CCS in self.received_packets:
+            data = self.received_packets[HID_CMD_SET_OVERDUB_CCS][6:]  # Skip header
+            config['overdubCCs'] = list(data[:20])  # 5 functions × 4 loops = 20 CCs
+            
+        # Parse navigation config
+        if HID_CMD_SET_NAVIGATION_CONFIG in self.received_packets:
+            data = self.received_packets[HID_CMD_SET_NAVIGATION_CONFIG][6:]  # Skip header
+            config['separateLoopChopCC'] = data[0] != 0
+            config['masterCC'] = data[1]
+            config['navCCs'] = list(data[2:10])  # 8 navigation CCs
+            
+        return config
+        
+    def _parse_keyboard_config(self):
+        """Parse keyboard configuration from received packets"""
+        config = {}
+        
+        # Parse basic config packet
+        if HID_CMD_GET_KEYBOARD_CONFIG in self.received_packets:
+            data = self.received_packets[HID_CMD_GET_KEYBOARD_CONFIG][6:]  # Skip header
+            import struct
+            
+            # Parse according to firmware structure (26 bytes)
+            velocity_sensitivity = struct.unpack('<I', data[0:4])[0]
+            cc_sensitivity = struct.unpack('<I', data[4:8])[0] 
+            channel_number = data[8]
+            transpose_number = struct.unpack('<b', data[9:10])[0]  # signed byte
+            octave_number = struct.unpack('<b', data[10:11])[0]  # signed byte  
+            transpose_number2 = struct.unpack('<b', data[11:12])[0]
+            octave_number2 = struct.unpack('<b', data[12:13])[0]
+            transpose_number3 = struct.unpack('<b', data[13:14])[0]
+            octave_number3 = struct.unpack('<b', data[14:15])[0]
+            velocity_number = data[15]
+            velocity_number2 = data[16]
+            velocity_number3 = data[17]
+            random_velocity_modifier = data[18]
+            oled_keyboard = struct.unpack('<I', data[19:23])[0]
+            smart_chord_light = data[23]
+            smart_chord_light_mode = data[24]
+            
+            config.update({
+                "velocity_sensitivity": velocity_sensitivity,
+                "cc_sensitivity": cc_sensitivity,
+                "channel_number": channel_number,
+                "transpose_number": transpose_number,
+                "transpose_number2": transpose_number2,
+                "transpose_number3": transpose_number3,
+                "velocity_number": velocity_number,
+                "velocity_number2": velocity_number2,
+                "velocity_number3": velocity_number3,
+                "random_velocity_modifier": random_velocity_modifier,
+                "oled_keyboard": oled_keyboard,
+                "smart_chord_light": smart_chord_light,
+                "smart_chord_light_mode": smart_chord_light_mode
+            })
+            
+        # Parse advanced config packet
+        if HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED in self.received_packets:
+            data = self.received_packets[HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED][6:]  # Skip header
+            
+            config.update({
+                "key_split_channel": data[0],
+                "key_split2_channel": data[1], 
+                "key_split_status": data[2],
+                "key_split_transpose_status": data[3],
+                "key_split_velocity_status": data[4],
+                "custom_layer_animations_enabled": data[5] != 0,
+                "unsynced_mode_active": data[6] != 0,
+                "sample_mode_active": data[7] != 0,
+                "loop_messaging_enabled": data[8] != 0,
+                "loop_messaging_channel": data[9],
+                "sync_midi_mode": data[10] != 0,
+                "alternate_restart_mode": data[11] != 0,
+                "colorblindmode": data[12],
+                "cclooprecording": data[13] != 0,
+                "truesustain": data[14] != 0
+            })
+            
+        return config

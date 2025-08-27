@@ -565,48 +565,63 @@ class ThruLoopConfigurator(BasicEditor):
         return config
     
     def apply_config(self, config):
-        """Apply configuration dictionary to UI"""
-        self.loop_enabled.setChecked(not config.get("loopEnabled", True))  # Reversed
+        """Apply configuration dictionary to UI - modified for multi-packet data"""
+        # Basic settings
+        if 'loopEnabled' in config:
+            self.loop_enabled.setChecked(not config.get("loopEnabled", True))  # Reversed
         
-        # Set channel
-        for i in range(self.loop_channel.count()):
-            if self.loop_channel.itemData(i) == config.get("loopChannel", 16):
-                self.loop_channel.setCurrentIndex(i)
-                break
+        if 'loopChannel' in config:
+            # Set channel
+            for i in range(self.loop_channel.count()):
+                if self.loop_channel.itemData(i) == config.get("loopChannel", 16):
+                    self.loop_channel.setCurrentIndex(i)
+                    break
         
-        self.sync_midi.setChecked(config.get("syncMidi", False))
-        self.alternate_restart.setChecked(config.get("alternateRestart", False))
-        self.cc_loop_recording.setChecked(config.get("ccLoopRecording", False))
-        self.separate_loopchop.setChecked(config.get("separateLoopChopCC", False))
-        self.set_cc_value(self.master_cc, config.get("masterCC", 128))
+        if 'syncMidi' in config:
+            self.sync_midi.setChecked(config.get("syncMidi", False))
+        if 'alternateRestart' in config:
+            self.alternate_restart.setChecked(config.get("alternateRestart", False))
+        if 'ccLoopRecording' in config:
+            self.cc_loop_recording.setChecked(config.get("ccLoopRecording", False))
+        
+        # LoopChop settings
+        if 'separateLoopChopCC' in config:
+            self.separate_loopchop.setChecked(config.get("separateLoopChopCC", False))
+        if 'masterCC' in config:
+            self.set_cc_value(self.master_cc, config.get("masterCC", 128))
         
         # Set restart CCs
-        restart_ccs = config.get("restartCCs", [128] * 4)
-        self.set_restart_cc_values(restart_ccs)
+        if 'restartCCs' in config:
+            restart_ccs = config.get("restartCCs", [128] * 4)
+            self.set_restart_cc_values(restart_ccs)
         
         # Set main table CCs (first 5 rows only)
-        main_ccs = config.get("mainCCs", [128] * 20)
-        idx = 0
-        for row in range(5):
-            for col in range(4):
-                if idx < len(main_ccs):
-                    combo = self.main_table.cellWidget(row, col)
-                    self.set_cc_value(combo, main_ccs[idx])
-                    idx += 1
+        if 'mainCCs' in config:
+            main_ccs = config.get("mainCCs", [128] * 20)
+            idx = 0
+            for row in range(5):
+                for col in range(4):
+                    if idx < len(main_ccs):
+                        combo = self.main_table.cellWidget(row, col)
+                        self.set_cc_value(combo, main_ccs[idx])
+                        idx += 1
         
         # Set overdub table CCs
-        overdub_ccs = config.get("overdubCCs", [128] * 20)  
-        self.set_table_cc_values(self.overdub_table, overdub_ccs)
+        if 'overdubCCs' in config:
+            overdub_ccs = config.get("overdubCCs", [128] * 20)  
+            self.set_table_cc_values(self.overdub_table, overdub_ccs)
         
         # Set navigation CCs
-        nav_ccs = config.get("navCCs", [128] * 8)
-        for i, combo in enumerate(self.nav_combos):
-            if i < len(nav_ccs):
-                self.set_cc_value(combo, nav_ccs[i])
+        if 'navCCs' in config:
+            nav_ccs = config.get("navCCs", [128] * 8)
+            for i, combo in enumerate(self.nav_combos):
+                if i < len(nav_ccs):
+                    self.set_cc_value(combo, nav_ccs[i])
         
         # Update UI state
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
+
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
@@ -971,44 +986,60 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "truesustain": self.true_sustain.currentData()
         }
     
-    def apply_settings(self, settings):
-        """Apply settings dictionary to UI"""
+    def apply_settings_from_multipacket(self, config):
+        """Apply settings from multi-packet response - more flexible than original"""
         # Set combo box values by finding matching data
-        def set_combo_by_data(combo, value):
+        def set_combo_by_data(combo, value, default_value=None):
             for i in range(combo.count()):
                 if combo.itemData(i) == value:
                     combo.setCurrentIndex(i)
-                    break
+                    return
+            # If not found and default provided, try default
+            if default_value is not None:
+                for i in range(combo.count()):
+                    if combo.itemData(i) == default_value:
+                        combo.setCurrentIndex(i)
+                        return
         
-        set_combo_by_data(self.velocity_sensitivity, settings.get("velocity_sensitivity", 1))
-        set_combo_by_data(self.cc_sensitivity, settings.get("cc_sensitivity", 1))
-        set_combo_by_data(self.channel_number, settings.get("channel_number", 0))
-        set_combo_by_data(self.transpose_number, settings.get("transpose_number", 0))
-        set_combo_by_data(self.transpose_number2, settings.get("transpose_number2", 0))
-        set_combo_by_data(self.transpose_number3, settings.get("transpose_number3", 0))
-        set_combo_by_data(self.velocity_number, settings.get("velocity_number", 127))
-        set_combo_by_data(self.velocity_number2, settings.get("velocity_number2", 127))
-        set_combo_by_data(self.velocity_number3, settings.get("velocity_number3", 127))
-        set_combo_by_data(self.random_velocity_modifier, settings.get("random_velocity_modifier", 0))
-        set_combo_by_data(self.oled_keyboard, settings.get("oled_keyboard", 0))
-        set_combo_by_data(self.smart_chord_light, settings.get("smart_chord_light", 0))
-        set_combo_by_data(self.smart_chord_light_mode, settings.get("smart_chord_light_mode", 0))
-        set_combo_by_data(self.key_split_channel, settings.get("key_split_channel", 0))
-        set_combo_by_data(self.key_split2_channel, settings.get("key_split2_channel", 0))
-        set_combo_by_data(self.key_split_status, settings.get("key_split_status", 0))
-        set_combo_by_data(self.key_split_transpose_status, settings.get("key_split_transpose_status", 0))
-        set_combo_by_data(self.key_split_velocity_status, settings.get("key_split_velocity_status", 0))
-        set_combo_by_data(self.custom_layer_animations, settings.get("custom_layer_animations_enabled", False))
-        set_combo_by_data(self.unsynced_mode, settings.get("unsynced_mode_active", False))
-        set_combo_by_data(self.sample_mode, settings.get("sample_mode_active", False))
-        set_combo_by_data(self.loop_messaging_enabled, settings.get("loop_messaging_enabled", False))
-        set_combo_by_data(self.loop_messaging_channel, settings.get("loop_messaging_channel", 16))
-        set_combo_by_data(self.sync_midi_mode, settings.get("sync_midi_mode", False))
-        set_combo_by_data(self.alternate_restart_mode, settings.get("alternate_restart_mode", False))
-        set_combo_by_data(self.colorblind_mode, settings.get("colorblindmode", 0))
-        set_combo_by_data(self.cc_loop_recording, settings.get("cclooprecording", False))
-        set_combo_by_data(self.true_sustain, settings.get("truesustain", False))
-    
+        # Apply all the settings from config dictionary
+        set_combo_by_data(self.velocity_sensitivity, config.get("velocity_sensitivity"), 1)
+        set_combo_by_data(self.cc_sensitivity, config.get("cc_sensitivity"), 1)
+        set_combo_by_data(self.channel_number, config.get("channel_number"), 0)
+        set_combo_by_data(self.transpose_number, config.get("transpose_number"), 0)
+        set_combo_by_data(self.transpose_number2, config.get("transpose_number2"), 0)
+        set_combo_by_data(self.transpose_number3, config.get("transpose_number3"), 0)
+        set_combo_by_data(self.velocity_number, config.get("velocity_number"), 127)
+        set_combo_by_data(self.velocity_number2, config.get("velocity_number2"), 127)
+        set_combo_by_data(self.velocity_number3, config.get("velocity_number3"), 127)
+        set_combo_by_data(self.random_velocity_modifier, config.get("random_velocity_modifier"), 0)
+        set_combo_by_data(self.oled_keyboard, config.get("oled_keyboard"), 0)
+        set_combo_by_data(self.smart_chord_light, config.get("smart_chord_light"), 0)
+        set_combo_by_data(self.smart_chord_light_mode, config.get("smart_chord_light_mode"), 0)
+        set_combo_by_data(self.key_split_channel, config.get("key_split_channel"), 0)
+        set_combo_by_data(self.key_split2_channel, config.get("key_split2_channel"), 0)
+        set_combo_by_data(self.key_split_status, config.get("key_split_status"), 0)
+        set_combo_by_data(self.key_split_transpose_status, config.get("key_split_transpose_status"), 0)
+        set_combo_by_data(self.key_split_velocity_status, config.get("key_split_velocity_status"), 0)
+        set_combo_by_data(self.custom_layer_animations, config.get("custom_layer_animations_enabled"), False)
+        set_combo_by_data(self.unsynced_mode, config.get("unsynced_mode_active"), False)
+        set_combo_by_data(self.sample_mode, config.get("sample_mode_active"), False)
+        set_combo_by_data(self.loop_messaging_enabled, config.get("loop_messaging_enabled"), False)
+        set_combo_by_data(self.loop_messaging_channel, config.get("loop_messaging_channel"), 16)
+        set_combo_by_data(self.sync_midi_mode, config.get("sync_midi_mode"), False)
+        set_combo_by_data(self.alternate_restart_mode, config.get("alternate_restart_mode"), False)
+        set_combo_by_data(self.colorblind_mode, config.get("colorblindmode"), 0)
+        set_combo_by_data(self.cc_loop_recording, config.get("cclooprecording"), False)
+        set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
+
+    # Replace the original apply_settings method with this one:
+    def apply_settings(self, config):
+        """Apply settings - handles both old and new format"""
+        if isinstance(config, dict):
+            self.apply_settings_from_multipacket(config)
+        else:
+            # Handle old format if needed
+            pass
+        
     def pack_basic_data(self, settings):
         """Pack basic settings into 26-byte structure"""
         data = bytearray(26)
