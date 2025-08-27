@@ -1366,6 +1366,26 @@ class CustomLightsHandler(BasicHandler):
         try:
             config = self.device.keyboard.get_custom_slot_config(active_slot, from_eeprom=False)  # Load from RAM
             if config and len(config) >= 12:
+                
+                # ===== DEBUG POPUP - DELETE THIS BLOCK WHEN DONE =====
+                from PyQt5.QtWidgets import QMessageBox
+                debug_msg = QMessageBox()
+                debug_msg.setWindowTitle("Debug: Raw Config Values")
+                
+                # Format as C array initialization
+                config_str = "{"
+                config_str += f"{config[0]}, {config[1]}, {config[2]}, {config[3]}, "  # live_pos, macro_pos, live_anim, macro_anim
+                config_str += f"{'true' if config[4] else 'false'}, "  # influence (boolean)
+                config_str += f"{config[5]}, {config[6]}, {config[7]}, "  # background, sustain, color_type  
+                config_str += f"{'true' if config[8] else 'false'}, "  # enabled (boolean)
+                config_str += f"{config[9]}, {config[10]}, {config[11]}"  # bg_brightness, live_speed, macro_speed
+                config_str += "}"
+                
+                debug_msg.setText(f"Active Slot {active_slot} Config:\n\n{config_str}\n\n" + 
+                                f"Raw array: {config}")
+                debug_msg.exec_()
+                # ===== END DEBUG BLOCK =====
+                
                 # Update the GUI widgets for the CURRENT TAB (slot), not the active slot
                 self.update_slot_widgets(slot, config)  # Use slot (current tab), not active_slot
             else:
@@ -1402,7 +1422,7 @@ class CustomLightsHandler(BasicHandler):
         widgets['macro_style'].setCurrentIndex(min(config[1], 34))
         widgets['background'].setCurrentIndex(min(config[5], 121))
         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-        widgets['color_type'].setCurrentIndex(min(config[7], len(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY) - 1))
+        widgets['color_type'].setCurrentIndex(min(config[7], 63))
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
