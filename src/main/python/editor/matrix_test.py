@@ -491,14 +491,14 @@ class ThruLoopConfigurator(BasicEditor):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
                 
-            config_data = self.device.keyboard.get_thruloop_config()
-            if config_data is None:
-                raise RuntimeError("Failed to receive config from keyboard")
+            if not self.device.keyboard.get_thruloop_config():
+                raise RuntimeError("Failed to send load request to keyboard")
                 
-            # Apply the loaded configuration to the UI
-            self.apply_loaded_config(config_data)
-                
-            QMessageBox.information(None, "Success", "Configuration loaded from keyboard")
+            QMessageBox.information(None, "Info", 
+                "Load request sent to keyboard.\n\n"
+                "Note: Due to Vial's USB limitations, the GUI cannot automatically\n"
+                "update with the loaded values. The keyboard has been updated\n"
+                "with the stored configuration.")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to load from keyboard: {str(e)}")
     
@@ -1165,15 +1165,15 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
                 
-            config_data = self.device.keyboard.load_midi_slot(slot)
-            if config_data is None:
-                raise RuntimeError(f"Failed to receive config from slot {slot}")
-                
-            # Apply the loaded configuration to the UI
-            self.apply_settings(config_data)
+            if not self.device.keyboard.load_midi_slot(slot):
+                raise RuntimeError(f"Failed to send load request for slot {slot}")
                 
             slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            QMessageBox.information(None, "Success", f"Configuration loaded from {slot_name}")
+            QMessageBox.information(None, "Info", 
+                f"Load request sent for {slot_name}.\n\n"
+                "Note: Due to Vial's USB limitations, the GUI cannot automatically\n"
+                "update with the loaded values. The keyboard has been updated\n"
+                "with the stored configuration.")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to load from slot {slot}: {str(e)}")
     
