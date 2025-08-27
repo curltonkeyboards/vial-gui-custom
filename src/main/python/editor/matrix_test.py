@@ -505,18 +505,18 @@ class ThruLoopConfigurator(BasicEditor):
             
             self.send_hid_packet(self.HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_config_data)
             
-            QMessageBox.information(self, "Success", "ThruLoop configuration saved successfully!")
+            QMessageBox.information(None, "Success", "ThruLoop configuration saved successfully!")
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save configuration: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to save configuration: {str(e)}")
     
     def on_load_from_keyboard(self):
         """Load configuration from keyboard"""
         try:
             self.send_hid_packet(self.HID_CMD_GET_ALL_CONFIG, 0, [])
-            QMessageBox.information(self, "Info", "Load request sent to keyboard")
+            QMessageBox.information(None, "Info", "Load request sent to keyboard")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load from keyboard: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to load from keyboard: {str(e)}")
     
     def get_current_config(self):
         """Get current UI configuration as dictionary"""
@@ -1088,10 +1088,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             QtCore.QTimer.singleShot(50, lambda: self._send_advanced_data(settings))
             
             slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            QMessageBox.information(self, "Success", f"Settings saved as {slot_name}")
+            QMessageBox.information(None, "Success", f"Settings saved as {slot_name}")
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save to slot {slot}: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to save to slot {slot}: {str(e)}")
     
     def _send_advanced_data(self, settings):
         """Send advanced data (helper for save operations)"""
@@ -1099,30 +1099,30 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             advanced_data = self.pack_advanced_data(settings)
             self.send_hid_packet(self.HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, advanced_data)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to send advanced data: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to send advanced data: {str(e)}")
     
     def on_load_slot(self, slot):
         """Load settings from slot"""
         try:
             self.send_hid_packet(self.HID_CMD_LOAD_KEYBOARD_SLOT, [slot])
             slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            QMessageBox.information(self, "Info", f"Load request sent for {slot_name}")
+            QMessageBox.information(None, "Info", f"Load request sent for {slot_name}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load from slot {slot}: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to load from slot {slot}: {str(e)}")
     
     def on_reset(self):
         """Reset to default settings"""
         try:
-            reply = QMessageBox.question(self, "Confirm Reset", 
+            reply = QMessageBox.question(None, "Confirm Reset", 
                                        "Reset all keyboard settings to defaults? This cannot be undone.",
                                        QMessageBox.Yes | QMessageBox.No)
             if reply == QMessageBox.Yes:
                 self.send_hid_packet(self.HID_CMD_RESET_KEYBOARD_CONFIG, [])
                 # Also reset UI to defaults
                 self.reset_ui_to_defaults()
-                QMessageBox.information(self, "Success", "Settings reset to defaults")
+                QMessageBox.information(None, "Success", "Settings reset to defaults")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to reset settings: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to reset settings: {str(e)}")
     
     def reset_ui_to_defaults(self):
         """Reset UI to default values"""
