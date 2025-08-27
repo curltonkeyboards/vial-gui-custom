@@ -782,33 +782,52 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             # Send request for all config
             packet = self._create_hid_packet(HID_CMD_GET_ALL_CONFIG, 0, None)
-            data = self.usb_send(self.dev, packet, retries=20)
+            response = self.usb_send(self.dev, packet, retries=20)
             
-            if not data or len(data) == 0 or data[5] != 0:
+            if not response or len(response) == 0 or response[5] != 0:
                 return None
             
-            # Collect all 4 config packets with delays
+            # Collect response packets using proper HID read method
             packets = {}
+            expected_commands = [HID_CMD_SET_LOOP_CONFIG, HID_CMD_SET_MAIN_LOOP_CCS, 
+                               HID_CMD_SET_OVERDUB_CCS, HID_CMD_SET_NAVIGATION_CONFIG]
             
-            # Small delay then collect packets
-            time.sleep(0.05)
-            
-            # Try to collect each expected packet type
-            for attempt in range(10):  # Try up to 10 times
+            # Try multiple times to collect all expected packets
+            for attempt in range(20):
                 try:
-                    response = self.usb_send(self.dev, b'\x00' * 32, retries=1)  # Empty packet to read response
-                    if len(response) >= 4 and response[0] == HID_MANUFACTURER_ID:
-                        cmd = response[3]
-                        if cmd in [HID_CMD_SET_LOOP_CONFIG, HID_CMD_SET_MAIN_LOOP_CCS, 
-                                  HID_CMD_SET_OVERDUB_CCS, HID_CMD_SET_NAVIGATION_CONFIG]:
-                            packets[cmd] = response
+                    # Use the device's read method directly
+                    if hasattr(self.dev, 'read'):
+                        data = self.dev.read(32, timeout_ms=100)
+                    else:
+                        # Fallback: try to read using get_feature
+                        data = self.dev.get_feature_report(0, 32)
+                    
+                    if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID:
+                        cmd = data[3]
+                        if cmd in expected_commands:
+                            packets[cmd] = data
                             
                     if len(packets) >= 4:
                         break
                         
-                    time.sleep(0.01)  # Small delay between attempts
                 except:
-                    pass
+                    # If direct read fails, try a small delay and continue
+                    time.sleep(0.01)
+                    continue
+            
+            # If we didn't get packets through direct reading, try alternative method
+            if len(packets) < 4:
+                # Send another request and try to get the cached responses
+                for cmd in expected_commands:
+                    if cmd not in packets:
+                        try:
+                            # Send a specific request for this command type
+                            test_packet = self._create_hid_packet(cmd, 0, None)
+                            data = self.usb_send(self.dev, test_packet, retries=1)
+                            if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == cmd:
+                                packets[cmd] = data
+                        except:
+                            pass
             
             # Parse collected packets
             config = {}
@@ -904,32 +923,51 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             # Send request for keyboard config
             packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
-            data = self.usb_send(self.dev, packet, retries=20)
+            response = self.usb_send(self.dev, packet, retries=20)
             
-            if not data or len(data) == 0 or data[5] != 0:
+            if not response or len(response) == 0 or response[5] != 0:
                 return None
             
-            # Collect both config packets with delays
+            # Collect response packets using proper HID read method
             packets = {}
+            expected_commands = [HID_CMD_GET_KEYBOARD_CONFIG, HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED]
             
-            # Small delay then collect packets
-            time.sleep(0.05)
-            
-            # Try to collect each expected packet type
-            for attempt in range(10):  # Try up to 10 times
+            # Try multiple times to collect all expected packets
+            for attempt in range(20):
                 try:
-                    response = self.usb_send(self.dev, b'\x00' * 32, retries=1)  # Empty packet to read response
-                    if len(response) >= 4 and response[0] == HID_MANUFACTURER_ID:
-                        cmd = response[3]
-                        if cmd in [HID_CMD_GET_KEYBOARD_CONFIG, HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED]:
-                            packets[cmd] = response
+                    # Use the device's read method directly
+                    if hasattr(self.dev, 'read'):
+                        data = self.dev.read(32, timeout_ms=100)
+                    else:
+                        # Fallback: try to read using get_feature
+                        data = self.dev.get_feature_report(0, 32)
+                    
+                    if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID:
+                        cmd = data[3]
+                        if cmd in expected_commands:
+                            packets[cmd] = data
                             
                     if len(packets) >= 2:
                         break
                         
-                    time.sleep(0.01)  # Small delay between attempts
                 except:
-                    pass
+                    # If direct read fails, try a small delay and continue
+                    time.sleep(0.01)
+                    continue
+            
+            # If we didn't get packets through direct reading, try alternative method
+            if len(packets) < 2:
+                # Send another request and try to get the cached responses
+                for cmd in expected_commands:
+                    if cmd not in packets:
+                        try:
+                            # Send a specific request for this command type
+                            test_packet = self._create_hid_packet(cmd, 0, None)
+                            data = self.usb_send(self.dev, test_packet, retries=1)
+                            if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == cmd:
+                                packets[cmd] = data
+                        except:
+                            pass
             
             # Parse collected packets
             config = {}

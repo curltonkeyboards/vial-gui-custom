@@ -475,8 +475,6 @@ class ThruLoopConfigurator(BasicEditor):
             if not self.device.keyboard.set_thruloop_navigation(nav_config_data):
                 raise RuntimeError("Failed to set navigation config")
             
-            QMessageBox.information(None, "Success", "ThruLoop configuration saved successfully!")
-            
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to save configuration: {str(e)}")
     
@@ -494,7 +492,6 @@ class ThruLoopConfigurator(BasicEditor):
             
             # Apply the configuration to the UI
             self.apply_config(config)
-            QMessageBox.information(None, "Success", "Configuration loaded from keyboard!")
                 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to load from keyboard: {str(e)}")
@@ -570,7 +567,6 @@ class ThruLoopConfigurator(BasicEditor):
                     raise RuntimeError("Failed to reset ThruLoop config")
                     
                 self.reset_ui_to_defaults()
-                QMessageBox.information(None, "Success", "ThruLoop configuration reset to defaults")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to reset configuration: {str(e)}")
     
@@ -1093,9 +1089,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             
             QtCore.QTimer.singleShot(50, lambda: self._send_advanced_data(settings))
             
-            slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            QMessageBox.information(None, "Success", f"Settings saved as {slot_name}")
-            
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to save to slot {slot}: {str(e)}")
     
@@ -1136,9 +1129,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             
             self.apply_settings(config)
             
-            slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            QMessageBox.information(None, "Success", f"Configuration loaded from {slot_name}!")
-            
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to apply loaded config: {str(e)}")
     
@@ -1154,7 +1144,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
                 raise RuntimeError("Failed to load current settings")
             
             self.apply_settings(config)
-            QMessageBox.information(None, "Success", "Current settings loaded from keyboard!")
                 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to load current settings: {str(e)}")
@@ -1173,7 +1162,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
                     raise RuntimeError("Failed to reset settings")
                     
                 self.reset_ui_to_defaults()
-                QMessageBox.information(None, "Success", "Settings reset to defaults")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to reset settings: {str(e)}")
     
