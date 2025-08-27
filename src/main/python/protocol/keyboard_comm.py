@@ -816,7 +816,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
 
     def get_thruloop_config(self):
-        """Get all ThruLoop configuration - sends load request to keyboard"""
+        """Get all ThruLoop configuration"""
         try:
             packet = self._create_hid_packet(HID_CMD_GET_ALL_CONFIG, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)
@@ -868,7 +868,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
 
     def load_midi_slot(self, slot):
-        """Load MIDIswitch configuration from slot - sends load request to keyboard"""
+        """Load MIDIswitch configuration from slot"""
         try:
             packet = self._create_hid_packet(HID_CMD_LOAD_KEYBOARD_SLOT, 0, [slot])
             data = self.usb_send(self.dev, packet, retries=20)
@@ -888,7 +888,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
 
     def get_midi_config(self):
-        """Get MIDIswitch configuration - sends load request to keyboard"""
+        """Get MIDIswitch configuration"""
         try:
             packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)

@@ -491,74 +491,12 @@ class ThruLoopConfigurator(BasicEditor):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
                 
-            config_data = self.device.keyboard.get_thruloop_config()
-            if config_data is None:
-                raise RuntimeError("Failed to receive config from keyboard")
+            if not self.device.keyboard.get_thruloop_config():
+                raise RuntimeError("Failed to request config from keyboard")
                 
-            # Apply the loaded configuration to the UI
-            self.apply_loaded_config(config_data)
-                
-            QMessageBox.information(None, "Success", "Configuration loaded from keyboard")
+            QMessageBox.information(None, "Info", "Load request sent to keyboard")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to load from keyboard: {str(e)}")
-    
-    def apply_loaded_config(self, config):
-        """Apply loaded configuration data to UI"""
-        if not config:
-            return
-            
-        # Apply basic settings
-        if 'loop_enabled' in config:
-            self.loop_enabled.setChecked(not config['loop_enabled'])  # Reversed logic
-        
-        if 'loop_channel' in config:
-            for i in range(self.loop_channel.count()):
-                if self.loop_channel.itemData(i) == config['loop_channel']:
-                    self.loop_channel.setCurrentIndex(i)
-                    break
-        
-        if 'sync_midi' in config:
-            self.sync_midi.setChecked(config['sync_midi'])
-            
-        if 'alternate_restart' in config:
-            self.alternate_restart.setChecked(config['alternate_restart'])
-            
-        if 'cc_loop_recording' in config:
-            self.cc_loop_recording.setChecked(config['cc_loop_recording'])
-        
-        if 'separate_loopchop' in config:
-            self.separate_loopchop.setChecked(config['separate_loopchop'])
-            
-        if 'master_cc' in config:
-            self.set_cc_value(self.master_cc, config['master_cc'])
-        
-        # Set restart CCs
-        if 'restart_ccs' in config:
-            self.set_restart_cc_values(config['restart_ccs'])
-        
-        # Set main table CCs (first 5 rows only)
-        if 'main_ccs' in config:
-            idx = 0
-            for row in range(5):
-                for col in range(4):
-                    if idx < len(config['main_ccs']):
-                        combo = self.main_table.cellWidget(row, col)
-                        self.set_cc_value(combo, config['main_ccs'][idx])
-                        idx += 1
-        
-        # Set overdub table CCs
-        if 'overdub_ccs' in config:
-            self.set_table_cc_values(self.overdub_table, config['overdub_ccs'])
-        
-        # Set navigation CCs
-        if 'nav_ccs' in config:
-            for i, combo in enumerate(self.nav_combos):
-                if i < len(config['nav_ccs']):
-                    self.set_cc_value(combo, config['nav_ccs'][i])
-        
-        # Update UI state
-        self.on_loop_enabled_changed()
-        self.on_separate_loopchop_changed()
     
     def on_reset(self):
         """Reset ThruLoop configuration to defaults"""
@@ -1165,15 +1103,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
                 
-            config_data = self.device.keyboard.load_midi_slot(slot)
-            if config_data is None:
-                raise RuntimeError(f"Failed to receive config from slot {slot}")
-                
-            # Apply the loaded configuration to the UI
-            self.apply_settings(config_data)
+            if not self.device.keyboard.load_midi_slot(slot):
+                raise RuntimeError(f"Failed to load from slot {slot}")
                 
             slot_name = "default settings" if slot == 0 else f"Slot {slot}"
-            QMessageBox.information(None, "Success", f"Configuration loaded from {slot_name}")
+            QMessageBox.information(None, "Info", f"Load request sent for {slot_name}")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to load from slot {slot}: {str(e)}")
     
