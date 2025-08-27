@@ -2,6 +2,7 @@
 import struct
 import json
 import lzma
+import time
 from collections import OrderedDict
 
 from keycodes.keycodes import RESET_KEYCODE, Keycode, recreate_keyboard_keycodes
@@ -35,7 +36,7 @@ HID_SUB_ID = 0x00
 HID_DEVICE_ID = 0x4D
 HID_PACKET_SIZE = 32
 
-# ThruLoop Commands (0xB0-0xB5) - matching your updated firmware
+# ThruLoop Commands (0xB0-0xB5)
 HID_CMD_SET_LOOP_CONFIG = 0xB0
 HID_CMD_SET_MAIN_LOOP_CCS = 0xB1  
 HID_CMD_SET_OVERDUB_CCS = 0xB2
@@ -43,7 +44,7 @@ HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
 HID_CMD_GET_ALL_CONFIG = 0xB4
 HID_CMD_RESET_LOOP_CONFIG = 0xB5
 
-# MIDIswitch Commands (0xB6-0xBB) - matching your updated firmware
+# MIDIswitch Commands (0xB6-0xBB)
 HID_CMD_SET_KEYBOARD_CONFIG = 0xB6
 HID_CMD_GET_KEYBOARD_CONFIG = 0xB7
 HID_CMD_RESET_KEYBOARD_CONFIG = 0xB8
@@ -53,7 +54,6 @@ HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
 
 class ProtocolError(Exception):
     pass
-
 
 class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, ProtocolKeyOverride):
     """ Low-level communication with a vial-enabled keyboard """
@@ -95,7 +95,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.layer_rgb_enabled = False
 
         self.via_protocol = self.vial_protocol = self.keyboard_id = -1
-        self.config_handler = ConfigPacketHandler(self)
 
     def reload(self, sideload_json=None):
         """ Load information about the keyboard: number of layers, physical key layout """
@@ -111,7 +110,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_macros_early()
         self.reload_persistent_rgb()
         self.reload_rgb()
-        self.reload_layer_rgb_support()  # Add this line to always check layer RGB support
+        self.reload_layer_rgb_support()
         self.reload_settings()
 
         self.reload_dynamic()
@@ -128,7 +127,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def reload_layers(self):
         """ Get how many layers the keyboard has """
-
         self.layers = self.usb_send(self.dev, struct.pack("B", CMD_VIA_GET_LAYER_COUNT), retries=20)[1]
 
     def reload_via_protocol(self):
@@ -568,66 +566,55 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self._vialrgb_set_mode()
 
     def reload_layer_rgb_support(self):
-        """Check if keyboard supports per-layer RGB and get initial status - always assume supported for GUI"""
-        # Always set as supported for GUI purposes - buttons should always show
+        """Check if keyboard supports per-layer RGB and get initial status"""
         self.layer_rgb_supported = True
         
         try:
-            # Try to get layer RGB status - if it works, we have real support
             data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_GET_STATUS), retries=20)
-            self.layer_rgb_enabled = bool(data[2])  # Skip command_id and channel bytes
+            self.layer_rgb_enabled = bool(data[2])
             return True
         except:
-            # If communication fails, use default but still keep supported = True for GUI
             self.layer_rgb_enabled = False
-            return True  # Always return True so GUI shows buttons
+            return True
 
     def get_layer_rgb_status(self):
-        """Get current per-layer RGB status - always return reasonable data"""
-        # Always return something so the GUI doesn't break
+        """Get current per-layer RGB status"""
         try:
             data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_GET_STATUS), retries=20)
-            return data[2:]  # Skip the first 2 bytes (command_id and channel)
+            return data[2:]
         except:
-            # Return reasonable defaults if communication fails
-            # Format: [enabled_flag, layer_count, ...reserved]
             return bytes([
-                0x01 if self.layer_rgb_enabled else 0x00,  # enabled flag
-                self.layers if hasattr(self, 'layers') and self.layers > 0 else 4,  # layer count
-                0, 0, 0, 0, 0, 0  # reserved bytes
+                0x01 if self.layer_rgb_enabled else 0x00,
+                self.layers if hasattr(self, 'layers') and self.layers > 0 else 4,
+                0, 0, 0, 0, 0, 0
             ])
 
     def set_layer_rgb_enable(self, enabled):
-        """Enable or disable per-layer RGB functionality - always succeed for GUI"""
+        """Enable or disable per-layer RGB functionality"""
         try:
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_ENABLE, int(enabled)), retries=20)
-            success = data[2] == 0x01  # Check success response
+            success = data[2] == 0x01
             if success:
                 self.layer_rgb_enabled = enabled
             return success
         except:
-            # Always update local state even if communication fails
             self.layer_rgb_enabled = enabled
-            return True  # Always return success for GUI
+            return True
 
     def save_rgb_to_layer(self, layer):
-        """Save current RGB settings to specified layer - always succeed for GUI"""
-        # Always allow saving regardless of layer count for GUI testing
+        """Save current RGB settings to specified layer"""
         try:
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, layer), retries=20)
-            return data[2] == 0x01  # Check success response
+            return data[2] == 0x01
         except:
-            # Always return success for GUI so buttons remain functional
             return True
 
     def load_rgb_from_layer(self, layer):
-        """Load RGB settings from specified layer - always succeed for GUI"""
-        # Always allow loading regardless of layer count for GUI testing
+        """Load RGB settings from specified layer"""
         try:
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_LOAD, layer), retries=20)
-            return data[2] == 0x01  # Check success response
+            return data[2] == 0x01
         except:
-            # Always return success for GUI so buttons remain functional
             return True
             
     def get_custom_slot_config(self, slot, from_eeprom=True):
@@ -636,13 +623,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             if slot >= 12:
                 return None
             
-            source = 1 if from_eeprom else 0  # 1 = EEPROM, 0 = RAM
+            source = 1 if from_eeprom else 0
             data = self.usb_send(self.dev, struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot, source), retries=20)
             if data and len(data) > 2 and data[0] == 0x01:
-                return data[3:15]  # 12 parameters starting at index 3
+                return data[3:15]
             return None
         except Exception as e:
-            print(f"Error getting custom slot {slot} config: {e}")
             return None
 
     def get_custom_slot_ram_state(self, slot):
@@ -658,7 +644,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
-            print(f"Error setting custom slot {slot} parameter {param_index}: {e}")
             return False
 
     def set_custom_slot_all_parameters(self, slot, live_pos, macro_pos, live_anim, macro_anim, influence, 
@@ -668,26 +653,23 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             if slot >= 12:
                 return False
                 
-            # Use set_all command: slot + 12 parameter bytes
             params = [slot, live_pos, macro_pos, live_anim, macro_anim, influence, 
                      background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed]
             data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(params), CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_ALL, *params), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
             
         except Exception as e:
-            print(f"Error setting all parameters for slot {slot}: {e}")
             return False
             
     def save_custom_slot(self, slot):
         """Save a specific custom slot configuration to EEPROM"""
         try:
-            if slot >= 12:  # Support up to 12 slots
+            if slot >= 12:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SAVE, slot), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
-            print(f"Error saving custom slot {slot}: {e}")
             return False        
 
     def save_custom_slots(self):
@@ -696,7 +678,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SAVE), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
-            print(f"Error saving custom slots: {e}")
             return False
 
     def reset_custom_slot(self, slot):
@@ -708,7 +689,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, slot), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
-            print(f"Error resetting custom slot {slot}: {e}")
             return False
             
     def rescan_led_positions(self):
@@ -717,61 +697,46 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
-            print(f"Error rescanning LED positions: {e}")
             return False
-            
-
 
     def get_custom_animation_status(self):
         """Get custom animation status including active slot"""
         try:
             data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_STATUS), retries=20)
             if data and len(data) >= 12:
-                # Parse the response:
-                # data[0] = 0x01 (success)
-                # data[1] = NUM_CUSTOM_SLOTS (50)  
-                # data[2] = current_custom_slot
-                # data[3-9] = enabled mask (7 bytes for 50 slots)
-                # data[10] = NUM_CUSTOM_PARAMETERS (12)
-                # data[11] = randomize_active flag
-                return data[1:]  # Return everything except the success byte
-            return bytes([50, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0])  # Safe defaults
+                return data[1:]
+            return bytes([50, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0])
         except Exception as e:
-            print(f"Error getting custom animation status: {e}")
-            return bytes([50, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0])  # Safe defaults
+            return bytes([50, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0])
 
     def get_current_custom_slot(self):
         """Get the currently active custom slot number"""
         try:
             status = self.get_custom_animation_status()
             if len(status) > 1:
-                return status[1]  # Active slot is at index 1 (was index 2 before)
+                return status[1]
                 
-            # Fallback: derive from RGB mode
             current_mode = self.rgb_mode
             if 57 <= current_mode <= 68:
                 return current_mode - 57
-            if current_mode in [69, 70, 71, 72, 73, 74, 75, 76]:  # Randomize modes
-                return 11  # RANDOMIZE_SLOT
+            if current_mode in [69, 70, 71, 72, 73, 74, 75, 76]:
+                return 11
             return 0
         except Exception as e:
-            print(f"Error getting current custom slot: {e}")
             return 0
-            
          
     def _create_hid_packet(self, command, macro_num, data):
         """Create a properly formatted 32-byte HID packet"""
-        packet = bytearray(32)
-        packet[0] = 0x7D  # HID_MANUFACTURER_ID
-        packet[1] = 0x00  # HID_SUB_ID
-        packet[2] = 0x4D  # HID_DEVICE_ID
+        packet = bytearray(HID_PACKET_SIZE)
+        packet[0] = HID_MANUFACTURER_ID
+        packet[1] = HID_SUB_ID
+        packet[2] = HID_DEVICE_ID
         packet[3] = command
         packet[4] = macro_num
         packet[5] = 0  # Status
         
-        # Copy data payload (max 26 bytes)
         if data:
-            data_len = min(len(data), 32 - 6)
+            data_len = min(len(data), HID_PACKET_SIZE - 6)
             packet[6:6+data_len] = data[:data_len]
         
         return bytes(packet)
@@ -781,9 +746,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_SET_LOOP_CONFIG, 0, loop_config_data)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error setting ThruLoop config: {e}")
             return False
 
     def set_thruloop_main_ccs(self, cc_values):
@@ -791,9 +755,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_SET_MAIN_LOOP_CCS, 0, cc_values)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error setting ThruLoop main CCs: {e}")
             return False
 
     def set_thruloop_overdub_ccs(self, cc_values):
@@ -801,9 +764,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_SET_OVERDUB_CCS, 0, cc_values)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error setting ThruLoop overdub CCs: {e}")
             return False
 
     def set_thruloop_navigation(self, nav_data):
@@ -811,61 +773,112 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_SET_NAVIGATION_CONFIG, 0, nav_data)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error setting ThruLoop navigation: {e}")
             return False
 
     def get_thruloop_config(self):
-        """Get all ThruLoop configuration"""
+        """Get all ThruLoop configuration using multi-packet collection"""
         try:
+            # Send request for all config
             packet = self._create_hid_packet(HID_CMD_GET_ALL_CONFIG, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            
+            if not data or len(data) == 0 or data[5] != 0:
+                return None
+            
+            # Collect all 4 config packets with delays
+            packets = {}
+            
+            # Small delay then collect packets
+            time.sleep(0.05)
+            
+            # Try to collect each expected packet type
+            for attempt in range(10):  # Try up to 10 times
+                try:
+                    response = self.usb_send(self.dev, b'\x00' * 32, retries=1)  # Empty packet to read response
+                    if len(response) >= 4 and response[0] == HID_MANUFACTURER_ID:
+                        cmd = response[3]
+                        if cmd in [HID_CMD_SET_LOOP_CONFIG, HID_CMD_SET_MAIN_LOOP_CCS, 
+                                  HID_CMD_SET_OVERDUB_CCS, HID_CMD_SET_NAVIGATION_CONFIG]:
+                            packets[cmd] = response
+                            
+                    if len(packets) >= 4:
+                        break
+                        
+                    time.sleep(0.01)  # Small delay between attempts
+                except:
+                    pass
+            
+            # Parse collected packets
+            config = {}
+            
+            if HID_CMD_SET_LOOP_CONFIG in packets:
+                data = packets[HID_CMD_SET_LOOP_CONFIG][6:]
+                config['loopEnabled'] = data[0] != 0
+                config['loopChannel'] = data[1] 
+                config['syncMidi'] = data[2] != 0
+                config['alternateRestart'] = data[3] != 0
+                config['restartCCs'] = list(data[4:8])
+                if len(data) > 8:
+                    config['ccLoopRecording'] = data[8] != 0
+                else:
+                    config['ccLoopRecording'] = False
+                    
+            if HID_CMD_SET_MAIN_LOOP_CCS in packets:
+                data = packets[HID_CMD_SET_MAIN_LOOP_CCS][6:]
+                config['mainCCs'] = list(data[:20])
+                
+            if HID_CMD_SET_OVERDUB_CCS in packets:
+                data = packets[HID_CMD_SET_OVERDUB_CCS][6:]
+                config['overdubCCs'] = list(data[:20])
+                
+            if HID_CMD_SET_NAVIGATION_CONFIG in packets:
+                data = packets[HID_CMD_SET_NAVIGATION_CONFIG][6:]
+                config['separateLoopChopCC'] = data[0] != 0
+                config['masterCC'] = data[1]
+                config['navCCs'] = list(data[2:10])
+                
+            return config if config else None
+            
         except Exception as e:
-            print(f"Error getting ThruLoop config: {e}")
-            return False
+            return None
 
     def reset_thruloop_config(self):
         """Reset ThruLoop configuration to defaults"""
         try:
             packet = self._create_hid_packet(HID_CMD_RESET_LOOP_CONFIG, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error resetting ThruLoop config: {e}")
             return False
 
     def set_midi_config(self, config_data):
-        """Set MIDIswitch basic configuration (26 bytes)"""
+        """Set MIDIswitch basic configuration"""
         try:
             packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_CONFIG, 0, config_data)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error setting MIDI config: {e}")
             return False
 
     def set_midi_advanced_config(self, advanced_data):
-        """Set MIDIswitch advanced configuration (15 bytes)"""
+        """Set MIDIswitch advanced configuration"""
         try:
             packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, advanced_data)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error setting MIDI advanced config: {e}")
             return False
 
     def save_midi_slot(self, slot, config_data):
         """Save MIDIswitch configuration to slot"""
         try:
-            # Slot number + 26 bytes of config data
             slot_data = [slot] + list(config_data)
             packet = self._create_hid_packet(HID_CMD_SAVE_KEYBOARD_SLOT, 0, slot_data)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error saving MIDI slot {slot}: {e}")
             return False
 
     def load_midi_slot(self, slot):
@@ -873,9 +886,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_LOAD_KEYBOARD_SLOT, 0, [slot])
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error loading MIDI slot {slot}: {e}")
             return False
 
     def reset_midi_config(self):
@@ -883,233 +895,103 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_RESET_KEYBOARD_CONFIG, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
+            return data and len(data) > 0 and data[5] == 0
         except Exception as e:
-            print(f"Error resetting MIDI config: {e}")
             return False
 
     def get_midi_config(self):
-        """Get MIDIswitch configuration"""
+        """Get MIDIswitch configuration using multi-packet collection"""
         try:
+            # Send request for keyboard config
             packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
-        except Exception as e:
-            print(f"Error getting MIDI config: {e}")
-            return False
             
-    def request_thruloop_config_async(self, callback):
-        """Request ThruLoop config with async multi-packet handling"""
-        try:
-            # Start expecting multi-packet response
-            self.config_handler.start_thruloop_config_request(callback)
+            if not data or len(data) == 0 or data[5] != 0:
+                return None
             
-            # Send request
-            packet = self._create_hid_packet(HID_CMD_GET_ALL_CONFIG, 0, None)
-            data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
-        except Exception as e:
-            print(f"Error requesting ThruLoop config: {e}")
-            self.config_handler.reset()
-            return False
-
-    def request_keyboard_config_async(self, callback):
-        """Request keyboard config with async multi-packet handling"""
-        try:
-            # Start expecting multi-packet response  
-            self.config_handler.start_keyboard_config_request(callback)
+            # Collect both config packets with delays
+            packets = {}
             
-            # Send request
-            packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
-            data = self.usb_send(self.dev, packet, retries=20)
-            return data and len(data) > 0 and data[5] == 0  # Check status byte
-        except Exception as e:
-            print(f"Error requesting keyboard config: {e}")
-            self.config_handler.reset()
-            return False
-
-    # Override usb_send to intercept config responses
-    def usb_send(self, dev, data, retries=20):
-        response = hid_send(dev, data, retries)
-        
-        # Check if this is a config response we're expecting
-        if (len(response) >= 4 and response[0] == 0x7D and 
-            response[1] == 0x00 and response[2] == 0x4D):
-            command = response[3]
+            # Small delay then collect packets
+            time.sleep(0.05)
             
-            # Let config handler process it
-            if self.config_handler.handle_received_packet(command, response):
-                # Config handler processed it successfully
-                pass
-        
-        return response
+            # Try to collect each expected packet type
+            for attempt in range(10):  # Try up to 10 times
+                try:
+                    response = self.usb_send(self.dev, b'\x00' * 32, retries=1)  # Empty packet to read response
+                    if len(response) >= 4 and response[0] == HID_MANUFACTURER_ID:
+                        cmd = response[3]
+                        if cmd in [HID_CMD_GET_KEYBOARD_CONFIG, HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED]:
+                            packets[cmd] = response
+                            
+                    if len(packets) >= 2:
+                        break
+                        
+                    time.sleep(0.01)  # Small delay between attempts
+                except:
+                    pass
             
-class ConfigPacketHandler:
-    """Handles multi-packet configuration responses"""
-    
-    def __init__(self, keyboard):
-        self.keyboard = keyboard
-        self.reset()
-        
-    def reset(self):
-        self.expecting_packets = False
-        self.packet_type = None
-        self.received_packets = {}
-        self.expected_packet_commands = []
-        self.callback = None
-        
-    def start_thruloop_config_request(self, callback):
-        """Start expecting ThruLoop config packets"""
-        self.reset()
-        self.expecting_packets = True
-        self.packet_type = "thruloop"
-        self.expected_packet_commands = [
-            HID_CMD_SET_LOOP_CONFIG,
-            HID_CMD_SET_MAIN_LOOP_CCS, 
-            HID_CMD_SET_OVERDUB_CCS,
-            HID_CMD_SET_NAVIGATION_CONFIG
-        ]
-        self.callback = callback
-        
-    def start_keyboard_config_request(self, callback):
-        """Start expecting keyboard config packets"""
-        self.reset()
-        self.expecting_packets = True
-        self.packet_type = "keyboard"
-        self.expected_packet_commands = [
-            HID_CMD_GET_KEYBOARD_CONFIG,
-            HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED
-        ]
-        self.callback = callback
-        
-    def handle_received_packet(self, command, data):
-        """Process a received configuration packet"""
-        if not self.expecting_packets:
-            return False
+            # Parse collected packets
+            config = {}
             
-        if command in self.expected_packet_commands:
-            self.received_packets[command] = data
-            
-            # Check if we have all expected packets
-            if len(self.received_packets) == len(self.expected_packet_commands):
-                self._process_complete_config()
-                return True
+            if HID_CMD_GET_KEYBOARD_CONFIG in packets:
+                data = packets[HID_CMD_GET_KEYBOARD_CONFIG][6:]
                 
-        return False
-        
-    def _process_complete_config(self):
-        """Process complete configuration when all packets received"""
-        if self.packet_type == "thruloop":
-            config = self._parse_thruloop_config()
-        elif self.packet_type == "keyboard":
-            config = self._parse_keyboard_config()
-        else:
-            config = None
-            
-        if self.callback and config:
-            self.callback(config)
-            
-        self.reset()
-        
-    def _parse_thruloop_config(self):
-        """Parse ThruLoop configuration from received packets"""
-        config = {}
-        
-        # Parse basic loop config packet
-        if HID_CMD_SET_LOOP_CONFIG in self.received_packets:
-            data = self.received_packets[HID_CMD_SET_LOOP_CONFIG][6:]  # Skip header
-            config['loopEnabled'] = data[0] != 0
-            config['loopChannel'] = data[1] 
-            config['syncMidi'] = data[2] != 0
-            config['alternateRestart'] = data[3] != 0
-            config['restartCCs'] = list(data[4:8])
-            if len(data) > 8:
-                config['ccLoopRecording'] = data[8] != 0
-            else:
-                config['ccLoopRecording'] = False
+                velocity_sensitivity = struct.unpack('<I', data[0:4])[0]
+                cc_sensitivity = struct.unpack('<I', data[4:8])[0] 
+                channel_number = data[8]
+                transpose_number = struct.unpack('<b', data[9:10])[0]
+                octave_number = struct.unpack('<b', data[10:11])[0]
+                transpose_number2 = struct.unpack('<b', data[11:12])[0]
+                octave_number2 = struct.unpack('<b', data[12:13])[0]
+                transpose_number3 = struct.unpack('<b', data[13:14])[0]
+                octave_number3 = struct.unpack('<b', data[14:15])[0]
+                velocity_number = data[15]
+                velocity_number2 = data[16]
+                velocity_number3 = data[17]
+                random_velocity_modifier = data[18]
+                oled_keyboard = struct.unpack('<I', data[19:23])[0]
+                smart_chord_light = data[23]
+                smart_chord_light_mode = data[24]
                 
-        # Parse main loop CCs
-        if HID_CMD_SET_MAIN_LOOP_CCS in self.received_packets:
-            data = self.received_packets[HID_CMD_SET_MAIN_LOOP_CCS][6:]  # Skip header
-            config['mainCCs'] = list(data[:20])  # 5 functions × 4 loops = 20 CCs
+                config.update({
+                    "velocity_sensitivity": velocity_sensitivity,
+                    "cc_sensitivity": cc_sensitivity,
+                    "channel_number": channel_number,
+                    "transpose_number": transpose_number,
+                    "transpose_number2": transpose_number2,
+                    "transpose_number3": transpose_number3,
+                    "velocity_number": velocity_number,
+                    "velocity_number2": velocity_number2,
+                    "velocity_number3": velocity_number3,
+                    "random_velocity_modifier": random_velocity_modifier,
+                    "oled_keyboard": oled_keyboard,
+                    "smart_chord_light": smart_chord_light,
+                    "smart_chord_light_mode": smart_chord_light_mode
+                })
+                
+            if HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED in packets:
+                data = packets[HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED][6:]
+                
+                config.update({
+                    "key_split_channel": data[0],
+                    "key_split2_channel": data[1], 
+                    "key_split_status": data[2],
+                    "key_split_transpose_status": data[3],
+                    "key_split_velocity_status": data[4],
+                    "custom_layer_animations_enabled": data[5] != 0,
+                    "unsynced_mode_active": data[6] != 0,
+                    "sample_mode_active": data[7] != 0,
+                    "loop_messaging_enabled": data[8] != 0,
+                    "loop_messaging_channel": data[9],
+                    "sync_midi_mode": data[10] != 0,
+                    "alternate_restart_mode": data[11] != 0,
+                    "colorblindmode": data[12],
+                    "cclooprecording": data[13] != 0,
+                    "truesustain": data[14] != 0
+                })
+                
+            return config if config else None
             
-        # Parse overdub CCs  
-        if HID_CMD_SET_OVERDUB_CCS in self.received_packets:
-            data = self.received_packets[HID_CMD_SET_OVERDUB_CCS][6:]  # Skip header
-            config['overdubCCs'] = list(data[:20])  # 5 functions × 4 loops = 20 CCs
-            
-        # Parse navigation config
-        if HID_CMD_SET_NAVIGATION_CONFIG in self.received_packets:
-            data = self.received_packets[HID_CMD_SET_NAVIGATION_CONFIG][6:]  # Skip header
-            config['separateLoopChopCC'] = data[0] != 0
-            config['masterCC'] = data[1]
-            config['navCCs'] = list(data[2:10])  # 8 navigation CCs
-            
-        return config
-        
-    def _parse_keyboard_config(self):
-        """Parse keyboard configuration from received packets"""
-        config = {}
-        
-        # Parse basic config packet
-        if HID_CMD_GET_KEYBOARD_CONFIG in self.received_packets:
-            data = self.received_packets[HID_CMD_GET_KEYBOARD_CONFIG][6:]  # Skip header
-            import struct
-            
-            # Parse according to firmware structure (26 bytes)
-            velocity_sensitivity = struct.unpack('<I', data[0:4])[0]
-            cc_sensitivity = struct.unpack('<I', data[4:8])[0] 
-            channel_number = data[8]
-            transpose_number = struct.unpack('<b', data[9:10])[0]  # signed byte
-            octave_number = struct.unpack('<b', data[10:11])[0]  # signed byte  
-            transpose_number2 = struct.unpack('<b', data[11:12])[0]
-            octave_number2 = struct.unpack('<b', data[12:13])[0]
-            transpose_number3 = struct.unpack('<b', data[13:14])[0]
-            octave_number3 = struct.unpack('<b', data[14:15])[0]
-            velocity_number = data[15]
-            velocity_number2 = data[16]
-            velocity_number3 = data[17]
-            random_velocity_modifier = data[18]
-            oled_keyboard = struct.unpack('<I', data[19:23])[0]
-            smart_chord_light = data[23]
-            smart_chord_light_mode = data[24]
-            
-            config.update({
-                "velocity_sensitivity": velocity_sensitivity,
-                "cc_sensitivity": cc_sensitivity,
-                "channel_number": channel_number,
-                "transpose_number": transpose_number,
-                "transpose_number2": transpose_number2,
-                "transpose_number3": transpose_number3,
-                "velocity_number": velocity_number,
-                "velocity_number2": velocity_number2,
-                "velocity_number3": velocity_number3,
-                "random_velocity_modifier": random_velocity_modifier,
-                "oled_keyboard": oled_keyboard,
-                "smart_chord_light": smart_chord_light,
-                "smart_chord_light_mode": smart_chord_light_mode
-            })
-            
-        # Parse advanced config packet
-        if HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED in self.received_packets:
-            data = self.received_packets[HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED][6:]  # Skip header
-            
-            config.update({
-                "key_split_channel": data[0],
-                "key_split2_channel": data[1], 
-                "key_split_status": data[2],
-                "key_split_transpose_status": data[3],
-                "key_split_velocity_status": data[4],
-                "custom_layer_animations_enabled": data[5] != 0,
-                "unsynced_mode_active": data[6] != 0,
-                "sample_mode_active": data[7] != 0,
-                "loop_messaging_enabled": data[8] != 0,
-                "loop_messaging_channel": data[9],
-                "sync_midi_mode": data[10] != 0,
-                "alternate_restart_mode": data[11] != 0,
-                "colorblindmode": data[12],
-                "cclooprecording": data[13] != 0,
-                "truesustain": data[14] != 0
-            })
-            
-        return config
+        except Exception as e:
+            return None
