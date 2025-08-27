@@ -30,7 +30,6 @@ from util import MSG_LEN, hid_send
 SUPPORTED_VIA_PROTOCOL = [-1, 9]
 SUPPORTED_VIAL_PROTOCOL = [-1, 0, 1, 2, 3, 4, 5, 6]
 
-# HID Header constants (from your firmware)
 HID_MANUFACTURER_ID = 0x7D
 HID_SUB_ID = 0x00
 HID_DEVICE_ID = 0x4D
