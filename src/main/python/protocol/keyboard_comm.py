@@ -620,7 +620,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_custom_slot_config(self, slot, from_eeprom=True):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 12:
+            if slot >= 50:
                 return None
             
             source = 1 if from_eeprom else 0
@@ -638,7 +638,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 12 or param_index >= 12:
+            if slot >= 50 or param_index >= 12:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
@@ -650,7 +650,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                                      background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed):
         """Set all parameters for a custom animation slot"""
         try:
-            if slot >= 12:
+            if slot >= 50:
                 return False
                 
             params = [slot, live_pos, macro_pos, live_anim, macro_anim, influence, 
@@ -664,7 +664,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def save_custom_slot(self, slot):
         """Save a specific custom slot configuration to EEPROM"""
         try:
-            if slot >= 12:
+            if slot >= 50:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SAVE, slot), retries=20)
@@ -683,7 +683,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def reset_custom_slot(self, slot):
         """Reset a custom slot to default values"""
         try:
-            if slot >= 12:
+            if slot >= 50:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, slot), retries=20)
