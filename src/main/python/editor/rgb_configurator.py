@@ -264,6 +264,14 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Outward Burst Large", "index": 64},
         {"name": "Outward Burst Large Solo", "index": 65}
     ],
+        "Inward Burst": [
+        {"name": "Inward Burst Small", "index": 166},
+        {"name": "Inward Burst Small Solo", "index": 167},
+        {"name": "Inward Burst Med", "index": 168},
+        {"name": "Inward Burst Med Solo", "index": 169},
+        {"name": "Inward Burst Large", "index": 170},
+        {"name": "Inward Burst Large Solo", "index": 171}
+    ],
     "Volume Column": [
         {"name": "Volume Column Small", "index": 66},
         {"name": "Volume Column Small Solo", "index": 67},
