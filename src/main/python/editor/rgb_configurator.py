@@ -130,15 +130,14 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(54, "L/R Sweep Static"),
     VialRGBEffect(55, "L/R Sweep Rainbow"),
     VialRGBEffect(56, "L/R Sweep Random"),
-    VialRGBEffect(107, "Randomize 1 - Loop"),
-    VialRGBEffect(108, "Randomize 2 - Loop"),
-    VialRGBEffect(109, "Randomize 3 - Loop"),
-    VialRGBEffect(110, "Randomize 1 - BPM"),
-    VialRGBEffect(111, "Randomize 2 - BPM"),
-    VialRGBEffect(112, "Randomize 3 - BPM"),
-    VialRGBEffect(113, "Randomize 1 - Manual"),
-    VialRGBEffect(114, "Randomize 2 - Manual"),
-    VialRGBEffect(115, "Randomize 3 - Manual"),
+    VialRGBEffect(69, "Random Lights - Loop Controlled 1-50"),
+    VialRGBEffect(70, "Random Lights - Loop Controlled Random"),
+    VialRGBEffect(71, "Random Lights - Loop Controlled Crazy"),
+    VialRGBEffect(72, "Random Lights - BPM Controlled 1-50"),
+    VialRGBEffect(73, "Random Lights - BPM Controlled Random"),
+    VialRGBEffect(74, "Random Lights - BPM Controlled Crazy"),
+    VialRGBEffect(75, "Random Lights - Manual Random"),
+    VialRGBEffect(76, "Random Lights - Manual Crazy"),
     VialRGBEffect(57, "Custom Slot 1"),
     VialRGBEffect(58, "Custom Slot 2"),
     VialRGBEffect(59, "Custom Slot 3"),
@@ -151,44 +150,6 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(66, "Custom Slot 10"),
     VialRGBEffect(67, "Custom Slot 11"),
     VialRGBEffect(68, "Custom Slot 12"),
-    VialRGBEffect(69, "Custom Slot 13"),
-    VialRGBEffect(70, "Custom Slot 14"),
-    VialRGBEffect(71, "Custom Slot 15"),
-    VialRGBEffect(72, "Custom Slot 16"),
-    VialRGBEffect(73, "Custom Slot 17"),
-    VialRGBEffect(74, "Custom Slot 18"),
-    VialRGBEffect(75, "Custom Slot 19"),
-    VialRGBEffect(76, "Custom Slot 20"),
-    VialRGBEffect(77, "Custom Slot 21"),
-    VialRGBEffect(78, "Custom Slot 22"),
-    VialRGBEffect(79, "Custom Slot 23"),
-    VialRGBEffect(80, "Custom Slot 24"),
-    VialRGBEffect(81, "Custom Slot 25"),
-    VialRGBEffect(82, "Custom Slot 26"),
-    VialRGBEffect(83, "Custom Slot 27"),
-    VialRGBEffect(84, "Custom Slot 28"),
-    VialRGBEffect(85, "Custom Slot 29"),
-    VialRGBEffect(86, "Custom Slot 30"),
-    VialRGBEffect(87, "Custom Slot 31"),
-    VialRGBEffect(88, "Custom Slot 32"),
-    VialRGBEffect(89, "Custom Slot 33"),
-    VialRGBEffect(90, "Custom Slot 34"),
-    VialRGBEffect(91, "Custom Slot 35"),
-    VialRGBEffect(92, "Custom Slot 36"),
-    VialRGBEffect(93, "Custom Slot 37"),
-    VialRGBEffect(94, "Custom Slot 38"),
-    VialRGBEffect(95, "Custom Slot 39"),
-    VialRGBEffect(96, "Custom Slot 40"),
-    VialRGBEffect(97, "Custom Slot 41"),
-    VialRGBEffect(98, "Custom Slot 42"),
-    VialRGBEffect(99, "Custom Slot 43"),
-    VialRGBEffect(100, "Custom Slot 44"),
-    VialRGBEffect(101, "Custom Slot 45"),
-    VialRGBEffect(102, "Custom Slot 46"),
-    VialRGBEffect(103, "Custom Slot 47"),
-    VialRGBEffect(104, "Custom Slot 48"),
-    VialRGBEffect(105, "Custom Slot 49"),
-    VialRGBEffect(106, "Custom Slot 50"),
 
 ]
 
@@ -1382,7 +1343,7 @@ class CustomLightsHandler(BasicHandler):
             self.slot_tabs = []
             self.slot_widgets = {}
             
-            for slot in range(50):
+            for slot in range(12):
                 self.create_slot_tab(slot)
 
             self.widgets = [self.lbl_custom_lights, self.tab_widget]
@@ -1677,14 +1638,14 @@ class CustomLightsHandler(BasicHandler):
 
     def block_signals(self):
         """Block signals for all widgets"""
-        for slot in range(50):
+        for slot in range(12):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
-        for slot in range(50):
+        for slot in range(12):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(False)
