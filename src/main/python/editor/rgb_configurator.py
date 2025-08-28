@@ -1382,7 +1382,7 @@ class CustomLightsHandler(BasicHandler):
             self.slot_tabs = []
             self.slot_widgets = {}
             
-            for slot in range(12):
+            for slot in range(50):
                 self.create_slot_tab(slot)
 
             self.widgets = [self.lbl_custom_lights, self.tab_widget]
@@ -1677,14 +1677,14 @@ class CustomLightsHandler(BasicHandler):
 
     def block_signals(self):
         """Block signals for all widgets"""
-        for slot in range(12):
+        for slot in range(50):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
-        for slot in range(12):
+        for slot in range(50):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(False)
