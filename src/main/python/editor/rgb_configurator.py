@@ -1382,21 +1382,23 @@ class CustomLightsHandler(BasicHandler):
         self.slot_widgets = {}
         self.group_tab_widgets = {}  # Store sub-tab widgets for each group
         
-        # Define groups: 1-9, 10-19, 20-29, 30-39, 40-49, 50
+        # Define groups: 1-9, 10-19, 20-29, 30-39, 40-49 (removed the single "50" group)
         self.groups = [
             ("1-9", 0, 9),
             ("10-19", 9, 19), 
             ("20-29", 19, 29),
             ("30-39", 29, 39),
-            ("40-49", 39, 49),
-            ("50", 49, 50)
+            ("40-49", 39, 50)  # Changed to go up to 50 (slots 39-49)
         ]
+        
+        # Connect main tab change to load lowest slot in group
+        self.main_tab_widget.currentChanged.connect(self.on_main_tab_changed)
         
         for group_name, start_idx, end_idx in self.groups:
             self.create_group_tab(group_name, start_idx, end_idx)
 
         self.widgets = [self.lbl_custom_lights, self.main_tab_widget]
-        
+
     def create_group_tab(self, group_name, start_idx, end_idx):
         """Create a main tab containing sub-tabs for a group of slots"""
         # Create the main tab widget
@@ -1561,6 +1563,19 @@ class CustomLightsHandler(BasicHandler):
         }
 
         self.slot_tabs.append(tab_widget)
+
+    def on_main_tab_changed(self, index):
+        """Handle main tab change - load EEPROM for lowest slot in group"""
+        if index >= len(self.groups):
+            return
+            
+        group_name, start_idx, end_idx = self.groups[index]
+        lowest_slot = start_idx
+        
+        print(f"Main tab changed to {group_name}, loading EEPROM for lowest slot {lowest_slot}")
+        self.block_signals()
+        self.load_slot_from_eeprom(lowest_slot)
+        self.unblock_signals()
         
     def on_sub_tab_changed(self, index, start_slot):
         """Handle sub-tab switching within a group"""
@@ -1662,6 +1677,10 @@ class CustomLightsHandler(BasicHandler):
     
     def update_slot_widgets(self, slot, config):
         """Update GUI widgets for a slot with given config"""
+        if slot not in self.slot_widgets:
+            print(f"Warning: slot {slot} not in slot_widgets dict")
+            return
+            
         widgets = self.slot_widgets[slot]
         widgets['live_effect'].setCurrentIndex(min(config[2], 171))
         widgets['live_style'].setCurrentIndex(min(config[0], 23))
@@ -1710,6 +1729,9 @@ class CustomLightsHandler(BasicHandler):
 
     def set_slot_defaults(self, slot):
         """Set default values for a slot"""
+        if slot not in self.slot_widgets:
+            return
+            
         widgets = self.slot_widgets[slot]
         widgets['live_effect'].setCurrentIndex(0)         # None
         widgets['live_style'].setCurrentIndex(0)          # TrueKey
@@ -1728,14 +1750,14 @@ class CustomLightsHandler(BasicHandler):
 
     def block_signals(self):
         """Block signals for all widgets"""
-        for slot in range(50):
+        for slot in self.slot_widgets.keys():  # Only iterate through actually created slots
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
-        for slot in range(50):
+        for slot in self.slot_widgets.keys():  # Only iterate through actually created slots
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(False)
