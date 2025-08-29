@@ -1331,23 +1331,224 @@ class CustomLightsHandler(BasicHandler):
         self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
         container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
 
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
+        # Create main tab widget for groups
+        self.main_tab_widget = QTabWidget()
+        container.addWidget(self.main_tab_widget, row + 1, 0, 1, 2)
         
         # Track the currently active slot (for parameter changes)
         self.current_active_slot = None
         self.current_randomize_slot = None
         
-        # Create tabs for each slot (50 slots)
+        # Create grouped tabs
         self.slot_tabs = []
         self.slot_widgets = {}
+        self.group_tab_widgets = {}  # Store sub-tab widgets for each group
         
-        for slot in range(50):
-            self.create_slot_tab(slot)
+        # Define groups: 1-9, 10-19, 20-29, 30-39, 40-49, 50
+        self.groups = [
+            ("1-9", 0, 9),
+            ("10-19", 9, 19), 
+            ("20-29", 19, 29),
+            ("30-39", 29, 39),
+            ("40-49", 39, 49),
+            ("50", 49, 50)
+        ]
+        
+        for group_name, start_idx, end_idx in self.groups:
+            self.create_group_tab(group_name, start_idx, end_idx)
 
-        self.widgets = [self.lbl_custom_lights, self.tab_widget]
+        self.widgets = [self.lbl_custom_lights, self.main_tab_widget]
         
+    def create_group_tab(self, group_name, start_idx, end_idx):
+        """Create a main tab containing sub-tabs for a group of slots"""
+        # Create the main tab widget
+        group_widget = QWidget()
+        self.main_tab_widget.addTab(group_widget, group_name)
+        
+        # Create layout for the group
+        group_layout = QHBoxLayout(group_widget)
+        group_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Create sub-tab widget for individual slots in this group
+        sub_tab_widget = QTabWidget()
+        group_layout.addWidget(sub_tab_widget)
+        
+        # Store reference to sub-tab widget
+        self.group_tab_widgets[group_name] = sub_tab_widget
+        
+        # Connect tab change signal for this sub-tab widget
+        sub_tab_widget.currentChanged.connect(lambda index, start=start_idx: self.on_sub_tab_changed(index, start))
+        
+        # Create individual slot tabs within this group
+        for slot in range(start_idx, end_idx):
+            self.create_slot_tab(slot, sub_tab_widget)
+        
+    def create_slot_tab(self, slot, parent_tab_widget):
+        """Create a tab for a single slot within a group's sub-tab widget"""
+        # Create tab widget
+        tab_widget = QWidget()
+        parent_tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
+        
+        # Create layout for this tab
+        layout = QGridLayout(tab_widget)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+
+        # Live Animation section
+        live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
+        live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(live_label, 0, 0, 1, 3)
+
+        # Live Effect - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
+        live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
+        live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
+        layout.addWidget(live_effect, 1, 1, 1, 2)
+
+        # Live Style - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
+        live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
+        live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
+        layout.addWidget(live_style, 2, 1, 1, 2)
+
+        # Live Animation Speed slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
+        live_speed = QSlider(QtCore.Qt.Horizontal)
+        live_speed.setMinimum(0)
+        live_speed.setMaximum(255)
+        live_speed.setValue(128)  # Default speed
+        live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
+        layout.addWidget(live_speed, 3, 1, 1, 2)
+
+        # Macro Animation section
+        macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
+        macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(macro_label, 4, 0, 1, 3)
+
+        # Macro Effect - hierarchical dropdown (same as live effects)
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
+        macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
+        macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
+        layout.addWidget(macro_effect, 5, 1, 1, 2)
+
+        # Macro Style - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
+        macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
+        macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
+        layout.addWidget(macro_style, 6, 1, 1, 2)
+        
+        # Macro Animation Speed slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
+        macro_speed = QSlider(QtCore.Qt.Horizontal)
+        macro_speed.setMinimum(0)
+        macro_speed.setMaximum(255)
+        macro_speed.setValue(128)  # Default speed
+        macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
+        layout.addWidget(macro_speed, 7, 1, 1, 2)
+
+        # Effects section
+        effects_label = QLabel(tr("RGBConfigurator", "Background:"))
+        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(effects_label, 8, 0, 1, 3)
+
+        # Background - hierarchical dropdown
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
+        background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
+        background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
+        layout.addWidget(background, 9, 1, 1, 2)
+
+        # Background Brightness slider
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
+        background_brightness = QSlider(QtCore.Qt.Horizontal)
+        background_brightness.setMinimum(0)
+        background_brightness.setMaximum(100)
+        background_brightness.setValue(30)  # Default 30%
+        background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
+        layout.addWidget(background_brightness, 10, 1, 1, 2)
+
+        # Effect Colours section header
+        effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
+        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(effects_label, 11, 0, 1, 3)
+
+        # Colour Scheme - moved to row 12
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
+        color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
+        color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
+        layout.addWidget(color_type, 12, 1, 1, 2)
+
+        # Sustain Mode - moved to row 13
+        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
+        sustain_mode = QComboBox()
+        for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
+            sustain_mode.addItem(sustain)
+        sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
+        layout.addWidget(sustain_mode, 13, 1, 1, 2)
+
+        # Buttons - moved to row 14
+        buttons_layout = QHBoxLayout()
+        
+        save_button = QPushButton(tr("RGBConfigurator", "Save"))
+        save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
+        buttons_layout.addWidget(save_button)
+        
+        load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
+        load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
+        buttons_layout.addWidget(load_button)
+        
+        preset_combo = QComboBox()
+        preset_combo.addItem("Load Preset...")
+        for preset in CUSTOM_LIGHT_PRESETS:
+            preset_combo.addItem(preset)
+        preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
+        buttons_layout.addWidget(preset_combo)
+        
+        buttons_widget = QWidget()
+        buttons_widget.setLayout(buttons_layout)
+        layout.addWidget(buttons_widget, 14, 0, 1, 3)
+
+        # Store widgets for this slot
+        self.slot_widgets[slot] = {
+            'live_effect': live_effect,
+            'live_style': live_style,
+            'live_speed': live_speed,
+            'macro_effect': macro_effect,
+            'macro_style': macro_style,
+            'macro_speed': macro_speed,
+            'background': background,
+            'background_brightness': background_brightness,
+            'color_type': color_type,
+            'sustain_mode': sustain_mode,
+            'preset_combo': preset_combo
+        }
+
+        self.slot_tabs.append(tab_widget)
+        
+    def on_sub_tab_changed(self, index, start_slot):
+        """Handle sub-tab switching within a group"""
+        actual_slot = start_slot + index
+        print(f"Sub-tab changed to {index}, actual slot {actual_slot}, loading EEPROM state")
+        self.block_signals()
+        self.load_slot_from_eeprom(actual_slot)
+        self.unblock_signals()
+        
+    def get_current_slot_index(self):
+        """Get the currently selected slot index across all groups"""
+        # Get current main tab (group)
+        main_tab_index = self.main_tab_widget.currentIndex()
+        if main_tab_index >= len(self.groups):
+            return 0
+            
+        group_name, start_idx, end_idx = self.groups[main_tab_index]
+        
+        # Get current sub-tab within the group
+        sub_tab_widget = self.group_tab_widgets[group_name]
+        sub_tab_index = sub_tab_widget.currentIndex()
+        
+        # Calculate actual slot index
+        actual_slot = start_idx + sub_tab_index
+        return min(actual_slot, 49)  # Ensure we don't exceed slot 49
+            
     def get_currently_active_slot(self):
         """Get the slot number that is currently active for RGB effects"""
         if self.current_randomize_slot is not None:
@@ -1359,8 +1560,8 @@ class CustomLightsHandler(BasicHandler):
             if hasattr(self.device.keyboard, 'get_current_custom_slot'):
                 return self.device.keyboard.get_current_custom_slot()
             else:
-                # Fallback: assume current tab is active (may not be correct)
-                return self.tab_widget.currentIndex()
+                # Fallback: assume current selected slot is active (may not be correct)
+                return self.get_current_slot_index()
 
     def on_load_from_keyboard(self, slot):
         """Load current RAM settings from CURRENTLY ACTIVE slot into this tab's GUI"""
@@ -1434,154 +1635,6 @@ class CustomLightsHandler(BasicHandler):
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
-
-    def create_slot_tab(self, slot):
-            """Create a tab for a single slot"""
-            # Create tab widget
-            tab_widget = QWidget()
-            self.tab_widget.addTab(tab_widget, str(slot + 1))  # Tab names: "1", "2", "3", etc.
-            self.tab_widget.currentChanged.connect(self.on_tab_changed)
-            # Create layout for this tab
-            layout = QGridLayout(tab_widget)
-            layout.setContentsMargins(10, 10, 10, 10)
-            layout.setSpacing(5)
-
-            # Live Animation section
-            live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
-            live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(live_label, 0, 0, 1, 3)
-
-            # Live Effect - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
-            live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
-            live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
-            layout.addWidget(live_effect, 1, 1, 1, 2)
-
-            # Live Style - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
-            live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
-            live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
-            layout.addWidget(live_style, 2, 1, 1, 2)
-
-            # Live Animation Speed slider
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
-            live_speed = QSlider(QtCore.Qt.Horizontal)
-            live_speed.setMinimum(0)
-            live_speed.setMaximum(255)
-            live_speed.setValue(128)  # Default speed
-            live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-            layout.addWidget(live_speed, 3, 1, 1, 2)
-
-            # Macro Animation section
-            macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
-            macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(macro_label, 4, 0, 1, 3)
-
-            # Macro Effect - hierarchical dropdown (same as live effects)
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
-            macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
-            macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
-            layout.addWidget(macro_effect, 5, 1, 1, 2)
-
-            # Macro Style - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
-            macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
-            macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
-            layout.addWidget(macro_style, 6, 1, 1, 2)
-            
-# Macro Animation Speed slider
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
-            macro_speed = QSlider(QtCore.Qt.Horizontal)
-            macro_speed.setMinimum(0)
-            macro_speed.setMaximum(255)
-            macro_speed.setValue(128)  # Default speed
-            macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-            layout.addWidget(macro_speed, 7, 1, 1, 2)
-
-            # Effects section
-            effects_label = QLabel(tr("RGBConfigurator", "Background:"))
-            effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(effects_label, 8, 0, 1, 3)
-
-            # Background - hierarchical dropdown
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
-            background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
-            background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
-            layout.addWidget(background, 9, 1, 1, 2)
-
-            # Background Brightness slider
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
-            background_brightness = QSlider(QtCore.Qt.Horizontal)
-            background_brightness.setMinimum(0)
-            background_brightness.setMaximum(100)
-            background_brightness.setValue(30)  # Default 30%
-            background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
-            layout.addWidget(background_brightness, 10, 1, 1, 2)
-
-            # Effect Colours section header
-            effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
-            effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(effects_label, 11, 0, 1, 3)
-
-            # Colour Scheme - moved to row 12
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
-            color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
-            color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-            layout.addWidget(color_type, 12, 1, 1, 2)
-
-            # Sustain Mode - moved to row 13
-            layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
-            sustain_mode = QComboBox()
-            for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
-                sustain_mode.addItem(sustain)
-            sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-            layout.addWidget(sustain_mode, 13, 1, 1, 2)
-
-            # Buttons - moved to row 14
-            buttons_layout = QHBoxLayout()
-            
-            save_button = QPushButton(tr("RGBConfigurator", "Save"))
-            save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
-            buttons_layout.addWidget(save_button)
-            
-            load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
-            load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
-            buttons_layout.addWidget(load_button)
-            
-            preset_combo = QComboBox()
-            preset_combo.addItem("Load Preset...")
-            for preset in CUSTOM_LIGHT_PRESETS:
-                preset_combo.addItem(preset)
-            preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
-            buttons_layout.addWidget(preset_combo)
-            
-            buttons_widget = QWidget()
-            buttons_widget.setLayout(buttons_layout)
-            layout.addWidget(buttons_widget, 14, 0, 1, 3)
-
-            # Store widgets for this slot
-            self.slot_widgets[slot] = {
-                'live_effect': live_effect,
-                'live_style': live_style,
-                'live_speed': live_speed,
-                'macro_effect': macro_effect,
-                'macro_style': macro_style,
-                'macro_speed': macro_speed,
-                'background': background,
-                'background_brightness': background_brightness,
-                'color_type': color_type,
-                'sustain_mode': sustain_mode,
-                'preset_combo': preset_combo
-            }
-
-            self.slot_tabs.append(tab_widget)
-            
-    def on_tab_changed(self, index):
-        """Handle tab switching - load EEPROM state for the tab"""
-        print(f"Tab changed to {index}, loading EEPROM state")
-        self.block_signals()
-        self.load_slot_from_eeprom(index)
-        self.unblock_signals()
             
     def update_from_keyboard(self):
         """Load current state and track active slot"""
@@ -1606,11 +1659,11 @@ class CustomLightsHandler(BasicHandler):
                     print(f"Normal mode, active slot: {self.current_active_slot}")
                     
                 # Always load EEPROM state for current tab (tab switching behavior)
-                current_tab = self.tab_widget.currentIndex()
-                self.load_slot_from_eeprom(current_tab)
+                current_slot = self.get_current_slot_index()
+                self.load_slot_from_eeprom(current_slot)
             else:
                 self.current_randomize_slot = None
-                self.current_active_slot = self.tab_widget.currentIndex()
+                self.current_active_slot = self.get_current_slot_index()
                 
         except Exception as e:
             print(f"Error in update_from_keyboard: {e}")
@@ -1750,7 +1803,6 @@ class CustomLightsHandler(BasicHandler):
         else:
             print(f"Color type changed: tab {slot} -> active slot {active_slot}, index {index}")
 
-
     def on_save_slot(self, slot):
         """Save current GUI configuration to the tab slot's EEPROM"""
         try:
@@ -1850,7 +1902,7 @@ class CustomLightsHandler(BasicHandler):
         
         # Reset combo box to header
         self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
-
+        
 class RGBConfigurator(BasicEditor):
 
     def __init__(self):
