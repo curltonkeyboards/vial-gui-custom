@@ -15,6 +15,7 @@ from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, CMD
     CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, \
     CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS
 
+NUM_CUSTOM_SLOTS = 50  # Change this to your desi5red number
 
 class QmkRgblightEffect:
 
@@ -1322,32 +1323,31 @@ class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
     def __init__(self, container):
-            super().__init__(container)
+        super().__init__(container)
 
-            row = container.rowCount()
+        row = container.rowCount()
 
-            # Custom Lights label
-            self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
-            container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
+        # Custom Lights label
+        self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
+        container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
 
-            # Create tab widget
-            self.tab_widget = QTabWidget()
-            container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
-            
-            # Track the currently active slot (for parameter changes)
-            self.current_active_slot = None
-            self.current_randomize_slot = None
-            
-            # Create tabs for each slot (12 slots)
-            self.slot_tabs = []
-            self.slot_widgets = {}
-            
-            for slot in range(12):
-                self.create_slot_tab(slot)
-
-            self.widgets = [self.lbl_custom_lights, self.tab_widget]
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        container.addWidget(self.tab_widget, row + 1, 0, 1, 2)
         
+        # Track the currently active slot (for parameter changes)
+        self.current_active_slot = None
+        self.current_randomize_slot = None
+        
+        # Create tabs for each slot (50 slots)
+        self.slot_tabs = []
+        self.slot_widgets = {}
+        
+        for slot in range(50):
+            self.create_slot_tab(slot)
 
+        self.widgets = [self.lbl_custom_lights, self.tab_widget]
+        
     def get_currently_active_slot(self):
         """Get the slot number that is currently active for RGB effects"""
         if self.current_randomize_slot is not None:
@@ -1637,14 +1637,14 @@ class CustomLightsHandler(BasicHandler):
 
     def block_signals(self):
         """Block signals for all widgets"""
-        for slot in range(12):
+        for slot in range(50):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(True)
 
     def unblock_signals(self):
         """Unblock signals for all widgets"""
-        for slot in range(12):
+        for slot in range(50):
             widgets = self.slot_widgets[slot]
             for widget in widgets.values():
                 widget.blockSignals(False)
