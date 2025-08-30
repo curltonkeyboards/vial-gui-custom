@@ -620,7 +620,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_custom_slot_config(self, slot, from_eeprom=True):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 50:
+            if slot >= 99:
                 return None
             
             source = 1 if from_eeprom else 0
