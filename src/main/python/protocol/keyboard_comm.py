@@ -618,16 +618,55 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return True
             
     def get_custom_slot_config(self, slot, from_eeprom=True):
-        """Get all parameters for a custom animation slot"""
+        """Debug version of get_custom_slot_config"""
+        print(f"\n--- get_custom_slot_config DEBUG ---")
+        print(f"Requested slot: {slot}")
+        print(f"from_eeprom: {from_eeprom}")
+        
         try:
+            if slot >= 50:  # Original had >= 99, but should probably be >= 50
+                print(f"ERROR: Invalid slot {slot}, returning None")
+                return None
+            
+            print(f"Slot {slot} is valid, proceeding...")
             
             source = 1 if from_eeprom else 0
+            print(f"Source byte: {source}")
+            
+            print(f"Calling usb_send with CMD_VIAL_CUSTOM_ANIM_GET_ALL...")
+            print(f"Packet: CMD_VIA_VIAL_PREFIX={CMD_VIA_VIAL_PREFIX}, CMD_VIAL_CUSTOM_ANIM_GET_ALL={CMD_VIAL_CUSTOM_ANIM_GET_ALL}, slot={slot}, source={source}")
+            
             data = self.usb_send(self.dev, struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot, source), retries=20)
-            if data and len(data) > 2 and data[0] == 0x01:
-                return data[3:15]
-            return None
+            
+            print(f"usb_send returned: {data}")
+            print(f"Data type: {type(data)}")
+            print(f"Data length: {len(data) if data else 'None'}")
+            
+            if data:
+                print(f"Raw data bytes: {list(data)}")
+                print(f"First byte (status): {data[0] if len(data) > 0 else 'NO DATA'}")
+                
+                if len(data) > 2 and data[0] == 0x01:
+                    result = data[3:15]  # Parameters should be in bytes 3-14
+                    print(f"Extracted result: {list(result)}")
+                    print(f"Result length: {len(result)}")
+                    return result
+                else:
+                    print(f"Invalid response or error status: {data[0] if len(data) > 0 else 'NO DATA'}")
+                    return None
+            else:
+                print("No data returned from usb_send")
+                return None
+                
         except Exception as e:
+            print(f"EXCEPTION in get_custom_slot_config: {e}")
+            print(f"Exception type: {type(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             return None
+        
+        finally:
+            print("--- get_custom_slot_config DEBUG END ---\n")
 
     def get_custom_slot_ram_state(self, slot):
         """Get current RAM state for a custom animation slot"""
