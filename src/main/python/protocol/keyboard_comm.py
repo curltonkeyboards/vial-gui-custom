@@ -717,10 +717,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 return status[1]
                 
             current_mode = self.rgb_mode
-            if 57 <= current_mode <= 68:
+            if 57 <= current_mode <= 105:
                 return current_mode - 57
-            if current_mode in [69, 70, 71, 72, 73, 74, 75, 76]:
-                return 11
+            if current_mode in [106, 107, 108, 109, 110, 111, 112, 113, 114]:
+                return 49
             return 0
         except Exception as e:
             return 0
