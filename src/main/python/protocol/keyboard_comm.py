@@ -620,8 +620,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_custom_slot_config(self, slot, from_eeprom=True):
         """Get all parameters for a custom animation slot"""
         try:
-            if slot >= 99:
-                return None
             
             source = 1 if from_eeprom else 0
             data = self.usb_send(self.dev, struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot, source), retries=20)
