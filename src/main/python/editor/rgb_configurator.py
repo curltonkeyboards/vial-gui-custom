@@ -1132,7 +1132,7 @@ class VialRGBHandler(BasicHandler):
 
 
 class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
+    """Handler for the Rescan LED Positions button with timeout"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -1140,15 +1140,15 @@ class RescanButtonHandler(BasicHandler):
         row = container.rowCount()
 
         # Centered rescan button
-        rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
-        rescan_button.clicked.connect(self.on_rescan_led_positions)
-        rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
-        rescan_button.setMinimumHeight(30)
+        self.rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
+        self.rescan_button.clicked.connect(self.on_rescan_led_positions)
+        self.rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
+        self.rescan_button.setMinimumHeight(30)
         
         # Center the button using a horizontal layout
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        button_layout.addWidget(rescan_button)
+        button_layout.addWidget(self.rescan_button)
         button_layout.addStretch()
         
         button_widget = QWidget()
@@ -1156,6 +1156,12 @@ class RescanButtonHandler(BasicHandler):
         container.addWidget(button_widget, row, 0, 1, 2)
 
         self.widgets = [button_widget]
+        
+        # Timer for the 10-second timeout
+        from PyQt5.QtCore import QTimer
+        self.rescan_timer = QTimer()
+        self.rescan_timer.setSingleShot(True)  # Only fire once
+        self.rescan_timer.timeout.connect(self.on_rescan_complete)
 
     def update_from_keyboard(self):
         # No updates needed for this button
@@ -1166,29 +1172,85 @@ class RescanButtonHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Rescan LED positions and force RGB state refresh"""
+        """Send rescan command and start timeout timer"""
         try:
             if hasattr(self.device.keyboard, 'rescan_led_positions'):
+                # Disable button to prevent multiple clicks
+                self.rescan_button.setEnabled(False)
+                self.rescan_button.setText("LED Scan in Progress...")
+                
+                # Send the rescan command
                 self.device.keyboard.rescan_led_positions()
-                print("Rescan LED command sent")
+                print("Rescan LED command sent - starting 10 second timeout")
                 
-                # Wait for firmware to finish intensive processing
-                import time
-                time.sleep(1.0)
+                # Start 10-second timer (10000 milliseconds)
+                self.rescan_timer.start(10000)
                 
-                # Force a complete RGB reload to clear any corrupted cached state
-                self.device.keyboard.reload_rgb()
-                
-                # Force GUI update with fresh data
-                # Find the RGB configurator and update it
-                if hasattr(self, 'parent') and hasattr(self.parent, 'update_from_keyboard'):
-                    self.parent.update_from_keyboard()
-                    
             else:
                 print("Rescan LED method not available")
+                self.show_completion_popup("Rescan LED method not available on this device.", "Method Not Available")
+                
         except Exception as e:
             print(f"Error sending rescan LED command: {e}")
+            self.show_completion_popup(f"Error sending rescan command: {str(e)}", "Rescan Error")
+            self.reset_button_state()
 
+    def on_rescan_complete(self):
+        """Called after 10-second timeout - LED scan should be complete"""
+        print("10-second timeout complete - LED scan should be finished")
+        
+        try:
+            # Optionally reload RGB state now that scanning is complete
+            # Only do this if you want to refresh the GUI state
+            if hasattr(self.device.keyboard, 'reload_rgb'):
+                print("Reloading RGB state after LED scan")
+                self.device.keyboard.reload_rgb()
+                
+                # Force GUI update if available
+                if hasattr(self, 'parent') and hasattr(self.parent, 'update_from_keyboard'):
+                    self.parent.update_from_keyboard()
+                    print("Refreshed GUI after LED scan")
+                    
+        except Exception as e:
+            print(f"Warning: Error during post-scan refresh: {e}")
+            # Don't show error popup for this - the scan itself was successful
+        
+        # Show completion popup
+        self.show_completion_popup(
+            "LED position scan complete!\n\nThe keyboard has finished scanning and updating LED positions.", 
+            "LED Scan Complete"
+        )
+        
+        # Reset button state
+        self.reset_button_state()
+
+    def reset_button_state(self):
+        """Reset button to normal state"""
+        self.rescan_button.setEnabled(True)
+        self.rescan_button.setText("Rescan LED Positions")
+
+    def show_completion_popup(self, message, title):
+        """Show completion popup to user"""
+        try:
+            from PyQt5.QtWidgets import QMessageBox
+            
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle(title)
+            msg_box.setText(message)
+            msg_box.setIcon(QMessageBox.Information)
+            
+            # Add an OK button
+            msg_box.setStandardButtons(QMessageBox.Ok)
+            msg_box.setDefaultButton(QMessageBox.Ok)
+            
+            # Show the popup
+            msg_box.exec_()
+            
+        except Exception as e:
+            print(f"Error showing completion popup: {e}")
+            # Fallback: just print to console
+            print(f"LED Scan Complete: {message}")
+            
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
 
