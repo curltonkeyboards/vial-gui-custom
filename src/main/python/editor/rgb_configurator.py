@@ -1609,13 +1609,29 @@ class CustomLightsHandler(BasicHandler):
             # In randomize mode, active slot is the randomize slot
             return self.current_randomize_slot
         else:
-            # In normal mode, need to determine active slot from RGB effect
-            # You may need to implement get_current_custom_slot() in keyboard class
-            if hasattr(self.device.keyboard, 'get_current_custom_slot'):
-                return self.device.keyboard.get_current_custom_slot()
-            else:
-                # Fallback: assume current selected slot is active (may not be correct)
-                return self.get_current_slot_index()
+            # In normal mode, get current slot from firmware status
+            try:
+                if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                    status = self.device.keyboard.get_custom_animation_status()
+                    if status and len(status) > 1:
+                        current_slot = status[1]  # Use status[1] for current slot (not status[2])
+                        # Validate slot is within range
+                        if 0 <= current_slot < 50:
+                            return current_slot
+                        else:
+                            print(f"Invalid current slot {current_slot}, using fallback")
+                            
+                # Fallback methods if status doesn't work
+                if hasattr(self.device.keyboard, 'get_current_custom_slot'):
+                    slot = self.device.keyboard.get_current_custom_slot()
+                    if 0 <= slot < 50:
+                        return slot
+                        
+            except Exception as e:
+                print(f"Error getting current slot: {e}")
+                
+            # Final fallback
+            return self.get_current_slot_index()
 
     def on_load_from_keyboard(self, slot):
         """Load current RAM settings - ENHANCED COMMUNICATION DEBUG"""
