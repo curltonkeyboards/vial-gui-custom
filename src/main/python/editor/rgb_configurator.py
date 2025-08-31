@@ -1618,191 +1618,229 @@ class CustomLightsHandler(BasicHandler):
                 return self.get_current_slot_index()
 
     def on_load_from_keyboard(self, slot):
-        """Load current RAM settings from CURRENTLY ACTIVE slot into this tab's GUI - WITH EXTENSIVE DEBUG"""
+        """Load current RAM settings - ENHANCED COMMUNICATION DEBUG"""
         
-        # ALWAYS show debug popup - initialize debug info
         debug_info = []
-        debug_info.append(f"=== LOAD FROM KEYBOARD DEBUG - TAB SLOT {slot} ===")
+        debug_info.append(f"=== ENHANCED COMMUNICATION DEBUG - TAB SLOT {slot} ===")
         debug_info.append(f"Timestamp: {time.time()}")
         
         try:
-            debug_info.append("Step 1: Blocking signals...")
             self.block_signals()
-            debug_info.append("✓ Signals blocked successfully")
+            debug_info.append("✓ Signals blocked")
             
-            # Check if we have a valid device
-            debug_info.append("Step 2: Checking device validity...")
-            if not self.device:
-                debug_info.append("✗ ERROR: No device available")
+            # TEST 1: Basic device connectivity
+            debug_info.append("\n=== TEST 1: BASIC DEVICE CONNECTIVITY ===")
+            if not self.device or not hasattr(self.device, 'keyboard'):
+                debug_info.append("✗ CRITICAL: No device/keyboard")
                 self.show_debug_popup(debug_info, "CRITICAL ERROR")
                 return
-            debug_info.append(f"✓ Device available: {type(self.device)}")
+            debug_info.append(f"✓ Device: {type(self.device)}")
+            debug_info.append(f"✓ Keyboard: {type(self.device.keyboard)}")
             
-            if not hasattr(self.device, 'keyboard'):
-                debug_info.append("✗ ERROR: Device has no keyboard attribute")
-                self.show_debug_popup(debug_info, "CRITICAL ERROR")
-                return
-            debug_info.append(f"✓ Keyboard available: {type(self.device.keyboard)}")
-            
-            # Check current randomize slot state
-            debug_info.append("Step 3: Checking randomize/active slot state...")
-            debug_info.append(f"current_randomize_slot: {getattr(self, 'current_randomize_slot', 'NOT_SET')}")
-            debug_info.append(f"current_active_slot: {getattr(self, 'current_active_slot', 'NOT_SET')}")
-            
-            # Get the currently active slot (not the tab slot)
-            debug_info.append("Step 4: Getting currently active slot...")
+            # TEST 2: Raw HID communication test
+            debug_info.append("\n=== TEST 2: RAW HID COMMUNICATION TEST ===")
             try:
-                active_slot = self.get_currently_active_slot()
-                debug_info.append(f"✓ Active slot determined: {active_slot}")
+                # Test basic HID by getting keyboard ID
+                if hasattr(self.device.keyboard, 'get_uid'):
+                    uid = self.device.keyboard.get_uid()
+                    debug_info.append(f"✓ HID communication works - UID: {uid}")
+                else:
+                    debug_info.append("? No get_uid method available")
             except Exception as e:
-                debug_info.append(f"✗ ERROR getting active slot: {str(e)}")
-                debug_info.append(f"Exception type: {type(e)}")
-                active_slot = slot  # Fallback to tab slot
-                debug_info.append(f"Using fallback slot: {active_slot}")
+                debug_info.append(f"✗ HID communication failed: {e}")
             
-            # Validate active slot
-            if active_slot < 0 or active_slot >= 50:
-                debug_info.append(f"✗ ERROR: Invalid active slot {active_slot}, using tab slot {slot}")
-                active_slot = slot
+            # TEST 3: Custom animation status - MULTIPLE ATTEMPTS
+            debug_info.append("\n=== TEST 3: CUSTOM ANIMATION STATUS (MULTIPLE ATTEMPTS) ===")
+            status_attempts = []
+            for attempt in range(5):  # Try 5 times
+                try:
+                    if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                        status = self.device.keyboard.get_custom_animation_status()
+                        status_list = list(status) if status else None
+                        status_attempts.append(status_list)
+                        debug_info.append(f"Attempt {attempt + 1}: {status_list}")
+                        
+                        if status and len(status) > 2:
+                            debug_info.append(f"  - Current slot: {status[1]}")
+                            debug_info.append(f"  - Active slot: {status[2]}")
+                            debug_info.append(f"  - Randomize active: {status[6] if len(status) > 6 else 'N/A'}")
+                    else:
+                        debug_info.append(f"Attempt {attempt + 1}: Method not available")
+                        break
+                except Exception as e:
+                    status_attempts.append(f"ERROR: {str(e)}")
+                    debug_info.append(f"Attempt {attempt + 1}: ERROR - {e}")
             
-            debug_info.append(f"Final active slot to load from: {active_slot}")
+            # Analyze consistency of status attempts
+            if len(set(str(x) for x in status_attempts)) == 1:
+                debug_info.append("✓ All status attempts returned identical results")
+            else:
+                debug_info.append("⚠ Status attempts returned different results - communication unstable")
             
-            # Check if get_custom_slot_config method exists
-            debug_info.append("Step 5: Checking keyboard methods...")
-            if not hasattr(self.device.keyboard, 'get_custom_slot_config'):
-                debug_info.append("✗ ERROR: get_custom_slot_config method not available")
-                self.show_debug_popup(debug_info, "METHOD ERROR")
-                return
-            debug_info.append("✓ get_custom_slot_config method available")
+            # TEST 4: Test multiple slot reads to check for communication degradation
+            debug_info.append("\n=== TEST 4: SLOT COMMUNICATION DEGRADATION TEST ===")
+            slot_read_results = {}
+            test_slots = [0, 1, 25, 26, 49]  # Test key boundary slots
             
-            # Get custom animation status first
-            debug_info.append("Step 6: Getting custom animation status...")
+            for test_slot in test_slots:
+                debug_info.append(f"\nTesting slot {test_slot}:")
+                try:
+                    # Test EEPROM read
+                    eeprom_config = self.device.keyboard.get_custom_slot_config(test_slot, from_eeprom=True)
+                    debug_info.append(f"  EEPROM: {list(eeprom_config) if eeprom_config else 'None'}")
+                    slot_read_results[f"{test_slot}_eeprom"] = eeprom_config
+                    
+                    # Test RAM read
+                    ram_config = self.device.keyboard.get_custom_slot_config(test_slot, from_eeprom=False)
+                    debug_info.append(f"  RAM: {list(ram_config) if ram_config else 'None'}")
+                    slot_read_results[f"{test_slot}_ram"] = ram_config
+                    
+                    # Check if they match
+                    if eeprom_config and ram_config:
+                        match = list(eeprom_config) == list(ram_config)
+                        debug_info.append(f"  Match: {match}")
+                    
+                except Exception as e:
+                    debug_info.append(f"  ERROR reading slot {test_slot}: {e}")
+                    slot_read_results[f"{test_slot}_error"] = str(e)
+            
+            # TEST 5: Communication buffer integrity test
+            debug_info.append("\n=== TEST 5: COMMUNICATION BUFFER INTEGRITY ===")
             try:
+                # Try reading a known simple command multiple times
+                integrity_results = []
+                for i in range(3):
+                    if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                        status = self.device.keyboard.get_custom_animation_status()
+                        integrity_results.append(status[1] if status and len(status) > 1 else None)
+                    else:
+                        break
+                
+                debug_info.append(f"Buffer integrity results: {integrity_results}")
+                if len(set(integrity_results)) == 1:
+                    debug_info.append("✓ Communication buffers appear stable")
+                else:
+                    debug_info.append("✗ Communication buffers appear corrupted/unstable")
+                    
+            except Exception as e:
+                debug_info.append(f"✗ Buffer integrity test failed: {e}")
+            
+            # TEST 6: Memory state validation
+            debug_info.append("\n=== TEST 6: FIRMWARE MEMORY STATE VALIDATION ===")
+            try:
+                # Get current slot from different methods if available
+                methods_results = {}
+                
+                if hasattr(self.device.keyboard, 'get_current_custom_slot'):
+                    current_slot = self.device.keyboard.get_current_custom_slot()
+                    methods_results['get_current_custom_slot'] = current_slot
+                    debug_info.append(f"get_current_custom_slot(): {current_slot}")
+                
                 if hasattr(self.device.keyboard, 'get_custom_animation_status'):
                     status = self.device.keyboard.get_custom_animation_status()
-                    debug_info.append(f"✓ Animation status: {list(status) if status else 'None'}")
-                    if status and len(status) > 6:
-                        debug_info.append(f"  - Randomize active: {status[6]}")
-                        debug_info.append(f"  - Status active slot: {status[2]}")
+                    if status and len(status) > 1:
+                        methods_results['status_current'] = status[1]
+                        debug_info.append(f"status[1] (current): {status[1]}")
+                    if status and len(status) > 2:
+                        methods_results['status_active'] = status[2]
+                        debug_info.append(f"status[2] (active): {status[2]}")
+                
+                # Check for memory corruption indicators
+                corruption_indicators = []
+                for key, value in methods_results.items():
+                    if value == 255:
+                        corruption_indicators.append(f"{key}=255")
+                    elif value >= 50:
+                        corruption_indicators.append(f"{key}={value} (>=50)")
+                
+                if corruption_indicators:
+                    debug_info.append(f"⚠ MEMORY CORRUPTION INDICATORS: {corruption_indicators}")
                 else:
-                    debug_info.append("get_custom_animation_status method not available")
+                    debug_info.append("✓ No obvious memory corruption indicators")
+                    
             except Exception as e:
-                debug_info.append(f"✗ ERROR getting animation status: {str(e)}")
+                debug_info.append(f"✗ Memory validation failed: {e}")
             
-            # Attempt to get the RAM data from the active slot
-            debug_info.append("Step 7: Getting RAM configuration...")
+            # TEST 7: Attempt to determine actual working slot
+            debug_info.append("\n=== TEST 7: DETERMINE ACTUAL WORKING SLOT ===")
+            try:
+                # Since you said the keyboard works but shows wrong slot, let's try to find the real slot
+                debug_info.append("Attempting to find the actual working slot...")
+                
+                # Try to read RGB mode to see if it gives us a clue
+                if hasattr(self.device.keyboard, 'rgb_mode'):
+                    rgb_mode = self.device.keyboard.rgb_mode
+                    debug_info.append(f"Current RGB mode: {rgb_mode}")
+                    
+                    # Custom slots are typically modes 57-106
+                    if 57 <= rgb_mode <= 106:
+                        calculated_slot = rgb_mode - 57
+                        debug_info.append(f"Calculated slot from RGB mode: {calculated_slot}")
+                    else:
+                        debug_info.append(f"RGB mode {rgb_mode} not in custom slot range")
+                
+            except Exception as e:
+                debug_info.append(f"✗ Working slot determination failed: {e}")
+            
+            # TEST 8: Final attempt to load configuration
+            debug_info.append("\n=== TEST 8: CONFIGURATION LOAD ATTEMPT ===")
+            active_slot = 0  # Default fallback
             config = None
-            config_error = None
             
             try:
-                debug_info.append(f"Calling get_custom_slot_config({active_slot}, from_eeprom=False)...")
+                # Try to determine the best slot to load from
+                if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                    status = self.device.keyboard.get_custom_animation_status()
+                    if status and len(status) > 1 and 0 <= status[1] < 50:
+                        active_slot = status[1]
+                        debug_info.append(f"Using status slot: {active_slot}")
+                    elif status and len(status) > 2 and 0 <= status[2] < 50:
+                        active_slot = status[2]
+                        debug_info.append(f"Using active slot: {active_slot}")
+                    else:
+                        debug_info.append(f"Invalid status slots, using fallback: {active_slot}")
+                
+                # Try to load configuration
                 config = self.device.keyboard.get_custom_slot_config(active_slot, from_eeprom=False)
-                debug_info.append(f"✓ Raw config received: {config}")
-                debug_info.append(f"Config type: {type(config)}")
-                debug_info.append(f"Config length: {len(config) if config else 'None'}")
-            except Exception as e:
-                config_error = e
-                debug_info.append(f"✗ ERROR getting config: {str(e)}")
-                debug_info.append(f"Exception type: {type(e)}")
-                debug_info.append(f"Exception args: {e.args}")
                 
-            # Try alternative methods if main method failed
-            if config is None or config_error:
-                debug_info.append("Step 7b: Trying alternative config methods...")
-                
-                # Try EEPROM instead
-                try:
-                    debug_info.append("Trying EEPROM fallback...")
-                    config = self.device.keyboard.get_custom_slot_config(active_slot, from_eeprom=True)
-                    debug_info.append(f"✓ EEPROM config received: {config}")
-                except Exception as e:
-                    debug_info.append(f"✗ EEPROM fallback failed: {str(e)}")
+                if config and len(config) >= 12:
+                    debug_info.append(f"✓ Successfully loaded config: {list(config)}")
                     
-                # Try get_custom_slot_ram_state if available
-                if hasattr(self.device.keyboard, 'get_custom_slot_ram_state') and config is None:
-                    try:
-                        debug_info.append("Trying get_custom_slot_ram_state...")
-                        config = self.device.keyboard.get_custom_slot_ram_state(active_slot)
-                        debug_info.append(f"✓ RAM state received: {config}")
-                    except Exception as e:
-                        debug_info.append(f"✗ RAM state failed: {str(e)}")
+                    # Try to update GUI
+                    if slot in self.slot_widgets:
+                        self.update_slot_widgets(slot, config)
+                        debug_info.append("✓ GUI updated successfully")
+                    else:
+                        debug_info.append(f"✗ Slot {slot} not in widgets dict")
+                else:
+                    debug_info.append(f"✗ Invalid config received: {config}")
+                    
+            except Exception as e:
+                debug_info.append(f"✗ Configuration load failed: {e}")
+                import traceback
+                debug_info.extend(traceback.format_exc().split('\n'))
             
-            # Analyze config validity
-            debug_info.append("Step 8: Analyzing config validity...")
-            if config is None:
-                debug_info.append("✗ CRITICAL: Config is None")
-            elif not config:
-                debug_info.append("✗ CRITICAL: Config is empty/falsy")
-            elif len(config) < 12:
-                debug_info.append(f"✗ CRITICAL: Config too short - got {len(config)}, need 12")
-                debug_info.append(f"Config contents: {list(config)}")
-            else:
-                debug_info.append(f"✓ Config is valid - length {len(config)}")
-                
-                # Format as C array initialization
-                config_str = "{"
-                config_str += f"{config[0]}, {config[1]}, {config[2]}, {config[3]}, "  # live_pos, macro_pos, live_anim, macro_anim
-                config_str += f"{'true' if config[4] else 'false'}, "  # influence (boolean)
-                config_str += f"{config[5]}, {config[6]}, {config[7]}, "  # background, sustain, color_type  
-                config_str += f"{'true' if config[8] else 'false'}, "  # enabled (boolean)
-                config_str += f"{config[9]}, {config[10]}, {config[11]}"  # bg_brightness, live_speed, macro_speed
-                config_str += "}"
-                
-                debug_info.append("=== CONFIG BREAKDOWN ===")
-                debug_info.append(f"live_pos: {config[0]}")
-                debug_info.append(f"macro_pos: {config[1]}")
-                debug_info.append(f"live_anim: {config[2]}")
-                debug_info.append(f"macro_anim: {config[3]}")
-                debug_info.append(f"influence: {config[4]} ({'true' if config[4] else 'false'})")
-                debug_info.append(f"background: {config[5]}")
-                debug_info.append(f"sustain: {config[6]}")
-                debug_info.append(f"color_type: {config[7]}")
-                debug_info.append(f"enabled: {config[8]} ({'true' if config[8] else 'false'})")
-                debug_info.append(f"bg_brightness: {config[9]}")
-                debug_info.append(f"live_speed: {config[10]}")
-                debug_info.append(f"macro_speed: {config[11]}")
-                debug_info.append(f"C array format: {config_str}")
-                
-            # Check if slot widgets exist
-            debug_info.append("Step 9: Checking slot widgets...")
-            if slot not in self.slot_widgets:
-                debug_info.append(f"✗ ERROR: Slot {slot} not in slot_widgets dict")
-                debug_info.append(f"Available slots: {list(self.slot_widgets.keys())}")
-            else:
-                debug_info.append(f"✓ Slot {slot} widgets found")
-                widgets = self.slot_widgets[slot]
-                debug_info.append(f"Widget keys: {list(widgets.keys())}")
-                
-            # Attempt to update GUI
-            if config and len(config) >= 12 and slot in self.slot_widgets:
-                debug_info.append("Step 10: Updating GUI widgets...")
-                try:
-                    self.update_slot_widgets(slot, config)
-                    debug_info.append("✓ GUI widgets updated successfully")
-                except Exception as e:
-                    debug_info.append(f"✗ ERROR updating GUI: {str(e)}")
-                    debug_info.append(f"Exception type: {type(e)}")
-            else:
-                debug_info.append("Step 10: SKIPPING GUI update due to validation failures")
+            debug_info.append(f"\n=== SUMMARY ===")
+            debug_info.append(f"Tab slot: {slot}")
+            debug_info.append(f"Determined active slot: {active_slot}")
+            debug_info.append(f"Config loaded: {'Yes' if config else 'No'}")
+            debug_info.append(f"GUI updated: {'Yes' if config and slot in self.slot_widgets else 'No'}")
             
         except Exception as e:
-            debug_info.append(f"✗ UNEXPECTED ERROR in main try block: {str(e)}")
-            debug_info.append(f"Exception type: {type(e)}")
+            debug_info.append(f"\n✗ CRITICAL EXCEPTION: {str(e)}")
             import traceback
-            debug_info.append("Full traceback:")
             debug_info.extend(traceback.format_exc().split('\n'))
         
         finally:
-            debug_info.append("Step 11: Cleanup...")
             try:
                 self.unblock_signals()
                 debug_info.append("✓ Signals unblocked")
             except Exception as e:
-                debug_info.append(f"✗ ERROR unblocking signals: {str(e)}")
+                debug_info.append(f"✗ Unblock failed: {e}")
             
             # ALWAYS show debug popup
-            self.show_debug_popup(debug_info, "Load From Keyboard Debug")
-
+            self.show_debug_popup(debug_info, "Enhanced Communication Debug")
+        
     def show_debug_popup(self, debug_info, title="Debug Info"):
         """Show debug information in a popup - ALWAYS appears"""
         try:
