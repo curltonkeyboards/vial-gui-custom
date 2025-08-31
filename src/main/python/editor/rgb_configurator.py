@@ -1213,7 +1213,7 @@ class RescanButtonHandler(BasicHandler):
             self.rescan_button.setText("Rescan LED Positions")
         except Exception as e:
             print(f"Error restoring button: {e}")
-
+            
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
 
@@ -2081,7 +2081,16 @@ class RGBConfigurator(BasicEditor):
         self.update_block_timer.start(seconds * 1000)  # Convert to milliseconds
 
     def unblock_updates(self):
-        """Unblock updates and do a fresh update_from_keyboard"""
+        """Unblock updates, clear corrupted data, then do fresh update"""
+        print("CLEARING corrupted data before unblocking...")
+        
+        # Clear any queued/corrupted device state BEFORE unblocking
+        self.clear_device_state()
+        
+        # Flush Qt's event queue to clear any queued signals with corrupted data
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
+        
         print("UNBLOCKING updates and performing fresh update")
         self.updates_blocked = False
         if self.update_block_timer:
@@ -2090,6 +2099,46 @@ class RGBConfigurator(BasicEditor):
         
         # Now do a fresh update with clean data
         self.update_from_keyboard()
+    
+    def clear_device_state(self):
+        """Clear any cached/corrupted device state before fresh update"""
+        try:
+            print("Clearing device cached state...")
+            
+            # Clear device RGB caches if methods exist
+            clear_methods = [
+                'clear_rgb_cache',
+                'reset_cached_state', 
+                'flush_device_state',
+                'clear_lighting_cache'
+            ]
+            
+            for method_name in clear_methods:
+                if hasattr(self.device.keyboard, method_name):
+                    try:
+                        getattr(self.device.keyboard, method_name)()
+                        print(f"Called {method_name}()")
+                    except Exception as e:
+                        print(f"Error calling {method_name}(): {e}")
+            
+            # Force reset any RGB state variables to None/default
+            rgb_attrs = [
+                'rgb_hsv', 'rgb_mode', 'rgb_speed', 'rgb_brightness',
+                'underglow_brightness', 'underglow_effect', 'underglow_color',
+                'backlight_brightness', 'backlight_effect'
+            ]
+            
+            for attr in rgb_attrs:
+                if hasattr(self.device.keyboard, attr):
+                    try:
+                        # Reset to None so it gets reloaded fresh
+                        setattr(self.device.keyboard, attr, None)
+                        print(f"Reset {attr} to None")
+                    except Exception as e:
+                        print(f"Error resetting {attr}: {e}")
+                        
+        except Exception as e:
+            print(f"Error clearing device state: {e}")
 
     def update_from_keyboard(self):
         """Update from keyboard - BLOCKED during rescan operation"""
@@ -2140,87 +2189,3 @@ class RGBConfigurator(BasicEditor):
             return
 
         self.update_from_keyboard()
-
-
-# Updated RescanButtonHandler to use the blocking mechanism
-class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button - uses blocking mechanism"""
-
-    def __init__(self, container, rgb_configurator=None):
-        super().__init__(container)
-        self.rgb_configurator = rgb_configurator  # Reference to parent
-
-        row = container.rowCount()
-
-        # Centered rescan button
-        self.rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
-        self.rescan_button.clicked.connect(self.on_rescan_led_positions)
-        self.rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
-        self.rescan_button.setMinimumHeight(30)
-        
-        # Center the button using a horizontal layout
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        button_layout.addWidget(self.rescan_button)
-        button_layout.addStretch()
-        
-        button_widget = QWidget()
-        button_widget.setLayout(button_layout)
-        container.addWidget(button_widget, row, 0, 1, 2)
-
-        self.widgets = [button_widget]
-
-    def update_from_keyboard(self):
-        # No updates needed for this button
-        pass
-
-    def valid(self):
-        # Always show the rescan button
-        return isinstance(self.device, VialKeyboard)
-
-    def on_rescan_led_positions(self):
-        """Rescan LED positions and block ALL updates during processing"""
-        try:
-            print("Starting LED rescan - BLOCKING ALL UPDATES IMMEDIATELY")
-            
-            # FIRST THING: Block all updates for 10 seconds
-            if self.rgb_configurator:
-                self.rgb_configurator.block_updates_for_seconds(10)
-            
-            # Disable the button to prevent multiple clicks
-            self.rescan_button.setEnabled(False)
-            self.rescan_button.setText("Rescanning... Please wait 10 seconds")
-            
-            # Force immediate GUI update
-            from PyQt5.QtWidgets import QApplication
-            QApplication.processEvents()
-            
-            # Send the rescan command
-            if hasattr(self.device.keyboard, 'rescan_led_positions'):
-                self.device.keyboard.rescan_led_positions()
-                print("Rescan LED command sent - updates blocked for 10 seconds")
-            else:
-                print("Rescan LED method not available")
-                # If command not available, unblock immediately
-                if self.rgb_configurator:
-                    self.rgb_configurator.unblock_updates()
-            
-            # The blocking timer will automatically unblock after 10 seconds
-            # and call update_from_keyboard with fresh data
-            
-        except Exception as e:
-            print(f"Error during LED rescan: {e}")
-            # On error, make sure to unblock
-            if self.rgb_configurator:
-                self.rgb_configurator.unblock_updates()
-        finally:
-            # Restore button (will be called immediately, timer handles the rest)
-            self.restore_button()
-
-    def restore_button(self):
-        """Restore button to normal state"""
-        try:
-            self.rescan_button.setEnabled(True)
-            self.rescan_button.setText("Rescan LED Positions")
-        except Exception as e:
-            print(f"Error restoring button: {e}")
