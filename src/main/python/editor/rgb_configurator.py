@@ -1131,26 +1131,24 @@ class VialRGBHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard) and self.device.keyboard.lighting_vialrgb
 
 
-# Updated RescanButtonHandler to use the blocking mechanism
 class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button - uses blocking mechanism"""
+    """Alternative handler that automatically restarts after rescan"""
 
-    def __init__(self, container, rgb_configurator=None):
+    def __init__(self, container):
         super().__init__(container)
-        self.rgb_configurator = rgb_configurator  # Reference to parent
 
         row = container.rowCount()
 
         # Centered rescan button
-        self.rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
-        self.rescan_button.clicked.connect(self.on_rescan_led_positions)
-        self.rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
-        self.rescan_button.setMinimumHeight(30)
+        rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions (Auto-Restart)"))
+        rescan_button.clicked.connect(self.on_rescan_led_positions)
+        rescan_button.setStyleSheet("QPushButton { padding: 8px; background-color: #ff6b6b; color: white; }")
+        rescan_button.setMinimumHeight(30)
         
         # Center the button using a horizontal layout
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        button_layout.addWidget(self.rescan_button)
+        button_layout.addWidget(rescan_button)
         button_layout.addStretch()
         
         button_widget = QWidget()
@@ -1160,59 +1158,68 @@ class RescanButtonHandler(BasicHandler):
         self.widgets = [button_widget]
 
     def update_from_keyboard(self):
-        # No updates needed for this button
         pass
 
     def valid(self):
-        # Always show the rescan button
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Rescan LED positions and block ALL updates during processing"""
+        """Rescan LED positions and automatically restart"""
         try:
-            print("Starting LED rescan - BLOCKING ALL UPDATES IMMEDIATELY")
+            # Warning message
+            reply = QMessageBox.warning(
+                None,
+                'Auto-Restart Rescan',
+                'This will rescan LED positions and automatically restart the application.\n\n'
+                'Continue?',
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Cancel
+            )
             
-            # FIRST THING: Block all updates for 10 seconds
-            if self.rgb_configurator:
-                self.rgb_configurator.block_updates_for_seconds(10)
+            if reply == QMessageBox.Cancel:
+                return
             
-            # Disable the button to prevent multiple clicks
-            self.rescan_button.setEnabled(False)
-            self.rescan_button.setText("Rescanning... Please wait 10 seconds")
-            
-            # Force immediate GUI update
-            from PyQt5.QtWidgets import QApplication
+            # Show progress
+            progress_msg = QMessageBox()
+            progress_msg.setWindowTitle("Rescanning...")
+            progress_msg.setText("Rescan in progress. Auto-restart in 3 seconds...")
+            progress_msg.setStandardButtons(QMessageBox.NoButton)
+            progress_msg.show()
             QApplication.processEvents()
             
-            # Send the rescan command
+            # Send rescan command
             if hasattr(self.device.keyboard, 'rescan_led_positions'):
                 self.device.keyboard.rescan_led_positions()
-                print("Rescan LED command sent - updates blocked for 10 seconds")
-            else:
-                print("Rescan LED method not available")
-                # If command not available, unblock immediately
-                if self.rgb_configurator:
-                    self.rgb_configurator.unblock_updates()
+                print("Rescan LED command sent - auto-restart in 3 seconds")
             
-            # The blocking timer will automatically unblock after 10 seconds
-            # and call update_from_keyboard with fresh data
+            progress_msg.close()
+            
+            # Wait and restart
+            time.sleep(3.0)
+            self.restart_application()
             
         except Exception as e:
-            print(f"Error during LED rescan: {e}")
-            # On error, make sure to unblock
-            if self.rgb_configurator:
-                self.rgb_configurator.unblock_updates()
-        finally:
-            # Restore button (will be called immediately, timer handles the rest)
-            self.restore_button()
+            print(f"Error in auto-restart rescan: {e}")
+            QMessageBox.critical(None, 'Error', f'Rescan failed: {e}')
 
-    def restore_button(self):
-        """Restore button to normal state"""
+    def restart_application(self):
+        """Restart the application"""
         try:
-            self.rescan_button.setEnabled(True)
-            self.rescan_button.setText("Rescan LED Positions")
+            python_executable = sys.executable
+            script_path = sys.argv[0]
+            
+            if getattr(sys, 'frozen', False):
+                subprocess.Popen([sys.executable] + sys.argv[1:])
+            else:
+                subprocess.Popen([python_executable, script_path] + sys.argv[1:])
+            
+            QApplication.instance().quit()
+            sys.exit(0)
+            
         except Exception as e:
-            print(f"Error restoring button: {e}")
+            print(f"Restart failed: {e}")
+            QApplication.instance().quit()
+            sys.exit(1)
             
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
@@ -2025,10 +2032,6 @@ class RGBConfigurator(BasicEditor):
     def __init__(self):
         super().__init__()
 
-        # Add blocking mechanism for update_from_keyboard
-        self.updates_blocked = False
-        self.update_block_timer = None
-
         self.addStretch()
 
         w = QWidget()
@@ -2045,8 +2048,9 @@ class RGBConfigurator(BasicEditor):
         self.handler_vialrgb = VialRGBHandler(self.container)
         self.handler_vialrgb.update.connect(self.update_from_keyboard)
         
-        # Add the rescan button handler with reference to parent
-        self.handler_rescan = RescanButtonHandler(self.container, rgb_configurator=self)
+        # Add the rescan button handler - NO UPDATE CONNECTION
+        self.handler_rescan = RescanButtonHandler(self.container)
+        # REMOVED: self.handler_rescan.update.connect(self.update_from_keyboard)
         
         # Add the per-layer RGB handler
         self.handler_layer_rgb = LayerRGBHandler(self.container)
@@ -2068,85 +2072,22 @@ class RGBConfigurator(BasicEditor):
         save_btn.clicked.connect(self.on_save)
         self.addLayout(buttons)
 
-    def block_updates_for_seconds(self, seconds):
-        """Block all update_from_keyboard calls for specified seconds"""
-        print(f"BLOCKING all updates for {seconds} seconds")
-        self.updates_blocked = True
-        
-        # Set up timer to unblock after specified time
-        from PyQt5.QtCore import QTimer
-        self.update_block_timer = QTimer()
-        self.update_block_timer.timeout.connect(self.unblock_updates)
-        self.update_block_timer.setSingleShot(True)
-        self.update_block_timer.start(seconds * 1000)  # Convert to milliseconds
+    def on_save(self):
+        self.device.keyboard.save_rgb()
 
-    def unblock_updates(self):
-        """Unblock updates, clear corrupted data, then do fresh update"""
-        print("CLEARING corrupted data before unblocking...")
-        
-        # Clear any queued/corrupted device state BEFORE unblocking
-        self.clear_device_state()
-        
-        # Flush Qt's event queue to clear any queued signals with corrupted data
-        from PyQt5.QtWidgets import QApplication
-        QApplication.processEvents()
-        
-        print("UNBLOCKING updates and performing fresh update")
-        self.updates_blocked = False
-        if self.update_block_timer:
-            self.update_block_timer.stop()
-            self.update_block_timer = None
-        
-        # Now do a fresh update with clean data
-        self.update_from_keyboard()
-    
-    def clear_device_state(self):
-        """Clear any cached/corrupted device state before fresh update"""
-        try:
-            print("Clearing device cached state...")
-            
-            # Clear device RGB caches if methods exist
-            clear_methods = [
-                'clear_rgb_cache',
-                'reset_cached_state', 
-                'flush_device_state',
-                'clear_lighting_cache'
-            ]
-            
-            for method_name in clear_methods:
-                if hasattr(self.device.keyboard, method_name):
-                    try:
-                        getattr(self.device.keyboard, method_name)()
-                        print(f"Called {method_name}()")
-                    except Exception as e:
-                        print(f"Error calling {method_name}(): {e}")
-            
-            # Force reset any RGB state variables to None/default
-            rgb_attrs = [
-                'rgb_hsv', 'rgb_mode', 'rgb_speed', 'rgb_brightness',
-                'underglow_brightness', 'underglow_effect', 'underglow_color',
-                'backlight_brightness', 'backlight_effect'
-            ]
-            
-            for attr in rgb_attrs:
-                if hasattr(self.device.keyboard, attr):
-                    try:
-                        # Reset to None so it gets reloaded fresh
-                        setattr(self.device.keyboard, attr, None)
-                        print(f"Reset {attr} to None")
-                    except Exception as e:
-                        print(f"Error resetting {attr}: {e}")
-                        
-        except Exception as e:
-            print(f"Error clearing device state: {e}")
+    def valid(self):
+        # Always show RGB configurator for VialKeyboard
+        return isinstance(self.device, VialKeyboard)
+
+    def block_signals(self):
+        for h in self.handlers:
+            h.block_signals()
+
+    def unblock_signals(self):
+        for h in self.handlers:
+            h.unblock_signals()
 
     def update_from_keyboard(self):
-        """Update from keyboard - BLOCKED during rescan operation"""
-        if self.updates_blocked:
-            print("update_from_keyboard BLOCKED - firmware still processing")
-            return
-            
-        print("update_from_keyboard proceeding normally")
         self.device.keyboard.reload_rgb()
         
         # Check for layer RGB support
@@ -2164,21 +2105,6 @@ class RGBConfigurator(BasicEditor):
 
         self.unblock_signals()
 
-    def on_save(self):
-        self.device.keyboard.save_rgb()
-
-    def valid(self):
-        # Always show RGB configurator for VialKeyboard
-        return isinstance(self.device, VialKeyboard)
-
-    def block_signals(self):
-        for h in self.handlers:
-            h.block_signals()
-
-    def unblock_signals(self):
-        for h in self.handlers:
-            h.unblock_signals()
-
     def rebuild(self, device):
         super().rebuild(device)
 
@@ -2189,3 +2115,5 @@ class RGBConfigurator(BasicEditor):
             return
 
         self.update_from_keyboard()
+        
+        
