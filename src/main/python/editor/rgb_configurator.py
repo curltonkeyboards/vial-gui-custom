@@ -1132,7 +1132,7 @@ class VialRGBHandler(BasicHandler):
 
 
 class RescanButtonHandler(BasicHandler):
-    """Alternative handler that automatically restarts after rescan"""
+    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -1140,15 +1140,15 @@ class RescanButtonHandler(BasicHandler):
         row = container.rowCount()
 
         # Centered rescan button
-        rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions (Auto-Restart)"))
-        rescan_button.clicked.connect(self.on_rescan_led_positions)
-        rescan_button.setStyleSheet("QPushButton { padding: 8px; background-color: #ff6b6b; color: white; }")
-        rescan_button.setMinimumHeight(30)
+        self.rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
+        self.rescan_button.clicked.connect(self.on_rescan_led_positions)
+        self.rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
+        self.rescan_button.setMinimumHeight(30)
         
         # Center the button using a horizontal layout
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        button_layout.addWidget(rescan_button)
+        button_layout.addWidget(self.rescan_button)
         button_layout.addStretch()
         
         button_widget = QWidget()
@@ -1158,68 +1158,109 @@ class RescanButtonHandler(BasicHandler):
         self.widgets = [button_widget]
 
     def update_from_keyboard(self):
+        # No updates needed for this button
         pass
 
     def valid(self):
+        # Always show the rescan button
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Rescan LED positions and automatically restart"""
+        """Rescan LED positions and restart the application"""
         try:
-            # Warning message
-            reply = QMessageBox.warning(
-                None,
-                'Auto-Restart Rescan',
-                'This will rescan LED positions and automatically restart the application.\n\n'
-                'Continue?',
-                QMessageBox.Yes | QMessageBox.Cancel,
-                QMessageBox.Cancel
-            )
+            print("Starting LED rescan process...")
             
-            if reply == QMessageBox.Cancel:
-                return
+            # Disable the button to prevent multiple clicks
+            self.rescan_button.setEnabled(False)
+            self.rescan_button.setText("Rescanning... App will restart in 10 seconds")
             
-            # Show progress
-            progress_msg = QMessageBox()
-            progress_msg.setWindowTitle("Rescanning...")
-            progress_msg.setText("Rescan in progress. Auto-restart in 3 seconds...")
-            progress_msg.setStandardButtons(QMessageBox.NoButton)
-            progress_msg.show()
+            # Force immediate GUI update to show disabled state
+            from PyQt5.QtWidgets import QApplication, QMessageBox
             QApplication.processEvents()
             
-            # Send rescan command
+            # Send the rescan command
             if hasattr(self.device.keyboard, 'rescan_led_positions'):
                 self.device.keyboard.rescan_led_positions()
-                print("Rescan LED command sent - auto-restart in 3 seconds")
+                print("Rescan LED command sent")
+            else:
+                print("Rescan LED method not available")
+                self.restore_button()
+                return
+                
+            # Wait 10 seconds for firmware to complete processing
+            print("Waiting 10 seconds for firmware to complete...")
+            import time
+            time.sleep(10.0)
             
-            progress_msg.close()
+            print("LED rescan completed, restarting application...")
             
-            # Wait and restart
-            time.sleep(3.0)
+            # Try to restart the application
             self.restart_application()
             
         except Exception as e:
-            print(f"Error in auto-restart rescan: {e}")
-            QMessageBox.critical(None, 'Error', f'Rescan failed: {e}')
+            print(f"Error during LED rescan process: {e}")
+            self.restore_button()
 
     def restart_application(self):
-        """Restart the application"""
+        """Restart the application or shut down with message"""
         try:
-            python_executable = sys.executable
-            script_path = sys.argv[0]
+            import sys
+            import os
+            from PyQt5.QtWidgets import QMessageBox, QApplication
+            from PyQt5.QtCore import QTimer
             
-            if getattr(sys, 'frozen', False):
-                subprocess.Popen([sys.executable] + sys.argv[1:])
-            else:
-                subprocess.Popen([python_executable, script_path] + sys.argv[1:])
-            
-            QApplication.instance().quit()
-            sys.exit(0)
-            
+            # Try to restart the application
+            try:
+                print("Attempting to restart application...")
+                
+                # Get the current executable and arguments
+                executable = sys.executable
+                args = sys.argv
+                
+                # Show message about restart
+                msg = QMessageBox()
+                msg.setWindowTitle("LED Rescan Complete")
+                msg.setText("LED positions have been rescanned.\nThe application will now restart to refresh all settings.")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.setIcon(QMessageBox.Information)
+                msg.exec_()
+                
+                # Close current instance and restart
+                QApplication.quit()
+                os.execv(executable, [executable] + args[1:])
+                
+            except Exception as restart_error:
+                print(f"Could not restart application: {restart_error}")
+                
+                # Fall back to shutdown with message
+                msg = QMessageBox()
+                msg.setWindowTitle("LED Rescan Complete - Please Restart")
+                msg.setText("LED positions have been rescanned successfully.\n\n"
+                           "Please manually restart the application to ensure "
+                           "all RGB settings are properly refreshed.\n\n"
+                           "The application will now close.")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.setIcon(QMessageBox.Information)
+                msg.exec_()
+                
+                # Shutdown the application
+                print("Shutting down application...")
+                QApplication.quit()
+                sys.exit(0)
+                
         except Exception as e:
-            print(f"Restart failed: {e}")
-            QApplication.instance().quit()
+            print(f"Error during application restart/shutdown: {e}")
+            # Emergency shutdown
+            import sys
             sys.exit(1)
+
+    def restore_button(self):
+        """Restore button to normal state"""
+        try:
+            self.rescan_button.setEnabled(True)
+            self.rescan_button.setText("Rescan LED Positions")
+        except Exception as e:
+            print(f"Error restoring button: {e}")
             
 class LayerRGBHandler(BasicHandler):
     """Handler for per-layer RGB functionality - always shows all buttons"""
