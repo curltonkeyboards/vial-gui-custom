@@ -1604,258 +1604,43 @@ class CustomLightsHandler(BasicHandler):
         return min(actual_slot, 49)  # Ensure we don't exceed slot 49
             
     def get_currently_active_slot(self):
-        """Get the slot number that is currently active for RGB effects"""
-        if self.current_randomize_slot is not None:
-            # In randomize mode, active slot is the randomize slot
-            return self.current_randomize_slot
-        else:
-            # In normal mode, get current slot from firmware status
-            try:
-                if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                    status = self.device.keyboard.get_custom_animation_status()
-                    if status and len(status) > 1:
-                        current_slot = status[1]  # Use status[1] for current slot (not status[2])
-                        # Validate slot is within range
-                        if 0 <= current_slot < 50:
-                            return current_slot
-                        else:
-                            print(f"Invalid current slot {current_slot}, using fallback")
-                            
-                # Fallback methods if status doesn't work
-                if hasattr(self.device.keyboard, 'get_current_custom_slot'):
-                    slot = self.device.keyboard.get_current_custom_slot()
-                    if 0 <= slot < 50:
-                        return slot
-                        
-            except Exception as e:
-                print(f"Error getting current slot: {e}")
-                
-            # Final fallback
-            return self.get_current_slot_index()
+        """Get the slot number that is currently active - FIXED to use current slot"""
+        try:
+            if hasattr(self.device.keyboard, 'get_custom_animation_status'):
+                status = self.device.keyboard.get_custom_animation_status()
+                if status and len(status) > 1:
+                    current_slot = status[1]  # Use status[1] (current slot) NOT status[2] (active slot)
+                    # Validate slot is in valid range
+                    if 0 <= current_slot < 50:
+                        return current_slot
+            # Fallback to slot 0 if anything fails
+            return 0
+        except Exception as e:
+            print(f"Error getting current slot: {e}")
+            return 0
 
     def on_load_from_keyboard(self, slot):
-        """Load current RAM settings - ENHANCED COMMUNICATION DEBUG"""
-        
-        debug_info = []
-        debug_info.append(f"=== ENHANCED COMMUNICATION DEBUG - TAB SLOT {slot} ===")
-        debug_info.append(f"Timestamp: {time.time()}")
-        
+        """Load current RAM settings from CURRENT slot into this tab's GUI - FIXED VERSION"""
         try:
             self.block_signals()
-            debug_info.append("✓ Signals blocked")
             
-            # TEST 1: Basic device connectivity
-            debug_info.append("\n=== TEST 1: BASIC DEVICE CONNECTIVITY ===")
-            if not self.device or not hasattr(self.device, 'keyboard'):
-                debug_info.append("✗ CRITICAL: No device/keyboard")
-                self.show_debug_popup(debug_info, "CRITICAL ERROR")
-                return
-            debug_info.append(f"✓ Device: {type(self.device)}")
-            debug_info.append(f"✓ Keyboard: {type(self.device.keyboard)}")
+            # Get the current slot (the one that's actually active)
+            current_slot = self.get_currently_active_slot()
+            print(f"Loading from current slot {current_slot} into tab {slot}")
             
-            # TEST 2: Raw HID communication test
-            debug_info.append("\n=== TEST 2: RAW HID COMMUNICATION TEST ===")
-            try:
-                # Test basic HID by getting keyboard ID
-                if hasattr(self.device.keyboard, 'get_uid'):
-                    uid = self.device.keyboard.get_uid()
-                    debug_info.append(f"✓ HID communication works - UID: {uid}")
-                else:
-                    debug_info.append("? No get_uid method available")
-            except Exception as e:
-                debug_info.append(f"✗ HID communication failed: {e}")
-            
-            # TEST 3: Custom animation status - MULTIPLE ATTEMPTS
-            debug_info.append("\n=== TEST 3: CUSTOM ANIMATION STATUS (MULTIPLE ATTEMPTS) ===")
-            status_attempts = []
-            for attempt in range(5):  # Try 5 times
-                try:
-                    if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                        status = self.device.keyboard.get_custom_animation_status()
-                        status_list = list(status) if status else None
-                        status_attempts.append(status_list)
-                        debug_info.append(f"Attempt {attempt + 1}: {status_list}")
-                        
-                        if status and len(status) > 2:
-                            debug_info.append(f"  - Current slot: {status[1]}")
-                            debug_info.append(f"  - Active slot: {status[2]}")
-                            debug_info.append(f"  - Randomize active: {status[6] if len(status) > 6 else 'N/A'}")
-                    else:
-                        debug_info.append(f"Attempt {attempt + 1}: Method not available")
-                        break
-                except Exception as e:
-                    status_attempts.append(f"ERROR: {str(e)}")
-                    debug_info.append(f"Attempt {attempt + 1}: ERROR - {e}")
-            
-            # Analyze consistency of status attempts
-            if len(set(str(x) for x in status_attempts)) == 1:
-                debug_info.append("✓ All status attempts returned identical results")
+            # Get the RAM data from the current slot
+            config = self.device.keyboard.get_custom_slot_config(current_slot, from_eeprom=False)
+            if config and len(config) >= 12:
+                # Update the GUI widgets for the CURRENT TAB (slot), not the current slot
+                self.update_slot_widgets(slot, config)
+                print(f"Successfully loaded current slot {current_slot} settings into tab {slot}")
             else:
-                debug_info.append("⚠ Status attempts returned different results - communication unstable")
-            
-            # TEST 4: Test multiple slot reads to check for communication degradation
-            debug_info.append("\n=== TEST 4: SLOT COMMUNICATION DEGRADATION TEST ===")
-            slot_read_results = {}
-            test_slots = [0, 1, 25, 26, 49]  # Test key boundary slots
-            
-            for test_slot in test_slots:
-                debug_info.append(f"\nTesting slot {test_slot}:")
-                try:
-                    # Test EEPROM read
-                    eeprom_config = self.device.keyboard.get_custom_slot_config(test_slot, from_eeprom=True)
-                    debug_info.append(f"  EEPROM: {list(eeprom_config) if eeprom_config else 'None'}")
-                    slot_read_results[f"{test_slot}_eeprom"] = eeprom_config
-                    
-                    # Test RAM read
-                    ram_config = self.device.keyboard.get_custom_slot_config(test_slot, from_eeprom=False)
-                    debug_info.append(f"  RAM: {list(ram_config) if ram_config else 'None'}")
-                    slot_read_results[f"{test_slot}_ram"] = ram_config
-                    
-                    # Check if they match
-                    if eeprom_config and ram_config:
-                        match = list(eeprom_config) == list(ram_config)
-                        debug_info.append(f"  Match: {match}")
-                    
-                except Exception as e:
-                    debug_info.append(f"  ERROR reading slot {test_slot}: {e}")
-                    slot_read_results[f"{test_slot}_error"] = str(e)
-            
-            # TEST 5: Communication buffer integrity test
-            debug_info.append("\n=== TEST 5: COMMUNICATION BUFFER INTEGRITY ===")
-            try:
-                # Try reading a known simple command multiple times
-                integrity_results = []
-                for i in range(3):
-                    if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                        status = self.device.keyboard.get_custom_animation_status()
-                        integrity_results.append(status[1] if status and len(status) > 1 else None)
-                    else:
-                        break
+                print(f"Failed to get RAM config for current slot {current_slot}")
                 
-                debug_info.append(f"Buffer integrity results: {integrity_results}")
-                if len(set(integrity_results)) == 1:
-                    debug_info.append("✓ Communication buffers appear stable")
-                else:
-                    debug_info.append("✗ Communication buffers appear corrupted/unstable")
-                    
-            except Exception as e:
-                debug_info.append(f"✗ Buffer integrity test failed: {e}")
-            
-            # TEST 6: Memory state validation
-            debug_info.append("\n=== TEST 6: FIRMWARE MEMORY STATE VALIDATION ===")
-            try:
-                # Get current slot from different methods if available
-                methods_results = {}
-                
-                if hasattr(self.device.keyboard, 'get_current_custom_slot'):
-                    current_slot = self.device.keyboard.get_current_custom_slot()
-                    methods_results['get_current_custom_slot'] = current_slot
-                    debug_info.append(f"get_current_custom_slot(): {current_slot}")
-                
-                if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                    status = self.device.keyboard.get_custom_animation_status()
-                    if status and len(status) > 1:
-                        methods_results['status_current'] = status[1]
-                        debug_info.append(f"status[1] (current): {status[1]}")
-                    if status and len(status) > 2:
-                        methods_results['status_active'] = status[2]
-                        debug_info.append(f"status[2] (active): {status[2]}")
-                
-                # Check for memory corruption indicators
-                corruption_indicators = []
-                for key, value in methods_results.items():
-                    if value == 255:
-                        corruption_indicators.append(f"{key}=255")
-                    elif value >= 50:
-                        corruption_indicators.append(f"{key}={value} (>=50)")
-                
-                if corruption_indicators:
-                    debug_info.append(f"⚠ MEMORY CORRUPTION INDICATORS: {corruption_indicators}")
-                else:
-                    debug_info.append("✓ No obvious memory corruption indicators")
-                    
-            except Exception as e:
-                debug_info.append(f"✗ Memory validation failed: {e}")
-            
-            # TEST 7: Attempt to determine actual working slot
-            debug_info.append("\n=== TEST 7: DETERMINE ACTUAL WORKING SLOT ===")
-            try:
-                # Since you said the keyboard works but shows wrong slot, let's try to find the real slot
-                debug_info.append("Attempting to find the actual working slot...")
-                
-                # Try to read RGB mode to see if it gives us a clue
-                if hasattr(self.device.keyboard, 'rgb_mode'):
-                    rgb_mode = self.device.keyboard.rgb_mode
-                    debug_info.append(f"Current RGB mode: {rgb_mode}")
-                    
-                    # Custom slots are typically modes 57-106
-                    if 57 <= rgb_mode <= 106:
-                        calculated_slot = rgb_mode - 57
-                        debug_info.append(f"Calculated slot from RGB mode: {calculated_slot}")
-                    else:
-                        debug_info.append(f"RGB mode {rgb_mode} not in custom slot range")
-                
-            except Exception as e:
-                debug_info.append(f"✗ Working slot determination failed: {e}")
-            
-            # TEST 8: Final attempt to load configuration
-            debug_info.append("\n=== TEST 8: CONFIGURATION LOAD ATTEMPT ===")
-            active_slot = 0  # Default fallback
-            config = None
-            
-            try:
-                # Try to determine the best slot to load from
-                if hasattr(self.device.keyboard, 'get_custom_animation_status'):
-                    status = self.device.keyboard.get_custom_animation_status()
-                    if status and len(status) > 1 and 0 <= status[1] < 50:
-                        active_slot = status[1]
-                        debug_info.append(f"Using status slot: {active_slot}")
-                    elif status and len(status) > 2 and 0 <= status[2] < 50:
-                        active_slot = status[2]
-                        debug_info.append(f"Using active slot: {active_slot}")
-                    else:
-                        debug_info.append(f"Invalid status slots, using fallback: {active_slot}")
-                
-                # Try to load configuration
-                config = self.device.keyboard.get_custom_slot_config(active_slot, from_eeprom=False)
-                
-                if config and len(config) >= 12:
-                    debug_info.append(f"✓ Successfully loaded config: {list(config)}")
-                    
-                    # Try to update GUI
-                    if slot in self.slot_widgets:
-                        self.update_slot_widgets(slot, config)
-                        debug_info.append("✓ GUI updated successfully")
-                    else:
-                        debug_info.append(f"✗ Slot {slot} not in widgets dict")
-                else:
-                    debug_info.append(f"✗ Invalid config received: {config}")
-                    
-            except Exception as e:
-                debug_info.append(f"✗ Configuration load failed: {e}")
-                import traceback
-                debug_info.extend(traceback.format_exc().split('\n'))
-            
-            debug_info.append(f"\n=== SUMMARY ===")
-            debug_info.append(f"Tab slot: {slot}")
-            debug_info.append(f"Determined active slot: {active_slot}")
-            debug_info.append(f"Config loaded: {'Yes' if config else 'No'}")
-            debug_info.append(f"GUI updated: {'Yes' if config and slot in self.slot_widgets else 'No'}")
-            
         except Exception as e:
-            debug_info.append(f"\n✗ CRITICAL EXCEPTION: {str(e)}")
-            import traceback
-            debug_info.extend(traceback.format_exc().split('\n'))
-        
+            print(f"Error loading from current slot: {e}")
         finally:
-            try:
-                self.unblock_signals()
-                debug_info.append("✓ Signals unblocked")
-            except Exception as e:
-                debug_info.append(f"✗ Unblock failed: {e}")
-            
-            # ALWAYS show debug popup
-            self.show_debug_popup(debug_info, "Enhanced Communication Debug")
+            self.unblock_signals()
         
     def show_debug_popup(self, debug_info, title="Debug Info"):
         """Show debug information in a popup - ALWAYS appears"""
@@ -2009,106 +1794,106 @@ class CustomLightsHandler(BasicHandler):
             for widget in widgets.values():
                 widget.blockSignals(False)
 
-    # Event handlers - ALL MODIFIED to send to active slot, not tab slot
+     # Event handlers - ALL FIXED to use current slot
     def on_live_effect_changed(self, slot, index):
-        """Handle live effect change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Live effect changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle live effect change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Live effect changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 2, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 2, index)
         else:
-            print(f"Live effect changed: tab {slot} -> active slot {active_slot}, effect {index}")
+            print(f"Live effect changed: tab {slot} -> current slot {current_slot}, effect {index}")
 
     def on_live_style_changed(self, slot, index):
-        """Handle live style change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Live style changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle live style change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Live style changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 0, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 0, index)
         else:
-            print(f"Live style changed: tab {slot} -> active slot {active_slot}, style {index}")
+            print(f"Live style changed: tab {slot} -> current slot {current_slot}, style {index}")
 
     def on_live_speed_changed(self, slot, value):
-        """Handle live animation speed change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Live speed changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle live animation speed change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Live speed changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 10, value)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 10, value)
         else:
-            print(f"Live speed changed: tab {slot} -> active slot {active_slot}, speed {value}")
+            print(f"Live speed changed: tab {slot} -> current slot {current_slot}, speed {value}")
 
     def on_macro_effect_changed(self, slot, index):
-        """Handle macro effect change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Macro effect changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle macro effect change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Macro effect changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 3, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 3, index)
         else:
-            print(f"Macro effect changed: tab {slot} -> active slot {active_slot}, effect {index}")
+            print(f"Macro effect changed: tab {slot} -> current slot {current_slot}, effect {index}")
 
     def on_macro_style_changed(self, slot, index):
-        """Handle macro style change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Macro style changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle macro style change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Macro style changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 1, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 1, index)
         else:
-            print(f"Macro style changed: tab {slot} -> active slot {active_slot}, style {index}")
+            print(f"Macro style changed: tab {slot} -> current slot {current_slot}, style {index}")
 
     def on_macro_speed_changed(self, slot, value):
-        """Handle macro animation speed change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Macro speed changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle macro animation speed change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Macro speed changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 11, value)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 11, value)
         else:
-            print(f"Macro speed changed: tab {slot} -> active slot {active_slot}, speed {value}")
+            print(f"Macro speed changed: tab {slot} -> current slot {current_slot}, speed {value}")
 
     def on_background_changed(self, slot, index):
-        """Handle background change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Background changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle background change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Background changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 5, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 5, index)
         else:
-            print(f"Background changed: tab {slot} -> active slot {active_slot}, index {index}")
+            print(f"Background changed: tab {slot} -> current slot {current_slot}, index {index}")
 
     def on_background_brightness_changed(self, slot, value):
-        """Handle background brightness change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Background brightness changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle background brightness change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Background brightness changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 9, value)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 9, value)
         else:
-            print(f"Background brightness changed: tab {slot} -> active slot {active_slot}, brightness {value}%")
+            print(f"Background brightness changed: tab {slot} -> current slot {current_slot}, brightness {value}%")
 
     def on_sustain_mode_changed(self, slot, index):
-        """Handle sustain mode change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Sustain mode changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle sustain mode change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Sustain mode changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 6, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 6, index)
         else:
-            print(f"Sustain mode changed: tab {slot} -> active slot {active_slot}, index {index}")
+            print(f"Sustain mode changed: tab {slot} -> current slot {current_slot}, index {index}")
 
     def on_color_type_changed(self, slot, index):
-        """Handle color type change - send to ACTIVE slot, not tab slot"""
-        active_slot = self.get_currently_active_slot()
-        print(f"Color type changed on tab {slot}, sending to active slot {active_slot}")
+        """Handle color type change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        print(f"Color type changed on tab {slot}, sending to current slot {current_slot}")
         
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(active_slot, 7, index)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 7, index)
         else:
-            print(f"Color type changed: tab {slot} -> active slot {active_slot}, index {index}")
+            print(f"Color type changed: tab {slot} -> current slot {current_slot}, index {index}")
 
     def on_save_slot(self, slot):
         """Save current GUI configuration to the tab slot's EEPROM"""
@@ -2271,21 +2056,19 @@ class RGBConfigurator(BasicEditor):
             h.unblock_signals()
 
     def update_from_keyboard(self):
-        self.device.keyboard.reload_rgb()
-        
-        # Check for layer RGB support
-        if hasattr(self.device.keyboard, 'reload_layer_rgb_support'):
-            self.device.keyboard.reload_layer_rgb_support()
-
-        # Check for custom lights support  
-        if hasattr(self.device.keyboard, 'reload_custom_lights_support'):
-            self.device.keyboard.reload_custom_lights_support()
-
+        """Load current state - SIMPLIFIED to only track current slot"""
         self.block_signals()
-
-        for h in self.handlers:
-            h.update_from_keyboard()
-
+        
+        try:
+            # Always load EEPROM state for current tab (tab switching behavior)
+            current_slot = self.get_current_slot_index()
+            self.load_slot_from_eeprom(current_slot)
+            
+            print(f"Updated from keyboard: loaded EEPROM for tab slot {current_slot}")
+            
+        except Exception as e:
+            print(f"Error in update_from_keyboard: {e}")
+            
         self.unblock_signals()
 
     def rebuild(self, device):
