@@ -1132,7 +1132,65 @@ class VialRGBHandler(BasicHandler):
 
 
 class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button with timeout"""
+    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
+
+    def __init__(self, container):
+        super().__init__(container)
+
+        row = container.rowCount()
+
+        # Centered rescan button
+        rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
+        rescan_button.clicked.connect(self.on_rescan_led_positions)
+        rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
+        rescan_button.setMinimumHeight(30)
+        
+        # Center the button using a horizontal layout
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(rescan_button)
+        button_layout.addStretch()
+        
+        button_widget = QWidget()
+        button_widget.setLayout(button_layout)
+        container.addWidget(button_widget, row, 0, 1, 2)
+
+        self.widgets = [button_widget]
+
+    def update_from_keyboard(self):
+        # No updates needed for this button
+        pass
+
+    def valid(self):
+        # Always show the rescan button
+        return isinstance(self.device, VialKeyboard)
+
+    def on_rescan_led_positions(self):
+        """Rescan LED positions and force RGB state refresh"""
+        try:
+            if hasattr(self.device.keyboard, 'rescan_led_positions'):
+                self.device.keyboard.rescan_led_positions()
+                print("Rescan LED command sent")
+                
+                # Wait for firmware to finish intensive processing
+                import time
+                time.sleep(1.0)
+                
+                # Force a complete RGB reload to clear any corrupted cached state
+                self.device.keyboard.reload_rgb()
+                
+                # Force GUI update with fresh data
+                # Find the RGB configurator and update it
+                if hasattr(self, 'parent') and hasattr(self.parent, 'update_from_keyboard'):
+                    self.parent.update_from_keyboard()
+                    
+            else:
+                print("Rescan LED method not available")
+        except Exception as e:
+            print(f"Error sending rescan LED command: {e}")
+
+class RescanButtonHandler(BasicHandler):
+    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
 
     def __init__(self, container):
         super().__init__(container)
@@ -1156,12 +1214,6 @@ class RescanButtonHandler(BasicHandler):
         container.addWidget(button_widget, row, 0, 1, 2)
 
         self.widgets = [button_widget]
-        
-        # Timer for the 10-second timeout
-        from PyQt5.QtCore import QTimer
-        self.rescan_timer = QTimer()
-        self.rescan_timer.setSingleShot(True)  # Only fire once
-        self.rescan_timer.timeout.connect(self.on_rescan_complete)
 
     def update_from_keyboard(self):
         # No updates needed for this button
@@ -1172,254 +1224,109 @@ class RescanButtonHandler(BasicHandler):
         return isinstance(self.device, VialKeyboard)
 
     def on_rescan_led_positions(self):
-        """Send rescan command and start timeout timer"""
+        """Rescan LED positions with extended wait and comprehensive refresh"""
         try:
+            print("Starting LED rescan process...")
+            
+            # Disable the button to prevent multiple clicks
+            self.rescan_button.setEnabled(False)
+            self.rescan_button.setText("Rescanning... Please wait 10 seconds")
+            
+            # Force immediate GUI update to show disabled state
+            from PyQt5.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+            # Send the rescan command
             if hasattr(self.device.keyboard, 'rescan_led_positions'):
-                # Disable button to prevent multiple clicks
-                self.rescan_button.setEnabled(False)
-                self.rescan_button.setText("LED Scan in Progress...")
-                
-                # Send the rescan command
                 self.device.keyboard.rescan_led_positions()
-                print("Rescan LED command sent - starting 10 second timeout")
-                
-                # Start 10-second timer (10000 milliseconds)
-                self.rescan_timer.start(10000)
-                
+                print("Rescan LED command sent")
             else:
                 print("Rescan LED method not available")
-                self.show_completion_popup("Rescan LED method not available on this device.", "Method Not Available")
+                self.restore_button()
+                return
                 
+            # Wait 10 seconds for firmware to complete processing
+            print("Waiting 10 seconds for firmware to complete...")
+            import time
+            time.sleep(10.0)  # Extended wait time as requested
+            
+            # Comprehensive device state refresh
+            print("Performing comprehensive device refresh...")
+            self.comprehensive_device_refresh()
+            
+            print("LED rescan process completed successfully")
+            
         except Exception as e:
-            print(f"Error sending rescan LED command: {e}")
-            self.show_completion_popup(f"Error sending rescan command: {str(e)}", "Rescan Error")
-            self.reset_button_state()
+            print(f"Error during LED rescan process: {e}")
+        finally:
+            # Always restore the button
+            self.restore_button()
 
-    def on_rescan_complete(self):
-        """Called after 10-second timeout - LED scan should be complete"""
-        print("10-second timeout complete - LED scan should be finished")
-        
+    def comprehensive_device_refresh(self):
+        """Perform a comprehensive refresh of all device state"""
         try:
-            # Optionally reload RGB state now that scanning is complete
-            # Only do this if you want to refresh the GUI state
+            # Clear any cached RGB state
             if hasattr(self.device.keyboard, 'reload_rgb'):
-                print("Reloading RGB state after LED scan")
                 self.device.keyboard.reload_rgb()
-                
-                # Force GUI update if available
-                if hasattr(self, 'parent') and hasattr(self.parent, 'update_from_keyboard'):
-                    self.parent.update_from_keyboard()
-                    print("Refreshed GUI after LED scan")
-                    
+            
+            # Reload layer RGB support if available
+            if hasattr(self.device.keyboard, 'reload_layer_rgb_support'):
+                self.device.keyboard.reload_layer_rgb_support()
+
+            # Reload custom lights support if available  
+            if hasattr(self.device.keyboard, 'reload_custom_lights_support'):
+                self.device.keyboard.reload_custom_lights_support()
+            
+            # Force a complete refresh of the parent RGB configurator
+            # This will update all handlers with fresh data
+            parent = self.get_rgb_configurator_parent()
+            if parent:
+                print("Refreshing RGB configurator with fresh data...")
+                parent.update_from_keyboard()
+            
+            # Additional device-specific refresh methods if they exist
+            refresh_methods = [
+                'refresh_all_state',
+                'reload_device_state', 
+                'refresh_lighting_state',
+                'reset_cached_state'
+            ]
+            
+            for method_name in refresh_methods:
+                if hasattr(self.device.keyboard, method_name):
+                    try:
+                        getattr(self.device.keyboard, method_name)()
+                        print(f"Called {method_name}()")
+                    except Exception as e:
+                        print(f"Error calling {method_name}(): {e}")
+                        
         except Exception as e:
-            print(f"Warning: Error during post-scan refresh: {e}")
-            # Don't show error popup for this - the scan itself was successful
-        
-        # Show completion popup
-        self.show_completion_popup(
-            "LED position scan complete!\n\nThe keyboard has finished scanning and updating LED positions.", 
-            "LED Scan Complete"
-        )
-        
-        # Reset button state
-        self.reset_button_state()
+            print(f"Error during comprehensive refresh: {e}")
 
-    def reset_button_state(self):
-        """Reset button to normal state"""
-        self.rescan_button.setEnabled(True)
-        self.rescan_button.setText("Rescan LED Positions")
-
-    def show_completion_popup(self, message, title):
-        """Show completion popup to user"""
+    def get_rgb_configurator_parent(self):
+        """Find the RGB configurator parent to trigger full refresh"""
         try:
-            from PyQt5.QtWidgets import QMessageBox
-            
-            msg_box = QMessageBox()
-            msg_box.setWindowTitle(title)
-            msg_box.setText(message)
-            msg_box.setIcon(QMessageBox.Information)
-            
-            # Add an OK button
-            msg_box.setStandardButtons(QMessageBox.Ok)
-            msg_box.setDefaultButton(QMessageBox.Ok)
-            
-            # Show the popup
-            msg_box.exec_()
-            
+            # Walk up the widget hierarchy to find RGBConfigurator
+            widget = self.rescan_button
+            while widget:
+                widget = widget.parent()
+                if widget and hasattr(widget, 'update_from_keyboard'):
+                    # Found a widget with update_from_keyboard method
+                    if hasattr(widget, 'handlers'):  # Likely the RGBConfigurator
+                        return widget
+            return None
         except Exception as e:
-            print(f"Error showing completion popup: {e}")
-            # Fallback: just print to console
-            print(f"LED Scan Complete: {message}")
+            print(f"Error finding RGB configurator parent: {e}")
+            return None
+
+    def restore_button(self):
+        """Restore button to normal state"""
+        try:
+            self.rescan_button.setEnabled(True)
+            self.rescan_button.setText("Rescan LED Positions")
+        except Exception as e:
+            print(f"Error restoring button: {e}")
             
-class LayerRGBHandler(BasicHandler):
-    """Handler for per-layer RGB functionality - always shows all buttons"""
-
-    def __init__(self, container):
-        super().__init__(container)
-
-        row = container.rowCount()
-
-        # Enable per-layer RGB checkbox
-        self.lbl_layer_rgb_enable = QLabel(tr("RGBConfigurator", "Enable Per-Layer RGB"))
-        container.addWidget(self.lbl_layer_rgb_enable, row, 0)
-        self.layer_rgb_enable = QCheckBox()
-        self.layer_rgb_enable.stateChanged.connect(self.on_layer_rgb_enable_changed)
-        container.addWidget(self.layer_rgb_enable, row, 1)
-
-        # Layer buttons container
-        self.lbl_layer_buttons = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
-        container.addWidget(self.lbl_layer_buttons, row + 1, 0)
-        
-        # Create a grid layout for layer buttons (3 rows x 4 columns)
-        self.layer_buttons_widget = QWidget()
-        self.layer_buttons_layout = QGridLayout(self.layer_buttons_widget)
-        self.layer_buttons_layout.setContentsMargins(0, 0, 0, 0)
-        self.layer_buttons_layout.setSpacing(2)  # Smaller spacing between buttons
-        container.addWidget(self.layer_buttons_widget, row + 1, 1)
-
-        self.layer_buttons = []
-        self.per_layer_enabled = False
-        self.initial_load_complete = False  # Track if we've done the initial load
-        self.user_set_state = None  # Track what the user manually set
-
-        self.widgets = [self.lbl_layer_rgb_enable, self.layer_rgb_enable, 
-                       self.lbl_layer_buttons, self.layer_buttons_widget]
-
-        # Create initial buttons (they will be updated when device connects)
-        self.create_layer_buttons()
-
-    def create_layer_buttons(self):
-        """Create buttons for each layer in a 3x4 grid - always create 12 buttons regardless of layer count"""
-        # Clear existing buttons
-        for button in self.layer_buttons:
-            button.setParent(None)
-        self.layer_buttons.clear()
-
-        # Always create 12 buttons for 3x4 grid regardless of layer count
-        for layer in range(12):
-            button = QPushButton(f"Layer {layer}")
-            button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
-            button.setEnabled(self.per_layer_enabled)
-            button.setMaximumWidth(80)  # Set a reasonable button width
-            button.setMinimumWidth(60)  # Minimum width for readability
-            
-            # Calculate row and column for 3x4 grid
-            row = layer // 4  # 4 buttons per row
-            col = layer % 4   # Column position within row
-            
-            self.layer_buttons_layout.addWidget(button, row, col)
-            self.layer_buttons.append(button)
-
-    def update_from_keyboard(self):
-        """Update from keyboard - NEVER update checkbox after initial load"""
-        if not self.valid():
-            return
-
-        # Block signals to prevent triggering state change events during update
-        self.block_signals()
-
-        # Only update checkbox state on the very first load
-        # After that, NEVER touch the checkbox regardless of keyboard state
-        if not self.initial_load_complete:
-            print("LayerRGBHandler: Initial load - checking keyboard state")
-            # Try to get per-layer RGB status if methods exist
-            if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
-                try:
-                    status = self.device.keyboard.get_layer_rgb_status()
-                    if status is not None:
-                        keyboard_state = bool(status)
-                        self.per_layer_enabled = keyboard_state
-                        self.user_set_state = keyboard_state  # Initialize user state
-                        print(f"Initial layer RGB status from keyboard: {keyboard_state}")
-                        # Set checkbox state ONLY on initial load
-                        self.layer_rgb_enable.setChecked(self.per_layer_enabled)
-                    else:
-                        self.per_layer_enabled = False
-                        self.user_set_state = False
-                        print("No initial layer RGB status data received")
-                        self.layer_rgb_enable.setChecked(False)
-                except Exception as e:
-                    print(f"Error getting initial layer RGB status: {e}")
-                    self.per_layer_enabled = False
-                    self.user_set_state = False
-                    self.layer_rgb_enable.setChecked(False)
-            else:
-                # Default values for testing when keyboard methods aren't implemented yet
-                self.per_layer_enabled = False
-                self.user_set_state = False
-                print("Layer RGB methods not implemented on keyboard")
-                self.layer_rgb_enable.setChecked(False)
-
-            self.initial_load_complete = True
-        else:
-            # On subsequent updates (e.g., when other RGB settings change),
-            # COMPLETELY IGNORE keyboard state and preserve checkbox as-is
-            print("LayerRGBHandler: Subsequent update - completely ignoring keyboard state, preserving checkbox")
-            # Don't touch the checkbox at all - let it stay exactly as the user set it
-            # Just update our internal state to match the checkbox
-            self.per_layer_enabled = self.layer_rgb_enable.isChecked()
-        
-        # Always recreate buttons to ensure they're in sync with current checkbox state
-        self.create_layer_buttons()
-
-        # Unblock signals after update is complete
-        self.unblock_signals()
-
-    def valid(self):
-        # Always return True so buttons are always shown
-        return isinstance(self.device, VialKeyboard)
-
-    def on_layer_rgb_enable_changed(self, checked):
-        self.per_layer_enabled = checked
-        
-        # Try to call the keyboard method if it exists
-        if hasattr(self.device.keyboard, 'set_layer_rgb_enable'):
-            self.device.keyboard.set_layer_rgb_enable(checked)
-        else:
-            print(f"Layer RGB enable changed to: {checked} (keyboard method not implemented yet)")
-        
-        # Enable/disable layer buttons
-        for button in self.layer_buttons:
-            button.setEnabled(checked)
-
-    def on_save_to_layer(self, layer):
-        """Save current RGB settings to specified layer"""
-        if self.per_layer_enabled:
-            # Try to call the keyboard method if it exists
-            if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
-                success = self.device.keyboard.save_rgb_to_layer(layer)
-                if success:
-                    print(f"Successfully saved RGB to layer {layer}")
-                    self.update.emit()
-                else:
-                    print(f"Failed to save RGB to layer {layer}")
-            else:
-                print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
-
-    def block_signals(self):
-        """Override to ensure checkbox signals are properly blocked"""
-        super().block_signals()
-        # Extra safety - explicitly block the checkbox signal
-        self.layer_rgb_enable.blockSignals(True)
-        print("LayerRGBHandler: Signals blocked")
-
-    def unblock_signals(self):
-        """Override to ensure checkbox signals are properly unblocked"""
-        super().unblock_signals()
-        # Extra safety - explicitly unblock the checkbox signal
-        self.layer_rgb_enable.blockSignals(False)
-        print("LayerRGBHandler: Signals unblocked")
-
-    def show(self):
-        # Always show all widgets - no conditional visibility
-        for w in self.widgets:
-            w.show()
-
-    def hide(self):
-        # Always show all widgets - no hiding capability
-        for w in self.widgets:
-            w.show()
-
 class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
