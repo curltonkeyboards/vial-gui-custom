@@ -1140,64 +1140,6 @@ class RescanButtonHandler(BasicHandler):
         row = container.rowCount()
 
         # Centered rescan button
-        rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
-        rescan_button.clicked.connect(self.on_rescan_led_positions)
-        rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
-        rescan_button.setMinimumHeight(30)
-        
-        # Center the button using a horizontal layout
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        button_layout.addWidget(rescan_button)
-        button_layout.addStretch()
-        
-        button_widget = QWidget()
-        button_widget.setLayout(button_layout)
-        container.addWidget(button_widget, row, 0, 1, 2)
-
-        self.widgets = [button_widget]
-
-    def update_from_keyboard(self):
-        # No updates needed for this button
-        pass
-
-    def valid(self):
-        # Always show the rescan button
-        return isinstance(self.device, VialKeyboard)
-
-    def on_rescan_led_positions(self):
-        """Rescan LED positions and force RGB state refresh"""
-        try:
-            if hasattr(self.device.keyboard, 'rescan_led_positions'):
-                self.device.keyboard.rescan_led_positions()
-                print("Rescan LED command sent")
-                
-                # Wait for firmware to finish intensive processing
-                import time
-                time.sleep(1.0)
-                
-                # Force a complete RGB reload to clear any corrupted cached state
-                self.device.keyboard.reload_rgb()
-                
-                # Force GUI update with fresh data
-                # Find the RGB configurator and update it
-                if hasattr(self, 'parent') and hasattr(self.parent, 'update_from_keyboard'):
-                    self.parent.update_from_keyboard()
-                    
-            else:
-                print("Rescan LED method not available")
-        except Exception as e:
-            print(f"Error sending rescan LED command: {e}")
-
-class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
-
-    def __init__(self, container):
-        super().__init__(container)
-
-        row = container.rowCount()
-
-        # Centered rescan button
         self.rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
         self.rescan_button.clicked.connect(self.on_rescan_led_positions)
         self.rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
@@ -1327,6 +1269,175 @@ class RescanButtonHandler(BasicHandler):
         except Exception as e:
             print(f"Error restoring button: {e}")
             
+class LayerRGBHandler(BasicHandler):
+    """Handler for per-layer RGB functionality - always shows all buttons"""
+
+    def __init__(self, container):
+        super().__init__(container)
+
+        row = container.rowCount()
+
+        # Enable per-layer RGB checkbox
+        self.lbl_layer_rgb_enable = QLabel(tr("RGBConfigurator", "Enable Per-Layer RGB"))
+        container.addWidget(self.lbl_layer_rgb_enable, row, 0)
+        self.layer_rgb_enable = QCheckBox()
+        self.layer_rgb_enable.stateChanged.connect(self.on_layer_rgb_enable_changed)
+        container.addWidget(self.layer_rgb_enable, row, 1)
+
+        # Layer buttons container
+        self.lbl_layer_buttons = QLabel(tr("RGBConfigurator", "Save RGB to Layer"))
+        container.addWidget(self.lbl_layer_buttons, row + 1, 0)
+        
+        # Create a grid layout for layer buttons (3 rows x 4 columns)
+        self.layer_buttons_widget = QWidget()
+        self.layer_buttons_layout = QGridLayout(self.layer_buttons_widget)
+        self.layer_buttons_layout.setContentsMargins(0, 0, 0, 0)
+        self.layer_buttons_layout.setSpacing(2)  # Smaller spacing between buttons
+        container.addWidget(self.layer_buttons_widget, row + 1, 1)
+
+        self.layer_buttons = []
+        self.per_layer_enabled = False
+        self.initial_load_complete = False  # Track if we've done the initial load
+        self.user_set_state = None  # Track what the user manually set
+
+        self.widgets = [self.lbl_layer_rgb_enable, self.layer_rgb_enable, 
+                       self.lbl_layer_buttons, self.layer_buttons_widget]
+
+        # Create initial buttons (they will be updated when device connects)
+        self.create_layer_buttons()
+
+    def create_layer_buttons(self):
+        """Create buttons for each layer in a 3x4 grid - always create 12 buttons regardless of layer count"""
+        # Clear existing buttons
+        for button in self.layer_buttons:
+            button.setParent(None)
+        self.layer_buttons.clear()
+
+        # Always create 12 buttons for 3x4 grid regardless of layer count
+        for layer in range(12):
+            button = QPushButton(f"Layer {layer}")
+            button.clicked.connect(lambda checked, l=layer: self.on_save_to_layer(l))
+            button.setEnabled(self.per_layer_enabled)
+            button.setMaximumWidth(80)  # Set a reasonable button width
+            button.setMinimumWidth(60)  # Minimum width for readability
+            
+            # Calculate row and column for 3x4 grid
+            row = layer // 4  # 4 buttons per row
+            col = layer % 4   # Column position within row
+            
+            self.layer_buttons_layout.addWidget(button, row, col)
+            self.layer_buttons.append(button)
+
+    def update_from_keyboard(self):
+        """Update from keyboard - NEVER update checkbox after initial load"""
+        if not self.valid():
+            return
+
+        # Block signals to prevent triggering state change events during update
+        self.block_signals()
+
+        # Only update checkbox state on the very first load
+        # After that, NEVER touch the checkbox regardless of keyboard state
+        if not self.initial_load_complete:
+            print("LayerRGBHandler: Initial load - checking keyboard state")
+            # Try to get per-layer RGB status if methods exist
+            if hasattr(self.device.keyboard, 'get_layer_rgb_status'):
+                try:
+                    status = self.device.keyboard.get_layer_rgb_status()
+                    if status is not None:
+                        keyboard_state = bool(status)
+                        self.per_layer_enabled = keyboard_state
+                        self.user_set_state = keyboard_state  # Initialize user state
+                        print(f"Initial layer RGB status from keyboard: {keyboard_state}")
+                        # Set checkbox state ONLY on initial load
+                        self.layer_rgb_enable.setChecked(self.per_layer_enabled)
+                    else:
+                        self.per_layer_enabled = False
+                        self.user_set_state = False
+                        print("No initial layer RGB status data received")
+                        self.layer_rgb_enable.setChecked(False)
+                except Exception as e:
+                    print(f"Error getting initial layer RGB status: {e}")
+                    self.per_layer_enabled = False
+                    self.user_set_state = False
+                    self.layer_rgb_enable.setChecked(False)
+            else:
+                # Default values for testing when keyboard methods aren't implemented yet
+                self.per_layer_enabled = False
+                self.user_set_state = False
+                print("Layer RGB methods not implemented on keyboard")
+                self.layer_rgb_enable.setChecked(False)
+
+            self.initial_load_complete = True
+        else:
+            # On subsequent updates (e.g., when other RGB settings change),
+            # COMPLETELY IGNORE keyboard state and preserve checkbox as-is
+            print("LayerRGBHandler: Subsequent update - completely ignoring keyboard state, preserving checkbox")
+            # Don't touch the checkbox at all - let it stay exactly as the user set it
+            # Just update our internal state to match the checkbox
+            self.per_layer_enabled = self.layer_rgb_enable.isChecked()
+        
+        # Always recreate buttons to ensure they're in sync with current checkbox state
+        self.create_layer_buttons()
+
+        # Unblock signals after update is complete
+        self.unblock_signals()
+
+    def valid(self):
+        # Always return True so buttons are always shown
+        return isinstance(self.device, VialKeyboard)
+
+    def on_layer_rgb_enable_changed(self, checked):
+        self.per_layer_enabled = checked
+        
+        # Try to call the keyboard method if it exists
+        if hasattr(self.device.keyboard, 'set_layer_rgb_enable'):
+            self.device.keyboard.set_layer_rgb_enable(checked)
+        else:
+            print(f"Layer RGB enable changed to: {checked} (keyboard method not implemented yet)")
+        
+        # Enable/disable layer buttons
+        for button in self.layer_buttons:
+            button.setEnabled(checked)
+
+    def on_save_to_layer(self, layer):
+        """Save current RGB settings to specified layer"""
+        if self.per_layer_enabled:
+            # Try to call the keyboard method if it exists
+            if hasattr(self.device.keyboard, 'save_rgb_to_layer'):
+                success = self.device.keyboard.save_rgb_to_layer(layer)
+                if success:
+                    print(f"Successfully saved RGB to layer {layer}")
+                    self.update.emit()
+                else:
+                    print(f"Failed to save RGB to layer {layer}")
+            else:
+                print(f"Save RGB to layer {layer} (keyboard method not implemented yet)")
+
+    def block_signals(self):
+        """Override to ensure checkbox signals are properly blocked"""
+        super().block_signals()
+        # Extra safety - explicitly block the checkbox signal
+        self.layer_rgb_enable.blockSignals(True)
+        print("LayerRGBHandler: Signals blocked")
+
+    def unblock_signals(self):
+        """Override to ensure checkbox signals are properly unblocked"""
+        super().unblock_signals()
+        # Extra safety - explicitly unblock the checkbox signal
+        self.layer_rgb_enable.blockSignals(False)
+        print("LayerRGBHandler: Signals unblocked")
+
+    def show(self):
+        # Always show all widgets - no conditional visibility
+        for w in self.widgets:
+            w.show()
+
+    def hide(self):
+        # Always show all widgets - no hiding capability
+        for w in self.widgets:
+            w.show()
+
 class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
