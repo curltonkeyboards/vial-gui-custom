@@ -2056,19 +2056,21 @@ class RGBConfigurator(BasicEditor):
             h.unblock_signals()
 
     def update_from_keyboard(self):
-        """Load current state - SIMPLIFIED to only track current slot"""
-        self.block_signals()
+        self.device.keyboard.reload_rgb()
         
-        try:
-            # Always load EEPROM state for current tab (tab switching behavior)
-            current_slot = self.get_current_slot_index()
-            self.load_slot_from_eeprom(current_slot)
-            
-            print(f"Updated from keyboard: loaded EEPROM for tab slot {current_slot}")
-            
-        except Exception as e:
-            print(f"Error in update_from_keyboard: {e}")
-            
+        # Check for layer RGB support
+        if hasattr(self.device.keyboard, 'reload_layer_rgb_support'):
+            self.device.keyboard.reload_layer_rgb_support()
+
+        # Check for custom lights support  
+        if hasattr(self.device.keyboard, 'reload_custom_lights_support'):
+            self.device.keyboard.reload_custom_lights_support()
+
+        self.block_signals()
+
+        for h in self.handlers:
+            h.update_from_keyboard()
+
         self.unblock_signals()
 
     def rebuild(self, device):
