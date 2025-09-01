@@ -210,131 +210,25 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Heatmap", "index": 6},
         {"name": "Heatmap 2", "index": 7}
     ],
-    "Column": [
-        {"name": "Column Short", "index": 8},
-        {"name": "Column Short Solo", "index": 9}
+    "Columns": [
+        {"name": "Column", "index": 8},
+        {"name": "Column Solo", "index": 9}
     ],
-    "Row": [
-        {"name": "Row Short", "index": 10},
-        {"name": "Row Short Solo", "index": 11}
-    ],
-    "Cross": [
-        {"name": "Cross Short", "index": 12},
-        {"name": "Cross Short Solo", "index": 13},
-        {"name": "Criss Cross", "index": 14},
-        {"name": "Criss Cross Solo", "index": 15}
-    ],
-    "Horizontal Dots": [
-        {"name": "Horizontal Dots Short", "index": 16},
-        {"name": "Horizontal Dots Short Solo", "index": 17},
-        {"name": "Horizontal Dots Long", "index": 18},
-        {"name": "Horizontal Dots Long Solo", "index": 19},
-        {"name": "Horizontal Dots Short Reverse", "index": 106},
-        {"name": "Horizontal Dots Short Reverse Solo", "index": 107},
-        {"name": "Horizontal Dots Long Reverse", "index": 108},
-        {"name": "Horizontal Dots Long Reverse Solo", "index": 109}
-    ],
-    "Vertical Dots": [
-        {"name": "Vertical Dots Short", "index": 20},
-        {"name": "Vertical Dots Short Solo", "index": 21},
-        {"name": "Vertical Dots Long", "index": 22},
-        {"name": "Vertical Dots Long Solo", "index": 23},
-        {"name": "Vertical Dots Short Reverse", "index": 110},
-        {"name": "Vertical Dots Short Reverse Solo", "index": 111},
-        {"name": "Vertical Dots Long Reverse", "index": 112},
-        {"name": "Vertical Dots Long Reverse Solo", "index": 113}
-    ],
-    "Diagonal Dots": [
-        {"name": "Diagonal Dots 1", "index": 24},
-        {"name": "Diagonal Dots 1 Solo", "index": 25},
-        {"name": "Diagonal Dots 2", "index": 26},
-        {"name": "Diagonal Dots 2 Solo", "index": 27}
-    ],
-    "Cross Dots": [
-        {"name": "Cross Dots Short", "index": 28},
-        {"name": "Cross Dots Short Solo", "index": 29},
-        {"name": "Cross Dots Long", "index": 30},
-        {"name": "Cross Dots Long Solo", "index": 31}
-    ],
-    "Diagonal Burst": [
-        {"name": "Diagonal Burst", "index": 32},
-        {"name": "Diagonal Burst Solo", "index": 33}
-    ],
-    "Criss Cross Dots": [
-        {"name": "Criss Cross Dots", "index": 34},
-        {"name": "Criss Cross Dots Solo", "index": 35}
-    ],
-    "Ripple": [
-        {"name": "Ripple Small", "index": 36},
-        {"name": "Ripple Small Solo", "index": 37},
-        {"name": "Ripple Med", "index": 38},
-        {"name": "Ripple Med Solo", "index": 39},
-        {"name": "Ripple Large", "index": 40},
-        {"name": "Ripple Large Solo", "index": 41},
-        {"name": "Ripple Massive", "index": 42},
-        {"name": "Ripple Massive Solo", "index": 43}
-    ],
-    "Reverse Ripple": [
-        {"name": "Reverse Ripple Small", "index": 44},
-        {"name": "Reverse Ripple Small Solo", "index": 48},
-        {"name": "Reverse Ripple Med", "index": 45},
-        {"name": "Reverse Ripple Med Solo", "index": 49},
-        {"name": "Reverse Ripple Large", "index": 46},
-        {"name": "Reverse Ripple Large Solo", "index": 50},
-        {"name": "Reverse Ripple Massive", "index": 47},
-        {"name": "Reverse Ripple Massive Solo", "index": 51}
+    "Rows": [
+        {"name": "Row", "index": 10},
+        {"name": "Row Solo", "index": 11}
     ],
     "Expanding Row": [
-        {"name": "Expanding Row Short", "index": 52},
-        {"name": "Expanding Row Short Solo", "index": 53},
-        {"name": "Expanding Row Long", "index": 54},
-        {"name": "Expanding Row Long Solo", "index": 55}
+        {"name": "Growing Row Short", "index": 52},
+        {"name": "Growing Row Short Solo", "index": 53},
+        {"name": "Growing Row Long", "index": 54},
+        {"name": "Growing Row Long Solo", "index": 55}
     ],
     "Expanding Column": [
-        {"name": "Expanding Column Short", "index": 56},
-        {"name": "Expanding Column Short Solo", "index": 57},
-        {"name": "Expanding Column Long", "index": 58},
-        {"name": "Expanding Column Long Solo", "index": 59}
-    ],
-    "Outward Burst": [
-        {"name": "Outward Burst Small", "index": 60},
-        {"name": "Outward Burst Small Solo", "index": 61},
-        {"name": "Outward Burst Med", "index": 62},
-        {"name": "Outward Burst Med Solo", "index": 63},
-        {"name": "Outward Burst Large", "index": 64},
-        {"name": "Outward Burst Large Solo", "index": 65}
-    ],
-        "Inward Burst": [
-        {"name": "Inward Burst Small", "index": 166},
-        {"name": "Inward Burst Small Solo", "index": 167},
-        {"name": "Inward Burst Med", "index": 168},
-        {"name": "Inward Burst Med Solo", "index": 169},
-        {"name": "Inward Burst Large", "index": 170},
-        {"name": "Inward Burst Large Solo", "index": 171}
-    ],
-    "Volume Column": [
-        {"name": "Volume Column Small", "index": 66},
-        {"name": "Volume Column Small Solo", "index": 67},
-        {"name": "Volume Column Small Wide", "index": 68},
-        {"name": "Volume Column Small Wide Solo", "index": 69},
-        {"name": "Volume Column Large", "index": 70},
-        {"name": "Volume Column Large Solo", "index": 71},
-        {"name": "Volume Column Large Wide", "index": 72},
-        {"name": "Volume Column Large Wide Solo", "index": 73}
-    ],
-    "Volume Row": [
-        {"name": "Volume Row Small", "index": 74},
-        {"name": "Volume Row Small Solo", "index": 75},
-        {"name": "Volume Row Small Wide", "index": 76},
-        {"name": "Volume Row Small Wide Solo", "index": 77},
-        {"name": "Volume Row Med", "index": 78},
-        {"name": "Volume Row Med Solo", "index": 79},
-        {"name": "Volume Row Med Wide", "index": 80},
-        {"name": "Volume Row Med Wide Solo", "index": 81},
-        {"name": "Volume Row Large", "index": 82},
-        {"name": "Volume Row Large Solo", "index": 83},
-        {"name": "Volume Row Large Wide", "index": 84},
-        {"name": "Volume Row Large Wide Solo", "index": 85}
+        {"name": "Growing Column Short", "index": 56},
+        {"name": "Growing Column Short Solo", "index": 57},
+        {"name": "Growing Column Long", "index": 58},
+        {"name": "Growing Column Long Solo", "index": 59}
     ],
     "Collapsing Column": [
         {"name": "Collapsing Column Small", "index": 86},
@@ -360,67 +254,181 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Collapsing Row Large Wide", "index": 104},
         {"name": "Collapsing Row Large Wide Solo", "index": 105}
     ],
-    "3-Pixel Columns": [
-        {"name": "3-Pixel Columns Expand", "index": 114},
-        {"name": "3-Pixel Columns Expand Solo", "index": 115},
-        {"name": "3-Pixel Columns Expand No Fade", "index": 116},
-        {"name": "3-Pixel Columns Expand No Fade Solo", "index": 117},
-        {"name": "3-Pixel Columns Reverse", "index": 118},
-        {"name": "3-Pixel Columns Reverse Solo", "index": 119},
-        {"name": "3-Pixel Columns Reverse No Fade", "index": 120},
-        {"name": "3-Pixel Columns Reverse No Fade Solo", "index": 121}
+    "Crosses": [
+        {"name": "Cross Short", "index": 12},
+        {"name": "Cross Short Solo", "index": 13},
+        {"name": "Criss Cross", "index": 14},
+        {"name": "Criss Cross Solo", "index": 15}
     ],
-    "3-Pixel Rows": [
-        {"name": "3-Pixel Rows Expand", "index": 122},
-        {"name": "3-Pixel Rows Expand Solo", "index": 123},
-        {"name": "3-Pixel Rows Expand No Fade", "index": 124},
-        {"name": "3-Pixel Rows Expand No Fade Solo", "index": 125},
-        {"name": "3-Pixel Rows Reverse", "index": 126},
-        {"name": "3-Pixel Rows Reverse Solo", "index": 127},
-        {"name": "3-Pixel Rows Reverse No Fade", "index": 128},
-        {"name": "3-Pixel Rows Reverse No Fade Solo", "index": 129}
+    "Side Dots": [
+        {"name": "Side Dots Short", "index": 16},
+        {"name": "Side Dots Short Solo", "index": 17},
+        {"name": "Side Dots Long", "index": 18},
+        {"name": "Side Dots Long Solo", "index": 19},
+        {"name": "Side Dots Short Reverse", "index": 106},
+        {"name": "Side Dots Short Reverse Solo", "index": 107},
+        {"name": "Side Dots Long Reverse", "index": 108},
+        {"name": "Side Dots Long Reverse Solo", "index": 109}
     ],
-    "8-Pixel Columns": [
-        {"name": "8-Pixel Columns Expand", "index": 130},
-        {"name": "8-Pixel Columns Expand Solo", "index": 131},
-        {"name": "8-Pixel Columns Expand No Fade", "index": 132},
-        {"name": "8-Pixel Columns Expand No Fade Solo", "index": 133},
-        {"name": "8-Pixel Columns Reverse", "index": 134},
-        {"name": "8-Pixel Columns Reverse Solo", "index": 135},
-        {"name": "8-Pixel Columns Reverse No Fade", "index": 136},
-        {"name": "8-Pixel Columns Reverse No Fade Solo", "index": 137}
+        
+    "Side Dots Large": [
+        {"name": "Side Dots Large", "index": 114},
+        {"name": "Side Dots Large Solo", "index": 115},
+        {"name": "Side Dots Large Long", "index": 116},
+        {"name": "Side Dots Large Long Solo", "index": 117},
+        {"name": "Side Dots Large Reverse", "index": 118},
+        {"name": "Side Dots Large Reverse Solo", "index": 119},
+        {"name": "Side Dots Large Reverse Long", "index": 120},
+        {"name": "Side Dots Large Reverse Long Solo", "index": 121}
     ],
-    "8-Pixel Rows": [
-        {"name": "8-Pixel Rows Expand", "index": 138},
-        {"name": "8-Pixel Rows Expand Solo", "index": 139},
-        {"name": "8-Pixel Rows Expand No Fade", "index": 140},
-        {"name": "8-Pixel Rows Expand No Fade Solo", "index": 141},
-        {"name": "8-Pixel Rows Reverse", "index": 142},
-        {"name": "8-Pixel Rows Reverse Solo", "index": 143},
-        {"name": "8-Pixel Rows Reverse No Fade", "index": 144},
-        {"name": "8-Pixel Rows Reverse No Fade Solo", "index": 145}
+    
+    "Up/Down Dots": [
+        {"name": "Up/Down Dots Short", "index": 20},
+        {"name": "Up/Down Dots Short Solo", "index": 21},
+        {"name": "Up/Down Dots Long", "index": 22},
+        {"name": "Up/Down Dots Long Solo", "index": 23},
+        {"name": "Up/Down Dots Short Reverse", "index": 110},
+        {"name": "Up/Down Dots Short Reverse Solo", "index": 111},
+        {"name": "Up/Down Dots Long Reverse", "index": 112},
+        {"name": "Up/Down Dots Long Reverse Solo", "index": 113}
     ],
-    "All Orthogonal": [
-        {"name": "All Orthogonal Dots Reverse", "index": 146},
-        {"name": "All Orthogonal Dots Reverse Solo", "index": 147},
-        {"name": "All Orthogonal Dots Reverse No Fade", "index": 148},
-        {"name": "All Orthogonal Dots Reverse No Fade Solo", "index": 149},
-        {"name": "All Orthogonal 3-Pixel Expand", "index": 150},
-        {"name": "All Orthogonal 3-Pixel Expand Solo", "index": 151},
-        {"name": "All Orthogonal 3-Pixel Expand No Fade", "index": 152},
-        {"name": "All Orthogonal 3-Pixel Expand No Fade Solo", "index": 153},
-        {"name": "All Orthogonal 3-Pixel Reverse", "index": 154},
-        {"name": "All Orthogonal 3-Pixel Reverse Solo", "index": 155},
-        {"name": "All Orthogonal 3-Pixel Reverse No Fade", "index": 156},
-        {"name": "All Orthogonal 3-Pixel Reverse No Fade Solo", "index": 157},
-        {"name": "All Orthogonal 8-Pixel Expand", "index": 158},
-        {"name": "All Orthogonal 8-Pixel Expand Solo", "index": 159},
-        {"name": "All Orthogonal 8-Pixel Expand No Fade", "index": 160},
-        {"name": "All Orthogonal 8-Pixel Expand No Fade Solo", "index": 161},
-        {"name": "All Orthogonal 8-Pixel Reverse", "index": 162},
-        {"name": "All Orthogonal 8-Pixel Reverse Solo", "index": 163},
-        {"name": "All Orthogonal 8-Pixel Reverse No Fade", "index": 164},
-        {"name": "All Orthogonal 8-Pixel Reverse No Fade Solo", "index": 165}
+
+    "Up/Down Dots Large": [
+        {"name": "Up/Down Dots Large", "index": 122},
+        {"name": "Up/Down Dots Large Solo", "index": 123},
+        {"name": "Up/Down Dots Large Long", "index": 124},
+        {"name": "Up/Down Dots Large Long Solo", "index": 125},
+        {"name": "Up/Down Dots Large Reverse", "index": 126},
+        {"name": "Up/Down Dots Large Reverse Solo", "index": 127},
+        {"name": "Up/Down Dots Large Reverse Long", "index": 128},
+        {"name": "Up/Down Dots Large Reverse Long Solo", "index": 129}
+    ],
+    
+    "Diagonal Dots": [
+        {"name": "Diagonal Dots 1", "index": 24},
+        {"name": "Diagonal Dots 1 Solo", "index": 25},
+        {"name": "Diagonal Dots 2", "index": 26},
+        {"name": "Diagonal Dots 2 Solo", "index": 27}
+    ],
+    
+    "Diagonal Dots Large": [
+        {"name": "Diagonal Burst", "index": 32},
+        {"name": "Diagonal Burst Solo", "index": 33}
+        {"name": "Criss Cross Dots", "index": 34},
+        {"name": "Criss Cross Dots Solo", "index": 35}
+    ],
+    
+    "Cross Dots": [
+        {"name": "Cross Dots Short", "index": 28},
+        {"name": "Cross Dots Short Solo", "index": 29},
+        {"name": "Cross Dots Long", "index": 30},
+        {"name": "Cross Dots Long Solo", "index": 31}
+        {"name": "Cross Dots Reverse", "index": 146},
+        {"name": "Cross Dots Reverse Solo", "index": 147},
+        {"name": "Cross Dots Reverse Long", "index": 148},
+        {"name": "Cross Dots Reverse Long Solo", "index": 149},
+    ],
+
+    "Cross Dots Large": [    
+        {"name": "Cross Dots Large", "index": 150},
+        {"name": "Cross Dots Large Solo", "index": 151},
+        {"name": "Cross Dots Long Large", "index": 152},
+        {"name": "Cross Dots Long Large Solo", "index": 153},
+        {"name": "Cross Dots Large Reverse", "index": 154},
+        {"name": "Cross Dots Large Reverse Solo", "index": 155},
+        {"name": "Cross Dots Long Reverse Large", "index": 156},
+        {"name": "Cross Dots Long Reverse Large Solo", "index": 157},
+    ],
+
+    "Ripple": [
+        {"name": "Ripple Small", "index": 36},
+        {"name": "Ripple Small Solo", "index": 37},
+        {"name": "Ripple Med", "index": 38},
+        {"name": "Ripple Med Solo", "index": 39},
+        {"name": "Ripple Large", "index": 40},
+        {"name": "Ripple Large Solo", "index": 41},
+        {"name": "Ripple Massive", "index": 42},
+        {"name": "Ripple Massive Solo", "index": 43}
+    ],
+    "Target": [
+        {"name": "Target Small", "index": 44},
+        {"name": "Target Small Solo", "index": 48},
+        {"name": "Target Med", "index": 45},
+        {"name": "Target Med Solo", "index": 49},
+        {"name": "Target Large", "index": 46},
+        {"name": "Target Large Solo", "index": 50},
+        {"name": "Target Massive", "index": 47},
+        {"name": "Target Massive Solo", "index": 51}
+    ],
+    "Firework": [
+        {"name": "Firework Small", "index": 60},
+        {"name": "Firework Small Solo", "index": 61},
+        {"name": "Firework Med", "index": 62},
+        {"name": "Firework Med Solo", "index": 63},
+        {"name": "Firework Large", "index": 64},
+        {"name": "Firework Large Solo", "index": 65}
+    ],
+    "Collapsing Star": [
+        {"name": "Collapsing Star Small", "index": 166},
+        {"name": "Collapsing Star Small Solo", "index": 167},
+        {"name": "Collapsing Star Med", "index": 168},
+        {"name": "Collapsing Star Med Solo", "index": 169},
+        {"name": "Collapsing Star Large", "index": 170},
+        {"name": "Collapsing Star Large Solo", "index": 171}
+    ],
+    "Volume Bars": [
+        {"name": "Volume Bars Small", "index": 66},
+        {"name": "Volume Bars Small Solo", "index": 67},
+        {"name": "Volume Bars Small Wide", "index": 68},
+        {"name": "Volume Bars Small Wide Solo", "index": 69},
+        {"name": "Volume Bars Large", "index": 70},
+        {"name": "Volume Bars Large Solo", "index": 71},
+        {"name": "Volume Bars Large Wide", "index": 72},
+        {"name": "Volume Bars Large Wide Solo", "index": 73}
+    ],
+    "Volume Rows": [
+        {"name": "Volume Rows Small", "index": 74},
+        {"name": "Volume Rows Small Solo", "index": 75},
+        {"name": "Volume Rows Small Wide", "index": 76},
+        {"name": "Volume Rows Small Wide Solo", "index": 77},
+        {"name": "Volume Rows Med", "index": 78},
+        {"name": "Volume Rows Med Solo", "index": 79},
+        {"name": "Volume Rows Med Wide", "index": 80},
+        {"name": "Volume Rows Med Wide Solo", "index": 81},
+        {"name": "Volume Rows Large", "index": 82},
+        {"name": "Volume Rows Large Solo", "index": 83},
+        {"name": "Volume Rows Large Wide", "index": 84},
+        {"name": "Volume Rows Large Wide Solo", "index": 85}
+    ],
+    "Side Lines": [
+        {"name": "Side Lines", "index": 130},
+        {"name": "Side Lines Solo", "index": 131},
+        {"name": "Side Lines Long", "index": 132},
+        {"name": "Side Lines Long Solo", "index": 133},
+        {"name": "Side Lines Reverse", "index": 134},
+        {"name": "Side Lines Reverse Solo", "index": 135},
+        {"name": "Side Lines Reverse Long", "index": 136},
+        {"name": "Side Lines Reverse Long Solo", "index": 137}
+    ],
+    "Up/Down Lines": [
+        {"name": "Up/Down Lines", "index": 138},
+        {"name": "Up/Down Lines Solo", "index": 139},
+        {"name": "Up/Down Lines Long", "index": 140},
+        {"name": "Up/Down Lines Long Solo", "index": 141},
+        {"name": "Up/Down Lines Reverse", "index": 142},
+        {"name": "Up/Down Lines Reverse Solo", "index": 143},
+        {"name": "Up/Down Lines Reverse Long", "index": 144},
+        {"name": "Up/Down Lines Reverse Long Solo", "index": 145}
+    ],
+    "Cross Lines": [
+        {"name": "Cross Lines", "index": 158},
+        {"name": "Cross Lines Solo", "index": 159},
+        {"name": "Cross Lines Long", "index": 160},
+        {"name": "Cross Lines Long Solo", "index": 161},
+        {"name": "Cross Lines Reverse", "index": 162},
+        {"name": "Cross Lines Reverse Solo", "index": 163},
+        {"name": "Cross Lines Reverse Long", "index": 164},
+        {"name": "Cross Lines Reverse Long Solo", "index": 165}
     ]
 }
 
@@ -588,19 +596,32 @@ LIVE_STYLES_HIERARCHY = {
     "Basic Positions": [
         {"name": "TrueKey", "index": 0},
         {"name": "Zone", "index": 1},
-        {"name": "Quadrant", "index": 2},
+        {"name": "Zone 2", "index": 23},
+        {"name": "Zone 3", "index": 24},
+    ],
+    "Count to 8": [
+        {"name": "Count to 8", "index": 25},
+    ],
+    "Pitch Mapping": [
+        {"name": "Pitch Mapping 1", "index": 26},
+        {"name": "Pitch Mapping 2", "index": 27},
+        {"name": "Pitch Mapping 3", "index": 28},
+        {"name": "Pitch Mapping 4", "index": 29},
+    ],
+    "Region-Based": [
+        {"name": "Center Zones", "index": 2},
+        {"name": "Center Block", "index": 31},
+        {"name": "Snake", "index": 30},
     ],
     "Note Row Positions": [
-        {"name": "Note Row Left", "index": 3},
-        {"name": "Note Row Right", "index": 4},
-        {"name": "Note Row Center", "index": 5},
-        {"name": "Note Row Mixed", "index": 9},
-    ],
-    "Note Column Positions": [
-        {"name": "Note Col Top", "index": 6},
-        {"name": "Note Col Bottom", "index": 7},
-        {"name": "Note Col Center", "index": 8},
-        {"name": "Note Col Mixed", "index": 10},
+        {"name": "Left Edge", "index": 3},
+        {"name": "Right Edge", "index": 4},
+        {"name": "Top Edge", "index": 6},
+        {"name": "Bottom Edge", "index": 7},
+        {"name": "Left and Right Edges", "index": 9},
+        {"name": "Top and Bottom Edges", "index": 10},
+        {"name": "Middle Row", "index": 8}, 
+        {"name": "Middle Column", "index": 5},            
     ],
     "Single Dots": [
         {"name": "Top Dot", "index": 11},
@@ -613,11 +634,13 @@ LIVE_STYLES_HIERARCHY = {
         {"name": "Bottom Left Dot", "index": 18},
         {"name": "Bottom Right Dot", "index": 19},
     ],
-    "Note-Based Dots": [
-        {"name": "Note Corner Dots", "index": 20},
-        {"name": "Note Edge Dots", "index": 21},
-        {"name": "Note All Dots", "index": 22},
-    ]
+    "Group Dots": [
+        {"name": "Corner Dots", "index": 20},
+        {"name": "Edge Dots", "index": 21},
+        {"name": "All Dots", "index": 22},
+        {"name": "Close Dots 1", "index": 32},
+        {"name": "Close Dots 2", "index": 33},
+    ],
 }
 
 # Hierarchical structure for macro positioning styles
@@ -625,34 +648,48 @@ MACRO_STYLES_HIERARCHY = {
     "Basic Positions": [
         {"name": "TrueKey", "index": 0},
         {"name": "Zone", "index": 1},
-        {"name": "Quadrant", "index": 2},
+        {"name": "Zone 2", "index": 34},
+        {"name": "Zone 3", "index": 35},
+    ],
+
+    "Count to 8": [
+        {"name": "Count to 8", "index": 36},
+        {"name": "Loop Count to 8", "index": 37},
+    ],
+    "Pitch Mapping": [
+        {"name": "Pitch Mapping 1", "index": 38},
+        {"name": "Pitch Mapping 2", "index": 39},
+        {"name": "Pitch Mapping 3", "index": 40},
+        {"name": "Pitch Mapping 4", "index": 41},
+    ],
+
+    "Region-Based": [
+        {"name": "Loop Quadrant Corners", "index": 2},
+        {"name": "Loop Quadrant Central", "index": 44},
+        {"name": "Loop Blocks", "index": 18},
+        {"name": "Center Block Small", "index": 19},
+        {"name": "Center Block Large", "index": 43},   
+        {"name": "Snake", "index": 42},        
     ],
     "Note Row Positions": [
-        {"name": "Note Row Left", "index": 3},
-        {"name": "Note Row Right", "index": 4},
-        {"name": "Note Row Center", "index": 5},
-        {"name": "Note Row Mixed", "index": 9},
-    ],
-    "Note Column Positions": [
-        {"name": "Note Col Top", "index": 6},
-        {"name": "Note Col Bottom", "index": 7},
-        {"name": "Note Col Center", "index": 8},
-        {"name": "Note Col Mixed", "index": 10},
+        {"name": "Left Edge", "index": 3},
+        {"name": "Right Edge", "index": 4},
+        {"name": "Top Edge", "index": 6},
+        {"name": "Bottom Edge", "index": 7},
+        {"name": "Left and Right Edges", "index": 9},
+        {"name": "Top and Bottom Edges", "index": 10},
+        {"name": "Middle Row", "index": 8},
+        {"name": "Middle Column", "index": 5},
+
     ],
     "Loop Row Positions": [
-        {"name": "Loop Row Left", "index": 11},
-        {"name": "Loop Row Right", "index": 12},
-        {"name": "Loop Row Center", "index": 13},
-        {"name": "Loop Row Alt", "index": 14},
-    ],
-    "Loop Column Positions": [
-        {"name": "Loop Col Top", "index": 15},
-        {"name": "Loop Col Bottom", "index": 16},
-        {"name": "Loop Col Center", "index": 17},
-    ],
-    "Loop Blocks": [
-        {"name": "Loop Block 3x3", "index": 18},
-        {"name": "Loop Block Center", "index": 19},
+        {"name": "Loop Left Edge", "index": 11},
+        {"name": "Loop Right Edge", "index": 12},
+        {"name": "Loop Top Edge", "index": 15},
+        {"name": "Loop Bottom Edge", "index": 16},
+        {"name": "Loop Middle Row", "index": 17},
+        {"name": "Loop Middle Column", "index": 13},
+        {"name": "Loop Left and Right Edges", "index": 14},
     ],
     "Single Dots": [
         {"name": "Top Dot", "index": 20},
@@ -665,18 +702,41 @@ MACRO_STYLES_HIERARCHY = {
         {"name": "Bottom Left Dot", "index": 27},
         {"name": "Bottom Right Dot", "index": 28},
     ],
-    "Note-Based Dots": [
-        {"name": "Note Corner Dots", "index": 29},
-        {"name": "Note Edge Dots", "index": 30},
-        {"name": "Note All Dots", "index": 31},
-    ],
-    "Loop-Based Dots": [
+
+    "Group Dots": [
+        {"name": "Corner Dots", "index": 29},
+        {"name": "Edge Dots", "index": 30},
         {"name": "Loop Corner Dots", "index": 32},
         {"name": "Loop Edge Dots", "index": 33},
-    ]
+        {"name": "All Dots", "index": 31},        
+        {"name": "Close Dots 1", "index": 45},
+        {"name": "Close Dots 2", "index": 46},
+    ],
 }
 
 CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY = {
+    "Basic": [
+        {"name": "Synthwave", "index": 65},
+        {"name": "Ocean Depth", "index": 66},
+        {"name": "Sunset Horizon", "index": 67},
+        {"name": "Aurora Borealis", "index": 68},
+        {"name": "Forest Canopy", "index": 69},
+        {"name": "Desert Mirage", "index": 70},
+        {"name": "Volcanic Flow", "index": 71},
+        {"name": "Ice Crystal", "index": 72},
+        {"name": "Toxic Waste", "index": 73},
+        {"name": "Deep Space", "index": 74},
+        {"name": "Crystal Cave", "index": 75},
+        {"name": "Enchanted Forest", "index": 76},
+        {"name": "Rose Garden", "index": 77},
+        {"name": "Tropical Paradise", "index": 78},
+        {"name": "Cherry Blossom", "index": 79},
+        {"name": "Autumn Leaves", "index": 80},
+        {"name": "Neon City", "index": 81},
+        {"name": "Cyberpunk Alley", "index": 82},
+        {"name": "Matrix Code", "index": 83},
+        {"name": "Retro Arcade", "index": 84},
+    ],
     "Fundamentals": [
         {"name": "Base", "index": 0},
         {"name": "Channel", "index": 1},
@@ -1788,12 +1848,12 @@ class CustomLightsHandler(BasicHandler):
             
         widgets = self.slot_widgets[slot]
         widgets['live_effect'].setCurrentIndex(min(config[2], 171))
-        widgets['live_style'].setCurrentIndex(min(config[0], 23))
+        widgets['live_style'].setCurrentIndex(min(config[0], 33))
         widgets['macro_effect'].setCurrentIndex(min(config[3], 171))
-        widgets['macro_style'].setCurrentIndex(min(config[1], 34))
+        widgets['macro_style'].setCurrentIndex(min(config[1], 46))
         widgets['background'].setCurrentIndex(min(config[5], 121))
         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
-        widgets['color_type'].setCurrentIndex(min(config[7], 64))
+        widgets['color_type'].setCurrentIndex(min(config[7], 84))
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
