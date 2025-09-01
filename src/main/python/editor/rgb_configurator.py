@@ -313,7 +313,7 @@ LIVE_EFFECTS_HIERARCHY = {
     
     "Diagonal Dots Large": [
         {"name": "Diagonal Burst", "index": 32},
-        {"name": "Diagonal Burst Solo", "index": 33}
+        {"name": "Diagonal Burst Solo", "index": 33},
         {"name": "Criss Cross Dots", "index": 34},
         {"name": "Criss Cross Dots Solo", "index": 35}
     ],
@@ -322,7 +322,7 @@ LIVE_EFFECTS_HIERARCHY = {
         {"name": "Cross Dots Short", "index": 28},
         {"name": "Cross Dots Short Solo", "index": 29},
         {"name": "Cross Dots Long", "index": 30},
-        {"name": "Cross Dots Long Solo", "index": 31}
+        {"name": "Cross Dots Long Solo", "index": 31},
         {"name": "Cross Dots Reverse", "index": 146},
         {"name": "Cross Dots Reverse Solo", "index": 147},
         {"name": "Cross Dots Reverse Long", "index": 148},
