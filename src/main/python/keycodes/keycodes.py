@@ -3092,6 +3092,21 @@ KEYCODES_LOOP_BUTTONS = [
     K("DM_SAVE_3", "Save\nLoop 3", "Save loop 3 to file"),
     K("DM_SAVE_4", "Save\nLoop 4", "Save loop 4 to file"),
     K("DM_SAVE_ALL", "Save\nAll", "Save all loops to file"),
+        
+    # Advanced overdub operations
+    K("DM_ADVANCED_OVERDUB", "Advanced\nOverdub", "Advanced overdub operation"),
+
+    # Overdub operations
+    K("DM_OVERDUB_1", "Overdub\nLoop 1", "Overdub loop 1"),
+    K("DM_OVERDUB_2", "Overdub\nLoop 2", "Overdub loop 2"),
+    K("DM_OVERDUB_3", "Overdub\nLoop 3", "Overdub loop 3"),
+    K("DM_OVERDUB_4", "Overdub\nLoop 4", "Overdub loop 4"),
+
+    # Overdub mute operations
+    K("DM_OVERDUB_MUTE_1", "Overdub\nMute 1", "Overdub mute loop 1"),
+    K("DM_OVERDUB_MUTE_2", "Overdub\nMute 2", "Overdub mute loop 2"),
+    K("DM_OVERDUB_MUTE_3", "Overdub\nMute 3", "Overdub mute loop 3"),
+    K("DM_OVERDUB_MUTE_4", "Overdub\nMute 4", "Overdub mute loop 4"),
 ]
 
 

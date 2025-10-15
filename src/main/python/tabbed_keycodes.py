@@ -1605,7 +1605,13 @@ class LoopTab(QScrollArea):
         octave_keycodes = [kc for kc in self.advanced_keycodes 
                           if kc.qmk_id.startswith("DM_OCT_") and kc.qmk_id != "DM_OCT_MOD"]
         
-        if main_loop_keycodes or mute_keycodes or octave_keycodes:
+        # Get overdub keycodes (without advanced overdub)
+        overdub_keycodes = [kc for kc in self.advanced_keycodes 
+                           if kc.qmk_id.startswith("DM_OVERDUB_") and not kc.qmk_id.startswith("DM_OVERDUB_MUTE_")]
+        overdub_mute_keycodes = [kc for kc in self.advanced_keycodes 
+                                if kc.qmk_id.startswith("DM_OVERDUB_MUTE_")]
+        
+        if main_loop_keycodes or mute_keycodes or octave_keycodes or overdub_keycodes or overdub_mute_keycodes:
             container = QWidget()
             layout = QVBoxLayout(container)
             layout.setSpacing(8)
@@ -1627,10 +1633,61 @@ class LoopTab(QScrollArea):
                 octave_row = self.create_button_row(octave_keycodes, 4)
                 layout.addWidget(octave_row)
             
+            # Row 4: Overdub operations
+            if overdub_keycodes:
+                overdub_row = self.create_button_row(overdub_keycodes, 4)
+                layout.addWidget(overdub_row)
+            
+            # Row 5: Overdub mute operations
+            if overdub_mute_keycodes:
+                overdub_mute_row = self.create_button_row(overdub_mute_keycodes, 4)
+                layout.addWidget(overdub_mute_row)
+            
+            section.addWidget(container)
+            return section
+        return None 
+        
+    def create_mode_select_section(self):
+        """Create the Mode Select section"""
+        section = QVBoxLayout()
+        section.setSpacing(8)
+        section.setAlignment(Qt.AlignTop)
+        
+        header = self.create_section_header("Mode Select")
+        section.addLayout(header)
+        
+        # Get mode keycodes
+        mode_keycodes = []
+        
+        # Add 8 Track Mode (renamed from Advanced Overdub)
+        advanced_overdub = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_ADVANCED_OVERDUB"), None)
+        if advanced_overdub and (self.current_keycode_filter is None or self.current_keycode_filter(advanced_overdub.qmk_id)):
+            mode_keycodes.append(advanced_overdub)
+        
+        # Add Unsynced Mode
+        unsync = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_UNSYNC"), None)
+        if unsync and (self.current_keycode_filter is None or self.current_keycode_filter(unsync.qmk_id)):
+            mode_keycodes.append(unsync)
+        
+        # Add Sample Mode
+        sample = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_SAMPLE"), None)
+        if sample and (self.current_keycode_filter is None or self.current_keycode_filter(sample.qmk_id)):
+            mode_keycodes.append(sample)
+        
+        if mode_keycodes:
+            container = QWidget()
+            layout = QVBoxLayout(container)
+            layout.setSpacing(8)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setAlignment(Qt.AlignTop)
+            
+            mode_row = self.create_button_row(mode_keycodes, 3)
+            layout.addWidget(mode_row)
+            
             section.addWidget(container)
             return section
         return None
-
+    
     def create_global_controls_section(self):
         """Create the Global Controls section"""
         section = QVBoxLayout()
@@ -1640,7 +1697,10 @@ class LoopTab(QScrollArea):
         header = self.create_section_header("Global Controls")
         section.addLayout(header)
         
-        global_keycodes = [kc for kc in self.basic_keycodes[4:10]]  # Global controls
+        # Get global control keycodes, excluding the ones moved to Mode Select
+        global_keycodes = [kc for kc in self.basic_keycodes[4:] 
+                          if kc.qmk_id not in ["DM_UNSYNC", "DM_SAMPLE"]]
+        
         if global_keycodes:
             container = QWidget()
             layout = QVBoxLayout(container)
@@ -1648,20 +1708,20 @@ class LoopTab(QScrollArea):
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setAlignment(Qt.AlignTop)
             
-            # Split into 2 rows of 3
-            if len(global_keycodes) > 3:
-                row1 = self.create_button_row(global_keycodes[:3], 3)
+            # Display remaining global controls (should be 4: Mute, Overdub, Oct Mod, Edit Mod)
+            if len(global_keycodes) > 2:
+                row1 = self.create_button_row(global_keycodes[:2], 2)
                 layout.addWidget(row1)
-                row2 = self.create_button_row(global_keycodes[3:], 3)
+                row2 = self.create_button_row(global_keycodes[2:], 2)
                 layout.addWidget(row2)
             else:
-                row = self.create_button_row(global_keycodes, 3)
+                row = self.create_button_row(global_keycodes, len(global_keycodes))
                 layout.addWidget(row)
             
             section.addWidget(container)
             return section
         return None
-
+        
     def create_beatskip_section(self):
         """Create the BeatSkip section"""
         skip_keycodes = [kc for kc in self.advanced_keycodes 
@@ -1820,6 +1880,9 @@ class LoopTab(QScrollArea):
         global_controls = self.create_global_controls_section()
         if global_controls: sections.append(("Global Controls", global_controls))
         
+        mode_select = self.create_mode_select_section()
+        if mode_select: sections.append(("Mode Select", mode_select))
+        
         beatskip = self.create_beatskip_section()
         if beatskip: sections.append(("BeatSkip", beatskip))
         
@@ -1829,17 +1892,18 @@ class LoopTab(QScrollArea):
         nav_save = self.create_nav_save_section()
         if nav_save: sections.append(("Navigation/Save", nav_save))
         
-        # Calculate approximate section widths (you may need to adjust these based on your actual content)
+        # Calculate approximate section widths
         section_widths = {
             "Main Loop Controls": 200,
-            "Global Controls": 160, 
+            "Global Controls": 160,
+            "Mode Select": 150,
             "BeatSkip": 200,
             "Speed Controls": 180,
             "Navigation/Save": 220
         }
         
         # Responsive layout logic
-        available_width = self.width() - 120  # Account for margins and scrollbar
+        available_width = self.width() - 120
         current_row_width = 0
         current_row = QHBoxLayout()
         current_row.setSpacing(40)
@@ -1848,9 +1912,7 @@ class LoopTab(QScrollArea):
         for section_name, section_layout in sections:
             section_width = section_widths.get(section_name, 180)
             
-            # Check if section fits in current row
             if current_row_width + section_width + 40 > available_width and current_row_width > 0:
-                # Start new row
                 current_row.addStretch(1)
                 responsive_layout.addLayout(current_row)
                 
@@ -1859,16 +1921,14 @@ class LoopTab(QScrollArea):
                 current_row.addStretch(1)
                 current_row_width = 0
             
-            # Add section to current row
             current_row.addLayout(section_layout)
             current_row_width += section_width + 40
         
-        # Add the last row
         if current_row_width > 0:
             current_row.addStretch(1)
             responsive_layout.addLayout(current_row)
         
-        responsive_layout.addStretch()  # Push content to top
+        responsive_layout.addStretch()
         self.advanced_layout.addWidget(responsive_container)
 
     def resizeEvent(self, event):

@@ -2204,14 +2204,28 @@ class keycodes_v6:
         "DM_SKIP_5_8": 0xCC45,  # Skip to 5/8
         "DM_SKIP_6_8": 0xCC46,  # Skip to 6/8
         "DM_SKIP_7_8": 0xCC47,  # Skip to 7/8
+        
+        "DM_ADVANCED_OVERDUB": 0xCC48,  # Skip to 7/8
+        
+        "DM_OVERDUB_1": 0xCC49,  # Macro key 4
+        "DM_OVERDUB_2": 0xCC4A,  # Macro key 4
+        "DM_OVERDUB_3": 0xCC4B,  # Macro key 4
+        "DM_OVERDUB_4": 0xCC4C,  # Macro key 4
+        
+        "DM_OVERDUB_MUTE_1": 0xCC4D,  # Macro key 4
+        "DM_OVERDUB_MUTE_2": 0xCC4E,  # Macro key 4
+        "DM_OVERDUB_MUTE_3": 0xCC4F,  # Macro key 4
+        "DM_OVERDUB_MUTE_4": 0xCC50,  # Macro key 4
 
         # Main macro keys (0xCC08-0xCC0B):
         "DM_MACRO_1": 0xCC08,  # Macro key 1
         "DM_MACRO_2": 0xCC09,  # Macro key 2
         "DM_MACRO_3": 0xCC0A,  # Macro key 3
         "DM_MACRO_4": 0xCC0B,  # Macro key 4
+        
 
-        "QK_KB": 0xCC48, #custom keycodes safe range
+
+        "QK_KB": 0xCC51, #custom keycodes safe range
         
         
        
