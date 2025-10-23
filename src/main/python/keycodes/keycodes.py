@@ -1583,6 +1583,8 @@ KEYCODES_MIDI_ADVANCED = [
     K("MI_SOFT", "Soft\nSPedal", "Midi Soft Pedal"),
     K("OLED_1", "Screen\nKeyboard\nShift", "Momentarily turn on layer when pressed"),
     K("MI_TAP", "Set\nBPM", "Set BPM"),
+    K("BPM_UP", "BPM\nUp", "Set BPM"),
+    K("BPM_DOWN", "BPM\nDown", "Set BPM"),
 ]
 
 KEYCODES_MIDI_PEDAL = [
@@ -3026,6 +3028,8 @@ KEYCODES_CHORD_PROG_CONTROLS = [
     K("PROG_OCTAVE_DOWN", "Octave\nDown", "Lower progression octave"),
     K("PROG_OCTAVE_RESET", "Octave\nReset", "Reset progression octave to default"),
     K("MI_TAP", "Set\nBPM", "Set BPM"),
+    K("BPM_UP", "BPM\nUp", "Set BPM"),
+    K("BPM_DOWN", "BPM\nDown", "Set BPM"),
 ]
 
 KEYCODES_LOOP_BUTTONS = [
@@ -3063,10 +3067,12 @@ KEYCODES_LOOP_BUTTONS = [
     K("DM_SPEED_2", "Speed\nLoop 2", "Individual speed toggle for loop 2"),
     K("DM_SPEED_3", "Speed\nLoop 3", "Individual speed toggle for loop 3"),
     K("DM_SPEED_4", "Speed\nLoop 4", "Individual speed toggle for loop 4"),
+    K("DM_SPEED_ALL", "Speed\nAll\nLoops", "Speed up all macros"),
     K("DM_SLOW_1", "Slow\nLoop 1", "Individual slow toggle for loop 1"),
     K("DM_SLOW_2", "Slow\nLoop 2", "Individual slow toggle for loop 2"),
     K("DM_SLOW_3", "Slow\nLoop 3", "Individual slow toggle for loop 3"),
     K("DM_SLOW_4", "Slow\nLoop 4", "Individual slow toggle for loop 4"),
+    K("DM_SLOW_ALL", "Slow\nAll\nLoops", "Slow up all macros"),
     K("DM_RESET_SPEED", "Reset\nSpeed", "Reset all speeds and BPM to original"),
     
     # Navigation controls

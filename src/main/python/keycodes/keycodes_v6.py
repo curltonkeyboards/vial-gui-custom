@@ -2216,6 +2216,12 @@ class keycodes_v6:
         "DM_OVERDUB_MUTE_2": 0xCC4E,  # Macro key 4
         "DM_OVERDUB_MUTE_3": 0xCC4F,  # Macro key 4
         "DM_OVERDUB_MUTE_4": 0xCC50,  # Macro key 4
+        
+        "BPM_UP": 0xCC51,  # Macro key 4
+        "BPM_DOWN": 0xCC52,  # Macro key 4
+        
+        "DM_SPEED_ALL": 0xCC53,  # Macro key 4
+        "DM_SLOW_ALL": 0xCC54,  # Macro key 4
 
         # Main macro keys (0xCC08-0xCC0B):
         "DM_MACRO_1": 0xCC08,  # Macro key 1
@@ -2225,7 +2231,7 @@ class keycodes_v6:
         
 
 
-        "QK_KB": 0xCC51, #custom keycodes safe range
+        "QK_KB": 0xCC55, #custom keycodes safe range
         
         
        
