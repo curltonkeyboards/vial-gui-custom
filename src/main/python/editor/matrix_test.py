@@ -1187,7 +1187,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "key_split_transpose_status": 0,
             "key_split_velocity_status": 0,
             "custom_layer_animations_enabled": False,
-            "unsynced_mode_active": False,
+            "unsynced_mode_active": 0,
             "sample_mode_active": False,
             "loop_messaging_enabled": False,
             "loop_messaging_channel": 16,
