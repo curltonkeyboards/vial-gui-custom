@@ -154,10 +154,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(self.oled_keyboard, 1, 3)
         
         # SmartChord Lights
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Lights:")), 2, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 2, 0)
         self.smart_chord_light = QComboBox()
-        self.smart_chord_light.addItem("On", 0)
-        self.smart_chord_light.addItem("Off", 3)
+        self.smart_chord_light.addItem("Basic Overdub", 0)
+        self.smart_chord_light.addItem("8 Track Looper", 1)
         advanced_layout.addWidget(self.smart_chord_light, 2, 1)
         
         # SC Light Mode
