@@ -722,7 +722,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(self.loop_messaging_channel, 1, 3)
         
         # Sync MIDI Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync MIDI Mode:")), 2, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop:")), 2, 0)
         self.sync_midi_mode = QComboBox()
         self.sync_midi_mode.setMinimumWidth(120)
         self.sync_midi_mode.addItem("Off", False)
