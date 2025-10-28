@@ -705,7 +705,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(self.sample_mode, 0, 3)
         
         # Loop Messaging
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Loop Messaging:")), 1, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")), 1, 0)
         self.loop_messaging_enabled = QComboBox()
         self.loop_messaging_enabled.setMinimumWidth(120)
         self.loop_messaging_enabled.addItem("Off", False)
@@ -713,7 +713,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(self.loop_messaging_enabled, 1, 1)
         
         # Messaging Channel
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Messaging Channel:")), 1, 2)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")), 1, 2)
         self.loop_messaging_channel = QComboBox()
         self.loop_messaging_channel.setMinimumWidth(120)
         for i in range(1, 17):
@@ -722,7 +722,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(self.loop_messaging_channel, 1, 3)
         
         # Sync MIDI Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop:")), 2, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")), 2, 0)
         self.sync_midi_mode = QComboBox()
         self.sync_midi_mode.setMinimumWidth(120)
         self.sync_midi_mode.addItem("Off", False)
@@ -730,7 +730,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(self.sync_midi_mode, 2, 1)
         
         # Restart Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Restart Mode:")), 2, 2)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")), 2, 2)
         self.alternate_restart_mode = QComboBox()
         self.alternate_restart_mode.setMinimumWidth(120)
         self.alternate_restart_mode.addItem("Restart CC", False)
@@ -738,11 +738,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(self.alternate_restart_mode, 2, 3)
         
                 # SmartChord Lights
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Lights:")), 3, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 3, 0)
         self.smart_chord_light = QComboBox()
         self.smart_chord_light.setMinimumWidth(120)
-        self.smart_chord_light.addItem("On", 0)
-        self.smart_chord_light.addItem("Off", 3)
+        self.smart_chord_light.addItem("Default", 0)
+        self.smart_chord_light.addItem("8 Track Looper", 1)
         loop_layout.addWidget(self.smart_chord_light, 3, 1)
         
         # Advanced Settings Group
