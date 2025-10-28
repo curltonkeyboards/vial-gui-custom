@@ -645,6 +645,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
         basic_layout = QGridLayout()
+        basic_layout.setHorizontalSpacing(10)  # Add this line
+        basic_layout.setColumnStretch(1, 0)    # Add this line
+        basic_layout.setColumnStretch(3, 0)    # Add this line
+        basic_layout.setColumnStretch(5, 1)    # Add this line - pushes everything left
         basic_group.setLayout(basic_layout)
         main_layout.addWidget(basic_group)
         
@@ -678,6 +682,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
+        loop_layout.setHorizontalSpacing(10)   # Add this line
+        loop_layout.setColumnStretch(1, 0)     # Add this line
+        loop_layout.setColumnStretch(3, 1)     # Add this line - pushes everything left
         main_layout.addWidget(loop_group)
         
         # Unsynced Mode
@@ -730,9 +737,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.alternate_restart_mode.addItem("Stop+Start", True)
         loop_layout.addWidget(self.alternate_restart_mode, 2, 3)
         
+                # SmartChord Lights
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Lights:")), 3, 0)
+        self.smart_chord_light = QComboBox()
+        self.smart_chord_light.setMinimumWidth(120)
+        self.smart_chord_light.addItem("On", 0)
+        self.smart_chord_light.addItem("Off", 3)
+        loop_layout.addWidget(self.smart_chord_light, 3, 1)
+        
         # Advanced Settings Group
         advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
         advanced_layout = QGridLayout()
+        advanced_layout.setHorizontalSpacing(10)  # Add this line
+        advanced_layout.setColumnStretch(1, 0)    # Add this line
+        advanced_layout.setColumnStretch(3, 1)    # Add this line - pushes everything left
         advanced_group.setLayout(advanced_layout)
         main_layout.addWidget(advanced_group)
         
@@ -767,17 +785,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.oled_keyboard.addItem("Style 1", 0)
         self.oled_keyboard.addItem("Style 2", 12)
         advanced_layout.addWidget(self.oled_keyboard, 1, 3)
-        
-        # SmartChord Lights
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 2, 0)
-        self.smart_chord_light = QComboBox()
-        self.smart_chord_light.setMinimumWidth(120)
-        self.smart_chord_light.addItem("Default", 0)
-        self.smart_chord_light.addItem("8 Track Looper", 1)
-        advanced_layout.addWidget(self.smart_chord_light, 2, 1)
-        
+
         # SC Light Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 0)
         self.smart_chord_light_mode = QComboBox()
         self.smart_chord_light_mode.setMinimumWidth(120)
         self.smart_chord_light_mode.addItem("All Off", 1)
@@ -785,7 +795,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light_mode.addItem("All On: Dynamic", 0)
         self.smart_chord_light_mode.addItem("All on: Guitar EADGB", 3)
         self.smart_chord_light_mode.addItem("All on: Guitar ADGBE", 4)
-        advanced_layout.addWidget(self.smart_chord_light_mode, 2, 3)
+        advanced_layout.addWidget(self.smart_chord_light_mode, 2, 1)
         
         # RGB Layer Mode
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 0)
