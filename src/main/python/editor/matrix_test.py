@@ -681,11 +681,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         main_layout.addWidget(loop_group)
         
         # Unsynced Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Unsynced Mode:")), 0, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 0)
         self.unsynced_mode = QComboBox()
         self.unsynced_mode.setMinimumWidth(120)
-        self.unsynced_mode.addItem("Off", False)
-        self.unsynced_mode.addItem("On", True)
+        self.unsynced_mode.addItem("Loop", 0)
+        self.unsynced_mode.addItem("BPM 1", 1)
+        self.unsynced_mode.addItem("No Sync", 2)
         loop_layout.addWidget(self.unsynced_mode, 0, 1)
         
         # Sample Mode
@@ -768,21 +769,22 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(self.oled_keyboard, 1, 3)
         
         # SmartChord Lights
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Lights:")), 2, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 2, 0)
         self.smart_chord_light = QComboBox()
         self.smart_chord_light.setMinimumWidth(120)
-        self.smart_chord_light.addItem("On", 0)
-        self.smart_chord_light.addItem("Off", 3)
+        self.smart_chord_light.addItem("Default", 0)
+        self.smart_chord_light.addItem("8 Track Looper", 1)
         advanced_layout.addWidget(self.smart_chord_light, 2, 1)
         
         # SC Light Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SC Light Mode:")), 2, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 2)
         self.smart_chord_light_mode = QComboBox()
         self.smart_chord_light_mode.setMinimumWidth(120)
-        self.smart_chord_light_mode.addItem("Custom", 0)
-        self.smart_chord_light_mode.addItem("Off", 2)
-        self.smart_chord_light_mode.addItem("Guitar Low E", 3)
-        self.smart_chord_light_mode.addItem("Guitar High E", 4)
+        self.smart_chord_light_mode.addItem("All Off", 1)
+        self.smart_chord_light_mode.addItem("SmartChord Off", 2)
+        self.smart_chord_light_mode.addItem("All On: Dynamic", 0)
+        self.smart_chord_light_mode.addItem("All on: Guitar EADGB", 3)
+        self.smart_chord_light_mode.addItem("All on: Guitar ADGBE", 4)
         advanced_layout.addWidget(self.smart_chord_light_mode, 2, 3)
         
         # RGB Layer Mode
@@ -1063,7 +1065,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["key_split_transpose_status"]; offset += 1
         data[offset] = settings["key_split_velocity_status"]; offset += 1
         data[offset] = 1 if settings["custom_layer_animations_enabled"] else 0; offset += 1
-        data[offset] = 1 if settings["unsynced_mode_active"] else 0; offset += 1
+        data[offset] = settings["unsynced_mode_active"]; offset += 1
         data[offset] = 1 if settings["sample_mode_active"] else 0; offset += 1
         data[offset] = 1 if settings["loop_messaging_enabled"] else 0; offset += 1
         data[offset] = settings["loop_messaging_channel"]; offset += 1
