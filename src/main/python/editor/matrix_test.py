@@ -684,113 +684,115 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
         loop_layout.setHorizontalSpacing(25)
-        loop_layout.setColumnStretch(1, 0)
-        loop_layout.setColumnStretch(3, 0)
-        loop_layout.setColumnStretch(4, 1)  # Push everything left
+        loop_layout.setColumnStretch(0, 1)     # Left spacer
+        loop_layout.setColumnStretch(2, 0)
+        loop_layout.setColumnStretch(4, 0)
+        loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward center
         main_layout.addWidget(loop_group)
         
         # Unsynced Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 1)
         self.unsynced_mode = QComboBox()
         self.unsynced_mode.setMinimumWidth(120)
         self.unsynced_mode.addItem("Loop", 0)
         self.unsynced_mode.addItem("BPM 1", 1)
         self.unsynced_mode.addItem("No Sync", 2)
-        loop_layout.addWidget(self.unsynced_mode, 0, 1)
+        loop_layout.addWidget(self.unsynced_mode, 0, 2)
         
         # Sample Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sample Mode:")), 0, 2)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sample Mode:")), 0, 3)
         self.sample_mode = QComboBox()
         self.sample_mode.setMinimumWidth(120)
         self.sample_mode.addItem("Off", False)
         self.sample_mode.addItem("On", True)
-        loop_layout.addWidget(self.sample_mode, 0, 3)
+        loop_layout.addWidget(self.sample_mode, 0, 4)
         
         # Loop Messaging
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")), 1, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")), 1, 1)
         self.loop_messaging_enabled = QComboBox()
         self.loop_messaging_enabled.setMinimumWidth(120)
         self.loop_messaging_enabled.addItem("Off", False)
         self.loop_messaging_enabled.addItem("On", True)
-        loop_layout.addWidget(self.loop_messaging_enabled, 1, 1)
+        loop_layout.addWidget(self.loop_messaging_enabled, 1, 2)
         
         # Messaging Channel
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")), 1, 2)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")), 1, 3)
         self.loop_messaging_channel = QComboBox()
         self.loop_messaging_channel.setMinimumWidth(120)
         for i in range(1, 17):
             self.loop_messaging_channel.addItem(str(i), i)
         self.loop_messaging_channel.setCurrentIndex(15)
-        loop_layout.addWidget(self.loop_messaging_channel, 1, 3)
+        loop_layout.addWidget(self.loop_messaging_channel, 1, 4)
         
         # Sync MIDI Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")), 2, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")), 2, 1)
         self.sync_midi_mode = QComboBox()
         self.sync_midi_mode.setMinimumWidth(120)
         self.sync_midi_mode.addItem("Off", False)
         self.sync_midi_mode.addItem("On", True)
-        loop_layout.addWidget(self.sync_midi_mode, 2, 1)
+        loop_layout.addWidget(self.sync_midi_mode, 2, 2)
         
         # Restart Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")), 2, 2)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")), 2, 3)
         self.alternate_restart_mode = QComboBox()
         self.alternate_restart_mode.setMinimumWidth(120)
         self.alternate_restart_mode.addItem("Restart CC", False)
         self.alternate_restart_mode.addItem("Stop+Start", True)
-        loop_layout.addWidget(self.alternate_restart_mode, 2, 3)
+        loop_layout.addWidget(self.alternate_restart_mode, 2, 4)
         
         # SmartChord Lights
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 3, 0)
+        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 3, 1)
         self.smart_chord_light = QComboBox()
         self.smart_chord_light.setMinimumWidth(120)
         self.smart_chord_light.addItem("Default", 0)
         self.smart_chord_light.addItem("8 Track Looper", 1)
-        loop_layout.addWidget(self.smart_chord_light, 3, 1)
+        loop_layout.addWidget(self.smart_chord_light, 3, 2)
         
         # Advanced Settings Group
         advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
         advanced_layout = QGridLayout()
         advanced_layout.setHorizontalSpacing(25)
-        advanced_layout.setColumnStretch(1, 0)
-        advanced_layout.setColumnStretch(3, 0)
-        advanced_layout.setColumnStretch(4, 1)  # Push everything left
+        advanced_layout.setColumnStretch(0, 1)    # Left spacer
+        advanced_layout.setColumnStretch(2, 0)
+        advanced_layout.setColumnStretch(4, 0)
+        advanced_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
         advanced_group.setLayout(advanced_layout)
         main_layout.addWidget(advanced_group)
         
         # Velocity Interval
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")), 0, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")), 0, 1)
         self.velocity_sensitivity = QComboBox()
         self.velocity_sensitivity.setMinimumWidth(120)
         for i in range(1, 11):
             self.velocity_sensitivity.addItem(str(i), i)
-        advanced_layout.addWidget(self.velocity_sensitivity, 0, 1)
+        advanced_layout.addWidget(self.velocity_sensitivity, 0, 2)
         
         # CC Interval
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")), 0, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")), 0, 3)
         self.cc_sensitivity = QComboBox()
         self.cc_sensitivity.setMinimumWidth(120)
         for i in range(1, 17):
             self.cc_sensitivity.addItem(str(i), i)
-        advanced_layout.addWidget(self.cc_sensitivity, 0, 3)
+        advanced_layout.addWidget(self.cc_sensitivity, 0, 4)
         
         # Velocity Shuffle
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Shuffle:")), 1, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Shuffle:")), 1, 1)
         self.random_velocity_modifier = QComboBox()
         self.random_velocity_modifier.setMinimumWidth(120)
         for i in range(17):
             self.random_velocity_modifier.addItem(str(i), i)
-        advanced_layout.addWidget(self.random_velocity_modifier, 1, 1)
+        advanced_layout.addWidget(self.random_velocity_modifier, 1, 2)
         
         # OLED Keyboard
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "OLED Keyboard:")), 1, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "OLED Keyboard:")), 1, 3)
         self.oled_keyboard = QComboBox()
         self.oled_keyboard.setMinimumWidth(120)
         self.oled_keyboard.addItem("Style 1", 0)
         self.oled_keyboard.addItem("Style 2", 12)
-        advanced_layout.addWidget(self.oled_keyboard, 1, 3)
+        advanced_layout.addWidget(self.oled_keyboard, 1, 4)
 
         # SC Light Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 1)
         self.smart_chord_light_mode = QComboBox()
         self.smart_chord_light_mode.setMinimumWidth(120)
         self.smart_chord_light_mode.addItem("All Off", 1)
@@ -798,39 +800,39 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light_mode.addItem("All On: Dynamic", 0)
         self.smart_chord_light_mode.addItem("All on: Guitar EADGB", 3)
         self.smart_chord_light_mode.addItem("All on: Guitar ADGBE", 4)
-        advanced_layout.addWidget(self.smart_chord_light_mode, 2, 1)
+        advanced_layout.addWidget(self.smart_chord_light_mode, 2, 2)
         
         # Colorblind Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 2, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 2, 3)
         self.colorblind_mode = QComboBox()
         self.colorblind_mode.setMinimumWidth(120)
         self.colorblind_mode.addItem("Off", 0)
         self.colorblind_mode.addItem("On", 1)
-        advanced_layout.addWidget(self.colorblind_mode, 2, 3)
+        advanced_layout.addWidget(self.colorblind_mode, 2, 4)
         
         # RGB Layer Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 1)
         self.custom_layer_animations = QComboBox()
         self.custom_layer_animations.setMinimumWidth(120)
         self.custom_layer_animations.addItem("Off", False)
         self.custom_layer_animations.addItem("On", True)
-        advanced_layout.addWidget(self.custom_layer_animations, 3, 1)
+        advanced_layout.addWidget(self.custom_layer_animations, 3, 2)
         
         # CC Loop Recording
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 3, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 3, 3)
         self.cc_loop_recording = QComboBox()
         self.cc_loop_recording.setMinimumWidth(120)
         self.cc_loop_recording.addItem("Off", False)
         self.cc_loop_recording.addItem("On", True)
-        advanced_layout.addWidget(self.cc_loop_recording, 3, 3)
+        advanced_layout.addWidget(self.cc_loop_recording, 3, 4)
         
         # True Sustain
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 1)
         self.true_sustain = QComboBox()
         self.true_sustain.setMinimumWidth(120)
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
-        advanced_layout.addWidget(self.true_sustain, 4, 1)
+        advanced_layout.addWidget(self.true_sustain, 4, 2)
         
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
@@ -874,63 +876,64 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit & TripleSplit Settings"))
         keysplit_layout = QGridLayout()
         keysplit_layout.setHorizontalSpacing(25)
-        keysplit_layout.setColumnStretch(1, 0)
-        keysplit_layout.setColumnStretch(3, 0)
-        keysplit_layout.setColumnStretch(4, 1)  # Push everything left
+        keysplit_layout.setColumnStretch(0, 1)    # Left spacer
+        keysplit_layout.setColumnStretch(2, 0)
+        keysplit_layout.setColumnStretch(4, 0)
+        keysplit_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
         keysplit_group.setLayout(keysplit_layout)
         main_layout.addWidget(keysplit_group)
         
         # KeySplit settings (left column)
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings")), 0, 0, 1, 2)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings")), 0, 1, 1, 2)
         
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 0)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 1)
         self.key_split_channel = QComboBox()
         self.key_split_channel.setMinimumWidth(120)
         for i in range(16):
             self.key_split_channel.addItem(str(i + 1), i)
-        keysplit_layout.addWidget(self.key_split_channel, 1, 1)
+        keysplit_layout.addWidget(self.key_split_channel, 1, 2)
         
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 0)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 1)
         self.transpose_number2 = QComboBox()
         self.transpose_number2.setMinimumWidth(120)
         for i in range(-64, 65):
             self.transpose_number2.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number2.setCurrentIndex(64)
-        keysplit_layout.addWidget(self.transpose_number2, 2, 1)
+        keysplit_layout.addWidget(self.transpose_number2, 2, 2)
         
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 3, 0)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 3, 1)
         self.velocity_number2 = QComboBox()
         self.velocity_number2.setMinimumWidth(120)
         for i in range(1, 128):
             self.velocity_number2.addItem(str(i), i)
         self.velocity_number2.setCurrentIndex(126)
-        keysplit_layout.addWidget(self.velocity_number2, 3, 1)
+        keysplit_layout.addWidget(self.velocity_number2, 3, 2)
         
         # TripleSplit settings (right column)
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings")), 0, 2, 1, 2)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings")), 0, 3, 1, 2)
         
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 2)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 3)
         self.key_split2_channel = QComboBox()
         self.key_split2_channel.setMinimumWidth(120)
         for i in range(16):
             self.key_split2_channel.addItem(str(i + 1), i)
-        keysplit_layout.addWidget(self.key_split2_channel, 1, 3)
+        keysplit_layout.addWidget(self.key_split2_channel, 1, 4)
         
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 2)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 3)
         self.transpose_number3 = QComboBox()
         self.transpose_number3.setMinimumWidth(120)
         for i in range(-64, 65):
             self.transpose_number3.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number3.setCurrentIndex(64)
-        keysplit_layout.addWidget(self.transpose_number3, 2, 3)
+        keysplit_layout.addWidget(self.transpose_number3, 2, 4)
         
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 3, 2)
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 3, 3)
         self.velocity_number3 = QComboBox()
         self.velocity_number3.setMinimumWidth(120)
         for i in range(1, 128):
             self.velocity_number3.addItem(str(i), i)
         self.velocity_number3.setCurrentIndex(126)
-        keysplit_layout.addWidget(self.velocity_number3, 3, 3)
+        keysplit_layout.addWidget(self.velocity_number3, 3, 4)
         
         # Buttons
         self.addStretch()

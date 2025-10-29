@@ -60,8 +60,8 @@ class MacroRecorder(BasicEditor):
         buttons.addWidget(self.btn_save)
         buttons.addWidget(btn_revert)
 
-        self.addWidget(self.tabs)
-        self.addLayout(buttons)
+        self.addWidget(self.tabs, 1)  # Give stretch factor of 1 to make it expand
+        self.addLayout(buttons, 0)    # Keep buttons at minimum size
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)
