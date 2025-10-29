@@ -47,7 +47,9 @@ class MacroRecorder(BasicEditor):
         self.recording_append = False
 
         self.tabs = TabWidgetWithKeycodes()
-
+        self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.tabs.setMaximumHeight(400)
+        self.tabs.setMinimumHeight(400)
         self.lbl_memory = QLabel()
 
         buttons = QHBoxLayout()

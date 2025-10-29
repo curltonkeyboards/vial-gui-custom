@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         layout.setAlignment(self.lbl_no_devices, Qt.AlignHCenter)
         self.tray_keycodes = TabbedKeycodes()
         self.tray_keycodes.make_tray()
-        layout.addWidget(self.tray_keycodes, 2)
+        layout.addWidget(self.tray_keycodes, 1)
         self.tray_keycodes.hide()
         w = QWidget()
         w.setLayout(layout)
