@@ -114,15 +114,22 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout()
         layout.addLayout(layout_combobox)
+
+        # Allow tabs to shrink much more
+        self.tabs.setMinimumHeight(150)  # Tabs can compress to 150px
         layout.addWidget(self.tabs, 1)
+
         layout.addWidget(self.lbl_no_devices)
         layout.setAlignment(self.lbl_no_devices, Qt.AlignHCenter)
         self.tray_keycodes = TabbedKeycodes()
         self.tray_keycodes.make_tray()
-        self.tray_keycodes.setMinimumHeight(400)  # Add this line - set minimum height
-        self.tray_keycodes.setMaximumHeight(500)  # Optional: also set max height to prevent it from growing too large
-        layout.addWidget(self.tray_keycodes, 0)   # Change stretch from 1 to 0 (no stretch)
+        self.tray_keycodes.setFixedHeight(450)  # Fixed height for tray
+        layout.addWidget(self.tray_keycodes, 0)
         self.tray_keycodes.hide()
+
+        # Prevent the layout from resizing the window
+        layout.setSizeConstraint(QVBoxLayout.SetNoConstraint)
+
         w = QWidget()
         w.setLayout(layout)
         self.setCentralWidget(w)
