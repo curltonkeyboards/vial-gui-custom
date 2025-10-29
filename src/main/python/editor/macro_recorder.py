@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import sys
 
-from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel, QSizePolicy
+from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel
 
 from editor.basic_editor import BasicEditor
 from macro.macro_action import ActionText, ActionTap, ActionDown, ActionUp
@@ -47,9 +47,7 @@ class MacroRecorder(BasicEditor):
         self.recording_append = False
 
         self.tabs = TabWidgetWithKeycodes()
-        self.tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.tabs.setMaximumHeight(400)
-        self.tabs.setMinimumHeight(400)
+
         self.lbl_memory = QLabel()
 
         buttons = QHBoxLayout()
@@ -62,8 +60,8 @@ class MacroRecorder(BasicEditor):
         buttons.addWidget(self.btn_save)
         buttons.addWidget(btn_revert)
 
-        self.addWidget(self.tabs, 1)  # Give stretch factor of 1 to make it expand
-        self.addLayout(buttons, 0)    # Keep buttons at minimum size
+        self.addWidget(self.tabs)
+        self.addLayout(buttons)
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)

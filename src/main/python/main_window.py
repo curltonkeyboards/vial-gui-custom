@@ -119,7 +119,9 @@ class MainWindow(QMainWindow):
         layout.setAlignment(self.lbl_no_devices, Qt.AlignHCenter)
         self.tray_keycodes = TabbedKeycodes()
         self.tray_keycodes.make_tray()
-        layout.addWidget(self.tray_keycodes, 1)
+        self.tray_keycodes.setMinimumHeight(400)  # Add this line - set minimum height
+        self.tray_keycodes.setMaximumHeight(500)  # Optional: also set max height to prevent it from growing too large
+        layout.addWidget(self.tray_keycodes, 0)   # Change stretch from 1 to 0 (no stretch)
         self.tray_keycodes.hide()
         w = QWidget()
         w.setLayout(layout)
