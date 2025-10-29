@@ -645,10 +645,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
         basic_layout = QGridLayout()
-        basic_layout.setHorizontalSpacing(10)  # Add this line
-        basic_layout.setColumnStretch(1, 0)    # Add this line
-        basic_layout.setColumnStretch(3, 0)    # Add this line
-        basic_layout.setColumnStretch(5, 1)    # Add this line - pushes everything left
+        basic_layout.setHorizontalSpacing(10)
+        basic_layout.setColumnStretch(1, 0)
+        basic_layout.setColumnStretch(3, 0)
+        basic_layout.setColumnStretch(5, 0)
+        basic_layout.setColumnStretch(6, 1)  # Push everything left
         basic_group.setLayout(basic_layout)
         main_layout.addWidget(basic_group)
         
@@ -682,9 +683,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
-        loop_layout.setHorizontalSpacing(10)   # Add this line
-        loop_layout.setColumnStretch(1, 0)     # Add this line
-        loop_layout.setColumnStretch(3, 1)     # Add this line - pushes everything left
+        loop_layout.setHorizontalSpacing(10)
+        loop_layout.setColumnStretch(1, 0)
+        loop_layout.setColumnStretch(3, 0)
+        loop_layout.setColumnStretch(4, 1)  # Push everything left
         main_layout.addWidget(loop_group)
         
         # Unsynced Mode
@@ -737,7 +739,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.alternate_restart_mode.addItem("Stop+Start", True)
         loop_layout.addWidget(self.alternate_restart_mode, 2, 3)
         
-                # SmartChord Lights
+        # SmartChord Lights
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 3, 0)
         self.smart_chord_light = QComboBox()
         self.smart_chord_light.setMinimumWidth(120)
@@ -748,9 +750,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Advanced Settings Group
         advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
         advanced_layout = QGridLayout()
-        advanced_layout.setHorizontalSpacing(10)  # Add this line
-        advanced_layout.setColumnStretch(1, 0)    # Add this line
-        advanced_layout.setColumnStretch(3, 1)    # Add this line - pushes everything left
+        advanced_layout.setHorizontalSpacing(10)
+        advanced_layout.setColumnStretch(1, 0)
+        advanced_layout.setColumnStretch(3, 0)
+        advanced_layout.setColumnStretch(4, 1)  # Push everything left
         advanced_group.setLayout(advanced_layout)
         main_layout.addWidget(advanced_group)
         
@@ -797,6 +800,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light_mode.addItem("All on: Guitar ADGBE", 4)
         advanced_layout.addWidget(self.smart_chord_light_mode, 2, 1)
         
+        # Colorblind Mode
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 2, 2)
+        self.colorblind_mode = QComboBox()
+        self.colorblind_mode.setMinimumWidth(120)
+        self.colorblind_mode.addItem("Off", 0)
+        self.colorblind_mode.addItem("On", 1)
+        advanced_layout.addWidget(self.colorblind_mode, 2, 3)
+        
         # RGB Layer Mode
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 0)
         self.custom_layer_animations = QComboBox()
@@ -805,33 +816,30 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.custom_layer_animations.addItem("On", True)
         advanced_layout.addWidget(self.custom_layer_animations, 3, 1)
         
-        # Colorblind Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 3, 2)
-        self.colorblind_mode = QComboBox()
-        self.colorblind_mode.setMinimumWidth(120)
-        self.colorblind_mode.addItem("Off", 0)
-        self.colorblind_mode.addItem("On", 1)
-        advanced_layout.addWidget(self.colorblind_mode, 3, 3)
-        
         # CC Loop Recording
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 4, 0)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 3, 2)
         self.cc_loop_recording = QComboBox()
         self.cc_loop_recording.setMinimumWidth(120)
         self.cc_loop_recording.addItem("Off", False)
         self.cc_loop_recording.addItem("On", True)
-        advanced_layout.addWidget(self.cc_loop_recording, 4, 1)
+        advanced_layout.addWidget(self.cc_loop_recording, 3, 3)
         
         # True Sustain
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 2)
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 0)
         self.true_sustain = QComboBox()
         self.true_sustain.setMinimumWidth(120)
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
-        advanced_layout.addWidget(self.true_sustain, 4, 3)
+        advanced_layout.addWidget(self.true_sustain, 4, 1)
         
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
         keysplit_modes_layout = QGridLayout()
+        keysplit_modes_layout.setHorizontalSpacing(10)
+        keysplit_modes_layout.setColumnStretch(1, 0)
+        keysplit_modes_layout.setColumnStretch(3, 0)
+        keysplit_modes_layout.setColumnStretch(5, 0)
+        keysplit_modes_layout.setColumnStretch(6, 1)  # Push everything left
         keysplit_modes_group.setLayout(keysplit_modes_layout)
         main_layout.addWidget(keysplit_modes_group)
         
@@ -865,6 +873,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # KeySplit Settings Group
         keysplit_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit & TripleSplit Settings"))
         keysplit_layout = QGridLayout()
+        keysplit_layout.setHorizontalSpacing(10)
+        keysplit_layout.setColumnStretch(1, 0)
+        keysplit_layout.setColumnStretch(3, 0)
+        keysplit_layout.setColumnStretch(4, 1)  # Push everything left
         keysplit_group.setLayout(keysplit_layout)
         main_layout.addWidget(keysplit_group)
         
