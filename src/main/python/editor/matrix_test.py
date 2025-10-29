@@ -636,7 +636,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        main_widget.setMinimumWidth(1000)
+        main_widget.setMinimumWidth(800)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
@@ -645,7 +645,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
         basic_layout = QGridLayout()
-        basic_layout.setHorizontalSpacing(10)
+        basic_layout.setHorizontalSpacing(25)
         basic_layout.setColumnStretch(1, 0)
         basic_layout.setColumnStretch(3, 0)
         basic_layout.setColumnStretch(5, 0)
@@ -683,7 +683,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
-        loop_layout.setHorizontalSpacing(10)
+        loop_layout.setHorizontalSpacing(25)
         loop_layout.setColumnStretch(1, 0)
         loop_layout.setColumnStretch(3, 0)
         loop_layout.setColumnStretch(4, 1)  # Push everything left
@@ -750,7 +750,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Advanced Settings Group
         advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
         advanced_layout = QGridLayout()
-        advanced_layout.setHorizontalSpacing(10)
+        advanced_layout.setHorizontalSpacing(25)
         advanced_layout.setColumnStretch(1, 0)
         advanced_layout.setColumnStretch(3, 0)
         advanced_layout.setColumnStretch(4, 1)  # Push everything left
@@ -835,7 +835,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
         keysplit_modes_layout = QGridLayout()
-        keysplit_modes_layout.setHorizontalSpacing(10)
+        keysplit_modes_layout.setHorizontalSpacing(25)
         keysplit_modes_layout.setColumnStretch(1, 0)
         keysplit_modes_layout.setColumnStretch(3, 0)
         keysplit_modes_layout.setColumnStretch(5, 0)
@@ -873,7 +873,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # KeySplit Settings Group
         keysplit_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit & TripleSplit Settings"))
         keysplit_layout = QGridLayout()
-        keysplit_layout.setHorizontalSpacing(10)
+        keysplit_layout.setHorizontalSpacing(25)
         keysplit_layout.setColumnStretch(1, 0)
         keysplit_layout.setColumnStretch(3, 0)
         keysplit_layout.setColumnStretch(4, 1)  # Push everything left
