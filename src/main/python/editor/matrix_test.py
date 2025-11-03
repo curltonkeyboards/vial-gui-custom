@@ -344,21 +344,22 @@ class ThruLoopConfigurator(BasicEditor):
         combo.setCurrentIndex(0)
     
     def create_function_table(self):
-        table = QTableWidget(5, 4)
+        table = QTableWidget(6, 4)  # Changed from 5 to 6 rows
         table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
         table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
+            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"  # Added "Restart"
         ])
         
         # Fill table with CC combos
-        for row in range(5):
+        for row in range(6):  # Changed from 5 to 6
             for col in range(4):
                 cc_combo = self.create_cc_combo()
                 table.setCellWidget(row, col, cc_combo)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(200)
+        table.setMaximumHeight(280)  # Increased from 200 to match main table
         table.setMinimumWidth(600)
+        table.resizeRowsToContents()
         return table
     
     def create_main_function_table(self):
@@ -459,8 +460,8 @@ class ThruLoopConfigurator(BasicEditor):
             if not self.device.keyboard.set_thruloop_main_ccs(main_values):
                 raise RuntimeError("Failed to set main CCs")
             
-            # 3. Send overdub CCs
-            overdub_values = self.get_table_cc_values(self.overdub_table)
+            # 3. Send overdub CCs (now including restart row - 24 values total)
+            overdub_values = self.get_table_cc_values(self.overdub_table)  # Now returns 24 values (6 rows × 4 cols)
             if not self.device.keyboard.set_thruloop_overdub_ccs(overdub_values):
                 raise RuntimeError("Failed to set overdub CCs")
             
@@ -476,8 +477,8 @@ class ThruLoopConfigurator(BasicEditor):
                 raise RuntimeError("Failed to set navigation config")
             
         except Exception as e:
-            QMessageBox.critical(None, "Error", f"Failed to save configuration: {str(e)}")
-    
+            QMessageBox.critical(None, "Error", f"Failed to save configuration: {str(e)}")   
+        
     def on_load_from_keyboard(self):
         """Load configuration from keyboard using multi-packet collection"""
         try:
@@ -537,9 +538,9 @@ class ThruLoopConfigurator(BasicEditor):
                         self.set_cc_value(combo, main_ccs[idx])
                         idx += 1
         
-        # Set overdub table CCs
+        # Set overdub table CCs (now 6 rows including restart - 24 values)
         if 'overdubCCs' in config:
-            overdub_ccs = config.get("overdubCCs", [128] * 20)  
+            overdub_ccs = config.get("overdubCCs", [128] * 24)  # Changed from 20 to 24
             self.set_table_cc_values(self.overdub_table, overdub_ccs)
         
         # Set navigation CCs
@@ -552,7 +553,7 @@ class ThruLoopConfigurator(BasicEditor):
         # Update UI state
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
-    
+        
     def on_reset(self):
         """Reset ThruLoop configuration to defaults"""
         try:
@@ -611,7 +612,7 @@ class ThruLoopConfigurator(BasicEditor):
             "restartCCs": self.get_restart_cc_values(),
             "mainCCs": [self.get_cc_value(self.main_table.cellWidget(row, col)) 
                        for row in range(5) for col in range(4)],
-            "overdubCCs": self.get_table_cc_values(self.overdub_table),
+            "overdubCCs": self.get_table_cc_values(self.overdub_table),  # Now returns 24 values (6 rows × 4 cols)
             "navCCs": [self.get_cc_value(combo) for combo in self.nav_combos]
         }
         return config
