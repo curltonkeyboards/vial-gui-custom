@@ -256,19 +256,23 @@ class ThruLoopConfigurator(BasicEditor):
         self.nav_widget.setLayout(nav_layout)
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 4)
         
-        # Main Functions Table (bigger to prevent cutoff)
+        # Main Functions Table (bigger to prevent cutoff) - ADD CONTAINER
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
-        main_layout.addWidget(self.main_group)
+        self.main_group.setMaximumWidth(700)  # 30% narrower than 1000
+        main_layout.addWidget(self.main_group, alignment=QtCore.Qt.AlignHCenter)  # Center it
         self.main_table = self.create_main_function_table()
         main_group_layout = QVBoxLayout()
+        main_group_layout.setContentsMargins(5, 5, 5, 5)  # Reduce margins
         main_group_layout.addWidget(self.main_table)
         self.main_group.setLayout(main_group_layout)
         
-        # Overdub Functions Table  
+        # Overdub Functions Table - ADD CONTAINER
         self.overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
-        main_layout.addWidget(self.overdub_group)
+        self.overdub_group.setMaximumWidth(700)  # 30% narrower than 1000
+        main_layout.addWidget(self.overdub_group, alignment=QtCore.Qt.AlignHCenter)  # Center it
         self.overdub_table = self.create_function_table()
         overdub_group_layout = QVBoxLayout()
+        overdub_group_layout.setContentsMargins(5, 5, 5, 5)  # Reduce margins
         overdub_group_layout.addWidget(self.overdub_table)
         self.overdub_group.setLayout(overdub_group_layout)
         
@@ -314,7 +318,7 @@ class ThruLoopConfigurator(BasicEditor):
         # Initialize UI state AFTER all widgets and connections are set up
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
-    
+        
     def create_cc_combo(self):
         """Create a CC selector combobox"""
         combo = QComboBox()
@@ -344,24 +348,32 @@ class ThruLoopConfigurator(BasicEditor):
         combo.setCurrentIndex(0)
     
     def create_function_table(self):
-        table = QTableWidget(6, 4)  # Changed from 5 to 6 rows
+        table = QTableWidget(6, 4)
         table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
         table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"  # Added "Restart"
+            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
         
         # Fill table with CC combos
-        for row in range(6):  # Changed from 5 to 6
+        for row in range(6):
             for col in range(4):
                 cc_combo = self.create_cc_combo()
                 table.setCellWidget(row, col, cc_combo)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(280)  # Increased from 200 to match main table
-        table.setMinimumWidth(600)
-        table.resizeRowsToContents()
-        return table
-    
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)  # ADD THIS
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # ADD THIS
+        table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)  # ADD THIS
+        
+        # Calculate exact height needed
+        header_height = table.horizontalHeader().height()
+        row_height = sum([table.rowHeight(i) for i in range(6)])
+        table.setFixedHeight(header_height + row_height + 2)  # +2 for borders
+        
+        table.setMinimumWidth(500)  # Reduced from 600
+        table.setMaximumWidth(680)  # ADD THIS
+        return table 
+        
     def create_main_function_table(self):
         table = QTableWidget(6, 4)
         table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
@@ -376,11 +388,19 @@ class ThruLoopConfigurator(BasicEditor):
                 table.setCellWidget(row, col, cc_combo)
         
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(280)
-        table.setMinimumWidth(600)
-        table.resizeRowsToContents()
-        return table
-    
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)  # ADD THIS
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # ADD THIS
+        table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)  # ADD THIS
+        
+        # Calculate exact height needed
+        header_height = table.horizontalHeader().height()
+        row_height = sum([table.rowHeight(i) for i in range(6)])
+        table.setFixedHeight(header_height + row_height + 2)  # +2 for borders
+        
+        table.setMinimumWidth(500)  # Reduced from 600
+        table.setMaximumWidth(680)  # ADD THIS
+        return table    
+        
     def on_loop_enabled_changed(self):
         enabled = not self.loop_enabled.isChecked()
         self.main_group.setEnabled(enabled)
