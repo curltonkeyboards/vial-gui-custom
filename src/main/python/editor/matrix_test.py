@@ -295,7 +295,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         self.addLayout(buttons_layout)
         
-        # Apply stylesheet to prevent bold focus styling
+        # Apply stylesheet to prevent bold focus styling and ensure dropdown arrows are visible
         main_widget.setStyleSheet("""
             QCheckBox:focus {
                 font-weight: normal;
@@ -305,9 +305,28 @@ class ThruLoopConfigurator(BasicEditor):
                 font-weight: normal;
                 outline: none;
             }
+            QComboBox {
+                padding-right: 20px;
+            }
             QComboBox:focus {
                 font-weight: normal;
                 outline: none;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left-width: 1px;
+                border-left-color: #999;
+                border-left-style: solid;
+            }
+            QComboBox::down-arrow {
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid #555;
+                margin-right: 5px;
             }
         """)
         
@@ -1007,6 +1026,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
         self.addLayout(load_slots_layout)
+        
+        # Apply stylesheet for combobox dropdown arrows
+        main_widget.setStyleSheet("""
+            QComboBox {
+                padding-right: 20px;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left-width: 1px;
+                border-left-color: #999;
+                border-left-style: solid;
+            }
+            QComboBox::down-arrow {
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid #555;
+                margin-right: 5px;
+            }
+        """)
     
     def get_current_settings(self):
         """Get current UI settings as dictionary"""
