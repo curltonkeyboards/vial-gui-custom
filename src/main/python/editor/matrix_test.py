@@ -323,7 +323,8 @@ class ThruLoopConfigurator(BasicEditor):
         """Create a CC selector combobox"""
         combo = QComboBox()
         combo.setMinimumWidth(120)
-        combo.setMaximumHeight(25)
+        combo.setMinimumHeight(28)  # Increased from 25 to ensure arrow is visible
+        combo.setMaximumHeight(28)  # Match minimum height
         
         # Add "None" option
         combo.addItem("None", 128)
@@ -331,10 +332,15 @@ class ThruLoopConfigurator(BasicEditor):
         # Add CC options
         for cc_num in range(128):
             combo.addItem(f"CC# {cc_num}", cc_num)
-            
+        
+        # Center align the text in the combo box
+        combo.setEditable(True)
+        combo.lineEdit().setReadOnly(True)
+        combo.lineEdit().setAlignment(QtCore.Qt.AlignCenter)
+        
         combo.setCurrentIndex(0)
         return combo
-    
+        
     def get_cc_value(self, combo):
         """Get the current CC value from a CC combo"""
         return combo.currentData()
@@ -360,19 +366,24 @@ class ThruLoopConfigurator(BasicEditor):
                 cc_combo = self.create_cc_combo()
                 table.setCellWidget(row, col, cc_combo)
         
+        # Set row heights to match combo box height
+        for row in range(6):
+            table.setRowHeight(row, 30)  # Slightly larger than combo box to prevent cutting
+        
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)  # ADD THIS
-        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # ADD THIS
-        table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)  # ADD THIS
+        table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # Use Fixed instead of ResizeToContents
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         
         # Calculate exact height needed
         header_height = table.horizontalHeader().height()
-        row_height = sum([table.rowHeight(i) for i in range(6)])
-        table.setFixedHeight(header_height + row_height + 2)  # +2 for borders
+        row_height = 30 * 6  # 6 rows at 30px each
+        frame_width = table.frameWidth() * 2
+        table.setFixedHeight(header_height + row_height + frame_width)
         
-        table.setMinimumWidth(500)  # Reduced from 600
-        table.setMaximumWidth(680)  # ADD THIS
-        return table 
+        table.setMinimumWidth(500)
+        table.setMaximumWidth(680)
+        return table
         
     def create_main_function_table(self):
         table = QTableWidget(6, 4)
@@ -387,19 +398,24 @@ class ThruLoopConfigurator(BasicEditor):
                 cc_combo = self.create_cc_combo()
                 table.setCellWidget(row, col, cc_combo)
         
+        # Set row heights to match combo box height
+        for row in range(6):
+            table.setRowHeight(row, 30)  # Slightly larger than combo box to prevent cutting
+        
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)  # ADD THIS
-        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # ADD THIS
-        table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)  # ADD THIS
+        table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # Use Fixed instead of ResizeToContents
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         
         # Calculate exact height needed
         header_height = table.horizontalHeader().height()
-        row_height = sum([table.rowHeight(i) for i in range(6)])
-        table.setFixedHeight(header_height + row_height + 2)  # +2 for borders
+        row_height = 30 * 6  # 6 rows at 30px each
+        frame_width = table.frameWidth() * 2
+        table.setFixedHeight(header_height + row_height + frame_width)
         
-        table.setMinimumWidth(500)  # Reduced from 600
-        table.setMaximumWidth(680)  # ADD THIS
-        return table    
+        table.setMinimumWidth(500)
+        table.setMaximumWidth(680)
+        return table  
         
     def on_loop_enabled_changed(self):
         enabled = not self.loop_enabled.isChecked()
