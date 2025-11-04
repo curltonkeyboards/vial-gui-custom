@@ -323,8 +323,7 @@ class ThruLoopConfigurator(BasicEditor):
         """Create a CC selector combobox"""
         combo = QComboBox()
         combo.setMinimumWidth(120)
-        combo.setMinimumHeight(28)  # Increased from 25 to ensure arrow is visible
-        combo.setMaximumHeight(28)  # Match minimum height
+        combo.setMaximumHeight(25)
         
         # Add "None" option
         combo.addItem("None", 128)
@@ -332,15 +331,10 @@ class ThruLoopConfigurator(BasicEditor):
         # Add CC options
         for cc_num in range(128):
             combo.addItem(f"CC# {cc_num}", cc_num)
-        
-        # Center align the text in the combo box
-        combo.setEditable(True)
-        combo.lineEdit().setReadOnly(True)
-        combo.lineEdit().setAlignment(QtCore.Qt.AlignCenter)
-        
+            
         combo.setCurrentIndex(0)
         return combo
-        
+    
     def get_cc_value(self, combo):
         """Get the current CC value from a CC combo"""
         return combo.currentData()
@@ -416,7 +410,7 @@ class ThruLoopConfigurator(BasicEditor):
         table.setMinimumWidth(500)
         table.setMaximumWidth(680)
         return table  
-        
+       
     def on_loop_enabled_changed(self):
         enabled = not self.loop_enabled.isChecked()
         self.main_group.setEnabled(enabled)
