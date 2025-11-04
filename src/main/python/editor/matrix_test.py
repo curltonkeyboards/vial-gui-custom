@@ -387,7 +387,7 @@ class ThruLoopConfigurator(BasicEditor):
         
     def create_main_function_table(self):
         table = QTableWidget(6, 4)
-        table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
+        table.setHorizontalHeaderLabels([f"Overdub {i+1}" for i in range(4)])
         table.setVerticalHeaderLabels([
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
