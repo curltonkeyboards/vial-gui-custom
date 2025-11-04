@@ -295,7 +295,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         self.addLayout(buttons_layout)
         
-        # Apply stylesheet to prevent bold focus styling and ensure dropdown arrows are visible
+        # Apply stylesheet to prevent bold focus styling and center combo box text
         main_widget.setStyleSheet("""
             QCheckBox:focus {
                 font-weight: normal;
@@ -306,27 +306,11 @@ class ThruLoopConfigurator(BasicEditor):
                 outline: none;
             }
             QComboBox {
-                padding-right: 20px;
+                text-align: center;
             }
             QComboBox:focus {
                 font-weight: normal;
                 outline: none;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left-width: 1px;
-                border-left-color: #999;
-                border-left-style: solid;
-            }
-            QComboBox::down-arrow {
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 6px solid #555;
-                margin-right: 5px;
             }
         """)
         
@@ -338,10 +322,17 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
         
-    def create_cc_combo(self):
-        """Create a CC selector combobox"""
+    def create_cc_combo(self, for_table=False):
+        """Create a CC selector combobox
+        
+        Args:
+            for_table: If True, creates a narrower combo for use in tables
+        """
         combo = QComboBox()
-        combo.setMinimumWidth(120)
+        if for_table:
+            combo.setMaximumWidth(100)  # Narrower for tables to show arrow
+        else:
+            combo.setMinimumWidth(120)
         combo.setMaximumHeight(25)
         
         # Add "None" option
@@ -373,10 +364,10 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
         
-        # Fill table with CC combos
+        # Fill table with CC combos (narrower for tables)
         for row in range(6):
             for col in range(4):
-                cc_combo = self.create_cc_combo()
+                cc_combo = self.create_cc_combo(for_table=True)
                 table.setCellWidget(row, col, cc_combo)
         
         # Set row heights to match combo box height
@@ -405,10 +396,10 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
         
-        # Fill table with CC combos
+        # Fill table with CC combos (narrower for tables)
         for row in range(6):
             for col in range(4):
-                cc_combo = self.create_cc_combo()
+                cc_combo = self.create_cc_combo(for_table=True)
                 table.setCellWidget(row, col, cc_combo)
         
         # Set row heights to match combo box height
@@ -1027,26 +1018,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             load_slots_layout.addWidget(btn)
         self.addLayout(load_slots_layout)
         
-        # Apply stylesheet for combobox dropdown arrows
+        # Apply stylesheet to center combo box text
         main_widget.setStyleSheet("""
             QComboBox {
-                padding-right: 20px;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left-width: 1px;
-                border-left-color: #999;
-                border-left-style: solid;
-            }
-            QComboBox::down-arrow {
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 6px solid #555;
-                margin-right: 5px;
+                text-align: center;
             }
         """)
     
