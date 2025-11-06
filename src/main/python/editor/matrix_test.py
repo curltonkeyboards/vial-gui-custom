@@ -735,9 +735,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 1)
         self.unsynced_mode = QComboBox()
         self.unsynced_mode.setMinimumWidth(120)
-        self.unsynced_mode.addItem("Loop", 0)
-        self.unsynced_mode.addItem("BPM 1", 1)
-        self.unsynced_mode.addItem("No Sync", 2)
+        self.unsynced_mode.addItem("Loop (Note Prime On)", 0)
+        self.unsynced_mode.addItem("Loop (Note Prime Off)", 4)
+        self.unsynced_mode.addItem("Unsynced (Note Prime On)", 2)
+        self.unsynced_mode.addItem("Unsynced (Note Prime Off)", 5)
+        self.unsynced_mode.addItem("BPM Bar", 1)    
+        self.unsynced_mode.addItem("BPM Beat", 3)
+        
+        
         loop_layout.addWidget(self.unsynced_mode, 0, 2)
         
         # Sample Mode
