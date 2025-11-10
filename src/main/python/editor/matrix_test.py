@@ -1347,7 +1347,6 @@ class LayerActuationConfigurator(BasicEditor):
         main_widget.setMinimumWidth(1400)  # Much wider for vertical sliders
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        scroll.setMinimumSize(750, 750)  # Much larger display area
         
         scroll.setWidget(main_widget)
         self.addWidget(scroll)
@@ -1409,26 +1408,6 @@ class LayerActuationConfigurator(BasicEditor):
         buttons_layout.addWidget(reset_btn)
         
         self.addLayout(buttons_layout)
-        
-        # Apply stylesheet
-        main_widget.setStyleSheet("""
-            QSlider::groove:vertical {
-                border: 1px solid #bbb;
-                background: white;
-                width: 8px;
-                border-radius: 4px;
-            }
-            QSlider::handle:vertical {
-                height: 18px;
-                margin: 0 -5px;
-            }
-            QSlider::handle:vertical:hover {
-            }
-            QCheckBox:focus, QPushButton:focus {
-                font-weight: normal;
-                outline: none;
-            }
-        """)
         
     def create_master_group(self):
         """Create the master control group with vertical sliders"""
