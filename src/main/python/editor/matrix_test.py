@@ -1331,7 +1331,7 @@ class LayerActuationConfigurator(BasicEditor):
         self.master_normal_slider = None
         self.master_midi_slider = None
         self.layer_widgets = []
-        self.updating_from_master = False  # Flag to prevent recursion
+        self.updating_from_master = False
         self.setup_ui()
         
     def setup_ui(self):
@@ -1340,11 +1340,11 @@ class LayerActuationConfigurator(BasicEditor):
         # Create scroll area for layers
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        main_widget.setMinimumWidth(900)
+        main_widget.setMinimumWidth(1400)  # Much wider for vertical sliders
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         
@@ -1366,7 +1366,7 @@ class LayerActuationConfigurator(BasicEditor):
         
         # Master controls group
         self.master_group = self.create_master_group()
-        main_layout.addWidget(self.master_group)
+        main_layout.addWidget(self.master_group, alignment=QtCore.Qt.AlignCenter)
         
         # Separator line
         line = QFrame()
@@ -1374,20 +1374,18 @@ class LayerActuationConfigurator(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         main_layout.addWidget(line)
         
-        # Individual layer controls (hidden by default)
+        # Individual layer controls - now always visible with vertical sliders
         self.layers_container = QWidget()
-        layers_layout = QGridLayout()
-        layers_layout.setSpacing(10)
+        self.layers_container.setMinimumHeight(400)
+        layers_layout = QHBoxLayout()
+        layers_layout.setSpacing(15)
         self.layers_container.setLayout(layers_layout)
-        main_layout.addWidget(self.layers_container)
+        main_layout.addWidget(self.layers_container, alignment=QtCore.Qt.AlignCenter)
         
-        # Create 12 layer groups (3 rows x 4 columns for compact layout)
+        # Create 12 layer groups (all in a row with vertical sliders)
         for layer_num in range(12):
-            row = layer_num // 4
-            col = layer_num % 4
-            
             layer_group = self.create_layer_group(layer_num)
-            layers_layout.addWidget(layer_group, row, col)
+            layers_layout.addWidget(layer_group)
         
         # Initially hide layer controls
         self.layers_container.setVisible(False)
@@ -1413,20 +1411,20 @@ class LayerActuationConfigurator(BasicEditor):
         
         # Apply stylesheet
         main_widget.setStyleSheet("""
-            QSlider::groove:horizontal {
+            QSlider::groove:vertical {
                 border: 1px solid #bbb;
                 background: white;
-                height: 8px;
+                width: 8px;
                 border-radius: 4px;
             }
-            QSlider::handle:horizontal {
+            QSlider::handle:vertical {
                 background: #4CAF50;
                 border: 1px solid #5c5c5c;
-                width: 18px;
-                margin: -5px 0;
+                height: 18px;
+                margin: 0 -5px;
                 border-radius: 9px;
             }
-            QSlider::handle:horizontal:hover {
+            QSlider::handle:vertical:hover {
                 background: #66BB6A;
             }
             QCheckBox:focus, QPushButton:focus {
@@ -1436,49 +1434,83 @@ class LayerActuationConfigurator(BasicEditor):
         """)
         
     def create_master_group(self):
-        """Create the master control group"""
+        """Create the master control group with vertical sliders"""
         group = QGroupBox(tr("LayerActuationConfigurator", "Master Actuation (All Layers)"))
         group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        layout = QVBoxLayout()
+        group.setMinimumHeight(350)
+        layout = QHBoxLayout()
+        layout.setSpacing(30)
         group.setLayout(layout)
         
-        # Normal actuation
-        normal_layout = QHBoxLayout()
-        normal_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "Normal Keys:")))
+        layout.addStretch()
         
-        self.master_normal_slider = QSlider(Qt.Horizontal)
+        # Normal actuation - vertical layout
+        normal_container = QWidget()
+        normal_layout = QVBoxLayout()
+        normal_layout.setSpacing(5)
+        normal_container.setLayout(normal_layout)
+        
+        normal_title = QLabel(tr("LayerActuationConfigurator", "Normal Keys"))
+        normal_title.setStyleSheet("QLabel { font-weight: bold; }")
+        normal_title.setAlignment(Qt.AlignCenter)
+        normal_layout.addWidget(normal_title)
+        
+        self.master_normal_label = QLabel("2.00mm")
+        self.master_normal_label.setStyleSheet("QLabel { font-weight: bold; color: #4CAF50; }")
+        self.master_normal_label.setAlignment(Qt.AlignCenter)
+        normal_layout.addWidget(self.master_normal_label)
+        
+        self.master_normal_slider = QSlider(Qt.Vertical)
         self.master_normal_slider.setMinimum(0)
         self.master_normal_slider.setMaximum(100)
         self.master_normal_slider.setValue(80)
-        self.master_normal_slider.setTickPosition(QSlider.TicksBelow)
+        self.master_normal_slider.setTickPosition(QSlider.TicksRight)
         self.master_normal_slider.setTickInterval(10)
-        normal_layout.addWidget(self.master_normal_slider)
+        self.master_normal_slider.setMinimumHeight(250)
+        self.master_normal_slider.setInvertedAppearance(True)  # So 0 is at bottom
+        normal_layout.addWidget(self.master_normal_slider, alignment=Qt.AlignCenter)
         
-        self.master_normal_label = QLabel("2.00mm (80)")
-        self.master_normal_label.setMinimumWidth(90)
-        self.master_normal_label.setStyleSheet("QLabel { font-weight: bold; }")
-        normal_layout.addWidget(self.master_normal_label)
+        normal_bottom_label = QLabel("(80)")
+        normal_bottom_label.setAlignment(Qt.AlignCenter)
+        normal_layout.addWidget(normal_bottom_label)
+        self.master_normal_bottom_label = normal_bottom_label
         
-        layout.addLayout(normal_layout)
+        layout.addWidget(normal_container)
         
-        # MIDI actuation
-        midi_layout = QHBoxLayout()
-        midi_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "MIDI Keys:")))
+        # MIDI actuation - vertical layout
+        midi_container = QWidget()
+        midi_layout = QVBoxLayout()
+        midi_layout.setSpacing(5)
+        midi_container.setLayout(midi_layout)
         
-        self.master_midi_slider = QSlider(Qt.Horizontal)
+        midi_title = QLabel(tr("LayerActuationConfigurator", "MIDI Keys"))
+        midi_title.setStyleSheet("QLabel { font-weight: bold; }")
+        midi_title.setAlignment(Qt.AlignCenter)
+        midi_layout.addWidget(midi_title)
+        
+        self.master_midi_label = QLabel("2.00mm")
+        self.master_midi_label.setStyleSheet("QLabel { font-weight: bold; color: #4CAF50; }")
+        self.master_midi_label.setAlignment(Qt.AlignCenter)
+        midi_layout.addWidget(self.master_midi_label)
+        
+        self.master_midi_slider = QSlider(Qt.Vertical)
         self.master_midi_slider.setMinimum(0)
         self.master_midi_slider.setMaximum(100)
         self.master_midi_slider.setValue(80)
-        self.master_midi_slider.setTickPosition(QSlider.TicksBelow)
+        self.master_midi_slider.setTickPosition(QSlider.TicksRight)
         self.master_midi_slider.setTickInterval(10)
-        midi_layout.addWidget(self.master_midi_slider)
+        self.master_midi_slider.setMinimumHeight(250)
+        self.master_midi_slider.setInvertedAppearance(True)
+        midi_layout.addWidget(self.master_midi_slider, alignment=Qt.AlignCenter)
         
-        self.master_midi_label = QLabel("2.00mm (80)")
-        self.master_midi_label.setMinimumWidth(90)
-        self.master_midi_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_layout.addWidget(self.master_midi_label)
+        midi_bottom_label = QLabel("(80)")
+        midi_bottom_label.setAlignment(Qt.AlignCenter)
+        midi_layout.addWidget(midi_bottom_label)
+        self.master_midi_bottom_label = midi_bottom_label
         
-        layout.addLayout(midi_layout)
+        layout.addWidget(midi_container)
+        
+        layout.addStretch()
         
         # Connect signals
         self.master_normal_slider.valueChanged.connect(self.on_master_normal_changed)
@@ -1487,47 +1519,71 @@ class LayerActuationConfigurator(BasicEditor):
         return group
     
     def create_layer_group(self, layer_num):
-        """Create a group box for a single layer's actuation settings"""
+        """Create a group box for a single layer's actuation settings with vertical sliders"""
         group = QGroupBox(tr("LayerActuationConfigurator", f"Layer {layer_num}"))
-        layout = QVBoxLayout()
-        layout.setSpacing(5)
-        group.setLayout(layout)
+        group.setMinimumWidth(90)
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+        group.setLayout(main_layout)
         
-        # Normal actuation
-        normal_layout = QHBoxLayout()
-        normal_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "N:")))
+        # Container for the two sliders side by side
+        sliders_layout = QHBoxLayout()
+        sliders_layout.setSpacing(10)
+        main_layout.addLayout(sliders_layout)
         
-        normal_slider = QSlider(Qt.Horizontal)
+        # Normal actuation slider
+        normal_container = QWidget()
+        normal_layout = QVBoxLayout()
+        normal_layout.setSpacing(3)
+        normal_container.setLayout(normal_layout)
+        
+        normal_title = QLabel("N")
+        normal_title.setAlignment(Qt.AlignCenter)
+        normal_layout.addWidget(normal_title)
+        
+        normal_label = QLabel("2.00mm")
+        normal_label.setAlignment(Qt.AlignCenter)
+        normal_label.setStyleSheet("QLabel { font-size: 10px; font-weight: bold; }")
+        normal_layout.addWidget(normal_label)
+        
+        normal_slider = QSlider(Qt.Vertical)
         normal_slider.setMinimum(0)
         normal_slider.setMaximum(100)
         normal_slider.setValue(80)
-        normal_slider.setTickPosition(QSlider.TicksBelow)
+        normal_slider.setTickPosition(QSlider.TicksRight)
         normal_slider.setTickInterval(20)
-        normal_layout.addWidget(normal_slider)
+        normal_slider.setMinimumHeight(200)
+        normal_slider.setInvertedAppearance(True)
+        normal_layout.addWidget(normal_slider, alignment=Qt.AlignCenter)
         
-        normal_label = QLabel("2.00mm")
-        normal_label.setMinimumWidth(55)
-        normal_layout.addWidget(normal_label)
+        sliders_layout.addWidget(normal_container)
         
-        layout.addLayout(normal_layout)
+        # MIDI actuation slider
+        midi_container = QWidget()
+        midi_layout = QVBoxLayout()
+        midi_layout.setSpacing(3)
+        midi_container.setLayout(midi_layout)
         
-        # MIDI actuation
-        midi_layout = QHBoxLayout()
-        midi_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "M:")))
+        midi_title = QLabel("M")
+        midi_title.setAlignment(Qt.AlignCenter)
+        midi_layout.addWidget(midi_title)
         
-        midi_slider = QSlider(Qt.Horizontal)
+        midi_label = QLabel("2.00mm")
+        midi_label.setAlignment(Qt.AlignCenter)
+        midi_label.setStyleSheet("QLabel { font-size: 10px; font-weight: bold; }")
+        midi_layout.addWidget(midi_label)
+        
+        midi_slider = QSlider(Qt.Vertical)
         midi_slider.setMinimum(0)
         midi_slider.setMaximum(100)
         midi_slider.setValue(80)
-        midi_slider.setTickPosition(QSlider.TicksBelow)
+        midi_slider.setTickPosition(QSlider.TicksRight)
         midi_slider.setTickInterval(20)
-        midi_layout.addWidget(midi_slider)
+        midi_slider.setMinimumHeight(200)
+        midi_slider.setInvertedAppearance(True)
+        midi_layout.addWidget(midi_slider, alignment=Qt.AlignCenter)
         
-        midi_label = QLabel("2.00mm")
-        midi_label.setMinimumWidth(55)
-        midi_layout.addWidget(midi_label)
-        
-        layout.addLayout(midi_layout)
+        sliders_layout.addWidget(midi_container)
         
         # Connect value changed signals to update labels
         normal_slider.valueChanged.connect(lambda v: normal_label.setText(f"{v * 0.025:.2f}mm"))
@@ -1559,7 +1615,8 @@ class LayerActuationConfigurator(BasicEditor):
     
     def on_master_normal_changed(self, value):
         """Handle master normal slider change"""
-        self.master_normal_label.setText(f"{value * 0.025:.2f}mm ({value})")
+        self.master_normal_label.setText(f"{value * 0.025:.2f}mm")
+        self.master_normal_bottom_label.setText(f"({value})")
         
         # If not in per-layer mode, update all layer sliders
         if not self.per_layer_enabled and not self.updating_from_master:
@@ -1570,7 +1627,8 @@ class LayerActuationConfigurator(BasicEditor):
     
     def on_master_midi_changed(self, value):
         """Handle master MIDI slider change"""
-        self.master_midi_label.setText(f"{value * 0.025:.2f}mm ({value})")
+        self.master_midi_label.setText(f"{value * 0.025:.2f}mm")
+        self.master_midi_bottom_label.setText(f"({value})")
         
         # If not in per-layer mode, update all layer sliders
         if not self.per_layer_enabled and not self.updating_from_master:
@@ -1703,6 +1761,7 @@ class LayerActuationConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
+            
     def activate(self):
         """Called when tab is activated - auto-load from keyboard"""
         if self.valid():
