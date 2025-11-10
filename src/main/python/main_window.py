@@ -32,6 +32,7 @@ from vial_device import VialKeyboard
 from editor.matrix_test import MatrixTest
 from editor.matrix_test import MIDIswitchSettingsConfigurator
 from editor.matrix_test import ThruLoopConfigurator
+from editor.matrix_test import LayerActuationConfigurator
 
 import themes
 
@@ -86,9 +87,11 @@ class MainWindow(QMainWindow):
         # Initialize the new configurators
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
+        self.LayerActuationConfigurator = LayerActuationConfigurator()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
+                        (self.layer_actuation_configurator, "Actuation"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"), 
                         (self.thruloop_configurator, "ThruLoop"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
@@ -307,7 +310,7 @@ class MainWindow(QMainWindow):
         # Updated to include the new configurators in the rebuild process
         for e in [self.layout_editor, self.keymap_editor, self.firmware_flasher, self.macro_recorder,
                   self.tap_dance, self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
-                  self.rgb_configurator, self.MIDIswitchSettingsConfigurator, self.thruloop_configurator]:
+                  self.rgb_configurator, self.MIDIswitchSettingsConfigurator, self.thruloop_configurator, self.layer_actuation_configurator]:
             e.rebuild(self.autorefresh.current_device)
 
     def refresh_tabs(self):

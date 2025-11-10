@@ -1033,3 +1033,68 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             
         except Exception as e:
             return None
+            
+        def set_layer_actuation(self, data):
+        """Set actuation for a specific layer
+        
+        Args:
+            data: bytearray [layer, normal_actuation, midi_actuation]
+        """
+        try:
+            packet = self._create_hid_packet(0xCA, 0, data)  # HID_CMD_SET_LAYER_ACTUATION
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[5] == 0
+        except Exception as e:
+            return False
+
+    def get_layer_actuation(self, layer):
+        """Get actuation for a specific layer
+        
+        Args:
+            layer: Layer number (0-11)
+            
+        Returns:
+            tuple: (normal_actuation, midi_actuation) or None on error
+        """
+        try:
+            packet = self._create_hid_packet(0xCB, layer, None)  # HID_CMD_GET_LAYER_ACTUATION
+            response = self.usb_send(self.dev, packet, retries=20)
+            
+            if not response or len(response) < 8:
+                return None
+            
+            normal = response[6]
+            midi = response[7]
+            
+            return (normal, midi)
+        except Exception as e:
+            return None
+
+    def get_all_layer_actuations(self):
+        """Get all layer actuations at once
+        
+        Returns:
+            bytearray: 24 bytes (12 layers × 2 bytes) or None on error
+        """
+        try:
+            packet = self._create_hid_packet(0xCC, 0, None)  # HID_CMD_GET_ALL_LAYER_ACTUATIONS
+            response = self.usb_send(self.dev, packet, retries=20)
+            
+            if not response or len(response) < 30:
+                return None
+            
+            # Extract the 24 bytes of actuation data
+            actuations = response[6:30]
+            
+            return bytearray(actuations)
+        except Exception as e:
+            return None
+
+    def reset_layer_actuations(self):
+        """Reset all layer actuations to defaults (80 = 2.0mm)"""
+        try:
+            packet = self._create_hid_packet(0xCD, 0, None)  # HID_CMD_RESET_LAYER_ACTUATIONS
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[5] == 0
+        except Exception as e:
+            return False
