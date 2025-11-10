@@ -1034,7 +1034,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             return None
             
-        def set_layer_actuation(self, data):
+    def set_layer_actuation(self, data):
         """Set actuation for a specific layer
         
         Args:

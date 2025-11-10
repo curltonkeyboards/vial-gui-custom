@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
         # Initialize the new configurators
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
-        self.LayerActuationConfigurator = LayerActuationConfigurator()
+        self.layer_actuation_configurator = LayerActuationConfigurator()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
