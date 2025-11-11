@@ -1342,7 +1342,7 @@ class LayerActuationConfigurator(BasicEditor):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setMinimumSize(750, 750)  # Much larger display area
+        scroll.setMinimumSize(750, 500)  # Much larger display area
         
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -1393,7 +1393,7 @@ class LayerActuationConfigurator(BasicEditor):
             layers_layout.addWidget(layer_group, row, col)
         
         # Initially hide layer controls
-        self.layers_container.setVisible(False)
+        self.layers_container.setVisible(True)
         
         main_layout.addStretch()
         
@@ -1584,10 +1584,7 @@ class LayerActuationConfigurator(BasicEditor):
     def on_per_layer_changed(self):
         """Handle per-layer mode toggle"""
         self.per_layer_enabled = self.per_layer_checkbox.isChecked()
-        
-        # Show/hide layer controls
-        self.layers_container.setVisible(self.per_layer_enabled)
-        
+    
         if not self.per_layer_enabled:
             # When disabling per-layer mode, sync all layers to master
             self.sync_all_to_master()
