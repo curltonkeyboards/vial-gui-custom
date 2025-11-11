@@ -1419,32 +1419,6 @@ class LayerActuationConfigurator(BasicEditor):
         
         self.addLayout(buttons_layout)
         
-        # Apply stylesheet - more compact
-        main_widget.setStyleSheet("""
-            QSlider::groove:horizontal {
-                border: 1px solid #bbb;
-                background: white;
-                height: 6px;
-                border-radius: 3px;
-            }
-            QSlider::handle:horizontal {
-                border: 1px solid #5c5c5c;
-                width: 14px;
-                margin: -4px 0;
-                border-radius: 2px;
-            }
-            QCheckBox:focus, QPushButton:focus {
-                font-weight: normal;
-                outline: none;
-            }
-            QGroupBox {
-                font-size: 11px;
-                padding-top: 12px;
-            }
-            QLabel {
-                font-size: 10px;
-            }
-        """)
         
     def create_master_group(self):
         """Create the master control group - more compact"""
@@ -1466,8 +1440,6 @@ class LayerActuationConfigurator(BasicEditor):
         self.master_normal_slider.setMinimum(0)
         self.master_normal_slider.setMaximum(100)
         self.master_normal_slider.setValue(80)
-        self.master_normal_slider.setTickPosition(QSlider.TicksBelow)
-        self.master_normal_slider.setTickInterval(20)
         self.master_normal_slider.setMaximumHeight(30)
         normal_layout.addWidget(self.master_normal_slider)
         
@@ -1488,8 +1460,6 @@ class LayerActuationConfigurator(BasicEditor):
         self.master_midi_slider.setMinimum(0)
         self.master_midi_slider.setMaximum(100)
         self.master_midi_slider.setValue(80)
-        self.master_midi_slider.setTickPosition(QSlider.TicksBelow)
-        self.master_midi_slider.setTickInterval(20)
         self.master_midi_slider.setMaximumHeight(30)
         midi_layout.addWidget(self.master_midi_slider)
         
@@ -1527,8 +1497,6 @@ class LayerActuationConfigurator(BasicEditor):
         normal_slider.setMinimum(0)
         normal_slider.setMaximum(100)
         normal_slider.setValue(80)
-        normal_slider.setTickPosition(QSlider.TicksBelow)
-        normal_slider.setTickInterval(25)
         normal_slider.setMaximumHeight(25)
         normal_layout.addWidget(normal_slider)
         
@@ -1551,8 +1519,6 @@ class LayerActuationConfigurator(BasicEditor):
         midi_slider.setMinimum(0)
         midi_slider.setMaximum(100)
         midi_slider.setValue(80)
-        midi_slider.setTickPosition(QSlider.TicksBelow)
-        midi_slider.setTickInterval(25)
         midi_slider.setMaximumHeight(25)
         midi_layout.addWidget(midi_slider)
         
