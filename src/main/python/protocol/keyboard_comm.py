@@ -1040,7 +1040,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         Args:
             data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
                             velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
-                            velocity_speed_scale]
+                            velocity_speed_scale, aftertouch_cc]
         """
         try:
             packet = self._create_hid_packet(0xCA, 0, data)  # HID_CMD_SET_LAYER_ACTUATION
@@ -1056,13 +1056,13 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             layer: Layer number (0-11)
             
         Returns:
-            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid, vel_speed} or None
+            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid, vel_speed, aftertouch_cc} or None
         """
         try:
             packet = self._create_hid_packet(0xCB, layer, None)  # HID_CMD_GET_LAYER_ACTUATION
             response = self.usb_send(self.dev, packet, retries=20)
             
-            if not response or len(response) < 13:
+            if not response or len(response) < 14:
                 return None
             
             return {
@@ -1072,7 +1072,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'velocity': response[9],
                 'rapid': response[10],
                 'midi_rapid': response[11],
-                'vel_speed': response[12]
+                'vel_speed': response[12],
+                'aftertouch_cc': response[13]
             }
         except Exception as e:
             return None
@@ -1081,14 +1082,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once
         
         Returns:
-            list: 84 values (12 layers × 7 bytes) or None on error
+            list: 96 values (12 layers × 8 bytes) or None on error
         """
         try:
             packet = self._create_hid_packet(0xCC, 0, None)  # HID_CMD_GET_ALL_LAYER_ACTUATIONS
             
-            # Collect 3 packets
+            # Collect 4 packets
             packets = []
-            for attempt in range(20):
+            for attempt in range(25):
                 try:
                     if hasattr(self.dev, 'read'):
                         data = self.dev.read(32, timeout_ms=100)
@@ -1097,16 +1098,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
-                        if packet_num < 3:
-                            packets.append((packet_num, data[6:34]))
+                        if packet_num < 4:
+                            packets.append((packet_num, data[6:30]))  # 24 bytes per packet
                         
-                    if len(packets) >= 3:
+                    if len(packets) >= 4:
                         break
                 except:
                     time.sleep(0.01)
                     continue
             
-            if len(packets) < 3:
+            if len(packets) < 4:
                 return None
             
             # Sort packets and combine
@@ -1115,7 +1116,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             for _, packet_data in packets:
                 actuations.extend(packet_data)
             
-            return actuations[:84]  # 12 layers × 7 bytes
+            return actuations[:96]  # 12 layers × 8 bytes
         except Exception as e:
             return None
 
