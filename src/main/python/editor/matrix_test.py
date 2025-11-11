@@ -1419,14 +1419,10 @@ class LayerActuationConfigurator(BasicEditor):
                 border-radius: 4px;
             }
             QSlider::handle:vertical {
-                background: #4CAF50;
-                border: 1px solid #5c5c5c;
                 height: 18px;
                 margin: 0 -5px;
-                border-radius: 9px;
             }
             QSlider::handle:vertical:hover {
-                background: #66BB6A;
             }
             QCheckBox:focus, QPushButton:focus {
                 font-weight: normal;
