@@ -1421,6 +1421,12 @@ class LayerActuationConfigurator(BasicEditor):
         
         # Apply stylesheet - more compact
         main_widget.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #bbb;
+                background: white;
+                height: 6px;
+                border-radius: 3px;
+            }
             QCheckBox:focus, QPushButton:focus {
                 font-weight: normal;
                 outline: none;
