@@ -1098,3 +1098,97 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return response and len(response) > 0 and response[5] == 0
         except Exception as e:
             return False
+            
+    def set_layer_actuation(self, data):
+        """Set actuation for a specific layer
+        
+        Args:
+            data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
+                            velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
+                            velocity_speed_scale]
+        """
+        try:
+            packet = self._create_hid_packet(0xCA, 0, data)  # HID_CMD_SET_LAYER_ACTUATION
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[5] == 0
+        except Exception as e:
+            return False
+
+    def get_layer_actuation(self, layer):
+        """Get actuation for a specific layer
+        
+        Args:
+            layer: Layer number (0-11)
+            
+        Returns:
+            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid, vel_speed} or None
+        """
+        try:
+            packet = self._create_hid_packet(0xCB, layer, None)  # HID_CMD_GET_LAYER_ACTUATION
+            response = self.usb_send(self.dev, packet, retries=20)
+            
+            if not response or len(response) < 13:
+                return None
+            
+            return {
+                'normal': response[6],
+                'midi': response[7],
+                'aftertouch': response[8],
+                'velocity': response[9],
+                'rapid': response[10],
+                'midi_rapid': response[11],
+                'vel_speed': response[12]
+            }
+        except Exception as e:
+            return None
+
+    def get_all_layer_actuations(self):
+        """Get all layer actuations at once
+        
+        Returns:
+            list: 84 values (12 layers × 7 bytes) or None on error
+        """
+        try:
+            packet = self._create_hid_packet(0xCC, 0, None)  # HID_CMD_GET_ALL_LAYER_ACTUATIONS
+            
+            # Collect 3 packets
+            packets = []
+            for attempt in range(20):
+                try:
+                    if hasattr(self.dev, 'read'):
+                        data = self.dev.read(32, timeout_ms=100)
+                    else:
+                        data = self.dev.get_feature_report(0, 32)
+                    
+                    if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
+                        packet_num = data[4]
+                        if packet_num < 3:
+                            packets.append((packet_num, data[6:34]))
+                        
+                    if len(packets) >= 3:
+                        break
+                except:
+                    time.sleep(0.01)
+                    continue
+            
+            if len(packets) < 3:
+                return None
+            
+            # Sort packets and combine
+            packets.sort(key=lambda x: x[0])
+            actuations = bytearray()
+            for _, packet_data in packets:
+                actuations.extend(packet_data)
+            
+            return actuations[:84]  # 12 layers × 7 bytes
+        except Exception as e:
+            return None
+
+    def reset_layer_actuations(self):
+        """Reset all layer actuations to defaults"""
+        try:
+            packet = self._create_hid_packet(0xCD, 0, None)  # HID_CMD_RESET_LAYER_ACTUATIONS
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[5] == 0
+        except Exception as e:
+            return False
