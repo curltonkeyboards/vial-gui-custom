@@ -1427,6 +1427,12 @@ class LayerActuationConfigurator(BasicEditor):
                 height: 6px;
                 border-radius: 3px;
             }
+            QSlider::handle:horizontal {
+                border: 1px solid #5c5c5c;
+                width: 14px;
+                margin: -4px 0;
+                border-radius: 2px;
+            }
             QCheckBox:focus, QPushButton:focus {
                 font-weight: normal;
                 outline: none;
