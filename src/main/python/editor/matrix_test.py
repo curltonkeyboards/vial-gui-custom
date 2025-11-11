@@ -1344,9 +1344,10 @@ class LayerActuationConfigurator(BasicEditor):
         
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        main_widget.setMinimumWidth(1400)  # Much wider for vertical sliders
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        main_widget.setMinimumSize(750, 750)  # Much larger display area
+        scroll.setMinimumSize(750, 750)  # Much larger display area
         
         scroll.setWidget(main_widget)
         self.addWidget(scroll)
@@ -1803,4 +1804,4 @@ class LayerActuationConfigurator(BasicEditor):
         # Set master sliders and checkbox state
         self.master_normal_slider.setValue(first_normal)
         self.master_midi_slider.setValue(first_midi)
-        self.per_layer_checkbox.setChecked(not all_same)setMinimumSiz
+        self.per_layer_checkbox.setChecked(not all_same)
