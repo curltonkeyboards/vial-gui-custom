@@ -1055,7 +1055,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         Args:
             data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
                             velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
-                            velocity_speed_scale, aftertouch_cc, flags]
+                            midi_rapidfire_velocity, velocity_speed_scale, aftertouch_cc, flags]
         """
         try:
             packet = self._create_hid_packet(0xCA, 0, data)
@@ -1067,27 +1067,31 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def get_layer_actuation(self, layer):
         """Get actuation for a specific layer
         
+        Args:
+            layer: Layer number (0-11)
+            
         Returns:
-            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid, vel_speed, 
-                   aftertouch_cc, rapidfire_enabled, midi_rapidfire_enabled} or None
+            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid_sens, midi_rapid_vel,
+                   vel_speed, aftertouch_cc, rapidfire_enabled, midi_rapidfire_enabled} or None
         """
         try:
             packet = self._create_hid_packet(0xCB, layer, None)
             response = self.usb_send(self.dev, packet, retries=20)
             
-            if not response or len(response) < 15:
+            if not response or len(response) < 16:
                 return None
             
-            flags = response[14]
+            flags = response[15]
             return {
                 'normal': response[6],
                 'midi': response[7],
                 'aftertouch': response[8],
                 'velocity': response[9],
                 'rapid': response[10],
-                'midi_rapid': response[11],
-                'vel_speed': response[12],
-                'aftertouch_cc': response[13],
+                'midi_rapid_sens': response[11],
+                'midi_rapid_vel': response[12],
+                'vel_speed': response[13],
+                'aftertouch_cc': response[14],
                 'rapidfire_enabled': (flags & 0x01) != 0,
                 'midi_rapidfire_enabled': (flags & 0x02) != 0
             }
@@ -1098,15 +1102,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once
         
         Returns:
-            list: 108 values (12 layers × 9 bytes) or None on error
+            list: 120 values (12 layers × 10 bytes) or None on error
         """
         try:
             packet = self._create_hid_packet(0xCC, 0, None)
             self.usb_send(self.dev, packet, retries=20)
             
-            # Collect 4 packets
+            # Collect 5 packets (120 bytes total, 26 bytes per packet except last)
             packets = []
-            for attempt in range(25):
+            for attempt in range(30):
                 try:
                     if hasattr(self.dev, 'read'):
                         data = self.dev.read(32, timeout_ms=100)
@@ -1115,16 +1119,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
-                        if packet_num < 4:
-                            packets.append((packet_num, data[6:32]))  # 26 bytes per packet
+                        if packet_num < 5:
+                            packets.append((packet_num, data[6:32]))
                         
-                    if len(packets) >= 4:
+                    if len(packets) >= 5:
                         break
                 except:
                     time.sleep(0.01)
                     continue
             
-            if len(packets) < 4:
+            if len(packets) < 5:
                 return None
             
             # Sort packets and combine
@@ -1133,6 +1137,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             for _, packet_data in packets:
                 actuations.extend(packet_data)
             
-            return actuations[:108]  # 12 layers × 9 bytes
+            return actuations[:120]  # 12 layers × 10 bytes
         except Exception as e:
             return None
+
+    def reset_layer_actuations(self):
+        """Reset all layer actuations to defaults"""
+        try:
+            packet = self._create_hid_packet(0xCD, 0, None)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[5] == 0
+        except Exception as e:
+            return False
