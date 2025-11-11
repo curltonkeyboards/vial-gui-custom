@@ -1049,22 +1049,36 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             return False
 
+    def set_layer_actuation(self, data):
+        """Set actuation for a specific layer
+        
+        Args:
+            data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
+                            velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
+                            velocity_speed_scale, aftertouch_cc, flags]
+        """
+        try:
+            packet = self._create_hid_packet(0xCA, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[5] == 0
+        except Exception as e:
+            return False
+
     def get_layer_actuation(self, layer):
         """Get actuation for a specific layer
         
-        Args:
-            layer: Layer number (0-11)
-            
         Returns:
-            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid, vel_speed, aftertouch_cc} or None
+            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid, vel_speed, 
+                   aftertouch_cc, rapidfire_enabled, midi_rapidfire_enabled} or None
         """
         try:
-            packet = self._create_hid_packet(0xCB, layer, None)  # HID_CMD_GET_LAYER_ACTUATION
+            packet = self._create_hid_packet(0xCB, layer, None)
             response = self.usb_send(self.dev, packet, retries=20)
             
-            if not response or len(response) < 14:
+            if not response or len(response) < 15:
                 return None
             
+            flags = response[14]
             return {
                 'normal': response[6],
                 'midi': response[7],
@@ -1073,7 +1087,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'rapid': response[10],
                 'midi_rapid': response[11],
                 'vel_speed': response[12],
-                'aftertouch_cc': response[13]
+                'aftertouch_cc': response[13],
+                'rapidfire_enabled': (flags & 0x01) != 0,
+                'midi_rapidfire_enabled': (flags & 0x02) != 0
             }
         except Exception as e:
             return None
@@ -1082,10 +1098,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once
         
         Returns:
-            list: 96 values (12 layers × 8 bytes) or None on error
+            list: 108 values (12 layers × 9 bytes) or None on error
         """
         try:
-            packet = self._create_hid_packet(0xCC, 0, None)  # HID_CMD_GET_ALL_LAYER_ACTUATIONS
+            packet = self._create_hid_packet(0xCC, 0, None)
+            self.usb_send(self.dev, packet, retries=20)
             
             # Collect 4 packets
             packets = []
@@ -1099,7 +1116,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
                         if packet_num < 4:
-                            packets.append((packet_num, data[6:30]))  # 24 bytes per packet
+                            packets.append((packet_num, data[6:32]))  # 26 bytes per packet
                         
                     if len(packets) >= 4:
                         break
@@ -1116,15 +1133,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             for _, packet_data in packets:
                 actuations.extend(packet_data)
             
-            return actuations[:96]  # 12 layers × 8 bytes
+            return actuations[:108]  # 12 layers × 9 bytes
         except Exception as e:
             return None
-
-    def reset_layer_actuations(self):
-        """Reset all layer actuations to defaults"""
-        try:
-            packet = self._create_hid_packet(0xCD, 0, None)  # HID_CMD_RESET_LAYER_ACTUATIONS
-            response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[5] == 0
-        except Exception as e:
-            return False
