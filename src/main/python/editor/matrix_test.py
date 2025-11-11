@@ -1324,3 +1324,506 @@ from vial_device import VialKeyboard
 
 
 class LayerActuationConfigurator(BasicEditor):
+    
+    def __init__(self):
+        super().__init__()
+        
+        # State tracking
+        self.per_layer_modes = {
+            'normal': False,
+            'midi': False,
+            'aftertouch': False,
+            'velocity': False,
+            'rapid': False,
+            'midi_rapid': False,
+            'vel_speed': False
+        }
+        
+        # Master widgets
+        self.master_widgets = {}
+        
+        # Layer widgets
+        self.layer_widgets = []
+        
+        # Flag to prevent recursion
+        self.updating_from_master = False
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        self.addStretch()
+        
+        # Create scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setMinimumSize(900, 600)
+        
+        main_widget = QWidget()
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+        main_widget.setLayout(main_layout)
+        
+        scroll.setWidget(main_widget)
+        self.addWidget(scroll)
+        self.setAlignment(scroll, QtCore.Qt.AlignHCenter)
+        
+        # Info label
+        info_label = QLabel(tr("LayerActuationConfigurator", 
+            "Configure actuation distances and settings per layer"))
+        info_label.setStyleSheet("QLabel { color: #666; font-style: italic; font-size: 10px; margin: 5px; }")
+        main_layout.addWidget(info_label, alignment=QtCore.Qt.AlignCenter)
+        
+        # Create master controls group
+        self.master_group = self.create_master_group()
+        main_layout.addWidget(self.master_group)
+        
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        main_layout.addWidget(line)
+        
+        # Individual layer controls
+        self.layers_container = QWidget()
+        layers_layout = QGridLayout()
+        layers_layout.setSpacing(8)
+        layers_layout.setContentsMargins(10, 10, 10, 10)
+        self.layers_container.setLayout(layers_layout)
+        main_layout.addWidget(self.layers_container)
+        
+        # Create 12 layer groups (3 rows × 4 columns)
+        for layer_num in range(12):
+            row = layer_num // 4
+            col = layer_num % 4
+            
+            layer_group = self.create_layer_group(layer_num)
+            layers_layout.addWidget(layer_group, row, col)
+        
+        main_layout.addStretch()
+        
+        # Buttons
+        self.addStretch()
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+        
+        save_btn = QPushButton(tr("LayerActuationConfigurator", "Save to Keyboard"))
+        save_btn.setMaximumWidth(150)
+        save_btn.clicked.connect(self.on_save)
+        buttons_layout.addWidget(save_btn)
+        
+        load_btn = QPushButton(tr("LayerActuationConfigurator", "Load from Keyboard"))
+        load_btn.setMaximumWidth(150)
+        load_btn.clicked.connect(self.on_load_from_keyboard)
+        buttons_layout.addWidget(load_btn)
+        
+        reset_btn = QPushButton(tr("LayerActuationConfigurator", "Reset All to Defaults"))
+        reset_btn.setMaximumWidth(150)
+        reset_btn.clicked.connect(self.on_reset)
+        buttons_layout.addWidget(reset_btn)
+        
+        self.addLayout(buttons_layout)
+    
+    def create_master_group(self):
+        """Create the master control group with all settings"""
+        group = QGroupBox(tr("LayerActuationConfigurator", "Master Settings (All Layers)"))
+        group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 12px; }")
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(15, 20, 15, 15)
+        group.setLayout(layout)
+        
+        # Define all settings
+        settings = [
+            {
+                'key': 'normal',
+                'label': 'Normal Keys Actuation:',
+                'range': (0, 100),
+                'default': 80,
+                'format': lambda v: f"{v * 0.025:.2f}mm ({v})",
+                'tooltip': 'Actuation point for normal (non-MIDI) keys'
+            },
+            {
+                'key': 'midi',
+                'label': 'MIDI Keys Actuation:',
+                'range': (0, 100),
+                'default': 80,
+                'format': lambda v: f"{v * 0.025:.2f}mm ({v})",
+                'tooltip': 'Actuation point for MIDI keys'
+            },
+            {
+                'key': 'aftertouch',
+                'label': 'Aftertouch Mode:',
+                'range': (0, 4),
+                'default': 0,
+                'format': lambda v: ['Off', 'Reverse', 'Bottom-Out', 'Post-Actuation', 'Vibrato'][v],
+                'tooltip': 'Aftertouch mode for MIDI expression'
+            },
+            {
+                'key': 'velocity',
+                'label': 'Velocity Mode:',
+                'range': (0, 3),
+                'default': 2,
+                'format': lambda v: ['Fixed', 'Peak at Apex', 'Speed-Based', 'Speed+Peak'][v],
+                'tooltip': 'MIDI velocity calculation method'
+            },
+            {
+                'key': 'rapid',
+                'label': 'Rapidfire Sensitivity:',
+                'range': (1, 100),
+                'default': 4,
+                'format': lambda v: f"{v}",
+                'tooltip': 'Rapid trigger sensitivity (lower = more sensitive)'
+            },
+            {
+                'key': 'midi_rapid',
+                'label': 'MIDI Rapidfire Velocity:',
+                'range': (0, 20),
+                'default': 10,
+                'format': lambda v: f"±{v}",
+                'tooltip': 'Velocity modifier range for rapid MIDI triggers'
+            },
+            {
+                'key': 'vel_speed',
+                'label': 'Velocity Speed Scale:',
+                'range': (1, 20),
+                'default': 10,
+                'format': lambda v: f"{v}",
+                'tooltip': 'Speed scaling for velocity calculation (1-20)'
+            }
+        ]
+        
+        for setting in settings:
+            # Per-layer checkbox
+            checkbox = QCheckBox(tr("LayerActuationConfigurator", f"Per-Layer {setting['label']}"))
+            checkbox.setStyleSheet("QCheckBox { font-size: 10px; margin-top: 5px; }")
+            checkbox.setToolTip(setting['tooltip'])
+            checkbox.stateChanged.connect(lambda state, k=setting['key']: self.on_per_layer_changed(k))
+            layout.addWidget(checkbox)
+            
+            # Master slider layout
+            slider_layout = QHBoxLayout()
+            
+            label = QLabel(tr("LayerActuationConfigurator", setting['label']))
+            label.setMinimumWidth(150)
+            label.setToolTip(setting['tooltip'])
+            slider_layout.addWidget(label)
+            
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(setting['range'][0])
+            slider.setMaximum(setting['range'][1])
+            slider.setValue(setting['default'])
+            slider.setMaximumHeight(30)
+            slider.setToolTip(setting['tooltip'])
+            slider_layout.addWidget(slider)
+            
+            value_label = QLabel(setting['format'](setting['default']))
+            value_label.setMinimumWidth(100)
+            value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11px; }")
+            slider_layout.addWidget(value_label)
+            
+            layout.addLayout(slider_layout)
+            
+            # Connect signals
+            slider.valueChanged.connect(
+                lambda v, k=setting['key'], fmt=setting['format'], lbl=value_label: self.on_master_changed(k, v, fmt, lbl)
+            )
+            
+            # Store widgets
+            self.master_widgets[setting['key']] = {
+                'checkbox': checkbox,
+                'slider': slider,
+                'label': value_label,
+                'format': setting['format']
+            }
+        
+        return group
+    
+    def create_layer_group(self, layer_num):
+        """Create a compact group for a single layer's settings"""
+        group = QGroupBox(tr("LayerActuationConfigurator", f"Layer {layer_num}"))
+        group.setMaximumSize(200, 280)
+        group.setMinimumSize(195, 275)
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        layout.setContentsMargins(6, 12, 6, 4)
+        group.setLayout(layout)
+        
+        layer_dict = {'layer': layer_num, 'group': group, 'widgets': {}}
+        
+        # Define compact settings
+        settings = [
+            ('normal', 'N:', 0, 100, 80, lambda v: f"{v * 0.025:.2f}mm"),
+            ('midi', 'M:', 0, 100, 80, lambda v: f"{v * 0.025:.2f}mm"),
+            ('aftertouch', 'AT:', 0, 4, 0, lambda v: ['Off', 'Rev', 'BO', 'PA', 'Vib'][v]),
+            ('velocity', 'Vel:', 0, 3, 2, lambda v: ['Fix', 'Apex', 'Spd', 'S+P'][v]),
+            ('rapid', 'RF:', 1, 100, 4, lambda v: f"{v}"),
+            ('midi_rapid', 'MRF:', 0, 20, 10, lambda v: f"±{v}"),
+            ('vel_speed', 'VS:', 1, 20, 10, lambda v: f"{v}")
+        ]
+        
+        for key, label_text, min_val, max_val, default, format_func in settings:
+            row_layout = QHBoxLayout()
+            row_layout.setSpacing(3)
+            
+            label = QLabel(tr("LayerActuationConfigurator", label_text))
+            label.setMaximumWidth(30)
+            label.setStyleSheet("QLabel { font-size: 9px; }")
+            row_layout.addWidget(label)
+            
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(min_val)
+            slider.setMaximum(max_val)
+            slider.setValue(default)
+            slider.setMaximumHeight(22)
+            row_layout.addWidget(slider)
+            
+            value_label = QLabel(format_func(default))
+            value_label.setMinimumWidth(42)
+            value_label.setMaximumWidth(42)
+            value_label.setStyleSheet("QLabel { font-size: 8px; }")
+            row_layout.addWidget(value_label)
+            
+            layout.addLayout(row_layout)
+            
+            # Connect value changed
+            slider.valueChanged.connect(
+                lambda v, lbl=value_label, fmt=format_func: lbl.setText(fmt(v))
+            )
+            
+            layer_dict['widgets'][key] = {
+                'slider': slider,
+                'label': value_label
+            }
+        
+        self.layer_widgets.append(layer_dict)
+        return group
+    
+    def on_per_layer_changed(self, key):
+        """Handle per-layer mode toggle"""
+        checkbox = self.master_widgets[key]['checkbox']
+        self.per_layer_modes[key] = checkbox.isChecked()
+        
+        if not self.per_layer_modes[key]:
+            # Sync all layers to master when disabling per-layer mode
+            self.sync_all_to_master(key)
+    
+    def on_master_changed(self, key, value, format_func, label):
+        """Handle master slider change"""
+        label.setText(format_func(value))
+        
+        # If not in per-layer mode, update all layer sliders
+        if not self.per_layer_modes[key] and not self.updating_from_master:
+            self.updating_from_master = True
+            for layer_dict in self.layer_widgets:
+                layer_dict['widgets'][key]['slider'].setValue(value)
+            self.updating_from_master = False
+    
+    def sync_all_to_master(self, key):
+        """Sync all layer sliders to master value for a specific setting"""
+        self.updating_from_master = True
+        master_value = self.master_widgets[key]['slider'].value()
+        
+        for layer_dict in self.layer_widgets:
+            layer_dict['widgets'][key]['slider'].setValue(master_value)
+        
+        self.updating_from_master = False
+    
+    def get_all_actuations(self):
+        """Get all actuation values as a list of dicts"""
+        actuations = []
+        for layer_dict in self.layer_widgets:
+            layer_data = {}
+            for key in ['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']:
+                layer_data[key] = layer_dict['widgets'][key]['slider'].value()
+            actuations.append(layer_data)
+        return actuations
+    
+    def set_layer_actuation(self, layer, values_dict):
+        """Set actuation for a specific layer"""
+        if layer < len(self.layer_widgets):
+            for key, value in values_dict.items():
+                if key in self.layer_widgets[layer]['widgets']:
+                    self.layer_widgets[layer]['widgets'][key]['slider'].setValue(value)
+    
+    def on_save(self):
+        """Save all actuation settings to keyboard"""
+        try:
+            if not self.device or not isinstance(self.device, VialKeyboard):
+                raise RuntimeError("Device not connected")
+            
+            actuations = self.get_all_actuations()
+            
+            # Send all 12 layers
+            for layer, values in enumerate(actuations):
+                data = bytearray([
+                    layer,
+                    values['normal'],
+                    values['midi'],
+                    values['aftertouch'],
+                    values['velocity'],
+                    values['rapid'],
+                    values['midi_rapid'],
+                    values['vel_speed']
+                ])
+                
+                if not self.device.keyboard.set_layer_actuation(data):
+                    raise RuntimeError(f"Failed to set actuation for layer {layer}")
+            
+            QMessageBox.information(None, "Success", 
+                "Layer actuations saved successfully!")
+                
+        except Exception as e:
+            QMessageBox.critical(None, "Error", 
+                f"Failed to save actuations: {str(e)}")
+    
+    def on_load_from_keyboard(self):
+        """Load all actuation settings from keyboard"""
+        try:
+            if not self.device or not isinstance(self.device, VialKeyboard):
+                raise RuntimeError("Device not connected")
+            
+            # Get all actuations (84 bytes = 12 layers × 7 values)
+            actuations = self.device.keyboard.get_all_layer_actuations()
+            
+            if not actuations or len(actuations) != 84:
+                raise RuntimeError("Failed to load actuations from keyboard")
+            
+            # Check if all layers have the same values for each setting
+            all_same = {}
+            first_values = {}
+            
+            for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']):
+                first_values[key] = actuations[key_idx]
+                all_same[key] = True
+                
+                for layer in range(1, 12):
+                    offset = layer * 7 + key_idx
+                    if actuations[offset] != first_values[key]:
+                        all_same[key] = False
+                        break
+            
+            # Apply to UI
+            for layer in range(12):
+                values = {}
+                offset = layer * 7
+                values['normal'] = actuations[offset + 0]
+                values['midi'] = actuations[offset + 1]
+                values['aftertouch'] = actuations[offset + 2]
+                values['velocity'] = actuations[offset + 3]
+                values['rapid'] = actuations[offset + 4]
+                values['midi_rapid'] = actuations[offset + 5]
+                values['vel_speed'] = actuations[offset + 6]
+                
+                self.set_layer_actuation(layer, values)
+            
+            # Set master sliders and checkbox states
+            for key in ['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']:
+                self.master_widgets[key]['slider'].setValue(first_values[key])
+                self.master_widgets[key]['checkbox'].setChecked(not all_same[key])
+            
+            QMessageBox.information(None, "Success", 
+                "Layer actuations loaded successfully!")
+                
+        except Exception as e:
+            QMessageBox.critical(None, "Error", 
+                f"Failed to load actuations: {str(e)}")
+    
+    def on_reset(self):
+        """Reset all actuations to defaults"""
+        try:
+            reply = QMessageBox.question(None, "Confirm Reset", 
+                "Reset all layer actuations to defaults? This cannot be undone.",
+                QMessageBox.Yes | QMessageBox.No)
+            
+            if reply == QMessageBox.Yes:
+                if not self.device or not isinstance(self.device, VialKeyboard):
+                    raise RuntimeError("Device not connected")
+                
+                if not self.device.keyboard.reset_layer_actuations():
+                    raise RuntimeError("Failed to reset actuations")
+                
+                # Update UI to defaults
+                defaults = {
+                    'normal': 80,
+                    'midi': 80,
+                    'aftertouch': 0,
+                    'velocity': 2,
+                    'rapid': 4,
+                    'midi_rapid': 10,
+                    'vel_speed': 10
+                }
+                
+                for key, value in defaults.items():
+                    self.master_widgets[key]['slider'].setValue(value)
+                    self.master_widgets[key]['checkbox'].setChecked(False)
+                
+                for layer_dict in self.layer_widgets:
+                    for key, value in defaults.items():
+                        layer_dict['widgets'][key]['slider'].setValue(value)
+                
+                QMessageBox.information(None, "Success", 
+                    "Layer actuations reset to defaults!")
+                    
+        except Exception as e:
+            QMessageBox.critical(None, "Error", 
+                f"Failed to reset actuations: {str(e)}")
+    
+    def valid(self):
+        return isinstance(self.device, VialKeyboard)
+    
+    def rebuild(self, device):
+        super().rebuild(device)
+        if not self.valid():
+            return
+            
+    def activate(self):
+        """Called when tab is activated - auto-load from keyboard"""
+        if self.valid():
+            try:
+                self.on_load_from_keyboard_silent()
+            except Exception as e:
+                pass
+    
+    def on_load_from_keyboard_silent(self):
+        """Load settings without showing success message"""
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+        
+        actuations = self.device.keyboard.get_all_layer_actuations()
+        
+        if not actuations or len(actuations) != 84:
+            return
+        
+        # Apply to UI (same logic as on_load_from_keyboard but without message)
+        all_same = {}
+        first_values = {}
+        
+        for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']):
+            first_values[key] = actuations[key_idx]
+            all_same[key] = True
+            
+            for layer in range(1, 12):
+                offset = layer * 7 + key_idx
+                if actuations[offset] != first_values[key]:
+                    all_same[key] = False
+                    break
+        
+        for layer in range(12):
+            values = {}
+            offset = layer * 7
+            values['normal'] = actuations[offset + 0]
+            values['midi'] = actuations[offset + 1]
+            values['aftertouch'] = actuations[offset + 2]
+            values['velocity'] = actuations[offset + 3]
+            values['rapid'] = actuations[offset + 4]
+            values['midi_rapid'] = actuations[offset + 5]
+            values['vel_speed'] = actuations[offset + 6]
+            
+            self.set_layer_actuation(layer, values)
+        
+        for key in ['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']:
+            self.master_widgets[key]['slider'].setValue(first_values[key])
+            self.master_widgets[key]['checkbox'].setChecked(not all_same[key])
