@@ -1344,9 +1344,9 @@ class LayerActuationConfigurator(BasicEditor):
         
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        main_widget.setMinimumWidth(1400)  # Much wider for vertical sliders
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
+        scroll.setMinimumSize(750, 750)  # Much larger display area
         
         scroll.setWidget(main_widget)
         self.addWidget(scroll)
@@ -1408,6 +1408,30 @@ class LayerActuationConfigurator(BasicEditor):
         buttons_layout.addWidget(reset_btn)
         
         self.addLayout(buttons_layout)
+        
+        # Apply stylesheet
+        main_widget.setStyleSheet("""
+            QSlider::groove:vertical {
+                border: 1px solid #bbb;
+                background: white;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QSlider::handle:vertical {
+                background: #4CAF50;
+                border: 1px solid #5c5c5c;
+                height: 18px;
+                margin: 0 -5px;
+                border-radius: 9px;
+            }
+            QSlider::handle:vertical:hover {
+                background: #66BB6A;
+            }
+            QCheckBox:focus, QPushButton:focus {
+                font-weight: normal;
+                outline: none;
+            }
+        """)
         
     def create_master_group(self):
         """Create the master control group with vertical sliders"""
@@ -1779,4 +1803,4 @@ class LayerActuationConfigurator(BasicEditor):
         # Set master sliders and checkbox state
         self.master_normal_slider.setValue(first_normal)
         self.master_midi_slider.setValue(first_midi)
-        self.per_layer_checkbox.setChecked(not all_same)
+        self.per_layer_checkbox.setChecked(not all_same)setMinimumSiz
