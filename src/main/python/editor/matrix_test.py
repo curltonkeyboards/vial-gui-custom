@@ -1312,9 +1312,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel, 
                            QSizePolicy, QGroupBox, QGridLayout, QSlider, QCheckBox,
-                           QMessageBox, QScrollArea, QFrame)
+                           QMessageBox, QScrollArea, QFrame, QComboBox)
 from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
 
@@ -1328,17 +1330,6 @@ class LayerActuationConfigurator(BasicEditor):
     def __init__(self):
         super().__init__()
         
-        # State tracking
-        self.per_layer_modes = {
-            'normal': False,
-            'midi': False,
-            'aftertouch': False,
-            'velocity': False,
-            'rapid': False,
-            'midi_rapid': False,
-            'vel_speed': False
-        }
-        
         # Master widgets
         self.master_widgets = {}
         
@@ -1347,6 +1338,9 @@ class LayerActuationConfigurator(BasicEditor):
         
         # Flag to prevent recursion
         self.updating_from_master = False
+        
+        # Per-layer mode
+        self.per_layer_enabled = False
         
         self.setup_ui()
         
@@ -1376,6 +1370,12 @@ class LayerActuationConfigurator(BasicEditor):
         info_label.setStyleSheet("QLabel { color: #666; font-style: italic; font-size: 10px; margin: 5px; }")
         main_layout.addWidget(info_label, alignment=QtCore.Qt.AlignCenter)
         
+        # Master per-layer checkbox
+        self.per_layer_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable Per-Layer Settings"))
+        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 12px; margin: 10px; }")
+        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
+        main_layout.addWidget(self.per_layer_checkbox, alignment=QtCore.Qt.AlignCenter)
+        
         # Create master controls group
         self.master_group = self.create_master_group()
         main_layout.addWidget(self.master_group)
@@ -1386,7 +1386,7 @@ class LayerActuationConfigurator(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         main_layout.addWidget(line)
         
-        # Individual layer controls
+        # Individual layer controls container
         self.layers_container = QWidget()
         layers_layout = QGridLayout()
         layers_layout.setSpacing(8)
@@ -1401,6 +1401,9 @@ class LayerActuationConfigurator(BasicEditor):
             
             layer_group = self.create_layer_group(layer_num)
             layers_layout.addWidget(layer_group, row, col)
+        
+        # Initially hide layer controls
+        self.layers_container.setVisible(False)
         
         main_layout.addStretch()
         
@@ -1435,199 +1438,491 @@ class LayerActuationConfigurator(BasicEditor):
         layout.setContentsMargins(15, 20, 15, 15)
         group.setLayout(layout)
         
-        # Define all settings
-        settings = [
-            {
-                'key': 'normal',
-                'label': 'Normal Keys Actuation:',
-                'range': (0, 100),
-                'default': 80,
-                'format': lambda v: f"{v * 0.025:.2f}mm ({v})",
-                'tooltip': 'Actuation point for normal (non-MIDI) keys'
-            },
-            {
-                'key': 'midi',
-                'label': 'MIDI Keys Actuation:',
-                'range': (0, 100),
-                'default': 80,
-                'format': lambda v: f"{v * 0.025:.2f}mm ({v})",
-                'tooltip': 'Actuation point for MIDI keys'
-            },
-            {
-                'key': 'aftertouch',
-                'label': 'Aftertouch Mode:',
-                'range': (0, 4),
-                'default': 0,
-                'format': lambda v: ['Off', 'Reverse', 'Bottom-Out', 'Post-Actuation', 'Vibrato'][v],
-                'tooltip': 'Aftertouch mode for MIDI expression'
-            },
-            {
-                'key': 'velocity',
-                'label': 'Velocity Mode:',
-                'range': (0, 3),
-                'default': 2,
-                'format': lambda v: ['Fixed', 'Peak at Apex', 'Speed-Based', 'Speed+Peak'][v],
-                'tooltip': 'MIDI velocity calculation method'
-            },
-            {
-                'key': 'rapid',
-                'label': 'Rapidfire Sensitivity:',
-                'range': (1, 100),
-                'default': 4,
-                'format': lambda v: f"{v}",
-                'tooltip': 'Rapid trigger sensitivity (lower = more sensitive)'
-            },
-            {
-                'key': 'midi_rapid',
-                'label': 'MIDI Rapidfire Velocity:',
-                'range': (0, 20),
-                'default': 10,
-                'format': lambda v: f"±{v}",
-                'tooltip': 'Velocity modifier range for rapid MIDI triggers'
-            },
-            {
-                'key': 'vel_speed',
-                'label': 'Velocity Speed Scale:',
-                'range': (1, 20),
-                'default': 10,
-                'format': lambda v: f"{v}",
-                'tooltip': 'Speed scaling for velocity calculation (1-20)'
-            }
-        ]
+        # Normal Keys Actuation (slider)
+        slider_layout = QHBoxLayout()
+        label = QLabel(tr("LayerActuationConfigurator", "Normal Keys Actuation:"))
+        label.setMinimumWidth(180)
+        slider_layout.addWidget(label)
         
-        for setting in settings:
-            # Per-layer checkbox
-            checkbox = QCheckBox(tr("LayerActuationConfigurator", f"Per-Layer {setting['label']}"))
-            checkbox.setStyleSheet("QCheckBox { font-size: 10px; margin-top: 5px; }")
-            checkbox.setToolTip(setting['tooltip'])
-            checkbox.stateChanged.connect(lambda state, k=setting['key']: self.on_per_layer_changed(k))
-            layout.addWidget(checkbox)
-            
-            # Master slider layout
-            slider_layout = QHBoxLayout()
-            
-            label = QLabel(tr("LayerActuationConfigurator", setting['label']))
-            label.setMinimumWidth(150)
-            label.setToolTip(setting['tooltip'])
-            slider_layout.addWidget(label)
-            
-            slider = QSlider(Qt.Horizontal)
-            slider.setMinimum(setting['range'][0])
-            slider.setMaximum(setting['range'][1])
-            slider.setValue(setting['default'])
-            slider.setMaximumHeight(30)
-            slider.setToolTip(setting['tooltip'])
-            slider_layout.addWidget(slider)
-            
-            value_label = QLabel(setting['format'](setting['default']))
-            value_label.setMinimumWidth(100)
-            value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11px; }")
-            slider_layout.addWidget(value_label)
-            
-            layout.addLayout(slider_layout)
-            
-            # Connect signals
-            slider.valueChanged.connect(
-                lambda v, k=setting['key'], fmt=setting['format'], lbl=value_label: self.on_master_changed(k, v, fmt, lbl)
-            )
-            
-            # Store widgets
-            self.master_widgets[setting['key']] = {
-                'checkbox': checkbox,
-                'slider': slider,
-                'label': value_label,
-                'format': setting['format']
-            }
+        normal_slider = QSlider(Qt.Horizontal)
+        normal_slider.setMinimum(0)
+        normal_slider.setMaximum(100)
+        normal_slider.setValue(80)
+        slider_layout.addWidget(normal_slider)
+        
+        normal_value_label = QLabel("2.00mm (80)")
+        normal_value_label.setMinimumWidth(100)
+        normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        slider_layout.addWidget(normal_value_label)
+        
+        layout.addLayout(slider_layout)
+        normal_slider.valueChanged.connect(
+            lambda v: self.on_master_slider_changed('normal', v, normal_value_label)
+        )
+        
+        # MIDI Keys Actuation (slider)
+        slider_layout = QHBoxLayout()
+        label = QLabel(tr("LayerActuationConfigurator", "MIDI Keys Actuation:"))
+        label.setMinimumWidth(180)
+        slider_layout.addWidget(label)
+        
+        midi_slider = QSlider(Qt.Horizontal)
+        midi_slider.setMinimum(0)
+        midi_slider.setMaximum(100)
+        midi_slider.setValue(80)
+        slider_layout.addWidget(midi_slider)
+        
+        midi_value_label = QLabel("2.00mm (80)")
+        midi_value_label.setMinimumWidth(100)
+        midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        slider_layout.addWidget(midi_value_label)
+        
+        layout.addLayout(slider_layout)
+        midi_slider.valueChanged.connect(
+            lambda v: self.on_master_slider_changed('midi', v, midi_value_label)
+        )
+        
+        # Aftertouch Mode (dropdown)
+        combo_layout = QHBoxLayout()
+        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch Mode:"))
+        label.setMinimumWidth(180)
+        combo_layout.addWidget(label)
+        
+        aftertouch_combo = QComboBox()
+        aftertouch_combo.addItem("Off", 0)
+        aftertouch_combo.addItem("Reverse", 1)
+        aftertouch_combo.addItem("Bottom-Out", 2)
+        aftertouch_combo.addItem("Post-Actuation", 3)
+        aftertouch_combo.addItem("Vibrato", 4)
+        aftertouch_combo.setCurrentIndex(0)
+        combo_layout.addWidget(aftertouch_combo)
+        combo_layout.addStretch()
+        
+        layout.addLayout(combo_layout)
+        aftertouch_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
+        )
+        
+        # Aftertouch CC (dropdown) - NEW
+        combo_layout = QHBoxLayout()
+        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
+        label.setMinimumWidth(180)
+        combo_layout.addWidget(label)
+        
+        aftertouch_cc_combo = QComboBox()
+        for cc in range(128):
+            aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
+        aftertouch_cc_combo.setCurrentIndex(74)  # Default CC#74
+        combo_layout.addWidget(aftertouch_cc_combo)
+        combo_layout.addStretch()
+        
+        layout.addLayout(combo_layout)
+        aftertouch_cc_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
+        )
+        
+        # Velocity Mode (dropdown)
+        combo_layout = QHBoxLayout()
+        label = QLabel(tr("LayerActuationConfigurator", "Velocity Mode:"))
+        label.setMinimumWidth(180)
+        combo_layout.addWidget(label)
+        
+        velocity_combo = QComboBox()
+        velocity_combo.addItem("Fixed (64)", 0)
+        velocity_combo.addItem("Peak at Apex", 1)
+        velocity_combo.addItem("Speed-Based", 2)
+        velocity_combo.addItem("Speed + Peak Combined", 3)
+        velocity_combo.setCurrentIndex(2)
+        combo_layout.addWidget(velocity_combo)
+        combo_layout.addStretch()
+        
+        layout.addLayout(combo_layout)
+        velocity_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('velocity', velocity_combo)
+        )
+        
+        # Velocity Speed Scale (dropdown)
+        combo_layout = QHBoxLayout()
+        label = QLabel(tr("LayerActuationConfigurator", "Velocity Speed Scale:"))
+        label.setMinimumWidth(180)
+        combo_layout.addWidget(label)
+        
+        vel_speed_combo = QComboBox()
+        for i in range(1, 21):
+            vel_speed_combo.addItem(str(i), i)
+        vel_speed_combo.setCurrentIndex(9)  # Default 10
+        combo_layout.addWidget(vel_speed_combo)
+        combo_layout.addStretch()
+        
+        layout.addLayout(combo_layout)
+        vel_speed_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('vel_speed', vel_speed_combo)
+        )
+        
+        # Enable Rapidfire checkbox
+        rapid_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable Rapidfire"))
+        rapid_checkbox.setChecked(False)
+        layout.addWidget(rapid_checkbox)
+        rapid_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
+        
+        # Rapidfire Sensitivity (slider) - hidden by default
+        rapid_slider_layout = QHBoxLayout()
+        rapid_label = QLabel(tr("LayerActuationConfigurator", "Rapidfire Sensitivity:"))
+        rapid_label.setMinimumWidth(180)
+        rapid_slider_layout.addWidget(rapid_label)
+        
+        rapid_slider = QSlider(Qt.Horizontal)
+        rapid_slider.setMinimum(1)
+        rapid_slider.setMaximum(100)
+        rapid_slider.setValue(4)
+        rapid_slider_layout.addWidget(rapid_slider)
+        
+        rapid_value_label = QLabel("4")
+        rapid_value_label.setMinimumWidth(100)
+        rapid_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        rapid_slider_layout.addWidget(rapid_value_label)
+        
+        rapid_slider_widget = QWidget()
+        rapid_slider_widget.setLayout(rapid_slider_layout)
+        rapid_slider_widget.setVisible(False)
+        layout.addWidget(rapid_slider_widget)
+        
+        rapid_slider.valueChanged.connect(
+            lambda v: self.on_master_slider_changed('rapid', v, rapid_value_label)
+        )
+        
+        # Enable MIDI Rapidfire checkbox
+        midi_rapid_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable MIDI Rapidfire"))
+        midi_rapid_checkbox.setChecked(False)
+        layout.addWidget(midi_rapid_checkbox)
+        midi_rapid_checkbox.stateChanged.connect(self.on_midi_rapidfire_toggled)
+        
+        # MIDI Rapidfire Velocity (dropdown) - hidden by default
+        midi_rapid_combo_layout = QHBoxLayout()
+        midi_rapid_label = QLabel(tr("LayerActuationConfigurator", "MIDI Rapidfire Velocity:"))
+        midi_rapid_label.setMinimumWidth(180)
+        midi_rapid_combo_layout.addWidget(midi_rapid_label)
+        
+        midi_rapid_combo = QComboBox()
+        for i in range(21):
+            midi_rapid_combo.addItem(f"±{i}", i)
+        midi_rapid_combo.setCurrentIndex(10)  # Default ±10
+        midi_rapid_combo_layout.addWidget(midi_rapid_combo)
+        midi_rapid_combo_layout.addStretch()
+        
+        midi_rapid_widget = QWidget()
+        midi_rapid_widget.setLayout(midi_rapid_combo_layout)
+        midi_rapid_widget.setVisible(False)
+        layout.addWidget(midi_rapid_widget)
+        
+        midi_rapid_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('midi_rapid', midi_rapid_combo)
+        )
+        
+        # Store widgets
+        self.master_widgets = {
+            'normal_slider': normal_slider,
+            'normal_label': normal_value_label,
+            'midi_slider': midi_slider,
+            'midi_label': midi_value_label,
+            'aftertouch_combo': aftertouch_combo,
+            'aftertouch_cc_combo': aftertouch_cc_combo,
+            'velocity_combo': velocity_combo,
+            'vel_speed_combo': vel_speed_combo,
+            'rapid_checkbox': rapid_checkbox,
+            'rapid_slider': rapid_slider,
+            'rapid_label': rapid_value_label,
+            'rapid_widget': rapid_slider_widget,
+            'midi_rapid_checkbox': midi_rapid_checkbox,
+            'midi_rapid_combo': midi_rapid_combo,
+            'midi_rapid_widget': midi_rapid_widget
+        }
         
         return group
     
     def create_layer_group(self, layer_num):
         """Create a compact group for a single layer's settings"""
         group = QGroupBox(tr("LayerActuationConfigurator", f"Layer {layer_num}"))
-        group.setMaximumSize(200, 280)
-        group.setMinimumSize(195, 275)
+        group.setMaximumSize(220, 350)
+        group.setMinimumSize(215, 345)
         layout = QVBoxLayout()
-        layout.setSpacing(2)
+        layout.setSpacing(3)
         layout.setContentsMargins(6, 12, 6, 4)
         group.setLayout(layout)
         
         layer_dict = {'layer': layer_num, 'group': group, 'widgets': {}}
         
-        # Define compact settings
-        settings = [
-            ('normal', 'N:', 0, 100, 80, lambda v: f"{v * 0.025:.2f}mm"),
-            ('midi', 'M:', 0, 100, 80, lambda v: f"{v * 0.025:.2f}mm"),
-            ('aftertouch', 'AT:', 0, 4, 0, lambda v: ['Off', 'Rev', 'BO', 'PA', 'Vib'][v]),
-            ('velocity', 'Vel:', 0, 3, 2, lambda v: ['Fix', 'Apex', 'Spd', 'S+P'][v]),
-            ('rapid', 'RF:', 1, 100, 4, lambda v: f"{v}"),
-            ('midi_rapid', 'MRF:', 0, 20, 10, lambda v: f"±{v}"),
-            ('vel_speed', 'VS:', 1, 20, 10, lambda v: f"{v}")
-        ]
+        # Normal actuation slider
+        row_layout = QHBoxLayout()
+        label = QLabel("N:")
+        label.setMaximumWidth(20)
+        row_layout.addWidget(label)
         
-        for key, label_text, min_val, max_val, default, format_func in settings:
-            row_layout = QHBoxLayout()
-            row_layout.setSpacing(3)
-            
-            label = QLabel(tr("LayerActuationConfigurator", label_text))
-            label.setMaximumWidth(30)
-            label.setStyleSheet("QLabel { font-size: 9px; }")
-            row_layout.addWidget(label)
-            
-            slider = QSlider(Qt.Horizontal)
-            slider.setMinimum(min_val)
-            slider.setMaximum(max_val)
-            slider.setValue(default)
-            slider.setMaximumHeight(22)
-            row_layout.addWidget(slider)
-            
-            value_label = QLabel(format_func(default))
-            value_label.setMinimumWidth(42)
-            value_label.setMaximumWidth(42)
-            value_label.setStyleSheet("QLabel { font-size: 8px; }")
-            row_layout.addWidget(value_label)
-            
-            layout.addLayout(row_layout)
-            
-            # Connect value changed
-            slider.valueChanged.connect(
-                lambda v, lbl=value_label, fmt=format_func: lbl.setText(fmt(v))
-            )
-            
-            layer_dict['widgets'][key] = {
-                'slider': slider,
-                'label': value_label
-            }
+        slider = QSlider(Qt.Horizontal)
+        slider.setMinimum(0)
+        slider.setMaximum(100)
+        slider.setValue(80)
+        slider.setMaximumHeight(22)
+        row_layout.addWidget(slider)
+        
+        value_label = QLabel("2.00mm")
+        value_label.setMinimumWidth(50)
+        value_label.setStyleSheet("QLabel { font-size: 8px; }")
+        row_layout.addWidget(value_label)
+        layout.addLayout(row_layout)
+        
+        slider.valueChanged.connect(lambda v, lbl=value_label: lbl.setText(f"{v * 0.025:.2f}mm"))
+        layer_dict['widgets']['normal_slider'] = slider
+        layer_dict['widgets']['normal_label'] = value_label
+        
+        # MIDI actuation slider
+        row_layout = QHBoxLayout()
+        label = QLabel("M:")
+        label.setMaximumWidth(20)
+        row_layout.addWidget(label)
+        
+        slider = QSlider(Qt.Horizontal)
+        slider.setMinimum(0)
+        slider.setMaximum(100)
+        slider.setValue(80)
+        slider.setMaximumHeight(22)
+        row_layout.addWidget(slider)
+        
+        value_label = QLabel("2.00mm")
+        value_label.setMinimumWidth(50)
+        value_label.setStyleSheet("QLabel { font-size: 8px; }")
+        row_layout.addWidget(value_label)
+        layout.addLayout(row_layout)
+        
+        slider.valueChanged.connect(lambda v, lbl=value_label: lbl.setText(f"{v * 0.025:.2f}mm"))
+        layer_dict['widgets']['midi_slider'] = slider
+        layer_dict['widgets']['midi_label'] = value_label
+        
+        # Aftertouch Mode combo
+        row_layout = QHBoxLayout()
+        label = QLabel("AT:")
+        label.setMaximumWidth(20)
+        row_layout.addWidget(label)
+        
+        combo = QComboBox()
+        combo.addItem("Off", 0)
+        combo.addItem("Rev", 1)
+        combo.addItem("BO", 2)
+        combo.addItem("PA", 3)
+        combo.addItem("Vib", 4)
+        combo.setMaximumHeight(22)
+        row_layout.addWidget(combo)
+        layout.addLayout(row_layout)
+        
+        layer_dict['widgets']['aftertouch_combo'] = combo
+        
+        # Aftertouch CC combo
+        row_layout = QHBoxLayout()
+        label = QLabel("ATCC:")
+        label.setMaximumWidth(40)
+        row_layout.addWidget(label)
+        
+        combo = QComboBox()
+        for cc in range(128):
+            combo.addItem(f"{cc}", cc)
+        combo.setCurrentIndex(74)
+        combo.setMaximumHeight(22)
+        row_layout.addWidget(combo)
+        layout.addLayout(row_layout)
+        
+        layer_dict['widgets']['aftertouch_cc_combo'] = combo
+        
+        # Velocity Mode combo
+        row_layout = QHBoxLayout()
+        label = QLabel("Vel:")
+        label.setMaximumWidth(25)
+        row_layout.addWidget(label)
+        
+        combo = QComboBox()
+        combo.addItem("Fix", 0)
+        combo.addItem("Apex", 1)
+        combo.addItem("Spd", 2)
+        combo.addItem("S+P", 3)
+        combo.setCurrentIndex(2)
+        combo.setMaximumHeight(22)
+        row_layout.addWidget(combo)
+        layout.addLayout(row_layout)
+        
+        layer_dict['widgets']['velocity_combo'] = combo
+        
+        # Velocity Speed Scale combo
+        row_layout = QHBoxLayout()
+        label = QLabel("VS:")
+        label.setMaximumWidth(20)
+        row_layout.addWidget(label)
+        
+        combo = QComboBox()
+        for i in range(1, 21):
+            combo.addItem(str(i), i)
+        combo.setCurrentIndex(9)
+        combo.setMaximumHeight(22)
+        row_layout.addWidget(combo)
+        layout.addLayout(row_layout)
+        
+        layer_dict['widgets']['vel_speed_combo'] = combo
+        
+        # Enable Rapidfire checkbox
+        rapid_checkbox = QCheckBox("Enable RF")
+        rapid_checkbox.setStyleSheet("QCheckBox { font-size: 9px; }")
+        layout.addWidget(rapid_checkbox)
+        layer_dict['widgets']['rapid_checkbox'] = rapid_checkbox
+        
+        # Rapidfire Sensitivity slider - hidden by default
+        row_layout = QHBoxLayout()
+        label = QLabel("RF:")
+        label.setMaximumWidth(20)
+        row_layout.addWidget(label)
+        
+        slider = QSlider(Qt.Horizontal)
+        slider.setMinimum(1)
+        slider.setMaximum(100)
+        slider.setValue(4)
+        slider.setMaximumHeight(22)
+        row_layout.addWidget(slider)
+        
+        value_label = QLabel("4")
+        value_label.setMinimumWidth(30)
+        value_label.setStyleSheet("QLabel { font-size: 8px; }")
+        row_layout.addWidget(value_label)
+        
+        rapid_widget = QWidget()
+        rapid_widget.setLayout(row_layout)
+        rapid_widget.setVisible(False)
+        layout.addWidget(rapid_widget)
+        
+        slider.valueChanged.connect(lambda v, lbl=value_label: lbl.setText(str(v)))
+        layer_dict['widgets']['rapid_slider'] = slider
+        layer_dict['widgets']['rapid_label'] = value_label
+        layer_dict['widgets']['rapid_widget'] = rapid_widget
+        
+        rapid_checkbox.stateChanged.connect(
+            lambda state, w=rapid_widget: w.setVisible(state == Qt.Checked)
+        )
+        
+        # Enable MIDI Rapidfire checkbox
+        midi_rapid_checkbox = QCheckBox("Enable MRF")
+        midi_rapid_checkbox.setStyleSheet("QCheckBox { font-size: 9px; }")
+        layout.addWidget(midi_rapid_checkbox)
+        layer_dict['widgets']['midi_rapid_checkbox'] = midi_rapid_checkbox
+        
+        # MIDI Rapidfire Velocity combo - hidden by default
+        row_layout = QHBoxLayout()
+        label = QLabel("MRF:")
+        label.setMaximumWidth(30)
+        row_layout.addWidget(label)
+        
+        combo = QComboBox()
+        for i in range(21):
+            combo.addItem(f"±{i}", i)
+        combo.setCurrentIndex(10)
+        combo.setMaximumHeight(22)
+        row_layout.addWidget(combo)
+        
+        midi_rapid_widget = QWidget()
+        midi_rapid_widget.setLayout(row_layout)
+        midi_rapid_widget.setVisible(False)
+        layout.addWidget(midi_rapid_widget)
+        
+        layer_dict['widgets']['midi_rapid_combo'] = combo
+        layer_dict['widgets']['midi_rapid_widget'] = midi_rapid_widget
+        
+        midi_rapid_checkbox.stateChanged.connect(
+            lambda state, w=midi_rapid_widget: w.setVisible(state == Qt.Checked)
+        )
         
         self.layer_widgets.append(layer_dict)
         return group
     
-    def on_per_layer_changed(self, key):
-        """Handle per-layer mode toggle"""
-        checkbox = self.master_widgets[key]['checkbox']
-        self.per_layer_modes[key] = checkbox.isChecked()
+    def on_per_layer_toggled(self):
+        """Handle master per-layer checkbox toggle"""
+        self.per_layer_enabled = self.per_layer_checkbox.isChecked()
+        self.layers_container.setVisible(self.per_layer_enabled)
         
-        if not self.per_layer_modes[key]:
+        if not self.per_layer_enabled:
             # Sync all layers to master when disabling per-layer mode
-            self.sync_all_to_master(key)
+            self.sync_all_to_master()
     
-    def on_master_changed(self, key, value, format_func, label):
-        """Handle master slider change"""
-        label.setText(format_func(value))
+    def on_rapidfire_toggled(self):
+        """Show/hide rapidfire sensitivity based on checkbox"""
+        enabled = self.master_widgets['rapid_checkbox'].isChecked()
+        self.master_widgets['rapid_widget'].setVisible(enabled)
         
-        # If not in per-layer mode, update all layer sliders
-        if not self.per_layer_modes[key] and not self.updating_from_master:
+        if not self.per_layer_enabled:
+            # Sync to all layers
+            for layer_dict in self.layer_widgets:
+                layer_dict['widgets']['rapid_checkbox'].setChecked(enabled)
+                layer_dict['widgets']['rapid_widget'].setVisible(enabled)
+    
+    def on_midi_rapidfire_toggled(self):
+        """Show/hide MIDI rapidfire velocity based on checkbox"""
+        enabled = self.master_widgets['midi_rapid_checkbox'].isChecked()
+        self.master_widgets['midi_rapid_widget'].setVisible(enabled)
+        
+        if not self.per_layer_enabled:
+            # Sync to all layers
+            for layer_dict in self.layer_widgets:
+                layer_dict['widgets']['midi_rapid_checkbox'].setChecked(enabled)
+                layer_dict['widgets']['midi_rapid_widget'].setVisible(enabled)
+    
+    def on_master_slider_changed(self, key, value, label):
+        """Handle master slider changes"""
+        if key in ['normal', 'midi']:
+            label.setText(f"{value * 0.025:.2f}mm ({value})")
+        else:
+            label.setText(str(value))
+        
+        if not self.per_layer_enabled and not self.updating_from_master:
             self.updating_from_master = True
             for layer_dict in self.layer_widgets:
-                layer_dict['widgets'][key]['slider'].setValue(value)
+                layer_dict['widgets'][f'{key}_slider'].setValue(value)
             self.updating_from_master = False
     
-    def sync_all_to_master(self, key):
-        """Sync all layer sliders to master value for a specific setting"""
+    def on_master_combo_changed(self, key, combo):
+        """Handle master combo changes"""
+        if not self.per_layer_enabled and not self.updating_from_master:
+            self.updating_from_master = True
+            value = combo.currentData()
+            for layer_dict in self.layer_widgets:
+                widget = layer_dict['widgets'][f'{key}_combo']
+                for i in range(widget.count()):
+                    if widget.itemData(i) == value:
+                        widget.setCurrentIndex(i)
+                        break
+            self.updating_from_master = False
+    
+    def sync_all_to_master(self):
+        """Sync all layer settings to master values"""
         self.updating_from_master = True
-        master_value = self.master_widgets[key]['slider'].value()
         
         for layer_dict in self.layer_widgets:
-            layer_dict['widgets'][key]['slider'].setValue(master_value)
+            # Sliders
+            layer_dict['widgets']['normal_slider'].setValue(self.master_widgets['normal_slider'].value())
+            layer_dict['widgets']['midi_slider'].setValue(self.master_widgets['midi_slider'].value())
+            
+            # Combos
+            for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed', 'midi_rapid']:
+                master_value = self.master_widgets[f'{key}_combo'].currentData()
+                layer_combo = layer_dict['widgets'][f'{key}_combo']
+                for i in range(layer_combo.count()):
+                    if layer_combo.itemData(i) == master_value:
+                        layer_combo.setCurrentIndex(i)
+                        break
+            
+            # Checkboxes and conditional widgets
+            rapid_enabled = self.master_widgets['rapid_checkbox'].isChecked()
+            layer_dict['widgets']['rapid_checkbox'].setChecked(rapid_enabled)
+            layer_dict['widgets']['rapid_widget'].setVisible(rapid_enabled)
+            if rapid_enabled:
+                layer_dict['widgets']['rapid_slider'].setValue(self.master_widgets['rapid_slider'].value())
+            
+            midi_rapid_enabled = self.master_widgets['midi_rapid_checkbox'].isChecked()
+            layer_dict['widgets']['midi_rapid_checkbox'].setChecked(midi_rapid_enabled)
+            layer_dict['widgets']['midi_rapid_widget'].setVisible(midi_rapid_enabled)
         
         self.updating_from_master = False
     
@@ -1635,18 +1930,55 @@ class LayerActuationConfigurator(BasicEditor):
         """Get all actuation values as a list of dicts"""
         actuations = []
         for layer_dict in self.layer_widgets:
-            layer_data = {}
-            for key in ['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']:
-                layer_data[key] = layer_dict['widgets'][key]['slider'].value()
+            layer_data = {
+                'normal': layer_dict['widgets']['normal_slider'].value(),
+                'midi': layer_dict['widgets']['midi_slider'].value(),
+                'aftertouch': layer_dict['widgets']['aftertouch_combo'].currentData(),
+                'aftertouch_cc': layer_dict['widgets']['aftertouch_cc_combo'].currentData(),
+                'velocity': layer_dict['widgets']['velocity_combo'].currentData(),
+                'vel_speed': layer_dict['widgets']['vel_speed_combo'].currentData(),
+                'rapid': layer_dict['widgets']['rapid_slider'].value() if layer_dict['widgets']['rapid_checkbox'].isChecked() else 4,
+                'midi_rapid': layer_dict['widgets']['midi_rapid_combo'].currentData() if layer_dict['widgets']['midi_rapid_checkbox'].isChecked() else 10
+            }
             actuations.append(layer_data)
         return actuations
     
     def set_layer_actuation(self, layer, values_dict):
         """Set actuation for a specific layer"""
         if layer < len(self.layer_widgets):
-            for key, value in values_dict.items():
-                if key in self.layer_widgets[layer]['widgets']:
-                    self.layer_widgets[layer]['widgets'][key]['slider'].setValue(value)
+            layer_dict = self.layer_widgets[layer]
+            
+            # Set sliders
+            if 'normal' in values_dict:
+                layer_dict['widgets']['normal_slider'].setValue(values_dict['normal'])
+            if 'midi' in values_dict:
+                layer_dict['widgets']['midi_slider'].setValue(values_dict['midi'])
+            
+            # Set combos
+            for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed', 'midi_rapid']:
+                if key in values_dict:
+                    combo = layer_dict['widgets'][f'{key}_combo']
+                    for i in range(combo.count()):
+                        if combo.itemData(i) == values_dict[key]:
+                            combo.setCurrentIndex(i)
+                            break
+            
+            # Set rapidfire
+            if 'rapid' in values_dict:
+                has_rapid = values_dict['rapid'] != 4  # Non-default means enabled
+                layer_dict['widgets']['rapid_checkbox'].setChecked(has_rapid)
+                layer_dict['widgets']['rapid_widget'].setVisible(has_rapid)
+                layer_dict['widgets']['rapid_slider'].setValue(values_dict['rapid'])
+            
+            # Set MIDI rapidfire
+            if 'midi_rapid' in values_dict:
+                has_midi_rapid = values_dict['midi_rapid'] != 10  # Non-default means enabled
+                layer_dict['widgets']['midi_rapid_checkbox'].setChecked(has_midi_rapid)
+                layer_dict['widgets']['midi_rapid_widget'].setVisible(has_midi_rapid)
+                for i in range(layer_dict['widgets']['midi_rapid_combo'].count()):
+                    if layer_dict['widgets']['midi_rapid_combo'].itemData(i) == values_dict['midi_rapid']:
+                        layer_dict['widgets']['midi_rapid_combo'].setCurrentIndex(i)
+                        break
     
     def on_save(self):
         """Save all actuation settings to keyboard"""
@@ -1691,19 +2023,20 @@ class LayerActuationConfigurator(BasicEditor):
             if not actuations or len(actuations) != 84:
                 raise RuntimeError("Failed to load actuations from keyboard")
             
-            # Check if all layers have the same values for each setting
-            all_same = {}
+            # Check if all layers have the same values
+            all_same = True
             first_values = {}
             
             for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']):
                 first_values[key] = actuations[key_idx]
-                all_same[key] = True
                 
                 for layer in range(1, 12):
                     offset = layer * 7 + key_idx
                     if actuations[offset] != first_values[key]:
-                        all_same[key] = False
+                        all_same = False
                         break
+                if not all_same:
+                    break
             
             # Apply to UI
             for layer in range(12):
@@ -1719,10 +2052,36 @@ class LayerActuationConfigurator(BasicEditor):
                 
                 self.set_layer_actuation(layer, values)
             
-            # Set master sliders and checkbox states
-            for key in ['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']:
-                self.master_widgets[key]['slider'].setValue(first_values[key])
-                self.master_widgets[key]['checkbox'].setChecked(not all_same[key])
+            # Set master controls
+            self.master_widgets['normal_slider'].setValue(first_values['normal'])
+            self.master_widgets['midi_slider'].setValue(first_values['midi'])
+            
+            # Set master combos
+            for key in ['aftertouch', 'velocity', 'vel_speed']:
+                combo = self.master_widgets[f'{key}_combo']
+                for i in range(combo.count()):
+                    if combo.itemData(i) == first_values[key]:
+                        combo.setCurrentIndex(i)
+                        break
+            
+            # Set rapidfire
+            has_rapid = first_values['rapid'] != 4
+            self.master_widgets['rapid_checkbox'].setChecked(has_rapid)
+            self.master_widgets['rapid_widget'].setVisible(has_rapid)
+            self.master_widgets['rapid_slider'].setValue(first_values['rapid'])
+            
+            # Set MIDI rapidfire  
+            has_midi_rapid = first_values['midi_rapid'] != 10
+            self.master_widgets['midi_rapid_checkbox'].setChecked(has_midi_rapid)
+            self.master_widgets['midi_rapid_widget'].setVisible(has_midi_rapid)
+            midi_rapid_combo = self.master_widgets['midi_rapid_combo']
+            for i in range(midi_rapid_combo.count()):
+                if midi_rapid_combo.itemData(i) == first_values['midi_rapid']:
+                    midi_rapid_combo.setCurrentIndex(i)
+                    break
+            
+            # Set per-layer checkbox state
+            self.per_layer_checkbox.setChecked(not all_same)
             
             QMessageBox.information(None, "Success", 
                 "Layer actuations loaded successfully!")
@@ -1756,13 +2115,34 @@ class LayerActuationConfigurator(BasicEditor):
                     'vel_speed': 10
                 }
                 
-                for key, value in defaults.items():
-                    self.master_widgets[key]['slider'].setValue(value)
-                    self.master_widgets[key]['checkbox'].setChecked(False)
+                # Reset master
+                self.master_widgets['normal_slider'].setValue(defaults['normal'])
+                self.master_widgets['midi_slider'].setValue(defaults['midi'])
                 
+                for key in ['aftertouch', 'velocity', 'vel_speed']:
+                    combo = self.master_widgets[f'{key}_combo']
+                    for i in range(combo.count()):
+                        if combo.itemData(i) == defaults[key]:
+                            combo.setCurrentIndex(i)
+                            break
+                
+                self.master_widgets['rapid_checkbox'].setChecked(False)
+                self.master_widgets['rapid_widget'].setVisible(False)
+                self.master_widgets['rapid_slider'].setValue(defaults['rapid'])
+                
+                self.master_widgets['midi_rapid_checkbox'].setChecked(False)
+                self.master_widgets['midi_rapid_widget'].setVisible(False)
+                midi_rapid_combo = self.master_widgets['midi_rapid_combo']
+                for i in range(midi_rapid_combo.count()):
+                    if midi_rapid_combo.itemData(i) == defaults['midi_rapid']:
+                        midi_rapid_combo.setCurrentIndex(i)
+                        break
+                
+                # Reset all layers
                 for layer_dict in self.layer_widgets:
-                    for key, value in defaults.items():
-                        layer_dict['widgets'][key]['slider'].setValue(value)
+                    self.set_layer_actuation(layer_dict['layer'], defaults)
+                
+                self.per_layer_checkbox.setChecked(False)
                 
                 QMessageBox.information(None, "Success", 
                     "Layer actuations reset to defaults!")
@@ -1797,19 +2177,20 @@ class LayerActuationConfigurator(BasicEditor):
         if not actuations or len(actuations) != 84:
             return
         
-        # Apply to UI (same logic as on_load_from_keyboard but without message)
-        all_same = {}
+        # Same logic as on_load_from_keyboard but without message
+        all_same = True
         first_values = {}
         
         for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']):
             first_values[key] = actuations[key_idx]
-            all_same[key] = True
             
             for layer in range(1, 12):
                 offset = layer * 7 + key_idx
                 if actuations[offset] != first_values[key]:
-                    all_same[key] = False
+                    all_same = False
                     break
+            if not all_same:
+                break
         
         for layer in range(12):
             values = {}
@@ -1824,6 +2205,28 @@ class LayerActuationConfigurator(BasicEditor):
             
             self.set_layer_actuation(layer, values)
         
-        for key in ['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 'midi_rapid', 'vel_speed']:
-            self.master_widgets[key]['slider'].setValue(first_values[key])
-            self.master_widgets[key]['checkbox'].setChecked(not all_same[key])
+        self.master_widgets['normal_slider'].setValue(first_values['normal'])
+        self.master_widgets['midi_slider'].setValue(first_values['midi'])
+        
+        for key in ['aftertouch', 'velocity', 'vel_speed']:
+            combo = self.master_widgets[f'{key}_combo']
+            for i in range(combo.count()):
+                if combo.itemData(i) == first_values[key]:
+                    combo.setCurrentIndex(i)
+                    break
+        
+        has_rapid = first_values['rapid'] != 4
+        self.master_widgets['rapid_checkbox'].setChecked(has_rapid)
+        self.master_widgets['rapid_widget'].setVisible(has_rapid)
+        self.master_widgets['rapid_slider'].setValue(first_values['rapid'])
+        
+        has_midi_rapid = first_values['midi_rapid'] != 10
+        self.master_widgets['midi_rapid_checkbox'].setChecked(has_midi_rapid)
+        self.master_widgets['midi_rapid_widget'].setVisible(has_midi_rapid)
+        midi_rapid_combo = self.master_widgets['midi_rapid_combo']
+        for i in range(midi_rapid_combo.count()):
+            if midi_rapid_combo.itemData(i) == first_values['midi_rapid']:
+                midi_rapid_combo.setCurrentIndex(i)
+                break
+        
+        self.per_layer_checkbox.setChecked(not all_same)
