@@ -1346,7 +1346,7 @@ class LayerActuationConfigurator(BasicEditor):
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        scroll.setMinimumSize(750, 750)  # Much larger display area
+        main_widget.setMinimumSize(750, 750)  # Much larger display area
         
         scroll.setWidget(main_widget)
         self.addWidget(scroll)
