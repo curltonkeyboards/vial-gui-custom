@@ -664,19 +664,6 @@ class ThruLoopConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-            
-    def activate(self):
-        """Called when tab is activated - auto-load from keyboard"""
-        if self.valid():
-            try:
-                # Silently load settings in background
-                config = self.device.keyboard.get_thruloop_config()
-                if config:
-                    self.apply_config(config)
-            except Exception as e:
-                # Don't show error on activation, user can manually load if needed
-                pass
-
 
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
@@ -1298,18 +1285,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-    def activate(self):
-        """Called when tab is activated - auto-load from keyboard"""
-        if self.valid():
-            try:
-                # Silently load settings in background
-                config = self.device.keyboard.get_midi_config()
-                if config:
-                    self.apply_settings(config)
-            except Exception as e:
-                # Don't show error on activation, user can manually load if needed
-                pass
-            
+
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel, 
@@ -2416,14 +2392,6 @@ class LayerActuationConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-            
-    def activate(self):
-        """Called when tab is activated - auto-load from keyboard"""
-        if self.valid():
-            try:
-                self.on_load_from_keyboard_silent()
-            except Exception as e:
-                pass
     
     def on_load_from_keyboard_silent(self):
         """Load settings without showing success message"""

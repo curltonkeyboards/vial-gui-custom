@@ -113,6 +113,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_layer_rgb_support()
         self.reload_settings()
 
+        # Add your custom initializations here:
+        self.reload_thruloop_config()
+        self.reload_midi_config()
+        self.reload_layer_actuations()
+
         self.reload_dynamic()
 
         # based on the number of macros, tapdance, etc, this will generate global keycode arrays
@@ -1149,3 +1154,24 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return response and len(response) > 0 and response[5] == 0
         except Exception as e:
             return False
+            
+    def reload_thruloop_config(self):
+        """Load ThruLoop configuration from keyboard"""
+        try:
+            self.thruloop_config = self.get_thruloop_config()
+        except:
+            self.thruloop_config = None
+
+    def reload_midi_config(self):
+        """Load MIDI configuration from keyboard"""
+        try:
+            self.midi_config = self.get_midi_config()
+        except:
+            self.midi_config = None
+
+    def reload_layer_actuations(self):
+        """Load layer actuations from keyboard"""
+        try:
+            self.layer_actuations = self.get_all_layer_actuations()
+        except:
+            self.layer_actuations = None
