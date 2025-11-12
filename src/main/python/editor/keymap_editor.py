@@ -671,10 +671,11 @@ class KeymapEditor(BasicEditor):
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(0)  # Remove spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
-        keyboard_layout.addStretch(1)  # Add stretch before to center the group
+        keyboard_layout.addStretch(1)  # Add stretch before
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
-        keyboard_layout.addStretch(1)  # Add stretch after to center the group
+        keyboard_layout.addSpacing(self.quick_actuation.minimumWidth())  # Balance the actuation width
+        keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
         layout.addLayout(layout_labels_container)
