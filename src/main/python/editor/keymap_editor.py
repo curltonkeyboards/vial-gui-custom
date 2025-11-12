@@ -2,7 +2,8 @@
 import json
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
-                              QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame)
+                              QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
+                              QSizePolicy)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from any_keycode_dialog import AnyKeycodeDialog
@@ -26,8 +27,25 @@ class QuickActuationWidget(QGroupBox):
         self.current_layer = 0
         self.per_layer_enabled = False
         
+        # Cache all layer data in memory to avoid device I/O lag
+        self.layer_data = []
+        for _ in range(12):
+            self.layer_data.append({
+                'normal': 80,
+                'midi': 80,
+                'aftertouch': 0,
+                'velocity': 2,
+                'rapid': 4,
+                'midi_rapid_sens': 10,
+                'midi_rapid_vel': 10,
+                'vel_speed': 10,
+                'aftertouch_cc': 74,
+                'rapidfire_enabled': False,
+                'midi_rapidfire_enabled': False
+            })
+        
         self.setMinimumWidth(250)
-        self.setMaximumWidth(400)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
         
         layout = QVBoxLayout()
@@ -125,7 +143,7 @@ class QuickActuationWidget(QGroupBox):
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
         advanced_layout = QVBoxLayout()
-        advanced_layout.setSpacing(6)
+        advanced_layout.setSpacing(4)  # Reduced spacing
         advanced_layout.setContentsMargins(0, 5, 0, 0)
         self.advanced_widget.setLayout(advanced_layout)
         self.advanced_widget.setVisible(False)
@@ -174,6 +192,7 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(self.aftertouch_combo)
         
         advanced_layout.addLayout(combo_layout)
+        self.aftertouch_combo.currentIndexChanged.connect(self.on_combo_changed)
         
         # Aftertouch CC combo
         combo_layout = QHBoxLayout()
@@ -188,6 +207,7 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(self.aftertouch_cc_combo)
         
         advanced_layout.addLayout(combo_layout)
+        self.aftertouch_cc_combo.currentIndexChanged.connect(self.on_combo_changed)
         
         # Velocity Mode combo
         combo_layout = QHBoxLayout()
@@ -204,6 +224,7 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(self.velocity_combo)
         
         advanced_layout.addLayout(combo_layout)
+        self.velocity_combo.currentIndexChanged.connect(self.on_combo_changed)
         
         # Velocity Speed Scale combo
         combo_layout = QHBoxLayout()
@@ -218,6 +239,7 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(self.vel_speed_combo)
         
         advanced_layout.addLayout(combo_layout)
+        self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
         
         # Enable MIDI Rapidfire checkbox
         self.midi_rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable MIDI Rapidfire"))
@@ -252,9 +274,9 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('midi_rapid_sens', v, self.midi_rapid_sens_value_label)
         )
         
-        # MIDI Rapidfire Velocity Range slider
+        # MIDI Rapidfire Velocity Range slider (reduced spacing above)
         midi_rapid_vel_layout = QHBoxLayout()
-        midi_rapid_vel_label = QLabel(tr("QuickActuationWidget", "MRF Vel Range:"))
+        midi_rapid_vel_label = QLabel(tr("QuickActuationWidget", "MRF Vel:"))
         midi_rapid_vel_label.setMinimumWidth(90)
         midi_rapid_vel_layout.addWidget(midi_rapid_vel_label)
         
@@ -298,12 +320,10 @@ class QuickActuationWidget(QGroupBox):
         # Update save button text
         if self.per_layer_enabled:
             self.save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {self.current_layer}"))
+            # Load current layer's settings from memory
+            self.load_layer_from_memory()
         else:
             self.save_btn.setText(tr("QuickActuationWidget", "Save to All Layers"))
-        
-        # If enabling per-layer mode, load current layer's settings
-        if self.per_layer_enabled:
-            self.load_layer_from_device()
     
     def on_advanced_toggled(self):
         """Show/hide advanced options"""
@@ -311,6 +331,9 @@ class QuickActuationWidget(QGroupBox):
     
     def on_slider_changed(self, key, value, label):
         """Handle slider changes"""
+        if self.syncing:
+            return
+            
         if key in ['normal', 'midi']:
             label.setText(f"{value * 0.025:.2f}mm")
             # Sync MIDI to normal when advanced is off
@@ -321,16 +344,106 @@ class QuickActuationWidget(QGroupBox):
             label.setText(f"±{value}")
         else:
             label.setText(str(value))
+        
+        # Update memory
+        self.save_ui_to_memory()
+    
+    def on_combo_changed(self):
+        """Handle combo box changes"""
+        if not self.syncing:
+            self.save_ui_to_memory()
     
     def on_rapidfire_toggled(self, state):
         """Show/hide rapidfire sensitivity slider"""
         self.rapid_widget.setVisible(state == Qt.Checked)
+        if not self.syncing:
+            self.save_ui_to_memory()
     
     def on_midi_rapidfire_toggled(self, state):
         """Show/hide MIDI rapidfire sliders"""
         enabled = (state == Qt.Checked)
         self.midi_rapid_sens_widget.setVisible(enabled)
         self.midi_rapid_vel_widget.setVisible(enabled)
+        if not self.syncing:
+            self.save_ui_to_memory()
+    
+    def save_ui_to_memory(self):
+        """Save current UI state to memory (for current layer if per-layer, all if master)"""
+        if self.per_layer_enabled:
+            # Save only to current layer
+            self.layer_data[self.current_layer] = {
+                'normal': self.normal_slider.value(),
+                'midi': self.midi_slider.value(),
+                'aftertouch': self.aftertouch_combo.currentData(),
+                'velocity': self.velocity_combo.currentData(),
+                'rapid': self.rapid_slider.value(),
+                'midi_rapid_sens': self.midi_rapid_sens_slider.value(),
+                'midi_rapid_vel': self.midi_rapid_vel_slider.value(),
+                'vel_speed': self.vel_speed_combo.currentData(),
+                'aftertouch_cc': self.aftertouch_cc_combo.currentData(),
+                'rapidfire_enabled': self.rapid_checkbox.isChecked(),
+                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
+            }
+        else:
+            # Save to all layers (master mode)
+            data = {
+                'normal': self.normal_slider.value(),
+                'midi': self.midi_slider.value(),
+                'aftertouch': self.aftertouch_combo.currentData(),
+                'velocity': self.velocity_combo.currentData(),
+                'rapid': self.rapid_slider.value(),
+                'midi_rapid_sens': self.midi_rapid_sens_slider.value(),
+                'midi_rapid_vel': self.midi_rapid_vel_slider.value(),
+                'vel_speed': self.vel_speed_combo.currentData(),
+                'aftertouch_cc': self.aftertouch_cc_combo.currentData(),
+                'rapidfire_enabled': self.rapid_checkbox.isChecked(),
+                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
+            }
+            for i in range(12):
+                self.layer_data[i] = data.copy()
+    
+    def load_layer_from_memory(self):
+        """Load layer settings from memory cache"""
+        self.syncing = True
+        
+        data = self.layer_data[self.current_layer]
+        
+        # Set sliders
+        self.normal_slider.setValue(data['normal'])
+        self.midi_slider.setValue(data['midi'])
+        self.rapid_slider.setValue(data['rapid'])
+        self.midi_rapid_sens_slider.setValue(data['midi_rapid_sens'])
+        self.midi_rapid_vel_slider.setValue(data['midi_rapid_vel'])
+        
+        # Set combos
+        for i in range(self.aftertouch_combo.count()):
+            if self.aftertouch_combo.itemData(i) == data['aftertouch']:
+                self.aftertouch_combo.setCurrentIndex(i)
+                break
+        
+        for i in range(self.aftertouch_cc_combo.count()):
+            if self.aftertouch_cc_combo.itemData(i) == data['aftertouch_cc']:
+                self.aftertouch_cc_combo.setCurrentIndex(i)
+                break
+        
+        for i in range(self.velocity_combo.count()):
+            if self.velocity_combo.itemData(i) == data['velocity']:
+                self.velocity_combo.setCurrentIndex(i)
+                break
+        
+        for i in range(self.vel_speed_combo.count()):
+            if self.vel_speed_combo.itemData(i) == data['vel_speed']:
+                self.vel_speed_combo.setCurrentIndex(i)
+                break
+        
+        # Set checkboxes
+        self.rapid_checkbox.setChecked(data['rapidfire_enabled'])
+        self.rapid_widget.setVisible(data['rapidfire_enabled'])
+        self.midi_rapid_checkbox.setChecked(data['midi_rapidfire_enabled'])
+        self.midi_rapid_sens_widget.setVisible(data['midi_rapidfire_enabled'])
+        self.midi_rapid_vel_widget.setVisible(data['midi_rapidfire_enabled'])
+        
+        self.syncing = False
     
     def on_save(self):
         """Save actuation settings - to all layers or current layer depending on mode"""
@@ -338,30 +451,30 @@ class QuickActuationWidget(QGroupBox):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
             
-            # Build flags
-            flags = 0
-            if self.rapid_checkbox.isChecked():
-                flags |= 0x01
-            if self.midi_rapid_checkbox.isChecked():
-                flags |= 0x02
-            
             if self.per_layer_enabled:
                 # Save to current layer only
-                data = bytearray([
+                data = self.layer_data[self.current_layer]
+                flags = 0
+                if data['rapidfire_enabled']:
+                    flags |= 0x01
+                if data['midi_rapidfire_enabled']:
+                    flags |= 0x02
+                
+                payload = bytearray([
                     self.current_layer,
-                    self.normal_slider.value(),
-                    self.midi_slider.value(),
-                    self.aftertouch_combo.currentData(),
-                    self.velocity_combo.currentData(),
-                    self.rapid_slider.value(),
-                    self.midi_rapid_sens_slider.value(),
-                    self.midi_rapid_vel_slider.value(),
-                    self.vel_speed_combo.currentData(),
-                    self.aftertouch_cc_combo.currentData(),
+                    data['normal'],
+                    data['midi'],
+                    data['aftertouch'],
+                    data['velocity'],
+                    data['rapid'],
+                    data['midi_rapid_sens'],
+                    data['midi_rapid_vel'],
+                    data['vel_speed'],
+                    data['aftertouch_cc'],
                     flags
                 ])
                 
-                if not self.device.keyboard.set_layer_actuation(data):
+                if not self.device.keyboard.set_layer_actuation(payload):
                     raise RuntimeError(f"Failed to set actuation for layer {self.current_layer}")
                 
                 QMessageBox.information(None, "Success", 
@@ -369,21 +482,28 @@ class QuickActuationWidget(QGroupBox):
             else:
                 # Save to all 12 layers
                 for layer in range(12):
-                    data = bytearray([
+                    data = self.layer_data[layer]
+                    flags = 0
+                    if data['rapidfire_enabled']:
+                        flags |= 0x01
+                    if data['midi_rapidfire_enabled']:
+                        flags |= 0x02
+                    
+                    payload = bytearray([
                         layer,
-                        self.normal_slider.value(),
-                        self.midi_slider.value(),
-                        self.aftertouch_combo.currentData(),
-                        self.velocity_combo.currentData(),
-                        self.rapid_slider.value(),
-                        self.midi_rapid_sens_slider.value(),
-                        self.midi_rapid_vel_slider.value(),
-                        self.vel_speed_combo.currentData(),
-                        self.aftertouch_cc_combo.currentData(),
+                        data['normal'],
+                        data['midi'],
+                        data['aftertouch'],
+                        data['velocity'],
+                        data['rapid'],
+                        data['midi_rapid_sens'],
+                        data['midi_rapid_vel'],
+                        data['vel_speed'],
+                        data['aftertouch_cc'],
                         flags
                     ])
                     
-                    if not self.device.keyboard.set_layer_actuation(data):
+                    if not self.device.keyboard.set_layer_actuation(payload):
                         raise RuntimeError(f"Failed to set actuation for layer {layer}")
                 
                 QMessageBox.information(None, "Success", 
@@ -394,29 +514,18 @@ class QuickActuationWidget(QGroupBox):
                 f"Failed to save actuation settings: {str(e)}")
     
     def set_device(self, device):
-        """Set the device and load initial settings"""
+        """Set the device and load initial settings from device"""
         self.device = device
         self.setEnabled(isinstance(device, VialKeyboard))
         
         if self.device and isinstance(self.device, VialKeyboard):
-            # Load layer 0 settings initially
-            self.load_layer_from_device()
+            # Load all layers from device into memory cache
+            self.load_all_layers_from_device()
+            # Load current layer to UI
+            self.load_layer_from_memory()
     
-    def set_layer(self, layer):
-        """Set current layer and load its settings if in per-layer mode"""
-        self.current_layer = layer
-        self.layer_label.setText(tr("QuickActuationWidget", f"Layer {layer}"))
-        
-        # Update save button text if in per-layer mode
-        if self.per_layer_enabled:
-            self.save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {layer}"))
-        
-        # Only load new layer settings if per-layer mode is enabled
-        if self.per_layer_enabled:
-            self.load_layer_from_device()
-    
-    def load_layer_from_device(self):
-        """Load current layer's actuation settings from device"""
+    def load_all_layers_from_device(self):
+        """Load all 12 layers from device into memory cache (only called once on connect)"""
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 return
@@ -426,63 +535,37 @@ class QuickActuationWidget(QGroupBox):
             if not actuations or len(actuations) != 120:
                 return
             
-            self.syncing = True
-            
-            # Load from current layer
-            offset = self.current_layer * 10
-            normal_value = actuations[offset + 0]
-            midi_value = actuations[offset + 1]
-            aftertouch = actuations[offset + 2]
-            velocity = actuations[offset + 3]
-            rapid_value = actuations[offset + 4]
-            midi_rapid_sens = actuations[offset + 5]
-            midi_rapid_vel = actuations[offset + 6]
-            vel_speed = actuations[offset + 7]
-            aftertouch_cc = actuations[offset + 8]
-            flags = actuations[offset + 9]
-            
-            rapid_enabled = (flags & 0x01) != 0
-            midi_rapid_enabled = (flags & 0x02) != 0
-            
-            # Set sliders
-            self.normal_slider.setValue(normal_value)
-            self.midi_slider.setValue(midi_value)
-            self.rapid_slider.setValue(rapid_value)
-            self.midi_rapid_sens_slider.setValue(midi_rapid_sens)
-            self.midi_rapid_vel_slider.setValue(midi_rapid_vel)
-            
-            # Set combos
-            for i in range(self.aftertouch_combo.count()):
-                if self.aftertouch_combo.itemData(i) == aftertouch:
-                    self.aftertouch_combo.setCurrentIndex(i)
-                    break
-            
-            for i in range(self.aftertouch_cc_combo.count()):
-                if self.aftertouch_cc_combo.itemData(i) == aftertouch_cc:
-                    self.aftertouch_cc_combo.setCurrentIndex(i)
-                    break
-            
-            for i in range(self.velocity_combo.count()):
-                if self.velocity_combo.itemData(i) == velocity:
-                    self.velocity_combo.setCurrentIndex(i)
-                    break
-            
-            for i in range(self.vel_speed_combo.count()):
-                if self.vel_speed_combo.itemData(i) == vel_speed:
-                    self.vel_speed_combo.setCurrentIndex(i)
-                    break
-            
-            # Set checkboxes
-            self.rapid_checkbox.setChecked(rapid_enabled)
-            self.rapid_widget.setVisible(rapid_enabled)
-            self.midi_rapid_checkbox.setChecked(midi_rapid_enabled)
-            self.midi_rapid_sens_widget.setVisible(midi_rapid_enabled)
-            self.midi_rapid_vel_widget.setVisible(midi_rapid_enabled)
-            
-            self.syncing = False
-            
+            # Load all layers into memory
+            for layer in range(12):
+                offset = layer * 10
+                flags = actuations[offset + 9]
+                
+                self.layer_data[layer] = {
+                    'normal': actuations[offset + 0],
+                    'midi': actuations[offset + 1],
+                    'aftertouch': actuations[offset + 2],
+                    'velocity': actuations[offset + 3],
+                    'rapid': actuations[offset + 4],
+                    'midi_rapid_sens': actuations[offset + 5],
+                    'midi_rapid_vel': actuations[offset + 6],
+                    'vel_speed': actuations[offset + 7],
+                    'aftertouch_cc': actuations[offset + 8],
+                    'rapidfire_enabled': (flags & 0x01) != 0,
+                    'midi_rapidfire_enabled': (flags & 0x02) != 0
+                }
         except Exception:
-            self.syncing = False
+            pass
+    
+    def set_layer(self, layer):
+        """Set current layer and load its settings if in per-layer mode"""
+        self.current_layer = layer
+        self.layer_label.setText(tr("QuickActuationWidget", f"Layer {layer}"))
+        
+        # Update save button text if in per-layer mode
+        if self.per_layer_enabled:
+            self.save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {layer}"))
+            # Load from memory (fast, no device I/O)
+            self.load_layer_from_memory()
 
 
 class ClickableWidget(QWidget):
@@ -605,7 +688,7 @@ class KeymapEditor(BasicEditor):
             TabbedKeycodes.tray.recreate_keycode_buttons()
             self.refresh_layer_display()
             
-        # Set device for quick actuation widget
+        # Set device for quick actuation widget (loads all layers once)
         self.quick_actuation.set_device(device)
         if self.valid():
             self.quick_actuation.set_layer(self.current_layer)
@@ -670,7 +753,7 @@ class KeymapEditor(BasicEditor):
     def switch_layer(self, idx):
         self.container.deselect()
         self.current_layer = idx
-        # Update quick actuation widget layer (only loads if per-layer mode enabled)
+        # Update quick actuation widget layer (loads from memory, no lag)
         self.quick_actuation.set_layer(idx)
         self.refresh_layer_display()
 
