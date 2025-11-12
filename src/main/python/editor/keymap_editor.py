@@ -53,25 +53,11 @@ class QuickActuationWidget(QGroupBox):
         layout.setContentsMargins(10, 15, 10, 10)
         self.setLayout(layout)
         
-        # Top row with checkboxes
-        checkboxes_layout = QHBoxLayout()
-        
         # Enable Per-Layer Settings checkbox
         self.per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer"))
         self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; }")
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
-        checkboxes_layout.addWidget(self.per_layer_checkbox)
-        
-        checkboxes_layout.addSpacing(10)
-        
-        # Show Advanced Options checkbox
-        self.advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced"))
-        self.advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
-        self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
-        checkboxes_layout.addWidget(self.advanced_checkbox)
-        
-        checkboxes_layout.addStretch()
-        layout.addLayout(checkboxes_layout)
+        layout.addWidget(self.per_layer_checkbox)
         
         # Layer indicator (only visible in per-layer mode)
         self.layer_label = QLabel(tr("QuickActuationWidget", "Layer 0"))
@@ -274,8 +260,9 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('midi_rapid_sens', v, self.midi_rapid_sens_value_label)
         )
         
-        # MIDI Rapidfire Velocity Range slider (reduced spacing above)
+        # MIDI Rapidfire Velocity Range slider (NO spacing above - added directly)
         midi_rapid_vel_layout = QHBoxLayout()
+        midi_rapid_vel_layout.setContentsMargins(0, 0, 0, 0)
         midi_rapid_vel_label = QLabel(tr("QuickActuationWidget", "MRF Vel:"))
         midi_rapid_vel_label.setMinimumWidth(90)
         midi_rapid_vel_layout.addWidget(midi_rapid_vel_label)
@@ -294,7 +281,10 @@ class QuickActuationWidget(QGroupBox):
         self.midi_rapid_vel_widget = QWidget()
         self.midi_rapid_vel_widget.setLayout(midi_rapid_vel_layout)
         self.midi_rapid_vel_widget.setVisible(False)
+        
+        # Add with zero spacing
         advanced_layout.addWidget(self.midi_rapid_vel_widget)
+        advanced_layout.setSpacing(0)  # Force zero spacing for last items
         
         self.midi_rapid_vel_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('midi_rapid_vel', v, self.midi_rapid_vel_value_label)
@@ -304,11 +294,27 @@ class QuickActuationWidget(QGroupBox):
         
         layout.addStretch()
         
+        # Show Advanced button
+        self.advanced_btn = QPushButton(tr("QuickActuationWidget", "Show Advanced Options"))
+        self.advanced_btn.setMaximumHeight(30)
+        self.advanced_btn.clicked.connect(self.on_advanced_btn_clicked)
+        layout.addWidget(self.advanced_btn)
+        
         # Save button at the bottom
         self.save_btn = QPushButton(tr("QuickActuationWidget", "Save to All Layers"))
         self.save_btn.setMaximumHeight(30)
         self.save_btn.clicked.connect(self.on_save)
         layout.addWidget(self.save_btn)
+    
+    def on_advanced_btn_clicked(self):
+        """Toggle advanced options visibility"""
+        currently_visible = self.advanced_widget.isVisible()
+        self.advanced_widget.setVisible(not currently_visible)
+        
+        if not currently_visible:
+            self.advanced_btn.setText(tr("QuickActuationWidget", "Hide Advanced Options"))
+        else:
+            self.advanced_btn.setText(tr("QuickActuationWidget", "Show Advanced Options"))
     
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
@@ -325,10 +331,6 @@ class QuickActuationWidget(QGroupBox):
         else:
             self.save_btn.setText(tr("QuickActuationWidget", "Save to All Layers"))
     
-    def on_advanced_toggled(self):
-        """Show/hide advanced options"""
-        self.advanced_widget.setVisible(self.advanced_checkbox.isChecked())
-    
     def on_slider_changed(self, key, value, label):
         """Handle slider changes"""
         if self.syncing:
@@ -337,7 +339,7 @@ class QuickActuationWidget(QGroupBox):
         if key in ['normal', 'midi']:
             label.setText(f"{value * 0.025:.2f}mm")
             # Sync MIDI to normal when advanced is off
-            if key == 'normal' and not self.advanced_checkbox.isChecked():
+            if key == 'normal' and not self.advanced_widget.isVisible():
                 self.midi_slider.setValue(value)
                 self.midi_value_label.setText(f"{value * 0.025:.2f}mm")
         elif key == 'midi_rapid_vel':
@@ -408,12 +410,21 @@ class QuickActuationWidget(QGroupBox):
         
         data = self.layer_data[self.current_layer]
         
-        # Set sliders
+        # Set sliders and immediately update labels
         self.normal_slider.setValue(data['normal'])
+        self.normal_value_label.setText(f"{data['normal'] * 0.025:.2f}mm")
+        
         self.midi_slider.setValue(data['midi'])
+        self.midi_value_label.setText(f"{data['midi'] * 0.025:.2f}mm")
+        
         self.rapid_slider.setValue(data['rapid'])
+        self.rapid_value_label.setText(str(data['rapid']))
+        
         self.midi_rapid_sens_slider.setValue(data['midi_rapid_sens'])
+        self.midi_rapid_sens_value_label.setText(str(data['midi_rapid_sens']))
+        
         self.midi_rapid_vel_slider.setValue(data['midi_rapid_vel'])
+        self.midi_rapid_vel_value_label.setText(f"±{data['midi_rapid_vel']}")
         
         # Set combos
         for i in range(self.aftertouch_combo.count()):
