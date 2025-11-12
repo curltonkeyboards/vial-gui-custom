@@ -1390,12 +1390,6 @@ class LayerActuationConfigurator(BasicEditor):
         info_label.setStyleSheet("QLabel { color: #666; font-style: italic; font-size: 10px; margin: 5px; }")
         main_layout.addWidget(info_label, alignment=QtCore.Qt.AlignCenter)
         
-        # Master per-layer checkbox
-        self.per_layer_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable Per-Layer Settings"))
-        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 12px; margin: 10px; }")
-        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
-        main_layout.addWidget(self.per_layer_checkbox, alignment=QtCore.Qt.AlignCenter)
-        
         # Create master controls group
         self.master_group = self.create_master_group()
         main_layout.addWidget(self.master_group)
@@ -1469,11 +1463,25 @@ class LayerActuationConfigurator(BasicEditor):
         layout.setContentsMargins(15, 20, 15, 15)
         group.setLayout(layout)
         
+        # Top row with both checkboxes
+        checkboxes_layout = QHBoxLayout()
+        
+        # Master per-layer checkbox
+        self.per_layer_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable Per-Layer Settings"))
+        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 11px; }")
+        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
+        checkboxes_layout.addWidget(self.per_layer_checkbox)
+        
+        checkboxes_layout.addSpacing(20)
+        
         # Show Advanced Options checkbox
         self.advanced_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Show Advanced Actuation Options"))
-        self.advanced_checkbox.setStyleSheet("QCheckBox { font-size: 11px; margin-bottom: 5px; }")
+        self.advanced_checkbox.setStyleSheet("QCheckBox { font-size: 11px; }")
         self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
-        layout.addWidget(self.advanced_checkbox)
+        checkboxes_layout.addWidget(self.advanced_checkbox)
+        
+        checkboxes_layout.addStretch()
+        layout.addLayout(checkboxes_layout)
         
         # Add separator
         line = QFrame()
@@ -2123,9 +2131,17 @@ class LayerActuationConfigurator(BasicEditor):
         else:
             label.setText(str(value))
         
+        # If changing normal actuation and advanced is NOT shown, also update MIDI
+        if key == 'normal' and not self.advanced_shown:
+            self.master_widgets['midi_slider'].setValue(value)
+            self.master_widgets['midi_label'].setText(f"{value * 0.025:.2f}mm ({value})")
+        
         if not self.per_layer_enabled:
             for layer_data in self.layer_data:
                 layer_data[key] = value
+                # Also sync MIDI when changing normal without advanced shown
+                if key == 'normal' and not self.advanced_shown:
+                    layer_data['midi'] = value
     
     def on_master_combo_changed(self, key, combo):
         """Handle master combo changes"""
@@ -2142,6 +2158,12 @@ class LayerActuationConfigurator(BasicEditor):
             label.setText(f"±{value}")
         else:
             label.setText(str(value))
+        
+        # If changing normal actuation and advanced is NOT shown, also update MIDI
+        if key == 'normal' and not self.layer_widgets['advanced_checkbox'].isChecked():
+            self.layer_widgets['midi_slider'].setValue(value)
+            self.layer_widgets['midi_label'].setText(f"{value * 0.025:.2f}mm ({value})")
+            self.layer_data[self.current_layer]['midi'] = value
         
         # Update layer data
         self.layer_data[self.current_layer][key] = value
