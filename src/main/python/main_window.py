@@ -376,7 +376,7 @@ class MainWindow(QMainWindow):
         KeycodeDisplay.set_keymap_override(KEYMAPS[index][1])
 
     def get_theme(self):
-        return self.settings.value("theme", "Dark")
+        return self.settings.value("theme", "Lavender Dream")
 
     def set_theme(self, theme):
         themes.Theme.set_theme(theme)
