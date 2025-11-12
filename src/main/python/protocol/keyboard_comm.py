@@ -89,6 +89,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.rgb_mode = self.rgb_speed = self.rgb_version = self.rgb_maximum_brightness = -1
         self.rgb_hsv = (0, 0, 0)
         self.rgb_supported_effects = set()
+        
+        # Add your custom initializations here:
+        self.reload_thruloop_config()
+        self.reload_midi_config()
+        self.reload_layer_actuations()
 
         # layer RGB - always initialize as supported for GUI purposes
         self.layer_rgb_supported = True
@@ -112,11 +117,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_rgb()
         self.reload_layer_rgb_support()
         self.reload_settings()
-
-        # Add your custom initializations here:
-        self.reload_thruloop_config()
-        self.reload_midi_config()
-        self.reload_layer_actuations()
 
         self.reload_dynamic()
 
