@@ -4,6 +4,7 @@ import platform
 from json import JSONDecodeError
 
 from PyQt5.QtCore import Qt, QSettings, QStandardPaths, QTimer, QRect, QT_VERSION_STR
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxLayout, QMainWindow, QAction, qApp, \
     QFileDialog, QDialog, QTabWidget, QActionGroup, QMessageBox, QLabel
 
@@ -58,6 +59,20 @@ class MainWindow(QMainWindow):
             self.move(self.settings.value("pos"))
 
         themes.Theme.set_theme(self.get_theme())
+
+        # Set modern font for 2025 aesthetic
+        modern_font = QFont()
+        # Try modern system fonts in order of preference
+        if sys.platform == "darwin":
+            modern_font.setFamily("SF Pro Display")
+        elif sys.platform == "win32":
+            modern_font.setFamily("Segoe UI")
+        else:
+            modern_font.setFamily("Ubuntu")
+        modern_font.setPointSize(10)
+        modern_font.setWeight(QFont.Normal)
+        modern_font.setStyleHint(QFont.SansSerif)
+        qApp.setFont(modern_font)
 
         self.combobox_devices = QComboBox()
         self.combobox_devices.currentIndexChanged.connect(self.on_device_selected)

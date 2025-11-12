@@ -268,6 +268,7 @@ class Theme:
         if theme in palettes:
             QApplication.setPalette(palettes[theme])
             QApplication.setStyle("Fusion")
+            QApplication.instance().setStyleSheet(cls.get_stylesheet())
         # For default/system theme, do nothing
         # User will have to restart the application for it to be applied
 
@@ -281,3 +282,52 @@ class Theme:
         if cls.theme in light_themes:
             return 103
         return 150
+
+    @classmethod
+    def get_stylesheet(cls):
+        """Return modern 2025 stylesheet for tabs and buttons"""
+        return """
+            /* Modern Tab Styling */
+            QTabWidget::pane {
+                border: none;
+                background: transparent;
+            }
+
+            QTabBar::tab {
+                background: transparent;
+                border: none;
+                padding: 10px 20px;
+                margin-right: 4px;
+                margin-bottom: 2px;
+                border-radius: 8px;
+                font-weight: 500;
+                min-width: 80px;
+            }
+
+            QTabBar::tab:selected {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+
+            QTabBar::tab:hover:!selected {
+                background: palette(alternate-base);
+            }
+
+            /* Rounded Keycode Buttons */
+            QPushButton {
+                border-radius: 8px;
+                border: 1px solid palette(mid);
+                padding: 6px 12px;
+                background: palette(button);
+            }
+
+            QPushButton:hover {
+                background: palette(light);
+                border-color: palette(highlight);
+            }
+
+            QPushButton:pressed {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+        """
