@@ -677,8 +677,9 @@ class midiadvancedTab(QScrollArea):
 
         # Create side tabs container with border
         side_tabs_container = QWidget()
+        side_tabs_container.setObjectName("side_tabs_container")
         side_tabs_container.setStyleSheet("""
-            QWidget {
+            QWidget#side_tabs_container {
                 background: palette(window);
                 border: 1px solid palette(mid);
                 border-right: none;
@@ -722,8 +723,9 @@ class midiadvancedTab(QScrollArea):
 
         # Create content container with border
         self.content_wrapper = QWidget()
+        self.content_wrapper.setObjectName("content_wrapper")
         self.content_wrapper.setStyleSheet("""
-            QWidget {
+            QWidget#content_wrapper {
                 border: 1px solid palette(mid);
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
