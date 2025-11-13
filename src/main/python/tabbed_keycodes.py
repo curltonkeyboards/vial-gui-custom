@@ -671,49 +671,50 @@ class midiadvancedTab(QScrollArea):
             ("Setting Presets", "Show\nSetting\nPresets")
         ]
 
-        # Create horizontal layout for side tabs and content
-        wrapper_layout = QHBoxLayout()
-        wrapper_layout.setSpacing(0)
-        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        # Create main wrapper container
+        main_wrapper = QWidget()
+        main_wrapper_layout = QVBoxLayout(main_wrapper)
+        main_wrapper_layout.setSpacing(0)
+        main_wrapper_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create vertical side tabs on the left
-        side_tabs_layout = QVBoxLayout()
-        side_tabs_layout.setSpacing(0)
-        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
+        # Create horizontal tabs at the top (like Basic/ISO/App headers)
+        tabs_layout = QHBoxLayout()
+        tabs_layout.setSpacing(0)
+        tabs_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.side_tab_buttons = {}
+        self.tab_buttons = {}
         for display_name, section_key in self.sections:
             btn = QPushButton(display_name)
-            btn.setProperty("side_tab", True)
+            btn.setProperty("inner_tab", True)
             btn.setCheckable(True)
-            btn.setMinimumHeight(40)
+            btn.setMinimumHeight(32)
             btn.clicked.connect(lambda checked, sk=section_key: self.show_section(sk))
-            side_tabs_layout.addWidget(btn)
-            self.side_tab_buttons[section_key] = btn
+            tabs_layout.addWidget(btn)
+            self.tab_buttons[section_key] = btn
 
-        side_tabs_layout.addStretch(1)
-        wrapper_layout.addLayout(side_tabs_layout)
+        tabs_layout.addStretch(1)
+        main_wrapper_layout.addLayout(tabs_layout)
 
-        # Create content wrapper with border (sharp edges, no rounded corners)
+        # Create content container with border
         self.content_wrapper = QWidget()
         self.content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
-                                           stop: 0 palette(alternate-base),
-                                           stop: 1 palette(base));
-                margin-left: -1px;
+                background: palette(base);
             }
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
-        self.content_layout.setSpacing(20)
-        self.content_layout.setContentsMargins(10, 10, 10, 10)
+        self.content_layout.setSpacing(10)
+        self.content_layout.setContentsMargins(15, 15, 15, 15)
 
         # Create containers for each section
+        self.containers = {}
         for display_name, section_key in self.sections:
             # Create container
             container = QWidget()
             container_layout = QVBoxLayout()
+            container_layout.setSpacing(10)
+            container_layout.setContentsMargins(0, 0, 0, 0)
 
             # If this is the Show\nAdvanced MIDI\nOptions section
             if section_key == "Show\nAdvanced MIDI\nOptions":
@@ -739,8 +740,8 @@ class midiadvancedTab(QScrollArea):
             self.containers[section_key] = container
 
         self.content_layout.addStretch(1)
-        wrapper_layout.addWidget(self.content_wrapper)
-        self.main_layout.addLayout(wrapper_layout)
+        main_wrapper_layout.addWidget(self.content_wrapper)
+        self.main_layout.addWidget(main_wrapper)
 
         # Populate all sections
         self.populate_channel_section()
@@ -764,11 +765,11 @@ class midiadvancedTab(QScrollArea):
         """Populate the Setting Presets section with three rows of buttons."""
         container = self.containers["Show\nSetting\nPresets"]
         layout = container.layout()
-        
+
         # First row - KEYCODES_SETTINGS1 (centered)
         row1_layout = QHBoxLayout()
         row1_layout.addStretch(1)
-        
+
         for keycode in self.keycodes_settings1:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
@@ -776,19 +777,14 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row1_layout.addWidget(btn)
-        
+
         row1_layout.addStretch(1)
         layout.addLayout(row1_layout)
-        
-        # Add minimal spacing between rows (reduced as requested)
-        spacer1 = QWidget()
-        spacer1.setFixedHeight(5)
-        layout.addWidget(spacer1)
-        
+
         # Second row - KEYCODES_SETTINGS2
         row2_layout = QHBoxLayout()
         row2_layout.addStretch(1)
-        
+
         for keycode in self.keycodes_settings2:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
@@ -796,19 +792,14 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row2_layout.addWidget(btn)
-        
+
         row2_layout.addStretch(1)
         layout.addLayout(row2_layout)
-        
-        # Add minimal spacing between rows (reduced as requested)
-        spacer2 = QWidget()
-        spacer2.setFixedHeight(5)
-        layout.addWidget(spacer2)
-        
+
         # Third row - KEYCODES_SETTINGS3
         row3_layout = QHBoxLayout()
         row3_layout.addStretch(1)
-        
+
         for keycode in self.keycodes_settings3:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
@@ -816,10 +807,10 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row3_layout.addWidget(btn)
-        
+
         row3_layout.addStretch(1)
         layout.addLayout(row3_layout)
-        
+
         layout.addStretch()
 
     def populate_channel_section(self):
@@ -1065,14 +1056,14 @@ class midiadvancedTab(QScrollArea):
             container.hide()
 
         # Uncheck all tab buttons
-        for btn in self.side_tab_buttons.values():
+        for btn in self.tab_buttons.values():
             btn.setChecked(False)
 
         # Show the selected container and check its tab button
         if section_name in self.containers:
             self.containers[section_name].show()
-            if section_name in self.side_tab_buttons:
-                self.side_tab_buttons[section_name].setChecked(True)
+            if section_name in self.tab_buttons:
+                self.tab_buttons[section_name].setChecked(True)
 
     def add_cc_x_y_menu(self, layout, width=None):
         button = QPushButton("CC Value")
