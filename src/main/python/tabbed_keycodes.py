@@ -688,9 +688,22 @@ class midiadvancedTab(QScrollArea):
         self.button_layout.addStretch(1)
         wrapper_layout.addLayout(self.button_layout)
 
-        # Create content area layout (vertical)
-        self.content_layout = QVBoxLayout()
+        # Create content wrapper with border (like QTabWidget::pane)
+        self.content_wrapper = QWidget()
+        self.content_wrapper.setStyleSheet("""
+            QWidget {
+                border: 1px solid palette(mid);
+                border-left: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+                border-radius: 0px;
+                margin-left: -1px;
+            }
+        """)
+        self.content_layout = QVBoxLayout(self.content_wrapper)
         self.content_layout.setSpacing(20)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Create containers for each section
         for display_name, section_key in sections:
@@ -722,7 +735,7 @@ class midiadvancedTab(QScrollArea):
             self.containers[section_key] = container
 
         self.content_layout.addStretch(1)
-        wrapper_layout.addLayout(self.content_layout, 1)
+        wrapper_layout.addWidget(self.content_wrapper, 1)
 
         # Populate all sections
         self.populate_channel_section()
@@ -2018,9 +2031,22 @@ class EarTrainerTab(QScrollArea):
         button_layout.addStretch(1)
         wrapper_layout.addLayout(button_layout)
 
-        # Create content area layout (vertical)
-        content_layout = QVBoxLayout()
+        # Create content wrapper with border (like QTabWidget::pane)
+        content_wrapper = QWidget()
+        content_wrapper.setStyleSheet("""
+            QWidget {
+                border: 1px solid palette(mid);
+                border-left: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+                border-radius: 0px;
+                margin-left: -1px;
+            }
+        """)
+        content_layout = QVBoxLayout(content_wrapper)
         content_layout.setSpacing(0)
+        content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Container for button sections with horizontal centering
         self.intervals_container = QWidget()
@@ -2043,7 +2069,7 @@ class EarTrainerTab(QScrollArea):
         self.chords_container.hide()
 
         content_layout.addStretch(1)
-        wrapper_layout.addLayout(content_layout, 1)
+        wrapper_layout.addWidget(content_wrapper, 1)
         
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -2822,9 +2848,22 @@ class KeySplitTab(QScrollArea):
         button_layout.addStretch(1)
         wrapper_layout.addLayout(button_layout)
 
-        # Create content area layout (vertical)
-        content_layout = QVBoxLayout()
+        # Create content wrapper with border (like QTabWidget::pane)
+        content_wrapper = QWidget()
+        content_wrapper.setStyleSheet("""
+            QWidget {
+                border: 1px solid palette(mid);
+                border-left: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+                border-radius: 0px;
+                margin-left: -1px;
+            }
+        """)
+        content_layout = QVBoxLayout(content_wrapper)
         content_layout.setSpacing(10)
+        content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Piano keyboards
         self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
@@ -2885,7 +2924,7 @@ class KeySplitTab(QScrollArea):
 
         content_layout.addWidget(split_buttons_container)
         content_layout.addStretch(1)
-        wrapper_layout.addLayout(content_layout, 1)
+        wrapper_layout.addWidget(content_wrapper, 1)
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
