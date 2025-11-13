@@ -315,13 +315,28 @@ class Theme:
             QTabWidget::pane {
                 border: 1px solid palette(mid);
                 border-top: 1px solid palette(mid);
-                background: transparent;
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
                 top: -1px;
             }
 
             /* General Rounded Buttons */
             QPushButton {
                 border-radius: 8px;
+                border: 1px solid palette(mid);
+                padding: 6px 12px;
+                background: palette(button);
+            }
+
+            QPushButton:hover {
+                background: palette(light);
+                border-color: palette(highlight);
+            }
+
+            QPushButton:pressed {
+                background: palette(highlight);
+                color: palette(highlighted-text);
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
@@ -355,6 +370,7 @@ class Theme:
                 border: 1px solid palette(mid);
                 border-radius: 6px;
                 padding: 6px 12px;
+                padding-right: 28px;
                 background: palette(base);
                 min-width: 80px;
             }
@@ -371,14 +387,18 @@ class Theme:
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: center right;
-                width: 0px;
+                width: 20px;
                 border: none;
+                padding-right: 4px;
             }
 
             QComboBox::down-arrow {
                 image: none;
-                width: 0px;
-                height: 0px;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid palette(text);
             }
 
             QComboBox QAbstractItemView {
@@ -486,6 +506,55 @@ class Theme:
             QScrollBar::add-page:horizontal,
             QScrollBar::sub-page:horizontal {
                 background: none;
+            }
+
+            /* Input Boxes - SpinBox and LineEdit Styling */
+            QSpinBox, QLineEdit {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                padding: 6px 8px;
+                background: palette(base);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+
+            QSpinBox:hover, QLineEdit:hover {
+                border-color: palette(highlight);
+            }
+
+            QSpinBox:focus, QLineEdit:focus {
+                border: 2px solid palette(highlight);
+                padding: 5px 7px;
+            }
+
+            QSpinBox::up-button, QSpinBox::down-button {
+                background: palette(button);
+                border: 1px solid palette(mid);
+                border-radius: 4px;
+                width: 16px;
+            }
+
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+                background: palette(light);
+                border-color: palette(highlight);
+            }
+
+            QSpinBox::up-arrow {
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-bottom: 5px solid palette(text);
+            }
+
+            QSpinBox::down-arrow {
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid palette(text);
             }
         """
 
