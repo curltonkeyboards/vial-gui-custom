@@ -370,17 +370,22 @@ class Theme:
                 border-radius: 6px;
                 padding: 6px 12px;
                 padding-right: 28px;
-                background: palette(base);
+                background: palette(button);
                 min-width: 80px;
             }
 
             QComboBox:hover {
                 border-color: palette(highlight);
+                background: palette(light);
             }
 
             QComboBox:focus {
                 border-color: palette(highlight);
-                background: palette(alternate-base);
+                background: palette(button);
+            }
+
+            QComboBox:on {
+                background: palette(button);
             }
 
             QComboBox::drop-down {
@@ -403,7 +408,7 @@ class Theme:
             QComboBox QAbstractItemView {
                 border: 1px solid palette(mid);
                 border-radius: 6px;
-                background: palette(base);
+                background: palette(button);
                 selection-background-color: palette(highlight);
                 selection-color: palette(highlighted-text);
                 padding: 4px;

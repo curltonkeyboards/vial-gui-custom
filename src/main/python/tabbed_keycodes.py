@@ -661,39 +661,63 @@ class midiadvancedTab(QScrollArea):
 
         # Define sections
         self.sections = [
-            ("Channel Options", "Show\nChannel\nOptions"),
+            ("Channel", "Show\nChannel\nOptions"),
             ("CC Options", "Show\nCC Options"),
             ("Transposition", "Show\nTransposition\nSettings"),
-            ("KeySplit Options", "Show\nKeySplit\nOptions"),
+            ("KeySplit", "Show\nKeySplit\nOptions"),
             ("Advanced MIDI", "Show\nAdvanced MIDI\nOptions"),
-            ("Velocity Options", "Show\nVelocity\nOptions"),
+            ("Velocity", "Show\nVelocity\nOptions"),
             ("Touch Dial", "Show\nTouch Dial\nOptions"),
-            ("Setting Presets", "Show\nSetting\nPresets")
+            ("Presets", "Show\nSetting\nPresets")
         ]
 
-        # Create main wrapper container
-        main_wrapper = QWidget()
-        main_wrapper_layout = QVBoxLayout(main_wrapper)
-        main_wrapper_layout.setSpacing(0)
-        main_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        # Create horizontal layout: side tabs on left, content box on right (VIA style)
+        main_layout_h = QHBoxLayout()
+        main_layout_h.setSpacing(0)
+        main_layout_h.setContentsMargins(0, 0, 0, 0)
 
-        # Create horizontal tabs at the top (like Basic/ISO/App headers)
-        tabs_layout = QHBoxLayout()
-        tabs_layout.setSpacing(0)
-        tabs_layout.setContentsMargins(0, 0, 0, 0)
+        # Create side tabs container with border
+        side_tabs_container = QWidget()
+        side_tabs_container.setStyleSheet("""
+            QWidget {
+                background: palette(window);
+                border: 1px solid palette(mid);
+                border-right: none;
+            }
+        """)
+        side_tabs_layout = QVBoxLayout(side_tabs_container)
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.tab_buttons = {}
+        self.side_tab_buttons = {}
         for display_name, section_key in self.sections:
             btn = QPushButton(display_name)
-            btn.setProperty("inner_tab", True)
             btn.setCheckable(True)
-            btn.setMinimumHeight(32)
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(120)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    border-bottom: 1px solid palette(mid);
+                    background: palette(button);
+                    text-align: left;
+                    padding-left: 15px;
+                    font-size: 9pt;
+                }
+                QPushButton:hover:!checked {
+                    background: palette(light);
+                }
+                QPushButton:checked {
+                    background: palette(base);
+                    font-weight: 600;
+                }
+            """)
             btn.clicked.connect(lambda checked, sk=section_key: self.show_section(sk))
-            tabs_layout.addWidget(btn)
-            self.tab_buttons[section_key] = btn
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[section_key] = btn
 
-        tabs_layout.addStretch(1)
-        main_wrapper_layout.addLayout(tabs_layout)
+        side_tabs_layout.addStretch(1)
+        main_layout_h.addWidget(side_tabs_container)
 
         # Create content container with border
         self.content_wrapper = QWidget()
@@ -703,7 +727,6 @@ class midiadvancedTab(QScrollArea):
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
                                            stop: 1 palette(base));
-                margin-top: -1px;
             }
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
@@ -740,8 +763,8 @@ class midiadvancedTab(QScrollArea):
             self.containers[section_key] = container
 
         self.content_layout.addStretch(1)
-        main_wrapper_layout.addWidget(self.content_wrapper)
-        self.main_layout.addWidget(main_wrapper)
+        main_layout_h.addWidget(self.content_wrapper)
+        self.main_layout.addLayout(main_layout_h)
 
         # Populate all sections
         self.populate_channel_section()
@@ -1012,14 +1035,14 @@ class midiadvancedTab(QScrollArea):
             container.hide()
 
         # Uncheck all tab buttons
-        for btn in self.tab_buttons.values():
+        for btn in self.side_tab_buttons.values():
             btn.setChecked(False)
 
         # Show the selected container and check its tab button
         if section_name in self.containers:
             self.containers[section_name].show()
-            if section_name in self.tab_buttons:
-                self.tab_buttons[section_name].setChecked(True)
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
 
     def add_cc_x_y_menu(self, layout, width=None):
         button = QPushButton("CC Value")
@@ -1965,14 +1988,17 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         main_layout = QVBoxLayout(self.scroll_content)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(20)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Interval Trainer section with centered buttons
-        intervals_outer_layout = QHBoxLayout()
-        intervals_outer_layout.addStretch(1)  # Left spacer
+        # Horizontal layout for both sections side by side
+        sections_layout = QHBoxLayout()
+        sections_layout.setSpacing(20)
+        sections_layout.addStretch(1)
 
+        # Interval Trainer section
         intervals_section = QVBoxLayout()
+        intervals_section.setSpacing(10)
         interval_label = QLabel("Interval Trainer")
         interval_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         interval_label.setAlignment(Qt.AlignCenter)
@@ -1982,15 +2008,11 @@ class EarTrainerTab(QScrollArea):
         self.intervals_grid.setSpacing(10)
         intervals_section.addLayout(self.intervals_grid)
 
-        intervals_outer_layout.addLayout(intervals_section)
-        intervals_outer_layout.addStretch(1)  # Right spacer
-        main_layout.addLayout(intervals_outer_layout)
+        sections_layout.addLayout(intervals_section)
 
-        # Chord Trainer section with centered buttons
-        chords_outer_layout = QHBoxLayout()
-        chords_outer_layout.addStretch(1)  # Left spacer
-
+        # Chord Trainer section
         chords_section = QVBoxLayout()
+        chords_section.setSpacing(10)
         chord_label = QLabel("Chord Trainer")
         chord_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         chord_label.setAlignment(Qt.AlignCenter)
@@ -2000,10 +2022,10 @@ class EarTrainerTab(QScrollArea):
         self.chords_grid.setSpacing(10)
         chords_section.addLayout(self.chords_grid)
 
-        chords_outer_layout.addLayout(chords_section)
-        chords_outer_layout.addStretch(1)  # Right spacer
-        main_layout.addLayout(chords_outer_layout)
+        sections_layout.addLayout(chords_section)
+        sections_layout.addStretch(1)
 
+        main_layout.addLayout(sections_layout)
         main_layout.addStretch(1)
 
         self.setWidget(self.scroll_content)
@@ -2035,11 +2057,11 @@ class EarTrainerTab(QScrollArea):
                 btn.keycode = keycode
                 self.intervals_grid.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons (5 columns)
+        # Create Chord Trainer buttons (4 columns to match interval spacing)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 5
-                col = i % 5
+                row = i // 4
+                col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
                 btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
