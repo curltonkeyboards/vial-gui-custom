@@ -325,7 +325,7 @@ class Theme:
             QPushButton {
                 border-radius: 8px;
                 border: 1px solid palette(mid);
-                padding: 8px 12px;
+                padding: 4px 8px;
                 background: palette(button);
             }
 
@@ -558,32 +558,29 @@ class Theme:
                 border-top: 5px solid palette(text);
             }
 
-            /* Side Tab Buttons - Similar to main tabs but vertical */
-            QPushButton[side_tab="true"] {
+            /* Inner Tab Buttons - Horizontal tabs like main headers */
+            QPushButton[inner_tab="true"] {
                 border: 1px solid palette(mid);
-                padding: 6px 10px;
-                margin-bottom: 2px;
-                margin-right: 0px;
+                padding: 4px 10px;
+                margin-right: 2px;
+                margin-bottom: 0px;
                 border-top-left-radius: 4px;
-                border-bottom-left-radius: 4px;
-                border-right: 1px solid palette(mid);
+                border-top-right-radius: 4px;
+                border-bottom: 1px solid palette(mid);
                 background: palette(button);
-                text-align: left;
-                min-width: 110px;
-                max-width: 140px;
                 font-weight: 500;
                 font-size: 9pt;
             }
 
-            QPushButton[side_tab="true"]:hover:!checked {
+            QPushButton[inner_tab="true"]:hover:!checked {
                 background: palette(light);
             }
 
-            QPushButton[side_tab="true"]:checked {
+            QPushButton[inner_tab="true"]:checked {
                 background: palette(base);
-                border-right-color: palette(base);
-                padding-right: 11px;
-                margin-right: -1px;
+                border-bottom-color: palette(base);
+                padding-bottom: 5px;
+                margin-bottom: -1px;
             }
         """
 

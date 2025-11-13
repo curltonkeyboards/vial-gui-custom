@@ -653,52 +653,51 @@ class midiadvancedTab(QScrollArea):
         self.keycodes_settings2 = KEYCODES_SETTINGS2
         self.keycodes_settings3 = KEYCODES_SETTINGS3
 
-        # Create scroll area content with horizontal layout
+        # Create scroll area content
         self.scroll_content = QWidget()
-        wrapper_layout = QHBoxLayout(self.scroll_content)
-        wrapper_layout.setSpacing(10)
-        wrapper_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create side buttons layout (vertical)
-        self.button_layout = QVBoxLayout()
-        self.button_layout.setSpacing(4)
-        self.button_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Define sections with cleaner names
+        # Define sections
         sections = [
-            ("Channel\nOptions", "Show\nChannel\nOptions"),
+            ("Channel", "Show\nChannel\nOptions"),
             ("CC Options", "Show\nCC Options"),
-            ("Transposition\nSettings", "Show\nTransposition\nSettings"),
-            ("KeySplit\nOptions", "Show\nKeySplit\nOptions"),
-            ("Advanced MIDI\nOptions", "Show\nAdvanced MIDI\nOptions"),
-            ("Velocity\nOptions", "Show\nVelocity\nOptions"),
-            ("Touch Dial\nOptions", "Show\nTouch Dial\nOptions"),
-            ("Setting\nPresets", "Show\nSetting\nPresets")
+            ("Transpose", "Show\nTransposition\nSettings"),
+            ("KeySplit", "Show\nKeySplit\nOptions"),
+            ("Advanced", "Show\nAdvanced MIDI\nOptions"),
+            ("Velocity", "Show\nVelocity\nOptions"),
+            ("Touch Dial", "Show\nTouch Dial\nOptions"),
+            ("Presets", "Show\nSetting\nPresets")
         ]
 
-        # Create side tab buttons
+        # Create horizontal tab buttons layout
+        self.button_layout = QHBoxLayout()
+        self.button_layout.setSpacing(0)
+        self.button_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create horizontal inner tab buttons
         for display_name, section_key in sections:
             btn = QPushButton(display_name)
             btn.setCheckable(True)
-            btn.setProperty("side_tab", "true")
+            btn.setProperty("inner_tab", "true")
             btn.clicked.connect(lambda checked, s=section_key: self.toggle_section(s))
             self.button_layout.addWidget(btn)
             self.buttons[section_key] = btn
 
         self.button_layout.addStretch(1)
-        wrapper_layout.addLayout(self.button_layout)
+        self.main_layout.addLayout(self.button_layout)
 
         # Create content wrapper with border (like QTabWidget::pane)
         self.content_wrapper = QWidget()
         self.content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                border-left: 1px solid palette(mid);
+                border-top: 1px solid palette(mid);
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
                                            stop: 1 palette(base));
-                border-radius: 0px;
-                margin-left: -1px;
+                margin-top: -1px;
             }
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
@@ -735,7 +734,7 @@ class midiadvancedTab(QScrollArea):
             self.containers[section_key] = container
 
         self.content_layout.addStretch(1)
-        wrapper_layout.addWidget(self.content_wrapper, 1)
+        self.main_layout.addWidget(self.content_wrapper)
 
         # Populate all sections
         self.populate_channel_section()
@@ -2007,41 +2006,40 @@ class EarTrainerTab(QScrollArea):
         self.chordtrainer_keycodes = chordtrainer_keycodes
         
         self.scroll_content = QWidget()
-        wrapper_layout = QHBoxLayout(self.scroll_content)
-        wrapper_layout.setSpacing(10)
-        wrapper_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create side buttons layout (vertical)
-        button_layout = QVBoxLayout()
-        button_layout.setSpacing(4)
+        # Create horizontal tab buttons layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(0)
         button_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.toggle_intervals = QPushButton("Interval\nTrainer")
+        self.toggle_intervals = QPushButton("Interval Trainer")
         self.toggle_intervals.setCheckable(True)
-        self.toggle_intervals.setProperty("side_tab", "true")
+        self.toggle_intervals.setProperty("inner_tab", "true")
         self.toggle_intervals.clicked.connect(self.show_intervals)
         button_layout.addWidget(self.toggle_intervals)
 
-        self.toggle_chords = QPushButton("Chord\nTrainer")
+        self.toggle_chords = QPushButton("Chord Trainer")
         self.toggle_chords.setCheckable(True)
-        self.toggle_chords.setProperty("side_tab", "true")
+        self.toggle_chords.setProperty("inner_tab", "true")
         self.toggle_chords.clicked.connect(self.show_chords)
         button_layout.addWidget(self.toggle_chords)
 
         button_layout.addStretch(1)
-        wrapper_layout.addLayout(button_layout)
+        main_layout.addLayout(button_layout)
 
         # Create content wrapper with border (like QTabWidget::pane)
         content_wrapper = QWidget()
         content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                border-left: 1px solid palette(mid);
+                border-top: 1px solid palette(mid);
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
                                            stop: 1 palette(base));
-                border-radius: 0px;
-                margin-left: -1px;
+                margin-top: -1px;
             }
         """)
         content_layout = QVBoxLayout(content_wrapper)
@@ -2069,7 +2067,7 @@ class EarTrainerTab(QScrollArea):
         self.chords_container.hide()
 
         content_layout.addStretch(1)
-        wrapper_layout.addWidget(content_wrapper, 1)
+        main_layout.addWidget(content_wrapper)
         
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
@@ -2823,42 +2821,41 @@ class KeySplitTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
         
-        # Main layout with horizontal arrangement
-        wrapper_layout = QHBoxLayout(self.scroll_content)
-        wrapper_layout.setSpacing(10)
-        wrapper_layout.setContentsMargins(10, 10, 10, 10)
+        # Main layout
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create side buttons layout (vertical)
-        button_layout = QVBoxLayout()
-        button_layout.setSpacing(4)
+        # Create horizontal tab buttons layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(0)
         button_layout.setContentsMargins(0, 0, 0, 0)
 
         self.toggle_button = QPushButton("KeySplit")
         self.toggle_button.setCheckable(True)
-        self.toggle_button.setProperty("side_tab", "true")
+        self.toggle_button.setProperty("inner_tab", "true")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
         button_layout.addWidget(self.toggle_button)
 
         self.toggle_button2 = QPushButton("TripleSplit")
         self.toggle_button2.setCheckable(True)
-        self.toggle_button2.setProperty("side_tab", "true")
+        self.toggle_button2.setProperty("inner_tab", "true")
         self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
         button_layout.addWidget(self.toggle_button2)
 
         button_layout.addStretch(1)
-        wrapper_layout.addLayout(button_layout)
+        main_layout.addLayout(button_layout)
 
         # Create content wrapper with border (like QTabWidget::pane)
         content_wrapper = QWidget()
         content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                border-left: 1px solid palette(mid);
+                border-top: 1px solid palette(mid);
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
                                            stop: 1 palette(base));
-                border-radius: 0px;
-                margin-left: -1px;
+                margin-top: -1px;
             }
         """)
         content_layout = QVBoxLayout(content_wrapper)
@@ -2924,7 +2921,7 @@ class KeySplitTab(QScrollArea):
 
         content_layout.addWidget(split_buttons_container)
         content_layout.addStretch(1)
-        wrapper_layout.addWidget(content_wrapper, 1)
+        main_layout.addWidget(content_wrapper)
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
