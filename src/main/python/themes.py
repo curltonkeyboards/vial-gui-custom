@@ -291,19 +291,20 @@ class Theme:
             QTabBar::tab {
                 background: palette(button);
                 border: 1px solid palette(mid);
-                padding: 4px 8px;
+                padding: 2px 6px;
                 margin-right: 2px;
                 margin-bottom: 0px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                border-bottom: 1px solid palette(mid);
                 font-weight: 500;
+                font-size: 9pt;
             }
 
             QTabBar::tab:selected {
                 background: palette(base);
                 border-bottom: 1px solid palette(base);
-                padding-bottom: 5px;
+                padding-bottom: 2px;
                 margin-bottom: -1px;
             }
 
@@ -313,7 +314,7 @@ class Theme:
 
             QTabWidget::pane {
                 border: 1px solid palette(mid);
-                border-top: none;
+                border-top: 1px solid palette(mid);
                 background: transparent;
             }
 
@@ -437,13 +438,13 @@ class Theme:
             QScrollBar:vertical {
                 background: palette(window);
                 width: 14px;
-                border-radius: 7px;
+                border-radius: 10px;
                 margin: 0px;
             }
 
             QScrollBar::handle:vertical {
                 background: palette(button);
-                border-radius: 7px;
+                border-radius: 10px;
                 min-height: 30px;
                 margin: 2px;
             }
@@ -465,13 +466,13 @@ class Theme:
             QScrollBar:horizontal {
                 background: palette(window);
                 height: 14px;
-                border-radius: 7px;
+                border-radius: 10px;
                 margin: 0px;
             }
 
             QScrollBar::handle:horizontal {
                 background: palette(button);
-                border-radius: 7px;
+                border-radius: 10px;
                 min-width: 30px;
                 margin: 2px;
             }
