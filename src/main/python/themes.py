@@ -325,7 +325,7 @@ class Theme:
             QPushButton {
                 border-radius: 8px;
                 border: 1px solid palette(mid);
-                padding: 4px 8px;
+                padding: 2px 4px;
                 background: palette(button);
             }
 

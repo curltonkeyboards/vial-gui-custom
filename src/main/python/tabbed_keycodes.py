@@ -660,44 +660,43 @@ class midiadvancedTab(QScrollArea):
         self.main_layout.setContentsMargins(10, 10, 10, 10)
 
         # Define sections
-        sections = [
-            ("Channel", "Show\nChannel\nOptions"),
+        self.sections = [
+            ("Channel Options", "Show\nChannel\nOptions"),
             ("CC Options", "Show\nCC Options"),
-            ("Transpose", "Show\nTransposition\nSettings"),
-            ("KeySplit", "Show\nKeySplit\nOptions"),
-            ("Advanced", "Show\nAdvanced MIDI\nOptions"),
-            ("Velocity", "Show\nVelocity\nOptions"),
+            ("Transposition", "Show\nTransposition\nSettings"),
+            ("KeySplit Options", "Show\nKeySplit\nOptions"),
+            ("Advanced MIDI", "Show\nAdvanced MIDI\nOptions"),
+            ("Velocity Options", "Show\nVelocity\nOptions"),
             ("Touch Dial", "Show\nTouch Dial\nOptions"),
-            ("Presets", "Show\nSetting\nPresets")
+            ("Setting Presets", "Show\nSetting\nPresets")
         ]
 
-        # Create horizontal tab buttons layout
-        self.button_layout = QHBoxLayout()
-        self.button_layout.setSpacing(0)
-        self.button_layout.setContentsMargins(0, 0, 0, 0)
+        # Create section selector layout
+        selector_layout = QHBoxLayout()
+        selector_layout.setContentsMargins(0, 0, 0, 10)
 
-        # Create horizontal inner tab buttons
-        for display_name, section_key in sections:
-            btn = QPushButton(display_name)
-            btn.setCheckable(True)
-            btn.setProperty("inner_tab", "true")
-            btn.clicked.connect(lambda checked, s=section_key: self.toggle_section(s))
-            self.button_layout.addWidget(btn)
-            self.buttons[section_key] = btn
+        selector_label = QLabel("Section:")
+        selector_layout.addWidget(selector_label)
 
-        self.button_layout.addStretch(1)
-        self.main_layout.addLayout(self.button_layout)
+        self.section_selector = QComboBox()
+        self.section_selector.setMinimumWidth(200)
+        for display_name, section_key in self.sections:
+            self.section_selector.addItem(display_name, section_key)
+        self.section_selector.currentIndexChanged.connect(self.on_section_changed)
+        selector_layout.addWidget(self.section_selector)
+        selector_layout.addStretch(1)
 
-        # Create content wrapper with border (like QTabWidget::pane)
+        self.main_layout.addLayout(selector_layout)
+
+        # Create content wrapper with border
         self.content_wrapper = QWidget()
         self.content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                border-top: 1px solid palette(mid);
+                border-radius: 8px;
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
                                            stop: 1 palette(base));
-                margin-top: -1px;
             }
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
@@ -705,7 +704,7 @@ class midiadvancedTab(QScrollArea):
         self.content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Create containers for each section
-        for display_name, section_key in sections:
+        for display_name, section_key in self.sections:
             # Create container
             container = QWidget()
             container_layout = QVBoxLayout()
@@ -752,7 +751,7 @@ class midiadvancedTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         # Show first section by default
-        self.toggle_section("Show\nChannel\nOptions")
+        self.show_section("Show\nChannel\nOptions")
         
     def populate_settings_presets_section(self):
         """Populate the Setting Presets section with three rows of buttons."""
@@ -1052,16 +1051,18 @@ class midiadvancedTab(QScrollArea):
         
         layout.addStretch()
 
-    def toggle_section(self, section_name):
-        # Uncheck all buttons and hide all containers
-        for btn in self.buttons.values():
-            btn.setChecked(False)
+    def on_section_changed(self, index):
+        """Handle section selector change"""
+        if index >= 0:
+            section_key = self.section_selector.itemData(index)
+            self.show_section(section_key)
+
+    def show_section(self, section_name):
+        """Show the specified section"""
         for container in self.containers.values():
             container.hide()
-
-        # Show selected section and check button
-        self.containers[section_name].show()
-        self.buttons[section_name].setChecked(True)
+        if section_name in self.containers:
+            self.containers[section_name].show()
 
     def add_cc_x_y_menu(self, layout, width=None):
         button = QPushButton("CC Value")
