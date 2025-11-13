@@ -287,31 +287,33 @@ class Theme:
     def get_stylesheet(cls):
         """Return modern 2025 stylesheet for tabs and UI elements"""
         return """
-            /* Modern Tab Styling - Classic but Refined */
+            /* Modern Tab Styling - Bigger with Curved Edges */
             QTabWidget::pane {
                 border: none;
                 background: transparent;
             }
 
             QTabBar::tab {
-                background: transparent;
-                border: none;
-                padding: 8px 16px;
+                background: palette(button);
+                border: 1px solid palette(mid);
+                padding: 10px 20px;
                 margin-right: 2px;
-                margin-bottom: 1px;
-                border-radius: 0px;
+                margin-bottom: 2px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                border-bottom-left-radius: 0px;
+                border-bottom-right-radius: 0px;
                 font-weight: 500;
             }
 
             QTabBar::tab:selected {
                 background: palette(highlight);
                 color: palette(highlighted-text);
-                border-radius: 4px 4px 0px 0px;
+                border-bottom: none;
             }
 
             QTabBar::tab:hover:!selected {
-                background: palette(alternate-base);
-                border-radius: 4px 4px 0px 0px;
+                background: palette(light);
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
@@ -331,12 +333,20 @@ class Theme:
                 color: palette(highlighted-text);
             }
 
+            /* Layer Selection Button Styling */
+            QPushButton[keycode_button="true"]:checked {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+                border: 2px solid palette(highlight);
+                font-weight: 600;
+            }
+
             /* Modern Dropdown/ComboBox Styling with Down Arrow */
             QComboBox {
                 border: 1px solid palette(mid);
                 border-radius: 6px;
                 padding: 6px 12px;
-                padding-right: 30px;
+                padding-right: 32px;
                 background: palette(base);
                 min-width: 80px;
             }
@@ -347,22 +357,28 @@ class Theme:
 
             QComboBox:focus {
                 border-color: palette(highlight);
+                background: palette(alternate-base);
             }
 
             QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: center right;
                 border: none;
                 width: 24px;
-                padding-right: 4px;
+                padding-right: 8px;
             }
 
             QComboBox::down-arrow {
                 image: none;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid palette(text);
+                border-style: solid;
+                border-width: 6px 5px 0px 5px;
+                border-color: palette(text) transparent transparent transparent;
                 width: 0px;
                 height: 0px;
-                margin-right: 6px;
+            }
+
+            QComboBox::down-arrow:hover {
+                border-top-color: palette(highlight);
             }
 
             QComboBox QAbstractItemView {
@@ -372,6 +388,12 @@ class Theme:
                 selection-background-color: palette(highlight);
                 selection-color: palette(highlighted-text);
                 padding: 4px;
+                outline: 0px;
+            }
+
+            QComboBox QAbstractItemView::item {
+                padding: 6px;
+                min-height: 24px;
             }
 
             /* Modern Table Styling */
