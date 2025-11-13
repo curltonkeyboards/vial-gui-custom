@@ -285,42 +285,8 @@ class Theme:
 
     @classmethod
     def get_stylesheet(cls):
-        """Return modern 2025 stylesheet for tabs and UI elements"""
+        """Return modern 2025 stylesheet for UI elements"""
         return """
-            /* Modern Tab Styling - Small and Compact */
-            QTabWidget::pane {
-                border: 1px solid palette(mid);
-                border-top: none;
-                background: transparent;
-                top: 0px;
-                margin-top: 0px;
-            }
-
-            QTabBar::tab {
-                background: palette(button);
-                border: 1px solid palette(mid);
-                padding: 6px 12px;
-                margin-right: 2px;
-                margin-bottom: 0px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                border-bottom: none;
-                font-weight: 500;
-                font-size: 9pt;
-            }
-
-            QTabBar::tab:selected {
-                background: palette(base);
-                color: palette(text);
-                border-bottom: 1px solid palette(base);
-                padding-bottom: 7px;
-                margin-bottom: -1px;
-            }
-
-            QTabBar::tab:hover:!selected {
-                background: palette(light);
-            }
-
             /* Rounded Keycode Buttons - Using object name selector */
             QPushButton[keycode_button="true"] {
                 border-radius: 8px;
