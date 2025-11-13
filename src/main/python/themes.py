@@ -287,39 +287,31 @@ class Theme:
     def get_stylesheet(cls):
         """Return modern 2025 stylesheet for tabs and UI elements"""
         return """
-            /* Modern Tab Styling with Dividers */
+            /* Modern Tab Styling - Classic but Refined */
             QTabWidget::pane {
                 border: none;
                 background: transparent;
-                border-top: 1px solid palette(mid);
-                margin-top: 2px;
             }
 
             QTabBar::tab {
                 background: transparent;
                 border: none;
-                border-right: 1px solid palette(midlight);
-                padding: 10px 24px;
-                margin-right: 0px;
-                margin-bottom: 2px;
+                padding: 8px 16px;
+                margin-right: 2px;
+                margin-bottom: 1px;
                 border-radius: 0px;
                 font-weight: 500;
-                min-width: 100px;
-            }
-
-            QTabBar::tab:last {
-                border-right: none;
             }
 
             QTabBar::tab:selected {
                 background: palette(highlight);
                 color: palette(highlighted-text);
-                border-radius: 6px 6px 0px 0px;
+                border-radius: 4px 4px 0px 0px;
             }
 
             QTabBar::tab:hover:!selected {
                 background: palette(alternate-base);
-                border-radius: 6px 6px 0px 0px;
+                border-radius: 4px 4px 0px 0px;
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
