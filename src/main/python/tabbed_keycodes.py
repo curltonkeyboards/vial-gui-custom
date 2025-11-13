@@ -700,19 +700,21 @@ class midiadvancedTab(QScrollArea):
         self.content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                background: palette(base);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+                margin-top: -1px;
             }
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
         self.content_layout.setSpacing(10)
         self.content_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Create minimal containers for each section (transparent, no styling)
+        # Create containers for each section
         self.containers = {}
         for display_name, section_key in self.sections:
-            # Create transparent widget container
+            # Create widget container
             container = QWidget()
-            container.setStyleSheet("QWidget { background: transparent; border: none; }")
             container_layout = QVBoxLayout(container)
             container_layout.setSpacing(10)
             container_layout.setContentsMargins(0, 0, 0, 0)
@@ -1963,86 +1965,51 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         main_layout = QVBoxLayout(self.scroll_content)
-        main_layout.setSpacing(0)
+        main_layout.setSpacing(15)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Create horizontal tab buttons layout
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(0)
-        button_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.toggle_intervals = QPushButton("Interval Trainer")
-        self.toggle_intervals.setCheckable(True)
-        self.toggle_intervals.setProperty("inner_tab", "true")
-        self.toggle_intervals.clicked.connect(self.show_intervals)
-        button_layout.addWidget(self.toggle_intervals)
-
-        self.toggle_chords = QPushButton("Chord Trainer")
-        self.toggle_chords.setCheckable(True)
-        self.toggle_chords.setProperty("inner_tab", "true")
-        self.toggle_chords.clicked.connect(self.show_chords)
-        button_layout.addWidget(self.toggle_chords)
-
-        button_layout.addStretch(1)
-        main_layout.addLayout(button_layout)
-
-        # Create content wrapper with border (like QTabWidget::pane)
-        content_wrapper = QWidget()
-        content_wrapper.setStyleSheet("""
-            QWidget {
-                border: 1px solid palette(mid);
-                border-top: 1px solid palette(mid);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
-                                           stop: 0 palette(alternate-base),
-                                           stop: 1 palette(base));
-                margin-top: -1px;
-            }
-        """)
-        content_layout = QVBoxLayout(content_wrapper)
-        content_layout.setSpacing(0)
-        content_layout.setContentsMargins(10, 10, 10, 10)
-
-        # Container for button sections with horizontal centering
-        self.intervals_container = QWidget()
-        intervals_outer_layout = QHBoxLayout(self.intervals_container)
+        # Interval Trainer section with centered buttons
+        intervals_outer_layout = QHBoxLayout()
         intervals_outer_layout.addStretch(1)  # Left spacer
+
+        intervals_section = QVBoxLayout()
+        interval_label = QLabel("Interval Trainer")
+        interval_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
+        interval_label.setAlignment(Qt.AlignCenter)
+        intervals_section.addWidget(interval_label)
+
         self.intervals_grid = QGridLayout()
         self.intervals_grid.setSpacing(10)
-        intervals_outer_layout.addLayout(self.intervals_grid)
-        intervals_outer_layout.addStretch(1)  # Right spacer
-        content_layout.addWidget(self.intervals_container)
+        intervals_section.addLayout(self.intervals_grid)
 
-        self.chords_container = QWidget()
-        chords_outer_layout = QHBoxLayout(self.chords_container)
+        intervals_outer_layout.addLayout(intervals_section)
+        intervals_outer_layout.addStretch(1)  # Right spacer
+        main_layout.addLayout(intervals_outer_layout)
+
+        # Chord Trainer section with centered buttons
+        chords_outer_layout = QHBoxLayout()
         chords_outer_layout.addStretch(1)  # Left spacer
+
+        chords_section = QVBoxLayout()
+        chord_label = QLabel("Chord Trainer")
+        chord_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
+        chord_label.setAlignment(Qt.AlignCenter)
+        chords_section.addWidget(chord_label)
+
         self.chords_grid = QGridLayout()
         self.chords_grid.setSpacing(10)
-        chords_outer_layout.addLayout(self.chords_grid)
-        chords_outer_layout.addStretch(1)  # Right spacer
-        content_layout.addWidget(self.chords_container)
-        self.chords_container.hide()
+        chords_section.addLayout(self.chords_grid)
 
-        content_layout.addStretch(1)
-        main_layout.addWidget(content_wrapper)
-        
+        chords_outer_layout.addLayout(chords_section)
+        chords_outer_layout.addStretch(1)  # Right spacer
+        main_layout.addLayout(chords_outer_layout)
+
+        main_layout.addStretch(1)
+
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
-        
-        # Show intervals by default and highlight its button
-        self.show_intervals()
+
         self.recreate_buttons()
-
-    def show_intervals(self):
-        self.intervals_container.show()
-        self.chords_container.hide()
-        self.toggle_intervals.setChecked(True)
-        self.toggle_chords.setChecked(False)
-
-    def show_chords(self):
-        self.intervals_container.hide()
-        self.chords_container.show()
-        self.toggle_chords.setChecked(True)
-        self.toggle_intervals.setChecked(False)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
