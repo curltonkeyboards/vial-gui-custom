@@ -766,6 +766,14 @@ class midiadvancedTab(QScrollArea):
         # Wrap each layout in a QWidget container
         for section_key, section_layout in self.section_layouts.items():
             wrapper = QWidget()
+            wrapper.setObjectName("section_wrapper")
+            # Make wrapper border invisible - use ID selector to avoid affecting children
+            wrapper.setStyleSheet("""
+                QWidget#section_wrapper {
+                    background: transparent;
+                    border: none;
+                }
+            """)
             wrapper.setLayout(section_layout)
             wrapper.hide()  # Hide all initially
             self.content_layout.addWidget(wrapper)
