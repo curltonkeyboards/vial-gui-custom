@@ -671,32 +671,38 @@ class midiadvancedTab(QScrollArea):
             ("Setting Presets", "Show\nSetting\nPresets")
         ]
 
-        # Create section selector layout
-        selector_layout = QHBoxLayout()
-        selector_layout.setContentsMargins(0, 0, 0, 10)
+        # Create horizontal layout for side tabs and content
+        wrapper_layout = QHBoxLayout()
+        wrapper_layout.setSpacing(0)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
 
-        selector_label = QLabel("Section:")
-        selector_layout.addWidget(selector_label)
+        # Create vertical side tabs on the left
+        side_tabs_layout = QVBoxLayout()
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.section_selector = QComboBox()
-        self.section_selector.setMinimumWidth(200)
+        self.side_tab_buttons = {}
         for display_name, section_key in self.sections:
-            self.section_selector.addItem(display_name, section_key)
-        self.section_selector.currentIndexChanged.connect(self.on_section_changed)
-        selector_layout.addWidget(self.section_selector)
-        selector_layout.addStretch(1)
+            btn = QPushButton(display_name)
+            btn.setProperty("side_tab", True)
+            btn.setCheckable(True)
+            btn.setMinimumHeight(40)
+            btn.clicked.connect(lambda checked, sk=section_key: self.show_section(sk))
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[section_key] = btn
 
-        self.main_layout.addLayout(selector_layout)
+        side_tabs_layout.addStretch(1)
+        wrapper_layout.addLayout(side_tabs_layout)
 
-        # Create content wrapper with border
+        # Create content wrapper with border (sharp edges, no rounded corners)
         self.content_wrapper = QWidget()
         self.content_wrapper.setStyleSheet("""
             QWidget {
                 border: 1px solid palette(mid);
-                border-radius: 8px;
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
                                            stop: 0 palette(alternate-base),
                                            stop: 1 palette(base));
+                margin-left: -1px;
             }
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
@@ -733,7 +739,8 @@ class midiadvancedTab(QScrollArea):
             self.containers[section_key] = container
 
         self.content_layout.addStretch(1)
-        self.main_layout.addWidget(self.content_wrapper)
+        wrapper_layout.addWidget(self.content_wrapper)
+        self.main_layout.addLayout(wrapper_layout)
 
         # Populate all sections
         self.populate_channel_section()
@@ -1051,18 +1058,21 @@ class midiadvancedTab(QScrollArea):
         
         layout.addStretch()
 
-    def on_section_changed(self, index):
-        """Handle section selector change"""
-        if index >= 0:
-            section_key = self.section_selector.itemData(index)
-            self.show_section(section_key)
-
     def show_section(self, section_name):
-        """Show the specified section"""
+        """Show the specified section and update tab button states"""
+        # Hide all containers
         for container in self.containers.values():
             container.hide()
+
+        # Uncheck all tab buttons
+        for btn in self.side_tab_buttons.values():
+            btn.setChecked(False)
+
+        # Show the selected container and check its tab button
         if section_name in self.containers:
             self.containers[section_name].show()
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
 
     def add_cc_x_y_menu(self, layout, width=None):
         button = QPushButton("CC Value")

@@ -325,7 +325,6 @@ class Theme:
             QPushButton {
                 border-radius: 8px;
                 border: 1px solid palette(mid);
-                padding: 2px 4px;
                 background: palette(button);
             }
 
@@ -345,7 +344,6 @@ class Theme:
                 border: 1px solid palette(mid);
                 background: palette(button);
                 font-size: 9pt;
-                padding: 4px 6px;
             }
 
             QPushButton[keycode_button="true"]:hover {
@@ -561,7 +559,6 @@ class Theme:
             /* Inner Tab Buttons - Horizontal tabs like main headers */
             QPushButton[inner_tab="true"] {
                 border: 1px solid palette(mid);
-                padding: 4px 10px;
                 margin-right: 2px;
                 margin-bottom: 0px;
                 border-top-left-radius: 4px;
@@ -579,8 +576,32 @@ class Theme:
             QPushButton[inner_tab="true"]:checked {
                 background: palette(base);
                 border-bottom-color: palette(base);
-                padding-bottom: 5px;
                 margin-bottom: -1px;
+            }
+
+            /* Side Tab Buttons - Vertical tabs on left */
+            QPushButton[side_tab="true"] {
+                border: 1px solid palette(mid);
+                margin-bottom: 2px;
+                margin-right: 0px;
+                border-top-left-radius: 4px;
+                border-bottom-left-radius: 4px;
+                border-right: 1px solid palette(mid);
+                background: palette(button);
+                text-align: left;
+                min-width: 100px;
+                font-weight: 500;
+                font-size: 9pt;
+            }
+
+            QPushButton[side_tab="true"]:hover:!checked {
+                background: palette(light);
+            }
+
+            QPushButton[side_tab="true"]:checked {
+                background: palette(base);
+                border-right-color: palette(base);
+                margin-right: -1px;
             }
         """
 
