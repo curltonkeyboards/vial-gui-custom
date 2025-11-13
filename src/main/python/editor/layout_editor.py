@@ -3,6 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QLabel, QCheckBox, QComboBox, QGridLayout, QWidget, QSizePolicy
 
+from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
 from vial_device import VialKeyboard
@@ -51,7 +52,7 @@ class SelectChoice:
         self.options = options
 
         self.widget_label = QLabel(label)
-        self.widget_options = QComboBox()
+        self.widget_options = ArrowComboBox()
         self.widget_options.addItems(options)
         self.widget_options.currentIndexChanged.connect(self.on_selection)
 

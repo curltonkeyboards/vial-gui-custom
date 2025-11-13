@@ -397,12 +397,9 @@ class Theme:
             }
 
             QComboBox::down-arrow {
-                image: none;
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid palette(text);
+                /* Arrow is drawn programmatically in custom ComboBox classes */
+                width: 12px;
+                height: 8px;
             }
 
             QComboBox QAbstractItemView {

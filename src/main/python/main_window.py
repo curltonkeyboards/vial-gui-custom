@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxL
 import os
 import sys
 
+from widgets.combo_box import ArrowComboBox
 from about_keyboard import AboutKeyboard
 from autorefresh.autorefresh import Autorefresh
 from editor.combos import Combos
@@ -74,7 +75,7 @@ class MainWindow(QMainWindow):
         modern_font.setStyleHint(QFont.SansSerif)
         qApp.setFont(modern_font)
 
-        self.combobox_devices = QComboBox()
+        self.combobox_devices = ArrowComboBox()
         self.combobox_devices.currentIndexChanged.connect(self.on_device_selected)
 
         self.btn_refresh_devices = QToolButton()
