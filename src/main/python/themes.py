@@ -325,7 +325,7 @@ class Theme:
             QPushButton {
                 border-radius: 8px;
                 border: 1px solid palette(mid);
-                padding: 4px 8px;
+                padding: 6px 10px;
                 background: palette(button);
             }
 
@@ -345,7 +345,7 @@ class Theme:
                 border: 1px solid palette(mid);
                 background: palette(button);
                 font-size: 9pt;
-                padding: 2px 4px;
+                padding: 4px 6px;
             }
 
             QPushButton[keycode_button="true"]:hover {
