@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPolygonF, QPalette, QPen, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QPainterPath, QTransform, QBrush, QPolygonF, QPalette, QPen, QPixmap, QFont
 from PyQt5.QtWidgets import QWidget, QToolTip, QApplication
 from PyQt5.QtCore import Qt, QSize, QRect, QPointF, pyqtSignal, QEvent, QRectF
 
@@ -261,6 +261,11 @@ class KeyboardWidget(QWidget):
         self.enabled = True
         self.scale = 1
         self.padding = KEYBOARD_WIDGET_PADDING
+
+        # Set fixed font size for keyboard widget to maintain original key sizes
+        fixed_font = QFont()
+        fixed_font.setPointSize(8)
+        self.setFont(fixed_font)
 
         self.setMouseTracking(True)
 
@@ -794,10 +799,16 @@ class KeyboardWidget2(QWidget):
 
     def __init__(self, layout_editor):
         super().__init__()
-        
+
         self.enabled = True
         self.scale = 1
         self.padding = KEYBOARD_WIDGET_PADDING
+
+        # Set fixed font size for keyboard widget to maintain original key sizes
+        fixed_font = QFont()
+        fixed_font.setPointSize(8)
+        self.setFont(fixed_font)
+
         themes2.qInitResources()
         self.setMouseTracking(True)
 

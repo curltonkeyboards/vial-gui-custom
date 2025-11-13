@@ -287,30 +287,39 @@ class Theme:
     def get_stylesheet(cls):
         """Return modern 2025 stylesheet for tabs and UI elements"""
         return """
-            /* Modern Tab Styling */
+            /* Modern Tab Styling with Dividers */
             QTabWidget::pane {
                 border: none;
                 background: transparent;
+                border-top: 1px solid palette(mid);
+                margin-top: 2px;
             }
 
             QTabBar::tab {
                 background: transparent;
                 border: none;
-                padding: 10px 20px;
-                margin-right: 4px;
+                border-right: 1px solid palette(midlight);
+                padding: 10px 24px;
+                margin-right: 0px;
                 margin-bottom: 2px;
-                border-radius: 8px;
+                border-radius: 0px;
                 font-weight: 500;
-                min-width: 80px;
+                min-width: 100px;
+            }
+
+            QTabBar::tab:last {
+                border-right: none;
             }
 
             QTabBar::tab:selected {
                 background: palette(highlight);
                 color: palette(highlighted-text);
+                border-radius: 6px 6px 0px 0px;
             }
 
             QTabBar::tab:hover:!selected {
                 background: palette(alternate-base);
+                border-radius: 6px 6px 0px 0px;
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
@@ -330,11 +339,12 @@ class Theme:
                 color: palette(highlighted-text);
             }
 
-            /* Modern Dropdown/ComboBox Styling */
+            /* Modern Dropdown/ComboBox Styling with Down Arrow */
             QComboBox {
                 border: 1px solid palette(mid);
                 border-radius: 6px;
                 padding: 6px 12px;
+                padding-right: 30px;
                 background: palette(base);
                 min-width: 80px;
             }
@@ -349,12 +359,18 @@ class Theme:
 
             QComboBox::drop-down {
                 border: none;
-                width: 20px;
+                width: 24px;
+                padding-right: 4px;
             }
 
             QComboBox::down-arrow {
-                width: 12px;
-                height: 12px;
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid palette(text);
+                width: 0px;
+                height: 0px;
+                margin-right: 6px;
             }
 
             QComboBox QAbstractItemView {
@@ -395,6 +411,61 @@ class Theme:
 
             QHeaderView::section:hover {
                 background: palette(alternate-base);
+            }
+
+            /* Modern Oval Scrollbars */
+            QScrollBar:vertical {
+                background: palette(base);
+                width: 10px;
+                border-radius: 5px;
+                margin: 0px;
+            }
+
+            QScrollBar::handle:vertical {
+                background: palette(mid);
+                border-radius: 5px;
+                min-height: 30px;
+            }
+
+            QScrollBar::handle:vertical:hover {
+                background: palette(dark);
+            }
+
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: none;
+            }
+
+            QScrollBar:horizontal {
+                background: palette(base);
+                height: 10px;
+                border-radius: 5px;
+                margin: 0px;
+            }
+
+            QScrollBar::handle:horizontal {
+                background: palette(mid);
+                border-radius: 5px;
+                min-width: 30px;
+            }
+
+            QScrollBar::handle:horizontal:hover {
+                background: palette(dark);
+            }
+
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
+
+            QScrollBar::add-page:horizontal,
+            QScrollBar::sub-page:horizontal {
+                background: none;
             }
         """
 
