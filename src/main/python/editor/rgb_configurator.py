@@ -5,6 +5,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
     QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction
 
+from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
@@ -974,7 +975,7 @@ class QmkRgblightHandler(BasicHandler):
 
         self.lbl_underglow_effect = QLabel(tr("RGBConfigurator", "Underglow Effect"))
         container.addWidget(self.lbl_underglow_effect, row, 0)
-        self.underglow_effect = QComboBox()
+        self.underglow_effect = ArrowComboBox()
         for ef in QMK_RGBLIGHT_EFFECTS:
             self.underglow_effect.addItem(ef.name)
         container.addWidget(self.underglow_effect, row, 1)
@@ -1093,7 +1094,7 @@ class VialRGBHandler(BasicHandler):
 
         self.lbl_rgb_effect = QLabel(tr("RGBConfigurator", "RGB Effect"))
         container.addWidget(self.lbl_rgb_effect, row, 0)
-        self.rgb_effect = QComboBox()
+        self.rgb_effect = ArrowComboBox()
         self.rgb_effect.addItem("0")
         self.rgb_effect.addItem("1")
         self.rgb_effect.addItem("2")
@@ -1650,7 +1651,7 @@ class CustomLightsHandler(BasicHandler):
 
         # Sustain Mode - moved to row 13
         layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
-        sustain_mode = QComboBox()
+        sustain_mode = ArrowComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
@@ -1667,7 +1668,7 @@ class CustomLightsHandler(BasicHandler):
         load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
         buttons_layout.addWidget(load_button)
         
-        preset_combo = QComboBox()
+        preset_combo = ArrowComboBox()
         preset_combo.addItem("Load Preset...")
         for preset in CUSTOM_LIGHT_PRESETS:
             preset_combo.addItem(preset)

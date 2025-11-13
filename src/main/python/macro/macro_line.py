@@ -3,6 +3,7 @@
 from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtWidgets import QHBoxLayout, QToolButton, QComboBox
 
+from widgets.combo_box import ArrowComboBox
 from macro.macro_action_ui import ActionTextUI, ActionDownUI, ActionUpUI, ActionTapUI, ActionDelayUI
 from protocol.constants import VIAL_PROTOCOL_ADVANCED_MACROS
 
@@ -38,7 +39,7 @@ class MacroLine(QObject):
         self.arrows.addWidget(self.btn_down)
         self.arrows.setSpacing(0)
 
-        self.select_type = QComboBox()
+        self.select_type = ArrowComboBox()
         self.select_type.addItems(self.types)
         self.select_type.setCurrentIndex(self.type_to_cls.index(type(action)))
         self.select_type.currentIndexChanged.connect(self.on_change_type)

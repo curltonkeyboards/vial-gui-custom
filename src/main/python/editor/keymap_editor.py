@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWid
                               QSizePolicy)
 from PyQt5.QtCore import Qt, pyqtSignal
 
+from widgets.combo_box import ArrowComboBox
 from any_keycode_dialog import AnyKeycodeDialog
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2, EncoderWidget, EncoderWidget2
@@ -256,7 +257,7 @@ class QuickActuationWidget(QGroupBox):
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
         
-        self.aftertouch_combo = QComboBox()
+        self.aftertouch_combo = ArrowComboBox()
         self.aftertouch_combo.addItem("Off", 0)
         self.aftertouch_combo.addItem("Reverse", 1)
         self.aftertouch_combo.addItem("Bottom-Out", 2)
@@ -277,7 +278,7 @@ class QuickActuationWidget(QGroupBox):
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
         
-        self.aftertouch_cc_combo = QComboBox()
+        self.aftertouch_cc_combo = ArrowComboBox()
         for cc in range(128):
             self.aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
         self.aftertouch_cc_combo.setCurrentIndex(74)
@@ -295,7 +296,7 @@ class QuickActuationWidget(QGroupBox):
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
         
-        self.velocity_combo = QComboBox()
+        self.velocity_combo = ArrowComboBox()
         self.velocity_combo.addItem("Fixed (64)", 0)
         self.velocity_combo.addItem("Peak at Apex", 1)
         self.velocity_combo.addItem("Speed-Based", 2)
@@ -315,7 +316,7 @@ class QuickActuationWidget(QGroupBox):
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
         
-        self.vel_speed_combo = QComboBox()
+        self.vel_speed_combo = ArrowComboBox()
         for i in range(1, 21):
             self.vel_speed_combo.addItem(str(i), i)
         self.vel_speed_combo.setCurrentIndex(9)

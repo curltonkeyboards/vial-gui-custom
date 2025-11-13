@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGri
     QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, \
     QMessageBox, QHeaderView
 
+from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
 from util import tr
 from vial_device import VialKeyboard
@@ -55,7 +56,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # ThruLoop Channel
         basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "ThruLoop Channel")), 0, 0)
-        self.loop_channel = QComboBox()
+        self.loop_channel = ArrowComboBox()
         for i in range(1, 17):
             self.loop_channel.addItem(f"Channel {i}", i)
         self.loop_channel.setCurrentIndex(15)  # Default to channel 16
@@ -206,7 +207,7 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_separate_loopchop_changed()
     
     def create_cc_combo(self):
-        combo = QComboBox()
+        combo = ArrowComboBox()
         combo.addItem("None", 128)
         for i in range(128):
             combo.addItem(f"CC# {i}", i)
