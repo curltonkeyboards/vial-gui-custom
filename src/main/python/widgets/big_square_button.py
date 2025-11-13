@@ -15,6 +15,10 @@ class BigSquareButton(QPushButton):
         self.word_wrap = True
         self.text = ""
         self.adjust_font_size = True
+
+        # Set property for styling via stylesheet
+        self.setProperty("keycode_button", "true")
+
         self.update_size()  # Set the initial size for the button
 
     def setRelSize(self, ratio):

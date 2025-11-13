@@ -285,7 +285,7 @@ class Theme:
 
     @classmethod
     def get_stylesheet(cls):
-        """Return modern 2025 stylesheet for tabs and buttons"""
+        """Return modern 2025 stylesheet for tabs and UI elements"""
         return """
             /* Modern Tab Styling */
             QTabWidget::pane {
@@ -313,21 +313,97 @@ class Theme:
                 background: palette(alternate-base);
             }
 
-            /* Rounded Keycode Buttons */
-            QPushButton {
+            /* Rounded Keycode Buttons - Using object name selector */
+            QPushButton[keycode_button="true"] {
                 border-radius: 8px;
                 border: 1px solid palette(mid);
-                padding: 6px 12px;
                 background: palette(button);
             }
 
-            QPushButton:hover {
+            QPushButton[keycode_button="true"]:hover {
                 background: palette(light);
                 border-color: palette(highlight);
             }
 
-            QPushButton:pressed {
+            QPushButton[keycode_button="true"]:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
+            }
+
+            /* Modern Dropdown/ComboBox Styling */
+            QComboBox {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                padding: 6px 12px;
+                background: palette(base);
+                min-width: 80px;
+            }
+
+            QComboBox:hover {
+                border-color: palette(highlight);
+            }
+
+            QComboBox:focus {
+                border-color: palette(highlight);
+            }
+
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+
+            QComboBox::down-arrow {
+                width: 12px;
+                height: 12px;
+            }
+
+            QComboBox QAbstractItemView {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                background: palette(base);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+                padding: 4px;
+            }
+
+            /* Modern Table Styling */
+            QTableWidget, QTableView {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                background: palette(base);
+                gridline-color: palette(midlight);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+
+            QTableWidget::item, QTableView::item {
+                padding: 6px;
+                border: none;
+            }
+
+            QTableWidget::item:hover, QTableView::item:hover {
+                background: palette(alternate-base);
+            }
+
+            QHeaderView::section {
+                background: palette(window);
+                padding: 8px;
+                border: none;
+                border-bottom: 2px solid palette(mid);
+                font-weight: 500;
+            }
+
+            QHeaderView::section:hover {
+                background: palette(alternate-base);
+            }
+        """
+
+    @classmethod
+    def get_button_stylesheet(cls):
+        """Return stylesheet for keycode buttons"""
+        return """
+            QPushButton {
+                border-radius: 8px;
+                border: 1px solid palette(mid);
             }
         """

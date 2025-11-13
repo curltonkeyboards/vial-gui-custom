@@ -13,6 +13,9 @@ class SquareButton(QPushButton):
         self.word_wrap = False
         self.text = ""
 
+        # Set property for styling via stylesheet
+        self.setProperty("keycode_button", "true")
+
     def setRelSize(self, ratio):
         self.scale = ratio
         self.updateGeometry()
