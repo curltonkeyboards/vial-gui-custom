@@ -86,23 +86,50 @@ class ThruLoopConfigurator(BasicEditor):
             basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
             self.restart_combos.append(combo)
         
-        # Main Functions Table
+        # Main Functions - Using grid layout like LoopChop
         main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         main_layout.addWidget(main_group)
-        self.main_table = self.create_function_table()
-        main_group_layout = QVBoxLayout()
-        main_group_layout.addWidget(self.main_table)
-        main_group.setLayout(main_group_layout)
+        main_grid = QGridLayout()
+        main_group.setLayout(main_grid)
         self.main_group = main_group
-        
-        # Overdub Functions Table  
+
+        # Add loop headers
+        for loop_idx in range(4):
+            main_grid.addWidget(QLabel(f"Loop {loop_idx + 1}"), 0, loop_idx + 1)
+
+        # Create main function combos
+        self.main_combos = []
+        functions = ["Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"]
+        for func_idx, func_name in enumerate(functions):
+            main_grid.addWidget(QLabel(func_name), func_idx + 1, 0)
+            row_combos = []
+            for loop_idx in range(4):
+                combo = self.create_cc_combo()
+                main_grid.addWidget(combo, func_idx + 1, loop_idx + 1)
+                row_combos.append(combo)
+            self.main_combos.append(row_combos)
+
+        # Overdub Functions - Using grid layout like LoopChop
         overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
         main_layout.addWidget(overdub_group)
-        self.overdub_table = self.create_function_table()
-        overdub_group_layout = QVBoxLayout()
-        overdub_group_layout.addWidget(self.overdub_table)
-        overdub_group.setLayout(overdub_group_layout)
+        overdub_grid = QGridLayout()
+        overdub_group.setLayout(overdub_grid)
         self.overdub_group = overdub_group
+
+        # Add loop headers
+        for loop_idx in range(4):
+            overdub_grid.addWidget(QLabel(f"Loop {loop_idx + 1}"), 0, loop_idx + 1)
+
+        # Create overdub function combos
+        self.overdub_combos = []
+        for func_idx, func_name in enumerate(functions):
+            overdub_grid.addWidget(QLabel(func_name), func_idx + 1, 0)
+            row_combos = []
+            for loop_idx in range(4):
+                combo = self.create_cc_combo()
+                overdub_grid.addWidget(combo, func_idx + 1, loop_idx + 1)
+                row_combos.append(combo)
+            self.overdub_combos.append(row_combos)
         
         # LoopChop Settings
         loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
@@ -143,20 +170,28 @@ class ThruLoopConfigurator(BasicEditor):
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
-        
+
         save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
+        save_btn.setMinimumHeight(35)
+        save_btn.setMinimumWidth(150)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
-        
-        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))  
+
+        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))
+        load_btn.setMinimumHeight(35)
+        load_btn.setMinimumWidth(160)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
-        
+
         save_file_btn = QPushButton(tr("ThruLoopConfigurator", "Save to File"))
+        save_file_btn.setMinimumHeight(35)
+        save_file_btn.setMinimumWidth(130)
         save_file_btn.clicked.connect(self.on_save_to_file)
         buttons_layout.addWidget(save_file_btn)
-        
+
         load_file_btn = QPushButton(tr("ThruLoopConfigurator", "Load from File"))
+        load_file_btn.setMinimumHeight(35)
+        load_file_btn.setMinimumWidth(130)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
         
@@ -178,22 +213,22 @@ class ThruLoopConfigurator(BasicEditor):
         combo.setCurrentIndex(0)  # Default to "None"
         return combo
     
-    def create_function_table(self):
-        table = QTableWidget(5, 4)  # 5 functions x 4 loops
-        table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
-        table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
-        ])
-        
-        # Fill table with CC combo boxes
-        for row in range(5):
-            for col in range(4):
-                combo = self.create_cc_combo()
-                table.setCellWidget(row, col, combo)
-        
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setMaximumHeight(200)
-        return table
+    def get_combos_cc_values(self, combos_array):
+        """Get CC values from a 2D array of combos"""
+        values = []
+        for row_combos in combos_array:
+            for combo in row_combos:
+                values.append(self.get_cc_value(combo))
+        return values
+
+    def set_combos_cc_values(self, combos_array, values):
+        """Set CC values to a 2D array of combos"""
+        idx = 0
+        for row_combos in combos_array:
+            for combo in row_combos:
+                if idx < len(values):
+                    self.set_cc_value(combo, values[idx])
+                    idx += 1
     
     def on_loop_enabled_changed(self):
         # When checked, ThruLoop is disabled (reversed logic from webapp)
@@ -244,22 +279,6 @@ class ThruLoopConfigurator(BasicEditor):
                 combo.setCurrentIndex(i)
                 break
     
-    def get_table_cc_values(self, table):
-        values = []
-        for row in range(table.rowCount()):
-            for col in range(table.columnCount()):
-                combo = table.cellWidget(row, col)
-                values.append(self.get_cc_value(combo))
-        return values
-    
-    def set_table_cc_values(self, table, values):
-        idx = 0
-        for row in range(table.rowCount()):
-            for col in range(table.columnCount()):
-                if idx < len(values):
-                    combo = table.cellWidget(row, col)
-                    self.set_cc_value(combo, values[idx])
-                    idx += 1
     
     def on_save(self):
         """Save all configuration to keyboard"""
@@ -280,11 +299,11 @@ class ThruLoopConfigurator(BasicEditor):
             self.send_hid_packet(self.HID_CMD_SET_LOOP_CONFIG, 0, loop_config_data)
             
             # 2. Send main loop CCs
-            main_values = self.get_table_cc_values(self.main_table)
+            main_values = self.get_combos_cc_values(self.main_combos)
             self.send_hid_packet(self.HID_CMD_SET_MAIN_LOOP_CCS, 0, main_values)
-            
-            # 3. Send overdub CCs  
-            overdub_values = self.get_table_cc_values(self.overdub_table)
+
+            # 3. Send overdub CCs
+            overdub_values = self.get_combos_cc_values(self.overdub_combos)
             self.send_hid_packet(self.HID_CMD_SET_OVERDUB_CCS, 0, overdub_values)
             
             # 4. Send navigation configuration
@@ -322,8 +341,8 @@ class ThruLoopConfigurator(BasicEditor):
             "separateLoopChopCC": self.separate_loopchop.isChecked(),
             "masterCC": self.get_cc_value(self.master_cc),
             "restartCCs": [self.get_cc_value(combo) for combo in self.restart_combos],
-            "mainCCs": self.get_table_cc_values(self.main_table),
-            "overdubCCs": self.get_table_cc_values(self.overdub_table),
+            "mainCCs": self.get_combos_cc_values(self.main_combos),
+            "overdubCCs": self.get_combos_cc_values(self.overdub_combos),
             "navCCs": [self.get_cc_value(combo) for combo in self.nav_combos]
         }
         return config
@@ -350,13 +369,13 @@ class ThruLoopConfigurator(BasicEditor):
             if i < len(restart_ccs):
                 self.set_cc_value(combo, restart_ccs[i])
         
-        # Set main table CCs
+        # Set main combos CCs
         main_ccs = config.get("mainCCs", [128] * 20)
-        self.set_table_cc_values(self.main_table, main_ccs)
-        
-        # Set overdub table CCs
-        overdub_ccs = config.get("overdubCCs", [128] * 20)  
-        self.set_table_cc_values(self.overdub_table, overdub_ccs)
+        self.set_combos_cc_values(self.main_combos, main_ccs)
+
+        # Set overdub combos CCs
+        overdub_ccs = config.get("overdubCCs", [128] * 20)
+        self.set_combos_cc_values(self.overdub_combos, overdub_ccs)
         
         # Set navigation CCs
         nav_ccs = config.get("navCCs", [128] * 8)

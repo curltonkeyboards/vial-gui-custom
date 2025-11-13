@@ -330,13 +330,15 @@ class QuickActuationWidget(QGroupBox):
         
         # Show Advanced button
         self.advanced_btn = QPushButton(tr("QuickActuationWidget", "Show Advanced Options"))
-        self.advanced_btn.setMaximumHeight(30)
+        self.advanced_btn.setMaximumHeight(24)
+        self.advanced_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
         self.advanced_btn.clicked.connect(self.on_advanced_btn_clicked)
         layout.addWidget(self.advanced_btn)
-        
+
         # Save button at the bottom
         self.save_btn = QPushButton(tr("QuickActuationWidget", "Save to All Layers"))
-        self.save_btn.setMaximumHeight(30)
+        self.save_btn.setMaximumHeight(24)
+        self.save_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
         self.save_btn.clicked.connect(self.on_save)
         layout.addWidget(self.save_btn)
     

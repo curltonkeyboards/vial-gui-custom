@@ -144,6 +144,107 @@ themes = [
         (QPalette.Disabled, QPalette.Text): "#cbc8c9",
         (QPalette.Disabled, QPalette.Light): "#f5d1c8",
     }),
+    # Modern 2025 Pastel Themes
+    ("Lavender Dream", {
+        QPalette.Window: "#f5f3ff",
+        QPalette.WindowText: "#4a4458",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#faf9ff",
+        QPalette.ToolTipBase: "#e8e4ff",
+        QPalette.ToolTipText: "#4a4458",
+        QPalette.Text: "#4a4458",
+        QPalette.Button: "#f0ecff",
+        QPalette.ButtonText: "#4a4458",
+        QPalette.BrightText: "#8b7ab8",
+        QPalette.Link: "#9d8ac7",
+        QPalette.Highlight: "#c4b5fd",
+        QPalette.HighlightedText: "#2d2438",
+        (QPalette.Active, QPalette.Button): "#e8e4ff",
+        (QPalette.Disabled, QPalette.ButtonText): "#b4adc4",
+        (QPalette.Disabled, QPalette.WindowText): "#b4adc4",
+        (QPalette.Disabled, QPalette.Text): "#b4adc4",
+        (QPalette.Disabled, QPalette.Light): "#e8e4ff",
+    }),
+    ("Mint Fresh", {
+        QPalette.Window: "#f0fdf9",
+        QPalette.WindowText: "#1e4d3f",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#f4fefb",
+        QPalette.ToolTipBase: "#d1fae5",
+        QPalette.ToolTipText: "#1e4d3f",
+        QPalette.Text: "#1e4d3f",
+        QPalette.Button: "#e5fcf3",
+        QPalette.ButtonText: "#1e4d3f",
+        QPalette.BrightText: "#34d399",
+        QPalette.Link: "#6ee7b7",
+        QPalette.Highlight: "#a7f3d0",
+        QPalette.HighlightedText: "#064e3b",
+        (QPalette.Active, QPalette.Button): "#d1fae5",
+        (QPalette.Disabled, QPalette.ButtonText): "#9ca3af",
+        (QPalette.Disabled, QPalette.WindowText): "#9ca3af",
+        (QPalette.Disabled, QPalette.Text): "#9ca3af",
+        (QPalette.Disabled, QPalette.Light): "#d1fae5",
+    }),
+    ("Peachy Keen", {
+        QPalette.Window: "#fff8f3",
+        QPalette.WindowText: "#5c3d2e",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#fffbf7",
+        QPalette.ToolTipBase: "#ffe8d9",
+        QPalette.ToolTipText: "#5c3d2e",
+        QPalette.Text: "#5c3d2e",
+        QPalette.Button: "#fff4ed",
+        QPalette.ButtonText: "#5c3d2e",
+        QPalette.BrightText: "#fb923c",
+        QPalette.Link: "#fdba74",
+        QPalette.Highlight: "#fed7aa",
+        QPalette.HighlightedText: "#431407",
+        (QPalette.Active, QPalette.Button): "#ffe8d9",
+        (QPalette.Disabled, QPalette.ButtonText): "#b8a99f",
+        (QPalette.Disabled, QPalette.WindowText): "#b8a99f",
+        (QPalette.Disabled, QPalette.Text): "#b8a99f",
+        (QPalette.Disabled, QPalette.Light): "#ffe8d9",
+    }),
+    ("Sky Serenity", {
+        QPalette.Window: "#f0f9ff",
+        QPalette.WindowText: "#1e3a5f",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#f5fbff",
+        QPalette.ToolTipBase: "#dbeafe",
+        QPalette.ToolTipText: "#1e3a5f",
+        QPalette.Text: "#1e3a5f",
+        QPalette.Button: "#edf7fe",
+        QPalette.ButtonText: "#1e3a5f",
+        QPalette.BrightText: "#38bdf8",
+        QPalette.Link: "#7dd3fc",
+        QPalette.Highlight: "#bae6fd",
+        QPalette.HighlightedText: "#0c4a6e",
+        (QPalette.Active, QPalette.Button): "#dbeafe",
+        (QPalette.Disabled, QPalette.ButtonText): "#94a3b8",
+        (QPalette.Disabled, QPalette.WindowText): "#94a3b8",
+        (QPalette.Disabled, QPalette.Text): "#94a3b8",
+        (QPalette.Disabled, QPalette.Light): "#dbeafe",
+    }),
+    ("Rose Garden", {
+        QPalette.Window: "#fef3f6",
+        QPalette.WindowText: "#4a2533",
+        QPalette.Base: "#ffffff",
+        QPalette.AlternateBase: "#fff8fa",
+        QPalette.ToolTipBase: "#fce7f3",
+        QPalette.ToolTipText: "#4a2533",
+        QPalette.Text: "#4a2533",
+        QPalette.Button: "#fef7fa",
+        QPalette.ButtonText: "#4a2533",
+        QPalette.BrightText: "#f472b6",
+        QPalette.Link: "#f9a8d4",
+        QPalette.Highlight: "#fbcfe8",
+        QPalette.HighlightedText: "#500724",
+        (QPalette.Active, QPalette.Button): "#fce7f3",
+        (QPalette.Disabled, QPalette.ButtonText): "#b8a5ad",
+        (QPalette.Disabled, QPalette.WindowText): "#b8a5ad",
+        (QPalette.Disabled, QPalette.Text): "#b8a5ad",
+        (QPalette.Disabled, QPalette.Light): "#fce7f3",
+    }),
 ]
 
 palettes = dict()
@@ -167,6 +268,7 @@ class Theme:
         if theme in palettes:
             QApplication.setPalette(palettes[theme])
             QApplication.setStyle("Fusion")
+            QApplication.instance().setStyleSheet(cls.get_stylesheet())
         # For default/system theme, do nothing
         # User will have to restart the application for it to be applied
 
@@ -176,6 +278,344 @@ class Theme:
 
     @classmethod
     def mask_light_factor(cls):
-        if cls.theme == "Light":
+        light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
+        if cls.theme in light_themes:
             return 103
         return 150
+
+    @classmethod
+    def get_stylesheet(cls):
+        """Return modern 2025 stylesheet for UI elements"""
+        return """
+            /* Modern Tab Styling with Rounded Edges */
+            QTabBar::tab {
+                background: palette(button);
+                border: 1px solid palette(mid);
+                padding: 2px 6px;
+                margin-right: 2px;
+                margin-bottom: 0px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                border-bottom: 1px solid palette(mid);
+                font-weight: 500;
+                font-size: 9pt;
+            }
+
+            QTabBar::tab:selected {
+                background: palette(base);
+                border-bottom-color: palette(base);
+                padding-bottom: 2px;
+                margin-bottom: -1px;
+            }
+
+            QTabBar::tab:hover:!selected {
+                background: palette(light);
+            }
+
+            QTabWidget::pane {
+                border: 1px solid palette(mid);
+                border-top: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+                top: -1px;
+            }
+
+            /* General Rounded Buttons */
+            QPushButton {
+                border-radius: 8px;
+                border: 1px solid palette(mid);
+                background: palette(button);
+            }
+
+            QPushButton:hover {
+                background: palette(light);
+                border-color: palette(highlight);
+            }
+
+            QPushButton:pressed {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+
+            /* Rounded Keycode Buttons - Using object name selector */
+            QPushButton[keycode_button="true"] {
+                border-radius: 8px;
+                border: 1px solid palette(mid);
+                background: palette(button);
+                font-size: 9pt;
+            }
+
+            QPushButton[keycode_button="true"]:hover {
+                background: palette(light);
+                border-color: palette(highlight);
+            }
+
+            QPushButton[keycode_button="true"]:pressed {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+
+            /* Layer Selection Button Styling */
+            QPushButton[keycode_button="true"]:checked {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+                border: 2px solid palette(highlight);
+                font-weight: 600;
+            }
+
+            /* Modern Dropdown/ComboBox Styling */
+            QComboBox {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                padding: 6px 12px;
+                padding-right: 28px;
+                background: palette(button);
+                min-width: 80px;
+            }
+
+            QComboBox:hover {
+                border-color: palette(highlight);
+                background: palette(light);
+            }
+
+            QComboBox:focus {
+                border-color: palette(highlight);
+                background: palette(button);
+            }
+
+            QComboBox:on {
+                background: palette(button);
+            }
+
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: center right;
+                width: 20px;
+                border: none;
+                padding-right: 4px;
+            }
+
+            QComboBox::down-arrow {
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid palette(text);
+            }
+
+            QComboBox QAbstractItemView {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                background: palette(button);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+                padding: 4px;
+                outline: 0px;
+            }
+
+            QComboBox QAbstractItemView::item {
+                padding: 6px;
+                min-height: 24px;
+            }
+
+            /* Modern Table Styling with Self-Contained Columns */
+            QTableWidget, QTableView {
+                border: 1px solid palette(mid);
+                border-radius: 8px;
+                background: palette(base);
+                gridline-color: palette(mid);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+
+            QTableWidget::item, QTableView::item {
+                padding: 8px;
+                border: 1px solid palette(midlight);
+                border-radius: 4px;
+                margin: 2px;
+            }
+
+            QTableWidget::item:hover, QTableView::item:hover {
+                background: palette(alternate-base);
+                border-color: palette(highlight);
+            }
+
+            QHeaderView::section {
+                background: palette(button);
+                padding: 10px;
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                margin: 2px;
+                font-weight: 600;
+            }
+
+            QHeaderView::section:hover {
+                background: palette(light);
+            }
+
+            /* Modern Scrollbars - Themed with Oval Shape */
+            QScrollBar:vertical {
+                background: palette(window);
+                width: 14px;
+                border-radius: 10px;
+                margin: 0px;
+            }
+
+            QScrollBar::handle:vertical {
+                background: palette(button);
+                border-radius: 10px;
+                min-height: 30px;
+                margin: 2px;
+            }
+
+            QScrollBar::handle:vertical:hover {
+                background: palette(highlight);
+            }
+
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: none;
+            }
+
+            QScrollBar:horizontal {
+                background: palette(window);
+                height: 14px;
+                border-radius: 10px;
+                margin: 0px;
+            }
+
+            QScrollBar::handle:horizontal {
+                background: palette(button);
+                border-radius: 10px;
+                min-width: 30px;
+                margin: 2px;
+            }
+
+            QScrollBar::handle:horizontal:hover {
+                background: palette(highlight);
+            }
+
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
+
+            QScrollBar::add-page:horizontal,
+            QScrollBar::sub-page:horizontal {
+                background: none;
+            }
+
+            /* Input Boxes - SpinBox and LineEdit Styling */
+            QSpinBox, QLineEdit {
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                padding: 6px 8px;
+                background: palette(base);
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+
+            QSpinBox:hover, QLineEdit:hover {
+                border-color: palette(highlight);
+            }
+
+            QSpinBox:focus, QLineEdit:focus {
+                border: 2px solid palette(highlight);
+                padding: 5px 7px;
+            }
+
+            QSpinBox::up-button, QSpinBox::down-button {
+                background: palette(button);
+                border: 1px solid palette(mid);
+                border-radius: 4px;
+                width: 16px;
+            }
+
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+                background: palette(light);
+                border-color: palette(highlight);
+            }
+
+            QSpinBox::up-arrow {
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-bottom: 5px solid palette(text);
+            }
+
+            QSpinBox::down-arrow {
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid palette(text);
+            }
+
+            /* Inner Tab Buttons - Horizontal tabs like main headers */
+            QPushButton[inner_tab="true"] {
+                border: 1px solid palette(mid);
+                margin-right: 2px;
+                margin-bottom: 0px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                border-bottom: 1px solid palette(mid);
+                background: palette(button);
+                font-weight: 500;
+                font-size: 9pt;
+            }
+
+            QPushButton[inner_tab="true"]:hover:!checked {
+                background: palette(light);
+            }
+
+            QPushButton[inner_tab="true"]:checked {
+                background: palette(base);
+                border-bottom-color: palette(base);
+                margin-bottom: -1px;
+            }
+
+            /* Side Tab Buttons - Vertical tabs on left */
+            QPushButton[side_tab="true"] {
+                border: 1px solid palette(mid);
+                margin-bottom: 2px;
+                margin-right: 0px;
+                border-top-left-radius: 4px;
+                border-bottom-left-radius: 4px;
+                border-right: 1px solid palette(mid);
+                background: palette(button);
+                text-align: left;
+                min-width: 100px;
+                font-weight: 500;
+                font-size: 9pt;
+            }
+
+            QPushButton[side_tab="true"]:hover:!checked {
+                background: palette(light);
+            }
+
+            QPushButton[side_tab="true"]:checked {
+                background: palette(base);
+                border-right-color: palette(base);
+                margin-right: -1px;
+            }
+        """
+
+    @classmethod
+    def get_button_stylesheet(cls):
+        """Return stylesheet for keycode buttons"""
+        return """
+            QPushButton {
+                border-radius: 8px;
+                border: 1px solid palette(mid);
+            }
+        """

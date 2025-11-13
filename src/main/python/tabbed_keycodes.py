@@ -618,8 +618,7 @@ class midiadvancedTab(QScrollArea):
         
         # Initialize dictionaries first
         self.buttons = {}
-        self.containers = {}
-        
+
         # Store all the parameters as instance variables
         self.inversion_keycodes = inversion_keycodes
         self.inversion_keycodes2 = inversion_keycodes2
@@ -656,74 +655,134 @@ class midiadvancedTab(QScrollArea):
         # Create scroll area content
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(20)
-        
-        # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 1, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(top_spacer)
-
-        # Create buttons layout with stretches
-        self.button_layout = QHBoxLayout()
-        self.button_layout.setSpacing(0)
-        self.button_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Add initial stretch before buttons
-        self.button_layout.addStretch(1)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
 
         # Define sections
-        sections = [
-            "Show\nChannel\nOptions",
-            "Show\nCC Options",
-            "Show\nTransposition\nSettings",
-            "Show\nKeySplit\nOptions",
-            "Show\nAdvanced MIDI\nOptions",
-            "Show\nVelocity\nOptions",
-            "Show\nTouch Dial\nOptions",
-            "Show\nSetting\nPresets"
+        self.sections = [
+            ("Channel", "Show\nChannel\nOptions"),
+            ("CC Options", "Show\nCC Options"),
+            ("Transposition", "Show\nTransposition\nSettings"),
+            ("KeySplit", "Show\nKeySplit\nOptions"),
+            ("Advanced MIDI", "Show\nAdvanced MIDI\nOptions"),
+            ("Velocity", "Show\nVelocity\nOptions"),
+            ("Touch Dial", "Show\nTouch Dial\nOptions"),
+            ("Presets", "Show\nSetting\nPresets")
         ]
 
-        # Create buttons and containers for each section
-        for section in sections:
-            btn = QPushButton(section)
-            btn.setFixedSize(80, 50)
-            btn.clicked.connect(lambda checked, s=section: self.toggle_section(s))
-            self.button_layout.addWidget(btn)
-            self.buttons[section] = btn
+        # Create horizontal layout: side tabs on left, content box on right (VIA style)
+        main_layout_h = QHBoxLayout()
+        main_layout_h.setSpacing(0)
+        main_layout_h.setContentsMargins(0, 0, 0, 0)
 
-            # Create container
-            container = QWidget()
-            container_layout = QVBoxLayout()
-            
-            # If this is the Show\nAdvanced MIDI\nOptions section
-            if section == "Show\nAdvanced MIDI\nOptions":
-                advanced_h_layout = QHBoxLayout()
-                advanced_h_layout.addStretch(1)
-                self.advanced_grid = QGridLayout()
-                advanced_h_layout.addLayout(self.advanced_grid)
-                advanced_h_layout.addStretch(1)
-                container_layout.addLayout(advanced_h_layout)
-            
-            # If this is the KeySplit section
-            elif section == "Show\nKeySplit\nOptions":
-                keysplit_h_layout = QHBoxLayout()
-                keysplit_h_layout.addStretch(1)
-                self.keysplit_grid = QGridLayout()
-                keysplit_h_layout.addLayout(self.keysplit_grid)
-                keysplit_h_layout.addStretch(1)
-                container_layout.addLayout(keysplit_h_layout)
-                
-            container.setLayout(container_layout)
-            container.hide()
-            self.main_layout.addWidget(container)
-            self.containers[section] = container
+        # Create side tabs container with border
+        side_tabs_container = QWidget()
+        side_tabs_container.setObjectName("side_tabs_container")
+        side_tabs_container.setStyleSheet("""
+            QWidget#side_tabs_container {
+                background: palette(window);
+                border: 1px solid palette(mid);
+                border-right: none;
+            }
+        """)
+        side_tabs_layout = QVBoxLayout(side_tabs_container)
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.button_layout.addStretch(1)
-        self.main_layout.insertLayout(0, self.button_layout)
-        
-        # Add spacer below buttons
-        spacer = QWidget()
-        spacer.setFixedHeight(60)
-        self.main_layout.addWidget(spacer)
+        self.side_tab_buttons = {}
+        for display_name, section_key in self.sections:
+            btn = QPushButton(display_name)
+            btn.setCheckable(True)
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(120)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid palette(mid);
+                    border-radius: 0px;
+                    border-right: none;
+                    background: palette(button);
+                    text-align: left;
+                    padding-left: 15px;
+                    font-size: 9pt;
+                }
+                QPushButton:hover:!checked {
+                    background: palette(light);
+                }
+                QPushButton:checked {
+                    background: palette(base);
+                    font-weight: 600;
+                    border-right: 1px solid palette(base);
+                }
+            """)
+            btn.clicked.connect(lambda checked, sk=section_key: self.show_section(sk))
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[section_key] = btn
+
+        side_tabs_layout.addStretch(1)
+        main_layout_h.addWidget(side_tabs_container)
+
+        # Create content container with border
+        self.content_wrapper = QWidget()
+        self.content_wrapper.setObjectName("content_wrapper")
+        self.content_wrapper.setStyleSheet("""
+            QWidget#content_wrapper {
+                border: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+            }
+        """)
+        self.content_layout = QVBoxLayout(self.content_wrapper)
+        self.content_layout.setSpacing(10)
+        self.content_layout.setContentsMargins(15, 15, 15, 15)
+
+        # Create layouts for sections
+        # Advanced MIDI grid
+        self.advanced_h_layout = QHBoxLayout()
+        self.advanced_h_layout.addStretch(1)
+        self.advanced_grid = QGridLayout()
+        self.advanced_h_layout.addLayout(self.advanced_grid)
+        self.advanced_h_layout.addStretch(1)
+
+        # KeySplit grid
+        self.keysplit_h_layout = QHBoxLayout()
+        self.keysplit_h_layout.addStretch(1)
+        self.keysplit_grid = QGridLayout()
+        self.keysplit_h_layout.addLayout(self.keysplit_grid)
+        self.keysplit_h_layout.addStretch(1)
+
+        # Create wrapper widgets for each section
+        self.section_widgets = {}
+        self.section_layouts = {
+            "Show\nAdvanced MIDI\nOptions": self.advanced_h_layout,
+            "Show\nKeySplit\nOptions": self.keysplit_h_layout,
+        }
+
+        # Create VBoxLayouts for other sections
+        for display_name, section_key in self.sections:
+            if section_key not in self.section_layouts:
+                section_layout = QVBoxLayout()
+                section_layout.setSpacing(10)
+                self.section_layouts[section_key] = section_layout
+
+        # Wrap each layout in a QWidget container
+        for section_key, section_layout in self.section_layouts.items():
+            wrapper = QWidget()
+            wrapper.setObjectName("section_wrapper")
+            # Make wrapper border invisible - use ID selector to avoid affecting children
+            wrapper.setStyleSheet("""
+                QWidget#section_wrapper {
+                    border: none;
+                }
+            """)
+            wrapper.setLayout(section_layout)
+            wrapper.hide()  # Hide all initially
+            self.content_layout.addWidget(wrapper)
+            self.section_widgets[section_key] = wrapper
+
+        self.content_layout.addStretch(1)
+        main_layout_h.addWidget(self.content_wrapper)
+        self.main_layout.addLayout(main_layout_h)
 
         # Populate all sections
         self.populate_channel_section()
@@ -735,24 +794,22 @@ class midiadvancedTab(QScrollArea):
         self.populate_expression_wheel_section()
         self.populate_settings_presets_section()
 
-        self.main_layout.addStretch()
-
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        self.toggle_section(sections[0])
+        # Show first section by default
+        self.show_section("Show\nChannel\nOptions")
         
     def populate_settings_presets_section(self):
         """Populate the Setting Presets section with three rows of buttons."""
-        container = self.containers["Show\nSetting\nPresets"]
-        layout = container.layout()
-        
+        layout = self.section_layouts["Show\nSetting\nPresets"]
+
         # First row - KEYCODES_SETTINGS1 (centered)
         row1_layout = QHBoxLayout()
         row1_layout.addStretch(1)
-        
+
         for keycode in self.keycodes_settings1:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
@@ -760,19 +817,14 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row1_layout.addWidget(btn)
-        
+
         row1_layout.addStretch(1)
         layout.addLayout(row1_layout)
-        
-        # Add minimal spacing between rows (reduced as requested)
-        spacer1 = QWidget()
-        spacer1.setFixedHeight(5)
-        layout.addWidget(spacer1)
-        
+
         # Second row - KEYCODES_SETTINGS2
         row2_layout = QHBoxLayout()
         row2_layout.addStretch(1)
-        
+
         for keycode in self.keycodes_settings2:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
@@ -780,19 +832,14 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row2_layout.addWidget(btn)
-        
+
         row2_layout.addStretch(1)
         layout.addLayout(row2_layout)
-        
-        # Add minimal spacing between rows (reduced as requested)
-        spacer2 = QWidget()
-        spacer2.setFixedHeight(5)
-        layout.addWidget(spacer2)
-        
+
         # Third row - KEYCODES_SETTINGS3
         row3_layout = QHBoxLayout()
         row3_layout.addStretch(1)
-        
+
         for keycode in self.keycodes_settings3:
             btn = SquareButton()
             btn.setFixedSize(50, 50)
@@ -800,153 +847,112 @@ class midiadvancedTab(QScrollArea):
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
             row3_layout.addWidget(btn)
-        
+
         row3_layout.addStretch(1)
         layout.addLayout(row3_layout)
-        
+
         layout.addStretch()
 
     def populate_channel_section(self):
         """Populate the Channel Options section with a single row of dropdowns."""
-        container = self.containers["Show\nChannel\nOptions"]
-        layout = container.layout()
-        
+        layout = self.section_layouts["Show\nChannel\nOptions"]
+
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
-        
+
         # Create and add dropdowns with fixed width of 200 pixels
         self.add_header_dropdown("MIDI Channel", self.channel_options, row_layout, 200)
         self.add_header_dropdown("Temporary MIDI Channel", self.channel_oneshot, row_layout, 200)
         self.add_header_dropdown("Hold MIDI Channel", self.channel_hold, row_layout, 200)
-        
+
         row_layout.addStretch(1)  # Right spacer
         layout.addLayout(row_layout)
         layout.addStretch()
 
     def populate_cc_velocity_section(self):
         """Populate the CC Options section with three rows of buttons/dropdowns."""
-        container = self.containers["Show\nCC Options"]
-        layout = container.layout()
-        
+        layout = self.section_layouts["Show\nCC Options"]
+
         # First row
         row1_layout = QHBoxLayout()
         row1_layout.addStretch(1)  # Left spacer
-        
+
         # Add CC Value, CC On/Off, CC Up, and CC Down buttons
         self.add_cc_x_y_menu(row1_layout, 200)
         self.add_value_button("CC On/Off", self.smartchord_CC_toggle, row1_layout, 200)
         self.add_value_button("CC Up", self.CCup, row1_layout, 200)
         self.add_value_button("CC Down", self.CCdown, row1_layout, 200)
-        
+
         row1_layout.addStretch(1)  # Right spacer
         layout.addLayout(row1_layout)
-        
+
         # Spacer between rows
         row_spacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         layout.addItem(row_spacer1)
-        
+
         # Second row
         row2_layout = QHBoxLayout()
         row2_layout.addStretch(1)  # Left spacer
-        
+
         # Add Touch Dial CC and CC Increment buttons/dropdowns
         self.add_value_button("Touch Dial CC", self.CCencoder, row2_layout, 200)
         self.add_header_dropdown("CC Increment", self.cc_multiplier_options, row2_layout, 200)
-        
+
         row2_layout.addStretch(1)  # Right spacer
         layout.addLayout(row2_layout)
-        
+
         # Spacer between rows
         row_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         layout.addItem(row_spacer2)
-        
+
         # Third row
         row3_layout = QHBoxLayout()
         row3_layout.addStretch(1)  # Left spacer
-        
+
         # Add Program Change, Bank LSB, and Bank MSB buttons
         self.add_value_button("Program Change", self.smartchord_program_change, row3_layout, 200)
         self.add_value_button("Bank LSB", self.smartchord_LSB, row3_layout, 200)
         self.add_value_button("Bank MSB", self.smartchord_MSB, row3_layout, 200)
-        
+
         row3_layout.addStretch(1)  # Right spacer
         layout.addLayout(row3_layout)
-        
+
         layout.addStretch()
 
     def populate_transposition_section(self):
         """Populate the Transposition Settings section with a single row of dropdowns."""
-        container = self.containers["Show\nTransposition\nSettings"]
-        layout = container.layout()
-        
+        layout = self.section_layouts["Show\nTransposition\nSettings"]
+
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
-        
+
         # Create and add dropdowns with fixed width of 200 pixels
         self.add_header_dropdown("Octave Selector", self.smartchord_octave_1, row_layout, 200)
         self.add_header_dropdown("Key Selector", self.smartchord_key, row_layout, 200)
-        
+
         row_layout.addStretch(1)  # Right spacer
         layout.addLayout(row_layout)
         layout.addStretch()
 
     def populate_keysplit_section(self):
         """Populate the KeySplit Options section with dropdowns and buttons."""
-        container = self.containers["Show\nKeySplit\nOptions"]
-        layout = container.layout()
-        
-        # First row: Dropdowns with width of 130px
-        dropdown_layout = QHBoxLayout()
-        dropdown_layout.addStretch(1)  # Left spacer
-        
-        # Add dropdowns with fixed width of 130 pixels
-        self.add_value_button2("Key Switch\nVelocity", self.ksvelocity2, dropdown_layout, 130)
-        self.add_header_dropdown2("Key Switch\nOctave", self.ksoctave2, dropdown_layout, 130)
-        self.add_header_dropdown2("Key Switch\nKey", self.kskey2, dropdown_layout, 130)
-        self.add_header_dropdown2("Key Switch\nChannel", self.kschannel2, dropdown_layout, 130)
-        self.add_value_button2("Triple Switch\nVelocity", self.ksvelocity3, dropdown_layout, 130)
-        self.add_header_dropdown2("Triple Switch\nOctave", self.ksoctave3, dropdown_layout, 130)
-        self.add_header_dropdown2("Triple Switch\nKey", self.kskey3, dropdown_layout, 130)
-        self.add_header_dropdown2("Triple Switch\nChannel", self.kschannel3, dropdown_layout, 130)
-        
-        dropdown_layout.addStretch(1)  # Right spacer
-        layout.addLayout(dropdown_layout)
-        
-        # Spacer between rows
-        spacer = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        layout.addItem(spacer)
-        
-        # Second row: Buttons in a grid
-        button_container = QHBoxLayout()
-        button_container.addStretch(1)  # Left spacer
-        
-        # Create grid layout for buttons
-        self.keysplit_grid = QGridLayout()
-        self.keysplit_grid.setSpacing(4)
-        
-        # Add buttons to the grid
+        # Add buttons to the grid (grid was already created and added to container in __init__)
         row = 0
         col = 0
         max_cols = 8
-        
+
         for keycode in self.inversion_keycodes2:
             btn = SquareButton()
             btn.setFixedSize(55, 55)
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            
+
             self.keysplit_grid.addWidget(btn, row, col)
             col += 1
             if col >= max_cols:
                 col = 0
                 row += 1
-        
-        button_container.addLayout(self.keysplit_grid)
-        button_container.addStretch(1)  # Right spacer
-        layout.addLayout(button_container)
-        
-        layout.addStretch()
 
     def populate_advanced_section(self):
         """Populate the Advanced MIDI Options section with buttons."""
@@ -967,7 +973,7 @@ class midiadvancedTab(QScrollArea):
             btn.setText(Keycode.label(keycode.qmk_id))
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            
+
             self.advanced_grid.addWidget(btn, row, col)
             col += 1
             if col >= max_cols:
@@ -976,25 +982,23 @@ class midiadvancedTab(QScrollArea):
 
     def populate_velocity_section(self):
         """Populate the Velocity Options section with a single row of buttons/dropdowns."""
-        container = self.containers["Show\nVelocity\nOptions"]
-        layout = container.layout()
-        
+        layout = self.section_layouts["Show\nVelocity\nOptions"]
+
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
-        
+
         # Create and add buttons/dropdowns with fixed width of 200 pixels
         self.add_value_button("Set Velocity", self.velocity_options, row_layout, 200)
         self.add_header_dropdown("Velocity Increment", self.velocity_multiplier_options, row_layout, 200)
         self.add_header_dropdown("Velocity Shuffle", self.velocityshuffle, row_layout, 200)
-        
+
         row_layout.addStretch(1)  # Right spacer
         layout.addLayout(row_layout)
         layout.addStretch()
 
     def populate_expression_wheel_section(self):
         """Populate the Touch Dial Options section with buttons and dropdowns."""
-        container = self.containers["Show\nTouch Dial\nOptions"]
-        layout = container.layout()
+        layout = self.section_layouts["Show\nTouch Dial\nOptions"]
         
         # First row: Touch Dial controls
         top_row_layout = QHBoxLayout()
@@ -1042,19 +1046,21 @@ class midiadvancedTab(QScrollArea):
         
         layout.addStretch()
 
-    def toggle_section(self, section_name):
-        # Reset all buttons and hide all containers
-        for btn in self.buttons.values():
-            btn.setStyleSheet("")
-        for container in self.containers.values():
-            container.hide()
+    def show_section(self, section_name):
+        """Show the specified section and update tab button states"""
+        # Hide all section widgets
+        for widget in self.section_widgets.values():
+            widget.hide()
 
-        # Show selected section and highlight button
-        self.containers[section_name].show()
-        self.buttons[section_name].setStyleSheet("""
-            background-color: #B8D8EB;
-            color: #395968;
-        """)
+        # Uncheck all tab buttons
+        for btn in self.side_tab_buttons.values():
+            btn.setChecked(False)
+
+        # Show the selected section widget and check its tab button
+        if section_name in self.section_widgets:
+            self.section_widgets[section_name].show()
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
 
     def add_cc_x_y_menu(self, layout, width=None):
         button = QPushButton("CC Value")
@@ -1999,76 +2005,51 @@ class EarTrainerTab(QScrollArea):
         self.chordtrainer_keycodes = chordtrainer_keycodes
         
         self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(0)
-        self.main_layout.setAlignment(Qt.AlignTop)
-        
-        # Toggle buttons with center alignment
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(0)  # No spacing between buttons
-        
-        # Add stretch before buttons
-        button_layout.addStretch(1)
-        
-        self.toggle_intervals = QPushButton("Inverval Trainer")
-        self.toggle_intervals.clicked.connect(self.show_intervals)
-        self.toggle_intervals.setFixedSize(120, 40)
-        button_layout.addWidget(self.toggle_intervals)
-        
-        self.toggle_chords = QPushButton("Chord Trainer")
-        self.toggle_chords.clicked.connect(self.show_chords)
-        self.toggle_chords.setFixedSize(120, 40)
-        button_layout.addWidget(self.toggle_chords)
-        
-        # Add stretch after buttons
-        button_layout.addStretch(1)
-        
-        self.main_layout.addLayout(button_layout)
-        
-        # Container for button sections with horizontal centering
-        self.intervals_container = QWidget()
-        intervals_outer_layout = QHBoxLayout(self.intervals_container)
-        intervals_outer_layout.addStretch(1)  # Left spacer
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Horizontal layout for both sections side by side
+        sections_layout = QHBoxLayout()
+        sections_layout.setSpacing(40)  # Increase horizontal spacing between sections
+        sections_layout.addStretch(1)
+
+        # Interval Trainer section
+        intervals_section = QVBoxLayout()
+        intervals_section.setSpacing(5)
+        interval_label = QLabel("Interval Trainer")
+        interval_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
+        interval_label.setAlignment(Qt.AlignCenter)
+        intervals_section.addWidget(interval_label)
+
         self.intervals_grid = QGridLayout()
         self.intervals_grid.setSpacing(10)
-        intervals_outer_layout.addLayout(self.intervals_grid)
-        intervals_outer_layout.addStretch(1)  # Right spacer
-        self.main_layout.addWidget(self.intervals_container)
-        
-        self.chords_container = QWidget()
-        chords_outer_layout = QHBoxLayout(self.chords_container)
-        chords_outer_layout.addStretch(1)  # Left spacer
+        intervals_section.addLayout(self.intervals_grid)
+
+        sections_layout.addLayout(intervals_section)
+
+        # Chord Trainer section
+        chords_section = QVBoxLayout()
+        chords_section.setSpacing(5)
+        chord_label = QLabel("Chord Trainer")
+        chord_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
+        chord_label.setAlignment(Qt.AlignCenter)
+        chords_section.addWidget(chord_label)
+
         self.chords_grid = QGridLayout()
         self.chords_grid.setSpacing(10)
-        chords_outer_layout.addLayout(self.chords_grid)
-        chords_outer_layout.addStretch(1)  # Right spacer
-        self.main_layout.addWidget(self.chords_container)
-        self.chords_container.hide()
-        
+        chords_section.addLayout(self.chords_grid)
+
+        sections_layout.addLayout(chords_section)
+        sections_layout.addStretch(1)
+
+        main_layout.addLayout(sections_layout)
+        main_layout.addStretch(1)
+
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
-        
-        # Show intervals by default and highlight its button
-        self.show_intervals()
+
         self.recreate_buttons()
-
-    def show_intervals(self):
-        self.intervals_container.show()
-        self.chords_container.hide()
-        self.toggle_intervals.setStyleSheet("""
-            background-color: #B8D8EB;
-            color: #395968;
-        """)
-        self.toggle_chords.setStyleSheet("")  # Reset to default
-
-    def show_chords(self):
-        self.intervals_container.hide()
-        self.chords_container.show()
-        self.toggle_chords.setStyleSheet("""
-            background-color: #C9E4CA;
-            color: #4A654B;
-        """)
-        self.toggle_intervals.setStyleSheet("")  # Reset to default
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
@@ -2089,19 +2070,27 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
+                btn.setStyleSheet("""
+                    background: palette(light);
+                    border: 1px solid palette(mid);
+                    border-radius: 6px;
+                """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.intervals_grid.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons (5 columns)
+        # Create Chord Trainer buttons (4 columns to match interval spacing)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 5
-                col = i % 5
+                row = i // 4
+                col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
+                btn.setStyleSheet("""
+                    background: palette(alternate-base);
+                    border: 1px solid palette(mid);
+                    border-radius: 6px;
+                """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chords_grid.addWidget(btn, row, col)
@@ -2803,53 +2792,70 @@ class KeySplitTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
         
-        # Main layout with minimal spacing
-        self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(0)  # Set consistent 10px spacing
-       
-        # Toggle buttons
+        # Main layout
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Create horizontal tab buttons layout
         button_layout = QHBoxLayout()
         button_layout.setSpacing(0)
-        button_layout.addStretch(1)
-        
-        self.toggle_button = QPushButton("Show KeySplit")
+        button_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.toggle_button = QPushButton("KeySplit")
+        self.toggle_button.setCheckable(True)
+        self.toggle_button.setProperty("inner_tab", "true")
         self.toggle_button.clicked.connect(self.toggle_midi_layouts)
-        self.toggle_button.setFixedSize(120, 40)
-        self.toggle_button.setStyleSheet("background-color: #f3d1d1; color: #805757;")
         button_layout.addWidget(self.toggle_button)
-        
-        self.toggle_button2 = QPushButton("Show TripleSplit")
+
+        self.toggle_button2 = QPushButton("TripleSplit")
+        self.toggle_button2.setCheckable(True)
+        self.toggle_button2.setProperty("inner_tab", "true")
         self.toggle_button2.clicked.connect(self.toggle_midi_layouts2)
-        self.toggle_button2.setFixedSize(120, 40)
         button_layout.addWidget(self.toggle_button2)
+
         button_layout.addStretch(1)
-        
-        # Add layouts with explicit spacing
-        self.main_layout.addLayout(button_layout)
+        main_layout.addLayout(button_layout)
+
+        # Create content wrapper with border (like QTabWidget::pane)
+        content_wrapper = QWidget()
+        content_wrapper.setStyleSheet("""
+            QWidget {
+                border: 1px solid palette(mid);
+                border-top: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+                margin-top: -1px;
+            }
+        """)
+        content_layout = QVBoxLayout(content_wrapper)
+        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Piano keyboards
         self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
         self.keysplit_piano.keyPressed.connect(self.keycode_changed)
-        self.main_layout.addWidget(self.keysplit_piano)
-        
+        content_layout.addWidget(self.keysplit_piano)
+
         self.triplesplit_piano = PianoKeyboard(color_scheme='triplesplit')
         self.triplesplit_piano.keyPressed.connect(self.keycode_changed)
-        self.main_layout.addWidget(self.triplesplit_piano)
+        content_layout.addWidget(self.triplesplit_piano)
         self.triplesplit_piano.hide()
-        
+
         # Control buttons
         self.ks_controls = QWidget()
         ks_control_layout = QHBoxLayout(self.ks_controls)
         ks_control_layout.setAlignment(Qt.AlignCenter)
         self.create_control_buttons(ks_control_layout, 'KS')
-        self.main_layout.addWidget(self.ks_controls)
-        
+        content_layout.addWidget(self.ks_controls)
+
         # Control buttons for TripleSplit
         self.ts_controls = QWidget()
         ts_control_layout = QHBoxLayout(self.ts_controls)
         ts_control_layout.setAlignment(Qt.AlignCenter)
         self.create_control_buttons(ts_control_layout, 'TS')
-        self.main_layout.addWidget(self.ts_controls)
+        content_layout.addWidget(self.ts_controls)
         self.ts_controls.hide()
 
         # Add the split buttons at the bottom
@@ -2865,31 +2871,35 @@ class KeySplitTab(QScrollArea):
         
         for text, code in split_buttons:
             btn = QPushButton(text)
-            btn.setFixedSize(60, 60)  # Increased from 50x50 to 60x60
+            btn.setFixedSize(60, 60)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
+                    background: palette(button);
+                    border: 1px solid palette(mid);
                     border-radius: 8px;
-                    color: #333333;
-                    padding: 4px;
                 }
                 QPushButton:hover {
-                    background-color: #e0e0e0;
+                    background: palette(light);
                 }
                 QPushButton:pressed {
-                    background-color: #d0d0d0;
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
                 }
             """)
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
             split_buttons_layout.addWidget(btn)
-            
-        self.main_layout.addWidget(split_buttons_container)
+
+        content_layout.addWidget(split_buttons_container)
+        content_layout.addStretch(1)
+        main_layout.addWidget(content_wrapper)
 
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        # Show KeySplit by default
+        self.toggle_button.setChecked(True)
 
     def relabel_buttons(self):
         """Relabel all piano keys and control buttons"""
@@ -2948,16 +2958,16 @@ class KeySplitTab(QScrollArea):
         self.triplesplit_piano.hide()
         self.ks_controls.show()
         self.ts_controls.hide()
-        self.set_highlighted(self.toggle_button)
-        self.set_normal(self.toggle_button2)
+        self.toggle_button.setChecked(True)
+        self.toggle_button2.setChecked(False)
 
     def toggle_midi_layouts2(self):
         self.keysplit_piano.hide()
         self.triplesplit_piano.show()
         self.ks_controls.hide()
         self.ts_controls.show()
-        self.set_highlighted2(self.toggle_button2)
-        self.set_normal(self.toggle_button)
+        self.toggle_button2.setChecked(True)
+        self.toggle_button.setChecked(False)
 
     def set_highlighted(self, button):
         button.setStyleSheet("""
