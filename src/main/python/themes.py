@@ -303,7 +303,7 @@ class Theme:
 
             QTabBar::tab:selected {
                 background: palette(base);
-                border-bottom: 1px solid palette(base);
+                border-bottom-color: palette(base);
                 padding-bottom: 2px;
                 margin-bottom: -1px;
             }
@@ -316,6 +316,7 @@ class Theme:
                 border: 1px solid palette(mid);
                 border-top: 1px solid palette(mid);
                 background: transparent;
+                top: -1px;
             }
 
             /* General Rounded Buttons */
@@ -349,12 +350,11 @@ class Theme:
                 font-weight: 600;
             }
 
-            /* Modern Dropdown/ComboBox Styling with Down Arrow */
+            /* Modern Dropdown/ComboBox Styling */
             QComboBox {
                 border: 1px solid palette(mid);
                 border-radius: 6px;
                 padding: 6px 12px;
-                padding-right: 32px;
                 background: palette(base);
                 min-width: 80px;
             }
@@ -371,7 +371,7 @@ class Theme:
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: center right;
-                width: 20px;
+                width: 0px;
                 border: none;
             }
 
@@ -379,9 +379,6 @@ class Theme:
                 image: none;
                 width: 0px;
                 height: 0px;
-                border-style: solid;
-                border-width: 6px 4px 0px 4px;
-                border-color: palette(text) transparent transparent transparent;
             }
 
             QComboBox QAbstractItemView {
