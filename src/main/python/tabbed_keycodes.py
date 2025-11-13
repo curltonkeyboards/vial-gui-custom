@@ -770,7 +770,6 @@ class midiadvancedTab(QScrollArea):
             # Make wrapper border invisible - use ID selector to avoid affecting children
             wrapper.setStyleSheet("""
                 QWidget#section_wrapper {
-                    background: transparent;
                     border: none;
                 }
             """)
@@ -970,8 +969,6 @@ class midiadvancedTab(QScrollArea):
             btn = SquareButton()
             btn.setFixedSize(55, 55)
             btn.setText(Keycode.label(keycode.qmk_id))
-            # Explicitly ensure background is set
-            btn.setStyleSheet("")  # Reset to use default keycode_button styling
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
 
