@@ -397,12 +397,11 @@ class Theme:
             }
 
             QComboBox::down-arrow {
-                image: none;
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid palette(text);
+                width: 8px;
+                height: 5px;
+                border-style: solid;
+                border-width: 5px 4px 0px 4px;
+                border-color: palette(text) transparent transparent transparent;
             }
 
             QComboBox QAbstractItemView {
