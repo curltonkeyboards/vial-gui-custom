@@ -35,6 +35,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        main_widget.setStyleSheet("QComboBox { max-width: 150px; }")
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
@@ -49,21 +50,24 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Transpose
         basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 0, 0)
         self.transpose_number = QComboBox()
+        self.transpose_number.setMaximumWidth(100)
         for i in range(-64, 65):
             self.transpose_number.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number.setCurrentIndex(64)  # Default to 0
         basic_layout.addWidget(self.transpose_number, 0, 1)
-        
+
         # Channel
         basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 2)
         self.channel_number = QComboBox()
+        self.channel_number.setMaximumWidth(80)
         for i in range(16):
             self.channel_number.addItem(str(i + 1), i)
         basic_layout.addWidget(self.channel_number, 0, 3)
-        
+
         # Velocity
         basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 0, 4)
         self.velocity_number = QComboBox()
+        self.velocity_number.setMaximumWidth(80)
         for i in range(1, 128):
             self.velocity_number.addItem(str(i), i)
         self.velocity_number.setCurrentIndex(126)  # Default to 127

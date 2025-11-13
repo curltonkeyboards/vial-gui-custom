@@ -193,13 +193,17 @@ class ThruLoopConfigurator(BasicEditor):
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
         ])
 
-        # Remove cell padding and set styling
+        # Make table background transparent, remove gridlines
         table.setStyleSheet("""
             QTableWidget {
-                gridline-color: palette(mid);
+                background: transparent;
+                gridline-color: transparent;
+                border: none;
             }
             QTableWidget::item {
-                padding: 0px;
+                padding: 2px;
+                background: transparent;
+                border: none;
             }
             QHeaderView::section {
                 padding: 4px;
@@ -208,11 +212,10 @@ class ThruLoopConfigurator(BasicEditor):
             }
         """)
 
-        # Fill table with CC combo boxes
+        # Fill table with CC combo boxes (keep default rounded styling)
         for row in range(5):
             for col in range(4):
                 combo = self.create_cc_combo()
-                combo.setStyleSheet("QComboBox { margin: 0px; border-radius: 0px; }")
                 table.setCellWidget(row, col, combo)
 
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)

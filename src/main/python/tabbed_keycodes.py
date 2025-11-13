@@ -955,6 +955,8 @@ class midiadvancedTab(QScrollArea):
             btn = SquareButton()
             btn.setFixedSize(55, 55)
             btn.setText(Keycode.label(keycode.qmk_id))
+            # Explicitly ensure background is set
+            btn.setStyleSheet("")  # Reset to use default keycode_button styling
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
 
@@ -1990,17 +1992,17 @@ class EarTrainerTab(QScrollArea):
         
         self.scroll_content = QWidget()
         main_layout = QVBoxLayout(self.scroll_content)
-        main_layout.setSpacing(20)
+        main_layout.setSpacing(0)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
         # Horizontal layout for both sections side by side
         sections_layout = QHBoxLayout()
-        sections_layout.setSpacing(20)
+        sections_layout.setSpacing(40)  # Increase horizontal spacing between sections
         sections_layout.addStretch(1)
 
         # Interval Trainer section
         intervals_section = QVBoxLayout()
-        intervals_section.setSpacing(10)
+        intervals_section.setSpacing(5)
         interval_label = QLabel("Interval Trainer")
         interval_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         interval_label.setAlignment(Qt.AlignCenter)
@@ -2014,7 +2016,7 @@ class EarTrainerTab(QScrollArea):
 
         # Chord Trainer section
         chords_section = QVBoxLayout()
-        chords_section.setSpacing(10)
+        chords_section.setSpacing(5)
         chord_label = QLabel("Chord Trainer")
         chord_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         chord_label.setAlignment(Qt.AlignCenter)
@@ -2054,7 +2056,11 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("background: palette(button); border: 1px solid palette(mid);")
+                btn.setStyleSheet("""
+                    background: palette(light);
+                    border: 1px solid palette(mid);
+                    border-radius: 6px;
+                """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.intervals_grid.addWidget(btn, row, col)
@@ -2066,7 +2072,11 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("background: palette(button); border: 1px solid palette(mid);")
+                btn.setStyleSheet("""
+                    background: palette(alternate-base);
+                    border: 1px solid palette(mid);
+                    border-radius: 6px;
+                """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chords_grid.addWidget(btn, row, col)
@@ -2847,20 +2857,19 @@ class KeySplitTab(QScrollArea):
         
         for text, code in split_buttons:
             btn = QPushButton(text)
-            btn.setFixedSize(60, 60)  # Increased from 50x50 to 60x60
+            btn.setFixedSize(60, 60)
             btn.setStyleSheet("""
                 QPushButton {
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
+                    background: palette(button);
+                    border: 1px solid palette(mid);
                     border-radius: 8px;
-                    color: #333333;
-                    padding: 4px;
                 }
                 QPushButton:hover {
-                    background-color: #e0e0e0;
+                    background: palette(light);
                 }
                 QPushButton:pressed {
-                    background-color: #d0d0d0;
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
                 }
             """)
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
