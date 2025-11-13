@@ -87,50 +87,83 @@ class ThruLoopConfigurator(BasicEditor):
             basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
             self.restart_combos.append(combo)
         
-        # Main Functions - Using grid layout like LoopChop
+        # Main Functions - Using QTableWidget
         main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         main_layout.addWidget(main_group)
-        main_grid = QGridLayout()
-        main_group.setLayout(main_grid)
+        main_group_layout = QVBoxLayout()
+        main_group.setLayout(main_group_layout)
         self.main_group = main_group
 
-        # Add loop headers
-        for loop_idx in range(4):
-            main_grid.addWidget(QLabel(f"Loop {loop_idx + 1}"), 0, loop_idx + 1)
+        # Create table
+        self.main_table = QTableWidget(5, 4)
+        self.main_table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
+        self.main_table.setVerticalHeaderLabels([
+            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
+        ])
 
-        # Create main function combos
+        # Fill table with CC combos
         self.main_combos = []
-        functions = ["Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"]
-        for func_idx, func_name in enumerate(functions):
-            main_grid.addWidget(QLabel(func_name), func_idx + 1, 0)
+        for row in range(5):
             row_combos = []
-            for loop_idx in range(4):
-                combo = self.create_cc_combo()
-                main_grid.addWidget(combo, func_idx + 1, loop_idx + 1)
+            for col in range(4):
+                combo = self.create_cc_combo(for_table=True)
+                self.main_table.setCellWidget(row, col, combo)
                 row_combos.append(combo)
             self.main_combos.append(row_combos)
 
-        # Overdub Functions - Using grid layout like LoopChop
+        # Configure table appearance
+        self.main_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.main_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.main_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.main_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.main_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        # Set fixed height
+        header_height = self.main_table.horizontalHeader().height()
+        row_height = 30 * 5  # 5 rows at 30px each
+        frame_width = self.main_table.frameWidth() * 2
+        self.main_table.setFixedHeight(header_height + row_height + frame_width)
+
+        main_group_layout.addWidget(self.main_table)
+
+        # Overdub Functions - Using QTableWidget
         overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
         main_layout.addWidget(overdub_group)
-        overdub_grid = QGridLayout()
-        overdub_group.setLayout(overdub_grid)
+        overdub_group_layout = QVBoxLayout()
+        overdub_group.setLayout(overdub_group_layout)
         self.overdub_group = overdub_group
 
-        # Add loop headers
-        for loop_idx in range(4):
-            overdub_grid.addWidget(QLabel(f"Loop {loop_idx + 1}"), 0, loop_idx + 1)
+        # Create table
+        self.overdub_table = QTableWidget(5, 4)
+        self.overdub_table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
+        self.overdub_table.setVerticalHeaderLabels([
+            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
+        ])
 
-        # Create overdub function combos
+        # Fill table with CC combos
         self.overdub_combos = []
-        for func_idx, func_name in enumerate(functions):
-            overdub_grid.addWidget(QLabel(func_name), func_idx + 1, 0)
+        for row in range(5):
             row_combos = []
-            for loop_idx in range(4):
-                combo = self.create_cc_combo()
-                overdub_grid.addWidget(combo, func_idx + 1, loop_idx + 1)
+            for col in range(4):
+                combo = self.create_cc_combo(for_table=True)
+                self.overdub_table.setCellWidget(row, col, combo)
                 row_combos.append(combo)
             self.overdub_combos.append(row_combos)
+
+        # Configure table appearance
+        self.overdub_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.overdub_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.overdub_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.overdub_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.overdub_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        # Set fixed height
+        header_height = self.overdub_table.horizontalHeader().height()
+        row_height = 30 * 5  # 5 rows at 30px each
+        frame_width = self.overdub_table.frameWidth() * 2
+        self.overdub_table.setFixedHeight(header_height + row_height + frame_width)
+
+        overdub_group_layout.addWidget(self.overdub_table)
         
         # LoopChop Settings
         loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
@@ -173,26 +206,26 @@ class ThruLoopConfigurator(BasicEditor):
         buttons_layout.addStretch()
 
         save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
-        save_btn.setMinimumHeight(35)
-        save_btn.setMinimumWidth(150)
+        save_btn.setMinimumHeight(40)
+        save_btn.setMinimumWidth(180)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
 
         load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))
-        load_btn.setMinimumHeight(35)
-        load_btn.setMinimumWidth(160)
+        load_btn.setMinimumHeight(40)
+        load_btn.setMinimumWidth(190)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
 
         save_file_btn = QPushButton(tr("ThruLoopConfigurator", "Save to File"))
-        save_file_btn.setMinimumHeight(35)
-        save_file_btn.setMinimumWidth(130)
+        save_file_btn.setMinimumHeight(40)
+        save_file_btn.setMinimumWidth(150)
         save_file_btn.clicked.connect(self.on_save_to_file)
         buttons_layout.addWidget(save_file_btn)
 
         load_file_btn = QPushButton(tr("ThruLoopConfigurator", "Load from File"))
-        load_file_btn.setMinimumHeight(35)
-        load_file_btn.setMinimumWidth(130)
+        load_file_btn.setMinimumHeight(40)
+        load_file_btn.setMinimumWidth(160)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
         
@@ -206,8 +239,19 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
     
-    def create_cc_combo(self):
+    def create_cc_combo(self, for_table=False):
+        """Create a CC selector combobox
+
+        Args:
+            for_table: If True, creates a narrower combo for use in tables
+        """
         combo = ArrowComboBox()
+        if for_table:
+            combo.setMaximumWidth(100)  # Narrower for tables to show arrow
+        else:
+            combo.setMinimumWidth(120)
+        combo.setMaximumHeight(25)
+
         combo.addItem("None", 128)
         for i in range(128):
             combo.addItem(f"CC# {i}", i)
