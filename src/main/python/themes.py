@@ -287,7 +287,7 @@ class Theme:
     def get_stylesheet(cls):
         """Return modern 2025 stylesheet for tabs and UI elements"""
         return """
-            /* Modern Tab Styling - Connected to Content Box */
+            /* Modern Tab Styling - Small and Compact */
             QTabWidget::pane {
                 border: 1px solid palette(mid);
                 border-top: none;
@@ -299,20 +299,21 @@ class Theme:
             QTabBar::tab {
                 background: palette(button);
                 border: 1px solid palette(mid);
-                padding: 12px 22px;
+                padding: 6px 12px;
                 margin-right: 2px;
                 margin-bottom: 0px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
                 border-bottom: none;
                 font-weight: 500;
+                font-size: 9pt;
             }
 
             QTabBar::tab:selected {
                 background: palette(base);
                 color: palette(text);
                 border-bottom: 1px solid palette(base);
-                padding-bottom: 13px;
+                padding-bottom: 7px;
                 margin-bottom: -1px;
             }
 
@@ -351,7 +352,7 @@ class Theme:
                 border: 1px solid palette(mid);
                 border-radius: 6px;
                 padding: 6px 12px;
-                padding-right: 28px;
+                padding-right: 32px;
                 background: palette(base);
                 min-width: 80px;
             }
@@ -367,18 +368,18 @@ class Theme:
 
             QComboBox::drop-down {
                 subcontrol-origin: padding;
-                subcontrol-position: top right;
+                subcontrol-position: center right;
                 width: 20px;
                 border: none;
             }
 
             QComboBox::down-arrow {
-                width: 0;
-                height: 0;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid palette(text);
-                margin-right: 5px;
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-style: solid;
+                border-width: 6px 4px 0px 4px;
+                border-color: palette(text) transparent transparent transparent;
             }
 
             QComboBox QAbstractItemView {
