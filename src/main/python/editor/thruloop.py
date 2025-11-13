@@ -143,20 +143,28 @@ class ThruLoopConfigurator(BasicEditor):
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
-        
+
         save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
+        save_btn.setMinimumHeight(35)
+        save_btn.setMinimumWidth(150)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
-        
-        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))  
+
+        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))
+        load_btn.setMinimumHeight(35)
+        load_btn.setMinimumWidth(160)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
-        
+
         save_file_btn = QPushButton(tr("ThruLoopConfigurator", "Save to File"))
+        save_file_btn.setMinimumHeight(35)
+        save_file_btn.setMinimumWidth(130)
         save_file_btn.clicked.connect(self.on_save_to_file)
         buttons_layout.addWidget(save_file_btn)
-        
+
         load_file_btn = QPushButton(tr("ThruLoopConfigurator", "Load from File"))
+        load_file_btn.setMinimumHeight(35)
+        load_file_btn.setMinimumWidth(130)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
         
@@ -184,13 +192,29 @@ class ThruLoopConfigurator(BasicEditor):
         table.setVerticalHeaderLabels([
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
         ])
-        
+
+        # Remove cell padding and set styling
+        table.setStyleSheet("""
+            QTableWidget {
+                gridline-color: palette(mid);
+            }
+            QTableWidget::item {
+                padding: 0px;
+            }
+            QHeaderView::section {
+                padding: 4px;
+                background: palette(button);
+                border: 1px solid palette(mid);
+            }
+        """)
+
         # Fill table with CC combo boxes
         for row in range(5):
             for col in range(4):
                 combo = self.create_cc_combo()
+                combo.setStyleSheet("QComboBox { margin: 0px; border-radius: 0px; }")
                 table.setCellWidget(row, col, combo)
-        
+
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.setMaximumHeight(200)
         return table

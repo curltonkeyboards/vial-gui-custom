@@ -283,44 +283,58 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
-        
+
         # Default and File buttons
         save_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save as Default"))
+        save_default_btn.setMinimumHeight(35)
+        save_default_btn.setMinimumWidth(140)
         save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
         buttons_layout.addWidget(save_default_btn)
-        
+
         load_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Default"))
+        load_default_btn.setMinimumHeight(35)
+        load_default_btn.setMinimumWidth(130)
         load_default_btn.clicked.connect(lambda: self.on_load_slot(0))
         buttons_layout.addWidget(load_default_btn)
-        
+
         reset_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"))
+        reset_btn.setMinimumHeight(35)
+        reset_btn.setMinimumWidth(150)
         reset_btn.clicked.connect(self.on_reset)
         buttons_layout.addWidget(reset_btn)
-        
+
         save_file_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save to File"))
+        save_file_btn.setMinimumHeight(35)
+        save_file_btn.setMinimumWidth(130)
         save_file_btn.clicked.connect(self.on_save_to_file)
         buttons_layout.addWidget(save_file_btn)
-        
+
         load_file_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load from File"))
+        load_file_btn.setMinimumHeight(35)
+        load_file_btn.setMinimumWidth(140)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
-        
+
         self.addLayout(buttons_layout)
-        
+
         # Save slot buttons
         save_slots_layout = QHBoxLayout()
         save_slots_layout.addStretch()
         for i in range(1, 5):
             btn = QPushButton(tr("MIDIswitchSettingsConfigurator", f"Save to Slot {i}"))
+            btn.setMinimumHeight(35)
+            btn.setMinimumWidth(120)
             btn.clicked.connect(lambda checked, slot=i: self.on_save_slot(slot))
             save_slots_layout.addWidget(btn)
         self.addLayout(save_slots_layout)
-        
+
         # Load slot buttons
         load_slots_layout = QHBoxLayout()
         load_slots_layout.addStretch()
         for i in range(1, 5):
             btn = QPushButton(tr("MIDIswitchSettingsConfigurator", f"Load Slot {i}"))
+            btn.setMinimumHeight(35)
+            btn.setMinimumWidth(120)
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
         self.addLayout(load_slots_layout)

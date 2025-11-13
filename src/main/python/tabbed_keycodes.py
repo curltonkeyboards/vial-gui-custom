@@ -697,8 +697,9 @@ class midiadvancedTab(QScrollArea):
             btn.setMinimumWidth(120)
             btn.setStyleSheet("""
                 QPushButton {
-                    border: none;
-                    border-bottom: 1px solid palette(mid);
+                    border: 1px solid palette(mid);
+                    border-radius: 0px;
+                    border-right: none;
                     background: palette(button);
                     text-align: left;
                     padding-left: 15px;
@@ -710,6 +711,7 @@ class midiadvancedTab(QScrollArea):
                 QPushButton:checked {
                     background: palette(base);
                     font-weight: 600;
+                    border-right: 1px solid palette(base);
                 }
             """)
             btn.clicked.connect(lambda checked, sk=section_key: self.show_section(sk))
@@ -2052,7 +2054,7 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("background-color: #B8D8EB; color: #395968;")
+                btn.setStyleSheet("background: palette(button); border: 1px solid palette(mid);")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.intervals_grid.addWidget(btn, row, col)
@@ -2064,7 +2066,7 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                btn.setStyleSheet("background-color: #C9E4CA; color: #4A654B;")
+                btn.setStyleSheet("background: palette(button); border: 1px solid palette(mid);")
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 self.chords_grid.addWidget(btn, row, col)
