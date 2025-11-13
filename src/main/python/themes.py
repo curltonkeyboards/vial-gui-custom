@@ -153,13 +153,13 @@ themes = [
         QPalette.ToolTipBase: "#e8e4ff",
         QPalette.ToolTipText: "#4a4458",
         QPalette.Text: "#4a4458",
-        QPalette.Button: "#f5f3ff",
+        QPalette.Button: "#e8e4ff",
         QPalette.ButtonText: "#4a4458",
         QPalette.BrightText: "#8b7ab8",
         QPalette.Link: "#9d8ac7",
         QPalette.Highlight: "#c4b5fd",
         QPalette.HighlightedText: "#2d2438",
-        (QPalette.Active, QPalette.Button): "#f0ecff",
+        (QPalette.Active, QPalette.Button): "#e0d9ff",
         (QPalette.Disabled, QPalette.ButtonText): "#b4adc4",
         (QPalette.Disabled, QPalette.WindowText): "#b4adc4",
         (QPalette.Disabled, QPalette.Text): "#b4adc4",
@@ -173,13 +173,13 @@ themes = [
         QPalette.ToolTipBase: "#d1fae5",
         QPalette.ToolTipText: "#1e4d3f",
         QPalette.Text: "#1e4d3f",
-        QPalette.Button: "#f0fdf9",
+        QPalette.Button: "#d1fae5",
         QPalette.ButtonText: "#1e4d3f",
         QPalette.BrightText: "#34d399",
         QPalette.Link: "#6ee7b7",
         QPalette.Highlight: "#a7f3d0",
         QPalette.HighlightedText: "#064e3b",
-        (QPalette.Active, QPalette.Button): "#ecfdf5",
+        (QPalette.Active, QPalette.Button): "#bbf7d0",
         (QPalette.Disabled, QPalette.ButtonText): "#9ca3af",
         (QPalette.Disabled, QPalette.WindowText): "#9ca3af",
         (QPalette.Disabled, QPalette.Text): "#9ca3af",
@@ -193,13 +193,13 @@ themes = [
         QPalette.ToolTipBase: "#ffe8d9",
         QPalette.ToolTipText: "#5c3d2e",
         QPalette.Text: "#5c3d2e",
-        QPalette.Button: "#fff8f3",
+        QPalette.Button: "#ffe8d9",
         QPalette.ButtonText: "#5c3d2e",
         QPalette.BrightText: "#fb923c",
         QPalette.Link: "#fdba74",
         QPalette.Highlight: "#fed7aa",
         QPalette.HighlightedText: "#431407",
-        (QPalette.Active, QPalette.Button): "#fff4ed",
+        (QPalette.Active, QPalette.Button): "#fed7aa",
         (QPalette.Disabled, QPalette.ButtonText): "#b8a99f",
         (QPalette.Disabled, QPalette.WindowText): "#b8a99f",
         (QPalette.Disabled, QPalette.Text): "#b8a99f",
@@ -213,13 +213,13 @@ themes = [
         QPalette.ToolTipBase: "#dbeafe",
         QPalette.ToolTipText: "#1e3a5f",
         QPalette.Text: "#1e3a5f",
-        QPalette.Button: "#f0f9ff",
+        QPalette.Button: "#dbeafe",
         QPalette.ButtonText: "#1e3a5f",
         QPalette.BrightText: "#38bdf8",
         QPalette.Link: "#7dd3fc",
         QPalette.Highlight: "#bae6fd",
         QPalette.HighlightedText: "#0c4a6e",
-        (QPalette.Active, QPalette.Button): "#e0f2fe",
+        (QPalette.Active, QPalette.Button): "#bae6fd",
         (QPalette.Disabled, QPalette.ButtonText): "#94a3b8",
         (QPalette.Disabled, QPalette.WindowText): "#94a3b8",
         (QPalette.Disabled, QPalette.Text): "#94a3b8",
@@ -233,13 +233,13 @@ themes = [
         QPalette.ToolTipBase: "#fce7f3",
         QPalette.ToolTipText: "#4a2533",
         QPalette.Text: "#4a2533",
-        QPalette.Button: "#fef3f6",
+        QPalette.Button: "#fce7f3",
         QPalette.ButtonText: "#4a2533",
         QPalette.BrightText: "#f472b6",
         QPalette.Link: "#f9a8d4",
         QPalette.Highlight: "#fbcfe8",
         QPalette.HighlightedText: "#500724",
-        (QPalette.Active, QPalette.Button): "#fce7f3",
+        (QPalette.Active, QPalette.Button): "#fbcfe8",
         (QPalette.Disabled, QPalette.ButtonText): "#b8a5ad",
         (QPalette.Disabled, QPalette.WindowText): "#b8a5ad",
         (QPalette.Disabled, QPalette.Text): "#b8a5ad",
@@ -287,6 +287,36 @@ class Theme:
     def get_stylesheet(cls):
         """Return modern 2025 stylesheet for UI elements"""
         return """
+            /* Modern Tab Styling with Rounded Edges */
+            QTabBar::tab {
+                background: palette(button);
+                border: 1px solid palette(mid);
+                padding: 8px 14px;
+                margin-right: 2px;
+                margin-bottom: 0px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                border-bottom: none;
+                font-weight: 500;
+            }
+
+            QTabBar::tab:selected {
+                background: palette(base);
+                border-bottom: 1px solid palette(base);
+                padding-bottom: 9px;
+                margin-bottom: -1px;
+            }
+
+            QTabBar::tab:hover:!selected {
+                background: palette(light);
+            }
+
+            QTabWidget::pane {
+                border: 1px solid palette(mid);
+                border-top: none;
+                background: transparent;
+            }
+
             /* Rounded Keycode Buttons - Using object name selector */
             QPushButton[keycode_button="true"] {
                 border-radius: 8px;
@@ -363,53 +393,59 @@ class Theme:
                 min-height: 24px;
             }
 
-            /* Modern Table Styling */
+            /* Modern Table Styling with Self-Contained Columns */
             QTableWidget, QTableView {
                 border: 1px solid palette(mid);
-                border-radius: 6px;
+                border-radius: 8px;
                 background: palette(base);
-                gridline-color: palette(midlight);
+                gridline-color: palette(mid);
                 selection-background-color: palette(highlight);
                 selection-color: palette(highlighted-text);
             }
 
             QTableWidget::item, QTableView::item {
-                padding: 6px;
-                border: none;
+                padding: 8px;
+                border: 1px solid palette(midlight);
+                border-radius: 4px;
+                margin: 2px;
             }
 
             QTableWidget::item:hover, QTableView::item:hover {
                 background: palette(alternate-base);
+                border-color: palette(highlight);
             }
 
             QHeaderView::section {
-                background: palette(window);
-                padding: 8px;
-                border: none;
-                border-bottom: 2px solid palette(mid);
-                font-weight: 500;
+                background: palette(button);
+                padding: 10px;
+                border: 1px solid palette(mid);
+                border-radius: 6px;
+                margin: 2px;
+                font-weight: 600;
             }
 
             QHeaderView::section:hover {
-                background: palette(alternate-base);
+                background: palette(light);
             }
 
-            /* Modern Oval Scrollbars */
+            /* Modern Scrollbars - Themed */
             QScrollBar:vertical {
-                background: palette(base);
-                width: 10px;
-                border-radius: 5px;
-                margin: 0px;
+                background: palette(window);
+                width: 12px;
+                border-radius: 6px;
+                margin: 2px;
+                border: 1px solid palette(midlight);
             }
 
             QScrollBar::handle:vertical {
-                background: palette(mid);
+                background: palette(button);
+                border: 1px solid palette(mid);
                 border-radius: 5px;
                 min-height: 30px;
             }
 
             QScrollBar::handle:vertical:hover {
-                background: palette(dark);
+                background: palette(highlight);
             }
 
             QScrollBar::add-line:vertical,
@@ -423,20 +459,22 @@ class Theme:
             }
 
             QScrollBar:horizontal {
-                background: palette(base);
-                height: 10px;
-                border-radius: 5px;
-                margin: 0px;
+                background: palette(window);
+                height: 12px;
+                border-radius: 6px;
+                margin: 2px;
+                border: 1px solid palette(midlight);
             }
 
             QScrollBar::handle:horizontal {
-                background: palette(mid);
+                background: palette(button);
+                border: 1px solid palette(mid);
                 border-radius: 5px;
                 min-width: 30px;
             }
 
             QScrollBar::handle:horizontal:hover {
-                background: palette(dark);
+                background: palette(highlight);
             }
 
             QScrollBar::add-line:horizontal,
