@@ -327,6 +327,10 @@ class Tab(QScrollArea):
     def __init__(self, parent, label, alts, prefix_buttons=None):
         super().__init__(parent)
 
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -406,7 +410,7 @@ class SmartChordTab(QScrollArea):
 
     def __init__(self, parent, label, smartchord_keycodes_0, smartchord_keycodes_1, smartchord_keycodes_2, smartchord_keycodes_3, smartchord_keycodes_4, smartchord_keycodes_5, scales_modes_keycodes, inversion_keycodes):
         super().__init__(parent)
-        self.label = label     
+        self.label = label
         self.smartchord_keycodes_0 = smartchord_keycodes_0
         self.smartchord_keycodes_1 = smartchord_keycodes_1
         self.smartchord_keycodes_2 = smartchord_keycodes_2
@@ -415,6 +419,10 @@ class SmartChordTab(QScrollArea):
         self.smartchord_keycodes_5 = smartchord_keycodes_5
         self.scales_modes_keycodes = scales_modes_keycodes
         self.inversion_keycodes = inversion_keycodes
+
+        # Import themes module to apply styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
 
         # Store all tree widgets for managing selections
         self.trees = []
@@ -431,7 +439,7 @@ class SmartChordTab(QScrollArea):
 
         # Create a horizontal layout to hold the QTreeWidgets
         self.tree_layout = QHBoxLayout()
-        self.tree_layout.setSpacing(1)
+        self.tree_layout.setSpacing(10)  # Increased spacing for more self-contained columns
         self.populate_tree()
 
         # Add the QTreeWidget layout to the main layout
@@ -467,11 +475,12 @@ class SmartChordTab(QScrollArea):
 
     def create_keycode_tree(self, keycodes, title):
         """Create a QTreeWidget and add keycodes under it."""
+        from themes import Theme
         tree = QTreeWidget()
         tree.setHeaderLabel(title)
         self.add_keycode_group(tree, title, keycodes)
         tree.setFixedHeight(300)
-        tree.setStyleSheet("border: 2px;")
+        tree.setStyleSheet(Theme.get_tree_stylesheet())
         tree.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # Set selection mode to single selection
@@ -614,8 +623,13 @@ class midiadvancedTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3, inversion_keycodes2, CCencoder, velocityshuffle, inversion_keycodesspecial, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3):
         super().__init__(parent)
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
-        
+
         # Initialize dictionaries first
         self.buttons = {}
         self.containers = {}
@@ -1358,9 +1372,14 @@ import math
 
 class LoopTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
-    
+
     def __init__(self, parent, label, loop_keycodes):
         super().__init__(parent)
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
         self.loop_keycodes = loop_keycodes
         
@@ -1994,6 +2013,11 @@ class EarTrainerTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
     def __init__(self, parent, label, eartrainer_keycodes, chordtrainer_keycodes):
         super().__init__(parent)
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
         self.eartrainer_keycodes = eartrainer_keycodes
         self.chordtrainer_keycodes = chordtrainer_keycodes
@@ -2124,7 +2148,12 @@ class LayerTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_CC_toggle, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_LSB2, smartchord_CC_toggle2):
         super().__init__(parent)
-        self.label = label     
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
+        self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
@@ -2362,7 +2391,12 @@ class LightingTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes, inversion_keycodes4, smartchord_LSB, smartchord_MSB, smartchord_LSB2):
         super().__init__(parent)
-        self.label = label     
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
+        self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.inversion_keycodes4 = inversion_keycodes4
         self.smartchord_LSB = smartchord_LSB
@@ -2630,7 +2664,12 @@ class MacroTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_LSB, smartchord_MSB):
         super().__init__(parent)
-        self.label = label     
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
+        self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
@@ -2799,6 +2838,11 @@ class KeySplitTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes):
         super().__init__(parent)
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
@@ -3077,9 +3121,14 @@ class PianoKeyboard(QWidget):
                         
 class ChordProgressionTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
-    
+
     def __init__(self, parent, label):
         super().__init__(parent)
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
         
         # Display mode for progression buttons:
@@ -3548,6 +3597,11 @@ class midiTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes):
         super().__init__(parent)
+
+        # Apply scrollbar styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_scrollbar_stylesheet())
+
         self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.scroll_content = QWidget()
@@ -3724,6 +3778,10 @@ class FilteredTabbedKeycodes(QTabWidget):
 
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
+
+        # Import themes module to apply styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_tab_stylesheet())
 
         self.keycode_filter = keycode_filter
 

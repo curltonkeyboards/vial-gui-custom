@@ -103,6 +103,7 @@ class MainWindow(QMainWindow):
         self.current_tab = None
         self.tabs = QTabWidget()
         self.tabs.currentChanged.connect(self.on_tab_changed)
+        self.tabs.setStyleSheet(themes.Theme.get_tab_stylesheet())
         self.refresh_tabs()
 
         no_devices = 'No devices detected. Connect a Vial-compatible device and press "Refresh"<br>' \

@@ -13,6 +13,10 @@ class SquareButton(QPushButton):
         self.word_wrap = False
         self.text = ""
 
+        # Apply default rounded corner styling
+        from themes import Theme
+        self.setStyleSheet(Theme.get_button_stylesheet())
+
     def setRelSize(self, ratio):
         self.scale = ratio
         self.updateGeometry()
