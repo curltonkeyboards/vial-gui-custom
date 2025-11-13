@@ -618,8 +618,7 @@ class midiadvancedTab(QScrollArea):
         
         # Initialize dictionaries first
         self.buttons = {}
-        self.containers = {}
-        
+
         # Store all the parameters as instance variables
         self.inversion_keycodes = inversion_keycodes
         self.inversion_keycodes2 = inversion_keycodes2
@@ -735,34 +734,33 @@ class midiadvancedTab(QScrollArea):
         self.content_layout.setSpacing(10)
         self.content_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Create containers for each section
-        self.containers = {}
+        # Create grids directly for sections - no containers
+        # Advanced MIDI grid
+        self.advanced_h_layout = QHBoxLayout()
+        self.advanced_h_layout.addStretch(1)
+        self.advanced_grid = QGridLayout()
+        self.advanced_h_layout.addLayout(self.advanced_grid)
+        self.advanced_h_layout.addStretch(1)
+
+        # KeySplit grid
+        self.keysplit_h_layout = QHBoxLayout()
+        self.keysplit_h_layout.addStretch(1)
+        self.keysplit_grid = QGridLayout()
+        self.keysplit_h_layout.addLayout(self.keysplit_grid)
+        self.keysplit_h_layout.addStretch(1)
+
+        # Map sections to their layouts
+        self.section_widgets = {
+            "Show\nAdvanced MIDI\nOptions": self.advanced_h_layout,
+            "Show\nKeySplit\nOptions": self.keysplit_h_layout,
+        }
+
+        # For other sections, we'll create simple VBoxLayouts
         for display_name, section_key in self.sections:
-            # Create widget container
-            container = QWidget()
-            container_layout = QVBoxLayout(container)
-            container_layout.setSpacing(10)
-            container_layout.setContentsMargins(0, 0, 0, 0)
-
-            # Add special layouts for specific sections
-            if section_key == "Show\nAdvanced MIDI\nOptions":
-                advanced_h_layout = QHBoxLayout()
-                advanced_h_layout.addStretch(1)
-                self.advanced_grid = QGridLayout()
-                advanced_h_layout.addLayout(self.advanced_grid)
-                advanced_h_layout.addStretch(1)
-                container_layout.addLayout(advanced_h_layout)
-            elif section_key == "Show\nKeySplit\nOptions":
-                keysplit_h_layout = QHBoxLayout()
-                keysplit_h_layout.addStretch(1)
-                self.keysplit_grid = QGridLayout()
-                keysplit_h_layout.addLayout(self.keysplit_grid)
-                keysplit_h_layout.addStretch(1)
-                container_layout.addLayout(keysplit_h_layout)
-
-            container.hide()
-            self.content_layout.addWidget(container)
-            self.containers[section_key] = container
+            if section_key not in self.section_widgets:
+                section_layout = QVBoxLayout()
+                section_layout.setSpacing(10)
+                self.section_widgets[section_key] = section_layout
 
         self.content_layout.addStretch(1)
         main_layout_h.addWidget(self.content_wrapper)
@@ -788,7 +786,7 @@ class midiadvancedTab(QScrollArea):
         
     def populate_settings_presets_section(self):
         """Populate the Setting Presets section with three rows of buttons."""
-        layout = self.containers["Show\nSetting\nPresets"].layout()
+        layout = self.section_widgets["Show\nSetting\nPresets"]
 
         # First row - KEYCODES_SETTINGS1 (centered)
         row1_layout = QHBoxLayout()
@@ -839,7 +837,7 @@ class midiadvancedTab(QScrollArea):
 
     def populate_channel_section(self):
         """Populate the Channel Options section with a single row of dropdowns."""
-        layout = self.containers["Show\nChannel\nOptions"].layout()
+        layout = self.section_widgets["Show\nChannel\nOptions"]
 
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
@@ -855,7 +853,7 @@ class midiadvancedTab(QScrollArea):
 
     def populate_cc_velocity_section(self):
         """Populate the CC Options section with three rows of buttons/dropdowns."""
-        layout = self.containers["Show\nCC Options"].layout()
+        layout = self.section_widgets["Show\nCC Options"]
 
         # First row
         row1_layout = QHBoxLayout()
@@ -905,7 +903,7 @@ class midiadvancedTab(QScrollArea):
 
     def populate_transposition_section(self):
         """Populate the Transposition Settings section with a single row of dropdowns."""
-        layout = self.containers["Show\nTransposition\nSettings"].layout()
+        layout = self.section_widgets["Show\nTransposition\nSettings"]
 
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
@@ -968,7 +966,7 @@ class midiadvancedTab(QScrollArea):
 
     def populate_velocity_section(self):
         """Populate the Velocity Options section with a single row of buttons/dropdowns."""
-        layout = self.containers["Show\nVelocity\nOptions"].layout()
+        layout = self.section_widgets["Show\nVelocity\nOptions"]
 
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
@@ -984,7 +982,7 @@ class midiadvancedTab(QScrollArea):
 
     def populate_expression_wheel_section(self):
         """Populate the Touch Dial Options section with buttons and dropdowns."""
-        layout = self.containers["Show\nTouch Dial\nOptions"].layout()
+        layout = self.section_widgets["Show\nTouch Dial\nOptions"]
         
         # First row: Touch Dial controls
         top_row_layout = QHBoxLayout()
@@ -1034,17 +1032,22 @@ class midiadvancedTab(QScrollArea):
 
     def show_section(self, section_name):
         """Show the specified section and update tab button states"""
-        # Hide all containers
-        for container in self.containers.values():
-            container.hide()
+        # Clear content layout
+        while self.content_layout.count():
+            item = self.content_layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
+            elif item.layout():
+                # Remove nested layout items but keep the layout itself
+                pass
 
         # Uncheck all tab buttons
         for btn in self.side_tab_buttons.values():
             btn.setChecked(False)
 
-        # Show the selected container and check its tab button
-        if section_name in self.containers:
-            self.containers[section_name].show()
+        # Add the selected section's layout and check its tab button
+        if section_name in self.section_widgets:
+            self.content_layout.addLayout(self.section_widgets[section_name])
             if section_name in self.side_tab_buttons:
                 self.side_tab_buttons[section_name].setChecked(True)
 
