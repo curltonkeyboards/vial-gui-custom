@@ -445,52 +445,44 @@ class Theme:
             /* General Rounded Buttons */
             QPushButton {
                 border-radius: 8px;
-                border: 1px solid palette(dark);
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(dark),
-                                           stop: 0.6 palette(button),
-                                           stop: 1 palette(mid));
+                border: 2px solid palette(dark);
+                background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
             }
 
             QPushButton:hover {
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(button),
-                                           stop: 0.6 palette(light),
-                                           stop: 1 palette(mid));
-                border-color: palette(midlight);
+                background: palette(light);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
+                border: 2px solid palette(highlight);
+                box-shadow: none;
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
             QPushButton[keycode_button="true"] {
                 border-radius: 8px;
-                border: 1px solid palette(dark);
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(dark),
-                                           stop: 0.6 palette(button),
-                                           stop: 1 palette(mid));
+                border: 2px solid palette(dark);
+                background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
                 font-size: 9pt;
             }
 
             QPushButton[keycode_button="true"]:hover {
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(button),
-                                           stop: 0.6 palette(light),
-                                           stop: 1 palette(mid));
-                border-color: palette(midlight);
+                background: palette(light);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton[keycode_button="true"]:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
+                border: 2px solid palette(highlight);
+                box-shadow: none;
             }
 
             /* Layer Selection Button Styling */
@@ -697,48 +689,41 @@ class Theme:
 
             /* Inner Tab Buttons - Horizontal tabs like main headers */
             QPushButton[inner_tab="true"] {
-                border: 1px solid palette(dark);
+                border: 2px solid palette(dark);
                 margin-right: 2px;
                 margin-bottom: 0px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                border-bottom: 1px solid palette(dark);
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(dark),
-                                           stop: 0.6 palette(button),
-                                           stop: 1 palette(mid));
+                border-bottom: 2px solid palette(dark);
+                background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
                 font-weight: 500;
                 font-size: 9pt;
             }
 
             QPushButton[inner_tab="true"]:hover:!checked {
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(button),
-                                           stop: 0.6 palette(light),
-                                           stop: 1 palette(mid));
+                background: palette(light);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton[inner_tab="true"]:checked {
                 background: palette(base);
                 border-bottom-color: palette(base);
                 margin-bottom: -1px;
+                box-shadow: none;
             }
 
             /* Side Tab Buttons - Vertical tabs on left */
             QPushButton[side_tab="true"] {
-                border: 1px solid palette(dark);
+                border: 2px solid palette(dark);
                 margin-bottom: 2px;
                 margin-right: 0px;
                 border-top-left-radius: 4px;
                 border-bottom-left-radius: 4px;
-                border-right: 1px solid palette(dark);
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(dark),
-                                           stop: 0.6 palette(button),
-                                           stop: 1 palette(mid));
+                border-right: 2px solid palette(dark);
+                background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
                 text-align: left;
                 min-width: 100px;
                 font-weight: 500;
@@ -746,17 +731,16 @@ class Theme:
             }
 
             QPushButton[side_tab="true"]:hover:!checked {
-                background: qradialgradient(cx: 0.5, cy: 0.5, radius: 1.2,
-                                           fx: 0.5, fy: 0.5,
-                                           stop: 0 palette(button),
-                                           stop: 0.6 palette(light),
-                                           stop: 1 palette(mid));
+                background: palette(light);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton[side_tab="true"]:checked {
                 background: palette(base);
                 border-right-color: palette(base);
                 margin-right: -1px;
+                box-shadow: none;
             }
         """
 
