@@ -2254,6 +2254,10 @@ class keycodes_v6:
         "RS_RIGHT": 0xCC72,  # Right stick right (Axis 2 positive)
         "LT": 0xCC73,  # Left trigger (Axis 4)
         "RT": 0xCC74,  # Right trigger (Axis 5)
+        "DPAD_UP": 0xCC75,  # D-pad Up (Button 12)
+        "DPAD_DOWN": 0xCC76,  # D-pad Down (Button 13)
+        "DPAD_LEFT": 0xCC77,  # D-pad Left (Button 14)
+        "DPAD_RIGHT": 0xCC78,  # D-pad Right (Button 15)
 
         "QK_KB": 0xCC57, #custom keycodes safe range
         

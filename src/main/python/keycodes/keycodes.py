@@ -3153,6 +3153,12 @@ KEYCODES_GAMING = [
     # Analog Triggers (Hall Effect)
     K("LT", "LT", "Left trigger (Axis 4, 0-127 based on press depth)"),
     K("RT", "RT", "Right trigger (Axis 5, 0-127 based on press depth)"),
+
+    # D-pad (Digital directional pad)
+    K("DPAD_UP", "D-pad ↑", "D-pad Up (Button 12)"),
+    K("DPAD_DOWN", "D-pad ↓", "D-pad Down (Button 13)"),
+    K("DPAD_LEFT", "D-pad ←", "D-pad Left (Button 14)"),
+    K("DPAD_RIGHT", "D-pad →", "D-pad Right (Button 15)"),
 ]
 
 
