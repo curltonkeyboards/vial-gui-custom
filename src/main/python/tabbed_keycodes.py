@@ -222,23 +222,6 @@ class PianoButton(SquareButton):
                 background: {bg_qcolor.darker(110).name()};
             }}
         """
-        else:  # black
-            # Dark version - use base color
-            return f"""
-                QPushButton {{
-                    background: {bg_color};
-                    border: 1px solid {bg_qcolor.darker(150).name()};
-                    border-radius: 4px;
-                    color: {text_qcolor.lighter(150).name()};
-                    padding: 2px;
-                }}
-                QPushButton:hover {{
-                    background: {bg_qcolor.lighter(110).name()};
-                }}
-                QPushButton:pressed {{
-                    background: {bg_qcolor.darker(110).name()};
-                }}
-            """
 
 
 class AlternativeDisplay(QWidget):
@@ -2967,12 +2950,7 @@ class KeySplitTab(QScrollArea):
                 text_color = Theme.get_special_button_color("triplesplit_control", "text")
                 border_color = Theme.get_special_button_color("triplesplit_control", "border")
                 btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
-            else:  # TripleSplit
-                bg_color = Theme.get_special_button_color("triplesplit_white" if key_type == "white" else "triplesplit_black", "background")
-                text_color = Theme.get_special_button_color("triplesplit_white" if key_type == "white" else "triplesplit_black", "text")
-                border_color = Theme.get_special_button_color("triplesplit_white" if key_type == "white" else "triplesplit_black", "border")
-                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
-                
+
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
             layout.addWidget(btn)
 
