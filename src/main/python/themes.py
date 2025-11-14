@@ -459,48 +459,127 @@ class Theme:
     def get_special_button_color(cls, button_type, component="background"):
         """
         Get hue-shifted colors for special button types.
+        Takes the original hardcoded colors and shifts them to match the theme.
 
         Args:
-            button_type: One of "chord_progression", "ear_training", "keysplit", "triplesplit"
+            button_type: One of "chord_progression_major", "chord_progression_minor",
+                        "ear_training", "chord_trainer", "keysplit_white", "keysplit_black",
+                        "triplesplit_white", "triplesplit_black", "keysplit_control", "triplesplit_control"
             component: One of "background", "text", "border"
 
         Returns:
             Hex color string
         """
-        if cls.theme not in theme_colors:
-            return "#808080"  # Fallback gray
-
-        colors = theme_colors[cls.theme]
-        base_color = colors.get(QPalette.Button, "#808080")
-        text_color = colors.get(QPalette.ButtonText, "#000000")
-
-        # Define hue shifts for each button type (in degrees)
-        hue_shifts = {
-            "chord_progression": 30,
-            "ear_training": 90,
-            "keysplit": 150,
-            "triplesplit": 210,
+        # Original colors from the hardcoded styles
+        original_colors = {
+            # Chord Progressions
+            "chord_progression_major": {
+                "background": "#E3F2FD",  # Light blue
+                "text": "#1565C0",  # Dark blue
+            },
+            "chord_progression_minor": {
+                "background": "#E8DAEF",  # Light purple
+                "text": "#7D3C98",  # Dark purple
+            },
+            "chord_progression_control": {
+                "background": "#FFE0B2",  # Light orange
+                "text": "#8D6E63",  # Dark brown
+            },
+            # Ear Training / Chord Trainer
+            "ear_training": {
+                "background": "#E0E0E0",  # Light gray (was palette(light))
+                "text": "#303030",
+            },
+            "chord_trainer": {
+                "background": "#D0D0D0",  # Slightly darker gray (was palette(alternate-base))
+                "text": "#303030",
+            },
+            # KeySplit
+            "keysplit_white": {
+                "background": "#f3d1d1",  # rgba(243, 209, 209)
+                "text": "#805757",  # rgba(128, 87, 87)
+            },
+            "keysplit_black": {
+                "background": "#805757",  # rgba(128, 87, 87)
+                "text": "#f3d1d1",  # rgba(243, 209, 209)
+            },
+            "keysplit_control": {
+                "background": "#f3d1d1",  # rgba(243, 209, 209, 1)
+                "text": "#805757",  # rgba(128, 87, 87, 1)
+            },
+            # TripleSplit
+            "triplesplit_white": {
+                "background": "#d1f3d7",  # rgba(209, 243, 215)
+                "text": "#808057",  # rgba(128, 128, 87)
+            },
+            "triplesplit_black": {
+                "background": "#808057",  # rgba(128, 128, 87)
+                "text": "#d1f3d7",  # rgba(209, 243, 215)
+            },
+            "triplesplit_control": {
+                "background": "#d1f3d7",  # rgba(209, 243, 215, 1)
+                "text": "#808057",  # rgba(128, 128, 87, 1)
+            },
         }
 
-        if button_type not in hue_shifts:
-            return base_color if component == "background" else text_color
+        if button_type not in original_colors:
+            return "#808080"  # Fallback
 
-        shift = hue_shifts[button_type]
+        if cls.theme not in theme_colors:
+            # No theme set, use original colors
+            if component == "border":
+                bg = original_colors[button_type]["background"]
+                return QColor(bg).lighter(120).name()
+            return original_colors[button_type].get(component, "#808080")
 
-        if component == "background":
-            # Shift the button background color
-            return shift_hue(base_color, shift)
-        elif component == "text":
-            # Shift the text color to match
-            return shift_hue(text_color, shift)
-        elif component == "border":
-            # Border is lighter version of background
-            shifted_bg = shift_hue(base_color, shift)
-            # Make it 20% lighter
-            color = QColor(shifted_bg)
-            return color.lighter(120).name()
+        # Get the theme's base button color to determine hue shift and brightness
+        colors = theme_colors[cls.theme]
+        theme_button_color = colors.get(QPalette.Button, "#808080")
 
-        return base_color
+        # Calculate theme hue
+        theme_qcolor = QColor(theme_button_color)
+        theme_h, theme_s, theme_l, _ = theme_qcolor.getHslF()
+
+        # Get original color
+        original_color = original_colors[button_type][component] if component != "border" else original_colors[button_type]["background"]
+        orig_qcolor = QColor(original_color)
+        orig_h, orig_s, orig_l, _ = orig_qcolor.getHslF()
+
+        # Calculate hue shift needed to align with theme
+        if theme_h is not None and orig_h is not None:
+            hue_shift = theme_h - 0.6  # Shift towards theme hue (0.6 is roughly blue, our base)
+        else:
+            hue_shift = 0
+
+        # Determine if theme is light or dark
+        light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
+        is_light_theme = cls.theme in light_themes
+
+        # Adjust lightness to match theme brightness
+        if is_light_theme:
+            # Keep original lightness for light themes (they're already light)
+            new_l = orig_l
+        else:
+            # For dark themes, darken the colors significantly
+            if orig_l > 0.5:  # Originally light colors
+                new_l = orig_l * 0.3  # Make much darker
+            else:  # Originally dark colors
+                new_l = orig_l * 0.6  # Make somewhat darker
+
+        # Apply hue shift while preserving saturation and adjusting lightness
+        new_h = (orig_h + hue_shift) % 1.0 if orig_h is not None else orig_h
+
+        # Create new color
+        result_color = QColor()
+        result_color.setHslF(new_h if new_h is not None else 0,
+                            orig_s if orig_s is not None else 0,
+                            new_l if new_l is not None else 0.5)
+
+        if component == "border":
+            # Make border 20% lighter
+            return result_color.lighter(120).name()
+
+        return result_color.name()
 
     @classmethod
     def get_stylesheet(cls):

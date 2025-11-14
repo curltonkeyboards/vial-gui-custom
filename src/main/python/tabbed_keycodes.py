@@ -172,81 +172,56 @@ class PianoButton(SquareButton):
     @staticmethod
     def get_keysplit_style(key_type):
         """Get theme-aware keysplit piano key styles"""
-        bg_color = Theme.get_special_button_color("keysplit", "background")
-        text_color = Theme.get_special_button_color("keysplit", "text")
-        border_color = Theme.get_special_button_color("keysplit", "border")
+        button_type = "keysplit_white" if key_type == "white" else "keysplit_black"
+        bg_color = Theme.get_special_button_color(button_type, "background")
+        text_color = Theme.get_special_button_color(button_type, "text")
+        border_color = Theme.get_special_button_color(button_type, "border")
 
         # Convert to RGB for gradient
         bg_qcolor = QColor(bg_color)
-        text_qcolor = QColor(text_color)
-        border_qcolor = QColor(border_color)
 
-        if key_type == 'white':
-            # Light version - lighter background
-            light_bg = bg_qcolor.lighter(130)
-            return f"""
-                QPushButton {{
-                    background: {bg_color};
-                    border: 1px solid {border_color};
-                    border-radius: 4px;
-                    color: {text_color};
-                    padding: 2px;
-                }}
-                QPushButton:hover {{
-                    background: {light_bg.name()};
-                }}
-                QPushButton:pressed {{
-                    background: {bg_qcolor.darker(110).name()};
-                }}
-            """
-        else:  # black
-            # Dark version - use base color
-            return f"""
-                QPushButton {{
-                    background: {bg_color};
-                    border: 1px solid {bg_qcolor.darker(150).name()};
-                    border-radius: 4px;
-                    color: {text_qcolor.lighter(150).name()};
-                    padding: 2px;
-                }}
-                QPushButton:hover {{
-                    background: {bg_qcolor.lighter(110).name()};
-                }}
-                QPushButton:pressed {{
-                    background: {bg_qcolor.darker(110).name()};
-                }}
-            """
+        return f"""
+            QPushButton {{
+                background: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                color: {text_color};
+                padding: 2px;
+            }}
+            QPushButton:hover {{
+                background: {bg_qcolor.lighter(110).name()};
+            }}
+            QPushButton:pressed {{
+                background: {bg_qcolor.darker(110).name()};
+            }}
+        """
 
     @staticmethod
     def get_triplesplit_style(key_type):
         """Get theme-aware triplesplit piano key styles"""
-        bg_color = Theme.get_special_button_color("triplesplit", "background")
-        text_color = Theme.get_special_button_color("triplesplit", "text")
-        border_color = Theme.get_special_button_color("triplesplit", "border")
+        button_type = "triplesplit_white" if key_type == "white" else "triplesplit_black"
+        bg_color = Theme.get_special_button_color(button_type, "background")
+        text_color = Theme.get_special_button_color(button_type, "text")
+        border_color = Theme.get_special_button_color(button_type, "border")
 
         # Convert to RGB for gradient
         bg_qcolor = QColor(bg_color)
-        text_qcolor = QColor(text_color)
-        border_qcolor = QColor(border_color)
 
-        if key_type == 'white':
-            # Light version - lighter background
-            light_bg = bg_qcolor.lighter(130)
-            return f"""
-                QPushButton {{
-                    background: {bg_color};
-                    border: 1px solid {border_color};
-                    border-radius: 4px;
-                    color: {text_color};
-                    padding: 2px;
-                }}
-                QPushButton:hover {{
-                    background: {light_bg.name()};
-                }}
-                QPushButton:pressed {{
-                    background: {bg_qcolor.darker(110).name()};
-                }}
-            """
+        return f"""
+            QPushButton {{
+                background: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                color: {text_color};
+                padding: 2px;
+            }}
+            QPushButton:hover {{
+                background: {bg_qcolor.lighter(110).name()};
+            }}
+            QPushButton:pressed {{
+                background: {bg_qcolor.darker(110).name()};
+            }}
+        """
         else:  # black
             # Dark version - use base color
             return f"""
@@ -2983,14 +2958,19 @@ class KeySplitTab(QScrollArea):
             
             # Set theme-aware background and text colors
             if prefix == 'KS':
-                bg_color = Theme.get_special_button_color("keysplit", "background")
-                text_color = Theme.get_special_button_color("keysplit", "text")
-                border_color = Theme.get_special_button_color("keysplit", "border")
+                bg_color = Theme.get_special_button_color("keysplit_control", "background")
+                text_color = Theme.get_special_button_color("keysplit_control", "text")
+                border_color = Theme.get_special_button_color("keysplit_control", "border")
                 btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
             else:  # TripleSplit
-                bg_color = Theme.get_special_button_color("triplesplit", "background")
-                text_color = Theme.get_special_button_color("triplesplit", "text")
-                border_color = Theme.get_special_button_color("triplesplit", "border")
+                bg_color = Theme.get_special_button_color("triplesplit_control", "background")
+                text_color = Theme.get_special_button_color("triplesplit_control", "text")
+                border_color = Theme.get_special_button_color("triplesplit_control", "border")
+                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
+            else:  # TripleSplit
+                bg_color = Theme.get_special_button_color("triplesplit_white" if key_type == "white" else "triplesplit_black", "background")
+                text_color = Theme.get_special_button_color("triplesplit_white" if key_type == "white" else "triplesplit_black", "text")
+                border_color = Theme.get_special_button_color("triplesplit_white" if key_type == "white" else "triplesplit_black", "border")
                 btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
                 
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
@@ -3250,9 +3230,9 @@ class ChordProgressionTab(QScrollArea):
             btn = QPushButton(key)
             btn.setFixedHeight(40)
             btn.setFixedWidth(70)
-            bg_color = Theme.get_special_button_color("chord_progression", "background")
-            text_color = Theme.get_special_button_color("chord_progression", "text")
-            border_color = Theme.get_special_button_color("chord_progression", "border")
+            bg_color = Theme.get_special_button_color("chord_progression_control", "background")
+            text_color = Theme.get_special_button_color("chord_progression_control", "text")
+            border_color = Theme.get_special_button_color("chord_progression_control", "border")
             btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
             btn.clicked.connect(lambda _, k=key: self.show_key(k))
             self.tab_buttons.append(btn)
@@ -3364,9 +3344,9 @@ class ChordProgressionTab(QScrollArea):
         # Create the toggle description button
         self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
         self.toggle_desc_btn.setFixedSize(170, 50)
-        bg_color = Theme.get_special_button_color("chord_progression", "background")
-        text_color = Theme.get_special_button_color("chord_progression", "text")
-        border_color = Theme.get_special_button_color("chord_progression", "border")
+        bg_color = Theme.get_special_button_color("chord_progression_control", "background")
+        text_color = Theme.get_special_button_color("chord_progression_control", "text")
+        border_color = Theme.get_special_button_color("chord_progression_control", "border")
         self.toggle_desc_btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         toggle_btn_layout.addWidget(self.toggle_desc_btn)
@@ -3393,9 +3373,9 @@ class ChordProgressionTab(QScrollArea):
         
         # Use QTimer to revert the styling after a short delay
         def reset_style():
-            bg_color = Theme.get_special_button_color("chord_progression", "background")
-            text_color = Theme.get_special_button_color("chord_progression", "text")
-            border_color = Theme.get_special_button_color("chord_progression", "border")
+            bg_color = Theme.get_special_button_color("chord_progression_control", "background")
+            text_color = Theme.get_special_button_color("chord_progression_control", "text")
+            border_color = Theme.get_special_button_color("chord_progression_control", "border")
             self.toggle_desc_btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
         QTimer.singleShot(100, reset_style)
         
@@ -3404,9 +3384,9 @@ class ChordProgressionTab(QScrollArea):
 
     def show_key(self, key):
         # Update the active tab button highlight - use darker version of theme color
-        bg_color = Theme.get_special_button_color("chord_progression", "background")
-        text_color = Theme.get_special_button_color("chord_progression", "text")
-        border_color = Theme.get_special_button_color("chord_progression", "border")
+        bg_color = Theme.get_special_button_color("chord_progression_control", "background")
+        text_color = Theme.get_special_button_color("chord_progression_control", "text")
+        border_color = Theme.get_special_button_color("chord_progression_control", "border")
         darker_bg = QColor(bg_color).darker(120).name()
 
         for btn in self.tab_buttons:
@@ -3420,9 +3400,9 @@ class ChordProgressionTab(QScrollArea):
 
     def show_difficulty(self, difficulty_level):
         # Update the active difficulty button highlight
-        bg_color = Theme.get_special_button_color("chord_progression", "background")
-        text_color = Theme.get_special_button_color("chord_progression", "text")
-        border_color = Theme.get_special_button_color("chord_progression", "border")
+        bg_color = Theme.get_special_button_color("chord_progression_control", "background")
+        text_color = Theme.get_special_button_color("chord_progression_control", "text")
+        border_color = Theme.get_special_button_color("chord_progression_control", "border")
 
         for btn in self.difficulty_buttons:
             if btn.text() == difficulty_level:
@@ -3553,15 +3533,12 @@ class ChordProgressionTab(QScrollArea):
                 btn.setFixedSize(110, 60)  # Same size as chord trainer
                 
                 # Apply different styling based on major/minor using theme colors
-                bg_color = Theme.get_special_button_color("chord_progression", "background")
-                text_color = Theme.get_special_button_color("chord_progression", "text")
-                border_color = Theme.get_special_button_color("chord_progression", "border")
+                button_type = "chord_progression_major" if is_major else "chord_progression_minor"
+                bg_color = Theme.get_special_button_color(button_type, "background")
+                text_color = Theme.get_special_button_color(button_type, "text")
+                border_color = Theme.get_special_button_color(button_type, "border")
 
-                if is_major:
-                    btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color}; text-align: center;")
-                else:
-                    # Minor chords get slightly darker background
-                    btn.setStyleSheet(f"background-color: {QColor(bg_color).darker(110).name()}; color: {text_color}; border: 1px solid {border_color}; text-align: center;")
+                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color}; text-align: center;")
                     
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
