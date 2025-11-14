@@ -281,19 +281,31 @@ class ThruLoopConfigurator(BasicEditor):
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
-        
+
+        # Button style - bigger and less rounded
+        button_style = "QPushButton { border-radius: 3px; padding: 8px 16px; }"
+
         save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
+        save_btn.setMinimumHeight(45)
+        save_btn.setMinimumWidth(200)
+        save_btn.setStyleSheet(button_style)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
-        
-        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))  
+
+        load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))
+        load_btn.setMinimumHeight(45)
+        load_btn.setMinimumWidth(210)
+        load_btn.setStyleSheet(button_style)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
-        
+
         reset_btn = QPushButton(tr("ThruLoopConfigurator", "Reset to Defaults"))
+        reset_btn.setMinimumHeight(45)
+        reset_btn.setMinimumWidth(180)
+        reset_btn.setStyleSheet(button_style)
         reset_btn.clicked.connect(self.on_reset)
         buttons_layout.addWidget(reset_btn)
-        
+
         self.addLayout(buttons_layout)
         
         # Apply stylesheet to prevent bold focus styling and center combo box text
@@ -364,28 +376,31 @@ class ThruLoopConfigurator(BasicEditor):
         table.setVerticalHeaderLabels([
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
-        
+
         # Fill table with CC combos (narrower for tables)
         for row in range(6):
             for col in range(4):
                 cc_combo = self.create_cc_combo(for_table=True)
                 table.setCellWidget(row, col, cc_combo)
-        
+
         # Set row heights to match combo box height
         for row in range(6):
             table.setRowHeight(row, 30)  # Slightly larger than combo box to prevent cutting
-        
+
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # Use Fixed instead of ResizeToContents
         table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        
+
+        # Make table square (no rounded edges)
+        table.setStyleSheet("QTableWidget { border-radius: 0px; }")
+
         # Calculate exact height needed
         header_height = table.horizontalHeader().height()
         row_height = 30 * 6  # 6 rows at 30px each
         frame_width = table.frameWidth() * 2
         table.setFixedHeight(header_height + row_height + frame_width)
-        
+
         table.setMinimumWidth(500)
         table.setMaximumWidth(680)
         return table
@@ -396,28 +411,31 @@ class ThruLoopConfigurator(BasicEditor):
         table.setVerticalHeaderLabels([
             "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear", "Restart"
         ])
-        
+
         # Fill table with CC combos (narrower for tables)
         for row in range(6):
             for col in range(4):
                 cc_combo = self.create_cc_combo(for_table=True)
                 table.setCellWidget(row, col, cc_combo)
-        
+
         # Set row heights to match combo box height
         for row in range(6):
             table.setRowHeight(row, 30)  # Slightly larger than combo box to prevent cutting
-        
+
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # Use Fixed instead of ResizeToContents
         table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        
+
+        # Make table square (no rounded edges)
+        table.setStyleSheet("QTableWidget { border-radius: 0px; }")
+
         # Calculate exact height needed
         header_height = table.horizontalHeader().height()
         row_height = 30 * 6  # 6 rows at 30px each
         frame_width = table.frameWidth() * 2
         table.setFixedHeight(header_height + row_height + frame_width)
-        
+
         table.setMinimumWidth(500)
         table.setMaximumWidth(680)
         return table  
@@ -1413,22 +1431,31 @@ class LayerActuationConfigurator(BasicEditor):
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
-        
+
+        # Button style - bigger and less rounded
+        button_style = "QPushButton { border-radius: 3px; padding: 8px 16px; }"
+
         save_btn = QPushButton(tr("LayerActuationConfigurator", "Save to Keyboard"))
-        save_btn.setMaximumWidth(150)
+        save_btn.setMinimumHeight(45)
+        save_btn.setMinimumWidth(180)
+        save_btn.setStyleSheet(button_style)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
-        
+
         load_btn = QPushButton(tr("LayerActuationConfigurator", "Load from Keyboard"))
-        load_btn.setMaximumWidth(150)
+        load_btn.setMinimumHeight(45)
+        load_btn.setMinimumWidth(210)
+        load_btn.setStyleSheet(button_style)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
-        
+
         reset_btn = QPushButton(tr("LayerActuationConfigurator", "Reset All to Defaults"))
-        reset_btn.setMaximumWidth(150)
+        reset_btn.setMinimumHeight(45)
+        reset_btn.setMinimumWidth(210)
+        reset_btn.setStyleSheet(button_style)
         reset_btn.clicked.connect(self.on_reset)
         buttons_layout.addWidget(reset_btn)
-        
+
         self.addLayout(buttons_layout)
     
     def create_master_group(self):
