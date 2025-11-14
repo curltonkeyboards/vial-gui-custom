@@ -2232,6 +2232,29 @@ class keycodes_v6:
         "LOOP_QUANTIZE": 0xCC55,
         "LOOP_BPM_DOUBLE": 0xCC56,
 
+        # Gaming Controller Keycodes (0xCC60-0xCC74)
+        "GAMING_MODE": 0xCC60,  # Toggle gaming mode
+        "XBOX_A": 0xCC61,  # A button (Button 0)
+        "XBOX_B": 0xCC62,  # B button (Button 1)
+        "XBOX_X": 0xCC63,  # X button (Button 2)
+        "XBOX_Y": 0xCC64,  # Y button (Button 3)
+        "XBOX_LB": 0xCC65,  # Left bumper (Button 4)
+        "XBOX_RB": 0xCC66,  # Right bumper (Button 5)
+        "XBOX_BACK": 0xCC67,  # Back/Select (Button 6)
+        "XBOX_START": 0xCC68,  # Start (Button 7)
+        "XBOX_L3": 0xCC69,  # Left stick click (Button 8)
+        "XBOX_R3": 0xCC6A,  # Right stick click (Button 9)
+        "LS_UP": 0xCC6B,  # Left stick up (Axis 1 negative)
+        "LS_DOWN": 0xCC6C,  # Left stick down (Axis 1 positive)
+        "LS_LEFT": 0xCC6D,  # Left stick left (Axis 0 negative)
+        "LS_RIGHT": 0xCC6E,  # Left stick right (Axis 0 positive)
+        "RS_UP": 0xCC6F,  # Right stick up (Axis 3 negative)
+        "RS_DOWN": 0xCC70,  # Right stick down (Axis 3 positive)
+        "RS_LEFT": 0xCC71,  # Right stick left (Axis 2 negative)
+        "RS_RIGHT": 0xCC72,  # Right stick right (Axis 2 positive)
+        "LT": 0xCC73,  # Left trigger (Axis 4)
+        "RT": 0xCC74,  # Right trigger (Axis 5)
+
         "QK_KB": 0xCC57, #custom keycodes safe range
         
         
