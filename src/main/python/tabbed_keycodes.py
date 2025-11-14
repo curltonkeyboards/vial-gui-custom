@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar
-from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
+from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap
 
 from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
@@ -11,7 +11,7 @@ from widgets.combo_box import ArrowComboBox
 from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, KEYCODES_BASIC, KEYCODES_SHIFTED, KEYCODES_CHORD_PROG_CONTROLS, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_C_CHORDPROG_BASIC_MINOR, KEYCODES_C_CHORDPROG_BASIC_MAJOR, KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_C_CHORDPROG_EXPERT_MINOR, KEYCODES_C_CHORDPROG_EXPERT_MAJOR, KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR, KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR, KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_D_CHORDPROG_BASIC_MINOR, KEYCODES_D_CHORDPROG_BASIC_MAJOR, KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_D_CHORDPROG_EXPERT_MINOR, KEYCODES_D_CHORDPROG_EXPERT_MAJOR, KEYCODES_E_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_E_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_E_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_E_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_E_CHORDPROG_BASIC_MINOR, KEYCODES_E_CHORDPROG_BASIC_MAJOR, KEYCODES_E_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_E_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_E_CHORDPROG_EXPERT_MINOR, KEYCODES_E_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_CHORDPROG_BASIC_MINOR, KEYCODES_F_CHORDPROG_BASIC_MAJOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_CHORDPROG_EXPERT_MINOR, KEYCODES_F_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_G_CHORDPROG_BASIC_MINOR, KEYCODES_G_CHORDPROG_BASIC_MAJOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_G_CHORDPROG_EXPERT_MINOR, KEYCODES_G_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_CHORDPROG_BASIC_MINOR, KEYCODES_A_CHORDPROG_BASIC_MAJOR, KEYCODES_A_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_A_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_CHORDPROG_EXPERT_MINOR, KEYCODES_A_CHORDPROG_EXPERT_MAJOR, KEYCODES_B_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_B_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_B_CHORDPROG_BASIC_MINOR, KEYCODES_B_CHORDPROG_BASIC_MAJOR, KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_B_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_B_CHORDPROG_EXPERT_MINOR, KEYCODES_B_CHORDPROG_EXPERT_MAJOR, \
-    KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, \
+    KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
@@ -3747,6 +3747,270 @@ def keycode_filter_masked(kc):
     return Keycode.is_basic(kc)
 
 
+class GamepadWidget(QWidget):
+    """Custom widget that displays a gamepad image as background"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(700, 400)
+
+        # Load the PS4 controller image
+        import os
+        # Get the path relative to this file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        image_path = os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png')
+        self.controller_image = QPixmap(image_path)
+
+        if self.controller_image.isNull():
+            print(f"Warning: Could not load controller image from {image_path}")
+
+    def paintEvent(self, event):
+        """Draw the gamepad image as background"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        if not self.controller_image.isNull():
+            # Scale image to fit widget while maintaining aspect ratio
+            scaled_image = self.controller_image.scaled(
+                self.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+
+            # Center the image
+            x = (self.width() - scaled_image.width()) // 2
+            y = (self.height() - scaled_image.height()) // 2
+
+            painter.drawPixmap(x, y, scaled_image)
+
+
+class GamingTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, gaming_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.gaming_keycodes = gaming_keycodes
+        self.current_keycode_filter = None
+
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        self.recreate_buttons()
+
+    def get_keycode(self, qmk_id):
+        """Helper to get keycode by qmk_id"""
+        for kc in self.gaming_keycodes:
+            if kc.qmk_id == qmk_id:
+                return kc
+        return None
+
+    def create_button(self, qmk_id, width=50, height=50):
+        """Create a button for a keycode"""
+        kc = self.get_keycode(qmk_id)
+        if not kc:
+            return None
+
+        btn = QPushButton(Keycode.label(kc.qmk_id))
+        btn.setFixedSize(width, height)
+        btn.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+        btn.keycode = kc
+        return btn
+
+    def recreate_buttons(self, keycode_filter=None):
+        """Recreate all buttons for the gaming controller layout"""
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing layout
+        while self.main_layout.count():
+            item = self.main_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
+
+        # Title
+        title = QLabel("Gaming Controller")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
+        self.main_layout.addWidget(title)
+
+        # Gaming Mode Toggle (at top)
+        gaming_mode_layout = QHBoxLayout()
+        gaming_mode_layout.addStretch()
+        gaming_mode_btn = self.create_button("GAMING_MODE", 100, 40)
+        if gaming_mode_btn:
+            gaming_mode_layout.addWidget(gaming_mode_btn)
+        gaming_mode_layout.addStretch()
+        self.main_layout.addLayout(gaming_mode_layout)
+
+        # Create gamepad widget with drawn outline
+        gamepad_widget = GamepadWidget()
+        gamepad_widget.setFixedSize(750, 500)
+
+        # Use absolute positioning for buttons on the gamepad
+        # We'll position buttons using move() after creating them as children of gamepad_widget
+
+        # Triggers (LT and RT) - at top
+        lt_btn = self.create_button("LT", 60, 35)
+        if lt_btn:
+            lt_btn.setParent(gamepad_widget)
+            lt_btn.move(120, 20)  # Top left
+
+        rt_btn = self.create_button("RT", 60, 35)
+        if rt_btn:
+            rt_btn.setParent(gamepad_widget)
+            rt_btn.move(570, 20)  # Top right
+
+        # Bumpers (LB and RB)
+        lb_btn = self.create_button("XBOX_LB", 60, 30)
+        if lb_btn:
+            lb_btn.setParent(gamepad_widget)
+            lb_btn.move(120, 60)
+
+        rb_btn = self.create_button("XBOX_RB", 60, 30)
+        if rb_btn:
+            rb_btn.setParent(gamepad_widget)
+            rb_btn.move(570, 60)
+
+        # D-pad (left side)
+        dpad_up = self.create_button("DPAD_UP", 38, 38)
+        if dpad_up:
+            dpad_up.setParent(gamepad_widget)
+            dpad_up.move(150, 180)
+
+        dpad_down = self.create_button("DPAD_DOWN", 38, 38)
+        if dpad_down:
+            dpad_down.setParent(gamepad_widget)
+            dpad_down.move(150, 256)
+
+        dpad_left = self.create_button("DPAD_LEFT", 38, 38)
+        if dpad_left:
+            dpad_left.setParent(gamepad_widget)
+            dpad_left.move(112, 218)
+
+        dpad_right = self.create_button("DPAD_RIGHT", 38, 38)
+        if dpad_right:
+            dpad_right.setParent(gamepad_widget)
+            dpad_right.move(188, 218)
+
+        # Left Analog Stick (next to D-pad)
+        ls_up = self.create_button("LS_UP", 38, 38)
+        if ls_up:
+            ls_up.setParent(gamepad_widget)
+            ls_up.move(260, 180)
+
+        ls_down = self.create_button("LS_DOWN", 38, 38)
+        if ls_down:
+            ls_down.setParent(gamepad_widget)
+            ls_down.move(260, 256)
+
+        ls_left = self.create_button("LS_LEFT", 38, 38)
+        if ls_left:
+            ls_left.setParent(gamepad_widget)
+            ls_left.move(222, 218)
+
+        ls_right = self.create_button("LS_RIGHT", 38, 38)
+        if ls_right:
+            ls_right.setParent(gamepad_widget)
+            ls_right.move(298, 218)
+
+        l3_btn = self.create_button("XBOX_L3", 38, 38)
+        if l3_btn:
+            l3_btn.setParent(gamepad_widget)
+            l3_btn.move(260, 218)  # Center
+
+        # Center buttons (Back and Start)
+        back_btn = self.create_button("XBOX_BACK", 50, 30)
+        if back_btn:
+            back_btn.setParent(gamepad_widget)
+            back_btn.move(320, 200)
+
+        start_btn = self.create_button("XBOX_START", 50, 30)
+        if start_btn:
+            start_btn.setParent(gamepad_widget)
+            start_btn.move(380, 200)
+
+        # Right Analog Stick
+        rs_up = self.create_button("RS_UP", 38, 38)
+        if rs_up:
+            rs_up.setParent(gamepad_widget)
+            rs_up.move(450, 240)
+
+        rs_down = self.create_button("RS_DOWN", 38, 38)
+        if rs_down:
+            rs_down.setParent(gamepad_widget)
+            rs_down.move(450, 316)
+
+        rs_left = self.create_button("RS_LEFT", 38, 38)
+        if rs_left:
+            rs_left.setParent(gamepad_widget)
+            rs_left.move(412, 278)
+
+        rs_right = self.create_button("RS_RIGHT", 38, 38)
+        if rs_right:
+            rs_right.setParent(gamepad_widget)
+            rs_right.move(488, 278)
+
+        r3_btn = self.create_button("XBOX_R3", 38, 38)
+        if r3_btn:
+            r3_btn.setParent(gamepad_widget)
+            r3_btn.move(450, 278)  # Center
+
+        # Face Buttons (right side) - Button 1-4
+        btn4 = self.create_button("XBOX_Y", 42, 42)
+        if btn4:
+            btn4.setText("Button\n4")
+            btn4.setParent(gamepad_widget)
+            btn4.move(570, 140)  # Top
+
+        btn3 = self.create_button("XBOX_X", 42, 42)
+        if btn3:
+            btn3.setText("Button\n3")
+            btn3.setParent(gamepad_widget)
+            btn3.move(528, 182)  # Left
+
+        btn2 = self.create_button("XBOX_B", 42, 42)
+        if btn2:
+            btn2.setText("Button\n2")
+            btn2.setParent(gamepad_widget)
+            btn2.move(612, 182)  # Right
+
+        btn1 = self.create_button("XBOX_A", 42, 42)
+        if btn1:
+            btn1.setText("Button\n1")
+            btn1.setParent(gamepad_widget)
+            btn1.move(570, 224)  # Bottom
+
+        self.main_layout.addWidget(gamepad_widget)
+        self.main_layout.addStretch()
+
+    def clear_layout(self, layout):
+        """Helper to clear a layout recursively"""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
+
+    def has_buttons(self):
+        """Check if tab has any buttons"""
+        return len(self.gaming_keycodes) > 0
+
+    def relabel_buttons(self):
+        """Relabel all buttons (called when keymap changes)"""
+        self.recreate_buttons(self.current_keycode_filter)
+
+
 class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -3777,6 +4041,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             LoopTab(self, "Loop Control", KEYCODES_LOOP_BUTTONS),  # ADD THIS LINE
+            GamingTab(self, "Gaming", KEYCODES_GAMING),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
             EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
