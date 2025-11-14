@@ -3756,13 +3756,34 @@ class GamepadWidget(QWidget):
 
         # Load the PS4 controller image
         import os
-        # Get the path relative to this file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png')
-        self.controller_image = QPixmap(image_path)
+
+        # Try multiple possible paths
+        possible_paths = [
+            # Relative to this Python file
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources', 'images', 'ps4_controller.png'),
+            # Absolute path from project root
+            '/home/user/vial-gui-custom/src/main/resources/images/ps4_controller.png',
+            # Relative from current working directory
+            'src/main/resources/images/ps4_controller.png',
+        ]
+
+        self.controller_image = QPixmap()
+        for image_path in possible_paths:
+            abs_path = os.path.abspath(image_path)
+            if os.path.exists(abs_path):
+                self.controller_image = QPixmap(abs_path)
+                if not self.controller_image.isNull():
+                    print(f"Successfully loaded controller image from: {abs_path}")
+                    break
+                else:
+                    print(f"Path exists but failed to load as QPixmap: {abs_path}")
+            else:
+                print(f"Path does not exist: {abs_path}")
 
         if self.controller_image.isNull():
-            print(f"Warning: Could not load controller image from {image_path}")
+            print(f"ERROR: Could not load controller image from any path!")
+            print(f"Tried paths: {[os.path.abspath(p) for p in possible_paths]}")
+
 
     def paintEvent(self, event):
         """Draw the gamepad image as background"""
