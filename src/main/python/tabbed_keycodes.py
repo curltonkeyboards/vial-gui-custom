@@ -3754,6 +3754,10 @@ class GamepadWidget(QWidget):
         super().__init__(parent)
         self.setMinimumSize(700, 400)
 
+        # Enable custom background painting
+        self.setAttribute(Qt.WA_StyledBackground, False)
+        self.setAutoFillBackground(False)
+
         # Load the PS4 controller image
         import os
         # Get the path relative to this file
@@ -3763,11 +3767,16 @@ class GamepadWidget(QWidget):
 
         if self.controller_image.isNull():
             print(f"Warning: Could not load controller image from {image_path}")
+        else:
+            print(f"Successfully loaded controller image: {image_path} ({self.controller_image.width()}x{self.controller_image.height()})")
 
     def paintEvent(self, event):
         """Draw the gamepad image as background"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+
+        # Fill background with a light color
+        painter.fillRect(self.rect(), QColor(240, 240, 240))
 
         if not self.controller_image.isNull():
             # Scale image to fit widget while maintaining aspect ratio
