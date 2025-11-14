@@ -87,89 +87,70 @@ class ThruLoopConfigurator(BasicEditor):
             basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
             self.restart_combos.append(combo)
         
-        # Main Functions - Using QTableWidget
+        # Main Functions - Using clean grid layout
         main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         main_layout.addWidget(main_group)
-        main_group_layout = QVBoxLayout()
-        main_group.setLayout(main_group_layout)
+        main_grid = QGridLayout()
+        main_grid.setSpacing(8)
+        main_grid.setContentsMargins(10, 15, 10, 10)
+        main_group.setLayout(main_grid)
         self.main_group = main_group
 
-        # Create table
-        self.main_table = QTableWidget(5, 4)
-        self.main_table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
-        self.main_table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
-        ])
+        # Add column headers
+        for col in range(4):
+            header = QLabel(f"Loop {col + 1}")
+            header.setAlignment(QtCore.Qt.AlignCenter)
+            header.setStyleSheet("font-weight: bold;")
+            main_grid.addWidget(header, 0, col + 1)
 
-        # Fill table with CC combos
+        # Add function rows
+        functions = ["Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"]
         self.main_combos = []
-        for row in range(5):
+        for row_idx, func_name in enumerate(functions):
+            # Row label
+            label = QLabel(func_name)
+            label.setStyleSheet("font-weight: bold;")
+            main_grid.addWidget(label, row_idx + 1, 0)
+
+            # Combo boxes for each loop
             row_combos = []
-            for col in range(4):
+            for col_idx in range(4):
                 combo = self.create_cc_combo(for_table=True)
-                self.main_table.setCellWidget(row, col, combo)
+                main_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.main_combos.append(row_combos)
 
-        # Configure table appearance
-        self.main_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.main_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.main_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.main_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.main_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
-        # Make table square (no rounded edges)
-        self.main_table.setStyleSheet("QTableWidget { border-radius: 0px; }")
-
-        # Set fixed height
-        header_height = self.main_table.horizontalHeader().height()
-        row_height = 30 * 5  # 5 rows at 30px each
-        frame_width = self.main_table.frameWidth() * 2
-        self.main_table.setFixedHeight(header_height + row_height + frame_width)
-
-        main_group_layout.addWidget(self.main_table)
-
-        # Overdub Functions - Using QTableWidget
+        # Overdub Functions - Using clean grid layout
         overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
         main_layout.addWidget(overdub_group)
-        overdub_group_layout = QVBoxLayout()
-        overdub_group.setLayout(overdub_group_layout)
+        overdub_grid = QGridLayout()
+        overdub_grid.setSpacing(8)
+        overdub_grid.setContentsMargins(10, 15, 10, 10)
+        overdub_group.setLayout(overdub_grid)
         self.overdub_group = overdub_group
 
-        # Create table
-        self.overdub_table = QTableWidget(5, 4)
-        self.overdub_table.setHorizontalHeaderLabels([f"Loop {i+1}" for i in range(4)])
-        self.overdub_table.setVerticalHeaderLabels([
-            "Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"
-        ])
+        # Add column headers
+        for col in range(4):
+            header = QLabel(f"Loop {col + 1}")
+            header.setAlignment(QtCore.Qt.AlignCenter)
+            header.setStyleSheet("font-weight: bold;")
+            overdub_grid.addWidget(header, 0, col + 1)
 
-        # Fill table with CC combos
+        # Add function rows
         self.overdub_combos = []
-        for row in range(5):
+        for row_idx, func_name in enumerate(functions):
+            # Row label
+            label = QLabel(func_name)
+            label.setStyleSheet("font-weight: bold;")
+            overdub_grid.addWidget(label, row_idx + 1, 0)
+
+            # Combo boxes for each loop
             row_combos = []
-            for col in range(4):
+            for col_idx in range(4):
                 combo = self.create_cc_combo(for_table=True)
-                self.overdub_table.setCellWidget(row, col, combo)
+                overdub_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.overdub_combos.append(row_combos)
-
-        # Configure table appearance
-        self.overdub_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.overdub_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.overdub_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.overdub_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.overdub_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
-        # Make table square (no rounded edges)
-        self.overdub_table.setStyleSheet("QTableWidget { border-radius: 0px; }")
-
-        # Set fixed height
-        header_height = self.overdub_table.horizontalHeader().height()
-        row_height = 30 * 5  # 5 rows at 30px each
-        frame_width = self.overdub_table.frameWidth() * 2
-        self.overdub_table.setFixedHeight(header_height + row_height + frame_width)
-
-        overdub_group_layout.addWidget(self.overdub_table)
         
         # LoopChop Settings
         loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
