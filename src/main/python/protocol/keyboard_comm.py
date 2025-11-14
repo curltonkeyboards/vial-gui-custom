@@ -117,6 +117,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_rgb()
         self.reload_layer_rgb_support()
         self.reload_settings()
+        self.reload_thruloop_config()
+        self.reload_midi_config()
+        self.reload_layer_actuations()
 
         self.reload_dynamic()
 

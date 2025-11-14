@@ -461,3 +461,16 @@ class ThruLoopConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
+        self.update_from_keyboard()
+
+    def update_from_keyboard(self):
+        """Load ThruLoop settings from keyboard and update UI"""
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+
+        # Get fresh config from keyboard (same pattern as actuation configurator)
+        config = self.device.keyboard.get_thruloop_config()
+
+        # Apply the config to UI
+        if config:
+            self.apply_config(config)

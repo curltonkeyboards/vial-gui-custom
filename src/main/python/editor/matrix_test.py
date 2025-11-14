@@ -2377,12 +2377,13 @@ class LayerActuationConfigurator(BasicEditor):
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
-    
+
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
-    
+        self.on_load_from_keyboard_silent()
+
     def on_load_from_keyboard_silent(self):
         """Load settings without showing success message"""
         if not self.device or not isinstance(self.device, VialKeyboard):
