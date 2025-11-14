@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
 from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush
 
 from constants import KEYCODE_BTN_RATIO
@@ -11,7 +11,7 @@ from widgets.combo_box import ArrowComboBox
 from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, KEYCODES_BASIC, KEYCODES_SHIFTED, KEYCODES_CHORD_PROG_CONTROLS, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_C_CHORDPROG_BASIC_MINOR, KEYCODES_C_CHORDPROG_BASIC_MAJOR, KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_C_CHORDPROG_EXPERT_MINOR, KEYCODES_C_CHORDPROG_EXPERT_MAJOR, KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR, KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR, KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_D_CHORDPROG_BASIC_MINOR, KEYCODES_D_CHORDPROG_BASIC_MAJOR, KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_D_CHORDPROG_EXPERT_MINOR, KEYCODES_D_CHORDPROG_EXPERT_MAJOR, KEYCODES_E_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_E_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_E_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_E_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_E_CHORDPROG_BASIC_MINOR, KEYCODES_E_CHORDPROG_BASIC_MAJOR, KEYCODES_E_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_E_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_E_CHORDPROG_EXPERT_MINOR, KEYCODES_E_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_CHORDPROG_BASIC_MINOR, KEYCODES_F_CHORDPROG_BASIC_MAJOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_CHORDPROG_EXPERT_MINOR, KEYCODES_F_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_G_CHORDPROG_BASIC_MINOR, KEYCODES_G_CHORDPROG_BASIC_MAJOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_G_CHORDPROG_EXPERT_MINOR, KEYCODES_G_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_CHORDPROG_BASIC_MINOR, KEYCODES_A_CHORDPROG_BASIC_MAJOR, KEYCODES_A_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_A_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_CHORDPROG_EXPERT_MINOR, KEYCODES_A_CHORDPROG_EXPERT_MAJOR, KEYCODES_B_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_B_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_B_CHORDPROG_BASIC_MINOR, KEYCODES_B_CHORDPROG_BASIC_MAJOR, KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_B_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_B_CHORDPROG_EXPERT_MINOR, KEYCODES_B_CHORDPROG_EXPERT_MAJOR, \
-    KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, \
+    KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
@@ -3747,6 +3747,240 @@ def keycode_filter_masked(kc):
     return Keycode.is_basic(kc)
 
 
+class GamingTab(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, gaming_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.gaming_keycodes = gaming_keycodes
+        self.current_keycode_filter = None
+
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        self.recreate_buttons()
+
+    def get_keycode(self, qmk_id):
+        """Helper to get keycode by qmk_id"""
+        for kc in self.gaming_keycodes:
+            if kc.qmk_id == qmk_id:
+                return kc
+        return None
+
+    def create_button(self, qmk_id, width=50, height=50):
+        """Create a button for a keycode"""
+        kc = self.get_keycode(qmk_id)
+        if not kc:
+            return None
+
+        btn = QPushButton(Keycode.label(kc.qmk_id))
+        btn.setFixedSize(width, height)
+        btn.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+        btn.keycode = kc
+        return btn
+
+    def recreate_buttons(self, keycode_filter=None):
+        """Recreate all buttons for the gaming controller layout"""
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing layout
+        while self.main_layout.count():
+            item = self.main_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
+
+        # Title
+        title = QLabel("Gaming Controller")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
+        self.main_layout.addWidget(title)
+
+        # Gaming Mode Toggle (at top)
+        gaming_mode_layout = QHBoxLayout()
+        gaming_mode_layout.addStretch()
+        gaming_mode_btn = self.create_button("GAMING_MODE", 100, 40)
+        if gaming_mode_btn:
+            gaming_mode_layout.addWidget(gaming_mode_btn)
+        gaming_mode_layout.addStretch()
+        self.main_layout.addLayout(gaming_mode_layout)
+
+        # Main controller container
+        controller_layout = QVBoxLayout()
+        controller_layout.setSpacing(15)
+
+        # Top Row: Triggers (LT and RT)
+        triggers_layout = QHBoxLayout()
+        triggers_layout.addStretch()
+        lt_btn = self.create_button("LT", 60, 35)
+        if lt_btn:
+            triggers_layout.addWidget(lt_btn)
+        triggers_layout.addSpacing(200)
+        rt_btn = self.create_button("RT", 60, 35)
+        if rt_btn:
+            triggers_layout.addWidget(rt_btn)
+        triggers_layout.addStretch()
+        controller_layout.addLayout(triggers_layout)
+
+        # Second Row: Bumpers (LB and RB)
+        bumpers_layout = QHBoxLayout()
+        bumpers_layout.addStretch()
+        lb_btn = self.create_button("XBOX_LB", 60, 30)
+        if lb_btn:
+            bumpers_layout.addWidget(lb_btn)
+        bumpers_layout.addSpacing(200)
+        rb_btn = self.create_button("XBOX_RB", 60, 30)
+        if rb_btn:
+            bumpers_layout.addWidget(rb_btn)
+        bumpers_layout.addStretch()
+        controller_layout.addLayout(bumpers_layout)
+
+        # Middle Row: Analog sticks and face buttons
+        middle_layout = QHBoxLayout()
+        middle_layout.addStretch()
+
+        # Left Analog Stick (D-pad style)
+        left_stick_container = QVBoxLayout()
+        left_stick_label = QLabel("Left Stick")
+        left_stick_label.setAlignment(Qt.AlignCenter)
+        left_stick_container.addWidget(left_stick_label)
+
+        left_stick = QGridLayout()
+        left_stick.setSpacing(2)
+        ls_up = self.create_button("LS_UP", 45, 45)
+        ls_down = self.create_button("LS_DOWN", 45, 45)
+        ls_left = self.create_button("LS_LEFT", 45, 45)
+        ls_right = self.create_button("LS_RIGHT", 45, 45)
+
+        if ls_up:
+            left_stick.addWidget(ls_up, 0, 1)
+        if ls_left:
+            left_stick.addWidget(ls_left, 1, 0)
+        if ls_right:
+            left_stick.addWidget(ls_right, 1, 2)
+        if ls_down:
+            left_stick.addWidget(ls_down, 2, 1)
+
+        # L3 button (below left stick)
+        l3_btn = self.create_button("XBOX_L3", 45, 30)
+        if l3_btn:
+            left_stick.addWidget(l3_btn, 3, 1)
+
+        left_stick_container.addLayout(left_stick)
+        middle_layout.addLayout(left_stick_container)
+
+        # Center buttons (Back and Start)
+        center_layout = QVBoxLayout()
+        center_layout.setSpacing(10)
+        center_layout.addStretch()
+
+        back_btn = self.create_button("XBOX_BACK", 50, 30)
+        if back_btn:
+            center_layout.addWidget(back_btn, alignment=Qt.AlignCenter)
+
+        start_btn = self.create_button("XBOX_START", 50, 30)
+        if start_btn:
+            center_layout.addWidget(start_btn, alignment=Qt.AlignCenter)
+
+        center_layout.addStretch()
+        middle_layout.addLayout(center_layout)
+
+        # Right Analog Stick and Face Buttons Container
+        right_container = QHBoxLayout()
+
+        # Right Analog Stick (D-pad style)
+        right_stick_container = QVBoxLayout()
+        right_stick_label = QLabel("Right Stick")
+        right_stick_label.setAlignment(Qt.AlignCenter)
+        right_stick_container.addWidget(right_stick_label)
+
+        right_stick = QGridLayout()
+        right_stick.setSpacing(2)
+        rs_up = self.create_button("RS_UP", 45, 45)
+        rs_down = self.create_button("RS_DOWN", 45, 45)
+        rs_left = self.create_button("RS_LEFT", 45, 45)
+        rs_right = self.create_button("RS_RIGHT", 45, 45)
+
+        if rs_up:
+            right_stick.addWidget(rs_up, 0, 1)
+        if rs_left:
+            right_stick.addWidget(rs_left, 1, 0)
+        if rs_right:
+            right_stick.addWidget(rs_right, 1, 2)
+        if rs_down:
+            right_stick.addWidget(rs_down, 2, 1)
+
+        # R3 button (below right stick)
+        r3_btn = self.create_button("XBOX_R3", 45, 30)
+        if r3_btn:
+            right_stick.addWidget(r3_btn, 3, 1)
+
+        right_stick_container.addLayout(right_stick)
+        right_container.addLayout(right_stick_container)
+
+        # Spacing between right stick and face buttons
+        right_container.addSpacing(30)
+
+        # Face Buttons (ABXY diamond layout)
+        face_buttons_container = QVBoxLayout()
+        face_label = QLabel("Face Buttons")
+        face_label.setAlignment(Qt.AlignCenter)
+        face_buttons_container.addWidget(face_label)
+
+        face_buttons = QGridLayout()
+        face_buttons.setSpacing(2)
+        y_btn = self.create_button("XBOX_Y", 50, 50)
+        x_btn = self.create_button("XBOX_X", 50, 50)
+        b_btn = self.create_button("XBOX_B", 50, 50)
+        a_btn = self.create_button("XBOX_A", 50, 50)
+
+        if y_btn:
+            face_buttons.addWidget(y_btn, 0, 1)
+        if x_btn:
+            face_buttons.addWidget(x_btn, 1, 0)
+        if b_btn:
+            face_buttons.addWidget(b_btn, 1, 2)
+        if a_btn:
+            face_buttons.addWidget(a_btn, 2, 1)
+
+        face_buttons_container.addLayout(face_buttons)
+        right_container.addLayout(face_buttons_container)
+
+        middle_layout.addLayout(right_container)
+        middle_layout.addStretch()
+        controller_layout.addLayout(middle_layout)
+
+        self.main_layout.addLayout(controller_layout)
+        self.main_layout.addStretch()
+
+    def clear_layout(self, layout):
+        """Helper to clear a layout recursively"""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
+
+    def has_buttons(self):
+        """Check if tab has any buttons"""
+        return len(self.gaming_keycodes) > 0
+
+    def relabel_buttons(self):
+        """Relabel all buttons (called when keymap changes)"""
+        self.recreate_buttons(self.current_keycode_filter)
+
+
 class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -3777,6 +4011,7 @@ class FilteredTabbedKeycodes(QTabWidget):
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             LoopTab(self, "Loop Control", KEYCODES_LOOP_BUTTONS),  # ADD THIS LINE
+            GamingTab(self, "Gaming", KEYCODES_GAMING),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
             EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
