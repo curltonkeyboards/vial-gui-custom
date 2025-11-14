@@ -3747,6 +3747,60 @@ def keycode_filter_masked(kc):
     return Keycode.is_basic(kc)
 
 
+class GamepadWidget(QWidget):
+    """Custom widget that draws a gamepad outline"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(700, 400)
+
+    def paintEvent(self, event):
+        """Draw the gamepad outline"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Set pen for drawing lines
+        pen = QPen(QColor(100, 100, 100), 3)
+        painter.setPen(pen)
+
+        # Draw main controller body (rounded rectangle)
+        body_rect = self.rect().adjusted(50, 50, -50, -50)
+        painter.drawRoundedRect(body_rect, 30, 30)
+
+        # Draw left grip (angled line down and out)
+        left_grip_start_x = body_rect.left() + 80
+        left_grip_start_y = body_rect.bottom()
+        painter.drawLine(left_grip_start_x, left_grip_start_y,
+                        left_grip_start_x - 30, left_grip_start_y + 40)
+        painter.drawLine(left_grip_start_x - 30, left_grip_start_y + 40,
+                        left_grip_start_x - 25, left_grip_start_y + 60)
+
+        # Draw right grip (angled line down and out)
+        right_grip_start_x = body_rect.right() - 80
+        right_grip_start_y = body_rect.bottom()
+        painter.drawLine(right_grip_start_x, right_grip_start_y,
+                        right_grip_start_x + 30, right_grip_start_y + 40)
+        painter.drawLine(right_grip_start_x + 30, right_grip_start_y + 40,
+                        right_grip_start_x + 25, right_grip_start_y + 60)
+
+        # Connect the grips at bottom
+        painter.drawLine(left_grip_start_x - 25, left_grip_start_y + 60,
+                        right_grip_start_x + 25, right_grip_start_y + 60)
+
+        # Draw shoulder button areas (top bumps)
+        # Left shoulder
+        painter.drawLine(body_rect.left(), body_rect.top(),
+                        body_rect.left() + 100, body_rect.top() - 20)
+        painter.drawLine(body_rect.left() + 100, body_rect.top() - 20,
+                        body_rect.left() + 120, body_rect.top())
+
+        # Right shoulder
+        painter.drawLine(body_rect.right(), body_rect.top(),
+                        body_rect.right() - 100, body_rect.top() - 20)
+        painter.drawLine(body_rect.right() - 100, body_rect.top() - 20,
+                        body_rect.right() - 120, body_rect.top())
+
+
 class GamingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -3815,196 +3869,145 @@ class GamingTab(QScrollArea):
         gaming_mode_layout.addStretch()
         self.main_layout.addLayout(gaming_mode_layout)
 
-        # Create controller container with border
-        controller_container = QFrame()
-        controller_container.setFrameStyle(QFrame.Box | QFrame.Raised)
-        controller_container.setLineWidth(2)
-        controller_container.setStyleSheet("QFrame { border: 2px solid #666; border-radius: 15px; background-color: #f0f0f0; padding: 10px; }")
+        # Create gamepad widget with drawn outline
+        gamepad_widget = GamepadWidget()
+        gamepad_widget.setFixedSize(750, 500)
 
-        controller_layout = QVBoxLayout(controller_container)
-        controller_layout.setSpacing(15)
-        controller_layout.setContentsMargins(20, 20, 20, 20)
+        # Use absolute positioning for buttons on the gamepad
+        # We'll position buttons using move() after creating them as children of gamepad_widget
 
-        # Top Row: Triggers (LT and RT)
-        triggers_layout = QHBoxLayout()
-        triggers_layout.addStretch()
+        # Triggers (LT and RT) - at top
         lt_btn = self.create_button("LT", 60, 35)
         if lt_btn:
-            triggers_layout.addWidget(lt_btn)
-        triggers_layout.addSpacing(300)
+            lt_btn.setParent(gamepad_widget)
+            lt_btn.move(120, 20)  # Top left
+
         rt_btn = self.create_button("RT", 60, 35)
         if rt_btn:
-            triggers_layout.addWidget(rt_btn)
-        triggers_layout.addStretch()
-        controller_layout.addLayout(triggers_layout)
+            rt_btn.setParent(gamepad_widget)
+            rt_btn.move(570, 20)  # Top right
 
-        # Second Row: Bumpers (LB and RB)
-        bumpers_layout = QHBoxLayout()
-        bumpers_layout.addStretch()
+        # Bumpers (LB and RB)
         lb_btn = self.create_button("XBOX_LB", 60, 30)
         if lb_btn:
-            bumpers_layout.addWidget(lb_btn)
-        bumpers_layout.addSpacing(300)
+            lb_btn.setParent(gamepad_widget)
+            lb_btn.move(120, 60)
+
         rb_btn = self.create_button("XBOX_RB", 60, 30)
         if rb_btn:
-            bumpers_layout.addWidget(rb_btn)
-        bumpers_layout.addStretch()
-        controller_layout.addLayout(bumpers_layout)
+            rb_btn.setParent(gamepad_widget)
+            rb_btn.move(570, 60)
 
-        # Middle Row: D-pad, Left Stick, Center buttons, Right Stick, Face buttons
-        middle_layout = QHBoxLayout()
-        middle_layout.addStretch()
-
-        # Left side container (D-pad and Left Stick)
-        left_side = QHBoxLayout()
-        left_side.setSpacing(20)
-
-        # D-pad Section
-        dpad_container = QVBoxLayout()
-        dpad_label = QLabel("D-Pad")
-        dpad_label.setAlignment(Qt.AlignCenter)
-        dpad_label.setStyleSheet("font-weight: bold; font-size: 11px;")
-        dpad_container.addWidget(dpad_label)
-
-        dpad_grid = QGridLayout()
-        dpad_grid.setSpacing(2)
-        dpad_up = self.create_button("DPAD_UP", 40, 40)
-        dpad_down = self.create_button("DPAD_DOWN", 40, 40)
-        dpad_left = self.create_button("DPAD_LEFT", 40, 40)
-        dpad_right = self.create_button("DPAD_RIGHT", 40, 40)
-
+        # D-pad (left side)
+        dpad_up = self.create_button("DPAD_UP", 38, 38)
         if dpad_up:
-            dpad_grid.addWidget(dpad_up, 0, 1)
-        if dpad_left:
-            dpad_grid.addWidget(dpad_left, 1, 0)
-        if dpad_right:
-            dpad_grid.addWidget(dpad_right, 1, 2)
+            dpad_up.setParent(gamepad_widget)
+            dpad_up.move(150, 180)
+
+        dpad_down = self.create_button("DPAD_DOWN", 38, 38)
         if dpad_down:
-            dpad_grid.addWidget(dpad_down, 2, 1)
+            dpad_down.setParent(gamepad_widget)
+            dpad_down.move(150, 256)
 
-        dpad_container.addLayout(dpad_grid)
-        left_side.addLayout(dpad_container)
+        dpad_left = self.create_button("DPAD_LEFT", 38, 38)
+        if dpad_left:
+            dpad_left.setParent(gamepad_widget)
+            dpad_left.move(112, 218)
 
-        # Left Analog Stick
-        left_stick_container = QVBoxLayout()
-        left_stick_label = QLabel("Left Stick")
-        left_stick_label.setAlignment(Qt.AlignCenter)
-        left_stick_label.setStyleSheet("font-weight: bold; font-size: 11px;")
-        left_stick_container.addWidget(left_stick_label)
+        dpad_right = self.create_button("DPAD_RIGHT", 38, 38)
+        if dpad_right:
+            dpad_right.setParent(gamepad_widget)
+            dpad_right.move(188, 218)
 
-        left_stick = QGridLayout()
-        left_stick.setSpacing(2)
-        ls_up = self.create_button("LS_UP", 40, 40)
-        ls_down = self.create_button("LS_DOWN", 40, 40)
-        ls_left = self.create_button("LS_LEFT", 40, 40)
-        ls_right = self.create_button("LS_RIGHT", 40, 40)
-        l3_btn = self.create_button("XBOX_L3", 40, 40)  # In center
-
+        # Left Analog Stick (next to D-pad)
+        ls_up = self.create_button("LS_UP", 38, 38)
         if ls_up:
-            left_stick.addWidget(ls_up, 0, 1)
-        if ls_left:
-            left_stick.addWidget(ls_left, 1, 0)
-        # L3 in the center
-        if l3_btn:
-            left_stick.addWidget(l3_btn, 1, 1)
-        if ls_right:
-            left_stick.addWidget(ls_right, 1, 2)
+            ls_up.setParent(gamepad_widget)
+            ls_up.move(260, 180)
+
+        ls_down = self.create_button("LS_DOWN", 38, 38)
         if ls_down:
-            left_stick.addWidget(ls_down, 2, 1)
+            ls_down.setParent(gamepad_widget)
+            ls_down.move(260, 256)
 
-        left_stick_container.addLayout(left_stick)
-        left_side.addLayout(left_stick_container)
+        ls_left = self.create_button("LS_LEFT", 38, 38)
+        if ls_left:
+            ls_left.setParent(gamepad_widget)
+            ls_left.move(222, 218)
 
-        middle_layout.addLayout(left_side)
+        ls_right = self.create_button("LS_RIGHT", 38, 38)
+        if ls_right:
+            ls_right.setParent(gamepad_widget)
+            ls_right.move(298, 218)
+
+        l3_btn = self.create_button("XBOX_L3", 38, 38)
+        if l3_btn:
+            l3_btn.setParent(gamepad_widget)
+            l3_btn.move(260, 218)  # Center
 
         # Center buttons (Back and Start)
-        center_layout = QVBoxLayout()
-        center_layout.setSpacing(15)
-        center_layout.addStretch()
-
         back_btn = self.create_button("XBOX_BACK", 50, 30)
         if back_btn:
-            center_layout.addWidget(back_btn, alignment=Qt.AlignCenter)
+            back_btn.setParent(gamepad_widget)
+            back_btn.move(320, 200)
 
         start_btn = self.create_button("XBOX_START", 50, 30)
         if start_btn:
-            center_layout.addWidget(start_btn, alignment=Qt.AlignCenter)
-
-        center_layout.addStretch()
-        middle_layout.addLayout(center_layout)
-
-        # Right side container (Right Stick and Face Buttons)
-        right_side = QHBoxLayout()
-        right_side.setSpacing(20)
+            start_btn.setParent(gamepad_widget)
+            start_btn.move(380, 200)
 
         # Right Analog Stick
-        right_stick_container = QVBoxLayout()
-        right_stick_label = QLabel("Right Stick")
-        right_stick_label.setAlignment(Qt.AlignCenter)
-        right_stick_label.setStyleSheet("font-weight: bold; font-size: 11px;")
-        right_stick_container.addWidget(right_stick_label)
-
-        right_stick = QGridLayout()
-        right_stick.setSpacing(2)
-        rs_up = self.create_button("RS_UP", 40, 40)
-        rs_down = self.create_button("RS_DOWN", 40, 40)
-        rs_left = self.create_button("RS_LEFT", 40, 40)
-        rs_right = self.create_button("RS_RIGHT", 40, 40)
-        r3_btn = self.create_button("XBOX_R3", 40, 40)  # In center
-
+        rs_up = self.create_button("RS_UP", 38, 38)
         if rs_up:
-            right_stick.addWidget(rs_up, 0, 1)
-        if rs_left:
-            right_stick.addWidget(rs_left, 1, 0)
-        # R3 in the center
-        if r3_btn:
-            right_stick.addWidget(r3_btn, 1, 1)
-        if rs_right:
-            right_stick.addWidget(rs_right, 1, 2)
+            rs_up.setParent(gamepad_widget)
+            rs_up.move(450, 240)
+
+        rs_down = self.create_button("RS_DOWN", 38, 38)
         if rs_down:
-            right_stick.addWidget(rs_down, 2, 1)
+            rs_down.setParent(gamepad_widget)
+            rs_down.move(450, 316)
 
-        right_stick_container.addLayout(right_stick)
-        right_side.addLayout(right_stick_container)
+        rs_left = self.create_button("RS_LEFT", 38, 38)
+        if rs_left:
+            rs_left.setParent(gamepad_widget)
+            rs_left.move(412, 278)
 
-        # Face Buttons (Change labels to Button 1-4)
-        face_buttons_container = QVBoxLayout()
-        face_label = QLabel("Face Buttons")
-        face_label.setAlignment(Qt.AlignCenter)
-        face_label.setStyleSheet("font-weight: bold; font-size: 11px;")
-        face_buttons_container.addWidget(face_label)
+        rs_right = self.create_button("RS_RIGHT", 38, 38)
+        if rs_right:
+            rs_right.setParent(gamepad_widget)
+            rs_right.move(488, 278)
 
-        face_buttons = QGridLayout()
-        face_buttons.setSpacing(2)
+        r3_btn = self.create_button("XBOX_R3", 38, 38)
+        if r3_btn:
+            r3_btn.setParent(gamepad_widget)
+            r3_btn.move(450, 278)  # Center
 
-        # Create buttons with custom labels
-        btn4 = self.create_button("XBOX_Y", 45, 45)  # Button 4 (top)
-        btn3 = self.create_button("XBOX_X", 45, 45)  # Button 3 (left)
-        btn2 = self.create_button("XBOX_B", 45, 45)  # Button 2 (right)
-        btn1 = self.create_button("XBOX_A", 45, 45)  # Button 1 (bottom)
-
-        # Override labels to show Button numbers instead of ABXY
+        # Face Buttons (right side) - Button 1-4
+        btn4 = self.create_button("XBOX_Y", 42, 42)
         if btn4:
             btn4.setText("Button\n4")
-            face_buttons.addWidget(btn4, 0, 1)
+            btn4.setParent(gamepad_widget)
+            btn4.move(570, 140)  # Top
+
+        btn3 = self.create_button("XBOX_X", 42, 42)
         if btn3:
             btn3.setText("Button\n3")
-            face_buttons.addWidget(btn3, 1, 0)
+            btn3.setParent(gamepad_widget)
+            btn3.move(528, 182)  # Left
+
+        btn2 = self.create_button("XBOX_B", 42, 42)
         if btn2:
             btn2.setText("Button\n2")
-            face_buttons.addWidget(btn2, 1, 2)
+            btn2.setParent(gamepad_widget)
+            btn2.move(612, 182)  # Right
+
+        btn1 = self.create_button("XBOX_A", 42, 42)
         if btn1:
             btn1.setText("Button\n1")
-            face_buttons.addWidget(btn1, 2, 1)
+            btn1.setParent(gamepad_widget)
+            btn1.move(570, 224)  # Bottom
 
-        face_buttons_container.addLayout(face_buttons)
-        right_side.addLayout(face_buttons_container)
-
-        middle_layout.addLayout(right_side)
-        middle_layout.addStretch()
-        controller_layout.addLayout(middle_layout)
-
-        self.main_layout.addWidget(controller_container)
+        self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
 
     def clear_layout(self, layout):

@@ -3120,11 +3120,11 @@ KEYCODES_GAMING = [
     # Toggle gaming mode
     K("GAMING_MODE", "Gaming\nMode", "Toggle gaming mode (auto-maps WASD to left stick + arrows to D-pad)"),
 
-    # Digital Buttons (Face buttons - ABXY)
-    K("XBOX_A", "A", "A button (Button 0)"),
-    K("XBOX_B", "B", "B button (Button 1)"),
-    K("XBOX_X", "X", "X button (Button 2)"),
-    K("XBOX_Y", "Y", "Y button (Button 3)"),
+    # Digital Buttons (Face buttons)
+    K("XBOX_A", "Button\n1", "Button 1 (Button 0)"),
+    K("XBOX_B", "Button\n2", "Button 2 (Button 1)"),
+    K("XBOX_X", "Button\n3", "Button 3 (Button 2)"),
+    K("XBOX_Y", "Button\n4", "Button 4 (Button 3)"),
 
     # Shoulder Buttons
     K("XBOX_LB", "LB", "Left bumper (Button 4)"),
