@@ -4011,6 +4011,221 @@ class GamingTab(QScrollArea):
         self.recreate_buttons(self.current_keycode_filter)
 
 
+class KeyboardTab(QWidget):
+    """Nested tab container for Keyboard-related tabs"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.label = "Keyboard"
+        self.parent_widget = parent
+        self.current_keycode_filter = keycode_filter_any
+
+        # Create nested tab widget
+        self.nested_tabs = QTabWidget()
+
+        # Create the individual tabs
+        self.basic_tab = Tab(parent, "Basic", [
+            (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
+            (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
+            (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
+            (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
+        ], prefix_buttons=[("Any", -1)])
+
+        self.iso_tab = Tab(parent, "ISO/JIS", [
+            (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
+            (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
+            (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
+             KEYCODES_ISO_KR),
+            (None, KEYCODES_ISO),
+        ], prefix_buttons=[("Any", -1)])
+
+        self.app_tab = SimpleTab(parent, "App, Media and Mouse", KEYCODES_MEDIA)
+        self.advanced_tab = SimpleTab(parent, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM)
+
+        # Connect signals
+        self.basic_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.iso_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.app_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.advanced_tab.keycode_changed.connect(self.on_keycode_changed)
+
+        # Setup layout
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.nested_tabs)
+        self.setLayout(layout)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing tabs
+        while self.nested_tabs.count() > 0:
+            self.nested_tabs.removeTab(0)
+
+        # Recreate buttons for each tab and add if they have content
+        tabs = [
+            (self.basic_tab, "Basic"),
+            (self.iso_tab, "ISO/JIS"),
+            (self.app_tab, "App"),
+            (self.advanced_tab, "Advanced")
+        ]
+
+        for tab, label in tabs:
+            tab.recreate_buttons(keycode_filter)
+            if tab.has_buttons():
+                self.nested_tabs.addTab(tab, tr("TabbedKeycodes", label))
+
+    def has_buttons(self):
+        return (self.basic_tab.has_buttons() or self.iso_tab.has_buttons() or
+                self.app_tab.has_buttons() or self.advanced_tab.has_buttons())
+
+    def relabel_buttons(self):
+        self.basic_tab.relabel_buttons()
+        self.iso_tab.relabel_buttons()
+        self.app_tab.relabel_buttons()
+        self.advanced_tab.relabel_buttons()
+
+
+class MusicTab(QWidget):
+    """Nested tab container for Music-related tabs"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.label = "Music"
+        self.parent_widget = parent
+        self.current_keycode_filter = keycode_filter_any
+
+        # Create nested tab widget
+        self.nested_tabs = QTabWidget()
+
+        # Create the individual tabs
+        self.midiswitch_tab = midiTab(parent, "MIDIswitch", KEYCODES_MIDI_UPDOWN)
+        self.loop_control_tab = LoopTab(parent, "Loop Control", KEYCODES_LOOP_BUTTONS)
+        self.smartchord_tab = SmartChordTab(parent, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1,
+                                           KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4,
+                                           KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES,
+                                           KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
+        self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
+        self.key_split_tab = KeySplitTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
+        self.chord_progressions_tab = ChordProgressionTab(parent, "Chord Progressions")
+
+        # Connect signals
+        self.midiswitch_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.loop_control_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.smartchord_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.ear_training_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.key_split_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.chord_progressions_tab.keycode_changed.connect(self.on_keycode_changed)
+
+        # Setup layout
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.nested_tabs)
+        self.setLayout(layout)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing tabs
+        while self.nested_tabs.count() > 0:
+            self.nested_tabs.removeTab(0)
+
+        # Recreate buttons for each tab and add if they have content
+        tabs = [
+            (self.midiswitch_tab, "MIDIswitch"),
+            (self.loop_control_tab, "Loop Control"),
+            (self.smartchord_tab, "SmartChord"),
+            (self.ear_training_tab, "Ear Training"),
+            (self.key_split_tab, "KeySplit"),
+            (self.chord_progressions_tab, "Chord Progressions")
+        ]
+
+        for tab, label in tabs:
+            tab.recreate_buttons(keycode_filter)
+            if tab.has_buttons():
+                self.nested_tabs.addTab(tab, tr("TabbedKeycodes", label))
+
+    def has_buttons(self):
+        return (self.midiswitch_tab.has_buttons() or self.loop_control_tab.has_buttons() or
+                self.smartchord_tab.has_buttons() or self.ear_training_tab.has_buttons() or
+                self.key_split_tab.has_buttons() or self.chord_progressions_tab.has_buttons())
+
+    def relabel_buttons(self):
+        self.midiswitch_tab.relabel_buttons()
+        self.loop_control_tab.relabel_buttons()
+        self.smartchord_tab.relabel_buttons()
+        self.ear_training_tab.relabel_buttons()
+        self.key_split_tab.relabel_buttons()
+        self.chord_progressions_tab.relabel_buttons()
+
+
+class MIDITab(QWidget):
+    """Nested tab container for MIDI-related tabs"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.label = "MIDI"
+        self.parent_widget = parent
+        self.current_keycode_filter = keycode_filter_any
+
+        # Create nested tab widget
+        self.nested_tabs = QTabWidget()
+
+        # Create the individual tab
+        self.advanced_tab = midiadvancedTab(parent, "MIDI Advanced", KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change,
+                                           KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC,
+                                           KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN,
+                                           KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL,
+                                           KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD,
+                                           KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2,
+                                           KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3,
+                                           KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT,
+                                           KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS,
+                                           KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL,
+                                           KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3)
+
+        # Connect signal
+        self.advanced_tab.keycode_changed.connect(self.on_keycode_changed)
+
+        # Setup layout
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.nested_tabs)
+        self.setLayout(layout)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing tabs
+        while self.nested_tabs.count() > 0:
+            self.nested_tabs.removeTab(0)
+
+        # Recreate buttons for the tab and add if it has content
+        self.advanced_tab.recreate_buttons(keycode_filter)
+        if self.advanced_tab.has_buttons():
+            self.nested_tabs.addTab(self.advanced_tab, tr("TabbedKeycodes", "Advanced"))
+
+    def has_buttons(self):
+        return self.advanced_tab.has_buttons()
+
+    def relabel_buttons(self):
+        self.advanced_tab.relabel_buttons()
+
+
 class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -4022,42 +4237,17 @@ class FilteredTabbedKeycodes(QTabWidget):
         self.keycode_filter = keycode_filter
 
         self.tabs = [
-            Tab(self, "Basic", [
-                (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
-                (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
-                (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
-                (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
-            ], prefix_buttons=[("Any", -1)]),
-            Tab(self, "ISO/JIS", [
-                (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
-                 KEYCODES_ISO_KR),
-                (None, KEYCODES_ISO),
-            ], prefix_buttons=[("Any", -1)]),   
-            SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
-            SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),            
-            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
-            midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
-            LoopTab(self, "Loop Control", KEYCODES_LOOP_BUTTONS),  # ADD THIS LINE
+            KeyboardTab(self),
+            MusicTab(self),
             GamingTab(self, "Gaming", KEYCODES_GAMING),
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
-            KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
-            EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
-            ChordProgressionTab(self, "Chord Progressions"),
-            midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            SimpleTab(self, " ", KEYCODES_CLEAR),     
+            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
+            MIDITab(self),
+            SimpleTab(self, " ", KEYCODES_CLEAR),
         ]
 
         for tab in self.tabs:
-            tab.keycode_changed.connect(self.on_keycode_changed)
-
-        self.recreate_keycode_buttons()
-        KeycodeDisplay.notify_keymap_override(self)
-        
-        for miditab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
 
         self.recreate_keycode_buttons()
@@ -4075,20 +4265,6 @@ class FilteredTabbedKeycodes(QTabWidget):
             self.removeTab(0)
 
         for tab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for miditab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for midiadvancedTab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
