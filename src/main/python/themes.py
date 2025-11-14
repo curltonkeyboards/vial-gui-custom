@@ -2,6 +2,55 @@
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QPalette, QColor
+import colorsys
+
+def shift_hue(hex_color, hue_shift_degrees, saturation_adjust=0, lightness_adjust=0):
+    """
+    Shift the hue of a hex color by the specified degrees.
+
+    Args:
+        hex_color: Hex color string (e.g., "#1a1625" or "#ff1a1625")
+        hue_shift_degrees: Degrees to shift hue (0-360)
+        saturation_adjust: Adjustment to saturation (-1.0 to 1.0)
+        lightness_adjust: Adjustment to lightness (-1.0 to 1.0)
+
+    Returns:
+        Hex color string with shifted hue
+    """
+    # Remove # and alpha if present
+    color = hex_color.lstrip('#')
+    if len(color) == 8:  # Has alpha channel
+        alpha = color[:2]
+        color = color[2:]
+    elif len(color) == 6:
+        alpha = None
+    else:
+        return hex_color
+
+    # Convert hex to RGB
+    r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
+
+    # Convert to HSL
+    h, l, s = colorsys.rgb_to_hls(r/255.0, g/255.0, b/255.0)
+
+    # Shift hue
+    h = (h + hue_shift_degrees/360.0) % 1.0
+
+    # Adjust saturation and lightness
+    s = max(0, min(1, s + saturation_adjust))
+    l = max(0, min(1, l + lightness_adjust))
+
+    # Convert back to RGB
+    r, g, b = colorsys.hls_to_rgb(h, l, s)
+    r, g, b = int(r * 255), int(g * 255), int(b * 255)
+
+    # Convert back to hex
+    result = f"#{r:02x}{g:02x}{b:02x}"
+    if alpha:
+        result = f"#{alpha}{result[1:]}"
+
+    return result
+
 
 themes = [
     ("Light", {
@@ -369,6 +418,7 @@ themes = [
 ]
 
 palettes = dict()
+theme_colors = dict()  # Store original color dictionaries
 
 for name, colors in themes:
     palette = QPalette()
@@ -377,6 +427,7 @@ for name, colors in themes:
             role = [role]
         palette.setColor(*role, QColor(color))
     palettes[name] = palette
+    theme_colors[name] = colors  # Store for later access
 
 
 class Theme:
@@ -403,6 +454,53 @@ class Theme:
         if cls.theme in light_themes:
             return 103
         return 150
+
+    @classmethod
+    def get_special_button_color(cls, button_type, component="background"):
+        """
+        Get hue-shifted colors for special button types.
+
+        Args:
+            button_type: One of "chord_progression", "ear_training", "keysplit", "triplesplit"
+            component: One of "background", "text", "border"
+
+        Returns:
+            Hex color string
+        """
+        if cls.theme not in theme_colors:
+            return "#808080"  # Fallback gray
+
+        colors = theme_colors[cls.theme]
+        base_color = colors.get(QPalette.Button, "#808080")
+        text_color = colors.get(QPalette.ButtonText, "#000000")
+
+        # Define hue shifts for each button type (in degrees)
+        hue_shifts = {
+            "chord_progression": 30,
+            "ear_training": 90,
+            "keysplit": 150,
+            "triplesplit": 210,
+        }
+
+        if button_type not in hue_shifts:
+            return base_color if component == "background" else text_color
+
+        shift = hue_shifts[button_type]
+
+        if component == "background":
+            # Shift the button background color
+            return shift_hue(base_color, shift)
+        elif component == "text":
+            # Shift the text color to match
+            return shift_hue(text_color, shift)
+        elif component == "border":
+            # Border is lighter version of background
+            shifted_bg = shift_hue(base_color, shift)
+            # Make it 20% lighter
+            color = QColor(shifted_bg)
+            return color.lighter(120).name()
+
+        return base_color
 
     @classmethod
     def get_stylesheet(cls):
@@ -445,44 +543,38 @@ class Theme:
             /* General Rounded Buttons */
             QPushButton {
                 border-radius: 8px;
-                border: 2px solid palette(dark);
+                border: 1px solid palette(light);
                 background: palette(button);
-                box-shadow: 0 0 0 1px palette(mid);
             }
 
             QPushButton:hover {
                 background: palette(light);
-                border: 2px solid palette(midlight);
-                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
+                border-color: palette(mid);
             }
 
             QPushButton:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
-                border: 2px solid palette(highlight);
-                box-shadow: none;
+                border-color: palette(highlight);
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
             QPushButton[keycode_button="true"] {
                 border-radius: 8px;
-                border: 2px solid palette(dark);
+                border: 1px solid palette(light);
                 background: palette(button);
-                box-shadow: 0 0 0 1px palette(mid);
                 font-size: 9pt;
             }
 
             QPushButton[keycode_button="true"]:hover {
                 background: palette(light);
-                border: 2px solid palette(midlight);
-                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
+                border-color: palette(mid);
             }
 
             QPushButton[keycode_button="true"]:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
-                border: 2px solid palette(highlight);
-                box-shadow: none;
+                border-color: palette(highlight);
             }
 
             /* Layer Selection Button Styling */
@@ -689,41 +781,37 @@ class Theme:
 
             /* Inner Tab Buttons - Horizontal tabs like main headers */
             QPushButton[inner_tab="true"] {
-                border: 2px solid palette(dark);
+                border: 1px solid palette(light);
                 margin-right: 2px;
                 margin-bottom: 0px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                border-bottom: 2px solid palette(dark);
+                border-bottom: 1px solid palette(light);
                 background: palette(button);
-                box-shadow: 0 0 0 1px palette(mid);
                 font-weight: 500;
                 font-size: 9pt;
             }
 
             QPushButton[inner_tab="true"]:hover:!checked {
                 background: palette(light);
-                border: 2px solid palette(midlight);
-                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
+                border-color: palette(mid);
             }
 
             QPushButton[inner_tab="true"]:checked {
                 background: palette(base);
                 border-bottom-color: palette(base);
                 margin-bottom: -1px;
-                box-shadow: none;
             }
 
             /* Side Tab Buttons - Vertical tabs on left */
             QPushButton[side_tab="true"] {
-                border: 2px solid palette(dark);
+                border: 1px solid palette(light);
                 margin-bottom: 2px;
                 margin-right: 0px;
                 border-top-left-radius: 4px;
                 border-bottom-left-radius: 4px;
-                border-right: 2px solid palette(dark);
+                border-right: 1px solid palette(light);
                 background: palette(button);
-                box-shadow: 0 0 0 1px palette(mid);
                 text-align: left;
                 min-width: 100px;
                 font-weight: 500;
@@ -732,15 +820,13 @@ class Theme:
 
             QPushButton[side_tab="true"]:hover:!checked {
                 background: palette(light);
-                border: 2px solid palette(midlight);
-                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
+                border-color: palette(mid);
             }
 
             QPushButton[side_tab="true"]:checked {
                 background: palette(base);
                 border-right-color: palette(base);
                 margin-right: -1px;
-                box-shadow: none;
             }
         """
 
