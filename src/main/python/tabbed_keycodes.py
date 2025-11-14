@@ -4011,7 +4011,7 @@ class GamingTab(QScrollArea):
         self.recreate_buttons(self.current_keycode_filter)
 
 
-class FilteredTabbedKeycodes(QWidget):
+class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
@@ -4020,7 +4020,6 @@ class FilteredTabbedKeycodes(QWidget):
         super().__init__(parent)
 
         self.keycode_filter = keycode_filter
-        self.current_tab_index = 0
 
         self.tabs = [
             Tab(self, "Basic", [
@@ -4035,94 +4034,31 @@ class FilteredTabbedKeycodes(QWidget):
                 (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
                  KEYCODES_ISO_KR),
                 (None, KEYCODES_ISO),
-            ], prefix_buttons=[("Any", -1)]),
-            SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),
+            ], prefix_buttons=[("Any", -1)]),   
+            SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
             SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),            
             LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
             LoopTab(self, "Loop Control", KEYCODES_LOOP_BUTTONS),  # ADD THIS LINE
             GamingTab(self, "Gaming", KEYCODES_GAMING),
             SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
             KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
-            EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER),
+            EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
             ChordProgressionTab(self, "Chord Progressions"),
             midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            SimpleTab(self, " ", KEYCODES_CLEAR),
+            SimpleTab(self, " ", KEYCODES_CLEAR),     
         ]
 
         for tab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
 
-        # Create horizontal layout: side tabs on left, content on right (VIA style)
-        main_layout_h = QHBoxLayout()
-        main_layout_h.setSpacing(0)
-        main_layout_h.setContentsMargins(0, 0, 0, 0)
-
-        # Create side tabs container
-        side_tabs_container = QWidget()
-        side_tabs_container.setObjectName("side_tabs_container")
-        side_tabs_container.setStyleSheet("""
-            QWidget#side_tabs_container {
-                background: palette(window);
-                border: 1px solid palette(mid);
-                border-right: none;
-            }
-        """)
-        side_tabs_layout = QVBoxLayout(side_tabs_container)
-        side_tabs_layout.setSpacing(0)
-        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create side tab buttons
-        self.side_tab_buttons = []
-        for idx, tab in enumerate(self.tabs):
-            btn = QPushButton(tr("TabbedKeycodes", tab.label))
-            btn.setCheckable(True)
-            btn.setMinimumHeight(40)
-            btn.setMinimumWidth(120)
-            btn.setStyleSheet("""
-                QPushButton {
-                    border: 1px solid palette(mid);
-                    border-radius: 0px;
-                    border-right: none;
-                    background: palette(button);
-                    text-align: left;
-                    padding-left: 15px;
-                    font-size: 9pt;
-                }
-                QPushButton:hover:!checked {
-                    background: palette(light);
-                }
-                QPushButton:checked {
-                    background: palette(base);
-                    font-weight: 600;
-                    border-right: 1px solid palette(base);
-                }
-            """)
-            btn.clicked.connect(lambda checked, i=idx: self.show_tab(i))
-            side_tabs_layout.addWidget(btn)
-            self.side_tab_buttons.append(btn)
-
-        side_tabs_layout.addStretch(1)
-        main_layout_h.addWidget(side_tabs_container)
-
-        # Create content wrapper
-        self.content_wrapper = QWidget()
-        self.content_wrapper.setObjectName("content_wrapper")
-        self.content_wrapper.setStyleSheet("""
-            QWidget#content_wrapper {
-                border: 1px solid palette(mid);
-                background: palette(base);
-            }
-        """)
-        self.content_layout = QVBoxLayout(self.content_wrapper)
-        self.content_layout.setSpacing(0)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-
-        main_layout_h.addWidget(self.content_wrapper)
-
-        self.setLayout(main_layout_h)
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
+        
+        for miditab in self.tabs:
+            tab.keycode_changed.connect(self.on_keycode_changed)
 
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
@@ -4133,57 +4069,31 @@ class FilteredTabbedKeycodes(QWidget):
         else:
             self.keycode_changed.emit(Keycode.normalize(code))
 
-    def show_tab(self, index):
-        """Show the specified tab and update button states"""
-        # Clear the content layout
-        while self.content_layout.count():
-            child = self.content_layout.takeAt(0)
-            if child.widget():
-                child.widget().setParent(None)
-
-        # Update button states
-        for i, btn in enumerate(self.side_tab_buttons):
-            btn.setChecked(i == index)
-
-        # Show the selected tab
-        if 0 <= index < len(self.tabs):
-            self.current_tab_index = index
-            self.content_layout.addWidget(self.tabs[index])
-            self.tabs[index].show()
-
     def recreate_keycode_buttons(self):
-        """Recreate keycode buttons and update visibility"""
-        prev_tab_label = self.tabs[self.current_tab_index].label if 0 <= self.current_tab_index < len(self.tabs) else ""
+        prev_tab = self.tabText(self.currentIndex()) if self.currentIndex() >= 0 else ""
+        while self.count() > 0:
+            self.removeTab(0)
 
-        # Recreate buttons for all tabs
-        visible_tab_index = 0
-        new_current_index = 0
-        for idx, (tab, btn) in enumerate(zip(self.tabs, self.side_tab_buttons)):
+        for tab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
-            has_buttons = tab.has_buttons()
-
-            # Show/hide button based on whether tab has content
-            btn.setVisible(has_buttons)
-
-            # Track the new index for the previously selected tab
-            if has_buttons:
-                if tab.label == prev_tab_label:
-                    new_current_index = visible_tab_index
-                visible_tab_index += 1
-
-        # Show the first visible tab (or the previously selected one if still visible)
-        first_visible = None
-        for idx, (tab, btn) in enumerate(zip(self.tabs, self.side_tab_buttons)):
-            if btn.isVisible():
-                if first_visible is None:
-                    first_visible = idx
-                if tab.label == prev_tab_label:
-                    self.show_tab(idx)
-                    return
-
-        # If prev tab not found, show first visible
-        if first_visible is not None:
-            self.show_tab(first_visible)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for miditab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+                    
+        for midiadvancedTab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
 
     def on_keymap_override(self):
         for tab in self.tabs:
