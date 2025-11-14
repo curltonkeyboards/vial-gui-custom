@@ -118,6 +118,9 @@ class ThruLoopConfigurator(BasicEditor):
         self.main_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.main_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
+        # Make table square (no rounded edges)
+        self.main_table.setStyleSheet("QTableWidget { border-radius: 0px; }")
+
         # Set fixed height
         header_height = self.main_table.horizontalHeader().height()
         row_height = 30 * 5  # 5 rows at 30px each
@@ -156,6 +159,9 @@ class ThruLoopConfigurator(BasicEditor):
         self.overdub_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.overdub_table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.overdub_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        # Make table square (no rounded edges)
+        self.overdub_table.setStyleSheet("QTableWidget { border-radius: 0px; }")
 
         # Set fixed height
         header_height = self.overdub_table.horizontalHeader().height()
@@ -205,27 +211,34 @@ class ThruLoopConfigurator(BasicEditor):
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
+        # Button style - bigger and less rounded
+        button_style = "QPushButton { border-radius: 3px; padding: 8px 16px; }"
+
         save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
-        save_btn.setMinimumHeight(40)
-        save_btn.setMinimumWidth(180)
+        save_btn.setMinimumHeight(45)
+        save_btn.setMinimumWidth(200)
+        save_btn.setStyleSheet(button_style)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
 
         load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))
-        load_btn.setMinimumHeight(40)
-        load_btn.setMinimumWidth(190)
+        load_btn.setMinimumHeight(45)
+        load_btn.setMinimumWidth(210)
+        load_btn.setStyleSheet(button_style)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
 
         save_file_btn = QPushButton(tr("ThruLoopConfigurator", "Save to File"))
-        save_file_btn.setMinimumHeight(40)
-        save_file_btn.setMinimumWidth(150)
+        save_file_btn.setMinimumHeight(45)
+        save_file_btn.setMinimumWidth(170)
+        save_file_btn.setStyleSheet(button_style)
         save_file_btn.clicked.connect(self.on_save_to_file)
         buttons_layout.addWidget(save_file_btn)
 
         load_file_btn = QPushButton(tr("ThruLoopConfigurator", "Load from File"))
-        load_file_btn.setMinimumHeight(40)
-        load_file_btn.setMinimumWidth(160)
+        load_file_btn.setMinimumHeight(45)
+        load_file_btn.setMinimumWidth(180)
+        load_file_btn.setStyleSheet(button_style)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
         
