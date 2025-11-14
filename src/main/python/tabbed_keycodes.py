@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint, QRect
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
 from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap
 
@@ -3758,24 +3758,29 @@ class GamepadWidget(QWidget):
         self.setAttribute(Qt.WA_StyledBackground, False)
         self.setAutoFillBackground(False)
 
-        # Load the PS4 controller image from widgets directory
+        # Load the PS4 controller image - use absolute path from widgets directory
         import os
-        # Get the path relative to this file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Image is in the widgets subdirectory
-        image_path = os.path.join(current_dir, 'widgets', 'ps4_controller.png')
+        widgets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'widgets')
+        image_path = os.path.join(widgets_dir, 'ps4_controller.png')
 
-        print(f"DEBUG: Attempting to load controller image from: {image_path}")
+        print(f"DEBUG: Loading controller from: {image_path}")
         print(f"DEBUG: File exists: {os.path.exists(image_path)}")
 
+        # Load the image
         self.controller_image = QPixmap(image_path)
 
         if self.controller_image.isNull():
             print(f"ERROR: Could not load controller image from {image_path}")
-            print(f"DEBUG: Current dir: {current_dir}")
-            print(f"DEBUG: Looking for widgets/ps4_controller.png")
+            # Try fallback path
+            alt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources', 'images', 'ps4_controller.png')
+            print(f"DEBUG: Trying fallback: {alt_path}")
+            self.controller_image = QPixmap(alt_path)
+            if self.controller_image.isNull():
+                print(f"ERROR: Fallback also failed")
+            else:
+                print(f"SUCCESS: Loaded from fallback: {self.controller_image.width()}x{self.controller_image.height()}")
         else:
-            print(f"SUCCESS: Loaded controller image: {image_path} ({self.controller_image.width()}x{self.controller_image.height()})")
+            print(f"SUCCESS: Loaded controller: {self.controller_image.width()}x{self.controller_image.height()}")
 
     def paintEvent(self, event):
         """Draw the gamepad image as background"""
@@ -3786,18 +3791,14 @@ class GamepadWidget(QWidget):
         painter.fillRect(self.rect(), QColor(240, 240, 240))
 
         if not self.controller_image.isNull():
-            # Scale image to fit widget while maintaining aspect ratio
-            scaled_image = self.controller_image.scaled(
-                self.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            )
+            # Use the same drawing method as keyboard_widget
+            # Define the area for the image
+            image_rect = QRect(0, 0, self.width(), self.height())
 
-            # Center the image
-            x = (self.width() - scaled_image.width()) // 2
-            y = (self.height() - scaled_image.height()) // 2
-
-            painter.drawPixmap(x, y, scaled_image)
+            # Draw the pixmap using rect-to-rect mapping like keyboard_widget does
+            painter.drawPixmap(image_rect, self.controller_image, self.controller_image.rect())
+        else:
+            print("DEBUG: controller_image is NULL in paintEvent!")
 
 
 class GamingTab(QScrollArea):
