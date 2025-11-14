@@ -17,7 +17,7 @@ class ThruLoopConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
-        
+
         # HID Command constants (0xB0-0xB5 range)
         self.HID_CMD_SET_LOOP_CONFIG = 0xB0
         self.HID_CMD_SET_MAIN_LOOP_CCS = 0xB1
@@ -25,28 +25,39 @@ class ThruLoopConfigurator(BasicEditor):
         self.HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
         self.HID_CMD_GET_ALL_CONFIG = 0xB4
         self.HID_CMD_RESET_LOOP_CONFIG = 0xB5
-        
+
         self.MANUFACTURER_ID = 0x7D
         self.SUB_ID = 0x00
         self.DEVICE_ID = 0x4D
-        
+
         # Initialize references to None - will be set in setup_ui
         self.single_loopchop_label = None
         self.master_cc = None
         self.single_loopchop_widgets = []
         self.nav_widget = None
-        
+
+        self.loaded = False
+        self.loading_label = None
+        self.main_widget = None
+
         self.setup_ui()
         
     def setup_ui(self):
         self.addStretch()
-        
-        main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+        # Loading label
+        self.loading_label = QLabel("Loading...")
+        self.loading_label.setStyleSheet("QLabel { font-size: 16px; font-weight: bold; }")
+        self.loading_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.loading_label.hide()
+        self.addWidget(self.loading_label)
+
+        self.main_widget = QWidget()
+        self.main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+        self.main_widget.setLayout(main_layout)
+        self.addWidget(self.main_widget)
+        self.setAlignment(self.main_widget, QtCore.Qt.AlignHCenter)
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
@@ -456,21 +467,37 @@ class ThruLoopConfigurator(BasicEditor):
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
-    
+
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
-        self.update_from_keyboard()
+        # Settings will be loaded when tab is activated
+        self.loaded = False
 
-    def update_from_keyboard(self):
-        """Load ThruLoop settings from keyboard and update UI"""
-        if not self.device or not isinstance(self.device, VialKeyboard):
-            return
+    def activate(self):
+        """Called when tab is activated - lazy load settings"""
+        super().activate()
+        if not self.loaded and self.valid():
+            self.show_loading()
+            try:
+                # Get fresh config from keyboard
+                config = self.device.keyboard.get_thruloop_config()
+                # Apply the config to UI
+                if config:
+                    self.apply_config(config)
+                self.loaded = True
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Failed to load ThruLoop settings: {str(e)}")
+            finally:
+                self.hide_loading()
 
-        # Get fresh config from keyboard (same pattern as actuation configurator)
-        config = self.device.keyboard.get_thruloop_config()
+    def show_loading(self):
+        """Show loading state"""
+        self.loading_label.show()
+        self.main_widget.setEnabled(False)
 
-        # Apply the config to UI
-        if config:
-            self.apply_config(config)
+    def hide_loading(self):
+        """Hide loading state"""
+        self.loading_label.hide()
+        self.main_widget.setEnabled(True)

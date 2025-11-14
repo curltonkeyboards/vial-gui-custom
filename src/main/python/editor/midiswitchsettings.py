@@ -16,7 +16,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
-        
+
         # HID Command constants (0xB6-0xBB range)
         self.HID_CMD_SET_KEYBOARD_CONFIG = 0xB6
         self.HID_CMD_GET_KEYBOARD_CONFIG = 0xB7
@@ -24,23 +24,34 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.HID_CMD_SAVE_KEYBOARD_SLOT = 0xB9
         self.HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
         self.HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
-        
+
         self.MANUFACTURER_ID = 0x7D
         self.SUB_ID = 0x00
         self.DEVICE_ID = 0x4D
-        
+
+        self.loaded = False
+        self.loading_label = None
+        self.main_widget = None
+
         self.setup_ui()
         
     def setup_ui(self):
         self.addStretch()
-        
-        main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        main_widget.setStyleSheet("QComboBox { max-width: 150px; }")
+
+        # Loading label
+        self.loading_label = QLabel("Loading...")
+        self.loading_label.setStyleSheet("QLabel { font-size: 16px; font-weight: bold; }")
+        self.loading_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.loading_label.hide()
+        self.addWidget(self.loading_label)
+
+        self.main_widget = QWidget()
+        self.main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        self.main_widget.setStyleSheet("QComboBox { max-width: 150px; }")
         main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+        self.main_widget.setLayout(main_layout)
+        self.addWidget(self.main_widget)
+        self.setAlignment(self.main_widget, QtCore.Qt.AlignHCenter)
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
@@ -609,21 +620,37 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
-    
+
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
-        self.update_from_keyboard()
+        # Settings will be loaded when tab is activated
+        self.loaded = False
 
-    def update_from_keyboard(self):
-        """Load MIDI settings from keyboard and update UI"""
-        if not self.device or not isinstance(self.device, VialKeyboard):
-            return
+    def activate(self):
+        """Called when tab is activated - lazy load settings"""
+        super().activate()
+        if not self.loaded and self.valid():
+            self.show_loading()
+            try:
+                # Get fresh config from keyboard
+                config = self.device.keyboard.get_midi_config()
+                # Apply the config to UI
+                if config:
+                    self.apply_settings(config)
+                self.loaded = True
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Failed to load MIDI settings: {str(e)}")
+            finally:
+                self.hide_loading()
 
-        # Get fresh config from keyboard (same pattern as actuation configurator)
-        config = self.device.keyboard.get_midi_config()
+    def show_loading(self):
+        """Show loading state"""
+        self.loading_label.show()
+        self.main_widget.setEnabled(False)
 
-        # Apply the config to UI
-        if config:
-            self.apply_settings(config)
+    def hide_loading(self):
+        """Hide loading state"""
+        self.loading_label.hide()
+        self.main_widget.setEnabled(True)

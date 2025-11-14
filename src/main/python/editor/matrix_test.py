@@ -1283,16 +1283,16 @@ class LayerActuationConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
-        
+
         # Master widgets
         self.master_widgets = {}
-        
+
         # Single layer widgets
         self.layer_widgets = {}
-        
+
         # Current layer being viewed
         self.current_layer = 0
-        
+
         # All layer data stored in memory
         self.layer_data = []
         for _ in range(12):
@@ -1309,37 +1309,48 @@ class LayerActuationConfigurator(BasicEditor):
                 'rapidfire_enabled': False,
                 'midi_rapidfire_enabled': False
             })
-        
+
         # Flag to prevent recursion
         self.updating_from_master = False
-        
+
         # Per-layer mode
         self.per_layer_enabled = False
-        
+
         # Advanced options shown
         self.advanced_shown = False
-        
+
+        self.loaded = False
+        self.loading_label = None
+        self.scroll_widget = None
+
         self.setup_ui()
         
     def setup_ui(self):
         self.addStretch()
-        
+
+        # Loading label
+        self.loading_label = QLabel("Loading...")
+        self.loading_label.setStyleSheet("QLabel { font-size: 16px; font-weight: bold; }")
+        self.loading_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.loading_label.hide()
+        self.addWidget(self.loading_label)
+
         # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setMinimumSize(900, 600)
-        
+        self.scroll_widget = QScrollArea()
+        self.scroll_widget.setWidgetResizable(True)
+        self.scroll_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_widget.setMinimumSize(900, 600)
+
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_layout.setSpacing(10)
         main_widget.setLayout(main_layout)
-        
-        scroll.setWidget(main_widget)
-        self.addWidget(scroll)
-        self.setAlignment(scroll, QtCore.Qt.AlignHCenter)
+
+        self.scroll_widget.setWidget(main_widget)
+        self.addWidget(self.scroll_widget)
+        self.setAlignment(self.scroll_widget, QtCore.Qt.AlignHCenter)
         
         # Info label
         info_label = QLabel(tr("LayerActuationConfigurator", 
@@ -2382,7 +2393,31 @@ class LayerActuationConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
-        self.on_load_from_keyboard_silent()
+        # Settings will be loaded when tab is activated
+        self.loaded = False
+
+    def activate(self):
+        """Called when tab is activated - lazy load settings"""
+        super().activate()
+        if not self.loaded and self.valid():
+            self.show_loading()
+            try:
+                self.on_load_from_keyboard_silent()
+                self.loaded = True
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Failed to load actuation settings: {str(e)}")
+            finally:
+                self.hide_loading()
+
+    def show_loading(self):
+        """Show loading state"""
+        self.loading_label.show()
+        self.scroll_widget.setEnabled(False)
+
+    def hide_loading(self):
+        """Hide loading state"""
+        self.loading_label.hide()
+        self.scroll_widget.setEnabled(True)
 
     def on_load_from_keyboard_silent(self):
         """Load settings without showing success message"""
