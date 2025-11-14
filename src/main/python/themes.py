@@ -2,55 +2,6 @@
 
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QPalette, QColor
-import colorsys
-
-def shift_hue(hex_color, hue_shift_degrees, saturation_adjust=0, lightness_adjust=0):
-    """
-    Shift the hue of a hex color by the specified degrees.
-
-    Args:
-        hex_color: Hex color string (e.g., "#1a1625" or "#ff1a1625")
-        hue_shift_degrees: Degrees to shift hue (0-360)
-        saturation_adjust: Adjustment to saturation (-1.0 to 1.0)
-        lightness_adjust: Adjustment to lightness (-1.0 to 1.0)
-
-    Returns:
-        Hex color string with shifted hue
-    """
-    # Remove # and alpha if present
-    color = hex_color.lstrip('#')
-    if len(color) == 8:  # Has alpha channel
-        alpha = color[:2]
-        color = color[2:]
-    elif len(color) == 6:
-        alpha = None
-    else:
-        return hex_color
-
-    # Convert hex to RGB
-    r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
-
-    # Convert to HSL
-    h, l, s = colorsys.rgb_to_hls(r/255.0, g/255.0, b/255.0)
-
-    # Shift hue
-    h = (h + hue_shift_degrees/360.0) % 1.0
-
-    # Adjust saturation and lightness
-    s = max(0, min(1, s + saturation_adjust))
-    l = max(0, min(1, l + lightness_adjust))
-
-    # Convert back to RGB
-    r, g, b = colorsys.hls_to_rgb(h, l, s)
-    r, g, b = int(r * 255), int(g * 255), int(b * 255)
-
-    # Convert back to hex
-    result = f"#{r:02x}{g:02x}{b:02x}"
-    if alpha:
-        result = f"#{alpha}{result[1:]}"
-
-    return result
-
 
 themes = [
     ("Light", {
@@ -418,7 +369,6 @@ themes = [
 ]
 
 palettes = dict()
-theme_colors = dict()  # Store original color dictionaries
 
 for name, colors in themes:
     palette = QPalette()
@@ -427,7 +377,6 @@ for name, colors in themes:
             role = [role]
         palette.setColor(*role, QColor(color))
     palettes[name] = palette
-    theme_colors[name] = colors  # Store for later access
 
 
 class Theme:
@@ -454,132 +403,6 @@ class Theme:
         if cls.theme in light_themes:
             return 103
         return 150
-
-    @classmethod
-    def get_special_button_color(cls, button_type, component="background"):
-        """
-        Get hue-shifted colors for special button types.
-        Takes the original hardcoded colors and shifts them to match the theme.
-
-        Args:
-            button_type: One of "chord_progression_major", "chord_progression_minor",
-                        "ear_training", "chord_trainer", "keysplit_white", "keysplit_black",
-                        "triplesplit_white", "triplesplit_black", "keysplit_control", "triplesplit_control"
-            component: One of "background", "text", "border"
-
-        Returns:
-            Hex color string
-        """
-        # Original colors from the hardcoded styles
-        original_colors = {
-            # Chord Progressions
-            "chord_progression_major": {
-                "background": "#E3F2FD",  # Light blue
-                "text": "#1565C0",  # Dark blue
-            },
-            "chord_progression_minor": {
-                "background": "#E8DAEF",  # Light purple
-                "text": "#7D3C98",  # Dark purple
-            },
-            "chord_progression_control": {
-                "background": "#FFE0B2",  # Light orange
-                "text": "#8D6E63",  # Dark brown
-            },
-            # Ear Training / Chord Trainer
-            "ear_training": {
-                "background": "#E0E0E0",  # Light gray (was palette(light))
-                "text": "#303030",
-            },
-            "chord_trainer": {
-                "background": "#D0D0D0",  # Slightly darker gray (was palette(alternate-base))
-                "text": "#303030",
-            },
-            # KeySplit
-            "keysplit_white": {
-                "background": "#f3d1d1",  # rgba(243, 209, 209)
-                "text": "#805757",  # rgba(128, 87, 87)
-            },
-            "keysplit_black": {
-                "background": "#805757",  # rgba(128, 87, 87)
-                "text": "#f3d1d1",  # rgba(243, 209, 209)
-            },
-            "keysplit_control": {
-                "background": "#f3d1d1",  # rgba(243, 209, 209, 1)
-                "text": "#805757",  # rgba(128, 87, 87, 1)
-            },
-            # TripleSplit
-            "triplesplit_white": {
-                "background": "#d1f3d7",  # rgba(209, 243, 215)
-                "text": "#808057",  # rgba(128, 128, 87)
-            },
-            "triplesplit_black": {
-                "background": "#808057",  # rgba(128, 128, 87)
-                "text": "#d1f3d7",  # rgba(209, 243, 215)
-            },
-            "triplesplit_control": {
-                "background": "#d1f3d7",  # rgba(209, 243, 215, 1)
-                "text": "#808057",  # rgba(128, 128, 87, 1)
-            },
-        }
-
-        if button_type not in original_colors:
-            return "#808080"  # Fallback
-
-        if cls.theme not in theme_colors:
-            # No theme set, use original colors
-            if component == "border":
-                bg = original_colors[button_type]["background"]
-                return QColor(bg).lighter(120).name()
-            return original_colors[button_type].get(component, "#808080")
-
-        # Get the theme's base button color to determine hue shift and brightness
-        colors = theme_colors[cls.theme]
-        theme_button_color = colors.get(QPalette.Button, "#808080")
-
-        # Calculate theme hue
-        theme_qcolor = QColor(theme_button_color)
-        theme_h, theme_s, theme_l, _ = theme_qcolor.getHslF()
-
-        # Get original color
-        original_color = original_colors[button_type][component] if component != "border" else original_colors[button_type]["background"]
-        orig_qcolor = QColor(original_color)
-        orig_h, orig_s, orig_l, _ = orig_qcolor.getHslF()
-
-        # Calculate hue shift needed to align with theme
-        if theme_h is not None and orig_h is not None:
-            hue_shift = theme_h - 0.6  # Shift towards theme hue (0.6 is roughly blue, our base)
-        else:
-            hue_shift = 0
-
-        # Determine if theme is light or dark
-        light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
-        is_light_theme = cls.theme in light_themes
-
-        # Adjust lightness to match theme brightness
-        if is_light_theme:
-            # Keep original lightness for light themes (they're already light)
-            new_l = orig_l
-        else:
-            # For dark themes, darken the colors significantly
-            if orig_l > 0.5:  # Originally light colors
-                new_l = orig_l * 0.3  # Make much darker
-            else:  # Originally dark colors
-                new_l = orig_l * 0.6  # Make somewhat darker
-
-        # Apply hue shift while preserving saturation and adjusting lightness
-        new_h = (orig_h + hue_shift) % 1.0 if orig_h is not None else orig_h
-
-        # Create new color
-        result_color = QColor()
-        result_color.setHslF(new_h if new_h is not None else 0,
-                            orig_s if orig_s is not None else 0,
-                            new_l if new_l is not None else 0.5)
-
-        if component == "border":
-            # Make border 20% lighter
-            return result_color.lighter(120).name()
-
-        return result_color.name()
 
     @classmethod
     def get_stylesheet(cls):
@@ -622,38 +445,44 @@ class Theme:
             /* General Rounded Buttons */
             QPushButton {
                 border-radius: 8px;
-                border: 1px solid palette(light);
+                border: 2px solid palette(dark);
                 background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
             }
 
             QPushButton:hover {
                 background: palette(light);
-                border-color: palette(mid);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
-                border-color: palette(highlight);
+                border: 2px solid palette(highlight);
+                box-shadow: none;
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
             QPushButton[keycode_button="true"] {
                 border-radius: 8px;
-                border: 1px solid palette(light);
+                border: 2px solid palette(dark);
                 background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
                 font-size: 9pt;
             }
 
             QPushButton[keycode_button="true"]:hover {
                 background: palette(light);
-                border-color: palette(mid);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton[keycode_button="true"]:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
-                border-color: palette(highlight);
+                border: 2px solid palette(highlight);
+                box-shadow: none;
             }
 
             /* Layer Selection Button Styling */
@@ -860,37 +689,41 @@ class Theme:
 
             /* Inner Tab Buttons - Horizontal tabs like main headers */
             QPushButton[inner_tab="true"] {
-                border: 1px solid palette(light);
+                border: 2px solid palette(dark);
                 margin-right: 2px;
                 margin-bottom: 0px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                border-bottom: 1px solid palette(light);
+                border-bottom: 2px solid palette(dark);
                 background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
                 font-weight: 500;
                 font-size: 9pt;
             }
 
             QPushButton[inner_tab="true"]:hover:!checked {
                 background: palette(light);
-                border-color: palette(mid);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton[inner_tab="true"]:checked {
                 background: palette(base);
                 border-bottom-color: palette(base);
                 margin-bottom: -1px;
+                box-shadow: none;
             }
 
             /* Side Tab Buttons - Vertical tabs on left */
             QPushButton[side_tab="true"] {
-                border: 1px solid palette(light);
+                border: 2px solid palette(dark);
                 margin-bottom: 2px;
                 margin-right: 0px;
                 border-top-left-radius: 4px;
                 border-bottom-left-radius: 4px;
-                border-right: 1px solid palette(light);
+                border-right: 2px solid palette(dark);
                 background: palette(button);
+                box-shadow: 0 0 0 1px palette(mid);
                 text-align: left;
                 min-width: 100px;
                 font-weight: 500;
@@ -899,13 +732,15 @@ class Theme:
 
             QPushButton[side_tab="true"]:hover:!checked {
                 background: palette(light);
-                border-color: palette(mid);
+                border: 2px solid palette(midlight);
+                box-shadow: 0 0 0 1px palette(mid), 0 0 4px palette(mid);
             }
 
             QPushButton[side_tab="true"]:checked {
                 background: palette(base);
                 border-right-color: palette(base);
                 margin-right: -1px;
+                box-shadow: none;
             }
         """
 

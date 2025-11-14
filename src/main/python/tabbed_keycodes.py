@@ -19,7 +19,6 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
-from themes import Theme
 
 class AsyncValueDialog(QDialog):
     def __init__(self, parent, title, min_val, max_val, callback):
@@ -113,115 +112,152 @@ class PianoButton(SquareButton):
     def __init__(self, key_type='white', color_scheme='default'):
         super().__init__()
         if color_scheme == 'default':
-            self.setStyleSheet(self.get_glass_style(key_type))
+            self.setStyleSheet(self.GLASS_WHITE if key_type == 'white' else self.GLASS_BLACK)
         elif color_scheme == 'keysplit':
-            self.setStyleSheet(self.get_keysplit_style(key_type))
+            self.setStyleSheet(self.KS_WHITE if key_type == 'white' else self.KS_BLACK)
         elif color_scheme == 'triplesplit':
-            self.setStyleSheet(self.get_triplesplit_style(key_type))
+            self.setStyleSheet(self.TS_WHITE if key_type == 'white' else self.TS_BLACK)
 
-    @staticmethod
-    def get_glass_style(key_type):
-        """Get default piano key styles"""
-        if key_type == 'white':
-            return """
-                QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 rgba(255, 255, 255, 240),
-                        stop:0.5 rgba(240, 240, 240, 240),
-                        stop:1 rgba(230, 230, 230, 240));
-                    border: 1px solid rgba(200, 200, 200, 180);
-                    border-radius: 4px;
-                    color: #303030;
-                    padding: 2px;
-                }
-                QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 rgba(255, 255, 255, 255),
-                        stop:1 rgba(240, 240, 240, 255));
-                }
-                QPushButton:pressed {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 rgba(230, 230, 230, 255),
-                        stop:1 rgba(220, 220, 220, 255));
-                }
-            """
-        else:  # black
-            return """
-                QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 rgba(40, 40, 40, 255),
-                        stop:0.5 rgba(30, 30, 30, 255),
-                        stop:1 rgba(20, 20, 20, 255));
-                    border: 1px solid rgba(0, 0, 0, 255);
-                    border-radius: 4px;
-                    color: #FFFFFF;
-                    padding: 2px;
-                }
-                QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 rgba(50, 50, 50, 255),
-                        stop:1 rgba(40, 40, 40, 255));
-                }
-                QPushButton:pressed {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 rgba(30, 30, 30, 255),
-                        stop:1 rgba(20, 20, 20, 255));
-                }
-            """
+    # Original styles
+    GLASS_WHITE = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(255, 255, 255, 240), 
+                stop:0.5 rgba(240, 240, 240, 240),
+                stop:1 rgba(230, 230, 230, 240));
+            border: 1px solid rgba(200, 200, 200, 180);
+            border-radius: 4px;
+            color: #303030;
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(255, 255, 255, 255),
+                stop:1 rgba(240, 240, 240, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(230, 230, 230, 255),
+                stop:1 rgba(220, 220, 220, 255));
+        }
+    """
 
-    @staticmethod
-    def get_keysplit_style(key_type):
-        """Get theme-aware keysplit piano key styles"""
-        button_type = "keysplit_white" if key_type == "white" else "keysplit_black"
-        bg_color = Theme.get_special_button_color(button_type, "background")
-        text_color = Theme.get_special_button_color(button_type, "text")
-        border_color = Theme.get_special_button_color(button_type, "border")
+    # KeySplit styles
+    KS_WHITE = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(243, 209, 209, 240),
+                stop:0.5 rgba(238, 204, 204, 240),
+                stop:1 rgba(233, 199, 199, 240));
+            border: 1px solid rgba(128, 87, 87, 180);
+            border-radius: 4px;
+            color: rgba(128, 87, 87, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(248, 214, 214, 255),
+                stop:1 rgba(243, 209, 209, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(238, 204, 204, 255),
+                stop:1 rgba(233, 199, 199, 255));
+        }
+    """
 
-        # Convert to RGB for gradient
-        bg_qcolor = QColor(bg_color)
+    GLASS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(40, 40, 40, 255),
+                stop:0.5 rgba(30, 30, 30, 255),
+                stop:1 rgba(20, 20, 20, 255));
+            border: 1px solid rgba(0, 0, 0, 255);
+            border-radius: 4px;
+            color: #FFFFFF;
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(50, 50, 50, 255),
+                stop:1 rgba(40, 40, 40, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(30, 30, 30, 255),
+                stop:1 rgba(20, 20, 20, 255));
+        }
+    """
 
-        return f"""
-            QPushButton {{
-                background: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                color: {text_color};
-                padding: 2px;
-            }}
-            QPushButton:hover {{
-                background: {bg_qcolor.lighter(110).name()};
-            }}
-            QPushButton:pressed {{
-                background: {bg_qcolor.darker(110).name()};
-            }}
-        """
+    KS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(128, 87, 87, 255),
+                stop:0.5 rgba(118, 77, 77, 255),
+                stop:1 rgba(108, 67, 67, 255));
+            border: 1px solid rgba(88, 47, 47, 255);
+            border-radius: 4px;
+            color: rgba(243, 209, 209, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(138, 97, 97, 255),
+                stop:1 rgba(128, 87, 87, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(118, 77, 77, 255),
+                stop:1 rgba(108, 67, 67, 255));
+        }
+    """
 
-    @staticmethod
-    def get_triplesplit_style(key_type):
-        """Get theme-aware triplesplit piano key styles"""
-        button_type = "triplesplit_white" if key_type == "white" else "triplesplit_black"
-        bg_color = Theme.get_special_button_color(button_type, "background")
-        text_color = Theme.get_special_button_color(button_type, "text")
-        border_color = Theme.get_special_button_color(button_type, "border")
+    TS_BLACK = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(128, 128, 87, 255),
+                stop:0.5 rgba(118, 118, 77, 255),
+                stop:1 rgba(108, 108, 67, 255));
+            border: 1px solid rgba(88, 88, 47, 255);
+            border-radius: 4px;
+            color: rgba(209, 243, 215, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(138, 138, 97, 255),
+                stop:1 rgba(128, 128, 87, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(118, 118, 77, 255),
+                stop:1 rgba(108, 108, 67, 255));
+        }
+    """
 
-        # Convert to RGB for gradient
-        bg_qcolor = QColor(bg_color)
-
-        return f"""
-            QPushButton {{
-                background: {bg_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                color: {text_color};
-                padding: 2px;
-            }}
-            QPushButton:hover {{
-                background: {bg_qcolor.lighter(110).name()};
-            }}
-            QPushButton:pressed {{
-                background: {bg_qcolor.darker(110).name()};
-            }}
-        """
+    # TripleSplit styles
+    TS_WHITE = """
+        QPushButton {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(209, 243, 215, 240),
+                stop:0.5 rgba(204, 238, 210, 240),
+                stop:1 rgba(199, 233, 205, 240));
+            border: 1px solid rgba(128, 128, 87, 180);
+            border-radius: 4px;
+            color: rgba(128, 128, 87, 255);
+            padding: 2px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(214, 248, 220, 255),
+                stop:1 rgba(209, 243, 215, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(204, 238, 210, 255),
+                stop:1 rgba(199, 233, 205, 255));
+        }
+    """
 
 
 class AlternativeDisplay(QWidget):
@@ -2054,14 +2090,9 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                # Use theme-aware ear training colors
-                bg_color = Theme.get_special_button_color("ear_training", "background")
-                text_color = Theme.get_special_button_color("ear_training", "text")
-                border_color = Theme.get_special_button_color("ear_training", "border")
-                btn.setStyleSheet(f"""
-                    background: {bg_color};
-                    color: {text_color};
-                    border: 1px solid {border_color};
+                btn.setStyleSheet("""
+                    background: palette(light);
+                    border: 1px solid palette(mid);
                     border-radius: 6px;
                 """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -2075,15 +2106,9 @@ class EarTrainerTab(QScrollArea):
                 col = i % 4
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
-                # Use theme-aware ear training colors (slightly darker for distinction)
-                bg_color = Theme.get_special_button_color("ear_training", "background")
-                text_color = Theme.get_special_button_color("ear_training", "text")
-                border_color = Theme.get_special_button_color("ear_training", "border")
-                darker_bg = QColor(bg_color).darker(110).name()
-                btn.setStyleSheet(f"""
-                    background: {darker_bg};
-                    color: {text_color};
-                    border: 1px solid {border_color};
+                btn.setStyleSheet("""
+                    background: palette(alternate-base);
+                    border: 1px solid palette(mid);
                     border-radius: 6px;
                 """)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -2939,18 +2964,12 @@ class KeySplitTab(QScrollArea):
             btn.setFixedSize(80, 50)
             btn.midi_id = code
             
-            # Set theme-aware background and text colors
+            # Set only background color and text color
             if prefix == 'KS':
-                bg_color = Theme.get_special_button_color("keysplit_control", "background")
-                text_color = Theme.get_special_button_color("keysplit_control", "text")
-                border_color = Theme.get_special_button_color("keysplit_control", "border")
-                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
-            else:  # TripleSplit
-                bg_color = Theme.get_special_button_color("triplesplit_control", "background")
-                text_color = Theme.get_special_button_color("triplesplit_control", "text")
-                border_color = Theme.get_special_button_color("triplesplit_control", "border")
-                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
-
+                btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
+            else:
+                btn.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
+                
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
             layout.addWidget(btn)
 
@@ -3208,10 +3227,7 @@ class ChordProgressionTab(QScrollArea):
             btn = QPushButton(key)
             btn.setFixedHeight(40)
             btn.setFixedWidth(70)
-            bg_color = Theme.get_special_button_color("chord_progression_control", "background")
-            text_color = Theme.get_special_button_color("chord_progression_control", "text")
-            border_color = Theme.get_special_button_color("chord_progression_control", "border")
-            btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
+            btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
             btn.clicked.connect(lambda _, k=key: self.show_key(k))
             self.tab_buttons.append(btn)
             tab_layout.addWidget(btn)
@@ -3319,13 +3335,10 @@ class ChordProgressionTab(QScrollArea):
         toggle_btn_layout = QHBoxLayout()
         toggle_btn_layout.setAlignment(Qt.AlignCenter)
         
-        # Create the toggle description button
+        # Create the toggle description button with light green background
         self.toggle_desc_btn = QPushButton("Showing: Chord Names")  # Set default to chord names
         self.toggle_desc_btn.setFixedSize(170, 50)
-        bg_color = Theme.get_special_button_color("chord_progression_control", "background")
-        text_color = Theme.get_special_button_color("chord_progression_control", "text")
-        border_color = Theme.get_special_button_color("chord_progression_control", "border")
-        self.toggle_desc_btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
+        self.toggle_desc_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")  # Light green background with darker green text
         self.toggle_desc_btn.clicked.connect(self.toggle_button_description)
         toggle_btn_layout.addWidget(self.toggle_desc_btn)
         
@@ -3349,45 +3362,34 @@ class ChordProgressionTab(QScrollArea):
                      "Showing: Names", "Showing: Prog Numbers"]
         self.toggle_desc_btn.setText(mode_names[self.display_mode])
         
-        # Use QTimer to revert the styling after a short delay
-        def reset_style():
-            bg_color = Theme.get_special_button_color("chord_progression_control", "background")
-            text_color = Theme.get_special_button_color("chord_progression_control", "text")
-            border_color = Theme.get_special_button_color("chord_progression_control", "border")
-            self.toggle_desc_btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
-        QTimer.singleShot(100, reset_style)
+        # Use QTimer to revert the styling after a short delay but keep the green color
+        QTimer.singleShot(100, lambda: self.toggle_desc_btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;"))
         
         # Refresh the buttons with the new display mode
         self.relabel_buttons()
 
     def show_key(self, key):
-        # Update the active tab button highlight - use darker version of theme color
-        bg_color = Theme.get_special_button_color("chord_progression_control", "background")
-        text_color = Theme.get_special_button_color("chord_progression_control", "text")
-        border_color = Theme.get_special_button_color("chord_progression_control", "border")
-        darker_bg = QColor(bg_color).darker(120).name()
-
+        # Update the active tab button highlight - use darker version of yellow
         for btn in self.tab_buttons:
             if btn.text() == key:
-                btn.setStyleSheet(f"background-color: {darker_bg}; color: {text_color}; border: 1px solid {border_color};")
+                btn.setStyleSheet("""
+                    background-color: #D4A76A;
+                    color: #4A3828;
+                """)
             else:
-                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
+                btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
         
         self.current_key = key
         self.recreate_buttons()
 
     def show_difficulty(self, difficulty_level):
         # Update the active difficulty button highlight
-        bg_color = Theme.get_special_button_color("chord_progression_control", "background")
-        text_color = Theme.get_special_button_color("chord_progression_control", "text")
-        border_color = Theme.get_special_button_color("chord_progression_control", "border")
-
         for btn in self.difficulty_buttons:
             if btn.text() == difficulty_level:
-                # Highlighted button with theme color (similar to key selectors)
-                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color};")
+                # Highlighted button with gold color (similar to key selectors)
+                btn.setStyleSheet("background-color: #FFE0B2; color: #8D6E63;")
             else:
-                # Default styling - empty stylesheet to use system defaults
+                    # Default styling - empty stylesheet to use system defaults
                 btn.setStyleSheet("")
         
         self.current_difficulty_level = difficulty_level
@@ -3510,13 +3512,11 @@ class ChordProgressionTab(QScrollArea):
                 
                 btn.setFixedSize(110, 60)  # Same size as chord trainer
                 
-                # Apply different styling based on major/minor using theme colors
-                button_type = "chord_progression_major" if is_major else "chord_progression_minor"
-                bg_color = Theme.get_special_button_color(button_type, "background")
-                text_color = Theme.get_special_button_color(button_type, "text")
-                border_color = Theme.get_special_button_color(button_type, "border")
-
-                btn.setStyleSheet(f"background-color: {bg_color}; color: {text_color}; border: 1px solid {border_color}; text-align: center;")
+                # Apply different styling based on major/minor
+                if is_major:
+                    btn.setStyleSheet("background-color: #E3F2FD; color: #1565C0; text-align: center;")
+                else:
+                    btn.setStyleSheet("background-color: #E8DAEF; color: #7D3C98; text-align: center;")
                     
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
