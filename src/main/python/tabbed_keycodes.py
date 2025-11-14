@@ -3758,17 +3758,24 @@ class GamepadWidget(QWidget):
         self.setAttribute(Qt.WA_StyledBackground, False)
         self.setAutoFillBackground(False)
 
-        # Load the PS4 controller image
+        # Load the PS4 controller image from widgets directory
         import os
         # Get the path relative to this file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png')
+        # Image is in the widgets subdirectory
+        image_path = os.path.join(current_dir, 'widgets', 'ps4_controller.png')
+
+        print(f"DEBUG: Attempting to load controller image from: {image_path}")
+        print(f"DEBUG: File exists: {os.path.exists(image_path)}")
+
         self.controller_image = QPixmap(image_path)
 
         if self.controller_image.isNull():
-            print(f"Warning: Could not load controller image from {image_path}")
+            print(f"ERROR: Could not load controller image from {image_path}")
+            print(f"DEBUG: Current dir: {current_dir}")
+            print(f"DEBUG: Looking for widgets/ps4_controller.png")
         else:
-            print(f"Successfully loaded controller image: {image_path} ({self.controller_image.width()}x{self.controller_image.height()})")
+            print(f"SUCCESS: Loaded controller image: {image_path} ({self.controller_image.width()}x{self.controller_image.height()})")
 
     def paintEvent(self, event):
         """Draw the gamepad image as background"""
