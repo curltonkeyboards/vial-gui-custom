@@ -87,48 +87,68 @@ class ThruLoopConfigurator(BasicEditor):
             basic_layout.addWidget(combo, 7 if i >= 2 else 6, (i+1) if i < 2 else (i-1))
             self.restart_combos.append(combo)
         
-        # Main Functions - Using grid layout like LoopChop
+        # Main Functions - Using clean grid layout
         main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         main_layout.addWidget(main_group)
         main_grid = QGridLayout()
+        main_grid.setSpacing(8)
+        main_grid.setContentsMargins(10, 15, 10, 10)
         main_group.setLayout(main_grid)
         self.main_group = main_group
 
-        # Add loop headers
-        for loop_idx in range(4):
-            main_grid.addWidget(QLabel(f"Loop {loop_idx + 1}"), 0, loop_idx + 1)
+        # Add column headers
+        for col in range(4):
+            header = QLabel(f"Loop {col + 1}")
+            header.setAlignment(QtCore.Qt.AlignCenter)
+            header.setStyleSheet("font-weight: bold;")
+            main_grid.addWidget(header, 0, col + 1)
 
-        # Create main function combos
-        self.main_combos = []
+        # Add function rows
         functions = ["Start Recording", "Stop Recording", "Start Playing", "Stop Playing", "Clear"]
-        for func_idx, func_name in enumerate(functions):
-            main_grid.addWidget(QLabel(func_name), func_idx + 1, 0)
+        self.main_combos = []
+        for row_idx, func_name in enumerate(functions):
+            # Row label
+            label = QLabel(func_name)
+            label.setStyleSheet("font-weight: bold;")
+            main_grid.addWidget(label, row_idx + 1, 0)
+
+            # Combo boxes for each loop
             row_combos = []
-            for loop_idx in range(4):
-                combo = self.create_cc_combo()
-                main_grid.addWidget(combo, func_idx + 1, loop_idx + 1)
+            for col_idx in range(4):
+                combo = self.create_cc_combo(for_table=True)
+                main_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.main_combos.append(row_combos)
 
-        # Overdub Functions - Using grid layout like LoopChop
+        # Overdub Functions - Using clean grid layout
         overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
         main_layout.addWidget(overdub_group)
         overdub_grid = QGridLayout()
+        overdub_grid.setSpacing(8)
+        overdub_grid.setContentsMargins(10, 15, 10, 10)
         overdub_group.setLayout(overdub_grid)
         self.overdub_group = overdub_group
 
-        # Add loop headers
-        for loop_idx in range(4):
-            overdub_grid.addWidget(QLabel(f"Loop {loop_idx + 1}"), 0, loop_idx + 1)
+        # Add column headers
+        for col in range(4):
+            header = QLabel(f"Loop {col + 1}")
+            header.setAlignment(QtCore.Qt.AlignCenter)
+            header.setStyleSheet("font-weight: bold;")
+            overdub_grid.addWidget(header, 0, col + 1)
 
-        # Create overdub function combos
+        # Add function rows
         self.overdub_combos = []
-        for func_idx, func_name in enumerate(functions):
-            overdub_grid.addWidget(QLabel(func_name), func_idx + 1, 0)
+        for row_idx, func_name in enumerate(functions):
+            # Row label
+            label = QLabel(func_name)
+            label.setStyleSheet("font-weight: bold;")
+            overdub_grid.addWidget(label, row_idx + 1, 0)
+
+            # Combo boxes for each loop
             row_combos = []
-            for loop_idx in range(4):
-                combo = self.create_cc_combo()
-                overdub_grid.addWidget(combo, func_idx + 1, loop_idx + 1)
+            for col_idx in range(4):
+                combo = self.create_cc_combo(for_table=True)
+                overdub_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.overdub_combos.append(row_combos)
         
@@ -172,27 +192,34 @@ class ThruLoopConfigurator(BasicEditor):
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
+        # Button style - bigger and less rounded
+        button_style = "QPushButton { border-radius: 3px; padding: 8px 16px; }"
+
         save_btn = QPushButton(tr("ThruLoopConfigurator", "Save Configuration"))
-        save_btn.setMinimumHeight(35)
-        save_btn.setMinimumWidth(150)
+        save_btn.setMinimumHeight(45)
+        save_btn.setMinimumWidth(200)
+        save_btn.setStyleSheet(button_style)
         save_btn.clicked.connect(self.on_save)
         buttons_layout.addWidget(save_btn)
 
         load_btn = QPushButton(tr("ThruLoopConfigurator", "Load from Keyboard"))
-        load_btn.setMinimumHeight(35)
-        load_btn.setMinimumWidth(160)
+        load_btn.setMinimumHeight(45)
+        load_btn.setMinimumWidth(210)
+        load_btn.setStyleSheet(button_style)
         load_btn.clicked.connect(self.on_load_from_keyboard)
         buttons_layout.addWidget(load_btn)
 
         save_file_btn = QPushButton(tr("ThruLoopConfigurator", "Save to File"))
-        save_file_btn.setMinimumHeight(35)
-        save_file_btn.setMinimumWidth(130)
+        save_file_btn.setMinimumHeight(45)
+        save_file_btn.setMinimumWidth(170)
+        save_file_btn.setStyleSheet(button_style)
         save_file_btn.clicked.connect(self.on_save_to_file)
         buttons_layout.addWidget(save_file_btn)
 
         load_file_btn = QPushButton(tr("ThruLoopConfigurator", "Load from File"))
-        load_file_btn.setMinimumHeight(35)
-        load_file_btn.setMinimumWidth(130)
+        load_file_btn.setMinimumHeight(45)
+        load_file_btn.setMinimumWidth(180)
+        load_file_btn.setStyleSheet(button_style)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
         
@@ -206,8 +233,19 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
     
-    def create_cc_combo(self):
+    def create_cc_combo(self, for_table=False):
+        """Create a CC selector combobox
+
+        Args:
+            for_table: If True, creates a narrower combo for use in tables
+        """
         combo = ArrowComboBox()
+        if for_table:
+            combo.setMaximumWidth(100)  # Narrower for tables to show arrow
+        else:
+            combo.setMinimumWidth(120)
+        combo.setMaximumHeight(25)
+
         combo.addItem("None", 128)
         for i in range(128):
             combo.addItem(f"CC# {i}", i)
