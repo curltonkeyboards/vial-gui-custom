@@ -2,7 +2,7 @@
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
-from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush
+from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap
 
 from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
@@ -3748,57 +3748,40 @@ def keycode_filter_masked(kc):
 
 
 class GamepadWidget(QWidget):
-    """Custom widget that draws a gamepad outline"""
+    """Custom widget that displays a gamepad image as background"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(700, 400)
 
+        # Load the PS4 controller image
+        import os
+        # Get the path relative to this file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        image_path = os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png')
+        self.controller_image = QPixmap(image_path)
+
+        if self.controller_image.isNull():
+            print(f"Warning: Could not load controller image from {image_path}")
+
     def paintEvent(self, event):
-        """Draw the gamepad outline"""
+        """Draw the gamepad image as background"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Set pen for drawing lines
-        pen = QPen(QColor(100, 100, 100), 3)
-        painter.setPen(pen)
+        if not self.controller_image.isNull():
+            # Scale image to fit widget while maintaining aspect ratio
+            scaled_image = self.controller_image.scaled(
+                self.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
 
-        # Draw main controller body (rounded rectangle)
-        body_rect = self.rect().adjusted(50, 50, -50, -50)
-        painter.drawRoundedRect(body_rect, 30, 30)
+            # Center the image
+            x = (self.width() - scaled_image.width()) // 2
+            y = (self.height() - scaled_image.height()) // 2
 
-        # Draw left grip (angled line down and out)
-        left_grip_start_x = body_rect.left() + 80
-        left_grip_start_y = body_rect.bottom()
-        painter.drawLine(left_grip_start_x, left_grip_start_y,
-                        left_grip_start_x - 30, left_grip_start_y + 40)
-        painter.drawLine(left_grip_start_x - 30, left_grip_start_y + 40,
-                        left_grip_start_x - 25, left_grip_start_y + 60)
-
-        # Draw right grip (angled line down and out)
-        right_grip_start_x = body_rect.right() - 80
-        right_grip_start_y = body_rect.bottom()
-        painter.drawLine(right_grip_start_x, right_grip_start_y,
-                        right_grip_start_x + 30, right_grip_start_y + 40)
-        painter.drawLine(right_grip_start_x + 30, right_grip_start_y + 40,
-                        right_grip_start_x + 25, right_grip_start_y + 60)
-
-        # Connect the grips at bottom
-        painter.drawLine(left_grip_start_x - 25, left_grip_start_y + 60,
-                        right_grip_start_x + 25, right_grip_start_y + 60)
-
-        # Draw shoulder button areas (top bumps)
-        # Left shoulder
-        painter.drawLine(body_rect.left(), body_rect.top(),
-                        body_rect.left() + 100, body_rect.top() - 20)
-        painter.drawLine(body_rect.left() + 100, body_rect.top() - 20,
-                        body_rect.left() + 120, body_rect.top())
-
-        # Right shoulder
-        painter.drawLine(body_rect.right(), body_rect.top(),
-                        body_rect.right() - 100, body_rect.top() - 20)
-        painter.drawLine(body_rect.right() - 100, body_rect.top() - 20,
-                        body_rect.right() - 120, body_rect.top())
+            painter.drawPixmap(x, y, scaled_image)
 
 
 class GamingTab(QScrollArea):
