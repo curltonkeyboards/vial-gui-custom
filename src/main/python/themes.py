@@ -245,6 +245,127 @@ themes = [
         (QPalette.Disabled, QPalette.Text): "#b8a5ad",
         (QPalette.Disabled, QPalette.Light): "#fce7f3",
     }),
+    # Modern Dark Themes with Gradients
+    ("Midnight Lavender", {
+        QPalette.Window: "#1a1625",
+        QPalette.WindowText: "#e0d9f0",
+        QPalette.Base: "#221b2e",
+        QPalette.AlternateBase: "#2a2438",
+        QPalette.ToolTipBase: "#332d47",
+        QPalette.ToolTipText: "#e0d9f0",
+        QPalette.Text: "#e0d9f0",
+        QPalette.Button: "#2a2438",
+        QPalette.ButtonText: "#e0d9f0",
+        QPalette.BrightText: "#a78bfa",
+        QPalette.Link: "#c4b5fd",
+        QPalette.Highlight: "#7c3aed",
+        QPalette.HighlightedText: "#f5f3ff",
+        QPalette.Light: "#4a3f5e",
+        QPalette.Mid: "#6b5f8a",
+        QPalette.Dark: "#15111f",
+        QPalette.Midlight: "#3d3352",
+        (QPalette.Active, QPalette.Button): "#332d47",
+        (QPalette.Disabled, QPalette.ButtonText): "#6b5f7a",
+        (QPalette.Disabled, QPalette.WindowText): "#6b5f7a",
+        (QPalette.Disabled, QPalette.Text): "#6b5f7a",
+        (QPalette.Disabled, QPalette.Light): "#332d47",
+    }),
+    ("Forest Depths", {
+        QPalette.Window: "#0f1f1a",
+        QPalette.WindowText: "#d1f5e8",
+        QPalette.Base: "#1a2822",
+        QPalette.AlternateBase: "#1f3329",
+        QPalette.ToolTipBase: "#254d3d",
+        QPalette.ToolTipText: "#d1f5e8",
+        QPalette.Text: "#d1f5e8",
+        QPalette.Button: "#1f3329",
+        QPalette.ButtonText: "#d1f5e8",
+        QPalette.BrightText: "#34d399",
+        QPalette.Link: "#6ee7b7",
+        QPalette.Highlight: "#059669",
+        QPalette.HighlightedText: "#f0fdf9",
+        QPalette.Light: "#2f4d42",
+        QPalette.Mid: "#4a7865",
+        QPalette.Dark: "#0a1712",
+        QPalette.Midlight: "#243d34",
+        (QPalette.Active, QPalette.Button): "#254d3d",
+        (QPalette.Disabled, QPalette.ButtonText): "#5a7167",
+        (QPalette.Disabled, QPalette.WindowText): "#5a7167",
+        (QPalette.Disabled, QPalette.Text): "#5a7167",
+        (QPalette.Disabled, QPalette.Light): "#254d3d",
+    }),
+    ("Sunset Ember", {
+        QPalette.Window: "#1f1410",
+        QPalette.WindowText: "#ffe4d1",
+        QPalette.Base: "#2a1d16",
+        QPalette.AlternateBase: "#33241c",
+        QPalette.ToolTipBase: "#4a3326",
+        QPalette.ToolTipText: "#ffe4d1",
+        QPalette.Text: "#ffe4d1",
+        QPalette.Button: "#33241c",
+        QPalette.ButtonText: "#ffe4d1",
+        QPalette.BrightText: "#fb923c",
+        QPalette.Link: "#fdba74",
+        QPalette.Highlight: "#ea580c",
+        QPalette.HighlightedText: "#fff8f3",
+        QPalette.Light: "#5a4336",
+        QPalette.Mid: "#8a6854",
+        QPalette.Dark: "#140f0b",
+        QPalette.Midlight: "#44342a",
+        (QPalette.Active, QPalette.Button): "#4a3326",
+        (QPalette.Disabled, QPalette.ButtonText): "#8a6f5f",
+        (QPalette.Disabled, QPalette.WindowText): "#8a6f5f",
+        (QPalette.Disabled, QPalette.Text): "#8a6f5f",
+        (QPalette.Disabled, QPalette.Light): "#4a3326",
+    }),
+    ("Deep Ocean", {
+        QPalette.Window: "#0a1929",
+        QPalette.WindowText: "#dbeafe",
+        QPalette.Base: "#132337",
+        QPalette.AlternateBase: "#1e3a5f",
+        QPalette.ToolTipBase: "#1e3a5f",
+        QPalette.ToolTipText: "#dbeafe",
+        QPalette.Text: "#dbeafe",
+        QPalette.Button: "#1e3a5f",
+        QPalette.ButtonText: "#dbeafe",
+        QPalette.BrightText: "#38bdf8",
+        QPalette.Link: "#7dd3fc",
+        QPalette.Highlight: "#0284c7",
+        QPalette.HighlightedText: "#f0f9ff",
+        QPalette.Light: "#2e5278",
+        QPalette.Mid: "#4a7ba8",
+        QPalette.Dark: "#06111d",
+        QPalette.Midlight: "#234263",
+        (QPalette.Active, QPalette.Button): "#1e3a5f",
+        (QPalette.Disabled, QPalette.ButtonText): "#64748b",
+        (QPalette.Disabled, QPalette.WindowText): "#64748b",
+        (QPalette.Disabled, QPalette.Text): "#64748b",
+        (QPalette.Disabled, QPalette.Light): "#1e3a5f",
+    }),
+    ("Twilight Rose", {
+        QPalette.Window: "#1f0f18",
+        QPalette.WindowText: "#fce7f3",
+        QPalette.Base: "#2b1621",
+        QPalette.AlternateBase: "#3d1f2f",
+        QPalette.ToolTipBase: "#4a2533",
+        QPalette.ToolTipText: "#fce7f3",
+        QPalette.Text: "#fce7f3",
+        QPalette.Button: "#3d1f2f",
+        QPalette.ButtonText: "#fce7f3",
+        QPalette.BrightText: "#f472b6",
+        QPalette.Link: "#f9a8d4",
+        QPalette.Highlight: "#db2777",
+        QPalette.HighlightedText: "#fef3f6",
+        QPalette.Light: "#5d3549",
+        QPalette.Mid: "#8a5570",
+        QPalette.Dark: "#150a11",
+        QPalette.Midlight: "#4d2a3c",
+        (QPalette.Active, QPalette.Button): "#4a2533",
+        (QPalette.Disabled, QPalette.ButtonText): "#7a5f6b",
+        (QPalette.Disabled, QPalette.WindowText): "#7a5f6b",
+        (QPalette.Disabled, QPalette.Text): "#7a5f6b",
+        (QPalette.Disabled, QPalette.Light): "#4a2533",
+    }),
 ]
 
 palettes = dict()
@@ -324,36 +445,38 @@ class Theme:
             /* General Rounded Buttons */
             QPushButton {
                 border-radius: 8px;
-                border: 1px solid palette(mid);
+                border: 1px solid palette(light);
                 background: palette(button);
             }
 
             QPushButton:hover {
                 background: palette(light);
-                border-color: palette(highlight);
+                border-color: palette(mid);
             }
 
             QPushButton:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
+                border-color: palette(highlight);
             }
 
             /* Rounded Keycode Buttons - Using object name selector */
             QPushButton[keycode_button="true"] {
                 border-radius: 8px;
-                border: 1px solid palette(mid);
+                border: 1px solid palette(light);
                 background: palette(button);
                 font-size: 9pt;
             }
 
             QPushButton[keycode_button="true"]:hover {
                 background: palette(light);
-                border-color: palette(highlight);
+                border-color: palette(mid);
             }
 
             QPushButton[keycode_button="true"]:pressed {
                 background: palette(highlight);
                 color: palette(highlighted-text);
+                border-color: palette(highlight);
             }
 
             /* Layer Selection Button Styling */
@@ -560,12 +683,12 @@ class Theme:
 
             /* Inner Tab Buttons - Horizontal tabs like main headers */
             QPushButton[inner_tab="true"] {
-                border: 1px solid palette(mid);
+                border: 1px solid palette(light);
                 margin-right: 2px;
                 margin-bottom: 0px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                border-bottom: 1px solid palette(mid);
+                border-bottom: 1px solid palette(light);
                 background: palette(button);
                 font-weight: 500;
                 font-size: 9pt;
@@ -573,6 +696,7 @@ class Theme:
 
             QPushButton[inner_tab="true"]:hover:!checked {
                 background: palette(light);
+                border-color: palette(mid);
             }
 
             QPushButton[inner_tab="true"]:checked {
@@ -583,12 +707,12 @@ class Theme:
 
             /* Side Tab Buttons - Vertical tabs on left */
             QPushButton[side_tab="true"] {
-                border: 1px solid palette(mid);
+                border: 1px solid palette(light);
                 margin-bottom: 2px;
                 margin-right: 0px;
                 border-top-left-radius: 4px;
                 border-bottom-left-radius: 4px;
-                border-right: 1px solid palette(mid);
+                border-right: 1px solid palette(light);
                 background: palette(button);
                 text-align: left;
                 min-width: 100px;
@@ -598,6 +722,7 @@ class Theme:
 
             QPushButton[side_tab="true"]:hover:!checked {
                 background: palette(light);
+                border-color: palette(mid);
             }
 
             QPushButton[side_tab="true"]:checked {
