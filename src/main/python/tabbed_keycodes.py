@@ -4321,149 +4321,25 @@ class MusicTab(QWidget):
             tab_widget.relabel_buttons()
 
 
-class MIDITab(QWidget):
-    """Nested tab container for MIDI-related tabs with side-tab style"""
-
-    keycode_changed = pyqtSignal(str)
+class MIDITab(midiadvancedTab):
+    """MIDI tab that directly exposes all MIDI advanced sections"""
 
     def __init__(self, parent):
-        super().__init__(parent)
+        # Initialize with all the MIDI advanced parameters
+        super().__init__(parent, "MIDI", KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change,
+                        KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC,
+                        KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN,
+                        KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL,
+                        KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD,
+                        KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2,
+                        KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3,
+                        KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT,
+                        KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS,
+                        KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL,
+                        KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3)
+
+        # Update label to just "MIDI"
         self.label = "MIDI"
-        self.parent_widget = parent
-        self.current_keycode_filter = keycode_filter_any
-
-        # Create the individual tab
-        self.advanced_tab = midiadvancedTab(parent, "MIDI Advanced", KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change,
-                                           KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC,
-                                           KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN,
-                                           KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL,
-                                           KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD,
-                                           KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2,
-                                           KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3,
-                                           KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT,
-                                           KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS,
-                                           KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL,
-                                           KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3)
-
-        # Connect signal
-        self.advanced_tab.keycode_changed.connect(self.on_keycode_changed)
-
-        # Define sections (tab_widget, display_name)
-        self.sections = [
-            (self.advanced_tab, "Advanced")
-        ]
-
-        # Create horizontal layout: side tabs on left, content on right
-        main_layout_h = QHBoxLayout()
-        main_layout_h.setSpacing(0)
-        main_layout_h.setContentsMargins(0, 0, 0, 0)
-
-        # Create side tabs container
-        side_tabs_container = QWidget()
-        side_tabs_container.setObjectName("side_tabs_container")
-        side_tabs_container.setStyleSheet("""
-            QWidget#side_tabs_container {
-                background: palette(window);
-                border: 1px solid palette(mid);
-                border-right: none;
-            }
-        """)
-        side_tabs_layout = QVBoxLayout(side_tabs_container)
-        side_tabs_layout.setSpacing(0)
-        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.side_tab_buttons = {}
-        for tab_widget, display_name in self.sections:
-            btn = QPushButton(display_name)
-            btn.setCheckable(True)
-            btn.setMinimumHeight(40)
-            btn.setMinimumWidth(120)
-            btn.setStyleSheet("""
-                QPushButton {
-                    border: 1px solid palette(mid);
-                    border-radius: 0px;
-                    border-right: none;
-                    background: palette(button);
-                    text-align: left;
-                    padding-left: 15px;
-                    font-size: 9pt;
-                }
-                QPushButton:hover:!checked {
-                    background: palette(light);
-                }
-                QPushButton:checked {
-                    background: palette(base);
-                    font-weight: 600;
-                    border-right: 1px solid palette(base);
-                }
-            """)
-            btn.clicked.connect(lambda checked, dn=display_name: self.show_section(dn))
-            side_tabs_layout.addWidget(btn)
-            self.side_tab_buttons[display_name] = btn
-
-        side_tabs_layout.addStretch(1)
-        main_layout_h.addWidget(side_tabs_container)
-
-        # Create content container
-        self.content_wrapper = QWidget()
-        self.content_wrapper.setObjectName("content_wrapper")
-        self.content_wrapper.setStyleSheet("""
-            QWidget#content_wrapper {
-                border: 1px solid palette(mid);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
-                                           stop: 0 palette(alternate-base),
-                                           stop: 1 palette(base));
-            }
-        """)
-        self.content_layout = QVBoxLayout(self.content_wrapper)
-        self.content_layout.setSpacing(0)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Add all section widgets to content area
-        self.section_widgets = {}
-        for tab_widget, display_name in self.sections:
-            tab_widget.hide()
-            self.content_layout.addWidget(tab_widget)
-            self.section_widgets[display_name] = tab_widget
-
-        main_layout_h.addWidget(self.content_wrapper)
-        self.setLayout(main_layout_h)
-
-        # Show first section by default
-        self.show_section("Advanced")
-
-    def show_section(self, section_name):
-        """Show the specified section and update tab button states"""
-        # Hide all section widgets
-        for widget in self.section_widgets.values():
-            widget.hide()
-
-        # Uncheck all tab buttons
-        for btn in self.side_tab_buttons.values():
-            btn.setChecked(False)
-
-        # Show the selected section widget and check its tab button
-        if section_name in self.section_widgets:
-            self.section_widgets[section_name].show()
-            if section_name in self.side_tab_buttons:
-                self.side_tab_buttons[section_name].setChecked(True)
-
-    def on_keycode_changed(self, code):
-        self.keycode_changed.emit(code)
-
-    def recreate_buttons(self, keycode_filter):
-        self.current_keycode_filter = keycode_filter
-
-        # Recreate buttons for each tab
-        for tab_widget, display_name in self.sections:
-            tab_widget.recreate_buttons(keycode_filter)
-
-    def has_buttons(self):
-        return any(tab.has_buttons() for tab, _ in self.sections)
-
-    def relabel_buttons(self):
-        for tab_widget, _ in self.sections:
-            tab_widget.relabel_buttons()
 
 
 class FilteredTabbedKeycodes(QTabWidget):
