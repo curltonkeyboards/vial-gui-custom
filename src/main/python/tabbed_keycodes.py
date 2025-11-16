@@ -3935,20 +3935,21 @@ def keycode_filter_masked(kc):
 
 
 class GamepadWidget(QWidget):
-    """Custom widget that displays a gamepad image as background"""
+    """Custom widget that displays a gamepad image as background with buttons overlaid"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(700, 400)
+        self.setFixedSize(750, 500)
 
-        # Set background style to ensure widget is visible
-        self.setStyleSheet("""
-            GamepadWidget {
-                background-color: palette(base);
-                border: 2px solid palette(mid);
-                border-radius: 10px;
-            }
-        """)
+        # Create a layout for the widget
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Create QLabel to display the image
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setFixedSize(750, 500)
 
         # Load the PS4 controller image
         import os
@@ -3961,50 +3962,39 @@ class GamepadWidget(QWidget):
         print(f"Debug: image_path = {image_path}")
         print(f"Debug: file exists = {os.path.exists(image_path)}")
 
-        self.controller_image = QPixmap(image_path)
+        pixmap = QPixmap(image_path)
 
-        if self.controller_image.isNull():
-            print(f"Warning: Could not load controller image from {image_path}")
-            print(f"Warning: File exists: {os.path.exists(image_path)}")
-        else:
-            print(f"Success: Loaded controller image from {image_path}")
-            print(f"Image size: {self.controller_image.width()}x{self.controller_image.height()}")
-
-    def paintEvent(self, event):
-        """Draw the gamepad image as background"""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        # Draw background
-        painter.fillRect(self.rect(), QApplication.palette().color(QPalette.Base))
-
-        if not self.controller_image.isNull():
-            # Scale image to fit widget while maintaining aspect ratio
-            scaled_image = self.controller_image.scaled(
-                self.size(),
+        if not pixmap.isNull():
+            # Scale the pixmap to fit the label while maintaining aspect ratio
+            scaled_pixmap = pixmap.scaled(
+                self.image_label.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             )
-
-            # Center the image
-            x = (self.width() - scaled_image.width()) // 2
-            y = (self.height() - scaled_image.height()) // 2
-
-            painter.drawPixmap(x, y, scaled_image)
-            print(f"Drawing image at ({x}, {y}), scaled size: {scaled_image.width()}x{scaled_image.height()}")
+            self.image_label.setPixmap(scaled_pixmap)
+            print(f"Success: Loaded and set controller image")
+            print(f"Pixmap size: {pixmap.width()}x{pixmap.height()}")
+            print(f"Scaled size: {scaled_pixmap.width()}x{scaled_pixmap.height()}")
         else:
-            # Draw a fallback outline if image isn't available
-            painter.setPen(QPen(QColor(128, 128, 128), 3))
-            painter.setBrush(QBrush(QColor(240, 240, 240)))
-            painter.drawRoundedRect(20, 20, self.width() - 40, self.height() - 40, 15, 15)
+            # Set a fallback text if image doesn't load
+            self.image_label.setText("Controller Image\nNot Loaded")
+            self.image_label.setStyleSheet("""
+                QLabel {
+                    background-color: palette(base);
+                    border: 2px solid palette(mid);
+                    color: palette(text);
+                    font-size: 16px;
+                }
+            """)
+            print(f"Error: Could not load controller image from {image_path}")
+            print(f"File exists: {os.path.exists(image_path)}")
 
-            # Draw text to indicate missing image
-            painter.setPen(QPen(QColor(100, 100, 100)))
-            from PyQt5.QtGui import QFont
-            font = QFont()
-            font.setPointSize(16)
-            painter.setFont(font)
-            painter.drawText(self.rect(), Qt.AlignCenter, "Controller Image\nNot Loaded")
+            # Try alternate path
+            alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
+            print(f"Trying alternate path: {alt_path}")
+            print(f"Alternate exists: {os.path.exists(alt_path)}")
+
+        layout.addWidget(self.image_label)
 
 
 class GamingTab(QScrollArea):
