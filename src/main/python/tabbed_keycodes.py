@@ -3941,54 +3941,46 @@ class GamepadWidget(QWidget):
         super().__init__(parent)
         self.setFixedSize(750, 500)
 
-        # Create QLabel to display the image (using absolute positioning, no layout)
-        self.image_label = QLabel(self)
-        self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setFixedSize(750, 500)
-        self.image_label.move(0, 0)  # Position at top-left
-
         # Load the PS4 controller image
         import os
-        # Get the path relative to this file
         current_dir = os.path.dirname(os.path.abspath(__file__))
         image_path = os.path.normpath(os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png'))
 
-        # Debug: print paths
-        print(f"Debug: current_dir = {current_dir}")
-        print(f"Debug: image_path = {image_path}")
-        print(f"Debug: file exists = {os.path.exists(image_path)}")
+        self.pixmap = QPixmap(image_path)
 
-        pixmap = QPixmap(image_path)
+        if self.pixmap.isNull():
+            print(f"Warning: Could not load controller image from {image_path}")
+            # Try alternate path
+            alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
+            self.pixmap = QPixmap(alt_path)
+            if self.pixmap.isNull():
+                print(f"Warning: Could not load from alternate path: {alt_path}")
 
-        if not pixmap.isNull():
-            # Scale the pixmap to fit the label while maintaining aspect ratio
-            scaled_pixmap = pixmap.scaled(
-                self.image_label.size(),
+    def paintEvent(self, event):
+        """Paint the controller image using QPainter (same approach as backgrounddark/backgroundlight)"""
+        qp = QPainter()
+        qp.begin(self)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        if not self.pixmap.isNull():
+            # Draw the controller image scaled to fit the widget
+            scaled_pixmap = self.pixmap.scaled(
+                self.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             )
-            self.image_label.setPixmap(scaled_pixmap)
-            print(f"Success: Loaded and set controller image")
-            print(f"Pixmap size: {pixmap.width()}x{pixmap.height()}")
-            print(f"Scaled size: {scaled_pixmap.width()}x{scaled_pixmap.height()}")
-        else:
-            # Set a fallback text if image doesn't load
-            self.image_label.setText("Controller Image\nNot Loaded")
-            self.image_label.setStyleSheet("""
-                QLabel {
-                    background-color: palette(base);
-                    border: 2px solid palette(mid);
-                    color: palette(text);
-                    font-size: 16px;
-                }
-            """)
-            print(f"Error: Could not load controller image from {image_path}")
-            print(f"File exists: {os.path.exists(image_path)}")
 
-            # Try alternate path
-            alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
-            print(f"Trying alternate path: {alt_path}")
-            print(f"Alternate exists: {os.path.exists(alt_path)}")
+            # Center the image
+            x = (self.width() - scaled_pixmap.width()) // 2
+            y = (self.height() - scaled_pixmap.height()) // 2
+            qp.drawPixmap(x, y, scaled_pixmap)
+        else:
+            # Draw fallback if image didn't load
+            qp.setPen(QColor("#888888"))
+            qp.drawRect(0, 0, self.width() - 1, self.height() - 1)
+            qp.drawText(self.rect(), Qt.AlignCenter, "Controller Image\nNot Loaded")
+
+        qp.end()
 
 
 class GamingTab(QScrollArea):
