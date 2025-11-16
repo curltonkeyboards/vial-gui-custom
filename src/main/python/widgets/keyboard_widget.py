@@ -9,6 +9,7 @@ from constants import KEY_SIZE_RATIO, KEY_SPACING_RATIO, KEYBOARD_WIDGET_PADDING
     KEYBOARD_WIDGET_NONMASK_PADDING
 from themes import Theme
 import themes2
+from widgets import backgroundimages
 
 
 class KeyWidget:
