@@ -3941,15 +3941,11 @@ class GamepadWidget(QWidget):
         super().__init__(parent)
         self.setFixedSize(750, 500)
 
-        # Create a layout for the widget
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Create QLabel to display the image
+        # Create QLabel to display the image (using absolute positioning, no layout)
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setFixedSize(750, 500)
+        self.image_label.move(0, 0)  # Position at top-left
 
         # Load the PS4 controller image
         import os
@@ -3993,8 +3989,6 @@ class GamepadWidget(QWidget):
             alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
             print(f"Trying alternate path: {alt_path}")
             print(f"Alternate exists: {os.path.exists(alt_path)}")
-
-        layout.addWidget(self.image_label)
 
 
 class GamingTab(QScrollArea):
