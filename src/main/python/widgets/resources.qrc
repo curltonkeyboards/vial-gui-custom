@@ -4,5 +4,7 @@
         <file alias="backgrounddark">backgrounddark.png</file>
         <file alias="backgroundlight">backgroundlight.png</file>
         <file alias="ps4controller">../../resources/images/ps4_controller.png</file>
+        <file alias="ps4controllerlight">../../resources/images/ps4_controller_light.png</file>
+        <file alias="ps4controllerdark">../../resources/images/ps4_controller_dark.png</file>
     </qresource>
 </RCC>

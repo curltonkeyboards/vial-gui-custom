@@ -3951,8 +3951,15 @@ class GamepadWidget(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setFixedSize(750, 500)
 
-        # Load the PS4 controller image from resources
-        pixmap = QPixmap(":/ps4controller")
+        # Get the Window color and calculate brightness to determine light or dark theme
+        window_color = QApplication.palette().color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
+
+        # Choose controller image based on brightness (light or dark theme)
+        if brightness > 127:  # Threshold for light/dark theme
+            pixmap = QPixmap(":/ps4controllerlight")  # Light theme - black controller
+        else:
+            pixmap = QPixmap(":/ps4controllerdark")  # Dark theme - white controller
 
         if not pixmap.isNull():
             # Scale the pixmap to fit the label while maintaining aspect ratio
@@ -4071,26 +4078,26 @@ class GamingTab(QScrollArea):
             rb_btn.setParent(gamepad_widget)
             rb_btn.move(490, 60)  # Was 570, moved 80px left
 
-        # D-pad (left side) (moved 61px right, 31px up)
+        # D-pad (left side) (moved 20px inwards + 3px right and down)
         dpad_up = self.create_button("DPAD_UP", 38, 38)
         if dpad_up:
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(211, 149)  # Was (150, 180)
+            dpad_up.move(234, 152)  # Was (211, 149)
 
         dpad_down = self.create_button("DPAD_DOWN", 38, 38)
         if dpad_down:
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(211, 225)  # Was (150, 256)
+            dpad_down.move(234, 228)  # Was (211, 225)
 
         dpad_left = self.create_button("DPAD_LEFT", 38, 38)
         if dpad_left:
             dpad_left.setParent(gamepad_widget)
-            dpad_left.move(173, 187)  # Was (112, 218)
+            dpad_left.move(196, 190)  # Was (173, 187)
 
         dpad_right = self.create_button("DPAD_RIGHT", 38, 38)
         if dpad_right:
             dpad_right.setParent(gamepad_widget)
-            dpad_right.move(249, 187)  # Was (188, 218)
+            dpad_right.move(272, 190)  # Was (249, 187)
 
         # Left Analog Stick (next to D-pad) (moved 30px right, 30px down)
         ls_up = self.create_button("LS_UP", 38, 38)
@@ -4155,30 +4162,30 @@ class GamingTab(QScrollArea):
             r3_btn.setParent(gamepad_widget)
             r3_btn.move(426, 233)  # Center - Was (450, 278)
 
-        # Face Buttons (right side) - Button 1-4 (moved 60px left, 13px up)
+        # Face Buttons (right side) - Button 1-4 (moved 5px right, 10px inwards/left)
         btn4 = self.create_button("XBOX_Y", 42, 42)
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
-            btn4.move(510, 127)  # Top - Was (570, 140)
+            btn4.move(505, 127)  # Top - Was (510, 127)
 
         btn3 = self.create_button("XBOX_X", 42, 42)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
-            btn3.move(468, 169)  # Left - Was (528, 182)
+            btn3.move(463, 169)  # Left - Was (468, 169)
 
         btn2 = self.create_button("XBOX_B", 42, 42)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
-            btn2.move(552, 169)  # Right - Was (612, 182)
+            btn2.move(547, 169)  # Right - Was (552, 169)
 
         btn1 = self.create_button("XBOX_A", 42, 42)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
-            btn1.move(510, 211)  # Bottom - Was (570, 224)
+            btn1.move(505, 211)  # Bottom - Was (510, 211)
 
         self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
