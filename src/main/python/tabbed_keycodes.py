@@ -3132,6 +3132,38 @@ class TripleSplitTab(QScrollArea):
         self.create_control_buttons(ts_control_layout, 'TS')
         main_layout.addLayout(ts_control_layout)
 
+        # Split buttons at the bottom
+        split_buttons_container = QWidget()
+        split_buttons_layout = QHBoxLayout(split_buttons_container)
+        split_buttons_layout.setAlignment(Qt.AlignCenter)
+
+        split_buttons = [
+            ("Enable\nChannel\nTripleSplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nTripleSplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nTripleSplit", "KS_TRANSPOSE_TOGGLE")
+        ]
+
+        for text, code in split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(60, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: palette(button);
+                    border: 1px solid palette(mid);
+                    border-radius: 8px;
+                }
+                QPushButton:hover {
+                    background: palette(light);
+                }
+                QPushButton:pressed {
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            split_buttons_layout.addWidget(btn)
+
+        main_layout.addWidget(split_buttons_container)
         main_layout.addStretch(1)
 
         self.setWidget(self.scroll_content)
@@ -3922,16 +3954,29 @@ class GamepadWidget(QWidget):
         import os
         # Get the path relative to this file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png')
+        image_path = os.path.normpath(os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png'))
+
+        # Debug: print paths
+        print(f"Debug: current_dir = {current_dir}")
+        print(f"Debug: image_path = {image_path}")
+        print(f"Debug: file exists = {os.path.exists(image_path)}")
+
         self.controller_image = QPixmap(image_path)
 
         if self.controller_image.isNull():
             print(f"Warning: Could not load controller image from {image_path}")
+            print(f"Warning: File exists: {os.path.exists(image_path)}")
+        else:
+            print(f"Success: Loaded controller image from {image_path}")
+            print(f"Image size: {self.controller_image.width()}x{self.controller_image.height()}")
 
     def paintEvent(self, event):
         """Draw the gamepad image as background"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+
+        # Draw background
+        painter.fillRect(self.rect(), QApplication.palette().color(QPalette.Base))
 
         if not self.controller_image.isNull():
             # Scale image to fit widget while maintaining aspect ratio
@@ -3946,11 +3991,20 @@ class GamepadWidget(QWidget):
             y = (self.height() - scaled_image.height()) // 2
 
             painter.drawPixmap(x, y, scaled_image)
+            print(f"Drawing image at ({x}, {y}), scaled size: {scaled_image.width()}x{scaled_image.height()}")
         else:
             # Draw a fallback outline if image isn't available
-            painter.setPen(QPen(QColor(128, 128, 128), 2))
+            painter.setPen(QPen(QColor(128, 128, 128), 3))
             painter.setBrush(QBrush(QColor(240, 240, 240)))
             painter.drawRoundedRect(20, 20, self.width() - 40, self.height() - 40, 15, 15)
+
+            # Draw text to indicate missing image
+            painter.setPen(QPen(QColor(100, 100, 100)))
+            from PyQt5.QtGui import QFont
+            font = QFont()
+            font.setPointSize(16)
+            painter.setFont(font)
+            painter.drawText(self.rect(), Qt.AlignCenter, "Controller Image\nNot Loaded")
 
 
 class GamingTab(QScrollArea):
