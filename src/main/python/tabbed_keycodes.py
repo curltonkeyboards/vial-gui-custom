@@ -3951,18 +3951,8 @@ class GamepadWidget(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setFixedSize(750, 500)
 
-        # Load the PS4 controller image
-        import os
-        # Get the path relative to this file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.normpath(os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png'))
-
-        # Debug: print paths
-        print(f"Debug: current_dir = {current_dir}")
-        print(f"Debug: image_path = {image_path}")
-        print(f"Debug: file exists = {os.path.exists(image_path)}")
-
-        pixmap = QPixmap(image_path)
+        # Load the PS4 controller image from resources
+        pixmap = QPixmap(":/ps4controller")
 
         if not pixmap.isNull():
             # Scale the pixmap to fit the label while maintaining aspect ratio
@@ -3972,9 +3962,6 @@ class GamepadWidget(QWidget):
                 Qt.SmoothTransformation
             )
             self.image_label.setPixmap(scaled_pixmap)
-            print(f"Success: Loaded and set controller image")
-            print(f"Pixmap size: {pixmap.width()}x{pixmap.height()}")
-            print(f"Scaled size: {scaled_pixmap.width()}x{scaled_pixmap.height()}")
         else:
             # Set a fallback text if image doesn't load
             self.image_label.setText("Controller Image\nNot Loaded")
@@ -3986,13 +3973,6 @@ class GamepadWidget(QWidget):
                     font-size: 16px;
                 }
             """)
-            print(f"Error: Could not load controller image from {image_path}")
-            print(f"File exists: {os.path.exists(image_path)}")
-
-            # Try alternate path
-            alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
-            print(f"Trying alternate path: {alt_path}")
-            print(f"Alternate exists: {os.path.exists(alt_path)}")
 
         layout.addWidget(self.image_label)
 
