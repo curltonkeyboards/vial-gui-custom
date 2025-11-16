@@ -4006,7 +4006,7 @@ class GamingTab(QScrollArea):
                 return kc
         return None
 
-    def create_button(self, qmk_id, width=50, height=50):
+    def create_button(self, qmk_id, width=50, height=50, circular=False):
         """Create a button for a keycode"""
         kc = self.get_keycode(qmk_id)
         if not kc:
@@ -4014,6 +4014,9 @@ class GamingTab(QScrollArea):
 
         btn = QPushButton(Keycode.label(kc.qmk_id))
         btn.setFixedSize(width, height)
+        if circular:
+            # Make button circular
+            btn.setStyleSheet(f"border-radius: {min(width, height) // 2}px;")
         btn.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
         btn.keycode = kc
         return btn
@@ -4071,114 +4074,125 @@ class GamingTab(QScrollArea):
             rb_btn.setParent(gamepad_widget)
             rb_btn.move(490, 60)  # Was 570, moved 80px left
 
-        # D-pad (left side) (moved 61px right, 31px up)
-        dpad_up = self.create_button("DPAD_UP", 38, 38)
+        # D-pad (left side) - with rectangular buttons
+        # Up/Down are taller (32w x 48h), Left/Right are wider (48w x 32h)
+        # Equidistant with 5px gaps
+        dpad_center_x = 209
+        dpad_center_y = 171
+        dpad_gap = 5
+
+        dpad_up = self.create_button("DPAD_UP", 32, 48)
         if dpad_up:
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(211, 149)  # Was (150, 180)
+            dpad_up.move(dpad_center_x, dpad_center_y - 48 - dpad_gap)  # 209, 118
 
-        dpad_down = self.create_button("DPAD_DOWN", 38, 38)
+        dpad_down = self.create_button("DPAD_DOWN", 32, 48)
         if dpad_down:
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(211, 225)  # Was (150, 256)
+            dpad_down.move(dpad_center_x, dpad_center_y + 32 + dpad_gap)  # 209, 208
 
-        dpad_left = self.create_button("DPAD_LEFT", 38, 38)
+        dpad_left = self.create_button("DPAD_LEFT", 48, 32)
         if dpad_left:
             dpad_left.setParent(gamepad_widget)
-            dpad_left.move(173, 187)  # Was (112, 218)
+            dpad_left.move(dpad_center_x - 48 - dpad_gap, dpad_center_y)  # 156, 171
 
-        dpad_right = self.create_button("DPAD_RIGHT", 38, 38)
+        dpad_right = self.create_button("DPAD_RIGHT", 48, 32)
         if dpad_right:
             dpad_right.setParent(gamepad_widget)
-            dpad_right.move(249, 187)  # Was (188, 218)
+            dpad_right.move(dpad_center_x + 32 + dpad_gap, dpad_center_y)  # 246, 171
 
         # Left Analog Stick (next to D-pad) (moved 30px right, 30px down)
         ls_up = self.create_button("LS_UP", 38, 38)
         if ls_up:
             ls_up.setParent(gamepad_widget)
-            ls_up.move(290, 210)  # Was (260, 180)
+            ls_up.move(287, 210)  # Left 3
 
         ls_down = self.create_button("LS_DOWN", 38, 38)
         if ls_down:
             ls_down.setParent(gamepad_widget)
-            ls_down.move(290, 286)  # Was (260, 256)
+            ls_down.move(287, 286)  # Left 3
 
         ls_left = self.create_button("LS_LEFT", 38, 38)
         if ls_left:
             ls_left.setParent(gamepad_widget)
-            ls_left.move(252, 248)  # Was (222, 218)
+            ls_left.move(249, 248)  # Left 3
 
         ls_right = self.create_button("LS_RIGHT", 38, 38)
         if ls_right:
             ls_right.setParent(gamepad_widget)
-            ls_right.move(328, 248)  # Was (298, 218)
+            ls_right.move(325, 248)  # Left 3
 
         l3_btn = self.create_button("XBOX_L3", 38, 38)
         if l3_btn:
             l3_btn.setParent(gamepad_widget)
-            l3_btn.move(290, 248)  # Center - Was (260, 218)
+            l3_btn.move(287, 248)  # Left 3
 
-        # Center buttons (Back and Start)
+        # Center buttons (Back and Start) - touching each other
         back_btn = self.create_button("XBOX_BACK", 50, 30)
         if back_btn:
             back_btn.setParent(gamepad_widget)
-            back_btn.move(320, 200)
+            back_btn.move(325, 200)
 
         start_btn = self.create_button("XBOX_START", 50, 30)
         if start_btn:
             start_btn.setParent(gamepad_widget)
-            start_btn.move(380, 200)
+            start_btn.move(375, 200)  # Touching back_btn (325 + 50 = 375)
 
         # Right Analog Stick (moved 24px left, 45px up)
         rs_up = self.create_button("RS_UP", 38, 38)
         if rs_up:
             rs_up.setParent(gamepad_widget)
-            rs_up.move(426, 195)  # Was (450, 240)
+            rs_up.move(433, 210)  # Right 7, aligned with ls_up
 
         rs_down = self.create_button("RS_DOWN", 38, 38)
         if rs_down:
             rs_down.setParent(gamepad_widget)
-            rs_down.move(426, 271)  # Was (450, 316)
+            rs_down.move(433, 286)  # Right 7, aligned with ls_down
 
         rs_left = self.create_button("RS_LEFT", 38, 38)
         if rs_left:
             rs_left.setParent(gamepad_widget)
-            rs_left.move(388, 233)  # Was (412, 278)
+            rs_left.move(395, 248)  # Right 7, aligned with ls_left
 
         rs_right = self.create_button("RS_RIGHT", 38, 38)
         if rs_right:
             rs_right.setParent(gamepad_widget)
-            rs_right.move(464, 233)  # Was (488, 278)
+            rs_right.move(471, 248)  # Right 7, aligned with ls_right
 
         r3_btn = self.create_button("XBOX_R3", 38, 38)
         if r3_btn:
             r3_btn.setParent(gamepad_widget)
-            r3_btn.move(426, 233)  # Center - Was (450, 278)
+            r3_btn.move(433, 248)  # Right 7, aligned with l3_btn
 
-        # Face Buttons (right side) - Button 1-4 (moved 60px left, 13px up)
-        btn4 = self.create_button("XBOX_Y", 42, 42)
+        # Face Buttons (right side) - Circular buttons, equidistant with 5px gaps
+        btn_size = 42
+        btn_gap = 5
+        face_center_x = 501
+        face_center_y = 169
+
+        btn4 = self.create_button("XBOX_Y", btn_size, btn_size, circular=True)
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
-            btn4.move(510, 127)  # Top - Was (570, 140)
+            btn4.move(face_center_x, face_center_y - btn_size - btn_gap)  # 501, 122
 
-        btn3 = self.create_button("XBOX_X", 42, 42)
+        btn3 = self.create_button("XBOX_X", btn_size, btn_size, circular=True)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
-            btn3.move(468, 169)  # Left - Was (528, 182)
+            btn3.move(face_center_x - btn_size - btn_gap, face_center_y)  # 454, 169
 
-        btn2 = self.create_button("XBOX_B", 42, 42)
+        btn2 = self.create_button("XBOX_B", btn_size, btn_size, circular=True)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
-            btn2.move(552, 169)  # Right - Was (612, 182)
+            btn2.move(face_center_x + btn_size + btn_gap, face_center_y)  # 548, 169
 
-        btn1 = self.create_button("XBOX_A", 42, 42)
+        btn1 = self.create_button("XBOX_A", btn_size, btn_size, circular=True)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
-            btn1.move(510, 211)  # Bottom - Was (570, 224)
+            btn1.move(face_center_x, face_center_y + btn_size + btn_gap)  # 501, 216
 
         self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
