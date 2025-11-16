@@ -3012,6 +3012,161 @@ class KeySplitTab(QScrollArea):
         return True
 
 
+class KeySplitOnlyTab(QScrollArea):
+    """KeySplit tab - simplified to show only KeySplit"""
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, inversion_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.inversion_keycodes = inversion_keycodes
+        self.scroll_content = QWidget()
+
+        # Main layout
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Piano keyboard
+        self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
+        self.keysplit_piano.keyPressed.connect(self.keycode_changed)
+        main_layout.addWidget(self.keysplit_piano)
+
+        # Control buttons
+        ks_control_layout = QHBoxLayout()
+        ks_control_layout.setAlignment(Qt.AlignCenter)
+        self.create_control_buttons(ks_control_layout, 'KS')
+        main_layout.addLayout(ks_control_layout)
+
+        # Split buttons at the bottom
+        split_buttons_container = QWidget()
+        split_buttons_layout = QHBoxLayout(split_buttons_container)
+        split_buttons_layout.setAlignment(Qt.AlignCenter)
+
+        split_buttons = [
+            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
+        ]
+
+        for text, code in split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(60, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: palette(button);
+                    border: 1px solid palette(mid);
+                    border-radius: 8px;
+                }
+                QPushButton:hover {
+                    background: palette(light);
+                }
+                QPushButton:pressed {
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            split_buttons_layout.addWidget(btn)
+
+        main_layout.addWidget(split_buttons_container)
+        main_layout.addStretch(1)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+    def create_control_buttons(self, layout, prefix):
+        controls = [
+            (f"{prefix}\nChannel\n-", f"{prefix}_CHAN_DOWN"),
+            (f"{prefix}\nChannel\n+", f"{prefix}_CHAN_UP"),
+            (f"{prefix}\nVelocity\n-", "MI_VELOCITY2_DOWN"),
+            (f"{prefix}\nVelocity\n+", "MI_VELOCITY2_UP"),
+            (f"{prefix}\nTranspose\n-", "MI_TRANSPOSE2_DOWN"),
+            (f"{prefix}\nTranspose\n+", "MI_TRANSPOSE2_UP"),
+            (f"{prefix}\nOctave\n-", "MI_OCTAVE2_DOWN"),
+            (f"{prefix}\nOctave\n+", "MI_OCTAVE2_UP")
+        ]
+
+        for text, code in controls:
+            btn = QPushButton(text)
+            btn.setFixedSize(80, 50)
+            btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            layout.addWidget(btn)
+
+    def recreate_buttons(self, keycode_filter=None):
+        self.keysplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT')
+
+    def has_buttons(self):
+        return True
+
+    def relabel_buttons(self):
+        pass
+
+
+class TripleSplitTab(QScrollArea):
+    """TripleSplit tab - simplified to show only TripleSplit"""
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, inversion_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.inversion_keycodes = inversion_keycodes
+        self.scroll_content = QWidget()
+
+        # Main layout
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Piano keyboard
+        self.triplesplit_piano = PianoKeyboard(color_scheme='triplesplit')
+        self.triplesplit_piano.keyPressed.connect(self.keycode_changed)
+        main_layout.addWidget(self.triplesplit_piano)
+
+        # Control buttons
+        ts_control_layout = QHBoxLayout()
+        ts_control_layout.setAlignment(Qt.AlignCenter)
+        self.create_control_buttons(ts_control_layout, 'TS')
+        main_layout.addLayout(ts_control_layout)
+
+        main_layout.addStretch(1)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+    def create_control_buttons(self, layout, prefix):
+        controls = [
+            ("TS\nChannel\n-", "KS2_CHAN_DOWN"),
+            ("TS\nChannel\n+", "KS2_CHAN_UP"),
+            ("TS\nVelocity\n-", "MI_VELOCITY3_DOWN"),
+            ("TS\nVelocity\n+", "MI_VELOCITY3_UP"),
+            ("TS\nTranspose\n-", "MI_TRANSPOSE3_DOWN"),
+            ("TS\nTranspose\n+", "MI_TRANSPOSE3_UP"),
+            ("TS\nOctave\n-", "MI_OCTAVE3_DOWN"),
+            ("TS\nOctave\n+", "MI_OCTAVE3_UP")
+        ]
+
+        for text, code in controls:
+            btn = QPushButton(text)
+            btn.setFixedSize(80, 50)
+            btn.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            layout.addWidget(btn)
+
+    def recreate_buttons(self, keycode_filter=None):
+        self.triplesplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT2')
+
+    def has_buttons(self):
+        return True
+
+    def relabel_buttons(self):
+        pass
+
 
 class PianoKeyboard(QWidget):
     keyPressed = pyqtSignal(str)
@@ -3754,6 +3909,15 @@ class GamepadWidget(QWidget):
         super().__init__(parent)
         self.setMinimumSize(700, 400)
 
+        # Set background style to ensure widget is visible
+        self.setStyleSheet("""
+            GamepadWidget {
+                background-color: palette(base);
+                border: 2px solid palette(mid);
+                border-radius: 10px;
+            }
+        """)
+
         # Load the PS4 controller image
         import os
         # Get the path relative to this file
@@ -3782,6 +3946,11 @@ class GamepadWidget(QWidget):
             y = (self.height() - scaled_image.height()) // 2
 
             painter.drawPixmap(x, y, scaled_image)
+        else:
+            # Draw a fallback outline if image isn't available
+            painter.setPen(QPen(QColor(128, 128, 128), 2))
+            painter.setBrush(QBrush(QColor(240, 240, 240)))
+            painter.drawRoundedRect(20, 20, self.width() - 40, self.height() - 40, 15, 15)
 
 
 class GamingTab(QScrollArea):
@@ -4156,9 +4325,22 @@ class KeyboardTab(QWidget):
     def recreate_buttons(self, keycode_filter):
         self.current_keycode_filter = keycode_filter
 
+        # Store currently selected section before recreating
+        current_section = None
+        for section_name, widget in self.section_widgets.items():
+            if widget.isVisible():
+                current_section = section_name
+                break
+
         # Recreate buttons for each tab
         for tab_widget, display_name in self.sections:
             tab_widget.recreate_buttons(keycode_filter)
+
+        # Restore the previously selected section, or default to first
+        if current_section and current_section in self.section_widgets:
+            self.show_section(current_section)
+        else:
+            self.show_section("Basic")
 
     def has_buttons(self):
         return any(tab.has_buttons() for tab, _ in self.sections)
@@ -4187,7 +4369,8 @@ class MusicTab(QWidget):
                                            KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES,
                                            KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
         self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
-        self.key_split_tab = KeySplitTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
+        self.key_split_tab = KeySplitOnlyTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
+        self.triple_split_tab = TripleSplitTab(parent, "TripleSplit", KEYCODES_KEYSPLIT_BUTTONS)
         self.chord_progressions_tab = ChordProgressionTab(parent, "Chord Progressions")
 
         # Connect signals
@@ -4196,6 +4379,7 @@ class MusicTab(QWidget):
         self.smartchord_tab.keycode_changed.connect(self.on_keycode_changed)
         self.ear_training_tab.keycode_changed.connect(self.on_keycode_changed)
         self.key_split_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.triple_split_tab.keycode_changed.connect(self.on_keycode_changed)
         self.chord_progressions_tab.keycode_changed.connect(self.on_keycode_changed)
 
         # Define sections (tab_widget, display_name)
@@ -4205,6 +4389,7 @@ class MusicTab(QWidget):
             (self.smartchord_tab, "SmartChord"),
             (self.ear_training_tab, "Ear Training"),
             (self.key_split_tab, "KeySplit"),
+            (self.triple_split_tab, "TripleSplit"),
             (self.chord_progressions_tab, "Chord Progressions")
         ]
 
@@ -4309,9 +4494,22 @@ class MusicTab(QWidget):
     def recreate_buttons(self, keycode_filter):
         self.current_keycode_filter = keycode_filter
 
+        # Store currently selected section before recreating
+        current_section = None
+        for section_name, widget in self.section_widgets.items():
+            if widget.isVisible():
+                current_section = section_name
+                break
+
         # Recreate buttons for each tab
         for tab_widget, display_name in self.sections:
             tab_widget.recreate_buttons(keycode_filter)
+
+        # Restore the previously selected section, or default to first
+        if current_section and current_section in self.section_widgets:
+            self.show_section(current_section)
+        else:
+            self.show_section("MIDIswitch")
 
     def has_buttons(self):
         return any(tab.has_buttons() for tab, _ in self.sections)
