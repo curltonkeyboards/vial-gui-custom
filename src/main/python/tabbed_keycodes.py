@@ -3012,6 +3012,193 @@ class KeySplitTab(QScrollArea):
         return True
 
 
+class KeySplitOnlyTab(QScrollArea):
+    """KeySplit tab - simplified to show only KeySplit"""
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, inversion_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.inversion_keycodes = inversion_keycodes
+        self.scroll_content = QWidget()
+
+        # Main layout
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Piano keyboard
+        self.keysplit_piano = PianoKeyboard(color_scheme='keysplit')
+        self.keysplit_piano.keyPressed.connect(self.keycode_changed)
+        main_layout.addWidget(self.keysplit_piano)
+
+        # Control buttons
+        ks_control_layout = QHBoxLayout()
+        ks_control_layout.setAlignment(Qt.AlignCenter)
+        self.create_control_buttons(ks_control_layout, 'KS')
+        main_layout.addLayout(ks_control_layout)
+
+        # Split buttons at the bottom
+        split_buttons_container = QWidget()
+        split_buttons_layout = QHBoxLayout(split_buttons_container)
+        split_buttons_layout.setAlignment(Qt.AlignCenter)
+
+        split_buttons = [
+            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
+        ]
+
+        for text, code in split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(60, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: palette(button);
+                    border: 1px solid palette(mid);
+                    border-radius: 8px;
+                }
+                QPushButton:hover {
+                    background: palette(light);
+                }
+                QPushButton:pressed {
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            split_buttons_layout.addWidget(btn)
+
+        main_layout.addWidget(split_buttons_container)
+        main_layout.addStretch(1)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+    def create_control_buttons(self, layout, prefix):
+        controls = [
+            (f"{prefix}\nChannel\n-", f"{prefix}_CHAN_DOWN"),
+            (f"{prefix}\nChannel\n+", f"{prefix}_CHAN_UP"),
+            (f"{prefix}\nVelocity\n-", "MI_VELOCITY2_DOWN"),
+            (f"{prefix}\nVelocity\n+", "MI_VELOCITY2_UP"),
+            (f"{prefix}\nTranspose\n-", "MI_TRANSPOSE2_DOWN"),
+            (f"{prefix}\nTranspose\n+", "MI_TRANSPOSE2_UP"),
+            (f"{prefix}\nOctave\n-", "MI_OCTAVE2_DOWN"),
+            (f"{prefix}\nOctave\n+", "MI_OCTAVE2_UP")
+        ]
+
+        for text, code in controls:
+            btn = QPushButton(text)
+            btn.setFixedSize(80, 50)
+            btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            layout.addWidget(btn)
+
+    def recreate_buttons(self, keycode_filter=None):
+        self.keysplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT')
+
+    def has_buttons(self):
+        return True
+
+    def relabel_buttons(self):
+        pass
+
+
+class TripleSplitTab(QScrollArea):
+    """TripleSplit tab - simplified to show only TripleSplit"""
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, inversion_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.inversion_keycodes = inversion_keycodes
+        self.scroll_content = QWidget()
+
+        # Main layout
+        main_layout = QVBoxLayout(self.scroll_content)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Piano keyboard
+        self.triplesplit_piano = PianoKeyboard(color_scheme='triplesplit')
+        self.triplesplit_piano.keyPressed.connect(self.keycode_changed)
+        main_layout.addWidget(self.triplesplit_piano)
+
+        # Control buttons
+        ts_control_layout = QHBoxLayout()
+        ts_control_layout.setAlignment(Qt.AlignCenter)
+        self.create_control_buttons(ts_control_layout, 'TS')
+        main_layout.addLayout(ts_control_layout)
+
+        # Split buttons at the bottom
+        split_buttons_container = QWidget()
+        split_buttons_layout = QHBoxLayout(split_buttons_container)
+        split_buttons_layout.setAlignment(Qt.AlignCenter)
+
+        split_buttons = [
+            ("Enable\nChannel\nTripleSplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nTripleSplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nTripleSplit", "KS_TRANSPOSE_TOGGLE")
+        ]
+
+        for text, code in split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(60, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: palette(button);
+                    border: 1px solid palette(mid);
+                    border-radius: 8px;
+                }
+                QPushButton:hover {
+                    background: palette(light);
+                }
+                QPushButton:pressed {
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            split_buttons_layout.addWidget(btn)
+
+        main_layout.addWidget(split_buttons_container)
+        main_layout.addStretch(1)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+    def create_control_buttons(self, layout, prefix):
+        controls = [
+            ("TS\nChannel\n-", "KS2_CHAN_DOWN"),
+            ("TS\nChannel\n+", "KS2_CHAN_UP"),
+            ("TS\nVelocity\n-", "MI_VELOCITY3_DOWN"),
+            ("TS\nVelocity\n+", "MI_VELOCITY3_UP"),
+            ("TS\nTranspose\n-", "MI_TRANSPOSE3_DOWN"),
+            ("TS\nTranspose\n+", "MI_TRANSPOSE3_UP"),
+            ("TS\nOctave\n-", "MI_OCTAVE3_DOWN"),
+            ("TS\nOctave\n+", "MI_OCTAVE3_UP")
+        ]
+
+        for text, code in controls:
+            btn = QPushButton(text)
+            btn.setFixedSize(80, 50)
+            btn.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            layout.addWidget(btn)
+
+    def recreate_buttons(self, keycode_filter=None):
+        self.triplesplit_piano.create_piano_keys(self.inversion_keycodes, 'MI_SPLIT2')
+
+    def has_buttons(self):
+        return True
+
+    def relabel_buttons(self):
+        pass
+
 
 class PianoKeyboard(QWidget):
     keyPressed = pyqtSignal(str)
@@ -3748,40 +3935,66 @@ def keycode_filter_masked(kc):
 
 
 class GamepadWidget(QWidget):
-    """Custom widget that displays a gamepad image as background"""
+    """Custom widget that displays a gamepad image as background with buttons overlaid"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(700, 400)
+        self.setFixedSize(750, 500)
+
+        # Create a layout for the widget
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Create QLabel to display the image
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setFixedSize(750, 500)
 
         # Load the PS4 controller image
         import os
         # Get the path relative to this file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png')
-        self.controller_image = QPixmap(image_path)
+        image_path = os.path.normpath(os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png'))
 
-        if self.controller_image.isNull():
-            print(f"Warning: Could not load controller image from {image_path}")
+        # Debug: print paths
+        print(f"Debug: current_dir = {current_dir}")
+        print(f"Debug: image_path = {image_path}")
+        print(f"Debug: file exists = {os.path.exists(image_path)}")
 
-    def paintEvent(self, event):
-        """Draw the gamepad image as background"""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        pixmap = QPixmap(image_path)
 
-        if not self.controller_image.isNull():
-            # Scale image to fit widget while maintaining aspect ratio
-            scaled_image = self.controller_image.scaled(
-                self.size(),
+        if not pixmap.isNull():
+            # Scale the pixmap to fit the label while maintaining aspect ratio
+            scaled_pixmap = pixmap.scaled(
+                self.image_label.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             )
+            self.image_label.setPixmap(scaled_pixmap)
+            print(f"Success: Loaded and set controller image")
+            print(f"Pixmap size: {pixmap.width()}x{pixmap.height()}")
+            print(f"Scaled size: {scaled_pixmap.width()}x{scaled_pixmap.height()}")
+        else:
+            # Set a fallback text if image doesn't load
+            self.image_label.setText("Controller Image\nNot Loaded")
+            self.image_label.setStyleSheet("""
+                QLabel {
+                    background-color: palette(base);
+                    border: 2px solid palette(mid);
+                    color: palette(text);
+                    font-size: 16px;
+                }
+            """)
+            print(f"Error: Could not load controller image from {image_path}")
+            print(f"File exists: {os.path.exists(image_path)}")
 
-            # Center the image
-            x = (self.width() - scaled_image.width()) // 2
-            y = (self.height() - scaled_image.height()) // 2
+            # Try alternate path
+            alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
+            print(f"Trying alternate path: {alt_path}")
+            print(f"Alternate exists: {os.path.exists(alt_path)}")
 
-            painter.drawPixmap(x, y, scaled_image)
+        layout.addWidget(self.image_label)
 
 
 class GamingTab(QScrollArea):
@@ -4011,6 +4224,366 @@ class GamingTab(QScrollArea):
         self.recreate_buttons(self.current_keycode_filter)
 
 
+class KeyboardTab(QWidget):
+    """Nested tab container for Keyboard-related tabs with side-tab style"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.label = "Keyboard"
+        self.parent_widget = parent
+        self.current_keycode_filter = keycode_filter_any
+
+        # Create the individual tabs
+        self.basic_tab = Tab(parent, "Basic", [
+            (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
+            (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
+            (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
+            (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
+        ], prefix_buttons=[("Any", -1)])
+
+        self.iso_tab = Tab(parent, "ISO/JIS", [
+            (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
+            (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
+            (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
+             KEYCODES_ISO_KR),
+            (None, KEYCODES_ISO),
+        ], prefix_buttons=[("Any", -1)])
+
+        self.app_tab = SimpleTab(parent, "App", KEYCODES_MEDIA)
+        self.advanced_tab = SimpleTab(parent, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM)
+
+        # Connect signals
+        self.basic_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.iso_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.app_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.advanced_tab.keycode_changed.connect(self.on_keycode_changed)
+
+        # Define sections (tab_widget, display_name)
+        self.sections = [
+            (self.basic_tab, "Basic"),
+            (self.iso_tab, "ISO/JIS"),
+            (self.app_tab, "App"),
+            (self.advanced_tab, "Advanced")
+        ]
+
+        # Create horizontal layout: side tabs on left, content on right
+        main_layout_h = QHBoxLayout()
+        main_layout_h.setSpacing(0)
+        main_layout_h.setContentsMargins(0, 0, 0, 0)
+
+        # Create side tabs container
+        side_tabs_container = QWidget()
+        side_tabs_container.setObjectName("side_tabs_container")
+        side_tabs_container.setStyleSheet("""
+            QWidget#side_tabs_container {
+                background: palette(window);
+                border: 1px solid palette(mid);
+                border-right: none;
+            }
+        """)
+        side_tabs_layout = QVBoxLayout(side_tabs_container)
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.side_tab_buttons = {}
+        for tab_widget, display_name in self.sections:
+            btn = QPushButton(display_name)
+            btn.setCheckable(True)
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(120)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid palette(mid);
+                    border-radius: 0px;
+                    border-right: none;
+                    background: palette(button);
+                    text-align: left;
+                    padding-left: 15px;
+                    font-size: 9pt;
+                }
+                QPushButton:hover:!checked {
+                    background: palette(light);
+                }
+                QPushButton:checked {
+                    background: palette(base);
+                    font-weight: 600;
+                    border-right: 1px solid palette(base);
+                }
+            """)
+            btn.clicked.connect(lambda checked, dn=display_name: self.show_section(dn))
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[display_name] = btn
+
+        side_tabs_layout.addStretch(1)
+        main_layout_h.addWidget(side_tabs_container)
+
+        # Create content container
+        self.content_wrapper = QWidget()
+        self.content_wrapper.setObjectName("content_wrapper")
+        self.content_wrapper.setStyleSheet("""
+            QWidget#content_wrapper {
+                border: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+            }
+        """)
+        self.content_layout = QVBoxLayout(self.content_wrapper)
+        self.content_layout.setSpacing(0)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add all section widgets to content area
+        self.section_widgets = {}
+        for tab_widget, display_name in self.sections:
+            tab_widget.hide()
+            self.content_layout.addWidget(tab_widget)
+            self.section_widgets[display_name] = tab_widget
+
+        main_layout_h.addWidget(self.content_wrapper)
+        self.setLayout(main_layout_h)
+
+        # Show first section by default
+        self.show_section("Basic")
+
+    def show_section(self, section_name):
+        """Show the specified section and update tab button states"""
+        # Hide all section widgets
+        for widget in self.section_widgets.values():
+            widget.hide()
+
+        # Uncheck all tab buttons
+        for btn in self.side_tab_buttons.values():
+            btn.setChecked(False)
+
+        # Show the selected section widget and check its tab button
+        if section_name in self.section_widgets:
+            self.section_widgets[section_name].show()
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Store currently selected section before recreating
+        current_section = None
+        for section_name, widget in self.section_widgets.items():
+            if widget.isVisible():
+                current_section = section_name
+                break
+
+        # Recreate buttons for each tab
+        for tab_widget, display_name in self.sections:
+            tab_widget.recreate_buttons(keycode_filter)
+
+        # Restore the previously selected section, or default to first
+        if current_section and current_section in self.section_widgets:
+            self.show_section(current_section)
+        else:
+            self.show_section("Basic")
+
+    def has_buttons(self):
+        return any(tab.has_buttons() for tab, _ in self.sections)
+
+    def relabel_buttons(self):
+        for tab_widget, _ in self.sections:
+            tab_widget.relabel_buttons()
+
+
+class MusicTab(QWidget):
+    """Nested tab container for Music-related tabs with side-tab style"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.label = "Music"
+        self.parent_widget = parent
+        self.current_keycode_filter = keycode_filter_any
+
+        # Create the individual tabs
+        self.midiswitch_tab = midiTab(parent, "MIDIswitch", KEYCODES_MIDI_UPDOWN)
+        self.loop_control_tab = LoopTab(parent, "Loop Control", KEYCODES_LOOP_BUTTONS)
+        self.smartchord_tab = SmartChordTab(parent, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1,
+                                           KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4,
+                                           KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES,
+                                           KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
+        self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
+        self.key_split_tab = KeySplitOnlyTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
+        self.triple_split_tab = TripleSplitTab(parent, "TripleSplit", KEYCODES_KEYSPLIT_BUTTONS)
+        self.chord_progressions_tab = ChordProgressionTab(parent, "Chord Progressions")
+
+        # Connect signals
+        self.midiswitch_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.loop_control_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.smartchord_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.ear_training_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.key_split_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.triple_split_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.chord_progressions_tab.keycode_changed.connect(self.on_keycode_changed)
+
+        # Define sections (tab_widget, display_name)
+        self.sections = [
+            (self.midiswitch_tab, "MIDIswitch"),
+            (self.loop_control_tab, "Loop Control"),
+            (self.smartchord_tab, "SmartChord"),
+            (self.ear_training_tab, "Ear Training"),
+            (self.key_split_tab, "KeySplit"),
+            (self.triple_split_tab, "TripleSplit"),
+            (self.chord_progressions_tab, "Chord Progressions")
+        ]
+
+        # Create horizontal layout: side tabs on left, content on right
+        main_layout_h = QHBoxLayout()
+        main_layout_h.setSpacing(0)
+        main_layout_h.setContentsMargins(0, 0, 0, 0)
+
+        # Create side tabs container
+        side_tabs_container = QWidget()
+        side_tabs_container.setObjectName("side_tabs_container")
+        side_tabs_container.setStyleSheet("""
+            QWidget#side_tabs_container {
+                background: palette(window);
+                border: 1px solid palette(mid);
+                border-right: none;
+            }
+        """)
+        side_tabs_layout = QVBoxLayout(side_tabs_container)
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.side_tab_buttons = {}
+        for tab_widget, display_name in self.sections:
+            btn = QPushButton(display_name)
+            btn.setCheckable(True)
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(120)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid palette(mid);
+                    border-radius: 0px;
+                    border-right: none;
+                    background: palette(button);
+                    text-align: left;
+                    padding-left: 15px;
+                    font-size: 9pt;
+                }
+                QPushButton:hover:!checked {
+                    background: palette(light);
+                }
+                QPushButton:checked {
+                    background: palette(base);
+                    font-weight: 600;
+                    border-right: 1px solid palette(base);
+                }
+            """)
+            btn.clicked.connect(lambda checked, dn=display_name: self.show_section(dn))
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[display_name] = btn
+
+        side_tabs_layout.addStretch(1)
+        main_layout_h.addWidget(side_tabs_container)
+
+        # Create content container
+        self.content_wrapper = QWidget()
+        self.content_wrapper.setObjectName("content_wrapper")
+        self.content_wrapper.setStyleSheet("""
+            QWidget#content_wrapper {
+                border: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+            }
+        """)
+        self.content_layout = QVBoxLayout(self.content_wrapper)
+        self.content_layout.setSpacing(0)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add all section widgets to content area
+        self.section_widgets = {}
+        for tab_widget, display_name in self.sections:
+            tab_widget.hide()
+            self.content_layout.addWidget(tab_widget)
+            self.section_widgets[display_name] = tab_widget
+
+        main_layout_h.addWidget(self.content_wrapper)
+        self.setLayout(main_layout_h)
+
+        # Show first section by default
+        self.show_section("MIDIswitch")
+
+    def show_section(self, section_name):
+        """Show the specified section and update tab button states"""
+        # Hide all section widgets
+        for widget in self.section_widgets.values():
+            widget.hide()
+
+        # Uncheck all tab buttons
+        for btn in self.side_tab_buttons.values():
+            btn.setChecked(False)
+
+        # Show the selected section widget and check its tab button
+        if section_name in self.section_widgets:
+            self.section_widgets[section_name].show()
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Store currently selected section before recreating
+        current_section = None
+        for section_name, widget in self.section_widgets.items():
+            if widget.isVisible():
+                current_section = section_name
+                break
+
+        # Recreate buttons for each tab
+        for tab_widget, display_name in self.sections:
+            tab_widget.recreate_buttons(keycode_filter)
+
+        # Restore the previously selected section, or default to first
+        if current_section and current_section in self.section_widgets:
+            self.show_section(current_section)
+        else:
+            self.show_section("MIDIswitch")
+
+    def has_buttons(self):
+        return any(tab.has_buttons() for tab, _ in self.sections)
+
+    def relabel_buttons(self):
+        for tab_widget, _ in self.sections:
+            tab_widget.relabel_buttons()
+
+
+class MIDITab(midiadvancedTab):
+    """MIDI tab that directly exposes all MIDI advanced sections"""
+
+    def __init__(self, parent):
+        # Initialize with all the MIDI advanced parameters
+        super().__init__(parent, "MIDI", KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change,
+                        KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC,
+                        KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN,
+                        KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL,
+                        KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD,
+                        KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2,
+                        KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3,
+                        KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT,
+                        KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS,
+                        KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL,
+                        KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3)
+
+        # Update label to just "MIDI"
+        self.label = "MIDI"
+
+
 class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -4022,42 +4595,17 @@ class FilteredTabbedKeycodes(QTabWidget):
         self.keycode_filter = keycode_filter
 
         self.tabs = [
-            Tab(self, "Basic", [
-                (ansi_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED),
-                (ansi_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED),
-                (ansi_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED),
-                (None, KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED),
-            ], prefix_buttons=[("Any", -1)]),
-            Tab(self, "ISO/JIS", [
-                (iso_100, KEYCODES_SPECIAL + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_80, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_SHIFTED + KEYCODES_ISO_KR),
-                (iso_70, KEYCODES_SPECIAL + KEYCODES_BASIC_NUMPAD + KEYCODES_BASIC_NAV + KEYCODES_SHIFTED +
-                 KEYCODES_ISO_KR),
-                (None, KEYCODES_ISO),
-            ], prefix_buttons=[("Any", -1)]),   
-            SimpleTab(self, "App, Media and Mouse", KEYCODES_MEDIA),            
-            SimpleTab(self, "Advanced", KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM),
-            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),            
-            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
-            midiTab(self, "MIDIswitch", KEYCODES_MIDI_UPDOWN),   # Updated to SmartChordTab
-            LoopTab(self, "Loop Control", KEYCODES_LOOP_BUTTONS),  # ADD THIS LINE
+            KeyboardTab(self),
+            MusicTab(self),
             GamingTab(self, "Gaming", KEYCODES_GAMING),
-            SmartChordTab(self, "SmartChord", KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION),
-            KeySplitTab(self, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS),   # Updated to SmartChordTa
-            EarTrainerTab(self, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER), 
-            ChordProgressionTab(self, "Chord Progressions"),
-            midiadvancedTab(self, "MIDI Advanced",  KEYCODES_MIDI_ADVANCED, KEYCODES_Program_Change, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC, KEYCODES_MIDI_CC_FIXED, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_VELOCITY, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_CC_ENCODERVALUE, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_EXWHEEL, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            SimpleTab(self, " ", KEYCODES_CLEAR),     
+            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
+            MIDITab(self),
+            SimpleTab(self, " ", KEYCODES_CLEAR),
         ]
 
         for tab in self.tabs:
-            tab.keycode_changed.connect(self.on_keycode_changed)
-
-        self.recreate_keycode_buttons()
-        KeycodeDisplay.notify_keymap_override(self)
-        
-        for miditab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
 
         self.recreate_keycode_buttons()
@@ -4075,20 +4623,6 @@ class FilteredTabbedKeycodes(QTabWidget):
             self.removeTab(0)
 
         for tab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for miditab in self.tabs:
-            tab.recreate_buttons(self.keycode_filter)
-            if tab.has_buttons():
-                self.addTab(tab, tr("TabbedKeycodes", tab.label))
-                if tab.label == prev_tab:
-                    self.setCurrentIndex(self.count() - 1)
-                    
-        for midiadvancedTab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
