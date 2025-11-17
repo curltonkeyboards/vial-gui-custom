@@ -260,6 +260,7 @@ class LoopManager(BasicEditor):
     def convert_loop_to_midi(self, loops_data, bpm):
         """Convert loop data to MIDI file bytes - matches webapp createMIDIFile()"""
         logger.info(f"Creating MIDI file at {bpm} BPM")
+        logger.info(f"Converting {len(loops_data)} loops to MIDI")
 
         # MIDI constants
         MIDI_TPQN = 480  # Ticks per quarter note
@@ -271,15 +272,21 @@ class LoopManager(BasicEditor):
                 continue
 
             loop_data = loops_data[loop_num]
+            logger.info(f"Loop {loop_num}: {len(loop_data['mainEvents'])} main events, {len(loop_data['overdubEvents'])} overdub events")
 
             if loop_data['mainEvents']:
-                tracks.append({
+                track_dict = {
                     'name': f'Loop {loop_num} Main',
                     'events': loop_data['mainEvents'],
                     'loopLength': loop_data.get('loopLength', 0),
                     'loopGap': loop_data.get('loopGap', 0)
-                })
+                }
+                tracks.append(track_dict)
                 logger.info(f"Added main track for loop {loop_num} with {len(loop_data['mainEvents'])} events")
+                # Log first event for debugging
+                if loop_data['mainEvents']:
+                    first_event = loop_data['mainEvents'][0]
+                    logger.info(f"  First event: type={first_event['type']} ch={first_event['channel']} note={first_event['note']} vel={first_event['velocity']} @{first_event['timestamp']}ms")
 
             if loop_data['overdubEvents']:
                 tracks.append({
