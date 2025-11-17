@@ -3951,18 +3951,8 @@ class GamepadWidget(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setFixedSize(750, 500)
 
-        # Load the PS4 controller image
-        import os
-        # Get the path relative to this file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.normpath(os.path.join(current_dir, '..', 'resources', 'images', 'ps4_controller.png'))
-
-        # Debug: print paths
-        print(f"Debug: current_dir = {current_dir}")
-        print(f"Debug: image_path = {image_path}")
-        print(f"Debug: file exists = {os.path.exists(image_path)}")
-
-        pixmap = QPixmap(image_path)
+        # Load the PS4 controller image from resources
+        pixmap = QPixmap(":/ps4controller")
 
         if not pixmap.isNull():
             # Scale the pixmap to fit the label while maintaining aspect ratio
@@ -3972,9 +3962,6 @@ class GamepadWidget(QWidget):
                 Qt.SmoothTransformation
             )
             self.image_label.setPixmap(scaled_pixmap)
-            print(f"Success: Loaded and set controller image")
-            print(f"Pixmap size: {pixmap.width()}x{pixmap.height()}")
-            print(f"Scaled size: {scaled_pixmap.width()}x{scaled_pixmap.height()}")
         else:
             # Set a fallback text if image doesn't load
             self.image_label.setText("Controller Image\nNot Loaded")
@@ -3986,13 +3973,6 @@ class GamepadWidget(QWidget):
                     font-size: 16px;
                 }
             """)
-            print(f"Error: Could not load controller image from {image_path}")
-            print(f"File exists: {os.path.exists(image_path)}")
-
-            # Try alternate path
-            alt_path = os.path.join(os.path.dirname(__file__), 'resources', 'images', 'ps4_controller.png')
-            print(f"Trying alternate path: {alt_path}")
-            print(f"Alternate exists: {os.path.exists(alt_path)}")
 
         layout.addWidget(self.image_label)
 
@@ -4050,21 +4030,6 @@ class GamingTab(QScrollArea):
             elif item.layout():
                 self.clear_layout(item.layout())
 
-        # Title
-        title = QLabel("Gaming Controller")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
-        self.main_layout.addWidget(title)
-
-        # Gaming Mode Toggle (at top)
-        gaming_mode_layout = QHBoxLayout()
-        gaming_mode_layout.addStretch()
-        gaming_mode_btn = self.create_button("GAMING_MODE", 100, 40)
-        if gaming_mode_btn:
-            gaming_mode_layout.addWidget(gaming_mode_btn)
-        gaming_mode_layout.addStretch()
-        self.main_layout.addLayout(gaming_mode_layout)
-
         # Create gamepad widget with drawn outline
         gamepad_widget = GamepadWidget()
         gamepad_widget.setFixedSize(750, 500)
@@ -4072,74 +4037,84 @@ class GamingTab(QScrollArea):
         # Use absolute positioning for buttons on the gamepad
         # We'll position buttons using move() after creating them as children of gamepad_widget
 
-        # Triggers (LT and RT) - at top
+        # Triggers (LT and RT) - at top (moved 80px right and left respectively)
         lt_btn = self.create_button("LT", 60, 35)
         if lt_btn:
             lt_btn.setParent(gamepad_widget)
-            lt_btn.move(120, 20)  # Top left
+            lt_btn.move(200, 20)  # Top left (was 120, moved 80px right)
 
         rt_btn = self.create_button("RT", 60, 35)
         if rt_btn:
             rt_btn.setParent(gamepad_widget)
-            rt_btn.move(570, 20)  # Top right
+            rt_btn.move(490, 20)  # Top right (was 570, moved 80px left)
 
-        # Bumpers (LB and RB)
+        # Gaming Mode Toggle (in middle of shoulder buttons)
+        gaming_mode_btn = self.create_button("GAMING_MODE", 100, 40)
+        if gaming_mode_btn:
+            gaming_mode_btn.setParent(gamepad_widget)
+            gaming_mode_btn.move(325, 25)  # Centered between shoulders
+
+        # Bumpers (LB and RB) (moved 80px right and left respectively)
         lb_btn = self.create_button("XBOX_LB", 60, 30)
         if lb_btn:
             lb_btn.setParent(gamepad_widget)
-            lb_btn.move(120, 60)
+            lb_btn.move(200, 60)  # Was 120, moved 80px right
 
         rb_btn = self.create_button("XBOX_RB", 60, 30)
         if rb_btn:
             rb_btn.setParent(gamepad_widget)
-            rb_btn.move(570, 60)
+            rb_btn.move(490, 60)  # Was 570, moved 80px left
 
-        # D-pad (left side)
-        dpad_up = self.create_button("DPAD_UP", 38, 38)
+        # D-pad (left side) - rectangular buttons, 32px spacing, moved left 8px and up 5px
+        dpad_up = self.create_button("DPAD_UP", 28, 38)  # Narrower width
         if dpad_up:
+            dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(150, 180)
+            dpad_up.move(211, 143)  # Center at (225, 162)
 
-        dpad_down = self.create_button("DPAD_DOWN", 38, 38)
+        dpad_down = self.create_button("DPAD_DOWN", 28, 38)  # Narrower width
         if dpad_down:
+            dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(150, 256)
+            dpad_down.move(211, 207)  # Center at (225, 226)
 
-        dpad_left = self.create_button("DPAD_LEFT", 38, 38)
+        dpad_left = self.create_button("DPAD_LEFT", 38, 28)  # Shorter height
         if dpad_left:
+            dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
-            dpad_left.move(112, 218)
+            dpad_left.move(174, 180)  # Center at (193, 194)
 
-        dpad_right = self.create_button("DPAD_RIGHT", 38, 38)
+        dpad_right = self.create_button("DPAD_RIGHT", 38, 28)  # Shorter height
         if dpad_right:
+            dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
-            dpad_right.move(188, 218)
+            dpad_right.move(238, 180)  # Center at (257, 194)
 
-        # Left Analog Stick (next to D-pad)
+        # Left Analog Stick (next to D-pad) (moved 30px right, 30px down)
         ls_up = self.create_button("LS_UP", 38, 38)
         if ls_up:
             ls_up.setParent(gamepad_widget)
-            ls_up.move(260, 180)
+            ls_up.move(290, 210)  # Was (260, 180)
 
         ls_down = self.create_button("LS_DOWN", 38, 38)
         if ls_down:
             ls_down.setParent(gamepad_widget)
-            ls_down.move(260, 256)
+            ls_down.move(290, 286)  # Was (260, 256)
 
         ls_left = self.create_button("LS_LEFT", 38, 38)
         if ls_left:
             ls_left.setParent(gamepad_widget)
-            ls_left.move(222, 218)
+            ls_left.move(252, 248)  # Was (222, 218)
 
         ls_right = self.create_button("LS_RIGHT", 38, 38)
         if ls_right:
             ls_right.setParent(gamepad_widget)
-            ls_right.move(298, 218)
+            ls_right.move(328, 248)  # Was (298, 218)
 
         l3_btn = self.create_button("XBOX_L3", 38, 38)
         if l3_btn:
             l3_btn.setParent(gamepad_widget)
-            l3_btn.move(260, 218)  # Center
+            l3_btn.move(290, 248)  # Center - Was (260, 218)
 
         # Center buttons (Back and Start)
         back_btn = self.create_button("XBOX_BACK", 50, 30)
@@ -4152,56 +4127,60 @@ class GamingTab(QScrollArea):
             start_btn.setParent(gamepad_widget)
             start_btn.move(380, 200)
 
-        # Right Analog Stick
+        # Right Analog Stick (moved 24px left, 45px up)
         rs_up = self.create_button("RS_UP", 38, 38)
         if rs_up:
             rs_up.setParent(gamepad_widget)
-            rs_up.move(450, 240)
+            rs_up.move(426, 195)  # Was (450, 240)
 
         rs_down = self.create_button("RS_DOWN", 38, 38)
         if rs_down:
             rs_down.setParent(gamepad_widget)
-            rs_down.move(450, 316)
+            rs_down.move(426, 271)  # Was (450, 316)
 
         rs_left = self.create_button("RS_LEFT", 38, 38)
         if rs_left:
             rs_left.setParent(gamepad_widget)
-            rs_left.move(412, 278)
+            rs_left.move(388, 233)  # Was (412, 278)
 
         rs_right = self.create_button("RS_RIGHT", 38, 38)
         if rs_right:
             rs_right.setParent(gamepad_widget)
-            rs_right.move(488, 278)
+            rs_right.move(464, 233)  # Was (488, 278)
 
         r3_btn = self.create_button("XBOX_R3", 38, 38)
         if r3_btn:
             r3_btn.setParent(gamepad_widget)
-            r3_btn.move(450, 278)  # Center
+            r3_btn.move(426, 233)  # Center - Was (450, 278)
 
-        # Face Buttons (right side) - Button 1-4
+        # Face Buttons (right side) - Button 1-4 (circular, 32px spacing, moved left 10px)
         btn4 = self.create_button("XBOX_Y", 42, 42)
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
-            btn4.move(570, 140)  # Top
+            btn4.setStyleSheet("border-radius: 21px;")  # Make circular
+            btn4.move(505, 137)  # Top - Center at (505, 169), offset -32 in y
 
         btn3 = self.create_button("XBOX_X", 42, 42)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
-            btn3.move(528, 182)  # Left
+            btn3.setStyleSheet("border-radius: 21px;")  # Make circular
+            btn3.move(473, 169)  # Left - Center at (505, 169), offset -32 in x
 
         btn2 = self.create_button("XBOX_B", 42, 42)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
-            btn2.move(612, 182)  # Right
+            btn2.setStyleSheet("border-radius: 21px;")  # Make circular
+            btn2.move(537, 169)  # Right - Center at (505, 169), offset +32 in x
 
         btn1 = self.create_button("XBOX_A", 42, 42)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
-            btn1.move(570, 224)  # Bottom
+            btn1.setStyleSheet("border-radius: 21px;")  # Make circular
+            btn1.move(505, 201)  # Bottom - Center at (505, 169), offset +32 in y
 
         self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
