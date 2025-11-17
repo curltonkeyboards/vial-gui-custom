@@ -4030,12 +4030,6 @@ class GamingTab(QScrollArea):
             elif item.layout():
                 self.clear_layout(item.layout())
 
-        # Title
-        title = QLabel("Gaming Controller")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
-        self.main_layout.addWidget(title)
-
         # Create gamepad widget with drawn outline
         gamepad_widget = GamepadWidget()
         gamepad_widget.setFixedSize(750, 500)
@@ -4074,21 +4068,25 @@ class GamingTab(QScrollArea):
         # D-pad (left side) - rectangular buttons, 32px spacing, moved left 8px and up 5px
         dpad_up = self.create_button("DPAD_UP", 28, 38)  # Narrower width
         if dpad_up:
+            dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
             dpad_up.move(211, 143)  # Center at (225, 162)
 
         dpad_down = self.create_button("DPAD_DOWN", 28, 38)  # Narrower width
         if dpad_down:
+            dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
             dpad_down.move(211, 207)  # Center at (225, 226)
 
         dpad_left = self.create_button("DPAD_LEFT", 38, 28)  # Shorter height
         if dpad_left:
+            dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
             dpad_left.move(174, 180)  # Center at (193, 194)
 
         dpad_right = self.create_button("DPAD_RIGHT", 38, 28)  # Shorter height
         if dpad_right:
+            dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
             dpad_right.move(238, 180)  # Center at (257, 194)
 
