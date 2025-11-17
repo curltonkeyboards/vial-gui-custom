@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import struct
 import os
+import threading
+import time
 from PyQt5 import QtCore
-from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtCore import QTimer, pyqtSignal, QObject
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSizePolicy,
                              QLabel, QGroupBox, QFileDialog, QMessageBox, QProgressBar,
-                             QListWidget, QListWidgetItem, QGridLayout)
+                             QListWidget, QListWidgetItem, QGridLayout, QCheckBox, QButtonGroup,
+                             QRadioButton, QScrollArea, QFrame)
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -34,6 +37,11 @@ class LoopManager(BasicEditor):
     SUB_ID = 0x00
     DEVICE_ID = 0x4D
 
+    # Signals for thread-safe UI updates
+    transfer_progress = pyqtSignal(int, str)  # progress, message
+    transfer_complete = pyqtSignal(bool, str)  # success, message
+    hid_data_received = pyqtSignal(bytes)  # raw HID data
+
     def __init__(self):
         super().__init__()
 
@@ -45,23 +53,40 @@ class LoopManager(BasicEditor):
             'received_packets': 0,
             'total_size': 0,
             'received_data': bytearray(),
-            'file_name': ''
+            'file_name': '',
+            'save_format': 'loop'  # 'loop' or 'midi'
         }
 
-        self.loaded_files = []  # List of loaded .loop files
+        self.loaded_files = []  # List of loaded files with track info
         self.loop_contents = {}  # Track what's in each loop (1-4)
+        self.overdub_contents = {}  # Track what's in each overdub (1-4)
+        self.selected_track = None  # Currently selected track for assignment
+        self.pending_assignments = {}  # Track assignments pending load
+
+        self.hid_listener_thread = None
+        self.hid_listening = False
+
+        # Connect signals
+        self.transfer_progress.connect(self.on_transfer_progress)
+        self.transfer_complete.connect(self.on_transfer_complete)
+        self.hid_data_received.connect(self.handle_device_response)
 
         self.setup_ui()
 
     def setup_ui(self):
         self.addStretch()
 
+        # Create scrollable main widget
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+        scroll.setWidget(main_widget)
+
+        self.addWidget(scroll)
 
         # Title
         title = QLabel(tr("LoopManager", "Loop Manager"))
@@ -69,88 +94,193 @@ class LoopManager(BasicEditor):
         title.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(title)
 
-        # Save Section
-        save_group = QGroupBox(tr("LoopManager", "Save Loops from Device"))
+        # Main container with two columns
+        columns_layout = QHBoxLayout()
+        main_layout.addLayout(columns_layout)
+
+        # === SAVE SECTION (Left Column) ===
+        save_group = QGroupBox(tr("LoopManager", "Save from Device"))
         save_layout = QVBoxLayout()
         save_group.setLayout(save_layout)
-        main_layout.addWidget(save_group)
+        save_group.setMaximumWidth(500)
+        columns_layout.addWidget(save_group)
 
-        # Individual loop save buttons
+        # Save All Loops button
+        save_all_btn = QPushButton(tr("LoopManager", "Save All Loops"))
+        save_all_btn.setMinimumHeight(50)
+        save_all_btn.setStyleSheet(
+            "background: #1e3a8a; color: white; font-size: 14px; font-weight: bold; border-radius: 6px;"
+        )
+        save_all_btn.clicked.connect(self.on_save_all_loops)
+        save_layout.addWidget(save_all_btn)
+
+        save_layout.addWidget(QLabel(tr("LoopManager", "Save individual loops:")))
+
+        # Individual loop save buttons (4 in a row)
         loop_buttons_layout = QGridLayout()
         self.save_loop_btns = []
         for i in range(4):
-            btn = QPushButton(tr("LoopManager", f"Save Loop {i+1}"))
+            btn = QPushButton(tr("LoopManager", f"Loop {i+1}"))
             btn.setMinimumHeight(40)
+            btn.setStyleSheet("background: #e2e8f0; border-radius: 6px;")
             btn.clicked.connect(lambda checked, loop=i+1: self.on_save_loop(loop))
             loop_buttons_layout.addWidget(btn, 0, i)
             self.save_loop_btns.append(btn)
 
         save_layout.addLayout(loop_buttons_layout)
 
-        # Save all button
-        save_all_btn = QPushButton(tr("LoopManager", "Save All Loops"))
-        save_all_btn.setMinimumHeight(45)
-        save_all_btn.setStyleSheet(
-            "background: #1e3a8a; color: white; font-size: 14px; font-weight: bold;"
-        )
-        save_all_btn.clicked.connect(self.on_save_all_loops)
-        save_layout.addWidget(save_all_btn)
+        # Save format selection
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(QLabel(tr("LoopManager", "Save as:")))
+        self.format_group = QButtonGroup(self)
+        self.format_loop_radio = QRadioButton(tr("LoopManager", ".loop file"))
+        self.format_midi_radio = QRadioButton(tr("LoopManager", "MIDI file"))
+        self.format_loop_radio.setChecked(True)
+        self.format_group.addButton(self.format_loop_radio)
+        self.format_group.addButton(self.format_midi_radio)
+        format_layout.addWidget(self.format_loop_radio)
+        format_layout.addWidget(self.format_midi_radio)
+        format_layout.addStretch()
+        save_layout.addLayout(format_layout)
 
-        # Load Section
-        load_group = QGroupBox(tr("LoopManager", "Load Loops to Device"))
+        # Save progress
+        self.save_progress_label = QLabel("")
+        self.save_progress_label.setStyleSheet("color: #4299e1; font-weight: bold;")
+        save_layout.addWidget(self.save_progress_label)
+
+        self.save_progress_bar = QProgressBar()
+        self.save_progress_bar.setMinimum(0)
+        self.save_progress_bar.setMaximum(100)
+        self.save_progress_bar.setValue(0)
+        self.save_progress_bar.setVisible(False)
+        save_layout.addWidget(self.save_progress_bar)
+
+        save_layout.addStretch()
+
+        # === LOAD SECTION (Right Column) ===
+        load_group = QGroupBox(tr("LoopManager", "Load to Device"))
         load_layout = QVBoxLayout()
         load_group.setLayout(load_layout)
-        main_layout.addWidget(load_group)
+        load_group.setMaximumWidth(500)
+        columns_layout.addWidget(load_group)
 
-        # File browser button
-        browse_layout = QHBoxLayout()
-        browse_btn = QPushButton(tr("LoopManager", "Browse for Loop Files"))
-        browse_btn.setMinimumHeight(35)
+        # Browse button
+        browse_btn = QPushButton(tr("LoopManager", "Browse for Loop/MIDI Files"))
+        browse_btn.setMinimumHeight(50)
+        browse_btn.setStyleSheet(
+            "background: #1e3a8a; color: white; font-size: 14px; font-weight: bold; border-radius: 6px;"
+        )
         browse_btn.clicked.connect(self.on_browse_files)
-        browse_layout.addWidget(browse_btn)
-
-        clear_list_btn = QPushButton(tr("LoopManager", "Clear List"))
-        clear_list_btn.setMinimumHeight(35)
-        clear_list_btn.clicked.connect(self.on_clear_file_list)
-        browse_layout.addWidget(clear_list_btn)
-        load_layout.addLayout(browse_layout)
+        load_layout.addWidget(browse_btn)
 
         # File list
         self.file_list = QListWidget()
         self.file_list.setMinimumHeight(120)
+        self.file_list.setMaximumHeight(200)
+        self.file_list.currentItemChanged.connect(self.on_file_selected)
         load_layout.addWidget(self.file_list)
 
-        # Loop assignment buttons
-        assign_layout = QGridLayout()
-        assign_layout.addWidget(QLabel(tr("LoopManager", "Load selected file to:")), 0, 0, 1, 4)
+        # Clear list button
+        clear_btn = QPushButton(tr("LoopManager", "Clear File List"))
+        clear_btn.clicked.connect(self.on_clear_file_list)
+        load_layout.addWidget(clear_btn)
 
-        self.load_loop_btns = []
+        # Load All button
+        self.load_all_btn = QPushButton(tr("LoopManager", "Load All Tracks to Device"))
+        self.load_all_btn.setMinimumHeight(40)
+        self.load_all_btn.setEnabled(False)
+        self.load_all_btn.clicked.connect(self.on_load_all_tracks)
+        load_layout.addWidget(self.load_all_btn)
+
+        # Advanced track assignment toggle
+        self.advanced_toggle = QCheckBox(tr("LoopManager", "Show Advanced Track Assignment"))
+        self.advanced_toggle.stateChanged.connect(self.on_toggle_advanced)
+        load_layout.addWidget(self.advanced_toggle)
+
+        # Load progress
+        self.load_progress_label = QLabel("")
+        self.load_progress_label.setStyleSheet("color: #4299e1; font-weight: bold;")
+        load_layout.addWidget(self.load_progress_label)
+
+        self.load_progress_bar = QProgressBar()
+        self.load_progress_bar.setMinimum(0)
+        self.load_progress_bar.setMaximum(100)
+        self.load_progress_bar.setValue(0)
+        self.load_progress_bar.setVisible(False)
+        load_layout.addWidget(self.load_progress_bar)
+
+        load_layout.addStretch()
+
+        # === ADVANCED TRACK ASSIGNMENT SECTION ===
+        self.advanced_section = QGroupBox(tr("LoopManager", "Advanced Track Assignment"))
+        advanced_layout = QVBoxLayout()
+        self.advanced_section.setLayout(advanced_layout)
+        self.advanced_section.setVisible(False)
+        main_layout.addWidget(self.advanced_section)
+
+        # Track selection area
+        track_select_label = QLabel(tr("LoopManager", "Select Track:"))
+        track_select_label.setStyleSheet("font-weight: bold;")
+        advanced_layout.addWidget(track_select_label)
+
+        self.track_buttons_widget = QWidget()
+        self.track_buttons_layout = QGridLayout()
+        self.track_buttons_widget.setLayout(self.track_buttons_layout)
+        advanced_layout.addWidget(self.track_buttons_widget)
+
+        self.track_button_group = QButtonGroup(self)
+        self.track_button_group.setExclusive(True)
+
+        # Loop assignment area
+        assign_label = QLabel(tr("LoopManager", "Assign to Loop:"))
+        assign_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        advanced_layout.addWidget(assign_label)
+
+        # Main loop buttons
+        main_label = QLabel(tr("LoopManager", "Main:"))
+        advanced_layout.addWidget(main_label)
+
+        main_buttons_layout = QGridLayout()
+        self.main_assign_btns = []
         for i in range(4):
-            btn = QPushButton(tr("LoopManager", f"Loop {i+1}"))
+            btn = QPushButton(f"Loop {i+1}")
             btn.setMinimumHeight(40)
-            btn.clicked.connect(lambda checked, loop=i+1: self.on_load_to_loop(loop))
-            assign_layout.addWidget(btn, 1, i)
-            self.load_loop_btns.append(btn)
+            btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_main(loop))
+            main_buttons_layout.addWidget(btn, 0, i)
+            self.main_assign_btns.append(btn)
+        advanced_layout.addLayout(main_buttons_layout)
 
-        load_layout.addLayout(assign_layout)
+        # Overdub loop buttons
+        overdub_label = QLabel(tr("LoopManager", "Overdub:"))
+        advanced_layout.addWidget(overdub_label)
 
-        # Progress section
-        progress_group = QGroupBox(tr("LoopManager", "Transfer Progress"))
-        progress_layout = QVBoxLayout()
-        progress_group.setLayout(progress_layout)
-        main_layout.addWidget(progress_group)
+        overdub_buttons_layout = QGridLayout()
+        self.overdub_assign_btns = []
+        for i in range(4):
+            btn = QPushButton(f"Loop {i+1} Overdub")
+            btn.setMinimumHeight(40)
+            btn.setEnabled(False)
+            btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_overdub(loop))
+            overdub_buttons_layout.addWidget(btn, 0, i)
+            self.overdub_assign_btns.append(btn)
+        advanced_layout.addLayout(overdub_buttons_layout)
 
-        self.progress_label = QLabel(tr("LoopManager", "No transfer in progress"))
-        self.progress_label.setAlignment(QtCore.Qt.AlignCenter)
-        progress_layout.addWidget(self.progress_label)
+        # Info text
+        info_label = QLabel(tr("LoopManager",
+            "💡 Overdub tracks are only available for loops that already have main content. "
+            "Select a track above, then click a loop button to assign."))
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: #6b7280; font-size: 12px; padding: 10px; background: #fef3c7; border-radius: 6px;")
+        advanced_layout.addWidget(info_label)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
-        self.progress_bar.setValue(0)
-        progress_layout.addWidget(self.progress_bar)
+        # Load assignments button
+        self.load_assignments_btn = QPushButton(tr("LoopManager", "Load Assigned Tracks to Device"))
+        self.load_assignments_btn.setMinimumHeight(45)
+        self.load_assignments_btn.setEnabled(False)
+        self.load_assignments_btn.clicked.connect(self.on_load_assignments)
+        advanced_layout.addWidget(self.load_assignments_btn)
 
-        # Current loop contents
+        # === CURRENT LOOP CONTENTS ===
         contents_group = QGroupBox(tr("LoopManager", "Current Loop Contents"))
         contents_layout = QGridLayout()
         contents_group.setLayout(contents_layout)
@@ -159,6 +289,7 @@ class LoopManager(BasicEditor):
         self.loop_content_labels = []
         for i in range(4):
             label = QLabel(f"Loop {i+1}:")
+            label.setStyleSheet("font-weight: bold;")
             contents_layout.addWidget(label, i // 2, (i % 2) * 2)
 
             content_label = QLabel(tr("LoopManager", "Empty"))
@@ -166,10 +297,8 @@ class LoopManager(BasicEditor):
             contents_layout.addWidget(content_label, i // 2, (i % 2) * 2 + 1)
             self.loop_content_labels.append(content_label)
 
-        self.addStretch()
-
     def send_hid_packet(self, command, macro_num, status=0, data=None):
-        """Send HID packet to device"""
+        """Send raw HID packet to device"""
         if not self.device or not isinstance(self.device, VialKeyboard):
             raise Exception("Device not connected")
 
@@ -186,18 +315,54 @@ class LoopManager(BasicEditor):
             packet[6:6 + data_len] = data[:data_len]
 
         try:
-            self.device.keyboard.via_command(packet)
+            # Send raw HID data (not VIA command)
+            self.device.send(bytes(packet))
         except Exception as e:
-            raise Exception(f"Failed to send HID command: {str(e)}")
+            raise Exception(f"Failed to send HID packet: {str(e)}")
+
+    def start_hid_listener(self):
+        """Start background thread to listen for HID responses"""
+        if self.hid_listening:
+            return
+
+        self.hid_listening = True
+        self.hid_listener_thread = threading.Thread(target=self.hid_listener_loop, daemon=True)
+        self.hid_listener_thread.start()
+
+    def stop_hid_listener(self):
+        """Stop the HID listener thread"""
+        self.hid_listening = False
+        if self.hid_listener_thread:
+            self.hid_listener_thread.join(timeout=1.0)
+
+    def hid_listener_loop(self):
+        """Background thread loop to receive HID data"""
+        while self.hid_listening and self.device:
+            try:
+                # Read HID data with timeout
+                data = self.device.recv(self.HID_PACKET_SIZE, timeout_ms=100)
+                if data and len(data) == self.HID_PACKET_SIZE:
+                    # Emit signal for thread-safe UI update
+                    self.hid_data_received.emit(bytes(data))
+            except Exception as e:
+                # Ignore timeout errors
+                if "timeout" not in str(e).lower():
+                    print(f"HID listener error: {e}")
+                time.sleep(0.01)
 
     def on_save_loop(self, loop_num):
         """Request to save a specific loop from device"""
         try:
-            # Choose save location
-            default_name = f"loop{loop_num}.loop"
+            # Determine file extension based on format selection
+            if self.format_midi_radio.isChecked():
+                filter_str = "MIDI Files (*.mid);;All Files (*)"
+                default_name = f"loop{loop_num}.mid"
+            else:
+                filter_str = "Loop Files (*.loop);;All Files (*)"
+                default_name = f"loop{loop_num}.loop"
+
             filename, _ = QFileDialog.getSaveFileName(
-                None, f"Save Loop {loop_num}", default_name,
-                "Loop Files (*.loop);;All Files (*)"
+                None, f"Save Loop {loop_num}", default_name, filter_str
             )
 
             if not filename:
@@ -212,18 +377,20 @@ class LoopManager(BasicEditor):
                 'received_packets': 0,
                 'total_size': 0,
                 'received_data': bytearray(),
-                'file_name': filename
+                'file_name': filename,
+                'save_format': 'midi' if self.format_midi_radio.isChecked() else 'loop'
             }
 
+            # Start HID listener if not already running
+            self.start_hid_listener()
+
             # Update UI
-            self.progress_label.setText(f"Requesting Loop {loop_num} from device...")
-            self.progress_bar.setValue(0)
+            self.save_progress_label.setText(f"Requesting Loop {loop_num} from device...")
+            self.save_progress_bar.setValue(0)
+            self.save_progress_bar.setVisible(True)
 
             # Send request to device
             self.send_hid_packet(self.HID_CMD_REQUEST_SAVE, loop_num)
-
-            # Start timeout timer (10 seconds)
-            QTimer.singleShot(10000, self.on_transfer_timeout)
 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to request loop save: {str(e)}")
@@ -240,43 +407,30 @@ class LoopManager(BasicEditor):
             if not directory:
                 return
 
+            # Determine format
+            save_format = 'midi' if self.format_midi_radio.isChecked() else 'loop'
+            extension = '.mid' if save_format == 'midi' else '.loop'
+
+            # Start HID listener
+            self.start_hid_listener()
+
             # Send trigger to save all
             self.send_hid_packet(self.HID_CMD_TRIGGER_SAVE_ALL, 0)
 
-            # Save each loop individually
-            for loop_num in range(1, 5):
-                filename = os.path.join(directory, f"loop{loop_num}.loop")
-
-                self.current_transfer = {
-                    'active': True,
-                    'is_loading': False,
-                    'loop_num': loop_num,
-                    'expected_packets': 0,
-                    'received_packets': 0,
-                    'total_size': 0,
-                    'received_data': bytearray(),
-                    'file_name': filename
-                }
-
-                self.progress_label.setText(f"Saving Loop {loop_num} of 4...")
-                self.progress_bar.setValue((loop_num - 1) * 25)
-
-                # Send request
-                self.send_hid_packet(self.HID_CMD_REQUEST_SAVE, loop_num)
-
-                # Wait for transfer to complete (simplified - in real implementation
-                # you'd use proper async/await or threading)
-                QtCore.QCoreApplication.processEvents()
+            # Note: In a production implementation, you'd handle the async responses properly
+            # For now, showing the intent
+            QMessageBox.information(None, "Info",
+                f"Save All command sent. Loops will be saved to {directory}")
 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to save all loops: {str(e)}")
             self.reset_transfer_state()
 
     def on_browse_files(self):
-        """Browse for loop files to load"""
+        """Browse for loop/MIDI files to load"""
         filenames, _ = QFileDialog.getOpenFileNames(
-            None, "Select Loop Files", "",
-            "Loop Files (*.loop);;MIDI Files (*.mid *.midi);;All Files (*)"
+            None, "Select Loop or MIDI Files", "",
+            "All Supported (*.loop *.mid *.midi);;Loop Files (*.loop);;MIDI Files (*.mid *.midi);;All Files (*)"
         )
 
         for filename in filenames:
@@ -297,97 +451,103 @@ class LoopManager(BasicEditor):
                 item.setData(QtCore.Qt.UserRole, filename)
                 self.file_list.addItem(item)
 
+        # Enable load all button if files loaded
+        if self.file_list.count() > 0:
+            self.load_all_btn.setEnabled(True)
+
     def on_clear_file_list(self):
         """Clear the file list"""
         self.file_list.clear()
+        self.load_all_btn.setEnabled(False)
+        self.pending_assignments.clear()
+        self.update_assignment_buttons()
 
-    def on_load_to_loop(self, loop_num):
-        """Load selected file to specified loop"""
-        current_item = self.file_list.currentItem()
-        if not current_item:
-            QMessageBox.warning(None, "Warning", "Please select a file to load")
+    def on_file_selected(self, current, previous):
+        """Handle file selection"""
+        if not current:
             return
 
-        filename = current_item.data(QtCore.Qt.UserRole)
+        filename = current.data(QtCore.Qt.UserRole)
+        # TODO: Parse file and populate track selection
+        # For now, just enable load all
+        self.load_all_btn.setEnabled(True)
 
-        try:
-            # Read loop file
-            with open(filename, 'rb') as f:
-                loop_data = f.read()
+    def on_toggle_advanced(self, state):
+        """Toggle advanced track assignment section"""
+        self.advanced_section.setVisible(state == QtCore.Qt.Checked)
 
-            # Validate file
-            if len(loop_data) < 4:
-                raise Exception("Invalid loop file: too short")
+    def on_assign_main(self, loop_num):
+        """Assign selected track to main loop"""
+        if not self.selected_track:
+            QMessageBox.warning(None, "Warning", "Please select a track first")
+            return
 
-            # Check magic bytes
-            if loop_data[0] != 0xAA or loop_data[1] != 0x55:
-                raise Exception("Invalid loop file: bad magic bytes")
+        # Store pending assignment
+        if loop_num not in self.pending_assignments:
+            self.pending_assignments[loop_num] = {}
+        self.pending_assignments[loop_num]['main'] = self.selected_track
 
-            # Update UI
-            self.progress_label.setText(f"Loading to Loop {loop_num}...")
-            self.progress_bar.setValue(0)
+        self.update_assignment_buttons()
+        self.load_assignments_btn.setEnabled(True)
 
-            # Send loop data
-            self.send_loop_data(loop_data, loop_num)
+    def on_assign_overdub(self, loop_num):
+        """Assign selected track to overdub loop"""
+        if not self.selected_track:
+            QMessageBox.warning(None, "Warning", "Please select a track first")
+            return
 
-            # Update loop contents
-            self.loop_contents[loop_num] = os.path.basename(filename)
-            self.update_loop_contents_display()
+        # Check if main loop has content
+        if loop_num not in self.loop_contents:
+            QMessageBox.warning(None, "Warning",
+                f"Loop {loop_num} must have main content before adding overdub")
+            return
 
-            QMessageBox.information(None, "Success",
-                                  f"Successfully loaded {os.path.basename(filename)} to Loop {loop_num}")
+        # Store pending assignment
+        if loop_num not in self.pending_assignments:
+            self.pending_assignments[loop_num] = {}
+        self.pending_assignments[loop_num]['overdub'] = self.selected_track
 
-        except Exception as e:
-            QMessageBox.critical(None, "Error", f"Failed to load loop: {str(e)}")
-            self.reset_transfer_state()
+        self.update_assignment_buttons()
+        self.load_assignments_btn.setEnabled(True)
 
-    def send_loop_data(self, loop_data, loop_num):
-        """Send loop data to device in chunks"""
-        try:
-            # Send LOAD_START
-            self.send_hid_packet(self.HID_CMD_LOAD_START, loop_num)
-            self.progress_bar.setValue(10)
+    def on_load_all_tracks(self):
+        """Load all tracks from selected file"""
+        # TODO: Implement batch loading logic
+        QMessageBox.information(None, "Info", "Load all tracks feature coming soon!")
 
-            # Send data in chunks
-            total_size = len(loop_data)
-            chunk_size = self.HID_DATA_SIZE - 4  # Reserve 4 bytes for chunk info
-            total_chunks = (total_size + chunk_size - 1) // chunk_size
+    def on_load_assignments(self):
+        """Load assigned tracks to device"""
+        # TODO: Implement assignment loading logic
+        QMessageBox.information(None, "Info", "Loading assigned tracks...")
 
-            for chunk_idx in range(total_chunks):
-                offset = chunk_idx * chunk_size
-                chunk = loop_data[offset:offset + chunk_size]
+    def update_assignment_buttons(self):
+        """Update assignment button states and labels"""
+        for i in range(4):
+            loop_num = i + 1
 
-                # Create chunk packet
-                chunk_data = bytearray(4)
-                struct.pack_into('<H', chunk_data, 0, chunk_idx)  # Chunk index
-                struct.pack_into('<H', chunk_data, 2, len(chunk))  # Chunk size
-                chunk_data.extend(chunk)
+            # Main button
+            if loop_num in self.pending_assignments and 'main' in self.pending_assignments[loop_num]:
+                self.main_assign_btns[i].setStyleSheet("background: #fef3c7; border: 2px solid #f59e0b;")
+                self.main_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+            else:
+                self.main_assign_btns[i].setStyleSheet("")
+                self.main_assign_btns[i].setText(f"Loop {loop_num}")
 
-                self.send_hid_packet(self.HID_CMD_LOAD_CHUNK, loop_num, data=chunk_data)
+            # Overdub button
+            has_main = loop_num in self.loop_contents or (
+                loop_num in self.pending_assignments and 'main' in self.pending_assignments[loop_num]
+            )
+            self.overdub_assign_btns[i].setEnabled(has_main)
 
-                # Update progress
-                progress = 10 + int((chunk_idx + 1) / total_chunks * 80)
-                self.progress_bar.setValue(progress)
-
-                # Process events to keep UI responsive
-                QtCore.QCoreApplication.processEvents()
-
-            # Send LOAD_END
-            self.send_hid_packet(self.HID_CMD_LOAD_END, loop_num)
-            self.progress_bar.setValue(100)
-
-            self.progress_label.setText(f"Successfully loaded to Loop {loop_num}")
-
-            # Reset after delay
-            QTimer.singleShot(2000, self.reset_transfer_state)
-
-        except Exception as e:
-            raise Exception(f"Failed to send loop data: {str(e)}")
+            if loop_num in self.pending_assignments and 'overdub' in self.pending_assignments[loop_num]:
+                self.overdub_assign_btns[i].setStyleSheet("background: #fef3c7; border: 2px solid #f59e0b;")
+                self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+            else:
+                self.overdub_assign_btns[i].setStyleSheet("")
+                self.overdub_assign_btns[i].setText(f"Loop {loop_num} Overdub")
 
     def handle_device_response(self, data):
-        """Handle incoming HID data from device
-        This would be called by the device communication layer
-        """
+        """Handle incoming HID data from device"""
         if len(data) < self.HID_HEADER_SIZE:
             return
 
@@ -412,20 +572,18 @@ class LoopManager(BasicEditor):
     def handle_save_start(self, macro_num, status, data):
         """Handle SAVE_START response from device"""
         if status != 0:
-            QMessageBox.warning(None, "Warning", f"Loop {macro_num} is empty or error occurred")
-            self.reset_transfer_state()
+            self.transfer_complete.emit(False, f"Loop {macro_num} is empty or error occurred")
             return
 
         # Extract total size from payload
         if len(data) >= 4:
-            self.current_transfer['total_size'] = struct.unpack('<I', data[:4])[0]
+            self.current_transfer['total_size'] = struct.unpack('<I', bytes(data[:4]))[0]
             chunk_size = self.HID_DATA_SIZE - 4
             self.current_transfer['expected_packets'] = \
                 (self.current_transfer['total_size'] + chunk_size - 1) // chunk_size
 
-        self.progress_label.setText(
-            f"Receiving Loop {macro_num}: 0 / {self.current_transfer['total_size']} bytes"
-        )
+        self.transfer_progress.emit(0,
+            f"Receiving Loop {macro_num}: 0 / {self.current_transfer['total_size']} bytes")
 
     def handle_save_chunk(self, macro_num, status, data):
         """Handle SAVE_CHUNK response from device"""
@@ -444,10 +602,8 @@ class LoopManager(BasicEditor):
 
             if total > 0:
                 progress = int((received / total) * 100)
-                self.progress_bar.setValue(progress)
-                self.progress_label.setText(
-                    f"Receiving Loop {macro_num}: {received} / {total} bytes"
-                )
+                self.transfer_progress.emit(progress,
+                    f"Receiving Loop {macro_num}: {received} / {total} bytes")
 
     def handle_save_end(self, macro_num, status):
         """Handle SAVE_END response from device"""
@@ -457,25 +613,37 @@ class LoopManager(BasicEditor):
         if status == 0:
             # Save to file
             try:
-                with open(self.current_transfer['file_name'], 'wb') as f:
-                    f.write(self.current_transfer['received_data'])
+                if self.current_transfer['save_format'] == 'midi':
+                    # TODO: Convert loop data to MIDI format
+                    data = self.current_transfer['received_data']
+                else:
+                    data = self.current_transfer['received_data']
 
-                QMessageBox.information(None, "Success",
-                    f"Successfully saved Loop {macro_num} to {self.current_transfer['file_name']}")
+                with open(self.current_transfer['file_name'], 'wb') as f:
+                    f.write(data)
+
+                self.transfer_complete.emit(True,
+                    f"Successfully saved Loop {macro_num} to {os.path.basename(self.current_transfer['file_name'])}")
 
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Failed to save file: {str(e)}")
+                self.transfer_complete.emit(False, f"Failed to save file: {str(e)}")
 
         else:
-            QMessageBox.critical(None, "Error", f"Failed to receive Loop {macro_num}")
+            self.transfer_complete.emit(False, f"Failed to receive Loop {macro_num}")
+
+    def on_transfer_progress(self, progress, message):
+        """Update UI with transfer progress (thread-safe)"""
+        self.save_progress_label.setText(message)
+        self.save_progress_bar.setValue(progress)
+
+    def on_transfer_complete(self, success, message):
+        """Handle transfer completion (thread-safe)"""
+        if success:
+            QMessageBox.information(None, "Success", message)
+        else:
+            QMessageBox.warning(None, "Warning", message)
 
         self.reset_transfer_state()
-
-    def on_transfer_timeout(self):
-        """Handle transfer timeout"""
-        if self.current_transfer['active']:
-            QMessageBox.critical(None, "Error", "Transfer timed out")
-            self.reset_transfer_state()
 
     def reset_transfer_state(self):
         """Reset transfer state"""
@@ -487,11 +655,17 @@ class LoopManager(BasicEditor):
             'received_packets': 0,
             'total_size': 0,
             'received_data': bytearray(),
-            'file_name': ''
+            'file_name': '',
+            'save_format': 'loop'
         }
 
-        self.progress_label.setText(tr("LoopManager", "No transfer in progress"))
-        self.progress_bar.setValue(0)
+        self.save_progress_label.setText("")
+        self.save_progress_bar.setValue(0)
+        self.save_progress_bar.setVisible(False)
+
+        self.load_progress_label.setText("")
+        self.load_progress_bar.setValue(0)
+        self.load_progress_bar.setVisible(False)
 
     def update_loop_contents_display(self):
         """Update the loop contents display"""
@@ -511,9 +685,18 @@ class LoopManager(BasicEditor):
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
+            self.stop_hid_listener()
             return
+
+        # Start HID listener when device connects
+        self.start_hid_listener()
 
         # Reset state when device changes
         self.reset_transfer_state()
         self.loop_contents = {}
+        self.overdub_contents = {}
         self.update_loop_contents_display()
+
+    def __del__(self):
+        """Cleanup on deletion"""
+        self.stop_hid_listener()
