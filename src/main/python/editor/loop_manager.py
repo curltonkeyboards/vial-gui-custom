@@ -362,19 +362,19 @@ class LoopManager(BasicEditor):
             track_events.extend(self.create_variable_length(delta_ticks))
             last_time_ticks = time_ticks
 
-            # MIDI event
+            # MIDI event - device event types: 0=Note Off, 1=Note On, 2=CC
             event_type = event['type']
             channel = event['channel']
             note = event['note']
             velocity = event['velocity']
 
-            if event_type == 1:  # Note On
+            if event_type == 1:  # Note On (device type 1)
                 status = 0x90 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
-            elif event_type == 2:  # Note Off
+            elif event_type == 0:  # Note Off (device type 0)
                 status = 0x80 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
-            elif event_type == 3:  # Control Change
+            elif event_type == 2:  # Control Change (device type 2)
                 status = 0xB0 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
 
@@ -402,6 +402,336 @@ class LoopManager(BasicEditor):
             value >>= 7
 
         return result
+
+    def read_variable_length(self, data, offset):
+        """Read MIDI variable-length quantity - matches webapp readVarLength()"""
+        value = 0
+        while offset < len(data):
+            byte = data[offset]
+            offset += 1
+            value = (value << 7) | (byte & 0x7F)
+            if (byte & 0x80) == 0:
+                break
+        return {'value': value, 'offset': offset}
+
+    def ticks_to_ms(self, ticks, bpm, tpqn=480):
+        """Convert MIDI ticks to milliseconds - matches webapp ticksToMs()"""
+        ms_per_tick = 60000.0 / (bpm * tpqn)
+        return int(round(ticks * ms_per_tick))
+
+    def ms_to_ticks(self, ms, bpm, tpqn=480):
+        """Convert milliseconds to MIDI ticks - matches webapp msToTicks()"""
+        ms_per_tick = 60000.0 / (bpm * tpqn)
+        return int(round(ms / ms_per_tick))
+
+    def parse_midi_track(self, data, tpqn):
+        """Parse MIDI track events - matches webapp parseMIDITrack()"""
+        # Device event type constants - MUST MATCH DEVICE FORMAT!
+        MIDI_EVENT_NOTE_OFF = 0
+        MIDI_EVENT_NOTE_ON = 1
+        MIDI_EVENT_CC = 2
+
+        events = []
+        offset = 0
+        current_ticks = 0
+        track_name = None
+        tempo = None
+        max_ticks = 0
+
+        logger.info(f"Parsing MIDI track: {len(data)} bytes, TPQN={tpqn}")
+
+        while offset < len(data):
+            # Read delta time
+            delta_result = self.read_variable_length(data, offset)
+            delta_time = delta_result['value']
+            offset = delta_result['offset']
+
+            current_ticks += delta_time
+            max_ticks = max(max_ticks, current_ticks)
+
+            if offset >= len(data):
+                break
+
+            event_byte = data[offset]
+            offset += 1
+
+            # Debug logging for first few events
+            if len(events) < 5 or offset < 100:
+                logger.info(f"Offset {offset-1}: delta={delta_time}, ticks={current_ticks}, byte=0x{event_byte:02x}")
+
+            if event_byte == 0xFF:
+                # Meta event
+                if offset >= len(data):
+                    break
+                meta_type = data[offset]
+                offset += 1
+
+                length_result = self.read_variable_length(data, offset)
+                meta_length = length_result['value']
+                offset = length_result['offset']
+
+                if offset + meta_length > len(data):
+                    break
+
+                if meta_type == 0x03 and not track_name:
+                    # Track name
+                    try:
+                        track_name = data[offset:offset + meta_length].decode('utf-8', errors='ignore')
+                    except:
+                        track_name = None
+                elif meta_type == 0x51 and meta_length == 3:
+                    # Tempo
+                    microseconds_per_quarter = (data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2]
+                    tempo = round(60000000 / microseconds_per_quarter)
+                elif meta_type == 0x2F:
+                    # End of track
+                    max_ticks = max(max_ticks, current_ticks)
+
+                offset += meta_length
+
+            elif (event_byte & 0xF0) == 0x90:
+                # Note on
+                if offset + 2 > len(data):
+                    break
+                channel = event_byte & 0x0F
+                note = data[offset]
+                velocity = data[offset + 1]
+                offset += 2
+
+                if velocity > 0:
+                    events.append({
+                        'type': MIDI_EVENT_NOTE_ON,
+                        'channel': channel,
+                        'note': note,
+                        'velocity': velocity,
+                        'ticks': current_ticks
+                    })
+                else:
+                    # Note on with velocity 0 = note off
+                    events.append({
+                        'type': MIDI_EVENT_NOTE_OFF,
+                        'channel': channel,
+                        'note': note,
+                        'velocity': 64,
+                        'ticks': current_ticks
+                    })
+
+            elif (event_byte & 0xF0) == 0x80:
+                # Note off
+                if offset + 2 > len(data):
+                    break
+                channel = event_byte & 0x0F
+                note = data[offset]
+                velocity = data[offset + 1]
+                offset += 2
+
+                events.append({
+                    'type': MIDI_EVENT_NOTE_OFF,
+                    'channel': channel,
+                    'note': note,
+                    'velocity': velocity,
+                    'ticks': current_ticks
+                })
+
+            elif (event_byte & 0xF0) == 0xB0:
+                # Control change
+                if offset + 2 > len(data):
+                    break
+                channel = event_byte & 0x0F
+                controller = data[offset]
+                value = data[offset + 1]
+                offset += 2
+
+                events.append({
+                    'type': MIDI_EVENT_CC,
+                    'channel': channel,
+                    'note': controller,
+                    'velocity': value,
+                    'ticks': current_ticks
+                })
+
+            elif (event_byte & 0xF0) in [0xC0, 0xD0]:
+                # Program change (0xC0) or Channel pressure (0xD0) - 1 data byte
+                if offset + 1 > len(data):
+                    break
+                offset += 1  # Skip the data byte
+
+            elif (event_byte & 0xF0) == 0xE0:
+                # Pitch bend - 2 data bytes
+                if offset + 2 > len(data):
+                    break
+                offset += 2  # Skip the data bytes
+
+            elif event_byte == 0xF0 or event_byte == 0xF7:
+                # SysEx event - skip it
+                length_result = self.read_variable_length(data, offset)
+                sysex_length = length_result['value']
+                offset = length_result['offset']
+                offset += sysex_length
+
+            else:
+                # Unknown event type - try to continue instead of breaking
+                logger.info(f"Unknown event type: 0x{event_byte:02x} at offset {offset - 1}, breaking")
+                break
+
+        logger.info(f"Parsed MIDI track: {len(events)} events, max_ticks={max_ticks}, tempo={tempo}")
+        return {'events': events, 'tempo': tempo, 'trackName': track_name, 'maxTicks': max_ticks}
+
+    def convert_midi_to_loop_format(self, events, bpm, tpqn=480):
+        """Convert MIDI events to loop format - matches webapp convertMIDIToLoopFormat()"""
+        logger.info(f"Converting {len(events)} MIDI events to loop format at {bpm} BPM")
+
+        loop_events = []
+        for event in events:
+            loop_events.append({
+                'type': event['type'],
+                'channel': event['channel'],
+                'note': event['note'],
+                'velocity': event['velocity'],
+                'timestamp': self.ticks_to_ms(event['ticks'], bpm, tpqn)
+            })
+
+        # Sort by timestamp
+        loop_events.sort(key=lambda e: e['timestamp'])
+
+        logger.info(f"Converted to {len(loop_events)} loop events")
+        if loop_events:
+            logger.info(f"Event range: {loop_events[0]['timestamp']}ms to {loop_events[-1]['timestamp']}ms")
+
+        return loop_events
+
+    def calculate_loop_timing(self, events, bpm, track_length_ticks=None, skip_quantization=False):
+        """Calculate loop timing from events - matches webapp calculateLoopTiming()"""
+        if not events:
+            return {'loopLength': 0, 'loopGap': 0}
+
+        # Get timestamps
+        timestamps = [e['timestamp'] for e in events]
+        first_event_time = min(timestamps)
+        last_event_time = max(timestamps)
+
+        # Calculate basic loop length
+        loop_length = last_event_time
+
+        # If we have track length info from MIDI, use it
+        if track_length_ticks:
+            track_length_ms = self.ticks_to_ms(track_length_ticks, bpm)
+            loop_length = max(loop_length, track_length_ms)
+            logger.info(f"Using track length: {track_length_ms}ms vs event range: {last_event_time}ms")
+
+        # Skip quantization for shortest loop (reference loop)
+        if skip_quantization:
+            logger.info(f"SHORTEST LOOP: Preserving exact timing: {loop_length}ms (no quantization)")
+        else:
+            # Smart quantization to bar boundaries
+            ms_per_beat = 60000 / bpm
+            ms_per_bar = ms_per_beat * 4  # 4/4 time
+            threshold = ms_per_bar * 0.05  # 5% of a bar
+
+            # Find closest multiple of bar length
+            exact_bars = loop_length / ms_per_bar
+            nearest_bars = round(exact_bars)
+            quantized_length = nearest_bars * ms_per_bar
+
+            # Calculate difference
+            difference = abs(loop_length - quantized_length)
+
+            # Only apply quantization if within 5% of bar boundary
+            if difference <= threshold and nearest_bars > 0:
+                loop_length = quantized_length
+                logger.info(f"Quantized loop length to {nearest_bars} bars: {loop_length}ms")
+            else:
+                logger.info(f"No quantization applied: {difference}ms difference > {threshold}ms threshold")
+
+        # Calculate gap (silence at end)
+        loop_gap = max(0, loop_length - last_event_time)
+
+        logger.info(f"Calculated timing - Length: {loop_length}ms, Gap: {loop_gap}ms")
+
+        return {'loopLength': int(loop_length), 'loopGap': int(loop_gap)}
+
+    def create_loop_data_from_events(self, events, loop_num, bpm, loop_timing=None, is_overdub=False):
+        """Create loop data from events - matches webapp createLoopDataFromEvents()"""
+        logger.info(f"Creating loop data for loop {loop_num} with {len(events)} events at {bpm} BPM (overdub: {is_overdub})")
+
+        buffer = bytearray()
+
+        # Header: AA 55 01 <loop_num>
+        buffer.extend([0xAA, 0x55, 0x01, loop_num])
+
+        # Convert events to binary format (16 bytes per event to match device structure)
+        event_data = bytearray()
+        for event in events:
+            # Each event: type(1) + channel(1) + note(1) + velocity(1) + timestamp(4 LE) + padding(8)
+            event_data.append(event['type'])
+            event_data.append(event['channel'])
+            event_data.append(event['note'])
+            event_data.append(event['velocity'])
+
+            # Timestamp as 32-bit little-endian
+            timestamp = int(event['timestamp'])
+            event_data.append(timestamp & 0xFF)
+            event_data.append((timestamp >> 8) & 0xFF)
+            event_data.append((timestamp >> 16) & 0xFF)
+            event_data.append((timestamp >> 24) & 0xFF)
+
+            # Padding (8 bytes)
+            event_data.extend([0] * 8)
+
+        # Main macro size (2 bytes, big-endian)
+        if not is_overdub:
+            main_size = len(event_data)
+            buffer.append((main_size >> 8) & 0xFF)
+            buffer.append(main_size & 0xFF)
+            buffer.extend(event_data)
+
+            # Overdub size (0)
+            buffer.extend([0x00, 0x00])
+        else:
+            # Main size (0)
+            buffer.extend([0x00, 0x00])
+
+            # Overdub size
+            overdub_size = len(event_data)
+            buffer.append((overdub_size >> 8) & 0xFF)
+            buffer.append(overdub_size & 0xFF)
+            buffer.extend(event_data)
+
+        # Transformation data (7 bytes)
+        buffer.extend([0] * 7)
+
+        # Timing info (8 bytes: 4 for loop_length, 4 for loop_gap)
+        if loop_timing:
+            loop_length = loop_timing['loopLength']
+            loop_gap = loop_timing['loopGap']
+        else:
+            loop_length = 0
+            loop_gap = 0
+
+        # Loop length (4 bytes, big-endian)
+        buffer.append((loop_length >> 24) & 0xFF)
+        buffer.append((loop_length >> 16) & 0xFF)
+        buffer.append((loop_length >> 8) & 0xFF)
+        buffer.append(loop_length & 0xFF)
+
+        # Loop gap (4 bytes, big-endian)
+        buffer.append((loop_gap >> 24) & 0xFF)
+        buffer.append((loop_gap >> 16) & 0xFF)
+        buffer.append((loop_gap >> 8) & 0xFF)
+        buffer.append(loop_gap & 0xFF)
+
+        # BPM data (5 bytes: flag + reserved + 3-byte BPM value)
+        buffer.append(0x01)  # BPM flag
+        buffer.append(0x00)  # Reserved
+
+        # BPM as 3-byte value (scaled by 100000)
+        bpm_value = int(bpm * 100000)
+        buffer.append((bpm_value >> 16) & 0xFF)
+        buffer.append((bpm_value >> 8) & 0xFF)
+        buffer.append(bpm_value & 0xFF)
+
+        logger.info(f"Created loop data: {len(buffer)} bytes total")
+        return bytes(buffer)
 
     def setup_ui(self):
         # No stretch at top - goes directly to content
@@ -1131,37 +1461,94 @@ class LoopManager(BasicEditor):
             return None
 
     def parse_midi_file(self, filename):
-        """Parse a MIDI file and extract track info"""
+        """Parse a MIDI file and extract track info - matches webapp parseMIDIFile()"""
         try:
             with open(filename, 'rb') as f:
                 data = f.read()
 
+            logger.info(f"Parsing MIDI file: {filename}, {len(data)} bytes")
+
             # Basic MIDI file validation
             if len(data) < 14:
+                logger.info("File too short for MIDI header")
                 return None
 
             # Check "MThd" header
             if data[0:4] != b'MThd':
+                logger.info("Not a valid MIDI file (missing MThd header)")
                 return None
 
             # Parse header
-            track_count = (data[10] << 8) | data[11]
+            offset = 4
+            header_length = struct.unpack('>I', data[offset:offset + 4])[0]
+            offset += 4
 
-            # Create track list
+            if header_length < 6:
+                logger.info(f"Invalid header length: {header_length}")
+                return None
+
+            format_type = struct.unpack('>H', data[offset:offset + 2])[0]
+            track_count = struct.unpack('>H', data[offset + 2:offset + 4])[0]
+            tpqn = struct.unpack('>H', data[offset + 4:offset + 6])[0]
+            offset += header_length
+
+            logger.info(f"MIDI file: format={format_type}, tracks={track_count}, TPQN={tpqn}")
+
+            # Parse each track
             tracks = []
-            for i in range(track_count):
+            found_bpm = 120  # Default BPM
+
+            for track_idx in range(track_count):
+                if offset + 8 > len(data):
+                    logger.info(f"Not enough data for track {track_idx + 1}")
+                    break
+
+                # Check for "MTrk" chunk
+                if data[offset:offset + 4] != b'MTrk':
+                    logger.info(f"Track {track_idx + 1}: Invalid track header")
+                    break
+
+                offset += 4
+                track_length = struct.unpack('>I', data[offset:offset + 4])[0]
+                offset += 4
+
+                if offset + track_length > len(data):
+                    logger.info(f"Track {track_idx + 1}: Invalid track length {track_length}")
+                    break
+
+                # Parse track events
+                track_data = data[offset:offset + track_length]
+                parsed_track = self.parse_midi_track(track_data, tpqn)
+
+                if parsed_track['tempo']:
+                    found_bpm = parsed_track['tempo']
+                    logger.info(f"Found BPM in track {track_idx + 1}: {found_bpm}")
+
+                track_name = parsed_track['trackName'] or f'Track {track_idx + 1}'
+
                 tracks.append({
-                    'name': f'Track {i+1}',
-                    'index': i
+                    'name': track_name,
+                    'index': track_idx,
+                    'events': parsed_track['events'],
+                    'maxTicks': parsed_track['maxTicks']
                 })
+
+                logger.info(f"Track {track_idx + 1} '{track_name}': {len(parsed_track['events'])} events")
+
+                offset += track_length
+
+            logger.info(f"Parsed {len(tracks)} tracks, BPM: {found_bpm}")
 
             return {
                 'tracks': tracks,
-                'bpm': 120  # TODO: Extract BPM from MIDI file
+                'bpm': found_bpm,
+                'tpqn': tpqn
             }
 
         except Exception as e:
             logger.info(f"Error parsing MIDI file: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def on_browse_files(self):
@@ -1437,10 +1824,64 @@ class LoopManager(BasicEditor):
                 QTimer.singleShot(2000, self.reset_transfer_state)
 
             else:
-                # MIDI file - not yet implemented for load all
-                QMessageBox.information(None, "Info",
-                    "Loading MIDI files requires track assignment.\n"
-                    "Please use the Advanced Track Assignment section.")
+                # MIDI file - load tracks sequentially to available loop slots
+                if 'tracks' not in file_info:
+                    QMessageBox.warning(None, "Warning", "No tracks found in MIDI file")
+                    return
+
+                tracks = file_info['tracks']
+                bpm = file_info['bpm']
+                tpqn = file_info.get('tpqn', 480)
+
+                logger.info(f"Loading MIDI file with {len(tracks)} tracks at {bpm} BPM")
+
+                # Ask user if they want to load all tracks
+                reply = QMessageBox.question(None, "Load MIDI Tracks",
+                    f"This MIDI file has {len(tracks)} tracks.\n"
+                    f"Load each track to a separate loop slot (1-4)?\n\n"
+                    f"Note: Maximum 4 tracks will be loaded.",
+                    QMessageBox.Yes | QMessageBox.No)
+
+                if reply != QMessageBox.Yes:
+                    return
+
+                self.load_progress_label.setText("Loading MIDI tracks to device...")
+                self.load_progress_bar.setValue(0)
+                self.load_progress_bar.setVisible(True)
+
+                # Load up to 4 tracks
+                for idx, track in enumerate(tracks[:4]):
+                    loop_num = idx + 1
+
+                    if not track['events']:
+                        logger.info(f"Track {idx + 1} has no events, skipping")
+                        continue
+
+                    progress = int(((idx + 1) / min(len(tracks), 4)) * 100)
+                    self.load_progress_label.setText(f"Loading track {idx + 1} '{track['name']}' to Loop {loop_num}...")
+                    self.load_progress_bar.setValue(progress)
+
+                    # Convert MIDI track to loop format
+                    logger.info(f"Converting track {idx + 1} to loop format: {len(track['events'])} events")
+                    loop_events = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
+
+                    if loop_events:
+                        # Calculate timing
+                        timing = self.calculate_loop_timing(loop_events, bpm, track.get('maxTicks'), False)
+
+                        # Create loop data
+                        loop_data = self.create_loop_data_from_events(loop_events, loop_num, bpm, timing, False)
+
+                        # Load to device
+                        success = self.load_loop_data_to_device(loop_data, loop_num)
+
+                        if not success:
+                            QMessageBox.warning(None, "Warning", f"Failed to load track {idx + 1} to Loop {loop_num}")
+                            break
+
+                self.load_progress_label.setText("All MIDI tracks loaded successfully")
+                self.load_progress_bar.setValue(100)
+                QTimer.singleShot(2000, self.reset_transfer_state)
 
         except Exception as e:
             logger.info(f"Error in on_load_all_tracks: {e}")
@@ -1480,11 +1921,41 @@ class LoopManager(BasicEditor):
 
                     logger.info(f"Loading main track {track_idx} from {filename} to Loop {loop_num}")
 
-                    # TODO: Convert MIDI track to loop format and load
-                    # For now, just update progress
+                    # Get file info
+                    if filename not in self.loaded_files:
+                        logger.info(f"File {filename} not found in loaded files")
+                        continue
+
+                    file_info = self.loaded_files[filename]
+                    if track_idx >= len(file_info['tracks']):
+                        logger.info(f"Track index {track_idx} out of range")
+                        continue
+
+                    track = file_info['tracks'][track_idx]
+                    bpm = file_info['bpm']
+                    tpqn = file_info.get('tpqn', 480)
+
+                    # Convert MIDI track to loop format
+                    logger.info(f"Converting MIDI track to loop format: {len(track['events'])} events at {bpm} BPM")
+                    loop_events = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
+
+                    if loop_events:
+                        # Calculate timing
+                        timing = self.calculate_loop_timing(loop_events, bpm, track.get('maxTicks'), False)
+
+                        # Create loop data
+                        loop_data = self.create_loop_data_from_events(loop_events, loop_num, bpm, timing, False)
+
+                        # Load to device
+                        self.load_progress_label.setText(f"Loading Loop {loop_num} Main...")
+                        success = self.load_loop_data_to_device(loop_data, loop_num)
+
+                        if not success:
+                            QMessageBox.warning(None, "Warning", f"Failed to load Loop {loop_num} Main")
+                            break
+
                     completed += 1
                     progress = int((completed / total_assignments) * 100)
-                    self.load_progress_label.setText(f"Loading Loop {loop_num} Main...")
                     self.load_progress_bar.setValue(progress)
 
                 if 'overdub' in assignments:
@@ -1495,10 +1966,41 @@ class LoopManager(BasicEditor):
 
                     logger.info(f"Loading overdub track {track_idx} from {filename} to Loop {loop_num}")
 
-                    # TODO: Convert MIDI track to loop format and load
+                    # Get file info
+                    if filename not in self.loaded_files:
+                        logger.info(f"File {filename} not found in loaded files")
+                        continue
+
+                    file_info = self.loaded_files[filename]
+                    if track_idx >= len(file_info['tracks']):
+                        logger.info(f"Track index {track_idx} out of range")
+                        continue
+
+                    track = file_info['tracks'][track_idx]
+                    bpm = file_info['bpm']
+                    tpqn = file_info.get('tpqn', 480)
+
+                    # Convert MIDI track to loop format
+                    logger.info(f"Converting MIDI track to loop format: {len(track['events'])} events at {bpm} BPM")
+                    loop_events = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
+
+                    if loop_events:
+                        # Calculate timing
+                        timing = self.calculate_loop_timing(loop_events, bpm, track.get('maxTicks'), False)
+
+                        # Create loop data
+                        loop_data = self.create_loop_data_from_events(loop_events, loop_num, bpm, timing, True)
+
+                        # Load to device
+                        self.load_progress_label.setText(f"Loading Loop {loop_num} Overdub...")
+                        success = self.load_loop_data_to_device(loop_data, loop_num)
+
+                        if not success:
+                            QMessageBox.warning(None, "Warning", f"Failed to load Loop {loop_num} Overdub")
+                            break
+
                     completed += 1
                     progress = int((completed / total_assignments) * 100)
-                    self.load_progress_label.setText(f"Loading Loop {loop_num} Overdub...")
                     self.load_progress_bar.setValue(progress)
 
             self.load_progress_label.setText("All assigned tracks loaded")
@@ -1512,6 +2014,8 @@ class LoopManager(BasicEditor):
 
         except Exception as e:
             logger.info(f"Error in on_load_assignments: {e}")
+            import traceback
+            traceback.print_exc()
             QMessageBox.critical(None, "Error", f"Failed to load assignments: {str(e)}")
             self.reset_transfer_state()
 
