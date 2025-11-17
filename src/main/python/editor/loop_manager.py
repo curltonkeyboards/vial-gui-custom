@@ -761,8 +761,8 @@ class LoopManager(BasicEditor):
                 filter_str = "MIDI Files (*.mid);;All Files (*)"
                 default_name = "all_loops.mid"
             else:
-                filter_str = "Loops Files (*.loops);;All Files (*)"
-                default_name = "all_loops.loops"
+                filter_str = "Loop Files (*.loop);;All Files (*)"
+                default_name = "all_loops.loop"
 
             filename, _ = QFileDialog.getSaveFileName(
                 None, "Save All Loops", default_name, filter_str
@@ -873,32 +873,69 @@ class LoopManager(BasicEditor):
                     QMessageBox.warning(None, "Warning", "Failed to convert loops to MIDI")
 
             else:
-                # Save as .loops file (custom multi-loop format)
-                # Format: [loop1_size (4 bytes)][loop1_data][loop2_size][loop2_data]...
+                # Save as .loop file (combined format) - EXACT MATCH to webapp format
+                # Format matches saveCombinedLoopFile() in index.html (lines 5969-6048)
+                # Header: MSWLOOPS (8) + Version (1) + Count (1) + Global BPM (4) + Reserved (2) = 16 bytes
+                # Per loop: Loop# (1) + Loop BPM (4) + Length (4) + Data (variable)
+
                 combined_data = bytearray()
 
-                # Write a header for the .loops file
-                combined_data.extend(b'LOOPS')  # Magic bytes
-                combined_data.append(0x01)  # Version
-                combined_data.append(len(save_all_data))  # Number of loops
+                # Get loop numbers sorted (same as webapp)
+                loop_numbers = sorted(save_all_data.keys())
+                loop_count = len(loop_numbers)
 
-                for loop_num in range(1, 5):
-                    if loop_num in save_all_data:
-                        loop_data = save_all_data[loop_num]
-                        # Write loop size (4 bytes, big-endian)
-                        combined_data.extend(struct.pack('>I', len(loop_data)))
-                        # Write loop data
-                        combined_data.extend(loop_data)
-                        logger.info(f"Added loop {loop_num}: {len(loop_data)} bytes")
-                    else:
-                        # Write 0 size for empty loop
-                        combined_data.extend(struct.pack('>I', 0))
-                        logger.info(f"Loop {loop_num}: empty")
+                # Extract BPM from each loop and find max for global BPM
+                loop_bpms = {}
+                max_bpm = self.current_transfer.get('save_all_max_bpm', 120.0)
+                for loop_num in loop_numbers:
+                    loop_bpm = self.extract_bpm_from_loop_data(save_all_data[loop_num])
+                    loop_bpms[loop_num] = loop_bpm
+                    if loop_bpm > max_bpm:
+                        max_bpm = loop_bpm
+
+                logger.info(f"Creating .loop file with {loop_count} loops at global BPM {max_bpm}")
+
+                # Write header "MSWLOOPS" (8 bytes) - EXACT match to webapp
+                combined_data.extend(b'MSWLOOPS')
+
+                # Write version (1 byte)
+                combined_data.append(0x01)
+
+                # Write loop count (1 byte)
+                combined_data.append(loop_count)
+
+                # Write global BPM (4 bytes, little-endian) - EXACT match to webapp
+                bpm_value = int(max_bpm)
+                combined_data.extend(struct.pack('<I', bpm_value))
+
+                # Write reserved bytes (2 bytes) - EXACT match to webapp
+                combined_data.extend(b'\x00\x00')
+
+                logger.info(f"Header size: {len(combined_data)} bytes (should be 16)")
+
+                # Write each loop's data - EXACT match to webapp
+                for loop_num in loop_numbers:
+                    loop_data = save_all_data[loop_num]
+                    loop_bpm = int(loop_bpms[loop_num])
+
+                    logger.info(f"Adding loop {loop_num}: {len(loop_data)} bytes at BPM {loop_bpm}")
+
+                    # Write loop number (1 byte)
+                    combined_data.append(loop_num)
+
+                    # Write loop-specific BPM (4 bytes, little-endian)
+                    combined_data.extend(struct.pack('<I', loop_bpm))
+
+                    # Write data length (4 bytes, little-endian)
+                    combined_data.extend(struct.pack('<I', len(loop_data)))
+
+                    # Write loop data
+                    combined_data.extend(loop_data)
 
                 with open(filename, 'wb') as f:
                     f.write(combined_data)
 
-                logger.info(f"Successfully saved .loops file: {filename}")
+                logger.info(f"Successfully saved .loop file: {filename} ({len(combined_data)} total bytes)")
                 self.save_progress_label.setText(f"Saved all loops to {os.path.basename(filename)}")
 
             # Update progress bar
@@ -922,8 +959,9 @@ class LoopManager(BasicEditor):
             if len(data) < 4:
                 return None
 
-            # Check if it's a .loops file (multi-loop format)
-            if data[0:5] == b'LOOPS':
+            # Check if it's a .loop file with combined/multi-loop format
+            # Support both old "LOOPS" and new "MSWLOOPS" formats
+            if data[0:8] == b'MSWLOOPS' or data[0:5] == b'LOOPS':
                 return self.parse_loops_file(data)
 
             # Check if it's a single .loop file
@@ -964,76 +1002,132 @@ class LoopManager(BasicEditor):
             return None
 
     def parse_loops_file(self, data):
-        """Parse a .loops file (multi-loop format)"""
+        """Parse a .loop file (combined/multi-loop format) - supports both old and new formats"""
         try:
-            # Format: LOOPS + version(1) + count(1) + [loop1_size(4) + loop1_data]...
-            if len(data) < 7:
-                return None
+            # Check if it's the new MSWLOOPS format or old LOOPS format
+            is_new_format = data[0:8] == b'MSWLOOPS'
+            is_old_format = data[0:5] == b'LOOPS'
 
-            if data[0:5] != b'LOOPS':
-                return None
+            if is_new_format:
+                # New format: MSWLOOPS (8) + Version (1) + Count (1) + Global BPM (4) + Reserved (2) = 16 bytes
+                # Per loop: Loop# (1) + Loop BPM (4) + Length (4) + Data (variable)
+                logger.info("Parsing new MSWLOOPS format")
 
-            version = data[5]
-            loop_count = data[6]
-            offset = 7
+                if len(data) < 16:
+                    logger.info("File too short for MSWLOOPS format")
+                    return None
 
-            logger.info(f"Parsing .loops file: version {version}, {loop_count} loops")
+                version = data[8]
+                loop_count = data[9]
+                global_bpm = struct.unpack('<I', data[10:14])[0]  # Little-endian
+                # Reserved bytes at 14:16
+                offset = 16
 
-            tracks = []
-            loops_data = {}
+                logger.info(f"MSWLOOPS file: version {version}, {loop_count} loops, global BPM {global_bpm}")
 
-            for loop_num in range(1, 5):
-                if offset + 4 > len(data):
-                    break
+                tracks = []
+                loops_data = {}
 
-                # Read loop size (4 bytes, big-endian)
-                loop_size = struct.unpack('>I', data[offset:offset + 4])[0]
-                offset += 4
-
-                if loop_size > 0:
-                    if offset + loop_size > len(data):
-                        logger.info(f"Invalid loop size for loop {loop_num}")
+                for i in range(loop_count):
+                    if offset + 9 > len(data):  # Need at least 9 bytes for metadata
+                        logger.info(f"Insufficient data for loop {i+1} metadata")
                         break
 
-                    loop_data = data[offset:offset + loop_size]
-                    offset += loop_size
+                    # Read loop metadata
+                    loop_num = data[offset]
+                    offset += 1
 
-                    # Parse this loop to extract BPM and events
-                    parsed = self.parse_loop_data(loop_data)
-                    if parsed:
+                    loop_bpm = struct.unpack('<I', data[offset:offset + 4])[0]  # Little-endian
+                    offset += 4
+
+                    loop_size = struct.unpack('<I', data[offset:offset + 4])[0]  # Little-endian
+                    offset += 4
+
+                    logger.info(f"Loop {loop_num}: BPM={loop_bpm}, size={loop_size} bytes")
+
+                    if loop_size > 0:
+                        if offset + loop_size > len(data):
+                            logger.info(f"Invalid loop size for loop {loop_num}")
+                            break
+
+                        loop_data = data[offset:offset + loop_size]
+                        offset += loop_size
+
+                        # Store loop data and create simple track (matches webapp behavior)
                         loops_data[loop_num] = loop_data
+                        tracks.append({
+                            'name': f'Loop {loop_num}',
+                            'index': len(tracks),
+                            'loop_num': loop_num,
+                            'is_overdub': False
+                        })
 
-                        # Add tracks for this loop
-                        if parsed['mainEvents']:
-                            tracks.append({
-                                'name': f'Loop {loop_num} Main ({len(parsed["mainEvents"])} events)',
-                                'index': len(tracks),
-                                'loop_num': loop_num,
-                                'is_overdub': False
-                            })
-                        if parsed['overdubEvents']:
-                            tracks.append({
-                                'name': f'Loop {loop_num} Overdub ({len(parsed["overdubEvents"])} events)',
-                                'index': len(tracks),
-                                'loop_num': loop_num,
-                                'is_overdub': True
-                            })
+                return {
+                    'tracks': tracks,
+                    'bpm': global_bpm,
+                    'loops_data': loops_data  # Dict of loop_num -> raw loop data
+                }
 
-            # Use highest BPM from all loops
-            max_bpm = 120.0
-            for loop_data in loops_data.values():
-                bpm = self.extract_bpm_from_loop_data(loop_data)
-                if bpm > max_bpm:
-                    max_bpm = bpm
+            elif is_old_format:
+                # Old format: LOOPS + version(1) + count(1) + [loop1_size(4) + loop1_data]...
+                logger.info("Parsing old LOOPS format")
 
-            return {
-                'tracks': tracks,
-                'bpm': max_bpm,
-                'loops_data': loops_data  # Dict of loop_num -> raw loop data
-            }
+                if len(data) < 7:
+                    return None
+
+                version = data[5]
+                loop_count = data[6]
+                offset = 7
+
+                logger.info(f"Old LOOPS file: version {version}, {loop_count} loops")
+
+                tracks = []
+                loops_data = {}
+
+                for loop_num in range(1, 5):
+                    if offset + 4 > len(data):
+                        break
+
+                    # Read loop size (4 bytes, big-endian in old format)
+                    loop_size = struct.unpack('>I', data[offset:offset + 4])[0]
+                    offset += 4
+
+                    if loop_size > 0:
+                        if offset + loop_size > len(data):
+                            logger.info(f"Invalid loop size for loop {loop_num}")
+                            break
+
+                        loop_data = data[offset:offset + loop_size]
+                        offset += loop_size
+
+                        # Store loop data and create simple track (matches webapp behavior)
+                        loops_data[loop_num] = loop_data
+                        tracks.append({
+                            'name': f'Loop {loop_num}',
+                            'index': len(tracks),
+                            'loop_num': loop_num,
+                            'is_overdub': False
+                        })
+
+                # Use highest BPM from all loops
+                max_bpm = 120.0
+                for loop_data in loops_data.values():
+                    bpm = self.extract_bpm_from_loop_data(loop_data)
+                    if bpm > max_bpm:
+                        max_bpm = bpm
+
+                return {
+                    'tracks': tracks,
+                    'bpm': max_bpm,
+                    'loops_data': loops_data  # Dict of loop_num -> raw loop data
+                }
+
+            else:
+                logger.info("Unknown .loop file format")
+                return None
 
         except Exception as e:
-            logger.info(f"Error parsing .loops file: {e}")
+            logger.info(f"Error parsing .loop file: {e}")
             return None
 
     def parse_midi_file(self, filename):
