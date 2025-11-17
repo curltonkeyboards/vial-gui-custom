@@ -35,6 +35,8 @@ from editor.matrix_test import MatrixTest
 from editor.matrix_test import MIDIswitchSettingsConfigurator
 from editor.matrix_test import ThruLoopConfigurator
 from editor.matrix_test import LayerActuationConfigurator
+from editor.midi_patchbay import MIDIPatchbay
+from editor.loop_loader import LoopLoader
 
 import themes
 
@@ -104,12 +106,15 @@ class MainWindow(QMainWindow):
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
         self.layer_actuation_configurator = LayerActuationConfigurator()
+        self.midi_patchbay = MIDIPatchbay()
+        self.loop_loader = LoopLoader()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.layer_actuation_configurator, "Actuation"),
-                        (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"), 
-                        (self.thruloop_configurator, "ThruLoop"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
+                        (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
+                        (self.thruloop_configurator, "ThruLoop"), (self.midi_patchbay, "MIDIpatch"),
+                        (self.loop_loader, "LoopLoader"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
                         (self.matrix_tester, "Matrix tester"), (self.firmware_flasher, "Firmware updater")]
 
