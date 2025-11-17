@@ -1,0 +1,26 @@
+# Windows-compatible requirements
+# Install Cython first to avoid version conflicts
+Cython>=0.29.32,<3.0
+
+# Core dependencies
+altgraph==0.17
+fbs==0.9.0
+future==0.18.2
+keyboard==0.13.5
+macholib==1.14
+pefile==2019.4.18
+PyInstaller==3.4
+PyQt5==5.9.2
+sip==4.19.8
+certifi
+
+# Windows-specific
+pywin32==303; sys_platform == 'win32'
+
+# simpleeval - using direct URL
+https://github.com/danthedeckie/simpleeval/archive/41c99b8e224a7a0ae0ac59c773598fe79a4470db.zip
+
+# hidapi - install last after Cython is available
+# Note: This may require Microsoft C++ Build Tools
+# If installation fails, you can use the pre-built version: pip install hidapi
+git+https://github.com/vial-kb/cython-hidapi@88d8983b3dc65b9ef84238abe3f46004b0ef2fd0#egg=hidapi

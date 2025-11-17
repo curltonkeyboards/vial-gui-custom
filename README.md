@@ -19,9 +19,11 @@ Please visit [get.vial.today](https://get.vial.today/) to get started with Vial,
 
 #### Development
 
-Python 3.6 is recommended (3.6 is the latest version that is officially supported by `fbs`).
+Python 3.6-3.9 is recommended (3.6 is the latest version that is officially supported by `fbs`, but 3.7-3.9 work as well).
 
-Install dependencies:
+**For Windows users:** See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for detailed setup instructions and troubleshooting.
+
+Install dependencies (Linux/Mac):
 
 ```
 python3 -m venv venv
@@ -29,9 +31,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Install dependencies (Windows - Git Bash):
+
+```
+python -m venv venv
+source venv/Scripts/activate
+pip install -r requirements-windows.txt
+```
+
 To launch the application afterwards:
 
 ```
-source venv/bin/activate
+source venv/bin/activate  # Linux/Mac
+# OR
+source venv/Scripts/activate  # Windows Git Bash
 fbs run
 ```
