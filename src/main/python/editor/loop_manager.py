@@ -33,16 +33,19 @@ logger = logging.getLogger(__name__)
 class LoopManager(BasicEditor):
     """Loop Manager tab for uploading/downloading loops to/from MIDIswitch"""
 
-    # HID Command constants
-    HID_CMD_SAVE_START = 0x01
-    HID_CMD_SAVE_CHUNK = 0x02
-    HID_CMD_SAVE_END = 0x03
-    HID_CMD_LOAD_START = 0x04
-    HID_CMD_LOAD_CHUNK = 0x05
-    HID_CMD_LOAD_END = 0x06
-    HID_CMD_LOAD_OVERDUB_START = 0x07
-    HID_CMD_REQUEST_SAVE = 0x10
-    HID_CMD_TRIGGER_SAVE_ALL = 0x30
+    # HID Command constants - Updated to match webapp (0xA0-0xA9 range)
+    # Save/Load Operations (0xA0-0xA7)
+    HID_CMD_SAVE_START = 0xA0              # was 0x01
+    HID_CMD_SAVE_CHUNK = 0xA1              # was 0x02
+    HID_CMD_SAVE_END = 0xA2                # was 0x03
+    HID_CMD_LOAD_START = 0xA3              # was 0x04
+    HID_CMD_LOAD_CHUNK = 0xA4              # was 0x05
+    HID_CMD_LOAD_END = 0xA5                # was 0x06
+    HID_CMD_LOAD_OVERDUB_START = 0xA6      # was 0x07
+
+    # Request/Trigger Operations (0xA8-0xAF)
+    HID_CMD_REQUEST_SAVE = 0xA8            # was 0x10
+    HID_CMD_TRIGGER_SAVE_ALL = 0xA9        # was 0x30
 
     HID_PACKET_SIZE = 32
     HID_HEADER_SIZE = 6
@@ -848,6 +851,18 @@ class LoopManager(BasicEditor):
         elif command == self.HID_CMD_SAVE_END:
             logger.info("-> SAVE_END")
             self.handle_save_end(macro_num, status)
+        elif command == self.HID_CMD_REQUEST_SAVE:
+            logger.info(f"-> REQUEST_SAVE acknowledgment (loop {macro_num}, status {status})")
+            # Device acknowledged the request, now waiting for SAVE_START
+        elif command == self.HID_CMD_TRIGGER_SAVE_ALL:
+            logger.info(f"-> TRIGGER_SAVE_ALL acknowledgment (status {status})")
+            # Device acknowledged the trigger, will send individual loop data
+        elif command == self.HID_CMD_LOAD_START or command == self.HID_CMD_LOAD_OVERDUB_START:
+            logger.info(f"-> {'LOAD_START' if command == self.HID_CMD_LOAD_START else 'LOAD_OVERDUB_START'} acknowledgment")
+            # Device acknowledged load start
+        elif command == self.HID_CMD_LOAD_END:
+            logger.info(f"-> LOAD_END acknowledgment (loop {macro_num}, status {status})")
+            # Device acknowledged load completion
         else:
             logger.info(f"-> Unknown command: 0x{command:02x}")
 
