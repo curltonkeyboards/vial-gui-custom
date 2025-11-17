@@ -45,7 +45,7 @@ class QuickActuationWidget(QGroupBox):
                 'midi_rapidfire_enabled': False
             })
         
-        self.setMinimumWidth(250)
+        self.setMinimumWidth(200)
         self.setMaximumWidth(350)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
@@ -677,7 +677,6 @@ class KeymapEditor(BasicEditor):
         keyboard_layout.addStretch(1)  # Add stretch before
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
-        keyboard_layout.addSpacing(self.quick_actuation.minimumWidth())  # Balance the actuation width
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()

@@ -894,11 +894,6 @@ class LoopManager(BasicEditor):
         self.load_all_btn.clicked.connect(self.on_load_all_tracks)
         load_layout.addWidget(self.load_all_btn)
 
-        # Advanced track assignment toggle
-        self.advanced_toggle = QCheckBox(tr("LoopManager", "Show Advanced Track Assignment"))
-        self.advanced_toggle.stateChanged.connect(self.on_toggle_advanced)
-        load_layout.addWidget(self.advanced_toggle)
-
         # Load progress
         self.load_progress_label = QLabel("")
         load_layout.addWidget(self.load_progress_label)
@@ -916,7 +911,7 @@ class LoopManager(BasicEditor):
         self.advanced_section = QGroupBox(tr("LoopManager", "Advanced Track Assignment"))
         advanced_layout = QVBoxLayout()
         self.advanced_section.setLayout(advanced_layout)
-        self.advanced_section.setVisible(False)
+        self.advanced_section.setVisible(True)
         main_layout.addWidget(self.advanced_section)
 
         # Track selection area
@@ -1566,14 +1561,24 @@ class LoopManager(BasicEditor):
 
                 track_name = parsed_track['trackName'] or f'Track {track_idx + 1}'
 
+                # Calculate track duration in milliseconds
+                duration_ms = 0
+                if parsed_track['events']:
+                    # Convert MIDI track to loop format to calculate timing
+                    loop_events = self.convert_midi_to_loop_format(parsed_track['events'], found_bpm, tpqn)
+                    if loop_events:
+                        timing = self.calculate_loop_timing(loop_events, found_bpm, parsed_track['maxTicks'], False)
+                        duration_ms = timing['loopLength']
+
                 tracks.append({
                     'name': track_name,
                     'index': track_idx,
                     'events': parsed_track['events'],
-                    'maxTicks': parsed_track['maxTicks']
+                    'maxTicks': parsed_track['maxTicks'],
+                    'duration_ms': duration_ms
                 })
 
-                logger.info(f"Track {track_idx + 1} '{track_name}': {len(parsed_track['events'])} events")
+                logger.info(f"Track {track_idx + 1} '{track_name}': {len(parsed_track['events'])} events, {duration_ms}ms")
 
                 offset += track_length
 
@@ -1689,11 +1694,39 @@ class LoopManager(BasicEditor):
             row = idx // 4
             col = idx % 4
 
-            btn = QPushButton(track['name'])
+            # Create button label with "Track X - Xms" format
+            duration_ms = track.get('duration_ms', 0)
+            btn_label = f"Track {idx + 1} - {duration_ms}ms"
+
+            btn = QPushButton(btn_label)
             btn.setCheckable(True)
-            btn.setMinimumHeight(30)
+            btn.setMinimumHeight(35)
+            btn.setMaximumWidth(150)  # Make buttons less wide
             btn.setProperty('filename', filename)
             btn.setProperty('track_idx', idx)
+
+            # Style assignable loop buttons differently
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #2d5a8c;
+                    color: white;
+                    border: 2px solid #1e3a5f;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    padding: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #3d6a9c;
+                }
+                QPushButton:checked {
+                    background-color: #5cb85c;
+                    border-color: #4cae4c;
+                }
+                QPushButton:disabled {
+                    background-color: #555;
+                    color: #888;
+                }
+            """)
 
             self.track_button_group.addButton(btn)
             self.track_buttons_layout.addWidget(btn, row, col)
@@ -1874,16 +1907,6 @@ class LoopManager(BasicEditor):
                 tpqn = file_info.get('tpqn', 480)
 
                 logger.info(f"Loading MIDI file with {len(tracks)} tracks at {bpm} BPM")
-
-                # Ask user if they want to load all tracks
-                reply = QMessageBox.question(None, "Load MIDI Tracks",
-                    f"This MIDI file has {len(tracks)} tracks.\n"
-                    f"Load each track to a separate loop slot (1-4)?\n\n"
-                    f"Note: Maximum 4 tracks will be loaded.",
-                    QMessageBox.Yes | QMessageBox.No)
-
-                if reply != QMessageBox.Yes:
-                    return
 
                 self.load_progress_label.setText("Loading MIDI tracks to device...")
                 self.load_progress_bar.setValue(0)
