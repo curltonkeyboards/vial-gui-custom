@@ -274,28 +274,37 @@ class LoopManager(BasicEditor):
             loop_data = loops_data[loop_num]
             logger.info(f"Loop {loop_num}: {len(loop_data['mainEvents'])} main events, {len(loop_data['overdubEvents'])} overdub events")
 
-            if loop_data['mainEvents']:
+            # Filter out invalid event types (only 0, 1, 2 are valid)
+            valid_main_events = [e for e in loop_data['mainEvents'] if e['type'] in [0, 1, 2]]
+            if len(valid_main_events) < len(loop_data['mainEvents']):
+                logger.info(f"  Filtered {len(loop_data['mainEvents']) - len(valid_main_events)} invalid main events")
+
+            if valid_main_events:
                 track_dict = {
                     'name': f'Loop {loop_num} Main',
-                    'events': loop_data['mainEvents'],
+                    'events': valid_main_events,
                     'loopLength': loop_data.get('loopLength', 0),
                     'loopGap': loop_data.get('loopGap', 0)
                 }
                 tracks.append(track_dict)
-                logger.info(f"Added main track for loop {loop_num} with {len(loop_data['mainEvents'])} events")
+                logger.info(f"Added main track for loop {loop_num} with {len(valid_main_events)} events")
                 # Log first event for debugging
-                if loop_data['mainEvents']:
-                    first_event = loop_data['mainEvents'][0]
-                    logger.info(f"  First event: type={first_event['type']} ch={first_event['channel']} note={first_event['note']} vel={first_event['velocity']} @{first_event['timestamp']}ms")
+                first_event = valid_main_events[0]
+                logger.info(f"  First event: type={first_event['type']} ch={first_event['channel']} note={first_event['note']} vel={first_event['velocity']} @{first_event['timestamp']}ms")
 
-            if loop_data['overdubEvents']:
+            # Filter overdub events too
+            valid_overdub_events = [e for e in loop_data['overdubEvents'] if e['type'] in [0, 1, 2]]
+            if len(valid_overdub_events) < len(loop_data['overdubEvents']):
+                logger.info(f"  Filtered {len(loop_data['overdubEvents']) - len(valid_overdub_events)} invalid overdub events")
+
+            if valid_overdub_events:
                 tracks.append({
                     'name': f'Loop {loop_num} Overdub',
-                    'events': loop_data['overdubEvents'],
+                    'events': valid_overdub_events,
                     'loopLength': loop_data.get('loopLength', 0),
                     'loopGap': loop_data.get('loopGap', 0)
                 })
-                logger.info(f"Added overdub track for loop {loop_num} with {len(loop_data['overdubEvents'])} events")
+                logger.info(f"Added overdub track for loop {loop_num} with {len(valid_overdub_events)} events")
 
         if not tracks:
             logger.info("No tracks to save")
@@ -362,9 +371,18 @@ class LoopManager(BasicEditor):
         sorted_events = sorted(track['events'], key=lambda e: e['timestamp'])
         logger.info(f"Sorted {len(sorted_events)} events by timestamp")
 
+        # Filter out invalid event types (only 0, 1, 2 are valid)
+        valid_events = [e for e in sorted_events if e['type'] in [0, 1, 2]]
+        if len(valid_events) < len(sorted_events):
+            logger.info(f"Filtered out {len(sorted_events) - len(valid_events)} invalid events (types not in [0,1,2])")
+            # Log the invalid events for debugging
+            invalid_events = [e for e in sorted_events if e['type'] not in [0, 1, 2]]
+            for inv_evt in invalid_events[:3]:  # Log first 3 invalid events
+                logger.info(f"  Invalid event: type={inv_evt['type']} ch={inv_evt['channel']} note={inv_evt['note']} vel={inv_evt['velocity']} @{inv_evt['timestamp']}ms")
+
         # Convert events to MIDI
         last_time_ticks = 0
-        for idx, event in enumerate(sorted_events):
+        for idx, event in enumerate(valid_events):
             # Convert milliseconds to ticks
             time_ms = event['timestamp']
             ms_per_tick = 60000.0 / (bpm * tpqn)
