@@ -337,18 +337,24 @@ class LoopManager(BasicEditor):
 
     def hid_listener_loop(self):
         """Background thread loop to receive HID data"""
+        print("HID listener thread started")
         while self.hid_listening and self.device:
             try:
-                # Read HID data with timeout
-                data = self.device.recv(self.HID_PACKET_SIZE, timeout_ms=100)
-                if data and len(data) == self.HID_PACKET_SIZE:
-                    # Emit signal for thread-safe UI update
-                    self.hid_data_received.emit(bytes(data))
+                # Read HID data with longer timeout
+                data = self.device.recv(self.HID_PACKET_SIZE, timeout_ms=500)
+                if data and len(data) > 0:
+                    print(f"HID received {len(data)} bytes: {data[:10].hex()}...")
+                    if len(data) == self.HID_PACKET_SIZE:
+                        # Emit signal for thread-safe UI update
+                        self.hid_data_received.emit(bytes(data))
+                    else:
+                        print(f"Warning: Received {len(data)} bytes, expected {self.HID_PACKET_SIZE}")
             except Exception as e:
-                # Ignore timeout errors
-                if "timeout" not in str(e).lower():
+                # Ignore timeout errors but log others
+                error_msg = str(e).lower()
+                if "timeout" not in error_msg and "timed out" not in error_msg:
                     print(f"HID listener error: {e}")
-                time.sleep(0.01)
+        print("HID listener thread stopped")
 
     def on_save_loop(self, loop_num):
         """Request to save a specific loop from device"""
@@ -367,6 +373,8 @@ class LoopManager(BasicEditor):
 
             if not filename:
                 return
+
+            print(f"\n=== Saving Loop {loop_num} to {filename} ===")
 
             # Initialize transfer state
             self.current_transfer = {
@@ -387,15 +395,21 @@ class LoopManager(BasicEditor):
             # Start HID listener if not already running
             self.start_hid_listener()
 
+            # Wait a moment for listener to be ready
+            time.sleep(0.1)
+
             # Update UI
             self.save_progress_label.setText(f"Requesting Loop {loop_num} from device...")
             self.save_progress_bar.setValue(0)
             self.save_progress_bar.setVisible(True)
 
+            print(f"Sending REQUEST_SAVE command for loop {loop_num}")
             # Send request to device
             self.send_hid_packet(self.HID_CMD_REQUEST_SAVE, loop_num)
+            print("REQUEST_SAVE sent, waiting for response...")
 
         except Exception as e:
+            print(f"Error in on_save_loop: {e}")
             QMessageBox.critical(None, "Error", f"Failed to request loop save: {str(e)}")
             self.reset_transfer_state()
 
@@ -759,13 +773,17 @@ class LoopManager(BasicEditor):
 
     def handle_device_response(self, data):
         """Handle incoming HID data from device"""
+        print(f"handle_device_response called with {len(data)} bytes")
+
         if len(data) < self.HID_HEADER_SIZE:
+            print(f"Data too short: {len(data)} < {self.HID_HEADER_SIZE}")
             return
 
         # Validate header
         if (data[0] != self.MANUFACTURER_ID or
             data[1] != self.SUB_ID or
             data[2] != self.DEVICE_ID):
+            print(f"Invalid header: {data[0]:02x} {data[1]:02x} {data[2]:02x}")
             return
 
         command = data[3]
@@ -773,16 +791,26 @@ class LoopManager(BasicEditor):
         status = data[5]
         payload = data[self.HID_HEADER_SIZE:]
 
+        print(f"Valid packet - Command: 0x{command:02x}, Loop: {macro_num}, Status: {status}")
+
         if command == self.HID_CMD_SAVE_START:
+            print("-> SAVE_START")
             self.handle_save_start(macro_num, status, payload)
         elif command == self.HID_CMD_SAVE_CHUNK:
+            print("-> SAVE_CHUNK")
             self.handle_save_chunk(macro_num, status, payload)
         elif command == self.HID_CMD_SAVE_END:
+            print("-> SAVE_END")
             self.handle_save_end(macro_num, status)
+        else:
+            print(f"-> Unknown command: 0x{command:02x}")
 
     def handle_save_start(self, macro_num, status, data):
         """Handle SAVE_START response from device"""
+        print(f"handle_save_start: loop={macro_num}, status={status}, data_len={len(data)}")
+
         if status != 0:
+            print(f"Loop {macro_num} status error: {status}")
             # Loop is empty, skip if in save all mode
             if self.current_transfer.get('save_all_mode'):
                 print(f"Loop {macro_num} is empty, skipping...")
@@ -793,12 +821,18 @@ class LoopManager(BasicEditor):
                 self.transfer_complete.emit(False, f"Loop {macro_num} is empty or error occurred")
             return
 
-        # Extract total size from payload
+        # Extract total packets and size from payload - MATCHES WEBAPP FORMAT!
+        # Webapp: totalPackets = data[0] | (data[1] << 8); totalSize = data[2] | (data[3] << 8);
         if len(data) >= 4:
-            self.current_transfer['total_size'] = struct.unpack('<I', bytes(data[:4]))[0]
-            chunk_size = self.HID_DATA_SIZE - 4
-            self.current_transfer['expected_packets'] = \
-                (self.current_transfer['total_size'] + chunk_size - 1) // chunk_size
+            total_packets = data[0] | (data[1] << 8)
+            total_size = data[2] | (data[3] << 8)
+
+            self.current_transfer['expected_packets'] = total_packets
+            self.current_transfer['total_size'] = total_size
+
+            print(f"SAVE_START: {total_packets} packets, {total_size} bytes total")
+        else:
+            print(f"Warning: SAVE_START payload too short: {len(data)} bytes")
 
         self.transfer_progress.emit(0,
             f"Receiving Loop {macro_num}: 0 / {self.current_transfer['total_size']} bytes")
@@ -806,31 +840,51 @@ class LoopManager(BasicEditor):
     def handle_save_chunk(self, macro_num, status, data):
         """Handle SAVE_CHUNK response from device"""
         if not self.current_transfer['active']:
+            print("handle_save_chunk: transfer not active, ignoring")
             return
 
-        # Extract chunk data (skip chunk info bytes)
-        if len(data) > 4:
-            chunk_data = data[4:]
-            self.current_transfer['received_data'].extend(chunk_data)
-            self.current_transfer['received_packets'] += 1
+        # Parse chunk header - MATCHES WEBAPP FORMAT!
+        # Webapp: packetNum = data[0] | (data[1] << 8); chunkLen = data[2] | (data[3] << 8);
+        if len(data) >= 4:
+            packet_num = data[0] | (data[1] << 8)
+            chunk_len = data[2] | (data[3] << 8)
 
-            # Update progress
-            received = len(self.current_transfer['received_data'])
-            total = self.current_transfer['total_size']
+            if chunk_len > 0 and len(data) >= 4 + chunk_len:
+                # Extract actual chunk data
+                chunk_data = data[4:4 + chunk_len]
+                self.current_transfer['received_data'].extend(chunk_data)
+                self.current_transfer['received_packets'] += 1
 
-            if total > 0:
-                progress = int((received / total) * 100)
-                self.transfer_progress.emit(progress,
-                    f"Receiving Loop {macro_num}: {received} / {total} bytes")
+                # Calculate progress
+                received = len(self.current_transfer['received_data'])
+                total = self.current_transfer['total_size']
+                expected_packets = self.current_transfer['expected_packets']
+
+                print(f"Chunk {self.current_transfer['received_packets']}/{expected_packets}: packet#{packet_num}, {chunk_len} bytes (total: {received}/{total})")
+
+                if expected_packets > 0:
+                    progress = int((self.current_transfer['received_packets'] / expected_packets) * 100)
+                    self.transfer_progress.emit(progress,
+                        f"Receiving Loop {macro_num}: {received} / {total} bytes ({progress}%)")
+            else:
+                print(f"handle_save_chunk: invalid chunk - len={chunk_len}, data_len={len(data)}")
+        else:
+            print(f"handle_save_chunk: payload too short: {len(data)} bytes")
 
     def handle_save_end(self, macro_num, status):
         """Handle SAVE_END response from device"""
+        print(f"handle_save_end: loop={macro_num}, status={status}")
+
         if not self.current_transfer['active']:
+            print("handle_save_end: transfer not active, ignoring")
             return
 
         if status == 0:
             # Save to file
             try:
+                received_size = len(self.current_transfer['received_data'])
+                print(f"Saving {received_size} bytes to {self.current_transfer['file_name']}")
+
                 if self.current_transfer['save_format'] == 'midi':
                     # TODO: Convert loop data to MIDI format
                     data = self.current_transfer['received_data']
@@ -840,8 +894,11 @@ class LoopManager(BasicEditor):
                 with open(self.current_transfer['file_name'], 'wb') as f:
                     f.write(data)
 
+                print(f"File saved successfully: {self.current_transfer['file_name']}")
+
                 # Check if in save all mode
                 if self.current_transfer.get('save_all_mode'):
+                    print("Save all mode: moving to next loop")
                     # Continue to next loop
                     self.current_transfer['save_all_current'] += 1
                     self.current_transfer['active'] = False  # Reset for next loop
@@ -851,9 +908,11 @@ class LoopManager(BasicEditor):
                         f"Successfully saved Loop {macro_num} to {os.path.basename(self.current_transfer['file_name'])}")
 
             except Exception as e:
+                print(f"Error saving file: {e}")
                 self.transfer_complete.emit(False, f"Failed to save file: {str(e)}")
 
         else:
+            print(f"SAVE_END with error status: {status}")
             # Check if in save all mode
             if self.current_transfer.get('save_all_mode'):
                 # Continue to next loop even on error
