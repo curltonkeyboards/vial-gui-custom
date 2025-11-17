@@ -761,8 +761,8 @@ class LoopManager(BasicEditor):
                 filter_str = "MIDI Files (*.mid);;All Files (*)"
                 default_name = "all_loops.mid"
             else:
-                filter_str = "Loops Files (*.loops);;All Files (*)"
-                default_name = "all_loops.loops"
+                filter_str = "Loop Files (*.loop);;All Files (*)"
+                default_name = "all_loops.loop"
 
             filename, _ = QFileDialog.getSaveFileName(
                 None, "Save All Loops", default_name, filter_str
@@ -873,7 +873,7 @@ class LoopManager(BasicEditor):
                     QMessageBox.warning(None, "Warning", "Failed to convert loops to MIDI")
 
             else:
-                # Save as .loops file - EXACT MATCH to webapp format
+                # Save as .loop file (combined format) - EXACT MATCH to webapp format
                 # Format matches saveCombinedLoopFile() in index.html (lines 5969-6048)
                 # Header: MSWLOOPS (8) + Version (1) + Count (1) + Global BPM (4) + Reserved (2) = 16 bytes
                 # Per loop: Loop# (1) + Loop BPM (4) + Length (4) + Data (variable)
@@ -893,7 +893,7 @@ class LoopManager(BasicEditor):
                     if loop_bpm > max_bpm:
                         max_bpm = loop_bpm
 
-                logger.info(f"Creating .loops file with {loop_count} loops at global BPM {max_bpm}")
+                logger.info(f"Creating .loop file with {loop_count} loops at global BPM {max_bpm}")
 
                 # Write header "MSWLOOPS" (8 bytes) - EXACT match to webapp
                 combined_data.extend(b'MSWLOOPS')
@@ -935,7 +935,7 @@ class LoopManager(BasicEditor):
                 with open(filename, 'wb') as f:
                     f.write(combined_data)
 
-                logger.info(f"Successfully saved .loops file: {filename} ({len(combined_data)} total bytes)")
+                logger.info(f"Successfully saved .loop file: {filename} ({len(combined_data)} total bytes)")
                 self.save_progress_label.setText(f"Saved all loops to {os.path.basename(filename)}")
 
             # Update progress bar
@@ -959,7 +959,7 @@ class LoopManager(BasicEditor):
             if len(data) < 4:
                 return None
 
-            # Check if it's a .loops file (multi-loop format)
+            # Check if it's a .loop file with combined/multi-loop format
             # Support both old "LOOPS" and new "MSWLOOPS" formats
             if data[0:8] == b'MSWLOOPS' or data[0:5] == b'LOOPS':
                 return self.parse_loops_file(data)
@@ -1002,7 +1002,7 @@ class LoopManager(BasicEditor):
             return None
 
     def parse_loops_file(self, data):
-        """Parse a .loops file (multi-loop format) - supports both old and new formats"""
+        """Parse a .loop file (combined/multi-loop format) - supports both old and new formats"""
         try:
             # Check if it's the new MSWLOOPS format or old LOOPS format
             is_new_format = data[0:8] == b'MSWLOOPS'
@@ -1147,11 +1147,11 @@ class LoopManager(BasicEditor):
                 }
 
             else:
-                logger.info("Unknown .loops file format")
+                logger.info("Unknown .loop file format")
                 return None
 
         except Exception as e:
-            logger.info(f"Error parsing .loops file: {e}")
+            logger.info(f"Error parsing .loop file: {e}")
             return None
 
     def parse_midi_file(self, filename):
