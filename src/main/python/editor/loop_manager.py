@@ -546,8 +546,28 @@ class LoopManager(BasicEditor):
                     'ticks': current_ticks
                 })
 
+            elif (event_byte & 0xF0) in [0xC0, 0xD0]:
+                # Program change (0xC0) or Channel pressure (0xD0) - 1 data byte
+                if offset + 1 > len(data):
+                    break
+                offset += 1  # Skip the data byte
+
+            elif (event_byte & 0xF0) == 0xE0:
+                # Pitch bend - 2 data bytes
+                if offset + 2 > len(data):
+                    break
+                offset += 2  # Skip the data bytes
+
+            elif event_byte == 0xF0 or event_byte == 0xF7:
+                # SysEx event - skip it
+                length_result = self.read_variable_length(data, offset)
+                sysex_length = length_result['value']
+                offset = length_result['offset']
+                offset += sysex_length
+
             else:
-                # Skip other event types
+                # Unknown event type - try to continue instead of breaking
+                logger.info(f"Unknown event type: 0x{event_byte:02x} at offset {offset - 1}, breaking")
                 break
 
         logger.info(f"Parsed MIDI track: {len(events)} events, max_ticks={max_ticks}, tempo={tempo}")
