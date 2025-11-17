@@ -407,7 +407,9 @@ class MainWindow(QMainWindow):
         msg.exec_()
 
     def on_tab_changed(self, index):
-        TabbedKeycodes.close_tray()
+        # Only close tray if it has been initialized
+        if hasattr(TabbedKeycodes, 'tray'):
+            TabbedKeycodes.close_tray()
         old_tab = self.current_tab
         new_tab = None
         if index >= 0:
