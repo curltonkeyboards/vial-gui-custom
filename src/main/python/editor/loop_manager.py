@@ -362,19 +362,19 @@ class LoopManager(BasicEditor):
             track_events.extend(self.create_variable_length(delta_ticks))
             last_time_ticks = time_ticks
 
-            # MIDI event
+            # MIDI event - device event types: 0=Note Off, 1=Note On, 2=CC
             event_type = event['type']
             channel = event['channel']
             note = event['note']
             velocity = event['velocity']
 
-            if event_type == 1:  # Note On
+            if event_type == 1:  # Note On (device type 1)
                 status = 0x90 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
-            elif event_type == 2:  # Note Off
+            elif event_type == 0:  # Note Off (device type 0)
                 status = 0x80 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
-            elif event_type == 3:  # Control Change
+            elif event_type == 2:  # Control Change (device type 2)
                 status = 0xB0 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
 
@@ -426,9 +426,10 @@ class LoopManager(BasicEditor):
 
     def parse_midi_track(self, data, tpqn):
         """Parse MIDI track events - matches webapp parseMIDITrack()"""
+        # Device event type constants - MUST MATCH DEVICE FORMAT!
+        MIDI_EVENT_NOTE_OFF = 0
         MIDI_EVENT_NOTE_ON = 1
-        MIDI_EVENT_NOTE_OFF = 2
-        MIDI_EVENT_CC = 3
+        MIDI_EVENT_CC = 2
 
         events = []
         offset = 0
