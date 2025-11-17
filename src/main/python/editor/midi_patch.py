@@ -371,16 +371,16 @@ class MIDIPatchBay(BasicEditor):
             self.connections_list.addItem(item)
 
     def valid(self):
-        """This tab is always valid for MIDIswitch keyboards"""
-        return isinstance(self.device, VialKeyboard) and MIDI_AVAILABLE
+        """This tab is always valid for VialKeyboard devices"""
+        return isinstance(self.device, VialKeyboard)
 
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
 
-        # Refresh devices when keyboard connects
-        if MIDI_AVAILABLE:
+        # Refresh devices when keyboard connects (only if MIDI available)
+        if MIDI_AVAILABLE and hasattr(self, 'midi_in'):
             self.refresh_devices()
 
     def __del__(self):
