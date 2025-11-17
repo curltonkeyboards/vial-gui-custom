@@ -19,7 +19,7 @@ Please visit [get.vial.today](https://get.vial.today/) to get started with Vial,
 
 #### Development
 
-Python 3.6-3.9 is recommended (3.6 is the latest version that is officially supported by `fbs`, but 3.7-3.9 work as well).
+**Python 3.6-3.9 is REQUIRED** (3.9 recommended). Python 3.10+ will NOT work due to old dependencies.
 
 **For Windows users:** See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for detailed setup instructions and troubleshooting.
 

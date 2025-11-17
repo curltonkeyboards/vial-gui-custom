@@ -5,9 +5,11 @@ This guide will help you set up the Vial GUI development environment on Windows.
 ## Prerequisites
 
 1. **Python Installation**
-   - Download Python 3.8 or 3.9 from [python.org](https://www.python.org/downloads/)
+   - **CRITICAL:** You must use **Python 3.8 or 3.9**. Python 3.10+ will NOT work!
+   - Download Python 3.9.13 from [python.org](https://www.python.org/downloads/) (recommended)
    - **Important:** During installation, check "Add Python to PATH"
    - Restart your terminal after installation
+   - **Note:** If you have Python 3.10+ installed, you can install 3.9 alongside it and use `py -3.9` to access it
 
 2. **Visual C++ Build Tools** (Required for compiling hidapi)
    - Download and install [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
@@ -24,9 +26,15 @@ Open Git Bash or PowerShell and run:
 python --version
 # or
 py --version
+
+# If you have multiple Python versions, list them:
+py -0
+
+# To check a specific version:
+py -3.9 --version
 ```
 
-You should see Python 3.8 or 3.9.
+You should see Python 3.8 or 3.9. **If you see 3.10 or higher, you need to install Python 3.9.**
 
 ### 2. Create Virtual Environment
 
@@ -34,7 +42,11 @@ You should see Python 3.8 or 3.9.
 # Navigate to project directory
 cd ~/Documents/vial-gui-custom-[your-branch-name]
 
-# Create virtual environment
+# Create virtual environment with Python 3.9 specifically
+# If you have multiple Python versions installed:
+py -3.9 -m venv venv
+
+# If Python 3.9 is your default Python:
 python -m venv venv
 
 # Activate virtual environment
@@ -46,6 +58,9 @@ source venv/Scripts/activate
 
 # For CMD:
 venv\Scripts\activate.bat
+
+# Verify you're using the correct Python version:
+python --version  # Should show 3.9.x
 ```
 
 ### 3. Install Dependencies (WITH CYTHON FIX)
@@ -100,10 +115,17 @@ python -m fbs run
 
 ## Troubleshooting
 
+### Wrong Python version (3.10+)
+- This project requires Python 3.8 or 3.9 maximum
+- Python 3.10+ is not compatible with the old dependencies
+- Install Python 3.9 from python.org
+- Use `py -3.9 -m venv venv` to create venv with correct version
+
 ### Python not found
 - Make sure Python is added to PATH during installation
 - Restart your terminal after installing Python
 - Try `py` instead of `python`
+- Use `py -0` to list all installed Python versions
 
 ### Permission errors
 - Run Git Bash or PowerShell as Administrator
@@ -140,10 +162,11 @@ deactivate
 
 ## Additional Notes
 
-- This project uses Python 3.6-3.9 (3.9 recommended for Windows)
+- **This project REQUIRES Python 3.6-3.9** (3.9 recommended for Windows)
+- **Python 3.10+ will NOT work** due to incompatible old dependencies
 - The `fbs` (fman build system) requires PyQt5 5.9.2 by default
 - Some dependencies may require Visual C++ Build Tools to compile
-- If you encounter issues, check that your Python version matches requirements
+- If you encounter Cython or hidapi errors, it's likely a Python version issue
 
 ## Getting Help
 
