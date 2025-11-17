@@ -54,13 +54,16 @@ class LoopManager(BasicEditor):
             'total_size': 0,
             'received_data': bytearray(),
             'file_name': '',
-            'save_format': 'loop'  # 'loop' or 'midi'
+            'save_format': 'loop',  # 'loop' or 'midi'
+            'save_all_mode': False,
+            'save_all_directory': '',
+            'save_all_current': 0
         }
 
-        self.loaded_files = []  # List of loaded files with track info
+        self.loaded_files = {}  # Dict: filename -> {'tracks': [], 'bpm': 120}
         self.loop_contents = {}  # Track what's in each loop (1-4)
         self.overdub_contents = {}  # Track what's in each overdub (1-4)
-        self.selected_track = None  # Currently selected track for assignment
+        self.selected_track = None  # Currently selected track {file_idx, track_idx}
         self.pending_assignments = {}  # Track assignments pending load
 
         self.hid_listener_thread = None
@@ -74,7 +77,7 @@ class LoopManager(BasicEditor):
         self.setup_ui()
 
     def setup_ui(self):
-        self.addStretch()
+        # No stretch at top - goes directly to content
 
         # Create scrollable main widget
         scroll = QScrollArea()
@@ -83,6 +86,7 @@ class LoopManager(BasicEditor):
 
         main_widget = QWidget()
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 5, 10, 10)  # Reduce top margin
         main_widget.setLayout(main_layout)
         scroll.setWidget(main_widget)
 
@@ -90,7 +94,7 @@ class LoopManager(BasicEditor):
 
         # Title
         title = QLabel(tr("LoopManager", "Loop Manager"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold;")
         title.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(title)
 
@@ -105,12 +109,9 @@ class LoopManager(BasicEditor):
         save_group.setMaximumWidth(500)
         columns_layout.addWidget(save_group)
 
-        # Save All Loops button
+        # Save All Loops button (use theme colors)
         save_all_btn = QPushButton(tr("LoopManager", "Save All Loops"))
-        save_all_btn.setMinimumHeight(50)
-        save_all_btn.setStyleSheet(
-            "background: #1e3a8a; color: white; font-size: 14px; font-weight: bold; border-radius: 6px;"
-        )
+        save_all_btn.setMinimumHeight(45)
         save_all_btn.clicked.connect(self.on_save_all_loops)
         save_layout.addWidget(save_all_btn)
 
@@ -121,8 +122,7 @@ class LoopManager(BasicEditor):
         self.save_loop_btns = []
         for i in range(4):
             btn = QPushButton(tr("LoopManager", f"Loop {i+1}"))
-            btn.setMinimumHeight(40)
-            btn.setStyleSheet("background: #e2e8f0; border-radius: 6px;")
+            btn.setMinimumHeight(35)
             btn.clicked.connect(lambda checked, loop=i+1: self.on_save_loop(loop))
             loop_buttons_layout.addWidget(btn, 0, i)
             self.save_loop_btns.append(btn)
@@ -145,7 +145,6 @@ class LoopManager(BasicEditor):
 
         # Save progress
         self.save_progress_label = QLabel("")
-        self.save_progress_label.setStyleSheet("color: #4299e1; font-weight: bold;")
         save_layout.addWidget(self.save_progress_label)
 
         self.save_progress_bar = QProgressBar()
@@ -166,17 +165,14 @@ class LoopManager(BasicEditor):
 
         # Browse button
         browse_btn = QPushButton(tr("LoopManager", "Browse for Loop/MIDI Files"))
-        browse_btn.setMinimumHeight(50)
-        browse_btn.setStyleSheet(
-            "background: #1e3a8a; color: white; font-size: 14px; font-weight: bold; border-radius: 6px;"
-        )
+        browse_btn.setMinimumHeight(45)
         browse_btn.clicked.connect(self.on_browse_files)
         load_layout.addWidget(browse_btn)
 
         # File list
         self.file_list = QListWidget()
-        self.file_list.setMinimumHeight(120)
-        self.file_list.setMaximumHeight(200)
+        self.file_list.setMinimumHeight(100)
+        self.file_list.setMaximumHeight(150)
         self.file_list.currentItemChanged.connect(self.on_file_selected)
         load_layout.addWidget(self.file_list)
 
@@ -187,7 +183,7 @@ class LoopManager(BasicEditor):
 
         # Load All button
         self.load_all_btn = QPushButton(tr("LoopManager", "Load All Tracks to Device"))
-        self.load_all_btn.setMinimumHeight(40)
+        self.load_all_btn.setMinimumHeight(35)
         self.load_all_btn.setEnabled(False)
         self.load_all_btn.clicked.connect(self.on_load_all_tracks)
         load_layout.addWidget(self.load_all_btn)
@@ -199,7 +195,6 @@ class LoopManager(BasicEditor):
 
         # Load progress
         self.load_progress_label = QLabel("")
-        self.load_progress_label.setStyleSheet("color: #4299e1; font-weight: bold;")
         load_layout.addWidget(self.load_progress_label)
 
         self.load_progress_bar = QProgressBar()
@@ -223,6 +218,10 @@ class LoopManager(BasicEditor):
         track_select_label.setStyleSheet("font-weight: bold;")
         advanced_layout.addWidget(track_select_label)
 
+        self.track_info_label = QLabel(tr("LoopManager", "Select a MIDI file to see tracks"))
+        self.track_info_label.setStyleSheet("font-style: italic;")
+        advanced_layout.addWidget(self.track_info_label)
+
         self.track_buttons_widget = QWidget()
         self.track_buttons_layout = QGridLayout()
         self.track_buttons_widget.setLayout(self.track_buttons_layout)
@@ -230,9 +229,10 @@ class LoopManager(BasicEditor):
 
         self.track_button_group = QButtonGroup(self)
         self.track_button_group.setExclusive(True)
+        self.track_button_group.buttonClicked.connect(self.on_track_button_clicked)
 
         # Loop assignment area
-        assign_label = QLabel(tr("LoopManager", "Assign to Loop:"))
+        assign_label = QLabel(tr("LoopManager", "Assign Selected Track to Loop:"))
         assign_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         advanced_layout.addWidget(assign_label)
 
@@ -244,7 +244,7 @@ class LoopManager(BasicEditor):
         self.main_assign_btns = []
         for i in range(4):
             btn = QPushButton(f"Loop {i+1}")
-            btn.setMinimumHeight(40)
+            btn.setMinimumHeight(35)
             btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_main(loop))
             main_buttons_layout.addWidget(btn, 0, i)
             self.main_assign_btns.append(btn)
@@ -258,7 +258,7 @@ class LoopManager(BasicEditor):
         self.overdub_assign_btns = []
         for i in range(4):
             btn = QPushButton(f"Loop {i+1} Overdub")
-            btn.setMinimumHeight(40)
+            btn.setMinimumHeight(35)
             btn.setEnabled(False)
             btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_overdub(loop))
             overdub_buttons_layout.addWidget(btn, 0, i)
@@ -270,12 +270,12 @@ class LoopManager(BasicEditor):
             "💡 Overdub tracks are only available for loops that already have main content. "
             "Select a track above, then click a loop button to assign."))
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #6b7280; font-size: 12px; padding: 10px; background: #fef3c7; border-radius: 6px;")
+        info_label.setStyleSheet("font-size: 11px; padding: 8px;")
         advanced_layout.addWidget(info_label)
 
         # Load assignments button
         self.load_assignments_btn = QPushButton(tr("LoopManager", "Load Assigned Tracks to Device"))
-        self.load_assignments_btn.setMinimumHeight(45)
+        self.load_assignments_btn.setMinimumHeight(40)
         self.load_assignments_btn.setEnabled(False)
         self.load_assignments_btn.clicked.connect(self.on_load_assignments)
         advanced_layout.addWidget(self.load_assignments_btn)
@@ -293,7 +293,7 @@ class LoopManager(BasicEditor):
             contents_layout.addWidget(label, i // 2, (i % 2) * 2)
 
             content_label = QLabel(tr("LoopManager", "Empty"))
-            content_label.setStyleSheet("color: gray; font-style: italic;")
+            content_label.setStyleSheet("font-style: italic;")
             contents_layout.addWidget(content_label, i // 2, (i % 2) * 2 + 1)
             self.loop_content_labels.append(content_label)
 
@@ -378,7 +378,10 @@ class LoopManager(BasicEditor):
                 'total_size': 0,
                 'received_data': bytearray(),
                 'file_name': filename,
-                'save_format': 'midi' if self.format_midi_radio.isChecked() else 'loop'
+                'save_format': 'midi' if self.format_midi_radio.isChecked() else 'loop',
+                'save_all_mode': False,
+                'save_all_directory': '',
+                'save_all_current': 0
             }
 
             # Start HID listener if not already running
@@ -397,19 +400,41 @@ class LoopManager(BasicEditor):
             self.reset_transfer_state()
 
     def on_save_all_loops(self):
-        """Save all loops from device"""
+        """Save all loops from device - prompts for each filename"""
         try:
-            # Choose save directory
-            directory = QFileDialog.getExistingDirectory(
-                None, "Select Directory to Save All Loops"
-            )
-
-            if not directory:
-                return
-
             # Determine format
             save_format = 'midi' if self.format_midi_radio.isChecked() else 'loop'
             extension = '.mid' if save_format == 'midi' else '.loop'
+
+            # Ask user if they want to choose directory or individual filenames
+            reply = QMessageBox.question(None, "Save All Loops",
+                "Choose how to save:\n\n"
+                "Yes - Choose directory (files named loop1-4" + extension + ")\n"
+                "No - Choose each filename individually",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+
+            if reply == QMessageBox.Cancel:
+                return
+
+            if reply == QMessageBox.Yes:
+                # Directory mode
+                directory = QFileDialog.getExistingDirectory(
+                    None, "Select Directory to Save All Loops"
+                )
+                if not directory:
+                    return
+
+                # Initialize for save all in directory mode
+                self.current_transfer['save_all_mode'] = True
+                self.current_transfer['save_all_directory'] = directory
+                self.current_transfer['save_format'] = save_format
+                self.current_transfer['save_all_current'] = 1
+
+            else:
+                # Individual filename mode - will prompt for each
+                self.current_transfer['save_all_mode'] = 'individual'
+                self.current_transfer['save_format'] = save_format
+                self.current_transfer['save_all_current'] = 1
 
             # Start HID listener
             self.start_hid_listener()
@@ -417,14 +442,119 @@ class LoopManager(BasicEditor):
             # Send trigger to save all
             self.send_hid_packet(self.HID_CMD_TRIGGER_SAVE_ALL, 0)
 
-            # Note: In a production implementation, you'd handle the async responses properly
-            # For now, showing the intent
-            QMessageBox.information(None, "Info",
-                f"Save All command sent. Loops will be saved to {directory}")
+            # Start saving first loop
+            self.save_next_loop_in_sequence()
 
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to save all loops: {str(e)}")
             self.reset_transfer_state()
+
+    def save_next_loop_in_sequence(self):
+        """Continue save all sequence"""
+        loop_num = self.current_transfer.get('save_all_current', 0)
+
+        if loop_num > 4:
+            # All done
+            QMessageBox.information(None, "Success", "All loops saved successfully!")
+            self.reset_transfer_state()
+            return
+
+        # Determine filename
+        save_format = self.current_transfer['save_format']
+        extension = '.mid' if save_format == 'midi' else '.loop'
+
+        if self.current_transfer['save_all_mode'] == True:  # Directory mode
+            directory = self.current_transfer['save_all_directory']
+            filename = os.path.join(directory, f"loop{loop_num}{extension}")
+        else:  # Individual mode
+            if self.format_midi_radio.isChecked():
+                filter_str = "MIDI Files (*.mid);;All Files (*)"
+            else:
+                filter_str = "Loop Files (*.loop);;All Files (*)"
+
+            filename, _ = QFileDialog.getSaveFileName(
+                None, f"Save Loop {loop_num}", f"loop{loop_num}{extension}", filter_str
+            )
+
+            if not filename:
+                # User cancelled - stop sequence
+                self.reset_transfer_state()
+                return
+
+        # Setup for this loop
+        self.current_transfer['active'] = True
+        self.current_transfer['loop_num'] = loop_num
+        self.current_transfer['file_name'] = filename
+        self.current_transfer['expected_packets'] = 0
+        self.current_transfer['received_packets'] = 0
+        self.current_transfer['total_size'] = 0
+        self.current_transfer['received_data'] = bytearray()
+
+        # Update UI
+        self.save_progress_label.setText(f"Saving Loop {loop_num} of 4...")
+        self.save_progress_bar.setValue((loop_num - 1) * 25)
+        self.save_progress_bar.setVisible(True)
+
+        # Send request
+        self.send_hid_packet(self.HID_CMD_REQUEST_SAVE, loop_num)
+
+    def parse_loop_file(self, filename):
+        """Parse a .loop file and extract track info"""
+        try:
+            with open(filename, 'rb') as f:
+                data = f.read()
+
+            # Basic validation
+            if len(data) < 4:
+                return None
+
+            # Check magic bytes
+            if data[0] != 0xAA or data[1] != 0x55:
+                return None
+
+            # This is a single track loop file
+            return {
+                'tracks': [{'name': 'Main Loop', 'index': 0}],
+                'bpm': 120  # TODO: Extract BPM from file
+            }
+
+        except Exception as e:
+            print(f"Error parsing loop file: {e}")
+            return None
+
+    def parse_midi_file(self, filename):
+        """Parse a MIDI file and extract track info"""
+        try:
+            with open(filename, 'rb') as f:
+                data = f.read()
+
+            # Basic MIDI file validation
+            if len(data) < 14:
+                return None
+
+            # Check "MThd" header
+            if data[0:4] != b'MThd':
+                return None
+
+            # Parse header
+            track_count = (data[10] << 8) | data[11]
+
+            # Create track list
+            tracks = []
+            for i in range(track_count):
+                tracks.append({
+                    'name': f'Track {i+1}',
+                    'index': i
+                })
+
+            return {
+                'tracks': tracks,
+                'bpm': 120  # TODO: Extract BPM from MIDI file
+            }
+
+        except Exception as e:
+            print(f"Error parsing MIDI file: {e}")
+            return None
 
     def on_browse_files(self):
         """Browse for loop/MIDI files to load"""
@@ -442,10 +572,22 @@ class LoopManager(BasicEditor):
                     break
 
             if not found:
+                # Parse file to get track info
+                file_info = None
+                if filename.endswith('.loop'):
+                    file_info = self.parse_loop_file(filename)
+                elif filename.endswith('.mid') or filename.endswith('.midi'):
+                    file_info = self.parse_midi_file(filename)
+
+                if file_info:
+                    # Store file info
+                    self.loaded_files[filename] = file_info
+
                 # Add to list
-                file_info = os.path.basename(filename)
+                display_name = os.path.basename(filename)
                 file_size = os.path.getsize(filename)
-                display_text = f"{file_info} ({file_size} bytes)"
+                track_count = len(file_info['tracks']) if file_info else 0
+                display_text = f"{display_name} ({track_count} tracks, {file_size} bytes)"
 
                 item = QListWidgetItem(display_text)
                 item.setData(QtCore.Qt.UserRole, filename)
@@ -458,19 +600,78 @@ class LoopManager(BasicEditor):
     def on_clear_file_list(self):
         """Clear the file list"""
         self.file_list.clear()
+        self.loaded_files.clear()
         self.load_all_btn.setEnabled(False)
         self.pending_assignments.clear()
+        self.selected_track = None
+        self.update_track_display()
         self.update_assignment_buttons()
 
     def on_file_selected(self, current, previous):
-        """Handle file selection"""
+        """Handle file selection - show tracks"""
         if not current:
+            self.update_track_display()
             return
 
         filename = current.data(QtCore.Qt.UserRole)
-        # TODO: Parse file and populate track selection
-        # For now, just enable load all
+        if filename in self.loaded_files:
+            self.update_track_display(filename)
+
+        # Enable load all
         self.load_all_btn.setEnabled(True)
+
+    def update_track_display(self, filename=None):
+        """Update the track selection display"""
+        # Clear existing track buttons
+        for i in reversed(range(self.track_buttons_layout.count())):
+            self.track_buttons_layout.itemAt(i).widget().deleteLater()
+
+        # Clear button group
+        for button in self.track_button_group.buttons():
+            self.track_button_group.removeButton(button)
+
+        if not filename or filename not in self.loaded_files:
+            self.track_info_label.setText(tr("LoopManager", "Select a MIDI file to see tracks"))
+            self.track_info_label.setVisible(True)
+            self.track_buttons_widget.setVisible(False)
+            return
+
+        file_info = self.loaded_files[filename]
+        tracks = file_info['tracks']
+
+        if len(tracks) == 0:
+            self.track_info_label.setText(tr("LoopManager", "No tracks found in file"))
+            self.track_info_label.setVisible(True)
+            self.track_buttons_widget.setVisible(False)
+            return
+
+        # Hide info label, show track buttons
+        self.track_info_label.setVisible(False)
+        self.track_buttons_widget.setVisible(True)
+
+        # Create track buttons (max 4 per row)
+        for idx, track in enumerate(tracks):
+            row = idx // 4
+            col = idx % 4
+
+            btn = QPushButton(track['name'])
+            btn.setCheckable(True)
+            btn.setMinimumHeight(30)
+            btn.setProperty('filename', filename)
+            btn.setProperty('track_idx', idx)
+
+            self.track_button_group.addButton(btn)
+            self.track_buttons_layout.addWidget(btn, row, col)
+
+    def on_track_button_clicked(self, button):
+        """Handle track button click"""
+        filename = button.property('filename')
+        track_idx = button.property('track_idx')
+
+        self.selected_track = {
+            'filename': filename,
+            'track_idx': track_idx
+        }
 
     def on_toggle_advanced(self, state):
         """Toggle advanced track assignment section"""
@@ -485,7 +686,7 @@ class LoopManager(BasicEditor):
         # Store pending assignment
         if loop_num not in self.pending_assignments:
             self.pending_assignments[loop_num] = {}
-        self.pending_assignments[loop_num]['main'] = self.selected_track
+        self.pending_assignments[loop_num]['main'] = self.selected_track.copy()
 
         self.update_assignment_buttons()
         self.load_assignments_btn.setEnabled(True)
@@ -497,7 +698,7 @@ class LoopManager(BasicEditor):
             return
 
         # Check if main loop has content
-        if loop_num not in self.loop_contents:
+        if loop_num not in self.loop_contents and loop_num not in self.pending_assignments:
             QMessageBox.warning(None, "Warning",
                 f"Loop {loop_num} must have main content before adding overdub")
             return
@@ -505,7 +706,7 @@ class LoopManager(BasicEditor):
         # Store pending assignment
         if loop_num not in self.pending_assignments:
             self.pending_assignments[loop_num] = {}
-        self.pending_assignments[loop_num]['overdub'] = self.selected_track
+        self.pending_assignments[loop_num]['overdub'] = self.selected_track.copy()
 
         self.update_assignment_buttons()
         self.load_assignments_btn.setEnabled(True)
@@ -527,10 +728,15 @@ class LoopManager(BasicEditor):
 
             # Main button
             if loop_num in self.pending_assignments and 'main' in self.pending_assignments[loop_num]:
-                self.main_assign_btns[i].setStyleSheet("background: #fef3c7; border: 2px solid #f59e0b;")
-                self.main_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+                track_info = self.pending_assignments[loop_num]['main']
+                filename = track_info['filename']
+                file_info = self.loaded_files.get(filename)
+                if file_info:
+                    track_name = file_info['tracks'][track_info['track_idx']]['name']
+                    self.main_assign_btns[i].setText(f"Loop {loop_num}: {track_name[:10]}")
+                else:
+                    self.main_assign_btns[i].setText(f"Loop {loop_num}: Pending")
             else:
-                self.main_assign_btns[i].setStyleSheet("")
                 self.main_assign_btns[i].setText(f"Loop {loop_num}")
 
             # Overdub button
@@ -540,10 +746,15 @@ class LoopManager(BasicEditor):
             self.overdub_assign_btns[i].setEnabled(has_main)
 
             if loop_num in self.pending_assignments and 'overdub' in self.pending_assignments[loop_num]:
-                self.overdub_assign_btns[i].setStyleSheet("background: #fef3c7; border: 2px solid #f59e0b;")
-                self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+                track_info = self.pending_assignments[loop_num]['overdub']
+                filename = track_info['filename']
+                file_info = self.loaded_files.get(filename)
+                if file_info:
+                    track_name = file_info['tracks'][track_info['track_idx']]['name']
+                    self.overdub_assign_btns[i].setText(f"Loop {loop_num}: {track_name[:10]}")
+                else:
+                    self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Pending")
             else:
-                self.overdub_assign_btns[i].setStyleSheet("")
                 self.overdub_assign_btns[i].setText(f"Loop {loop_num} Overdub")
 
     def handle_device_response(self, data):
@@ -572,7 +783,14 @@ class LoopManager(BasicEditor):
     def handle_save_start(self, macro_num, status, data):
         """Handle SAVE_START response from device"""
         if status != 0:
-            self.transfer_complete.emit(False, f"Loop {macro_num} is empty or error occurred")
+            # Loop is empty, skip if in save all mode
+            if self.current_transfer.get('save_all_mode'):
+                print(f"Loop {macro_num} is empty, skipping...")
+                # Move to next loop
+                self.current_transfer['save_all_current'] += 1
+                QTimer.singleShot(100, self.save_next_loop_in_sequence)
+            else:
+                self.transfer_complete.emit(False, f"Loop {macro_num} is empty or error occurred")
             return
 
         # Extract total size from payload
@@ -622,14 +840,28 @@ class LoopManager(BasicEditor):
                 with open(self.current_transfer['file_name'], 'wb') as f:
                     f.write(data)
 
-                self.transfer_complete.emit(True,
-                    f"Successfully saved Loop {macro_num} to {os.path.basename(self.current_transfer['file_name'])}")
+                # Check if in save all mode
+                if self.current_transfer.get('save_all_mode'):
+                    # Continue to next loop
+                    self.current_transfer['save_all_current'] += 1
+                    self.current_transfer['active'] = False  # Reset for next loop
+                    QTimer.singleShot(100, self.save_next_loop_in_sequence)
+                else:
+                    self.transfer_complete.emit(True,
+                        f"Successfully saved Loop {macro_num} to {os.path.basename(self.current_transfer['file_name'])}")
 
             except Exception as e:
                 self.transfer_complete.emit(False, f"Failed to save file: {str(e)}")
 
         else:
-            self.transfer_complete.emit(False, f"Failed to receive Loop {macro_num}")
+            # Check if in save all mode
+            if self.current_transfer.get('save_all_mode'):
+                # Continue to next loop even on error
+                self.current_transfer['save_all_current'] += 1
+                self.current_transfer['active'] = False
+                QTimer.singleShot(100, self.save_next_loop_in_sequence)
+            else:
+                self.transfer_complete.emit(False, f"Failed to receive Loop {macro_num}")
 
     def on_transfer_progress(self, progress, message):
         """Update UI with transfer progress (thread-safe)"""
@@ -656,7 +888,10 @@ class LoopManager(BasicEditor):
             'total_size': 0,
             'received_data': bytearray(),
             'file_name': '',
-            'save_format': 'loop'
+            'save_format': 'loop',
+            'save_all_mode': False,
+            'save_all_directory': '',
+            'save_all_current': 0
         }
 
         self.save_progress_label.setText("")
@@ -673,10 +908,8 @@ class LoopManager(BasicEditor):
             loop_num = i + 1
             if loop_num in self.loop_contents:
                 self.loop_content_labels[i].setText(self.loop_contents[loop_num])
-                self.loop_content_labels[i].setStyleSheet("color: green; font-weight: bold;")
             else:
                 self.loop_content_labels[i].setText(tr("LoopManager", "Empty"))
-                self.loop_content_labels[i].setStyleSheet("color: gray; font-style: italic;")
 
     def valid(self):
         """This tab is valid for all VialKeyboard devices"""
