@@ -338,15 +338,18 @@ class LoopManager(BasicEditor):
         track_name = track['name'].encode('utf-8')
         logger.info(f"Creating track '{track['name']}' with {len(track['events'])} events")
         track_events.extend(self.create_variable_length(0))  # Delta time 0
-        track_events.extend(bytes([0xFF, 0x03, len(track_name)]))  # Track name meta event
+        track_events.extend(bytes([0xFF, 0x03]))  # Track name meta event
+        track_events.extend(self.create_variable_length(len(track_name)))  # Length as variable-length
         track_events.extend(track_name)
         logger.info(f"Track name: {len(track_name)} bytes")
 
         # Tempo event (only in first track typically, but let's add to all)
         microseconds_per_quarter = int(60000000 / bpm)
+        tempo_bytes = struct.pack('>I', microseconds_per_quarter)[1:]  # 3 bytes
         track_events.extend(self.create_variable_length(0))  # Delta time 0
-        track_events.extend(bytes([0xFF, 0x51, 0x03]))  # Tempo meta event
-        track_events.extend(struct.pack('>I', microseconds_per_quarter)[1:])  # 3 bytes
+        track_events.extend(bytes([0xFF, 0x51]))  # Tempo meta event
+        track_events.extend(self.create_variable_length(len(tempo_bytes)))  # Length as variable-length
+        track_events.extend(tempo_bytes)
 
         # Sort events by timestamp
         sorted_events = sorted(track['events'], key=lambda e: e['timestamp'])
