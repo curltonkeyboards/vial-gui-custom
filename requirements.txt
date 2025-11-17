@@ -12,4 +12,4 @@ sip==4.19.8
 pywin32==303; sys_platform == 'win32'
 certifi
 mido==1.2.10
-python-rtmidi==1.4.9
+python-rtmidi>=1.5.8
