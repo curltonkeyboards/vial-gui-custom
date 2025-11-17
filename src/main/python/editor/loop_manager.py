@@ -336,9 +336,11 @@ class LoopManager(BasicEditor):
 
         # Track name event
         track_name = track['name'].encode('utf-8')
+        logger.info(f"Creating track '{track['name']}' with {len(track['events'])} events")
         track_events.extend(self.create_variable_length(0))  # Delta time 0
         track_events.extend(bytes([0xFF, 0x03, len(track_name)]))  # Track name meta event
         track_events.extend(track_name)
+        logger.info(f"Track name: {len(track_name)} bytes")
 
         # Tempo event (only in first track typically, but let's add to all)
         microseconds_per_quarter = int(60000000 / bpm)
@@ -348,10 +350,11 @@ class LoopManager(BasicEditor):
 
         # Sort events by timestamp
         sorted_events = sorted(track['events'], key=lambda e: e['timestamp'])
+        logger.info(f"Sorted {len(sorted_events)} events by timestamp")
 
         # Convert events to MIDI
         last_time_ticks = 0
-        for event in sorted_events:
+        for idx, event in enumerate(sorted_events):
             # Convert milliseconds to ticks
             time_ms = event['timestamp']
             ms_per_tick = 60000.0 / (bpm * tpqn)
@@ -371,12 +374,18 @@ class LoopManager(BasicEditor):
             if event_type == 1:  # Note On (device type 1)
                 status = 0x90 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
+                if idx < 3:  # Log first 3 events
+                    logger.info(f"Event {idx}: NoteOn ch={channel} note={note} vel={velocity} @{time_ms}ms ({time_ticks} ticks)")
             elif event_type == 0:  # Note Off (device type 0)
                 status = 0x80 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
+                if idx < 3:
+                    logger.info(f"Event {idx}: NoteOff ch={channel} note={note} vel={velocity} @{time_ms}ms ({time_ticks} ticks)")
             elif event_type == 2:  # Control Change (device type 2)
                 status = 0xB0 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
+                if idx < 3:
+                    logger.info(f"Event {idx}: CC ch={channel} cc={note} val={velocity} @{time_ms}ms ({time_ticks} ticks)")
 
         # End of track
         track_events.extend(self.create_variable_length(0))
@@ -387,6 +396,9 @@ class LoopManager(BasicEditor):
         track_chunk.extend(b'MTrk')
         track_chunk.extend(struct.pack('>I', len(track_events)))
         track_chunk.extend(track_events)
+
+        logger.info(f"Created track chunk: {len(track_events)} bytes of track data, {len(track_chunk)} bytes total")
+        logger.info(f"First 40 bytes of track chunk: {' '.join(f'{b:02x}' for b in track_chunk[:40])}")
 
         return track_chunk
 
