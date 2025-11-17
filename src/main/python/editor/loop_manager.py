@@ -260,6 +260,7 @@ class LoopManager(BasicEditor):
     def convert_loop_to_midi(self, loops_data, bpm):
         """Convert loop data to MIDI file bytes - matches webapp createMIDIFile()"""
         logger.info(f"Creating MIDI file at {bpm} BPM")
+        logger.info(f"Converting {len(loops_data)} loops to MIDI")
 
         # MIDI constants
         MIDI_TPQN = 480  # Ticks per quarter note
@@ -271,24 +272,39 @@ class LoopManager(BasicEditor):
                 continue
 
             loop_data = loops_data[loop_num]
+            logger.info(f"Loop {loop_num}: {len(loop_data['mainEvents'])} main events, {len(loop_data['overdubEvents'])} overdub events")
 
-            if loop_data['mainEvents']:
-                tracks.append({
+            # Filter out invalid event types (only 0, 1, 2 are valid)
+            valid_main_events = [e for e in loop_data['mainEvents'] if e['type'] in [0, 1, 2]]
+            if len(valid_main_events) < len(loop_data['mainEvents']):
+                logger.info(f"  Filtered {len(loop_data['mainEvents']) - len(valid_main_events)} invalid main events")
+
+            if valid_main_events:
+                track_dict = {
                     'name': f'Loop {loop_num} Main',
-                    'events': loop_data['mainEvents'],
+                    'events': valid_main_events,
                     'loopLength': loop_data.get('loopLength', 0),
                     'loopGap': loop_data.get('loopGap', 0)
-                })
-                logger.info(f"Added main track for loop {loop_num} with {len(loop_data['mainEvents'])} events")
+                }
+                tracks.append(track_dict)
+                logger.info(f"Added main track for loop {loop_num} with {len(valid_main_events)} events")
+                # Log first event for debugging
+                first_event = valid_main_events[0]
+                logger.info(f"  First event: type={first_event['type']} ch={first_event['channel']} note={first_event['note']} vel={first_event['velocity']} @{first_event['timestamp']}ms")
 
-            if loop_data['overdubEvents']:
+            # Filter overdub events too
+            valid_overdub_events = [e for e in loop_data['overdubEvents'] if e['type'] in [0, 1, 2]]
+            if len(valid_overdub_events) < len(loop_data['overdubEvents']):
+                logger.info(f"  Filtered {len(loop_data['overdubEvents']) - len(valid_overdub_events)} invalid overdub events")
+
+            if valid_overdub_events:
                 tracks.append({
                     'name': f'Loop {loop_num} Overdub',
-                    'events': loop_data['overdubEvents'],
+                    'events': valid_overdub_events,
                     'loopLength': loop_data.get('loopLength', 0),
                     'loopGap': loop_data.get('loopGap', 0)
                 })
-                logger.info(f"Added overdub track for loop {loop_num} with {len(loop_data['overdubEvents'])} events")
+                logger.info(f"Added overdub track for loop {loop_num} with {len(valid_overdub_events)} events")
 
         if not tracks:
             logger.info("No tracks to save")
@@ -336,22 +352,37 @@ class LoopManager(BasicEditor):
 
         # Track name event
         track_name = track['name'].encode('utf-8')
+        logger.info(f"Creating track '{track['name']}' with {len(track['events'])} events")
         track_events.extend(self.create_variable_length(0))  # Delta time 0
-        track_events.extend(bytes([0xFF, 0x03, len(track_name)]))  # Track name meta event
+        track_events.extend(bytes([0xFF, 0x03]))  # Track name meta event
+        track_events.extend(self.create_variable_length(len(track_name)))  # Length as variable-length
         track_events.extend(track_name)
+        logger.info(f"Track name: {len(track_name)} bytes")
 
         # Tempo event (only in first track typically, but let's add to all)
         microseconds_per_quarter = int(60000000 / bpm)
+        tempo_bytes = struct.pack('>I', microseconds_per_quarter)[1:]  # 3 bytes
         track_events.extend(self.create_variable_length(0))  # Delta time 0
-        track_events.extend(bytes([0xFF, 0x51, 0x03]))  # Tempo meta event
-        track_events.extend(struct.pack('>I', microseconds_per_quarter)[1:])  # 3 bytes
+        track_events.extend(bytes([0xFF, 0x51]))  # Tempo meta event
+        track_events.extend(self.create_variable_length(len(tempo_bytes)))  # Length as variable-length
+        track_events.extend(tempo_bytes)
 
         # Sort events by timestamp
         sorted_events = sorted(track['events'], key=lambda e: e['timestamp'])
+        logger.info(f"Sorted {len(sorted_events)} events by timestamp")
+
+        # Filter out invalid event types (only 0, 1, 2 are valid)
+        valid_events = [e for e in sorted_events if e['type'] in [0, 1, 2]]
+        if len(valid_events) < len(sorted_events):
+            logger.info(f"Filtered out {len(sorted_events) - len(valid_events)} invalid events (types not in [0,1,2])")
+            # Log the invalid events for debugging
+            invalid_events = [e for e in sorted_events if e['type'] not in [0, 1, 2]]
+            for inv_evt in invalid_events[:3]:  # Log first 3 invalid events
+                logger.info(f"  Invalid event: type={inv_evt['type']} ch={inv_evt['channel']} note={inv_evt['note']} vel={inv_evt['velocity']} @{inv_evt['timestamp']}ms")
 
         # Convert events to MIDI
         last_time_ticks = 0
-        for event in sorted_events:
+        for idx, event in enumerate(valid_events):
             # Convert milliseconds to ticks
             time_ms = event['timestamp']
             ms_per_tick = 60000.0 / (bpm * tpqn)
@@ -371,12 +402,18 @@ class LoopManager(BasicEditor):
             if event_type == 1:  # Note On (device type 1)
                 status = 0x90 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
+                if idx < 3:  # Log first 3 events
+                    logger.info(f"Event {idx}: NoteOn ch={channel} note={note} vel={velocity} @{time_ms}ms ({time_ticks} ticks)")
             elif event_type == 0:  # Note Off (device type 0)
                 status = 0x80 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
+                if idx < 3:
+                    logger.info(f"Event {idx}: NoteOff ch={channel} note={note} vel={velocity} @{time_ms}ms ({time_ticks} ticks)")
             elif event_type == 2:  # Control Change (device type 2)
                 status = 0xB0 | (channel & 0x0F)
                 track_events.extend(bytes([status, note, velocity]))
+                if idx < 3:
+                    logger.info(f"Event {idx}: CC ch={channel} cc={note} val={velocity} @{time_ms}ms ({time_ticks} ticks)")
 
         # End of track
         track_events.extend(self.create_variable_length(0))
@@ -387,6 +424,9 @@ class LoopManager(BasicEditor):
         track_chunk.extend(b'MTrk')
         track_chunk.extend(struct.pack('>I', len(track_events)))
         track_chunk.extend(track_events)
+
+        logger.info(f"Created track chunk: {len(track_events)} bytes of track data, {len(track_chunk)} bytes total")
+        logger.info(f"First 40 bytes of track chunk: {' '.join(f'{b:02x}' for b in track_chunk[:40])}")
 
         return track_chunk
 
@@ -1088,8 +1128,8 @@ class LoopManager(BasicEditor):
             save_format = 'midi' if self.format_midi_radio.isChecked() else 'loop'
 
             if save_format == 'midi':
-                filter_str = "MIDI Files (*.mid);;All Files (*)"
-                default_name = "all_loops.mid"
+                filter_str = "MIDI Files (*.midi);;All Files (*)"
+                default_name = "all_loops.midi"
             else:
                 filter_str = "Loop Files (*.loop);;All Files (*)"
                 default_name = "all_loops.loop"
@@ -2210,8 +2250,8 @@ class LoopManager(BasicEditor):
 
                     # Determine file extension and default name with BPM
                     if self.current_transfer['save_format'] == 'midi':
-                        filter_str = "MIDI Files (*.mid);;All Files (*)"
-                        default_name = f"loop{macro_num}_{bpm}.mid"
+                        filter_str = "MIDI Files (*.midi);;All Files (*)"
+                        default_name = f"loop{macro_num}_{bpm}.midi"
                     else:
                         filter_str = "Loop Files (*.loop);;All Files (*)"
                         default_name = f"loop{macro_num}_{bpm}.loop"
