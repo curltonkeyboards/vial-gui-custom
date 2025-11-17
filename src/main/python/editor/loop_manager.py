@@ -1053,26 +1053,14 @@ class LoopManager(BasicEditor):
                         loop_data = data[offset:offset + loop_size]
                         offset += loop_size
 
-                        # Parse this loop to extract events
-                        parsed = self.parse_loop_data(loop_data)
-                        if parsed:
-                            loops_data[loop_num] = loop_data
-
-                            # Add tracks for this loop
-                            if parsed['mainEvents']:
-                                tracks.append({
-                                    'name': f'Loop {loop_num} Main ({len(parsed["mainEvents"])} events)',
-                                    'index': len(tracks),
-                                    'loop_num': loop_num,
-                                    'is_overdub': False
-                                })
-                            if parsed['overdubEvents']:
-                                tracks.append({
-                                    'name': f'Loop {loop_num} Overdub ({len(parsed["overdubEvents"])} events)',
-                                    'index': len(tracks),
-                                    'loop_num': loop_num,
-                                    'is_overdub': True
-                                })
+                        # Store loop data and create simple track (matches webapp behavior)
+                        loops_data[loop_num] = loop_data
+                        tracks.append({
+                            'name': f'Loop {loop_num}',
+                            'index': len(tracks),
+                            'loop_num': loop_num,
+                            'is_overdub': False
+                        })
 
                 return {
                     'tracks': tracks,
@@ -1112,26 +1100,14 @@ class LoopManager(BasicEditor):
                         loop_data = data[offset:offset + loop_size]
                         offset += loop_size
 
-                        # Parse this loop to extract BPM and events
-                        parsed = self.parse_loop_data(loop_data)
-                        if parsed:
-                            loops_data[loop_num] = loop_data
-
-                            # Add tracks for this loop
-                            if parsed['mainEvents']:
-                                tracks.append({
-                                    'name': f'Loop {loop_num} Main ({len(parsed["mainEvents"])} events)',
-                                    'index': len(tracks),
-                                    'loop_num': loop_num,
-                                    'is_overdub': False
-                                })
-                            if parsed['overdubEvents']:
-                                tracks.append({
-                                    'name': f'Loop {loop_num} Overdub ({len(parsed["overdubEvents"])} events)',
-                                    'index': len(tracks),
-                                    'loop_num': loop_num,
-                                    'is_overdub': True
-                                })
+                        # Store loop data and create simple track (matches webapp behavior)
+                        loops_data[loop_num] = loop_data
+                        tracks.append({
+                            'name': f'Loop {loop_num}',
+                            'index': len(tracks),
+                            'loop_num': loop_num,
+                            'is_overdub': False
+                        })
 
                 # Use highest BPM from all loops
                 max_bpm = 120.0
