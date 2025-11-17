@@ -3,8 +3,11 @@ import struct
 import os
 import threading
 import time
+import logging
+from datetime import datetime
 from PyQt5 import QtCore
-from PyQt5.QtCore import QTimer, pyqtSignal, QObject
+from PyQt5.QtCore import QTimer, pyqtSignal, QObject, QUrl
+from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSizePolicy,
                              QLabel, QGroupBox, QFileDialog, QMessageBox, QProgressBar,
                              QListWidget, QListWidgetItem, QGridLayout, QCheckBox, QButtonGroup,
@@ -13,6 +16,18 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSi
 from editor.basic_editor import BasicEditor
 from util import tr
 from vial_device import VialKeyboard
+
+# Setup logging to file for standalone builds
+LOG_FILE = os.path.join(os.path.expanduser("~"), "vial-loop-manager.log")
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE, mode='w'),  # Overwrite each session
+        logging.StreamHandler()  # Also print to console
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 class LoopManager(BasicEditor):
@@ -44,6 +59,12 @@ class LoopManager(BasicEditor):
 
     def __init__(self):
         super().__init__()
+
+        # Log startup
+        logger.info("="*60)
+        logger.info("Loop Manager initialized")
+        logger.info(f"Log file: {LOG_FILE}")
+        logger.info("="*60)
 
         self.current_transfer = {
             'active': False,
@@ -153,6 +174,15 @@ class LoopManager(BasicEditor):
         self.save_progress_bar.setValue(0)
         self.save_progress_bar.setVisible(False)
         save_layout.addWidget(self.save_progress_bar)
+
+        # Log file button
+        log_button_layout = QHBoxLayout()
+        self.view_log_btn = QPushButton(tr("LoopManager", "📋 View Debug Log"))
+        self.view_log_btn.setMaximumWidth(200)
+        self.view_log_btn.clicked.connect(self.on_view_log)
+        log_button_layout.addWidget(self.view_log_btn)
+        log_button_layout.addStretch()
+        save_layout.addLayout(log_button_layout)
 
         save_layout.addStretch()
 
@@ -337,24 +367,40 @@ class LoopManager(BasicEditor):
 
     def hid_listener_loop(self):
         """Background thread loop to receive HID data"""
-        print("HID listener thread started")
+        logger.info("HID listener thread started")
         while self.hid_listening and self.device:
             try:
                 # Read HID data with longer timeout
                 data = self.device.recv(self.HID_PACKET_SIZE, timeout_ms=500)
                 if data and len(data) > 0:
-                    print(f"HID received {len(data)} bytes: {data[:10].hex()}...")
+                    logger.info(f"HID received {len(data)} bytes: {data[:10].hex()}...")
                     if len(data) == self.HID_PACKET_SIZE:
                         # Emit signal for thread-safe UI update
                         self.hid_data_received.emit(bytes(data))
                     else:
-                        print(f"Warning: Received {len(data)} bytes, expected {self.HID_PACKET_SIZE}")
+                        logger.info(f"Warning: Received {len(data)} bytes, expected {self.HID_PACKET_SIZE}")
             except Exception as e:
                 # Ignore timeout errors but log others
                 error_msg = str(e).lower()
                 if "timeout" not in error_msg and "timed out" not in error_msg:
-                    print(f"HID listener error: {e}")
-        print("HID listener thread stopped")
+                    logger.info(f"HID listener error: {e}")
+        logger.info("HID listener thread stopped")
+
+    def on_view_log(self):
+        """Open the debug log file"""
+        try:
+            if os.path.exists(LOG_FILE):
+                # Open log file in default text editor
+                QDesktopServices.openUrl(QUrl.fromLocalFile(LOG_FILE))
+                QMessageBox.information(None, "Debug Log",
+                    f"Log file location:\n{LOG_FILE}\n\n"
+                    "The log file contains detailed debug information about HID communication.")
+            else:
+                QMessageBox.warning(None, "Log Not Found",
+                    f"Log file not found at:\n{LOG_FILE}\n\n"
+                    "The log will be created when you perform save/load operations.")
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"Failed to open log file: {str(e)}")
 
     def on_save_loop(self, loop_num):
         """Request to save a specific loop from device"""
@@ -374,7 +420,7 @@ class LoopManager(BasicEditor):
             if not filename:
                 return
 
-            print(f"\n=== Saving Loop {loop_num} to {filename} ===")
+            logger.info(f"\n=== Saving Loop {loop_num} to {filename} ===")
 
             # Initialize transfer state
             self.current_transfer = {
@@ -403,13 +449,13 @@ class LoopManager(BasicEditor):
             self.save_progress_bar.setValue(0)
             self.save_progress_bar.setVisible(True)
 
-            print(f"Sending REQUEST_SAVE command for loop {loop_num}")
+            logger.info(f"Sending REQUEST_SAVE command for loop {loop_num}")
             # Send request to device
             self.send_hid_packet(self.HID_CMD_REQUEST_SAVE, loop_num)
-            print("REQUEST_SAVE sent, waiting for response...")
+            logger.info("REQUEST_SAVE sent, waiting for response...")
 
         except Exception as e:
-            print(f"Error in on_save_loop: {e}")
+            logger.info(f"Error in on_save_loop: {e}")
             QMessageBox.critical(None, "Error", f"Failed to request loop save: {str(e)}")
             self.reset_transfer_state()
 
@@ -533,7 +579,7 @@ class LoopManager(BasicEditor):
             }
 
         except Exception as e:
-            print(f"Error parsing loop file: {e}")
+            logger.info(f"Error parsing loop file: {e}")
             return None
 
     def parse_midi_file(self, filename):
@@ -567,7 +613,7 @@ class LoopManager(BasicEditor):
             }
 
         except Exception as e:
-            print(f"Error parsing MIDI file: {e}")
+            logger.info(f"Error parsing MIDI file: {e}")
             return None
 
     def on_browse_files(self):
@@ -773,17 +819,17 @@ class LoopManager(BasicEditor):
 
     def handle_device_response(self, data):
         """Handle incoming HID data from device"""
-        print(f"handle_device_response called with {len(data)} bytes")
+        logger.info(f"handle_device_response called with {len(data)} bytes")
 
         if len(data) < self.HID_HEADER_SIZE:
-            print(f"Data too short: {len(data)} < {self.HID_HEADER_SIZE}")
+            logger.info(f"Data too short: {len(data)} < {self.HID_HEADER_SIZE}")
             return
 
         # Validate header
         if (data[0] != self.MANUFACTURER_ID or
             data[1] != self.SUB_ID or
             data[2] != self.DEVICE_ID):
-            print(f"Invalid header: {data[0]:02x} {data[1]:02x} {data[2]:02x}")
+            logger.info(f"Invalid header: {data[0]:02x} {data[1]:02x} {data[2]:02x}")
             return
 
         command = data[3]
@@ -791,29 +837,29 @@ class LoopManager(BasicEditor):
         status = data[5]
         payload = data[self.HID_HEADER_SIZE:]
 
-        print(f"Valid packet - Command: 0x{command:02x}, Loop: {macro_num}, Status: {status}")
+        logger.info(f"Valid packet - Command: 0x{command:02x}, Loop: {macro_num}, Status: {status}")
 
         if command == self.HID_CMD_SAVE_START:
-            print("-> SAVE_START")
+            logger.info("-> SAVE_START")
             self.handle_save_start(macro_num, status, payload)
         elif command == self.HID_CMD_SAVE_CHUNK:
-            print("-> SAVE_CHUNK")
+            logger.info("-> SAVE_CHUNK")
             self.handle_save_chunk(macro_num, status, payload)
         elif command == self.HID_CMD_SAVE_END:
-            print("-> SAVE_END")
+            logger.info("-> SAVE_END")
             self.handle_save_end(macro_num, status)
         else:
-            print(f"-> Unknown command: 0x{command:02x}")
+            logger.info(f"-> Unknown command: 0x{command:02x}")
 
     def handle_save_start(self, macro_num, status, data):
         """Handle SAVE_START response from device"""
-        print(f"handle_save_start: loop={macro_num}, status={status}, data_len={len(data)}")
+        logger.info(f"handle_save_start: loop={macro_num}, status={status}, data_len={len(data)}")
 
         if status != 0:
-            print(f"Loop {macro_num} status error: {status}")
+            logger.info(f"Loop {macro_num} status error: {status}")
             # Loop is empty, skip if in save all mode
             if self.current_transfer.get('save_all_mode'):
-                print(f"Loop {macro_num} is empty, skipping...")
+                logger.info(f"Loop {macro_num} is empty, skipping...")
                 # Move to next loop
                 self.current_transfer['save_all_current'] += 1
                 QTimer.singleShot(100, self.save_next_loop_in_sequence)
@@ -830,9 +876,9 @@ class LoopManager(BasicEditor):
             self.current_transfer['expected_packets'] = total_packets
             self.current_transfer['total_size'] = total_size
 
-            print(f"SAVE_START: {total_packets} packets, {total_size} bytes total")
+            logger.info(f"SAVE_START: {total_packets} packets, {total_size} bytes total")
         else:
-            print(f"Warning: SAVE_START payload too short: {len(data)} bytes")
+            logger.info(f"Warning: SAVE_START payload too short: {len(data)} bytes")
 
         self.transfer_progress.emit(0,
             f"Receiving Loop {macro_num}: 0 / {self.current_transfer['total_size']} bytes")
@@ -840,7 +886,7 @@ class LoopManager(BasicEditor):
     def handle_save_chunk(self, macro_num, status, data):
         """Handle SAVE_CHUNK response from device"""
         if not self.current_transfer['active']:
-            print("handle_save_chunk: transfer not active, ignoring")
+            logger.info("handle_save_chunk: transfer not active, ignoring")
             return
 
         # Parse chunk header - MATCHES WEBAPP FORMAT!
@@ -860,30 +906,30 @@ class LoopManager(BasicEditor):
                 total = self.current_transfer['total_size']
                 expected_packets = self.current_transfer['expected_packets']
 
-                print(f"Chunk {self.current_transfer['received_packets']}/{expected_packets}: packet#{packet_num}, {chunk_len} bytes (total: {received}/{total})")
+                logger.info(f"Chunk {self.current_transfer['received_packets']}/{expected_packets}: packet#{packet_num}, {chunk_len} bytes (total: {received}/{total})")
 
                 if expected_packets > 0:
                     progress = int((self.current_transfer['received_packets'] / expected_packets) * 100)
                     self.transfer_progress.emit(progress,
                         f"Receiving Loop {macro_num}: {received} / {total} bytes ({progress}%)")
             else:
-                print(f"handle_save_chunk: invalid chunk - len={chunk_len}, data_len={len(data)}")
+                logger.info(f"handle_save_chunk: invalid chunk - len={chunk_len}, data_len={len(data)}")
         else:
-            print(f"handle_save_chunk: payload too short: {len(data)} bytes")
+            logger.info(f"handle_save_chunk: payload too short: {len(data)} bytes")
 
     def handle_save_end(self, macro_num, status):
         """Handle SAVE_END response from device"""
-        print(f"handle_save_end: loop={macro_num}, status={status}")
+        logger.info(f"handle_save_end: loop={macro_num}, status={status}")
 
         if not self.current_transfer['active']:
-            print("handle_save_end: transfer not active, ignoring")
+            logger.info("handle_save_end: transfer not active, ignoring")
             return
 
         if status == 0:
             # Save to file
             try:
                 received_size = len(self.current_transfer['received_data'])
-                print(f"Saving {received_size} bytes to {self.current_transfer['file_name']}")
+                logger.info(f"Saving {received_size} bytes to {self.current_transfer['file_name']}")
 
                 if self.current_transfer['save_format'] == 'midi':
                     # TODO: Convert loop data to MIDI format
@@ -894,11 +940,11 @@ class LoopManager(BasicEditor):
                 with open(self.current_transfer['file_name'], 'wb') as f:
                     f.write(data)
 
-                print(f"File saved successfully: {self.current_transfer['file_name']}")
+                logger.info(f"File saved successfully: {self.current_transfer['file_name']}")
 
                 # Check if in save all mode
                 if self.current_transfer.get('save_all_mode'):
-                    print("Save all mode: moving to next loop")
+                    logger.info("Save all mode: moving to next loop")
                     # Continue to next loop
                     self.current_transfer['save_all_current'] += 1
                     self.current_transfer['active'] = False  # Reset for next loop
@@ -908,11 +954,11 @@ class LoopManager(BasicEditor):
                         f"Successfully saved Loop {macro_num} to {os.path.basename(self.current_transfer['file_name'])}")
 
             except Exception as e:
-                print(f"Error saving file: {e}")
+                logger.info(f"Error saving file: {e}")
                 self.transfer_complete.emit(False, f"Failed to save file: {str(e)}")
 
         else:
-            print(f"SAVE_END with error status: {status}")
+            logger.info(f"SAVE_END with error status: {status}")
             # Check if in save all mode
             if self.current_transfer.get('save_all_mode'):
                 # Continue to next loop even on error
