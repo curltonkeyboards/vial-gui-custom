@@ -11,11 +11,12 @@ from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSizePolicy,
                              QLabel, QGroupBox, QFileDialog, QMessageBox, QProgressBar,
                              QListWidget, QListWidgetItem, QGridLayout, QCheckBox, QButtonGroup,
-                             QRadioButton, QScrollArea, QFrame)
+                             QRadioButton, QScrollArea, QFrame, QInputDialog)
 
 from editor.basic_editor import BasicEditor
 from util import tr
 from vial_device import VialKeyboard
+import math
 
 # Setup logging to file for standalone builds
 LOG_FILE = os.path.join(os.path.expanduser("~"), "vial-loop-manager.log")
@@ -33,16 +34,19 @@ logger = logging.getLogger(__name__)
 class LoopManager(BasicEditor):
     """Loop Manager tab for uploading/downloading loops to/from MIDIswitch"""
 
-    # HID Command constants
-    HID_CMD_SAVE_START = 0x01
-    HID_CMD_SAVE_CHUNK = 0x02
-    HID_CMD_SAVE_END = 0x03
-    HID_CMD_LOAD_START = 0x04
-    HID_CMD_LOAD_CHUNK = 0x05
-    HID_CMD_LOAD_END = 0x06
-    HID_CMD_LOAD_OVERDUB_START = 0x07
-    HID_CMD_REQUEST_SAVE = 0x10
-    HID_CMD_TRIGGER_SAVE_ALL = 0x30
+    # HID Command constants - Updated to match webapp (0xA0-0xA9 range)
+    # Save/Load Operations (0xA0-0xA7)
+    HID_CMD_SAVE_START = 0xA0              # was 0x01
+    HID_CMD_SAVE_CHUNK = 0xA1              # was 0x02
+    HID_CMD_SAVE_END = 0xA2                # was 0x03
+    HID_CMD_LOAD_START = 0xA3              # was 0x04
+    HID_CMD_LOAD_CHUNK = 0xA4              # was 0x05
+    HID_CMD_LOAD_END = 0xA5                # was 0x06
+    HID_CMD_LOAD_OVERDUB_START = 0xA6      # was 0x07
+
+    # Request/Trigger Operations (0xA8-0xAF)
+    HID_CMD_REQUEST_SAVE = 0xA8            # was 0x10
+    HID_CMD_TRIGGER_SAVE_ALL = 0xA9        # was 0x30
 
     HID_PACKET_SIZE = 32
     HID_HEADER_SIZE = 6
@@ -96,6 +100,308 @@ class LoopManager(BasicEditor):
         self.hid_data_received.connect(self.handle_device_response)
 
         self.setup_ui()
+
+    def extract_bpm_from_loop_data(self, data):
+        """Extract BPM from loop data - matches webapp extractBPMQuickly()"""
+        logger.info(f"Extracting BPM from last 5 bytes of {len(data)} total bytes")
+
+        if len(data) < 5:
+            logger.info("Data too short for BPM, using default 120 BPM")
+            return 120.0
+
+        # Get last 5 bytes
+        last_five = data[-5:]
+        logger.info(f"Last 5 bytes: {' '.join(f'{b:02x}' for b in last_five)}")
+
+        bpm_flag = last_five[0]
+        logger.info(f"BPM flag byte: 0x{bpm_flag:02x} ({bpm_flag})")
+
+        if bpm_flag != 0x01:
+            logger.info("Flag indicates no BPM set, using default 120 BPM")
+            return 120.0
+
+        # Extract 3-byte BPM value (bytes 2, 3, 4 of the last 5 bytes)
+        bpm_bytes = last_five[2:5]
+        logger.info(f"BPM bytes: {' '.join(f'{b:02x}' for b in bpm_bytes)}")
+
+        bpm_value = (bpm_bytes[0] << 16) | (bpm_bytes[1] << 8) | bpm_bytes[2]
+        logger.info(f"Raw BPM value: {bpm_value}")
+
+        bpm = bpm_value / 100000.0
+        logger.info(f"Calculated BPM: {bpm}")
+
+        # Round to 1 decimal place
+        final_bpm = round(bpm * 10) / 10
+        logger.info(f"Final BPM: {final_bpm}")
+
+        return final_bpm
+
+    def parse_loop_data(self, data):
+        """Parse loop data file - matches webapp parseLoopData()"""
+        logger.info(f"Parsing loop data: {len(data)} bytes")
+        logger.info(f"First 20 bytes: {' '.join(f'{b:02x}' for b in data[:20])}")
+
+        # Check header
+        if len(data) < 4 or data[0] != 0xAA or data[1] != 0x55:
+            logger.info("Invalid loop file header")
+            return None
+
+        version = data[2]
+        loop_num = data[3]
+        offset = 4
+
+        logger.info(f"Loop {loop_num}, version {version}")
+
+        # Read main macro size
+        if offset + 2 > len(data):
+            logger.info("Insufficient data for main size")
+            return None
+
+        main_size = (data[offset] << 8) | data[offset + 1]
+        offset += 2
+        logger.info(f"Main macro size: {main_size} bytes at offset {offset - 2}")
+
+        # Parse main macro events
+        main_events = []
+        if main_size > 0:
+            if offset + main_size > len(data):
+                logger.info("Insufficient data for main events")
+                return None
+
+            main_data = data[offset:offset + main_size]
+            main_events = self.parse_midi_events(main_data)
+            offset += main_size
+
+        logger.info(f"Found {len(main_events)} main events")
+
+        # Read overdub size
+        if offset + 2 > len(data):
+            logger.info("Insufficient data for overdub size")
+            return None
+
+        overdub_size = (data[offset] << 8) | data[offset + 1]
+        offset += 2
+        logger.info(f"Overdub size: {overdub_size} bytes at offset {offset - 2}")
+
+        # Parse overdub events
+        overdub_events = []
+        if overdub_size > 0:
+            if offset + overdub_size > len(data):
+                logger.info("Insufficient data for overdub events")
+                return None
+
+            overdub_data = data[offset:offset + overdub_size]
+            overdub_events = self.parse_midi_events(overdub_data)
+            offset += overdub_size
+
+        logger.info(f"Found {len(overdub_events)} overdub events")
+
+        # Skip transformation data (7 bytes)
+        if offset + 7 <= len(data):
+            offset += 7
+            logger.info("Skipped 7 bytes of transformation settings")
+
+        # Extract timing info (8 bytes: 4 for loop_length, 4 for loop_gap)
+        loop_length = 0
+        loop_gap = 0
+        if offset + 8 <= len(data):
+            loop_length = (data[offset] << 24) | (data[offset + 1] << 16) | \
+                         (data[offset + 2] << 8) | data[offset + 3]
+            offset += 4
+
+            loop_gap = (data[offset] << 24) | (data[offset + 1] << 16) | \
+                      (data[offset + 2] << 8) | data[offset + 3]
+            offset += 4
+
+            logger.info(f"Loop length: {loop_length}ms, gap: {loop_gap}ms")
+
+        # Extract BPM
+        bpm = self.extract_bpm_from_loop_data(data)
+
+        return {
+            'loopNum': loop_num,
+            'mainEvents': main_events,
+            'overdubEvents': overdub_events,
+            'loopLength': loop_length,
+            'loopGap': loop_gap,
+            'bpm': bpm
+        }
+
+    def parse_midi_events(self, data):
+        """Parse MIDI events from loop data - each event is 16 bytes"""
+        events = []
+        event_size = 16
+
+        for i in range(0, len(data), event_size):
+            if i + event_size > len(data):
+                break
+
+            event_data = data[i:i + event_size]
+
+            event_type = event_data[0]
+            channel = event_data[1]
+            note = event_data[2]
+            velocity = event_data[3]
+
+            # Timestamp is 32-bit little-endian
+            timestamp = (event_data[4]) | (event_data[5] << 8) | \
+                       (event_data[6] << 16) | (event_data[7] << 24)
+
+            events.append({
+                'type': event_type,
+                'channel': channel,
+                'note': note,
+                'velocity': velocity,
+                'timestamp': timestamp
+            })
+
+        return events
+
+    def convert_loop_to_midi(self, loops_data, bpm):
+        """Convert loop data to MIDI file bytes - matches webapp createMIDIFile()"""
+        logger.info(f"Creating MIDI file at {bpm} BPM")
+
+        # MIDI constants
+        MIDI_TPQN = 480  # Ticks per quarter note
+
+        # Collect all tracks
+        tracks = []
+        for loop_num in range(1, 5):
+            if loop_num not in loops_data:
+                continue
+
+            loop_data = loops_data[loop_num]
+
+            if loop_data['mainEvents']:
+                tracks.append({
+                    'name': f'Loop {loop_num} Main',
+                    'events': loop_data['mainEvents'],
+                    'loopLength': loop_data.get('loopLength', 0),
+                    'loopGap': loop_data.get('loopGap', 0)
+                })
+                logger.info(f"Added main track for loop {loop_num} with {len(loop_data['mainEvents'])} events")
+
+            if loop_data['overdubEvents']:
+                tracks.append({
+                    'name': f'Loop {loop_num} Overdub',
+                    'events': loop_data['overdubEvents'],
+                    'loopLength': loop_data.get('loopLength', 0),
+                    'loopGap': loop_data.get('loopGap', 0)
+                })
+                logger.info(f"Added overdub track for loop {loop_num} with {len(loop_data['overdubEvents'])} events")
+
+        if not tracks:
+            logger.info("No tracks to save")
+            return None
+
+        logger.info(f"Creating MIDI with {len(tracks)} tracks")
+
+        # Create MIDI file
+        midi_data = bytearray()
+
+        # MIDI Header
+        midi_data.extend(self.create_midi_header(len(tracks), MIDI_TPQN))
+
+        # Create each track
+        for track in tracks:
+            track_data = self.create_midi_track(track, bpm, MIDI_TPQN)
+            midi_data.extend(track_data)
+
+        return bytes(midi_data)
+
+    def create_midi_header(self, track_count, tpqn):
+        """Create MIDI file header"""
+        header = bytearray()
+
+        # "MThd" chunk
+        header.extend(b'MThd')
+
+        # Header length (always 6 bytes)
+        header.extend(struct.pack('>I', 6))
+
+        # Format type (1 = multiple tracks, synchronous)
+        header.extend(struct.pack('>H', 1))
+
+        # Number of tracks
+        header.extend(struct.pack('>H', track_count))
+
+        # Time division (TPQN)
+        header.extend(struct.pack('>H', tpqn))
+
+        return header
+
+    def create_midi_track(self, track, bpm, tpqn):
+        """Create a MIDI track from events"""
+        track_events = bytearray()
+
+        # Track name event
+        track_name = track['name'].encode('utf-8')
+        track_events.extend(self.create_variable_length(0))  # Delta time 0
+        track_events.extend(bytes([0xFF, 0x03, len(track_name)]))  # Track name meta event
+        track_events.extend(track_name)
+
+        # Tempo event (only in first track typically, but let's add to all)
+        microseconds_per_quarter = int(60000000 / bpm)
+        track_events.extend(self.create_variable_length(0))  # Delta time 0
+        track_events.extend(bytes([0xFF, 0x51, 0x03]))  # Tempo meta event
+        track_events.extend(struct.pack('>I', microseconds_per_quarter)[1:])  # 3 bytes
+
+        # Sort events by timestamp
+        sorted_events = sorted(track['events'], key=lambda e: e['timestamp'])
+
+        # Convert events to MIDI
+        last_time_ticks = 0
+        for event in sorted_events:
+            # Convert milliseconds to ticks
+            time_ms = event['timestamp']
+            ms_per_tick = 60000.0 / (bpm * tpqn)
+            time_ticks = int(round(time_ms / ms_per_tick))
+
+            # Delta time
+            delta_ticks = time_ticks - last_time_ticks
+            track_events.extend(self.create_variable_length(delta_ticks))
+            last_time_ticks = time_ticks
+
+            # MIDI event
+            event_type = event['type']
+            channel = event['channel']
+            note = event['note']
+            velocity = event['velocity']
+
+            if event_type == 1:  # Note On
+                status = 0x90 | (channel & 0x0F)
+                track_events.extend(bytes([status, note, velocity]))
+            elif event_type == 2:  # Note Off
+                status = 0x80 | (channel & 0x0F)
+                track_events.extend(bytes([status, note, velocity]))
+            elif event_type == 3:  # Control Change
+                status = 0xB0 | (channel & 0x0F)
+                track_events.extend(bytes([status, note, velocity]))
+
+        # End of track
+        track_events.extend(self.create_variable_length(0))
+        track_events.extend(bytes([0xFF, 0x2F, 0x00]))
+
+        # Create track chunk
+        track_chunk = bytearray()
+        track_chunk.extend(b'MTrk')
+        track_chunk.extend(struct.pack('>I', len(track_events)))
+        track_chunk.extend(track_events)
+
+        return track_chunk
+
+    def create_variable_length(self, value):
+        """Create MIDI variable-length quantity"""
+        result = bytearray()
+
+        result.append(value & 0x7F)
+        value >>= 7
+
+        while value > 0:
+            result.insert(0, (value & 0x7F) | 0x80)
+            value >>= 7
+
+        return result
 
     def setup_ui(self):
         # No stretch at top - goes directly to content
@@ -405,24 +711,10 @@ class LoopManager(BasicEditor):
     def on_save_loop(self, loop_num):
         """Request to save a specific loop from device"""
         try:
-            # Determine file extension based on format selection
-            if self.format_midi_radio.isChecked():
-                filter_str = "MIDI Files (*.mid);;All Files (*)"
-                default_name = f"loop{loop_num}.mid"
-            else:
-                filter_str = "Loop Files (*.loop);;All Files (*)"
-                default_name = f"loop{loop_num}.loop"
+            # Don't prompt for filename yet - wait for data and BPM extraction
+            logger.info(f"\n=== Requesting Loop {loop_num} from device ===")
 
-            filename, _ = QFileDialog.getSaveFileName(
-                None, f"Save Loop {loop_num}", default_name, filter_str
-            )
-
-            if not filename:
-                return
-
-            logger.info(f"\n=== Saving Loop {loop_num} to {filename} ===")
-
-            # Initialize transfer state
+            # Initialize transfer state (no filename yet)
             self.current_transfer = {
                 'active': True,
                 'is_loading': False,
@@ -431,7 +723,7 @@ class LoopManager(BasicEditor):
                 'received_packets': 0,
                 'total_size': 0,
                 'received_data': bytearray(),
-                'file_name': filename,
+                'file_name': '',  # Will be set after BPM extraction
                 'save_format': 'midi' if self.format_midi_radio.isChecked() else 'loop',
                 'save_all_mode': False,
                 'save_all_directory': '',
@@ -460,106 +752,168 @@ class LoopManager(BasicEditor):
             self.reset_transfer_state()
 
     def on_save_all_loops(self):
-        """Save all loops from device - prompts for each filename"""
+        """Save all loops from device to a single file"""
         try:
-            # Determine format
+            # Determine format and prompt for single filename
             save_format = 'midi' if self.format_midi_radio.isChecked() else 'loop'
-            extension = '.mid' if save_format == 'midi' else '.loop'
 
-            # Ask user if they want to choose directory or individual filenames
-            reply = QMessageBox.question(None, "Save All Loops",
-                "Choose how to save:\n\n"
-                "Yes - Choose directory (files named loop1-4" + extension + ")\n"
-                "No - Choose each filename individually",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            if save_format == 'midi':
+                filter_str = "MIDI Files (*.mid);;All Files (*)"
+                default_name = "all_loops.mid"
+            else:
+                filter_str = "Loops Files (*.loops);;All Files (*)"
+                default_name = "all_loops.loops"
 
-            if reply == QMessageBox.Cancel:
+            filename, _ = QFileDialog.getSaveFileName(
+                None, "Save All Loops", default_name, filter_str
+            )
+
+            if not filename:
                 return
 
-            if reply == QMessageBox.Yes:
-                # Directory mode
-                directory = QFileDialog.getExistingDirectory(
-                    None, "Select Directory to Save All Loops"
-                )
-                if not directory:
-                    return
+            logger.info(f"\n=== Saving All Loops to {filename} ===")
 
-                # Initialize for save all in directory mode
-                self.current_transfer['save_all_mode'] = True
-                self.current_transfer['save_all_directory'] = directory
-                self.current_transfer['save_format'] = save_format
-                self.current_transfer['save_all_current'] = 1
-
-            else:
-                # Individual filename mode - will prompt for each
-                self.current_transfer['save_all_mode'] = 'individual'
-                self.current_transfer['save_format'] = save_format
-                self.current_transfer['save_all_current'] = 1
+            # Initialize for save all mode
+            self.current_transfer = {
+                'active': True,
+                'is_loading': False,
+                'loop_num': 0,
+                'expected_packets': 0,
+                'received_packets': 0,
+                'total_size': 0,
+                'received_data': bytearray(),
+                'file_name': filename,
+                'save_format': save_format,
+                'save_all_mode': True,
+                'save_all_data': {},  # Will store all loop data
+                'save_all_current': 1,
+                'save_all_max_bpm': 120.0
+            }
 
             # Start HID listener
             self.start_hid_listener()
 
-            # Send trigger to save all
-            self.send_hid_packet(self.HID_CMD_TRIGGER_SAVE_ALL, 0)
+            # Wait a moment for listener to be ready
+            time.sleep(0.1)
 
-            # Start saving first loop
+            # Update UI
+            self.save_progress_label.setText("Requesting all loops from device...")
+            self.save_progress_bar.setValue(0)
+            self.save_progress_bar.setVisible(True)
+
+            # Start requesting loops
             self.save_next_loop_in_sequence()
 
         except Exception as e:
+            logger.info(f"Error in on_save_all_loops: {e}")
             QMessageBox.critical(None, "Error", f"Failed to save all loops: {str(e)}")
             self.reset_transfer_state()
 
     def save_next_loop_in_sequence(self):
-        """Continue save all sequence"""
+        """Continue save all sequence - request next loop"""
         loop_num = self.current_transfer.get('save_all_current', 0)
 
         if loop_num > 4:
-            # All done
-            QMessageBox.information(None, "Success", "All loops saved successfully!")
-            self.reset_transfer_state()
+            # All loops received, now save to file
+            logger.info("All loops received, creating combined file...")
+            self.save_all_loops_to_file()
             return
-
-        # Determine filename
-        save_format = self.current_transfer['save_format']
-        extension = '.mid' if save_format == 'midi' else '.loop'
-
-        if self.current_transfer['save_all_mode'] == True:  # Directory mode
-            directory = self.current_transfer['save_all_directory']
-            filename = os.path.join(directory, f"loop{loop_num}{extension}")
-        else:  # Individual mode
-            if self.format_midi_radio.isChecked():
-                filter_str = "MIDI Files (*.mid);;All Files (*)"
-            else:
-                filter_str = "Loop Files (*.loop);;All Files (*)"
-
-            filename, _ = QFileDialog.getSaveFileName(
-                None, f"Save Loop {loop_num}", f"loop{loop_num}{extension}", filter_str
-            )
-
-            if not filename:
-                # User cancelled - stop sequence
-                self.reset_transfer_state()
-                return
 
         # Setup for this loop
         self.current_transfer['active'] = True
         self.current_transfer['loop_num'] = loop_num
-        self.current_transfer['file_name'] = filename
         self.current_transfer['expected_packets'] = 0
         self.current_transfer['received_packets'] = 0
         self.current_transfer['total_size'] = 0
         self.current_transfer['received_data'] = bytearray()
 
         # Update UI
-        self.save_progress_label.setText(f"Saving Loop {loop_num} of 4...")
+        self.save_progress_label.setText(f"Requesting Loop {loop_num} of 4...")
         self.save_progress_bar.setValue((loop_num - 1) * 25)
         self.save_progress_bar.setVisible(True)
 
         # Send request
+        logger.info(f"Requesting loop {loop_num} for save all")
         self.send_hid_packet(self.HID_CMD_REQUEST_SAVE, loop_num)
 
+    def save_all_loops_to_file(self):
+        """Save all collected loops to a single file"""
+        try:
+            save_format = self.current_transfer['save_format']
+            filename = self.current_transfer['file_name']
+            save_all_data = self.current_transfer.get('save_all_data', {})
+
+            logger.info(f"Saving all loops to {filename} in {save_format} format")
+            logger.info(f"Collected data for loops: {list(save_all_data.keys())}")
+
+            if save_format == 'midi':
+                # Convert to MIDI - all loops in one file
+                loops_data = {}
+                max_bpm = self.current_transfer.get('save_all_max_bpm', 120.0)
+
+                for loop_num, loop_bytes in save_all_data.items():
+                    parsed = self.parse_loop_data(loop_bytes)
+                    if parsed:
+                        loops_data[loop_num] = parsed
+                        # Use highest BPM from all loops
+                        if parsed['bpm'] > max_bpm:
+                            max_bpm = parsed['bpm']
+
+                logger.info(f"Using BPM: {max_bpm} for MIDI file")
+
+                midi_data = self.convert_loop_to_midi(loops_data, max_bpm)
+
+                if midi_data:
+                    with open(filename, 'wb') as f:
+                        f.write(midi_data)
+                    logger.info(f"Successfully saved MIDI file: {filename}")
+                    self.save_progress_label.setText(f"Saved all loops to {os.path.basename(filename)}")
+                else:
+                    logger.info("Failed to create MIDI data")
+                    QMessageBox.warning(None, "Warning", "Failed to convert loops to MIDI")
+
+            else:
+                # Save as .loops file (custom multi-loop format)
+                # Format: [loop1_size (4 bytes)][loop1_data][loop2_size][loop2_data]...
+                combined_data = bytearray()
+
+                # Write a header for the .loops file
+                combined_data.extend(b'LOOPS')  # Magic bytes
+                combined_data.append(0x01)  # Version
+                combined_data.append(len(save_all_data))  # Number of loops
+
+                for loop_num in range(1, 5):
+                    if loop_num in save_all_data:
+                        loop_data = save_all_data[loop_num]
+                        # Write loop size (4 bytes, big-endian)
+                        combined_data.extend(struct.pack('>I', len(loop_data)))
+                        # Write loop data
+                        combined_data.extend(loop_data)
+                        logger.info(f"Added loop {loop_num}: {len(loop_data)} bytes")
+                    else:
+                        # Write 0 size for empty loop
+                        combined_data.extend(struct.pack('>I', 0))
+                        logger.info(f"Loop {loop_num}: empty")
+
+                with open(filename, 'wb') as f:
+                    f.write(combined_data)
+
+                logger.info(f"Successfully saved .loops file: {filename}")
+                self.save_progress_label.setText(f"Saved all loops to {os.path.basename(filename)}")
+
+            # Update progress bar
+            self.save_progress_bar.setValue(100)
+
+            # Reset after a short delay (no popup notification)
+            QTimer.singleShot(2000, self.reset_transfer_state)
+
+        except Exception as e:
+            logger.info(f"Error saving all loops to file: {e}")
+            QMessageBox.critical(None, "Error", f"Failed to save file: {str(e)}")
+            self.reset_transfer_state()
+
     def parse_loop_file(self, filename):
-        """Parse a .loop file and extract track info"""
+        """Parse a .loop or .loops file and extract track info"""
         try:
             with open(filename, 'rb') as f:
                 data = f.read()
@@ -568,18 +922,118 @@ class LoopManager(BasicEditor):
             if len(data) < 4:
                 return None
 
-            # Check magic bytes
-            if data[0] != 0xAA or data[1] != 0x55:
-                return None
+            # Check if it's a .loops file (multi-loop format)
+            if data[0:5] == b'LOOPS':
+                return self.parse_loops_file(data)
 
-            # This is a single track loop file
-            return {
-                'tracks': [{'name': 'Main Loop', 'index': 0}],
-                'bpm': 120  # TODO: Extract BPM from file
-            }
+            # Check if it's a single .loop file
+            if data[0] == 0xAA and data[1] == 0x55:
+                # Extract BPM from loop data
+                bpm = self.extract_bpm_from_loop_data(data)
+
+                # Parse the loop to get event counts for track info
+                parsed = self.parse_loop_data(data)
+                if not parsed:
+                    return None
+
+                # Create track list based on what's in the loop
+                tracks = []
+                if parsed['mainEvents']:
+                    tracks.append({
+                        'name': f'Loop Main ({len(parsed["mainEvents"])} events)',
+                        'index': 0,
+                        'is_overdub': False
+                    })
+                if parsed['overdubEvents']:
+                    tracks.append({
+                        'name': f'Loop Overdub ({len(parsed["overdubEvents"])} events)',
+                        'index': 1,
+                        'is_overdub': True
+                    })
+
+                return {
+                    'tracks': tracks,
+                    'bpm': bpm,
+                    'loop_data': data  # Store raw data for loading
+                }
+
+            return None
 
         except Exception as e:
             logger.info(f"Error parsing loop file: {e}")
+            return None
+
+    def parse_loops_file(self, data):
+        """Parse a .loops file (multi-loop format)"""
+        try:
+            # Format: LOOPS + version(1) + count(1) + [loop1_size(4) + loop1_data]...
+            if len(data) < 7:
+                return None
+
+            if data[0:5] != b'LOOPS':
+                return None
+
+            version = data[5]
+            loop_count = data[6]
+            offset = 7
+
+            logger.info(f"Parsing .loops file: version {version}, {loop_count} loops")
+
+            tracks = []
+            loops_data = {}
+
+            for loop_num in range(1, 5):
+                if offset + 4 > len(data):
+                    break
+
+                # Read loop size (4 bytes, big-endian)
+                loop_size = struct.unpack('>I', data[offset:offset + 4])[0]
+                offset += 4
+
+                if loop_size > 0:
+                    if offset + loop_size > len(data):
+                        logger.info(f"Invalid loop size for loop {loop_num}")
+                        break
+
+                    loop_data = data[offset:offset + loop_size]
+                    offset += loop_size
+
+                    # Parse this loop to extract BPM and events
+                    parsed = self.parse_loop_data(loop_data)
+                    if parsed:
+                        loops_data[loop_num] = loop_data
+
+                        # Add tracks for this loop
+                        if parsed['mainEvents']:
+                            tracks.append({
+                                'name': f'Loop {loop_num} Main ({len(parsed["mainEvents"])} events)',
+                                'index': len(tracks),
+                                'loop_num': loop_num,
+                                'is_overdub': False
+                            })
+                        if parsed['overdubEvents']:
+                            tracks.append({
+                                'name': f'Loop {loop_num} Overdub ({len(parsed["overdubEvents"])} events)',
+                                'index': len(tracks),
+                                'loop_num': loop_num,
+                                'is_overdub': True
+                            })
+
+            # Use highest BPM from all loops
+            max_bpm = 120.0
+            for loop_data in loops_data.values():
+                bpm = self.extract_bpm_from_loop_data(loop_data)
+                if bpm > max_bpm:
+                    max_bpm = bpm
+
+            return {
+                'tracks': tracks,
+                'bpm': max_bpm,
+                'loops_data': loops_data  # Dict of loop_num -> raw loop data
+            }
+
+        except Exception as e:
+            logger.info(f"Error parsing .loops file: {e}")
             return None
 
     def parse_midi_file(self, filename):
@@ -771,15 +1225,201 @@ class LoopManager(BasicEditor):
         self.update_assignment_buttons()
         self.load_assignments_btn.setEnabled(True)
 
+    def load_loop_data_to_device(self, loop_data, loop_num):
+        """Load loop data to device via HID - matches webapp loadLoopData()"""
+        try:
+            logger.info(f"\n=== Loading loop data to device: Loop {loop_num}, {len(loop_data)} bytes ===")
+
+            # Calculate number of packets needed
+            chunk_size = self.HID_DATA_SIZE - 4  # Reserve 4 bytes for chunk info
+            total_packets = (len(loop_data) + chunk_size - 1) // chunk_size  # Ceiling division
+
+            logger.info(f"Total packets to send: {total_packets}, chunk size: {chunk_size}")
+
+            # Send LOAD_START packet
+            start_data = bytearray(4)
+            start_data[0] = total_packets & 0xFF
+            start_data[1] = (total_packets >> 8) & 0xFF
+            start_data[2] = len(loop_data) & 0xFF
+            start_data[3] = (len(loop_data) >> 8) & 0xFF
+
+            logger.info(f"Sending LOAD_START: {total_packets} packets, {len(loop_data)} bytes")
+            self.send_hid_packet(self.HID_CMD_LOAD_START, loop_num, 0, start_data)
+            time.sleep(0.05)
+
+            # Send data in chunks
+            for packet_num in range(total_packets):
+                offset = packet_num * chunk_size
+                chunk_len = min(chunk_size, len(loop_data) - offset)
+                chunk_data = loop_data[offset:offset + chunk_len]
+
+                # Create packet data: packet_num(2) + chunk_len(2) + chunk_data
+                packet_data = bytearray(4 + chunk_len)
+                packet_data[0] = packet_num & 0xFF
+                packet_data[1] = (packet_num >> 8) & 0xFF
+                packet_data[2] = chunk_len & 0xFF
+                packet_data[3] = (chunk_len >> 8) & 0xFF
+                packet_data[4:4 + chunk_len] = chunk_data
+
+                logger.info(f"Sending chunk {packet_num + 1}/{total_packets}: {chunk_len} bytes")
+                self.send_hid_packet(self.HID_CMD_LOAD_CHUNK, loop_num, 0, packet_data)
+                time.sleep(0.01)  # Small delay between packets
+
+            # Send LOAD_END packet
+            logger.info("Sending LOAD_END")
+            self.send_hid_packet(self.HID_CMD_LOAD_END, loop_num, 0)
+            time.sleep(0.05)
+
+            logger.info(f"Successfully sent all data for loop {loop_num}")
+            return True
+
+        except Exception as e:
+            logger.info(f"Error loading loop data to device: {e}")
+            return False
+
     def on_load_all_tracks(self):
         """Load all tracks from selected file"""
-        # TODO: Implement batch loading logic
-        QMessageBox.information(None, "Info", "Load all tracks feature coming soon!")
+        try:
+            # Get currently selected file
+            current_item = self.file_list.currentItem()
+            if not current_item:
+                QMessageBox.warning(None, "Warning", "Please select a file first")
+                return
+
+            filename = current_item.data(QtCore.Qt.UserRole)
+            if filename not in self.loaded_files:
+                QMessageBox.warning(None, "Warning", "File data not found")
+                return
+
+            file_info = self.loaded_files[filename]
+            logger.info(f"\n=== Loading all tracks from {filename} ===")
+
+            # Check if it's a .loops file or MIDI file
+            if 'loops_data' in file_info:
+                # .loops file - load each loop to corresponding slot
+                loops_data = file_info['loops_data']
+                logger.info(f"Loading .loops file with {len(loops_data)} loops")
+
+                self.load_progress_label.setText("Loading loops to device...")
+                self.load_progress_bar.setValue(0)
+                self.load_progress_bar.setVisible(True)
+
+                for idx, (loop_num, loop_data) in enumerate(loops_data.items()):
+                    progress = int(((idx + 1) / len(loops_data)) * 100)
+                    self.load_progress_label.setText(f"Loading Loop {loop_num} to device...")
+                    self.load_progress_bar.setValue(progress)
+
+                    success = self.load_loop_data_to_device(loop_data, loop_num)
+                    if not success:
+                        QMessageBox.warning(None, "Warning", f"Failed to load Loop {loop_num}")
+                        break
+
+                self.load_progress_label.setText("All loops loaded successfully")
+                self.load_progress_bar.setValue(100)
+                QTimer.singleShot(2000, self.reset_transfer_state)
+
+            elif 'loop_data' in file_info:
+                # Single .loop file - ask which loop to load to
+                loop_num, ok = QInputDialog.getInt(
+                    None, "Select Loop", "Load to which loop (1-4)?", 1, 1, 4
+                )
+                if not ok:
+                    return
+
+                logger.info(f"Loading single loop file to Loop {loop_num}")
+
+                self.load_progress_label.setText(f"Loading to Loop {loop_num}...")
+                self.load_progress_bar.setValue(50)
+                self.load_progress_bar.setVisible(True)
+
+                success = self.load_loop_data_to_device(file_info['loop_data'], loop_num)
+
+                if success:
+                    self.load_progress_label.setText(f"Loaded to Loop {loop_num}")
+                    self.load_progress_bar.setValue(100)
+                else:
+                    QMessageBox.warning(None, "Warning", f"Failed to load to Loop {loop_num}")
+
+                QTimer.singleShot(2000, self.reset_transfer_state)
+
+            else:
+                # MIDI file - not yet implemented for load all
+                QMessageBox.information(None, "Info",
+                    "Loading MIDI files requires track assignment.\n"
+                    "Please use the Advanced Track Assignment section.")
+
+        except Exception as e:
+            logger.info(f"Error in on_load_all_tracks: {e}")
+            QMessageBox.critical(None, "Error", f"Failed to load tracks: {str(e)}")
+            self.reset_transfer_state()
 
     def on_load_assignments(self):
         """Load assigned tracks to device"""
-        # TODO: Implement assignment loading logic
-        QMessageBox.information(None, "Info", "Loading assigned tracks...")
+        try:
+            if not self.pending_assignments:
+                QMessageBox.warning(None, "Warning", "No tracks assigned. Please assign tracks first.")
+                return
+
+            logger.info(f"\n=== Loading assigned tracks to device ===")
+            logger.info(f"Pending assignments: {list(self.pending_assignments.keys())}")
+
+            self.load_progress_label.setText("Loading assigned tracks...")
+            self.load_progress_bar.setValue(0)
+            self.load_progress_bar.setVisible(True)
+
+            total_assignments = sum(
+                1 + (1 if 'overdub' in assignments else 0)
+                for assignments in self.pending_assignments.values()
+                if 'main' in assignments
+            )
+
+            logger.info(f"Total assignments to load: {total_assignments}")
+
+            completed = 0
+
+            for loop_num, assignments in self.pending_assignments.items():
+                if 'main' in assignments:
+                    # Load main track
+                    track_info = assignments['main']
+                    filename = track_info['filename']
+                    track_idx = track_info['track_idx']
+
+                    logger.info(f"Loading main track {track_idx} from {filename} to Loop {loop_num}")
+
+                    # TODO: Convert MIDI track to loop format and load
+                    # For now, just update progress
+                    completed += 1
+                    progress = int((completed / total_assignments) * 100)
+                    self.load_progress_label.setText(f"Loading Loop {loop_num} Main...")
+                    self.load_progress_bar.setValue(progress)
+
+                if 'overdub' in assignments:
+                    # Load overdub track
+                    track_info = assignments['overdub']
+                    filename = track_info['filename']
+                    track_idx = track_info['track_idx']
+
+                    logger.info(f"Loading overdub track {track_idx} from {filename} to Loop {loop_num}")
+
+                    # TODO: Convert MIDI track to loop format and load
+                    completed += 1
+                    progress = int((completed / total_assignments) * 100)
+                    self.load_progress_label.setText(f"Loading Loop {loop_num} Overdub...")
+                    self.load_progress_bar.setValue(progress)
+
+            self.load_progress_label.setText("All assigned tracks loaded")
+            self.load_progress_bar.setValue(100)
+
+            # Clear pending assignments
+            self.pending_assignments = {}
+            self.update_assignment_buttons()
+
+            QTimer.singleShot(2000, self.reset_transfer_state)
+
+        except Exception as e:
+            logger.info(f"Error in on_load_assignments: {e}")
+            QMessageBox.critical(None, "Error", f"Failed to load assignments: {str(e)}")
+            self.reset_transfer_state()
 
     def update_assignment_buttons(self):
         """Update assignment button states and labels"""
@@ -848,6 +1488,18 @@ class LoopManager(BasicEditor):
         elif command == self.HID_CMD_SAVE_END:
             logger.info("-> SAVE_END")
             self.handle_save_end(macro_num, status)
+        elif command == self.HID_CMD_REQUEST_SAVE:
+            logger.info(f"-> REQUEST_SAVE acknowledgment (loop {macro_num}, status {status})")
+            # Device acknowledged the request, now waiting for SAVE_START
+        elif command == self.HID_CMD_TRIGGER_SAVE_ALL:
+            logger.info(f"-> TRIGGER_SAVE_ALL acknowledgment (status {status})")
+            # Device acknowledged the trigger, will send individual loop data
+        elif command == self.HID_CMD_LOAD_START or command == self.HID_CMD_LOAD_OVERDUB_START:
+            logger.info(f"-> {'LOAD_START' if command == self.HID_CMD_LOAD_START else 'LOAD_OVERDUB_START'} acknowledgment")
+            # Device acknowledged load start
+        elif command == self.HID_CMD_LOAD_END:
+            logger.info(f"-> LOAD_END acknowledgment (loop {macro_num}, status {status})")
+            # Device acknowledged load completion
         else:
             logger.info(f"-> Unknown command: 0x{command:02x}")
 
@@ -926,47 +1578,115 @@ class LoopManager(BasicEditor):
             return
 
         if status == 0:
-            # Save to file
             try:
-                received_size = len(self.current_transfer['received_data'])
-                logger.info(f"Saving {received_size} bytes to {self.current_transfer['file_name']}")
-
-                if self.current_transfer['save_format'] == 'midi':
-                    # TODO: Convert loop data to MIDI format
-                    data = self.current_transfer['received_data']
-                else:
-                    data = self.current_transfer['received_data']
-
-                with open(self.current_transfer['file_name'], 'wb') as f:
-                    f.write(data)
-
-                logger.info(f"File saved successfully: {self.current_transfer['file_name']}")
+                received_data = bytes(self.current_transfer['received_data'])
+                received_size = len(received_data)
+                logger.info(f"Received {received_size} bytes for loop {macro_num}")
 
                 # Check if in save all mode
                 if self.current_transfer.get('save_all_mode'):
-                    logger.info("Save all mode: moving to next loop")
-                    # Continue to next loop
+                    logger.info(f"Save all mode: storing loop {macro_num} data")
+
+                    # Store the loop data
+                    if 'save_all_data' not in self.current_transfer:
+                        self.current_transfer['save_all_data'] = {}
+
+                    self.current_transfer['save_all_data'][macro_num] = received_data
+
+                    # Extract and track max BPM
+                    bpm = self.extract_bpm_from_loop_data(received_data)
+                    if bpm > self.current_transfer.get('save_all_max_bpm', 0):
+                        self.current_transfer['save_all_max_bpm'] = bpm
+
+                    logger.info(f"Stored loop {macro_num}, BPM: {bpm}")
+
+                    # Move to next loop
                     self.current_transfer['save_all_current'] += 1
                     self.current_transfer['active'] = False  # Reset for next loop
                     QTimer.singleShot(100, self.save_next_loop_in_sequence)
+
                 else:
-                    self.transfer_complete.emit(True,
-                        f"Successfully saved Loop {macro_num} to {os.path.basename(self.current_transfer['file_name'])}")
+                    # Individual save - extract BPM first, then prompt for filename
+                    bpm = self.extract_bpm_from_loop_data(received_data)
+                    logger.info(f"Extracted BPM: {bpm}")
+
+                    # Determine file extension and default name with BPM
+                    if self.current_transfer['save_format'] == 'midi':
+                        filter_str = "MIDI Files (*.mid);;All Files (*)"
+                        default_name = f"loop{macro_num}_{bpm}.mid"
+                    else:
+                        filter_str = "Loop Files (*.loop);;All Files (*)"
+                        default_name = f"loop{macro_num}_{bpm}.loop"
+
+                    # Prompt for filename with BPM included
+                    filename, _ = QFileDialog.getSaveFileName(
+                        None, f"Save Loop {macro_num} ({bpm} BPM)", default_name, filter_str
+                    )
+
+                    if not filename:
+                        # User cancelled
+                        logger.info("User cancelled save")
+                        self.reset_transfer_state()
+                        return
+
+                    logger.info(f"User chose filename: {filename}")
+
+                    if self.current_transfer['save_format'] == 'midi':
+                        # Convert to MIDI
+                        logger.info("Converting to MIDI format...")
+
+                        # Parse the loop data
+                        parsed = self.parse_loop_data(received_data)
+
+                        if parsed:
+                            logger.info(f"Parsed loop data successfully")
+
+                            # Convert to MIDI
+                            loops_data = {macro_num: parsed}
+                            midi_data = self.convert_loop_to_midi(loops_data, bpm)
+
+                            if midi_data:
+                                with open(filename, 'wb') as f:
+                                    f.write(midi_data)
+                                logger.info(f"Successfully saved MIDI file: {filename}")
+                                self.save_progress_label.setText(f"Saved to {os.path.basename(filename)}")
+                                self.save_progress_bar.setValue(100)
+                            else:
+                                logger.info("Failed to create MIDI data")
+                                QMessageBox.warning(None, "Warning", "Failed to convert to MIDI")
+                        else:
+                            logger.info("Failed to parse loop data")
+                            QMessageBox.warning(None, "Warning", "Failed to parse loop data")
+
+                    else:
+                        # Save as .loop file (raw data)
+                        with open(filename, 'wb') as f:
+                            f.write(received_data)
+
+                        logger.info(f"Successfully saved loop file: {filename}")
+                        self.save_progress_label.setText(f"Saved to {os.path.basename(filename)}")
+                        self.save_progress_bar.setValue(100)
+
+                    # Reset after a short delay (no popup notification)
+                    QTimer.singleShot(2000, self.reset_transfer_state)
 
             except Exception as e:
                 logger.info(f"Error saving file: {e}")
-                self.transfer_complete.emit(False, f"Failed to save file: {str(e)}")
+                QMessageBox.critical(None, "Error", f"Failed to save file: {str(e)}")
+                self.reset_transfer_state()
 
         else:
             logger.info(f"SAVE_END with error status: {status}")
             # Check if in save all mode
             if self.current_transfer.get('save_all_mode'):
+                logger.info(f"Loop {macro_num} had error, skipping and continuing...")
                 # Continue to next loop even on error
                 self.current_transfer['save_all_current'] += 1
                 self.current_transfer['active'] = False
                 QTimer.singleShot(100, self.save_next_loop_in_sequence)
             else:
-                self.transfer_complete.emit(False, f"Failed to receive Loop {macro_num}")
+                QMessageBox.warning(None, "Warning", f"Failed to receive Loop {macro_num}")
+                self.reset_transfer_state()
 
     def on_transfer_progress(self, progress, message):
         """Update UI with transfer progress (thread-safe)"""
@@ -974,13 +1694,17 @@ class LoopManager(BasicEditor):
         self.save_progress_bar.setValue(progress)
 
     def on_transfer_complete(self, success, message):
-        """Handle transfer completion (thread-safe)"""
+        """Handle transfer completion (thread-safe) - NO POPUP NOTIFICATIONS"""
+        # Just update the UI, no popup notifications
         if success:
-            QMessageBox.information(None, "Success", message)
+            self.save_progress_label.setText(message)
+            self.save_progress_bar.setValue(100)
         else:
+            # Only show popup for errors
             QMessageBox.warning(None, "Warning", message)
 
-        self.reset_transfer_state()
+        # Reset after a short delay
+        QTimer.singleShot(2000, self.reset_transfer_state)
 
     def reset_transfer_state(self):
         """Reset transfer state"""
@@ -995,8 +1719,9 @@ class LoopManager(BasicEditor):
             'file_name': '',
             'save_format': 'loop',
             'save_all_mode': False,
-            'save_all_directory': '',
-            'save_all_current': 0
+            'save_all_data': {},
+            'save_all_current': 0,
+            'save_all_max_bpm': 120.0
         }
 
         self.save_progress_label.setText("")
