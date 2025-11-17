@@ -16,6 +16,17 @@ from fbs_runtime.application_context.PyQt5 import ApplicationContext
 
 import sys
 
+# Import MIDI libraries early to ensure PyInstaller includes them in frozen build
+try:
+    import mido
+    import mido.backends
+    import mido.backends.rtmidi
+    import rtmidi
+    import _rtmidi
+except ImportError:
+    # MIDI libraries not available - tabs will show warning message
+    pass
+
 from main_window import MainWindow
 
 

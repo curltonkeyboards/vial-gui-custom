@@ -1,19 +1,30 @@
-# PyInstaller hook for mido
+# PyInstaller hook for mido (compatible with PyInstaller 3.4+)
 # Ensures all backends and submodules are included
 
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+try:
+    from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
-# Collect all mido submodules
-hiddenimports = collect_submodules('mido')
+    # Collect all mido submodules
+    hiddenimports = collect_submodules('mido')
 
-# Collect any data files
-datas = collect_data_files('mido')
+    # Collect any data files
+    try:
+        datas = collect_data_files('mido')
+    except:
+        datas = []
 
-# Explicitly include backends
-hiddenimports += [
-    'mido.backends',
-    'mido.backends.rtmidi',
-    'mido.backends.portmidi',
-    'mido.backends.pygame',
-    'mido.backends.amidi',
-]
+except ImportError:
+    # Fallback for older PyInstaller versions
+    hiddenimports = [
+        'mido',
+        'mido.backends',
+        'mido.backends.rtmidi',
+        'mido.backends.portmidi',
+        'mido.backends.pygame',
+        'mido.backends.amidi',
+        'mido.messages',
+        'mido.ports',
+        'mido.parser',
+        'mido.midifiles',
+    ]
+    datas = []

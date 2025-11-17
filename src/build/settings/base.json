@@ -2,15 +2,5 @@
     "app_name": "Curlton KeyStation",
     "author": "Curlton Keyboards",
     "main_module": "src/main/python/main.py",
-    "version": "0.7.1",
-    "hidden_imports": [
-        "mido",
-        "mido.backends",
-        "mido.backends.rtmidi",
-        "rtmidi",
-        "_rtmidi"
-    ],
-    "pyinstaller_options": [
-        "--additional-hooks-dir=src/build/hooks"
-    ]
+    "version": "0.7.1"
 }
