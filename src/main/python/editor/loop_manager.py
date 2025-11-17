@@ -455,6 +455,10 @@ class LoopManager(BasicEditor):
             event_byte = data[offset]
             offset += 1
 
+            # Debug logging for first few events
+            if len(events) < 5 or offset < 100:
+                logger.info(f"Offset {offset-1}: delta={delta_time}, ticks={current_ticks}, byte=0x{event_byte:02x}")
+
             if event_byte == 0xFF:
                 # Meta event
                 if offset >= len(data):
