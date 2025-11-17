@@ -1088,8 +1088,8 @@ class LoopManager(BasicEditor):
             save_format = 'midi' if self.format_midi_radio.isChecked() else 'loop'
 
             if save_format == 'midi':
-                filter_str = "MIDI Files (*.mid);;All Files (*)"
-                default_name = "all_loops.mid"
+                filter_str = "MIDI Files (*.midi);;All Files (*)"
+                default_name = "all_loops.midi"
             else:
                 filter_str = "Loop Files (*.loop);;All Files (*)"
                 default_name = "all_loops.loop"
@@ -2210,8 +2210,8 @@ class LoopManager(BasicEditor):
 
                     # Determine file extension and default name with BPM
                     if self.current_transfer['save_format'] == 'midi':
-                        filter_str = "MIDI Files (*.mid);;All Files (*)"
-                        default_name = f"loop{macro_num}_{bpm}.mid"
+                        filter_str = "MIDI Files (*.midi);;All Files (*)"
+                        default_name = f"loop{macro_num}_{bpm}.midi"
                     else:
                         filter_str = "Loop Files (*.loop);;All Files (*)"
                         default_name = f"loop{macro_num}_{bpm}.loop"
