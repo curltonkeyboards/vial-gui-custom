@@ -178,14 +178,13 @@ class ThruLoopConfigurator(BasicEditor):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
 
         scroll_area.setWidget(main_widget)
-        self.addWidget(scroll_area)
+        self.addWidget(scroll_area, 1)
 
         # Top row: Basic Settings and LoopChop side by side
         top_row_layout = QHBoxLayout()
@@ -662,14 +661,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
 
         scroll_area.setWidget(main_widget)
-        self.addWidget(scroll_area)
+        self.addWidget(scroll_area, 1)
 
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
