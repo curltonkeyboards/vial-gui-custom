@@ -90,6 +90,7 @@ class LoopManager(BasicEditor):
         self.overdub_contents = {}  # Track what's in each overdub (1-4)
         self.selected_track = None  # Currently selected track {file_idx, track_idx}
         self.pending_assignments = {}  # Track assignments pending load
+        self.loop_content_labels = []  # UI labels for displaying loop contents
 
         self.hid_listener_thread = None
         self.hid_listening = False
@@ -2626,6 +2627,10 @@ class LoopManager(BasicEditor):
 
     def update_loop_contents_display(self):
         """Update the loop contents display"""
+        # Only update if labels exist
+        if not self.loop_content_labels:
+            return
+
         for i in range(4):
             loop_num = i + 1
             if loop_num in self.loop_contents:
