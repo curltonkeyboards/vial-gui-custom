@@ -37,27 +37,42 @@ class MacroTab(QVBoxLayout):
             .triggered.connect(lambda: self.record.emit(self, False))
 
         self.btn_record = QPushButton(tr("MacroRecorder", "Record macro"))
+        self.btn_record.setMinimumHeight(30)
+        self.btn_record.setMaximumHeight(30)
+        self.btn_record.setStyleSheet("QPushButton { border-radius: 5px; }")
         self.btn_record.setMenu(menu_record)
         if not enable_recorder:
             self.btn_record.hide()
 
         self.btn_record_stop = QPushButton(tr("MacroRecorder", "Stop recording"))
+        self.btn_record_stop.setMinimumHeight(30)
+        self.btn_record_stop.setMaximumHeight(30)
+        self.btn_record_stop.setStyleSheet("QPushButton { border-radius: 5px; }")
         self.btn_record_stop.clicked.connect(lambda: self.record_stop.emit())
         self.btn_record_stop.hide()
 
         self.btn_add = QToolButton()
         self.btn_add.setText(tr("MacroRecorder", "Add action"))
         self.btn_add.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.btn_add.setMinimumHeight(30)
+        self.btn_add.setMaximumHeight(30)
+        self.btn_add.setStyleSheet("QToolButton { border-radius: 5px; }")
         self.btn_add.clicked.connect(self.on_add)
 
         self.btn_tap_enter = QToolButton()
         self.btn_tap_enter.setText(tr("MacroRecorder", "Tap Enter"))
         self.btn_tap_enter.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.btn_tap_enter.setMinimumHeight(30)
+        self.btn_tap_enter.setMaximumHeight(30)
+        self.btn_tap_enter.setStyleSheet("QToolButton { border-radius: 5px; }")
         self.btn_tap_enter.clicked.connect(self.on_tap_enter)
 
         self.btn_text_window = QToolButton()
         self.btn_text_window.setText(tr("MacroRecorder", "Open Text Editor..."))
         self.btn_text_window.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.btn_text_window.setMinimumHeight(30)
+        self.btn_text_window.setMaximumHeight(30)
+        self.btn_text_window.setStyleSheet("QToolButton { border-radius: 5px; }")
         self.btn_text_window.clicked.connect(self.on_text_window)
 
         layout_buttons = QHBoxLayout()
