@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QObject
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction
+    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -2133,12 +2133,21 @@ class RGBConfigurator(BasicEditor):
 
         self.addStretch()
 
+        # Create scroll area for better window resizing
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
         w = QWidget()
-        w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.container = QGridLayout()
         w.setLayout(self.container)
-        self.addWidget(w)
-        self.setAlignment(w, QtCore.Qt.AlignHCenter)
+
+        scroll_area.setWidget(w)
+        self.addWidget(scroll_area)
+        self.setAlignment(scroll_area, QtCore.Qt.AlignHCenter)
 
         self.handler_backlight = QmkBacklightHandler(self.container)
         self.handler_backlight.update.connect(self.update_from_keyboard)
