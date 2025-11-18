@@ -55,11 +55,23 @@ class QuickActuationWidget(QGroupBox):
         layout.setContentsMargins(10, 15, 10, 10)
         self.setLayout(layout)
         
-        # Enable Per-Layer Settings checkbox
+        # Top row with Enable Per-Layer and Show Advanced checkboxes
+        top_row_layout = QHBoxLayout()
+        top_row_layout.setContentsMargins(0, 0, 0, 0)
+        top_row_layout.setSpacing(10)
+
         self.per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer"))
         self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; }")
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
-        layout.addWidget(self.per_layer_checkbox)
+        top_row_layout.addWidget(self.per_layer_checkbox)
+
+        self.advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced"))
+        self.advanced_checkbox.setStyleSheet("QCheckBox { font-weight: normal; font-size: 10px; }")
+        self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
+        top_row_layout.addWidget(self.advanced_checkbox)
+
+        top_row_layout.addStretch()
+        layout.addLayout(top_row_layout)
         
         # Layer indicator (only visible in per-layer mode)
         self.layer_label = QLabel(tr("QuickActuationWidget", "Layer 0"))
@@ -256,9 +268,9 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(label)
 
         self.aftertouch_combo = ArrowComboBox()
-        self.aftertouch_combo.setMaximumHeight(20)
+        self.aftertouch_combo.setMaximumHeight(25)
         self.aftertouch_combo.setMaximumWidth(180)
-        self.aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
+        self.aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; }")
         self.aftertouch_combo.addItem("Off", 0)
         self.aftertouch_combo.addItem("Reverse", 1)
         self.aftertouch_combo.addItem("Bottom-Out", 2)
@@ -280,9 +292,9 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(label)
 
         self.aftertouch_cc_combo = ArrowComboBox()
-        self.aftertouch_cc_combo.setMaximumHeight(20)
+        self.aftertouch_cc_combo.setMaximumHeight(25)
         self.aftertouch_cc_combo.setMaximumWidth(180)
-        self.aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
+        self.aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; }")
         for cc in range(128):
             self.aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
         self.aftertouch_cc_combo.setCurrentIndex(74)
@@ -301,9 +313,9 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(label)
 
         self.velocity_combo = ArrowComboBox()
-        self.velocity_combo.setMaximumHeight(20)
+        self.velocity_combo.setMaximumHeight(25)
         self.velocity_combo.setMaximumWidth(180)
-        self.velocity_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
+        self.velocity_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; }")
         self.velocity_combo.addItem("Fixed (64)", 0)
         self.velocity_combo.addItem("Peak at Apex", 1)
         self.velocity_combo.addItem("Speed-Based", 2)
@@ -324,9 +336,9 @@ class QuickActuationWidget(QGroupBox):
         combo_layout.addWidget(label)
 
         self.vel_speed_combo = ArrowComboBox()
-        self.vel_speed_combo.setMaximumHeight(20)
+        self.vel_speed_combo.setMaximumHeight(25)
         self.vel_speed_combo.setMaximumWidth(180)
-        self.vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
+        self.vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; }")
         for i in range(1, 21):
             self.vel_speed_combo.addItem(str(i), i)
         self.vel_speed_combo.setCurrentIndex(9)
@@ -336,15 +348,8 @@ class QuickActuationWidget(QGroupBox):
         self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
         
         layout.addWidget(self.advanced_widget)
-        
+
         layout.addStretch()
-        
-        # Show Advanced button
-        self.advanced_btn = QPushButton(tr("QuickActuationWidget", "Show Advanced Options"))
-        self.advanced_btn.setMaximumHeight(24)
-        self.advanced_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
-        self.advanced_btn.clicked.connect(self.on_advanced_btn_clicked)
-        layout.addWidget(self.advanced_btn)
 
         # Save button at the bottom
         self.save_btn = QPushButton(tr("QuickActuationWidget", "Save to All Layers"))
@@ -353,27 +358,22 @@ class QuickActuationWidget(QGroupBox):
         self.save_btn.clicked.connect(self.on_save)
         layout.addWidget(self.save_btn)
     
-    def on_advanced_btn_clicked(self):
+    def on_advanced_toggled(self):
         """Toggle advanced options visibility"""
-        currently_visible = self.advanced_widget.isVisible()
-        self.advanced_widget.setVisible(not currently_visible)
-        
+        show_advanced = self.advanced_checkbox.isChecked()
+        self.advanced_widget.setVisible(show_advanced)
+
         # Show/hide MIDI controls based on advanced state
-        self.midi_widget.setVisible(not currently_visible)
-        self.midi_rapid_checkbox.setVisible(not currently_visible)
-        
+        self.midi_widget.setVisible(show_advanced)
+        self.midi_rapid_checkbox.setVisible(show_advanced)
+
         # Update MIDI rapidfire widgets visibility based on checkbox state
-        if not currently_visible and self.midi_rapid_checkbox.isChecked():
+        if show_advanced and self.midi_rapid_checkbox.isChecked():
             self.midi_rapid_sens_widget.setVisible(True)
             self.midi_rapid_vel_widget.setVisible(True)
         else:
             self.midi_rapid_sens_widget.setVisible(False)
             self.midi_rapid_vel_widget.setVisible(False)
-        
-        if not currently_visible:
-            self.advanced_btn.setText(tr("QuickActuationWidget", "Hide Advanced Options"))
-        else:
-            self.advanced_btn.setText(tr("QuickActuationWidget", "Show Advanced Options"))
     
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
@@ -594,8 +594,14 @@ class QuickActuationWidget(QGroupBox):
     def set_device(self, device):
         """Set the device and load initial settings from device"""
         self.device = device
-        self.setEnabled(isinstance(device, VialKeyboard))
-        
+        is_vial = isinstance(device, VialKeyboard)
+        self.setEnabled(is_vial)
+
+        # Ensure checkboxes always stay enabled when widget is enabled
+        if is_vial:
+            self.per_layer_checkbox.setEnabled(True)
+            self.advanced_checkbox.setEnabled(True)
+
         if self.device and isinstance(self.device, VialKeyboard):
             # Load all layers from device into memory cache
             self.load_all_layers_from_device()
