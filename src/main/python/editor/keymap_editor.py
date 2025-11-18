@@ -691,7 +691,8 @@ class SustainPedalWidget(QGroupBox):
     def set_device(self, device):
         """Set the device"""
         self.device = device
-        self.setEnabled(isinstance(device, VialKeyboard))
+        # Always enable the widget regardless of device type
+        self.setEnabled(True)
 
     def set_layer(self, layer):
         """Set current layer"""
