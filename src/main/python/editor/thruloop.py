@@ -5,7 +5,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, \
     QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, \
-    QMessageBox, QHeaderView
+    QMessageBox, QHeaderView, QScrollArea
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -40,13 +40,20 @@ class ThruLoopConfigurator(BasicEditor):
         
     def setup_ui(self):
         self.addStretch()
-        
+
+        # Create scroll area for content
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+
+        scroll.setWidget(main_widget)
+        self.addWidget(scroll)
+        self.setAlignment(scroll, QtCore.Qt.AlignHCenter)
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
