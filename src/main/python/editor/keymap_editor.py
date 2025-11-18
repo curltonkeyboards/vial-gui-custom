@@ -724,14 +724,14 @@ class KeymapEditor(BasicEditor):
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Layout with actuation on left, keyboard in center, sustain pedal on right (NO GAP)
+        # Layout with sustain pedal on left, keyboard in center, actuation on right (NO GAP)
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(10)  # Small spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
-        keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
-        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.sustain_pedal, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
