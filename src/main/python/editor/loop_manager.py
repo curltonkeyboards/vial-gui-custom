@@ -1099,8 +1099,9 @@ class LoopManager(BasicEditor):
         logger.info("HID listener thread started")
         while self.hid_listening and self.device:
             try:
-                # Read HID data with longer timeout
-                data = self.device.recv(self.HID_PACKET_SIZE, timeout_ms=500)
+                # Read HID data with shorter timeout (100ms) for better responsiveness
+                # Listener only runs during active transfers now, so shorter timeout is safe
+                data = self.device.recv(self.HID_PACKET_SIZE, timeout_ms=100)
                 if data and len(data) > 0:
                     logger.info(f"HID received {len(data)} bytes: {data[:10].hex()}...")
                     if len(data) == self.HID_PACKET_SIZE:
@@ -2625,6 +2626,9 @@ class LoopManager(BasicEditor):
         self.load_progress_bar.setValue(0)
         self.load_progress_bar.setVisible(False)
 
+        # Stop HID listener when transfer completes to prevent blocking other HID operations
+        self.stop_hid_listener()
+
     def update_loop_contents_display(self):
         """Update the loop contents display"""
         # Only update if labels exist
@@ -2648,8 +2652,8 @@ class LoopManager(BasicEditor):
             self.stop_hid_listener()
             return
 
-        # Start HID listener when device connects
-        self.start_hid_listener()
+        # Don't start HID listener automatically - only start when needed during transfers
+        # This prevents continuous polling that blocks other HID operations
 
         # Reset state when device changes
         self.reset_transfer_state()

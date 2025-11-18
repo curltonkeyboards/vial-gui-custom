@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import time
+import threading
 
 from hidproxy import hid
 from protocol.keyboard_comm import Keyboard
@@ -14,6 +15,8 @@ class VialDevice:
         self.dev = None
         self.sideload = False
         self.via_stack = False
+        # Add thread lock for HID communication synchronization
+        self.hid_lock = threading.RLock()
 
     def open(self, override_json=None):
         self.dev = hid.device()
@@ -27,10 +30,12 @@ class VialDevice:
 
     def send(self, data):
         # add 00 at start for hidapi report id
-        return self.dev.write(b"\x00" + data)
+        with self.hid_lock:
+            return self.dev.write(b"\x00" + data)
 
     def recv(self, length, timeout_ms=0):
-        return bytes(self.dev.read(length, timeout_ms=timeout_ms))
+        with self.hid_lock:
+            return bytes(self.dev.read(length, timeout_ms=timeout_ms))
 
     def close(self):
         self.dev.close()
