@@ -194,7 +194,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Basic Settings Group
         self.basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
-        self.basic_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.basic_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         basic_layout = QGridLayout()
         self.basic_group.setLayout(basic_layout)
         top_row_layout.addWidget(self.basic_group)
@@ -229,7 +229,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # LoopChop Settings (more compact)
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
-        self.loopchop_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.loopchop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         loopchop_layout = QGridLayout()
         loopchop_layout.setSpacing(5)
         loopchop_layout.setContentsMargins(10, 10, 10, 10)
@@ -267,7 +267,7 @@ class ThruLoopConfigurator(BasicEditor):
         # Main Functions - Using clean grid layout
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         self.main_group.setMaximumWidth(700)
-        self.main_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.main_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(self.main_group, alignment=QtCore.Qt.AlignHCenter)
         main_grid = QGridLayout()
         main_grid.setSpacing(8)
@@ -301,7 +301,7 @@ class ThruLoopConfigurator(BasicEditor):
         # Overdub Functions - Using clean grid layout
         self.overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
         self.overdub_group.setMaximumWidth(700)
-        self.overdub_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.overdub_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(self.overdub_group, alignment=QtCore.Qt.AlignHCenter)
         overdub_grid = QGridLayout()
         overdub_grid.setSpacing(8)
@@ -679,7 +679,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
 
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
-        basic_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        basic_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         basic_layout = QGridLayout()
         basic_layout.setHorizontalSpacing(25)
         basic_layout.setColumnStretch(1, 0)
@@ -717,7 +717,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         # Loop Settings Group
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
-        loop_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        loop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
         loop_layout.setHorizontalSpacing(25)
@@ -792,7 +792,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         # Advanced Settings Group
         advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
-        advanced_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        advanced_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         advanced_layout = QGridLayout()
         advanced_layout.setHorizontalSpacing(25)
         advanced_layout.setColumnStretch(0, 1)    # Left spacer
@@ -879,7 +879,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
-        keysplit_modes_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        keysplit_modes_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         keysplit_modes_layout = QGridLayout()
         keysplit_modes_layout.setHorizontalSpacing(25)
         keysplit_modes_layout.setColumnStretch(1, 0)
@@ -918,7 +918,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         
         # KeySplit Settings Group
         keysplit_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit & TripleSplit Settings"))
-        keysplit_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        keysplit_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         keysplit_layout = QGridLayout()
         keysplit_layout.setHorizontalSpacing(25)
         keysplit_layout.setColumnStretch(0, 1)    # Left spacer

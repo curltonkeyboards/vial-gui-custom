@@ -42,7 +42,7 @@ class ThruLoopConfigurator(BasicEditor):
         self.addStretch()
         
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
@@ -50,6 +50,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
+        basic_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         basic_layout = QGridLayout()
         basic_group.setLayout(basic_layout)
         main_layout.addWidget(basic_group)
@@ -89,6 +90,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # Main Functions - Using clean grid layout
         main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
+        main_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(main_group)
         main_grid = QGridLayout()
         main_grid.setSpacing(8)
@@ -122,6 +124,7 @@ class ThruLoopConfigurator(BasicEditor):
 
         # Overdub Functions - Using clean grid layout
         overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
+        overdub_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(overdub_group)
         overdub_grid = QGridLayout()
         overdub_grid.setSpacing(8)
@@ -154,6 +157,7 @@ class ThruLoopConfigurator(BasicEditor):
         
         # LoopChop Settings
         loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
+        loopchop_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         loopchop_layout = QGridLayout()
         loopchop_group.setLayout(loopchop_layout)
         main_layout.addWidget(loopchop_group)

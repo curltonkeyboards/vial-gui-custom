@@ -2141,7 +2141,7 @@ class RGBConfigurator(BasicEditor):
         scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         w = QWidget()
-        w.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.container = QGridLayout()
         w.setLayout(self.container)
 
