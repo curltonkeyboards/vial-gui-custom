@@ -41,6 +41,8 @@ class MIDIPatchBay(BasicEditor):
 
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        main_widget.setMinimumHeight(850)
+        main_widget.setMaximumHeight(850)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
@@ -139,23 +141,25 @@ class MIDIPatchBay(BasicEditor):
         connections_layout.addWidget(disconnect_selected_btn)
 
         # Buttons
-        self.addStretch()
+        main_layout.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
         refresh_btn = QPushButton(tr("MIDIPatchBay", "Refresh Devices"))
-        refresh_btn.setMinimumHeight(35)
-        refresh_btn.setMinimumWidth(150)
+        refresh_btn.setMinimumHeight(45)
+        refresh_btn.setMinimumWidth(180)
+        refresh_btn.setStyleSheet("QPushButton { border-radius: 3px; padding: 8px 16px; }")
         refresh_btn.clicked.connect(self.refresh_devices)
         buttons_layout.addWidget(refresh_btn)
 
         disconnect_all_btn = QPushButton(tr("MIDIPatchBay", "Disconnect All"))
-        disconnect_all_btn.setMinimumHeight(35)
-        disconnect_all_btn.setMinimumWidth(150)
+        disconnect_all_btn.setMinimumHeight(45)
+        disconnect_all_btn.setMinimumWidth(180)
+        disconnect_all_btn.setStyleSheet("QPushButton { border-radius: 3px; padding: 8px 16px; }")
         disconnect_all_btn.clicked.connect(self.on_disconnect_all)
         buttons_layout.addWidget(disconnect_all_btn)
 
-        self.addLayout(buttons_layout)
+        main_layout.addLayout(buttons_layout)
 
     def initialize_midi(self):
         """Initialize MIDI input/output"""

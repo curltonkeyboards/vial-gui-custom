@@ -40,9 +40,11 @@ class ThruLoopConfigurator(BasicEditor):
         
     def setup_ui(self):
         self.addStretch()
-        
+
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        main_widget.setMinimumHeight(850)
+        main_widget.setMaximumHeight(850)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
@@ -186,9 +188,9 @@ class ThruLoopConfigurator(BasicEditor):
         self.nav_widget = QWidget()
         self.nav_widget.setLayout(nav_layout)
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 2)
-        
+
         # Buttons
-        self.addStretch()
+        main_layout.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
@@ -222,8 +224,8 @@ class ThruLoopConfigurator(BasicEditor):
         load_file_btn.setStyleSheet(button_style)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
-        
-        self.addLayout(buttons_layout)
+
+        main_layout.addLayout(buttons_layout)
         
         # Connect signals AFTER all widgets are created
         self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)

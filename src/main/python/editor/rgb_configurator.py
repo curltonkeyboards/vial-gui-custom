@@ -1501,59 +1501,27 @@ class CustomLightsHandler(BasicHandler):
         self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
         container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
 
-        # Create main tab widget for groups
+        # Create single tab widget for all slots (1-49)
         self.main_tab_widget = QTabWidget()
         container.addWidget(self.main_tab_widget, row + 1, 0, 1, 2)
-        
+
         # Track the currently active slot (for parameter changes)
         self.current_active_slot = None
         self.current_randomize_slot = None
-        
-        # Create grouped tabs
+
+        # Create single-level tabs
         self.slot_tabs = []
         self.slot_widgets = {}
-        self.group_tab_widgets = {}  # Store sub-tab widgets for each group
-        
-        # Define groups: 1-9, 10-19, 20-29, 30-39, 40-49 (removed the single "50" group)
-        self.groups = [
-            ("1-9", 0, 9),
-            ("10-19", 9, 19), 
-            ("20-29", 19, 29),
-            ("30-39", 29, 39),
-            ("40-49", 39, 50)  # Changed to go up to 50 (slots 39-49)
-        ]
-        
-        # Connect main tab change to load lowest slot in group
-        self.main_tab_widget.currentChanged.connect(self.on_main_tab_changed)
-        
-        for group_name, start_idx, end_idx in self.groups:
-            self.create_group_tab(group_name, start_idx, end_idx)
+
+        # Connect tab change to load slot
+        self.main_tab_widget.currentChanged.connect(self.on_tab_changed)
+
+        # Create tabs 1-49
+        for slot in range(49):
+            self.create_slot_tab(slot, self.main_tab_widget)
 
         self.widgets = [self.lbl_custom_lights, self.main_tab_widget]
 
-    def create_group_tab(self, group_name, start_idx, end_idx):
-        """Create a main tab containing sub-tabs for a group of slots"""
-        # Create the main tab widget
-        group_widget = QWidget()
-        self.main_tab_widget.addTab(group_widget, group_name)
-        
-        # Create layout for the group
-        group_layout = QHBoxLayout(group_widget)
-        group_layout.setContentsMargins(5, 5, 5, 5)
-        
-        # Create sub-tab widget for individual slots in this group
-        sub_tab_widget = QTabWidget()
-        group_layout.addWidget(sub_tab_widget)
-        
-        # Store reference to sub-tab widget
-        self.group_tab_widgets[group_name] = sub_tab_widget
-        
-        # Connect tab change signal for this sub-tab widget
-        sub_tab_widget.currentChanged.connect(lambda index, start=start_idx: self.on_sub_tab_changed(index, start))
-        
-        # Create individual slot tabs within this group
-        for slot in range(start_idx, end_idx):
-            self.create_slot_tab(slot, sub_tab_widget)
         
     def create_slot_tab(self, slot, parent_tab_widget):
         """Create a tab for a single slot within a group's sub-tab widget"""
@@ -1696,43 +1664,20 @@ class CustomLightsHandler(BasicHandler):
 
         self.slot_tabs.append(tab_widget)
 
-    def on_main_tab_changed(self, index):
-        """Handle main tab change - load EEPROM for lowest slot in group"""
-        if index >= len(self.groups):
+    def on_tab_changed(self, index):
+        """Handle tab change - load EEPROM for selected slot"""
+        if index < 0 or index >= 49:
             return
-            
-        group_name, start_idx, end_idx = self.groups[index]
-        lowest_slot = start_idx
-        
-        print(f"Main tab changed to {group_name}, loading EEPROM for lowest slot {lowest_slot}")
+
+        print(f"Tab changed to slot {index}, loading EEPROM state")
         self.block_signals()
-        self.load_slot_from_eeprom(lowest_slot)
+        self.load_slot_from_eeprom(index)
         self.unblock_signals()
-        
-    def on_sub_tab_changed(self, index, start_slot):
-        """Handle sub-tab switching within a group"""
-        actual_slot = start_slot + index
-        print(f"Sub-tab changed to {index}, actual slot {actual_slot}, loading EEPROM state")
-        self.block_signals()
-        self.load_slot_from_eeprom(actual_slot)
-        self.unblock_signals()
-        
+
     def get_current_slot_index(self):
-        """Get the currently selected slot index across all groups"""
-        # Get current main tab (group)
-        main_tab_index = self.main_tab_widget.currentIndex()
-        if main_tab_index >= len(self.groups):
-            return 0
-            
-        group_name, start_idx, end_idx = self.groups[main_tab_index]
-        
-        # Get current sub-tab within the group
-        sub_tab_widget = self.group_tab_widgets[group_name]
-        sub_tab_index = sub_tab_widget.currentIndex()
-        
-        # Calculate actual slot index
-        actual_slot = start_idx + sub_tab_index
-        return min(actual_slot, 49)  # Ensure we don't exceed slot 49
+        """Get the currently selected slot index"""
+        index = self.main_tab_widget.currentIndex()
+        return min(max(index, 0), 48)  # Ensure we stay within 0-48 range
             
     def get_currently_active_slot(self):
         """Get the slot number that is currently active - FIXED to use current slot"""
@@ -2135,8 +2080,19 @@ class RGBConfigurator(BasicEditor):
 
         w = QWidget()
         w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        w.setMinimumHeight(850)
+        w.setMaximumHeight(850)
+
+        # Create main layout for the widget
+        main_layout = QVBoxLayout()
+        w.setLayout(main_layout)
+
+        # Create container widget to hold the grid layout
+        container_widget = QWidget()
         self.container = QGridLayout()
-        w.setLayout(self.container)
+        container_widget.setLayout(self.container)
+        main_layout.addWidget(container_widget)
+
         self.addWidget(w)
         self.setAlignment(w, QtCore.Qt.AlignHCenter)
 
@@ -2146,30 +2102,33 @@ class RGBConfigurator(BasicEditor):
         self.handler_rgblight.update.connect(self.update_from_keyboard)
         self.handler_vialrgb = VialRGBHandler(self.container)
         self.handler_vialrgb.update.connect(self.update_from_keyboard)
-        
+
         # Add the rescan button handler - NO UPDATE CONNECTION
         self.handler_rescan = RescanButtonHandler(self.container)
         # REMOVED: self.handler_rescan.update.connect(self.update_from_keyboard)
-        
+
         # Add the per-layer RGB handler
         self.handler_layer_rgb = LayerRGBHandler(self.container)
         self.handler_layer_rgb.update.connect(self.update_from_keyboard)
-        
+
         # Add the custom lights handler
         self.handler_custom_lights = CustomLightsHandler(self.container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
-        
-        self.handlers = [self.handler_backlight, self.handler_rgblight, 
+
+        self.handlers = [self.handler_backlight, self.handler_rgblight,
                         self.handler_vialrgb, self.handler_rescan,
                         self.handler_layer_rgb, self.handler_custom_lights]
 
-        self.addStretch()
+        main_layout.addStretch()
         buttons = QHBoxLayout()
         buttons.addStretch()
         save_btn = QPushButton(tr("RGBConfigurator", "Save"))
+        save_btn.setMinimumHeight(45)
+        save_btn.setMinimumWidth(180)
+        save_btn.setStyleSheet("QPushButton { border-radius: 3px; padding: 8px 16px; }")
         buttons.addWidget(save_btn)
         save_btn.clicked.connect(self.on_save)
-        self.addLayout(buttons)
+        main_layout.addLayout(buttons)
 
     def on_save(self):
         self.device.keyboard.save_rgb()
