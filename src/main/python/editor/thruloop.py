@@ -5,7 +5,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, \
     QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QFileDialog, \
-    QMessageBox, QHeaderView
+    QMessageBox, QHeaderView, QScrollArea
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -39,14 +39,18 @@ class ThruLoopConfigurator(BasicEditor):
         self.setup_ui()
         
     def setup_ui(self):
-        self.addStretch()
-        
+        # Create scrollable main widget (like Loop Manager)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 5, 10, 10)
         main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+        scroll.setWidget(main_widget)
+
+        self.addWidget(scroll)
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
@@ -186,9 +190,9 @@ class ThruLoopConfigurator(BasicEditor):
         self.nav_widget = QWidget()
         self.nav_widget.setLayout(nav_layout)
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 2)
-        
+
         # Buttons
-        self.addStretch()
+        main_layout.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
@@ -222,8 +226,8 @@ class ThruLoopConfigurator(BasicEditor):
         load_file_btn.setStyleSheet(button_style)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
-        
-        self.addLayout(buttons_layout)
+
+        main_layout.addLayout(buttons_layout)
         
         # Connect signals AFTER all widgets are created
         self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)

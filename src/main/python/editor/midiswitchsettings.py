@@ -4,7 +4,7 @@ import json
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, \
-    QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QFileDialog, QMessageBox, QSpinBox
+    QComboBox, QCheckBox, QGroupBox, QVBoxLayout, QFileDialog, QMessageBox, QSpinBox, QScrollArea
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -32,15 +32,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.setup_ui()
         
     def setup_ui(self):
-        self.addStretch()
-        
+        # Create scrollable main widget (like Loop Manager)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         main_widget.setStyleSheet("QComboBox { max-width: 150px; }")
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 5, 10, 10)
         main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
+        scroll.setWidget(main_widget)
+
+        self.addWidget(scroll)
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
@@ -283,9 +287,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.velocity_number3.addItem(str(i), i)
         self.velocity_number3.setCurrentIndex(126)  # Default to 127
         keysplit_layout.addWidget(self.velocity_number3, 3, 3)
-        
+
         # Buttons
-        self.addStretch()
+        main_layout.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
@@ -320,7 +324,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
 
-        self.addLayout(buttons_layout)
+        main_layout.addLayout(buttons_layout)
 
         # Save slot buttons
         save_slots_layout = QHBoxLayout()
@@ -331,7 +335,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.setMinimumWidth(120)
             btn.clicked.connect(lambda checked, slot=i: self.on_save_slot(slot))
             save_slots_layout.addWidget(btn)
-        self.addLayout(save_slots_layout)
+        main_layout.addLayout(save_slots_layout)
 
         # Load slot buttons
         load_slots_layout = QHBoxLayout()
@@ -342,7 +346,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.setMinimumWidth(120)
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
-        self.addLayout(load_slots_layout)
+        main_layout.addLayout(load_slots_layout)
         
     def send_hid_packet(self, command, data):
         """Send HID packet to device"""
