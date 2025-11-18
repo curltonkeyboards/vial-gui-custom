@@ -231,11 +231,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         # Force encoder click buttons and sustain pedal to always be visible
         # even if the firmware doesn't report them in the layout
-        # These keys are positioned to appear near the encoders and at the bottom
+        # Position them based on the vial.json layout coordinates:
+        # - Array 2 (y=1): Encoder 0 down at x=0, click at x=1, up at x=2
+        # - Array 4 (y=3): Encoder 1 down at x=0, click at x=1, up at x=2
+        # - Array 6 (y=5+0.5): Sustain pedal at x=0.5
         required_keys = [
-            (5, 0, 1.0, 0.0),   # Encoder 0 click button
-            (5, 1, 1.0, 2.0),   # Encoder 1 click button
-            (5, 2, 0.5, 4.5),   # Sustain pedal
+            (5, 0, 1.0, 1.0),   # Encoder 0 click button (middle of encoder 0)
+            (5, 1, 1.0, 3.0),   # Encoder 1 click button (middle of encoder 1)
+            (5, 2, 0.5, 5.5),   # Sustain pedal (bottom left)
         ]
 
         added_any_keys = False
