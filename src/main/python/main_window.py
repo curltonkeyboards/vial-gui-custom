@@ -331,7 +331,7 @@ class MainWindow(QMainWindow):
         for e in [self.layout_editor, self.keymap_editor, self.firmware_flasher, self.macro_recorder,
                   self.tap_dance, self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
                   self.rgb_configurator, self.MIDIswitchSettingsConfigurator, self.thruloop_configurator,
-                  self.layer_actuation_configurator, self.midi_patchbay, self.loop_manager]:
+                  self.midi_patchbay, self.loop_manager]:
             e.rebuild(self.autorefresh.current_device)
 
     def refresh_tabs(self):
