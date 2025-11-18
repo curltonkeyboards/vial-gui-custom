@@ -1777,7 +1777,7 @@ class LoopManager(BasicEditor):
                 QPushButton {{
                     background-color: {btn_color};
                     color: {btn_text};
-                    border: 2px solid {light_color};
+                    border: none;
                     border-radius: 4px;
                     font-weight: bold;
                     padding: 5px;
@@ -1788,7 +1788,7 @@ class LoopManager(BasicEditor):
                 QPushButton:checked {{
                     background-color: {highlight_color};
                     color: {highlight_text};
-                    border-color: {highlight_color};
+                    border: 2px solid {light_color};
                 }}
                 QPushButton:disabled {{
                     background-color: {alt_base};
