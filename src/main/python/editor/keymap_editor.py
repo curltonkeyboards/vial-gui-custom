@@ -3,7 +3,7 @@ import json
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
-                              QSizePolicy)
+                              QSizePolicy, QScrollArea)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from widgets.combo_box import ArrowComboBox
@@ -682,10 +682,17 @@ class KeymapEditor(BasicEditor):
         layout = QVBoxLayout()
         layout.addLayout(layout_labels_container)
         layout.addLayout(keyboard_layout)
-        
+
         w = ClickableWidget()
         w.setLayout(layout)
         w.clicked.connect(self.on_empty_space_clicked)
+
+        # Wrap in scroll area for better resizing
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setWidget(w)
 
         self.layer_buttons = []
         self.keyboard = None
@@ -699,7 +706,7 @@ class KeymapEditor(BasicEditor):
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_changed)
         self.tabbed_keycodes.anykey.connect(self.on_any_keycode)
 
-        self.addWidget(w)
+        self.addWidget(scroll_area)
         self.addWidget(self.tabbed_keycodes)
 
         self.device = None

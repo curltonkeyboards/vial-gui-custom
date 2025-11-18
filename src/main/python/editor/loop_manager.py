@@ -942,80 +942,103 @@ class LoopManager(BasicEditor):
         assign_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         advanced_layout.addWidget(assign_label)
 
-        # Main loop buttons
-        main_label = QLabel(tr("LoopManager", "Main:"))
-        advanced_layout.addWidget(main_label)
-
-        # Center container for main buttons
-        main_container_layout = QHBoxLayout()
-        main_container_layout.addStretch()
-        main_buttons_widget = QWidget()
-        main_buttons_layout = QGridLayout()
-        main_buttons_layout.setSpacing(8)
-        main_buttons_widget.setLayout(main_buttons_layout)
+        # Center container for all loop buttons (main and overdub together)
+        all_buttons_container = QHBoxLayout()
+        all_buttons_container.addStretch()
+        all_buttons_widget = QWidget()
+        all_buttons_layout = QGridLayout()
+        all_buttons_layout.setSpacing(8)
+        all_buttons_widget.setLayout(all_buttons_layout)
 
         self.main_assign_btns = []
         self.main_clear_btns = []
-        for i in range(4):
-            # Assignment button - smaller and more square
-            btn = QPushButton(f"Loop {i+1}")
-            btn.setMinimumHeight(50)
-            btn.setMaximumWidth(100)
-            btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_main(loop))
-            main_buttons_layout.addWidget(btn, 0, i)
-            self.main_assign_btns.append(btn)
-
-            # Small X button to clear assignment
-            clear_btn = QPushButton("✕")
-            clear_btn.setMaximumWidth(25)
-            clear_btn.setMaximumHeight(25)
-            clear_btn.setVisible(False)
-            clear_btn.setToolTip("Remove assignment")
-            clear_btn.clicked.connect(lambda checked, loop=i+1: self.on_clear_main_assignment(loop))
-            main_buttons_layout.addWidget(clear_btn, 1, i)
-            self.main_clear_btns.append(clear_btn)
-
-        main_container_layout.addWidget(main_buttons_widget)
-        main_container_layout.addStretch()
-        advanced_layout.addLayout(main_container_layout)
-
-        # Overdub loop buttons
-        overdub_label = QLabel(tr("LoopManager", "Overdub:"))
-        advanced_layout.addWidget(overdub_label)
-
-        # Center container for overdub buttons
-        overdub_container_layout = QHBoxLayout()
-        overdub_container_layout.addStretch()
-        overdub_buttons_widget = QWidget()
-        overdub_buttons_layout = QGridLayout()
-        overdub_buttons_layout.setSpacing(8)
-        overdub_buttons_widget.setLayout(overdub_buttons_layout)
-
         self.overdub_assign_btns = []
         self.overdub_clear_btns = []
+
+        # Create 4 columns: Loop 1-4 (main) in row 0, Overdub 1-4 in row 1
         for i in range(4):
-            # Assignment button - smaller and more square
-            btn = QPushButton(f"Loop {i+1} Overdub")
-            btn.setMinimumHeight(50)
-            btn.setMaximumWidth(100)
-            btn.setEnabled(False)
-            btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_overdub(loop))
-            overdub_buttons_layout.addWidget(btn, 0, i)
-            self.overdub_assign_btns.append(btn)
+            # Main loop button with container
+            main_container = QWidget()
+            main_container.setFixedSize(100, 60)
+            main_container_layout = QVBoxLayout(main_container)
+            main_container_layout.setContentsMargins(0, 0, 0, 0)
+            main_container_layout.setSpacing(0)
 
-            # Small X button to clear assignment
-            clear_btn = QPushButton("✕")
-            clear_btn.setMaximumWidth(25)
-            clear_btn.setMaximumHeight(25)
-            clear_btn.setVisible(False)
-            clear_btn.setToolTip("Remove assignment")
-            clear_btn.clicked.connect(lambda checked, loop=i+1: self.on_clear_overdub_assignment(loop))
-            overdub_buttons_layout.addWidget(clear_btn, 1, i)
-            self.overdub_clear_btns.append(clear_btn)
+            main_btn = QPushButton(f"Loop {i+1}")
+            main_btn.setMinimumHeight(60)
+            main_btn.setMaximumWidth(100)
+            main_btn.setMinimumWidth(100)
+            main_btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_main(loop))
+            main_btn.setProperty('loop_num', i+1)
+            main_container_layout.addWidget(main_btn)
 
-        overdub_container_layout.addWidget(overdub_buttons_widget)
-        overdub_container_layout.addStretch()
-        advanced_layout.addLayout(overdub_container_layout)
+            # X button positioned at top right
+            main_clear_btn = QPushButton("✕")
+            main_clear_btn.setParent(main_container)
+            main_clear_btn.setGeometry(75, 2, 20, 20)
+            main_clear_btn.setVisible(False)
+            main_clear_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: rgba(255, 0, 0, 0.7);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    font-weight: bold;
+                    font-size: 10px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 0, 0, 0.9);
+                }
+            """)
+            main_clear_btn.clicked.connect(lambda checked, loop=i+1: self.on_clear_main_assignment(loop))
+
+            all_buttons_layout.addWidget(main_container, 0, i)
+            self.main_assign_btns.append(main_btn)
+            self.main_clear_btns.append(main_clear_btn)
+
+            # Overdub loop button with container
+            overdub_container = QWidget()
+            overdub_container.setFixedSize(100, 60)
+            overdub_container_layout = QVBoxLayout(overdub_container)
+            overdub_container_layout.setContentsMargins(0, 0, 0, 0)
+            overdub_container_layout.setSpacing(0)
+
+            overdub_btn = QPushButton(f"Overdub {i+1}")
+            overdub_btn.setMinimumHeight(60)
+            overdub_btn.setMaximumWidth(100)
+            overdub_btn.setMinimumWidth(100)
+            overdub_btn.setEnabled(False)
+            overdub_btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_overdub(loop))
+            overdub_btn.setProperty('loop_num', i+1)
+            overdub_container_layout.addWidget(overdub_btn)
+
+            # X button positioned at top right
+            overdub_clear_btn = QPushButton("✕")
+            overdub_clear_btn.setParent(overdub_container)
+            overdub_clear_btn.setGeometry(75, 2, 20, 20)
+            overdub_clear_btn.setVisible(False)
+            overdub_clear_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: rgba(255, 0, 0, 0.7);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    font-weight: bold;
+                    font-size: 10px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 0, 0, 0.9);
+                }
+            """)
+            overdub_clear_btn.clicked.connect(lambda checked, loop=i+1: self.on_clear_overdub_assignment(loop))
+
+            all_buttons_layout.addWidget(overdub_container, 1, i)
+            self.overdub_assign_btns.append(overdub_btn)
+            self.overdub_clear_btns.append(overdub_clear_btn)
+
+        all_buttons_container.addWidget(all_buttons_widget)
+        all_buttons_container.addStretch()
+        advanced_layout.addLayout(all_buttons_container)
 
         # Info text
         info_label = QLabel(tr("LoopManager",
@@ -1031,23 +1054,6 @@ class LoopManager(BasicEditor):
         self.load_assignments_btn.setEnabled(False)
         self.load_assignments_btn.clicked.connect(self.on_load_assignments)
         advanced_layout.addWidget(self.load_assignments_btn)
-
-        # === CURRENT LOOP CONTENTS ===
-        contents_group = QGroupBox(tr("LoopManager", "Current Loop Contents"))
-        contents_layout = QGridLayout()
-        contents_group.setLayout(contents_layout)
-        main_layout.addWidget(contents_group)
-
-        self.loop_content_labels = []
-        for i in range(4):
-            label = QLabel(f"Loop {i+1}:")
-            label.setStyleSheet("font-weight: bold;")
-            contents_layout.addWidget(label, i // 2, (i % 2) * 2)
-
-            content_label = QLabel(tr("LoopManager", "Empty"))
-            content_label.setStyleSheet("font-style: italic;")
-            contents_layout.addWidget(content_label, i // 2, (i % 2) * 2 + 1)
-            self.loop_content_labels.append(content_label)
 
     def send_hid_packet(self, command, macro_num, status=0, data=None):
         """Send raw HID packet to device"""
@@ -2157,14 +2163,38 @@ class LoopManager(BasicEditor):
                     track_idx = track_info['track_idx']
                     track = file_info['tracks'][track_idx]
                     duration_ms = track.get('duration_ms', 0)
-                    # Format: "Loop X: Track Y - Zms"
-                    self.main_assign_btns[i].setText(f"Loop {loop_num}: Track {track_idx + 1} - {duration_ms}ms")
+                    # Format: "Loop X\nTrack Y\nZms" with green background
+                    self.main_assign_btns[i].setText(f"Loop {loop_num}\nTrack {track_idx + 1}\n{duration_ms}ms")
+                    self.main_assign_btns[i].setStyleSheet("""
+                        QPushButton {
+                            background-color: #2ecc71;
+                            color: white;
+                            border: 2px solid #27ae60;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            padding: 5px;
+                        }
+                        QPushButton:hover {
+                            background-color: #27ae60;
+                        }
+                    """)
                     self.main_clear_btns[i].setVisible(True)
                 else:
-                    self.main_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+                    self.main_assign_btns[i].setText(f"Loop {loop_num}\nPending")
+                    self.main_assign_btns[i].setStyleSheet("""
+                        QPushButton {
+                            background-color: #f39c12;
+                            color: white;
+                            border: 2px solid #e67e22;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            padding: 5px;
+                        }
+                    """)
                     self.main_clear_btns[i].setVisible(True)
             else:
                 self.main_assign_btns[i].setText(f"Loop {loop_num}")
+                self.main_assign_btns[i].setStyleSheet("")  # Reset to default
                 self.main_clear_btns[i].setVisible(False)
 
             # Overdub button
@@ -2181,14 +2211,38 @@ class LoopManager(BasicEditor):
                     track_idx = track_info['track_idx']
                     track = file_info['tracks'][track_idx]
                     duration_ms = track.get('duration_ms', 0)
-                    # Format: "Loop X: Track Y - Zms"
-                    self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Track {track_idx + 1} - {duration_ms}ms")
+                    # Format: "Overdub X\nTrack Y\nZms" with green background
+                    self.overdub_assign_btns[i].setText(f"Overdub {loop_num}\nTrack {track_idx + 1}\n{duration_ms}ms")
+                    self.overdub_assign_btns[i].setStyleSheet("""
+                        QPushButton {
+                            background-color: #2ecc71;
+                            color: white;
+                            border: 2px solid #27ae60;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            padding: 5px;
+                        }
+                        QPushButton:hover {
+                            background-color: #27ae60;
+                        }
+                    """)
                     self.overdub_clear_btns[i].setVisible(True)
                 else:
-                    self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+                    self.overdub_assign_btns[i].setText(f"Overdub {loop_num}\nPending")
+                    self.overdub_assign_btns[i].setStyleSheet("""
+                        QPushButton {
+                            background-color: #f39c12;
+                            color: white;
+                            border: 2px solid #e67e22;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            padding: 5px;
+                        }
+                    """)
                     self.overdub_clear_btns[i].setVisible(True)
             else:
-                self.overdub_assign_btns[i].setText(f"Loop {loop_num} Overdub")
+                self.overdub_assign_btns[i].setText(f"Overdub {loop_num}")
+                self.overdub_assign_btns[i].setStyleSheet("")  # Reset to default
                 self.overdub_clear_btns[i].setVisible(False)
 
         # Update track button colors based on assignments
@@ -2246,24 +2300,24 @@ class LoopManager(BasicEditor):
             bright_text = palette.color(QPalette.BrightText).name()
 
             if is_assigned:
-                # Use BrightText color for assigned tracks
+                # Use green color for assigned tracks
                 button.setStyleSheet(f"""
                     QPushButton {{
-                        background-color: {bright_text};
-                        color: {btn_text};
-                        border: 2px solid {highlight_color};
+                        background-color: #2ecc71;
+                        color: white;
+                        border: 2px solid #27ae60;
                         border-radius: 4px;
                         font-weight: bold;
                         padding: 5px;
                     }}
                     QPushButton:hover {{
-                        background-color: {highlight_color};
-                        color: {highlight_text};
+                        background-color: #27ae60;
+                        color: white;
                     }}
                     QPushButton:checked {{
-                        background-color: {highlight_color};
-                        color: {highlight_text};
-                        border-color: {highlight_color};
+                        background-color: #27ae60;
+                        color: white;
+                        border-color: #27ae60;
                     }}
                     QPushButton:disabled {{
                         background-color: {alt_base};
