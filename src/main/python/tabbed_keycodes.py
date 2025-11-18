@@ -3942,15 +3942,9 @@ class GamepadWidget(QWidget):
         super().__init__(parent)
         self.setFixedSize(750, 560)
 
-        # Create a layout for the widget
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Create QLabel to display the image
+        # Create QLabel to display the image - manually positioned instead of using layout
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-        self.image_label.setFixedSize(750, 560)
 
         # Detect theme and load appropriate controller image
         window_color = QApplication.palette().color(QPalette.Window)
@@ -3963,15 +3957,21 @@ class GamepadWidget(QWidget):
             pixmap = QPixmap(":/controllerdark")  # Dark theme alias
 
         if not pixmap.isNull():
-            # Scale the pixmap to fit the label while maintaining aspect ratio
+            # Scale the pixmap to fit width while maintaining aspect ratio
             scaled_pixmap = pixmap.scaled(
-                self.image_label.size(),
+                750, 560,
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             )
             self.image_label.setPixmap(scaled_pixmap)
+            self.image_label.setFixedSize(scaled_pixmap.size())
+            # Position image label at top center
+            x_offset = (750 - scaled_pixmap.width()) // 2
+            self.image_label.move(x_offset, 0)
         else:
             # Set a fallback text if image doesn't load
+            self.image_label.setFixedSize(750, 560)
+            self.image_label.move(0, 0)
             self.image_label.setText("Controller Image\nNot Loaded")
             self.image_label.setStyleSheet("""
                 QLabel {
@@ -3981,8 +3981,6 @@ class GamepadWidget(QWidget):
                     font-size: 16px;
                 }
             """)
-
-        layout.addWidget(self.image_label)
 
 
 class GamingTab(QScrollArea):
