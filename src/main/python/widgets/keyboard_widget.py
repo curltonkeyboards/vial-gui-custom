@@ -896,6 +896,19 @@ class KeyboardWidget2(QWidget):
         # Separate encoder widgets
         encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget2)]
 
+        # Find encoder click buttons (5,0 and 5,1) and sustain pedal (5,2)
+        encoder_click_0 = None
+        encoder_click_1 = None
+        sustain_pedal = None
+        for widget in self.widgets:
+            if hasattr(widget.desc, 'row') and widget.desc.row == 5:
+                if widget.desc.col == 0:
+                    encoder_click_0 = widget
+                elif widget.desc.col == 1:
+                    encoder_click_1 = widget
+                elif widget.desc.col == 2:
+                    sustain_pedal = widget
+
         # Check if there are enough encoders
         if len(encoders) >= 4:
             # Move the first two encoders down by 90 pixels
@@ -904,15 +917,25 @@ class KeyboardWidget2(QWidget):
             encoders[0].shift_x -= 30
             encoders[1].shift_x -= 10
 
+            # Move encoder 0 click button to match encoder 0 position
+            if encoder_click_0:
+                encoder_click_0.shift_y += 80
+                encoder_click_0.shift_x -= 20  # Position between the two encoder buttons
+
             # Move the last two encoders down by 45 pixels
             encoders[2].shift_y += 50
             encoders[3].shift_y += 50
             encoders[2].shift_x -= 30
             encoders[3].shift_x -= 10
 
+            # Move encoder 1 click button to match encoder 1 position
+            if encoder_click_1:
+                encoder_click_1.shift_y += 50
+                encoder_click_1.shift_x -= 20  # Position between the two encoder buttons
+
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
-        
+
 
         # Determine maximum width and height of the container
         max_w = max_h = 0
