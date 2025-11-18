@@ -34,7 +34,6 @@ from vial_device import VialKeyboard
 from editor.matrix_test import MatrixTest
 from editor.matrix_test import MIDIswitchSettingsConfigurator
 from editor.matrix_test import ThruLoopConfigurator
-from editor.matrix_test import LayerActuationConfigurator
 from editor.midi_patch import MIDIPatchBay
 from editor.loop_manager import LoopManager
 
@@ -105,7 +104,6 @@ class MainWindow(QMainWindow):
         # Initialize the new configurators
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
-        self.layer_actuation_configurator = LayerActuationConfigurator()
 
         # Initialize MIDI Patch and Loop Manager tabs
         self.midi_patchbay = MIDIPatchBay()
@@ -113,7 +111,6 @@ class MainWindow(QMainWindow):
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
-                        (self.layer_actuation_configurator, "Actuation"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.midi_patchbay, "MIDI Patch"),
                         (self.loop_manager, "Loop Manager"), (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
