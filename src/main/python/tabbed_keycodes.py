@@ -3995,7 +3995,7 @@ class GamingTab(QScrollArea):
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
         self.main_layout.setSpacing(20)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setContentsMargins(20, 0, 20, 20)  # Remove top margin to eliminate gap
         self.main_layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
 
         self.setWidget(self.scroll_content)
