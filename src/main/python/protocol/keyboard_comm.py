@@ -6,7 +6,7 @@ import time
 from collections import OrderedDict
 
 from keycodes.keycodes import RESET_KEYCODE, Keycode, recreate_keyboard_keycodes
-from kle_serial import Serial as KleSerial
+from kle_serial import Serial as KleSerial, Key
 from protocol.combo import ProtocolCombo
 from protocol.constants import CMD_VIA_GET_PROTOCOL_VERSION, CMD_VIA_GET_KEYBOARD_VALUE, CMD_VIA_SET_KEYBOARD_VALUE, \
     CMD_VIA_SET_KEYCODE, CMD_VIA_LIGHTING_SET_VALUE, CMD_VIA_LIGHTING_GET_VALUE, CMD_VIA_LIGHTING_SAVE, \
@@ -224,12 +224,64 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 idx, opt = key.labels[8].split(",")
                 key.layout_index, key.layout_option = int(idx), int(opt)
 
+        # Save original firmware matrix dimensions for reading keymap data
+        # (we may extend these dimensions if we inject additional keys)
+        self.firmware_rows = self.rows
+        self.firmware_cols = self.cols
+
+        # Force encoder click buttons and sustain pedal to always be visible
+        # even if the firmware doesn't report them in the layout
+        # These keys are positioned to appear near the encoders and at the bottom
+        required_keys = [
+            (5, 0, 1.0, 0.0),   # Encoder 0 click button
+            (5, 1, 1.0, 2.0),   # Encoder 1 click button
+            (5, 2, 0.5, 4.5),   # Sustain pedal
+        ]
+
+        added_any_keys = False
+        max_row = self.rows - 1
+        max_col = self.cols - 1
+
+        for row, col, x_pos, y_pos in required_keys:
+            if (row, col) not in self.rowcol:
+                # Create a new key for this position
+                new_key = Key()
+                new_key.row = row
+                new_key.col = col
+                new_key.labels = [f"{row},{col}"] + [""] * 11
+                new_key.x = x_pos
+                new_key.y = y_pos
+                new_key.width = 1
+                new_key.height = 1
+                new_key.layout_index = -1
+                new_key.layout_option = -1
+                new_key.decal = False
+
+                # Add to keys list and mark as existing
+                self.keys.append(new_key)
+                self.rowcol[(row, col)] = True
+                added_any_keys = True
+
+                # Track the maximum row/col we need
+                max_row = max(max_row, row)
+                max_col = max(max_col, col)
+
+        # Only update matrix dimensions if we added keys
+        if added_any_keys:
+            self.rows = max_row + 1
+            self.cols = max_col + 1
+
     def reload_keymap(self):
         """ Load current key mapping from the keyboard """
 
         keymap = b""
+        # Use firmware dimensions (not extended dimensions) for fetching keymap data
+        # If we added extra keys beyond firmware matrix, we'll handle them separately
+        firmware_rows = getattr(self, 'firmware_rows', self.rows)
+        firmware_cols = getattr(self, 'firmware_cols', self.cols)
+
         # calculate what the size of keymap will be and retrieve the entire binary buffer
-        size = self.layers * self.rows * self.cols * 2
+        size = self.layers * firmware_rows * firmware_cols * 2
         for x in range(0, size, BUFFER_FETCH_CHUNK):
             offset = x
             sz = min(size - offset, BUFFER_FETCH_CHUNK)
@@ -238,11 +290,19 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         for layer in range(self.layers):
             for row, col in self.rowcol.keys():
+                # Skip keys that are outside the firmware matrix
+                # (these are injected keys like encoder clicks and sustain pedal)
+                if row >= firmware_rows or col >= firmware_cols:
+                    # Set a default keycode (KC_TRNS - transparent) for injected keys
+                    self.layout[(layer, row, col)] = "KC_TRNS"
+                    continue
+
+                # Check that key is within our extended matrix
                 if row >= self.rows or col >= self.cols:
                     raise RuntimeError("malformed vial.json, key references {},{} but matrix declares rows={} cols={}"
                                        .format(row, col, self.rows, self.cols))
                 # determine where this (layer, row, col) will be located in keymap array
-                offset = layer * self.rows * self.cols * 2 + row * self.cols * 2 + col * 2
+                offset = layer * firmware_rows * firmware_cols * 2 + row * firmware_cols * 2 + col * 2
                 keycode = Keycode.serialize(struct.unpack(">H", keymap[offset:offset+2])[0])
                 self.layout[(layer, row, col)] = keycode
 
@@ -347,9 +407,19 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             if code == RESET_KEYCODE:
                 Unlocker.unlock(self)
 
-            self.usb_send(self.dev, struct.pack(">BBBBH", CMD_VIA_SET_KEYCODE, layer, row, col,
-                                                Keycode.deserialize(code)), retries=20)
-            self.layout[key] = code
+            # Check if this is an injected key (outside firmware matrix)
+            firmware_rows = getattr(self, 'firmware_rows', self.rows)
+            firmware_cols = getattr(self, 'firmware_cols', self.cols)
+
+            if row >= firmware_rows or col >= firmware_cols:
+                # This is an injected key - just update the local layout, don't send to device
+                # (The firmware doesn't have this key position)
+                self.layout[key] = code
+            else:
+                # Normal key - send to device
+                self.usb_send(self.dev, struct.pack(">BBBBH", CMD_VIA_SET_KEYCODE, layer, row, col,
+                                                    Keycode.deserialize(code)), retries=20)
+                self.layout[key] = code
 
     def set_encoder(self, layer, index, direction, code):
         key = (layer, index, direction)
