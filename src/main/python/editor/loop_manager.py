@@ -7,11 +7,11 @@ import logging
 from datetime import datetime
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer, pyqtSignal, QObject, QUrl
-from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtGui import QDesktopServices, QPalette
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSizePolicy,
                              QLabel, QGroupBox, QFileDialog, QMessageBox, QProgressBar,
                              QListWidget, QListWidgetItem, QGridLayout, QCheckBox, QButtonGroup,
-                             QRadioButton, QScrollArea, QFrame, QInputDialog)
+                             QRadioButton, QScrollArea, QFrame, QInputDialog, QApplication)
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -923,10 +923,15 @@ class LoopManager(BasicEditor):
         self.track_info_label.setStyleSheet("font-style: italic;")
         advanced_layout.addWidget(self.track_info_label)
 
+        # Centered container for track buttons
+        track_container_layout = QHBoxLayout()
+        track_container_layout.addStretch()
         self.track_buttons_widget = QWidget()
         self.track_buttons_layout = QGridLayout()
         self.track_buttons_widget.setLayout(self.track_buttons_layout)
-        advanced_layout.addWidget(self.track_buttons_widget)
+        track_container_layout.addWidget(self.track_buttons_widget)
+        track_container_layout.addStretch()
+        advanced_layout.addLayout(track_container_layout)
 
         self.track_button_group = QButtonGroup(self)
         self.track_button_group.setExclusive(True)
@@ -941,30 +946,76 @@ class LoopManager(BasicEditor):
         main_label = QLabel(tr("LoopManager", "Main:"))
         advanced_layout.addWidget(main_label)
 
+        # Center container for main buttons
+        main_container_layout = QHBoxLayout()
+        main_container_layout.addStretch()
+        main_buttons_widget = QWidget()
         main_buttons_layout = QGridLayout()
+        main_buttons_layout.setSpacing(8)
+        main_buttons_widget.setLayout(main_buttons_layout)
+
         self.main_assign_btns = []
+        self.main_clear_btns = []
         for i in range(4):
+            # Assignment button - smaller and more square
             btn = QPushButton(f"Loop {i+1}")
-            btn.setMinimumHeight(35)
+            btn.setMinimumHeight(50)
+            btn.setMaximumWidth(100)
             btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_main(loop))
             main_buttons_layout.addWidget(btn, 0, i)
             self.main_assign_btns.append(btn)
-        advanced_layout.addLayout(main_buttons_layout)
+
+            # Small X button to clear assignment
+            clear_btn = QPushButton("✕")
+            clear_btn.setMaximumWidth(25)
+            clear_btn.setMaximumHeight(25)
+            clear_btn.setVisible(False)
+            clear_btn.setToolTip("Remove assignment")
+            clear_btn.clicked.connect(lambda checked, loop=i+1: self.on_clear_main_assignment(loop))
+            main_buttons_layout.addWidget(clear_btn, 1, i)
+            self.main_clear_btns.append(clear_btn)
+
+        main_container_layout.addWidget(main_buttons_widget)
+        main_container_layout.addStretch()
+        advanced_layout.addLayout(main_container_layout)
 
         # Overdub loop buttons
         overdub_label = QLabel(tr("LoopManager", "Overdub:"))
         advanced_layout.addWidget(overdub_label)
 
+        # Center container for overdub buttons
+        overdub_container_layout = QHBoxLayout()
+        overdub_container_layout.addStretch()
+        overdub_buttons_widget = QWidget()
         overdub_buttons_layout = QGridLayout()
+        overdub_buttons_layout.setSpacing(8)
+        overdub_buttons_widget.setLayout(overdub_buttons_layout)
+
         self.overdub_assign_btns = []
+        self.overdub_clear_btns = []
         for i in range(4):
+            # Assignment button - smaller and more square
             btn = QPushButton(f"Loop {i+1} Overdub")
-            btn.setMinimumHeight(35)
+            btn.setMinimumHeight(50)
+            btn.setMaximumWidth(100)
             btn.setEnabled(False)
             btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_overdub(loop))
             overdub_buttons_layout.addWidget(btn, 0, i)
             self.overdub_assign_btns.append(btn)
-        advanced_layout.addLayout(overdub_buttons_layout)
+
+            # Small X button to clear assignment
+            clear_btn = QPushButton("✕")
+            clear_btn.setMaximumWidth(25)
+            clear_btn.setMaximumHeight(25)
+            clear_btn.setVisible(False)
+            clear_btn.setToolTip("Remove assignment")
+            clear_btn.clicked.connect(lambda checked, loop=i+1: self.on_clear_overdub_assignment(loop))
+            overdub_buttons_layout.addWidget(clear_btn, 1, i)
+            self.overdub_clear_btns.append(clear_btn)
+
+        overdub_container_layout.addWidget(overdub_buttons_widget)
+        overdub_container_layout.addStretch()
+        advanced_layout.addLayout(overdub_container_layout)
 
         # Info text
         info_label = QLabel(tr("LoopManager",
@@ -1704,28 +1755,38 @@ class LoopManager(BasicEditor):
             btn.setMaximumWidth(150)  # Make buttons less wide
             btn.setProperty('filename', filename)
             btn.setProperty('track_idx', idx)
+            btn.setProperty('track_duration_ms', duration_ms)
 
-            # Style assignable loop buttons differently
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #2d5a8c;
-                    color: white;
-                    border: 2px solid #1e3a5f;
+            # Style assignable loop buttons using theme colors
+            palette = QApplication.palette()
+            btn_color = palette.color(QPalette.Button).name()
+            btn_text = palette.color(QPalette.ButtonText).name()
+            highlight_color = palette.color(QPalette.Highlight).name()
+            highlight_text = palette.color(QPalette.HighlightedText).name()
+            alt_base = palette.color(QPalette.AlternateBase).name()
+            light_color = palette.color(QPalette.Light).name()
+
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {btn_color};
+                    color: {btn_text};
+                    border: 2px solid {light_color};
                     border-radius: 4px;
                     font-weight: bold;
                     padding: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #3d6a9c;
-                }
-                QPushButton:checked {
-                    background-color: #5cb85c;
-                    border-color: #4cae4c;
-                }
-                QPushButton:disabled {
-                    background-color: #555;
-                    color: #888;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: {alt_base};
+                }}
+                QPushButton:checked {{
+                    background-color: {highlight_color};
+                    color: {highlight_text};
+                    border-color: {highlight_color};
+                }}
+                QPushButton:disabled {{
+                    background-color: {alt_base};
+                    color: {light_color};
+                }}
             """)
 
             self.track_button_group.addButton(btn)
@@ -2093,12 +2154,18 @@ class LoopManager(BasicEditor):
                 filename = track_info['filename']
                 file_info = self.loaded_files.get(filename)
                 if file_info:
-                    track_name = file_info['tracks'][track_info['track_idx']]['name']
-                    self.main_assign_btns[i].setText(f"Loop {loop_num}: {track_name[:10]}")
+                    track_idx = track_info['track_idx']
+                    track = file_info['tracks'][track_idx]
+                    duration_ms = track.get('duration_ms', 0)
+                    # Format: "Loop X: Track Y - Zms"
+                    self.main_assign_btns[i].setText(f"Loop {loop_num}: Track {track_idx + 1} - {duration_ms}ms")
+                    self.main_clear_btns[i].setVisible(True)
                 else:
                     self.main_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+                    self.main_clear_btns[i].setVisible(True)
             else:
                 self.main_assign_btns[i].setText(f"Loop {loop_num}")
+                self.main_clear_btns[i].setVisible(False)
 
             # Overdub button
             has_main = loop_num in self.loop_contents or (
@@ -2111,12 +2178,122 @@ class LoopManager(BasicEditor):
                 filename = track_info['filename']
                 file_info = self.loaded_files.get(filename)
                 if file_info:
-                    track_name = file_info['tracks'][track_info['track_idx']]['name']
-                    self.overdub_assign_btns[i].setText(f"Loop {loop_num}: {track_name[:10]}")
+                    track_idx = track_info['track_idx']
+                    track = file_info['tracks'][track_idx]
+                    duration_ms = track.get('duration_ms', 0)
+                    # Format: "Loop X: Track Y - Zms"
+                    self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Track {track_idx + 1} - {duration_ms}ms")
+                    self.overdub_clear_btns[i].setVisible(True)
                 else:
                     self.overdub_assign_btns[i].setText(f"Loop {loop_num}: Pending")
+                    self.overdub_clear_btns[i].setVisible(True)
             else:
                 self.overdub_assign_btns[i].setText(f"Loop {loop_num} Overdub")
+                self.overdub_clear_btns[i].setVisible(False)
+
+        # Update track button colors based on assignments
+        self.update_track_button_colors()
+
+    def on_clear_main_assignment(self, loop_num):
+        """Clear main loop assignment"""
+        if loop_num in self.pending_assignments and 'main' in self.pending_assignments[loop_num]:
+            del self.pending_assignments[loop_num]['main']
+            if not self.pending_assignments[loop_num]:  # If no assignments left for this loop
+                del self.pending_assignments[loop_num]
+            self.update_assignment_buttons()
+            # Disable load button if no assignments left
+            if not self.pending_assignments:
+                self.load_assignments_btn.setEnabled(False)
+
+    def on_clear_overdub_assignment(self, loop_num):
+        """Clear overdub loop assignment"""
+        if loop_num in self.pending_assignments and 'overdub' in self.pending_assignments[loop_num]:
+            del self.pending_assignments[loop_num]['overdub']
+            if not self.pending_assignments[loop_num]:  # If no assignments left for this loop
+                del self.pending_assignments[loop_num]
+            self.update_assignment_buttons()
+            # Disable load button if no assignments left
+            if not self.pending_assignments:
+                self.load_assignments_btn.setEnabled(False)
+
+    def update_track_button_colors(self):
+        """Update track button colors to highlight assigned tracks"""
+        # Get all buttons from the track button group
+        for button in self.track_button_group.buttons():
+            filename = button.property('filename')
+            track_idx = button.property('track_idx')
+
+            # Check if this track is assigned to any loop
+            is_assigned = False
+            for loop_num, assignments in self.pending_assignments.items():
+                for assign_type in ['main', 'overdub']:
+                    if assign_type in assignments:
+                        track_info = assignments[assign_type]
+                        if track_info['filename'] == filename and track_info['track_idx'] == track_idx:
+                            is_assigned = True
+                            break
+                if is_assigned:
+                    break
+
+            # Update button style based on assignment status
+            palette = QApplication.palette()
+            btn_color = palette.color(QPalette.Button).name()
+            btn_text = palette.color(QPalette.ButtonText).name()
+            highlight_color = palette.color(QPalette.Highlight).name()
+            highlight_text = palette.color(QPalette.HighlightedText).name()
+            alt_base = palette.color(QPalette.AlternateBase).name()
+            light_color = palette.color(QPalette.Light).name()
+            bright_text = palette.color(QPalette.BrightText).name()
+
+            if is_assigned:
+                # Use BrightText color for assigned tracks
+                button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {bright_text};
+                        color: {btn_text};
+                        border: 2px solid {highlight_color};
+                        border-radius: 4px;
+                        font-weight: bold;
+                        padding: 5px;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {highlight_color};
+                        color: {highlight_text};
+                    }}
+                    QPushButton:checked {{
+                        background-color: {highlight_color};
+                        color: {highlight_text};
+                        border-color: {highlight_color};
+                    }}
+                    QPushButton:disabled {{
+                        background-color: {alt_base};
+                        color: {light_color};
+                    }}
+                """)
+            else:
+                # Default style
+                button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {btn_color};
+                        color: {btn_text};
+                        border: 2px solid {light_color};
+                        border-radius: 4px;
+                        font-weight: bold;
+                        padding: 5px;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {alt_base};
+                    }}
+                    QPushButton:checked {{
+                        background-color: {highlight_color};
+                        color: {highlight_text};
+                        border-color: {highlight_color};
+                    }}
+                    QPushButton:disabled {{
+                        background-color: {alt_base};
+                        color: {light_color};
+                    }}
+                """)
 
     def handle_device_response(self, data):
         """Handle incoming HID data from device"""
