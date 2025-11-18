@@ -32,20 +32,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.setup_ui()
         
     def setup_ui(self):
-        # Create scroll area for content
+        # Create scrollable main widget (following LoopManager pattern)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         main_widget.setStyleSheet("QComboBox { max-width: 150px; }")
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-
         scroll.setWidget(main_widget)
-        self.addWidget(scroll, 1)  # stretch factor of 1 to expand
+
+        self.addWidget(scroll)
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
