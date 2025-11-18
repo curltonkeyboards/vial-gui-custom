@@ -19,6 +19,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
+import widgets.resources  # Import Qt resources for controller images
 
 class AsyncValueDialog(QDialog):
     def __init__(self, parent, title, min_val, max_val, callback):
@@ -3951,8 +3952,15 @@ class GamepadWidget(QWidget):
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setFixedSize(750, 500)
 
-        # Load the PS4 controller image from resources
-        pixmap = QPixmap(":/ps4controller")
+        # Detect theme and load appropriate controller image
+        window_color = QApplication.palette().color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 + window_color.green() * 0.587 + window_color.blue() * 0.114)
+
+        # Choose controller image based on brightness (light or dark theme)
+        if brightness > 127:  # Threshold for light/dark theme
+            pixmap = QPixmap(":/controllerlight")  # Light theme alias
+        else:
+            pixmap = QPixmap(":/controllerdark")  # Dark theme alias
 
         if not pixmap.isNull():
             # Scale the pixmap to fit the label while maintaining aspect ratio
