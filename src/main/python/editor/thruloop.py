@@ -47,7 +47,7 @@ class ThruLoopConfigurator(BasicEditor):
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        main_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
 
