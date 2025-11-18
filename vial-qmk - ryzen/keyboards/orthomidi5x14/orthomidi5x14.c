@@ -33,6 +33,10 @@ extern MidiDevice midi_device;
 #undef KC_CUSTOM
 #define KC_CUSTOM (0x8000 + 128 * 7) + 128 * 128 + 5 + 17
 
+// MIDI Routing Toggle Keycodes (after gaming controls)
+#define MIDI_IN_MODE_TOG  (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
+#define USB_MIDI_MODE_TOG (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
+
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
 
@@ -267,6 +271,40 @@ typedef enum {
 } clock_mode_t;
 
 static clock_mode_t clock_mode = CLOCK_MODE_INTERNAL;
+
+// ============================================================================
+// MIDI ROUTING MODES
+// ============================================================================
+
+// MIDI In routing modes (what to do with data from MIDI IN socket)
+typedef enum {
+    MIDI_IN_TO_USB,        // Send MIDI In directly to USB only
+    MIDI_IN_TO_OUT,        // Send MIDI In directly to MIDI Out only
+    MIDI_IN_PROCESS,       // Send MIDI In through keyboard processing
+    MIDI_IN_CLOCK_ONLY     // Only forward clock messages from MIDI In
+} midi_in_mode_t;
+
+// USB MIDI routing modes (what to do with MIDI from USB)
+typedef enum {
+    USB_MIDI_TO_OUT,       // Send USB MIDI directly to MIDI Out
+    USB_MIDI_PROCESS       // Send USB MIDI through keyboard processing
+} usb_midi_mode_t;
+
+static midi_in_mode_t midi_in_mode = MIDI_IN_PROCESS;  // Default: process through keyboard
+static usb_midi_mode_t usb_midi_mode = USB_MIDI_PROCESS;  // Default: process through keyboard
+
+// MIDI routing state strings for OLED
+static const char* midi_in_mode_names[] = {
+    "IN->USB",
+    "IN->OUT",
+    "IN->PROC",
+    "IN->CLK"
+};
+
+static const char* usb_midi_mode_names[] = {
+    "USB->OUT",
+    "USB->PROC"
+};
 
 // ============================================================================
 // EXTERNAL CLOCK RECEPTION STATE
@@ -2806,6 +2844,15 @@ void keyboard_post_init_user(void) {
 	setPinInputHigh(B12);  // Encoder 0 click
 	setPinInputHigh(B13);  // Encoder 1 click
 	setPinInputHigh(B10);  // Sustain pedal
+
+#ifdef MIDI_SERIAL_ENABLE
+	// Initialize MIDI serial pins for hardware MIDI
+	// Note: The actual USART initialization is handled by QMK's serial driver
+	// This just ensures the pins are configured
+	setPinInputHigh(B8);   // MIDI IN (RX) - PB8 (user specified)
+	setPinOutput(B9);      // MIDI OUT (TX) - PB9 (user specified)
+	// Note: If PB8/PB9 don't work (no UART support), switch to PC10/PC11
+#endif
 }
 
    
@@ -4357,6 +4404,79 @@ void midi_clock_task(void) {
 // Check if internal clock is active
 bool is_internal_clock_active(void) {
     return (clock_mode == CLOCK_MODE_INTERNAL) && int_clock.running;
+}
+
+// ============================================================================
+// MIDI ROUTING FUNCTIONS
+// ============================================================================
+
+#ifdef MIDI_SERIAL_ENABLE
+extern MidiDevice midi_serial_device;  // Serial MIDI device (hardware MIDI)
+
+// Route MIDI data from hardware MIDI IN based on current mode
+void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes) {
+    bool is_clock_msg = (byte1 == MIDI_CLOCK || byte1 == MIDI_START ||
+                         byte1 == MIDI_STOP || byte1 == MIDI_CONTINUE);
+
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            // Send to USB MIDI only
+            midi_send_data(&midi_device, num_bytes, byte1, byte2, byte3);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            // Send to MIDI OUT only
+            midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
+            break;
+
+        case MIDI_IN_PROCESS:
+            // Send through keyboard processing (will be handled by QMK's MIDI system)
+            // This is the default behavior - data comes in via serial and gets processed
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+            // Only forward clock messages
+            if (is_clock_msg) {
+                // Send clock to both USB and MIDI OUT
+                midi_send_data(&midi_device, num_bytes, byte1, byte2, byte3);
+                midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
+            }
+            break;
+    }
+}
+
+// Route MIDI data from USB based on current mode
+void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes) {
+    switch (usb_midi_mode) {
+        case USB_MIDI_TO_OUT:
+            // Send USB MIDI directly to hardware MIDI OUT
+            midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
+            break;
+
+        case USB_MIDI_PROCESS:
+            // Process through keyboard (default behavior)
+            // This happens automatically via QMK's MIDI system
+            break;
+    }
+}
+#endif // MIDI_SERIAL_ENABLE
+
+// Toggle MIDI In routing mode
+void toggle_midi_in_mode(void) {
+    midi_in_mode = (midi_in_mode + 1) % 4;  // Cycle through 4 modes
+    // Force OLED update to show new mode
+    #ifdef OLED_ENABLE
+    oled_display_force_update();
+    #endif
+}
+
+// Toggle USB MIDI routing mode
+void toggle_usb_midi_mode(void) {
+    usb_midi_mode = (usb_midi_mode + 1) % 2;  // Cycle through 2 modes
+    // Force OLED update to show new mode
+    #ifdef OLED_ENABLE
+    oled_display_force_update();
+    #endif
 }
 
 bool is_external_clock_active(void) {
@@ -10036,6 +10156,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static uint8_t interval_note = 0;
 
     
+    // MIDI Routing Toggle Keycodes
+    if (keycode == MIDI_IN_MODE_TOG) {
+        if (record->event.pressed) {
+            toggle_midi_in_mode();
+        }
+        return false;  // Skip further processing
+    }
+
+    if (keycode == USB_MIDI_MODE_TOG) {
+        if (record->event.pressed) {
+            toggle_usb_midi_mode();
+        }
+        return false;  // Skip further processing
+    }
+
     if (keycode == 0xC929) {
         if (record->event.pressed) {
             // Key pressed - start timer
@@ -11883,11 +12018,19 @@ bool oled_task_user(void) {
     // Get the current layer and format it into `str`
     uint8_t layer = get_highest_layer(layer_state | default_layer_state);
     uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
-    
+
     if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
 	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
     // Write the layer information to the OLED
     oled_write_P(str, false);
+
+    // Display MIDI routing modes on a new line
+    char midi_str[22] = "";
+    snprintf(midi_str, sizeof(midi_str), " %s | %s",
+             midi_in_mode_names[midi_in_mode],
+             usb_midi_mode_names[usb_midi_mode]);
+    oled_write(midi_str, false);
+
     // Render keylog information
     oled_render_keylog();
     // Add separator line to `name` and write to OLED

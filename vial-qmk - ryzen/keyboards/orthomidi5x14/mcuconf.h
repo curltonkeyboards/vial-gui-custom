@@ -43,3 +43,7 @@
 // ADC clock configuration
 #undef STM32_ADC_ADCPRE
 #define STM32_ADC_ADCPRE ADC_CCR_ADCPRE_DIV4
+
+// USART Configuration for MIDI Serial
+#undef STM32_SERIAL_USE_USART3
+#define STM32_SERIAL_USE_USART3 TRUE
