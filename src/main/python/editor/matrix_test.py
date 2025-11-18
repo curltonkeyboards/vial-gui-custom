@@ -181,7 +181,7 @@ class ThruLoopConfigurator(BasicEditor):
         scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
 
@@ -666,7 +666,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
 
