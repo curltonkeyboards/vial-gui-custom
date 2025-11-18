@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 from PyQt5 import QtCore
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction
+    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -2131,14 +2131,29 @@ class RGBConfigurator(BasicEditor):
     def __init__(self):
         super().__init__()
 
-        self.addStretch()
+        # Create a vertical layout for content
+        content_layout = QVBoxLayout()
+        content_layout.addStretch()
 
         w = QWidget()
         w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         self.container = QGridLayout()
         w.setLayout(self.container)
-        self.addWidget(w)
-        self.setAlignment(w, QtCore.Qt.AlignHCenter)
+        content_layout.addWidget(w, alignment=QtCore.Qt.AlignHCenter)
+        content_layout.addStretch()
+
+        # Create widget for content layout
+        content_widget = QWidget()
+        content_widget.setLayout(content_layout)
+
+        # Wrap in scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(content_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        self.addWidget(scroll_area)
 
         self.handler_backlight = QmkBacklightHandler(self.container)
         self.handler_backlight.update.connect(self.update_from_keyboard)
@@ -2159,14 +2174,17 @@ class RGBConfigurator(BasicEditor):
         self.handler_custom_lights = CustomLightsHandler(self.container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
         
-        self.handlers = [self.handler_backlight, self.handler_rgblight, 
+        self.handlers = [self.handler_backlight, self.handler_rgblight,
                         self.handler_vialrgb, self.handler_rescan,
                         self.handler_layer_rgb, self.handler_custom_lights]
 
-        self.addStretch()
+        # Add buttons outside of scroll area
         buttons = QHBoxLayout()
         buttons.addStretch()
         save_btn = QPushButton(tr("RGBConfigurator", "Save"))
+        save_btn.setMinimumHeight(30)
+        save_btn.setMaximumHeight(30)
+        save_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
         buttons.addWidget(save_btn)
         save_btn.clicked.connect(self.on_save)
         self.addLayout(buttons)

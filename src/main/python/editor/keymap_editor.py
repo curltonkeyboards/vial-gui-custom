@@ -101,7 +101,6 @@ class QuickActuationWidget(QGroupBox):
         
         # Enable Rapidfire checkbox - ALWAYS VISIBLE
         self.rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Rapidfire"))
-        self.rapid_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
         self.rapid_checkbox.setChecked(False)
         layout.addWidget(self.rapid_checkbox)
         self.rapid_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
@@ -168,7 +167,6 @@ class QuickActuationWidget(QGroupBox):
         
         # Enable MIDI Rapidfire checkbox (visible when advanced is shown)
         self.midi_rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable MIDI Rapidfire"))
-        self.midi_rapid_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
         self.midi_rapid_checkbox.setChecked(False)
         self.midi_rapid_checkbox.setVisible(False)
         layout.addWidget(self.midi_rapid_checkbox)
@@ -256,8 +254,11 @@ class QuickActuationWidget(QGroupBox):
         label.setMinimumWidth(90)
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
-        
+
         self.aftertouch_combo = ArrowComboBox()
+        self.aftertouch_combo.setMaximumHeight(20)
+        self.aftertouch_combo.setMaximumWidth(180)
+        self.aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
         self.aftertouch_combo.addItem("Off", 0)
         self.aftertouch_combo.addItem("Reverse", 1)
         self.aftertouch_combo.addItem("Bottom-Out", 2)
@@ -277,8 +278,11 @@ class QuickActuationWidget(QGroupBox):
         label.setMinimumWidth(90)
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
-        
+
         self.aftertouch_cc_combo = ArrowComboBox()
+        self.aftertouch_cc_combo.setMaximumHeight(20)
+        self.aftertouch_cc_combo.setMaximumWidth(180)
+        self.aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
         for cc in range(128):
             self.aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
         self.aftertouch_cc_combo.setCurrentIndex(74)
@@ -295,8 +299,11 @@ class QuickActuationWidget(QGroupBox):
         label.setMinimumWidth(90)
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
-        
+
         self.velocity_combo = ArrowComboBox()
+        self.velocity_combo.setMaximumHeight(20)
+        self.velocity_combo.setMaximumWidth(180)
+        self.velocity_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
         self.velocity_combo.addItem("Fixed (64)", 0)
         self.velocity_combo.addItem("Peak at Apex", 1)
         self.velocity_combo.addItem("Speed-Based", 2)
@@ -315,8 +322,11 @@ class QuickActuationWidget(QGroupBox):
         label.setMinimumWidth(90)
         label.setMaximumWidth(90)
         combo_layout.addWidget(label)
-        
+
         self.vel_speed_combo = ArrowComboBox()
+        self.vel_speed_combo.setMaximumHeight(20)
+        self.vel_speed_combo.setMaximumWidth(180)
+        self.vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 9px; }")
         for i in range(1, 21):
             self.vel_speed_combo.addItem(str(i), i)
         self.vel_speed_combo.setCurrentIndex(9)
