@@ -173,16 +173,21 @@ class ThruLoopConfigurator(BasicEditor):
         self.setup_ui()
         
     def setup_ui(self):
-        self.addStretch()
-        
+        # Create scroll area for better window resizing
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        main_widget.setMinimumWidth(1000)
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
-        
+
+        scroll_area.setWidget(main_widget)
+        self.addWidget(scroll_area)
+
         # Top row: Basic Settings and LoopChop side by side
         top_row_layout = QHBoxLayout()
         main_layout.addLayout(top_row_layout)
@@ -653,16 +658,21 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.setup_ui()
         
     def setup_ui(self):
-        self.addStretch()
-        
+        # Create scroll area for better window resizing
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        main_widget.setMinimumWidth(800)
+        main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
-        self.addWidget(main_widget)
-        self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
-        
+
+        scroll_area.setWidget(main_widget)
+        self.addWidget(scroll_area)
+
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
         basic_layout = QGridLayout()
