@@ -675,17 +675,16 @@ class SustainPedalWidget(QGroupBox):
         self.setLayout(layout)
 
         # Info label
-        info_label = QLabel(tr("SustainPedalWidget", "Configure the sustain pedal\nbutton below (row 5, col 2)"))
+        info_label = QLabel(tr("SustainPedalWidget", "Configure sustain pedal on PB10\n(Shows as key at bottom left)"))
         info_label.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
 
-        # Button to select the sustain pedal key
-        self.sustain_button = QPushButton(tr("SustainPedalWidget", "Click key below to configure"))
-        self.sustain_button.setMaximumHeight(30)
-        self.sustain_button.setStyleSheet("padding: 4px 8px; font-size: 9pt;")
-        self.sustain_button.setEnabled(False)
-        layout.addWidget(self.sustain_button)
+        # Additional info
+        info_label2 = QLabel(tr("SustainPedalWidget", "Encoder clicks are between\nthe encoder up/down buttons"))
+        info_label2.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
+        info_label2.setWordWrap(True)
+        layout.addWidget(info_label2)
 
         layout.addStretch()
 
@@ -720,25 +719,19 @@ class KeymapEditor(BasicEditor):
         self.quick_actuation = QuickActuationWidget()
         self.sustain_pedal = SustainPedalWidget()
 
-        # Create a vertical layout for right-side widgets
-        right_widgets_layout = QVBoxLayout()
-        right_widgets_layout.setSpacing(10)
-        right_widgets_layout.addWidget(self.quick_actuation)
-        right_widgets_layout.addWidget(self.sustain_pedal)
-        right_widgets_layout.addStretch()
-
         # contains the actual keyboard
         self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Layout with widgets on the left and keyboard on the right (NO GAP)
+        # Layout with actuation on left, keyboard in center, sustain pedal on right (NO GAP)
         keyboard_layout = QHBoxLayout()
-        keyboard_layout.setSpacing(0)  # Remove spacing between widgets
+        keyboard_layout.setSpacing(10)  # Small spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
-        keyboard_layout.addLayout(right_widgets_layout, 0)
+        keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.sustain_pedal, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
