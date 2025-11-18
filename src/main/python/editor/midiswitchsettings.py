@@ -32,12 +32,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.setup_ui()
         
     def setup_ui(self):
-        self.addStretch()
-
         # Create scroll area for content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
         main_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -46,8 +45,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         main_widget.setLayout(main_layout)
 
         scroll.setWidget(main_widget)
-        self.addWidget(scroll)
-        self.setAlignment(scroll, QtCore.Qt.AlignHCenter)
+        self.addWidget(scroll, 1)  # stretch factor of 1 to expand
         
         # Basic Settings Group
         basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
