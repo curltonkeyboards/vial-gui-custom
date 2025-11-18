@@ -3965,9 +3965,9 @@ class GamepadWidget(QWidget):
             )
             self.image_label.setPixmap(scaled_pixmap)
             self.image_label.setFixedSize(scaled_pixmap.size())
-            # Position image label at top center
+            # Position image label at top center, shifted up 50px to reduce gap
             x_offset = (750 - scaled_pixmap.width()) // 2
-            self.image_label.move(x_offset, 0)
+            self.image_label.move(x_offset, -50)
         else:
             # Set a fallback text if image doesn't load
             self.image_label.setFixedSize(750, 560)
