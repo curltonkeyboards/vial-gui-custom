@@ -42,7 +42,7 @@ class ThruLoopConfigurator(BasicEditor):
         self.addStretch()
         
         main_widget = QWidget()
-        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        main_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_widget.setLayout(main_layout)
         self.addWidget(main_widget)
