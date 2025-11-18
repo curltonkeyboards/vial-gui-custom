@@ -189,9 +189,9 @@ class ThruLoopConfigurator(BasicEditor):
         self.nav_widget = QWidget()
         self.nav_widget.setLayout(nav_layout)
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 2)
-        
-        # Buttons
-        self.addStretch()
+
+        # Buttons - add to main_layout to keep them inside the scroll area
+        main_layout.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
@@ -225,8 +225,8 @@ class ThruLoopConfigurator(BasicEditor):
         load_file_btn.setStyleSheet(button_style)
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
-        
-        self.addLayout(buttons_layout)
+
+        main_layout.addLayout(buttons_layout)
         
         # Connect signals AFTER all widgets are created
         self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)

@@ -286,9 +286,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.velocity_number3.addItem(str(i), i)
         self.velocity_number3.setCurrentIndex(126)  # Default to 127
         keysplit_layout.addWidget(self.velocity_number3, 3, 3)
-        
-        # Buttons
-        self.addStretch()
+
+        # Buttons - add to main_layout to keep them inside the scroll area
+        main_layout.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
@@ -323,7 +323,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         load_file_btn.clicked.connect(self.on_load_from_file)
         buttons_layout.addWidget(load_file_btn)
 
-        self.addLayout(buttons_layout)
+        main_layout.addLayout(buttons_layout)
 
         # Save slot buttons
         save_slots_layout = QHBoxLayout()
@@ -334,7 +334,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.setMinimumWidth(120)
             btn.clicked.connect(lambda checked, slot=i: self.on_save_slot(slot))
             save_slots_layout.addWidget(btn)
-        self.addLayout(save_slots_layout)
+        main_layout.addLayout(save_slots_layout)
 
         # Load slot buttons
         load_slots_layout = QHBoxLayout()
@@ -345,7 +345,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.setMinimumWidth(120)
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
-        self.addLayout(load_slots_layout)
+        main_layout.addLayout(load_slots_layout)
         
     def send_hid_packet(self, command, data):
         """Send HID packet to device"""
