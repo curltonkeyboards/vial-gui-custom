@@ -3,9 +3,9 @@ import json
 from collections import defaultdict
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QCheckBox, QGridLayout, QLabel, QWidget, QSizePolicy, QTabWidget, QSpinBox, \
-    QHBoxLayout, QPushButton, QMessageBox
+    QHBoxLayout, QPushButton, QMessageBox, QScrollArea
 
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_QMK_SETTINGS
@@ -105,12 +105,21 @@ class QmkSettings(BasicEditor):
         buttons = QHBoxLayout()
         buttons.addStretch()
         self.btn_save = QPushButton(tr("QmkSettings", "Save"))
+        self.btn_save.setMinimumHeight(30)
+        self.btn_save.setMaximumHeight(30)
+        self.btn_save.setStyleSheet("QPushButton { border-radius: 5px; }")
         self.btn_save.clicked.connect(self.save_settings)
         buttons.addWidget(self.btn_save)
         self.btn_undo = QPushButton(tr("QmkSettings", "Undo"))
+        self.btn_undo.setMinimumHeight(30)
+        self.btn_undo.setMaximumHeight(30)
+        self.btn_undo.setStyleSheet("QPushButton { border-radius: 5px; }")
         self.btn_undo.clicked.connect(self.reload_settings)
         buttons.addWidget(self.btn_undo)
         btn_reset = QPushButton(tr("QmkSettings", "Reset"))
+        btn_reset.setMinimumHeight(30)
+        btn_reset.setMaximumHeight(30)
+        btn_reset.setStyleSheet("QPushButton { border-radius: 5px; }")
         btn_reset.clicked.connect(self.reset_settings)
         buttons.addWidget(btn_reset)
         self.addLayout(buttons)
@@ -166,9 +175,19 @@ class QmkSettings(BasicEditor):
             l = QVBoxLayout()
             l.addWidget(w)
             l.setAlignment(w, QtCore.Qt.AlignHCenter)
-            w2 = QWidget()
-            w2.setLayout(l)
-            self.misc_widgets += [w, w2]
+
+            # Create widget for layout
+            content_widget = QWidget()
+            content_widget.setLayout(l)
+
+            # Wrap in scroll area
+            w2 = QScrollArea()
+            w2.setWidget(content_widget)
+            w2.setWidgetResizable(True)
+            w2.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            w2.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+            self.misc_widgets += [w, content_widget, w2]
             self.tabs_widget.addTab(w2, tab["name"])
             self.tabs.append(self.populate_tab(tab, container))
 
