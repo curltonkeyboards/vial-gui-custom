@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 from PyQt5 import QtCore
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtWidgets import QTabWidget, QWidget, QSizePolicy, QGridLayout, QVBoxLayout, QLabel, QHBoxLayout, \
-    QPushButton, QSpinBox
+    QPushButton, QSpinBox, QScrollArea
 
 from protocol.constants import VIAL_PROTOCOL_DYNAMIC
 from widgets.key_widget import KeyWidget
@@ -38,8 +38,17 @@ class TapDanceEntryUI(QObject):
         l.addWidget(lbl)
         l.setAlignment(lbl, QtCore.Qt.AlignHCenter)
         l.addStretch()
-        self.w2 = QWidget()
-        self.w2.setLayout(l)
+
+        # Create widget for layout
+        content_widget = QWidget()
+        content_widget.setLayout(l)
+
+        # Wrap in scroll area
+        self.w2 = QScrollArea()
+        self.w2.setWidget(content_widget)
+        self.w2.setWidgetResizable(True)
+        self.w2.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.w2.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     def populate_container(self):
         self.container.addWidget(QLabel("On tap"), 0, 0)

@@ -3,9 +3,9 @@ import json
 from collections import defaultdict
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QCheckBox, QGridLayout, QLabel, QWidget, QSizePolicy, QTabWidget, QSpinBox, \
-    QHBoxLayout, QPushButton, QMessageBox
+    QHBoxLayout, QPushButton, QMessageBox, QScrollArea
 
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_QMK_SETTINGS
@@ -166,9 +166,19 @@ class QmkSettings(BasicEditor):
             l = QVBoxLayout()
             l.addWidget(w)
             l.setAlignment(w, QtCore.Qt.AlignHCenter)
-            w2 = QWidget()
-            w2.setLayout(l)
-            self.misc_widgets += [w, w2]
+
+            # Create widget for layout
+            content_widget = QWidget()
+            content_widget.setLayout(l)
+
+            # Wrap in scroll area
+            w2 = QScrollArea()
+            w2.setWidget(content_widget)
+            w2.setWidgetResizable(True)
+            w2.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            w2.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+            self.misc_widgets += [w, content_widget, w2]
             self.tabs_widget.addTab(w2, tab["name"])
             self.tabs.append(self.populate_tab(tab, container))
 

@@ -1085,7 +1085,7 @@ class midiadvancedTab(QScrollArea):
 
     def add_cc_x_y_menu(self, layout, width=None):
         button = QPushButton("CC Value")
-        button.setFixedHeight(40)
+        button.setMaximumHeight(25)
         if width:
             button.setFixedWidth(width)
         button.clicked.connect(self.open_cc_xy_dialog)
@@ -1106,7 +1106,7 @@ class midiadvancedTab(QScrollArea):
     def add_value_button(self, label_text, keycode_set, layout, width=None):
         """Create a button that opens a dialog to input a value for the corresponding keycode."""
         button = QPushButton(label_text)
-        button.setFixedHeight(40)
+        button.setMaximumHeight(25)
         if width:
             button.setFixedWidth(width)
         
@@ -1217,7 +1217,7 @@ class midiadvancedTab(QScrollArea):
 
         # Create dropdown
         dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(40)
+        dropdown.setMaximumHeight(25)
         if width:
             dropdown.setFixedWidth(width)
 
@@ -1244,7 +1244,7 @@ class midiadvancedTab(QScrollArea):
 
         # Create dropdown
         dropdown = CenteredComboBox()
-        dropdown.setFixedHeight(60)
+        dropdown.setMaximumHeight(25)
         if width:
             dropdown.setFixedWidth(width)
 
