@@ -2801,6 +2801,11 @@ void keyboard_post_init_user(void) {
 	dynamic_macro_init();
 	init_custom_animations();
 	dwt_init();
+
+	// Initialize encoder click buttons and sustain pedal pins
+	setPinInputHigh(B12);  // Encoder 0 click
+	setPinInputHigh(B13);  // Encoder 1 click
+	setPinInputHigh(B10);  // Sustain pedal
 }
 
    
@@ -11905,7 +11910,7 @@ void matrix_scan_user(void) {
     // Update chord progression timing
     update_chord_progression();
     matrix_scan_user_macro();
-    
+
     // Check for tap tempo key hold (1.5 seconds = 1500ms)
     if (tap_key_held && (timer_read32() - tap_key_press_time >= 1500)) {
         current_bpm = 0;
@@ -11915,4 +11920,64 @@ void matrix_scan_user(void) {
     }
 	if (current_bpm > 0) {
 	midi_clock_task();}
+
+	// Handle sustain pedal (PB10) - active low (pulled high with internal pullup)
+	static bool sustain_pedal_prev_state = true;
+	bool sustain_pedal_state = readPin(B10);
+	if (sustain_pedal_state != sustain_pedal_prev_state) {
+		if (!sustain_pedal_state) {
+			// Pedal pressed
+			truesustain = true;
+			midi_send_cc(&midi_device, channel_number, 64, 127);
+		} else {
+			// Pedal released
+			truesustain = false;
+			midi_send_cc(&midi_device, channel_number, 64, 0);
+		}
+		sustain_pedal_prev_state = sustain_pedal_state;
+	}
+
+	// Handle encoder 0 click button (PB12)
+	static bool encoder0_click_prev_state = true;
+	bool encoder0_click_state = readPin(B12);
+	if (encoder0_click_state != encoder0_click_prev_state) {
+		if (!encoder0_click_state) {
+			// Encoder 0 click pressed
+			action_exec((keyevent_t){
+				.key = (keypos_t){.row = 5, .col = 0},
+				.pressed = true,
+				.time = timer_read()
+			});
+		} else {
+			// Encoder 0 click released
+			action_exec((keyevent_t){
+				.key = (keypos_t){.row = 5, .col = 0},
+				.pressed = false,
+				.time = timer_read()
+			});
+		}
+		encoder0_click_prev_state = encoder0_click_state;
+	}
+
+	// Handle encoder 1 click button (PB13)
+	static bool encoder1_click_prev_state = true;
+	bool encoder1_click_state = readPin(B13);
+	if (encoder1_click_state != encoder1_click_prev_state) {
+		if (!encoder1_click_state) {
+			// Encoder 1 click pressed
+			action_exec((keyevent_t){
+				.key = (keypos_t){.row = 5, .col = 1},
+				.pressed = true,
+				.time = timer_read()
+			});
+		} else {
+			// Encoder 1 click released
+			action_exec((keyevent_t){
+				.key = (keypos_t){.row = 5, .col = 1},
+				.pressed = false,
+				.time = timer_read()
+			});
+		}
+		encoder1_click_prev_state = encoder1_click_state;
+	}
 }

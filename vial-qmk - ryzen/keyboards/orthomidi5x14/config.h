@@ -46,6 +46,12 @@
 #define ENCODERS_PAD_B { C13, B4}
 //#define ENCODER_RESOLUTION 4
 
+// Encoder click buttons (push functionality)
+#define ENCODER_CLICK_PINS { B12, B13 }
+
+// Sustain pedal pin
+#define SUSTAIN_PEDAL_PIN B10
+
 #define EEPROM_I2C_24LC256
 
 
@@ -128,7 +134,7 @@
 
 #define OLED_TIMEOUT 0
 
-#define MATRIX_ROWS 5   // 5 rows (ADC1-ADC5)
+#define MATRIX_ROWS 6   // 5 physical rows (ADC1-ADC5) + 1 virtual row for encoder clicks and sustain pedal
 #define MATRIX_COLS 14  // 14 columns
 
 // ADC-capable pins for reading row analog values
