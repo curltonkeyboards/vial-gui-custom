@@ -205,6 +205,7 @@ class ThruLoopConfigurator(BasicEditor):
         self.loop_channel = ArrowComboBox()
         self.loop_channel.setMinimumWidth(150)
         self.loop_channel.setMaximumHeight(30)
+        self.loop_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 17):
             self.loop_channel.addItem(f"Channel {i}", i)
         self.loop_channel.setCurrentIndex(15)
@@ -399,14 +400,15 @@ class ThruLoopConfigurator(BasicEditor):
         else:
             combo.setMinimumWidth(120)
         combo.setMaximumHeight(30)
-        
+        combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+
         # Add "None" option
         combo.addItem("None", 128)
-        
+
         # Add CC options
         for cc_num in range(128):
             combo.addItem(f"CC# {cc_num}", cc_num)
-            
+
         combo.setCurrentIndex(0)
         return combo
     
@@ -906,6 +908,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.cc_loop_recording.setMinimumWidth(120)
         self.cc_loop_recording.setMinimumHeight(30)
         self.cc_loop_recording.setMaximumHeight(30)
+        self.cc_loop_recording.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         self.cc_loop_recording.addItem("Off", False)
         self.cc_loop_recording.addItem("On", True)
         advanced_layout.addWidget(self.cc_loop_recording, 3, 4)
@@ -916,6 +919,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.setMinimumWidth(120)
         self.true_sustain.setMinimumHeight(30)
         self.true_sustain.setMaximumHeight(30)
+        self.true_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
@@ -938,6 +942,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_status.setMinimumWidth(120)
         self.key_split_status.setMinimumHeight(30)
         self.key_split_status.setMaximumHeight(30)
+        self.key_split_status.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         self.key_split_status.addItem("Disable Keysplit", 0)
         self.key_split_status.addItem("KeySplit On", 1)
         self.key_split_status.addItem("TripleSplit On", 2)
@@ -949,6 +954,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_transpose_status.setMinimumWidth(120)
         self.key_split_transpose_status.setMinimumHeight(30)
         self.key_split_transpose_status.setMaximumHeight(30)
+        self.key_split_transpose_status.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         self.key_split_transpose_status.addItem("Disable Keysplit", 0)
         self.key_split_transpose_status.addItem("KeySplit On", 1)
         self.key_split_transpose_status.addItem("TripleSplit On", 2)
@@ -960,6 +966,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_velocity_status.setMinimumWidth(120)
         self.key_split_velocity_status.setMinimumHeight(30)
         self.key_split_velocity_status.setMaximumHeight(30)
+        self.key_split_velocity_status.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         self.key_split_velocity_status.addItem("Disable Keysplit", 0)
         self.key_split_velocity_status.addItem("KeySplit On", 1)
         self.key_split_velocity_status.addItem("TripleSplit On", 2)
@@ -984,6 +991,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_channel.setMinimumWidth(120)
         self.key_split_channel.setMinimumHeight(30)
         self.key_split_channel.setMaximumHeight(30)
+        self.key_split_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(16):
             self.key_split_channel.addItem(str(i + 1), i)
         keysplit_layout.addWidget(self.key_split_channel, 1, 2)
@@ -993,6 +1001,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_number2.setMinimumWidth(120)
         self.transpose_number2.setMinimumHeight(30)
         self.transpose_number2.setMaximumHeight(30)
+        self.transpose_number2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(-64, 65):
             self.transpose_number2.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number2.setCurrentIndex(64)
@@ -1003,6 +1012,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_number2.setMinimumWidth(120)
         self.velocity_number2.setMinimumHeight(30)
         self.velocity_number2.setMaximumHeight(30)
+        self.velocity_number2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 128):
             self.velocity_number2.addItem(str(i), i)
         self.velocity_number2.setCurrentIndex(126)
@@ -1016,6 +1026,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split2_channel.setMinimumWidth(120)
         self.key_split2_channel.setMinimumHeight(30)
         self.key_split2_channel.setMaximumHeight(30)
+        self.key_split2_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(16):
             self.key_split2_channel.addItem(str(i + 1), i)
         keysplit_layout.addWidget(self.key_split2_channel, 1, 4)
@@ -1025,6 +1036,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_number3.setMinimumWidth(120)
         self.transpose_number3.setMinimumHeight(30)
         self.transpose_number3.setMaximumHeight(30)
+        self.transpose_number3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(-64, 65):
             self.transpose_number3.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.transpose_number3.setCurrentIndex(64)
@@ -1035,6 +1047,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_number3.setMinimumWidth(120)
         self.velocity_number3.setMinimumHeight(30)
         self.velocity_number3.setMaximumHeight(30)
+        self.velocity_number3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 128):
             self.velocity_number3.addItem(str(i), i)
         self.velocity_number3.setCurrentIndex(126)
@@ -1469,6 +1482,7 @@ class LayerActuationConfigurator(BasicEditor):
         
         self.layer_dropdown = ArrowComboBox()
         self.layer_dropdown.setMinimumWidth(150)
+        self.layer_dropdown.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(12):
             self.layer_dropdown.addItem(f"Layer {i}", i)
         self.layer_dropdown.currentIndexChanged.connect(self.on_layer_changed)
@@ -1649,6 +1663,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         aftertouch_combo = ArrowComboBox()
+        aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         aftertouch_combo.addItem("Off", 0)
         aftertouch_combo.addItem("Reverse", 1)
         aftertouch_combo.addItem("Bottom-Out", 2)
@@ -1670,6 +1685,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         aftertouch_cc_combo = ArrowComboBox()
+        aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for cc in range(128):
             aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
         aftertouch_cc_combo.setCurrentIndex(74)
@@ -1688,6 +1704,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         velocity_combo = ArrowComboBox()
+        velocity_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         velocity_combo.addItem("Fixed (64)", 0)
         velocity_combo.addItem("Peak at Apex", 1)
         velocity_combo.addItem("Speed-Based", 2)
@@ -1708,6 +1725,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         vel_speed_combo = ArrowComboBox()
+        vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 21):
             vel_speed_combo.addItem(str(i), i)
         vel_speed_combo.setCurrentIndex(9)
@@ -1934,6 +1952,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         combo = ArrowComboBox()
+        combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         combo.addItem("Off", 0)
         combo.addItem("Reverse", 1)
         combo.addItem("Bottom-Out", 2)
@@ -1941,7 +1960,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo.addItem("Vibrato", 4)
         combo_layout.addWidget(combo)
         combo_layout.addStretch()
-        
+
         layer_advanced_layout.addLayout(combo_layout)
         combo.currentIndexChanged.connect(
             lambda: self.on_layer_combo_changed('aftertouch', combo)
@@ -1955,12 +1974,13 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         combo = ArrowComboBox()
+        combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for cc in range(128):
             combo.addItem(f"CC#{cc}", cc)
         combo.setCurrentIndex(74)
         combo_layout.addWidget(combo)
         combo_layout.addStretch()
-        
+
         layer_advanced_layout.addLayout(combo_layout)
         combo.currentIndexChanged.connect(
             lambda: self.on_layer_combo_changed('aftertouch_cc', combo)
@@ -1974,6 +1994,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         combo = ArrowComboBox()
+        combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         combo.addItem("Fixed (64)", 0)
         combo.addItem("Peak at Apex", 1)
         combo.addItem("Speed-Based", 2)
@@ -1981,7 +2002,7 @@ class LayerActuationConfigurator(BasicEditor):
         combo.setCurrentIndex(2)
         combo_layout.addWidget(combo)
         combo_layout.addStretch()
-        
+
         layer_advanced_layout.addLayout(combo_layout)
         combo.currentIndexChanged.connect(
             lambda: self.on_layer_combo_changed('velocity', combo)
@@ -1995,12 +2016,13 @@ class LayerActuationConfigurator(BasicEditor):
         combo_layout.addWidget(label)
         
         combo = ArrowComboBox()
+        combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 21):
             combo.addItem(str(i), i)
         combo.setCurrentIndex(9)
         combo_layout.addWidget(combo)
         combo_layout.addStretch()
-        
+
         layer_advanced_layout.addLayout(combo_layout)
         combo.currentIndexChanged.connect(
             lambda: self.on_layer_combo_changed('vel_speed', combo)
