@@ -2337,9 +2337,49 @@ void reset_keyboard_settings(void) {
     keyboard_settings.midi_clock_source = midi_clock_source;
 }
 
+// Helper function to sync all global variables to keyboard_settings struct
+static void sync_globals_to_struct(void) {
+    keyboard_settings.velocity_sensitivity = velocity_sensitivity;
+    keyboard_settings.cc_sensitivity = cc_sensitivity;
+    keyboard_settings.channel_number = channel_number;
+    keyboard_settings.transpose_number = transpose_number;
+    keyboard_settings.octave_number = octave_number;
+    keyboard_settings.transpose_number2 = transpose_number2;
+    keyboard_settings.octave_number2 = octave_number2;
+    keyboard_settings.transpose_number3 = transpose_number3;
+    keyboard_settings.octave_number3 = octave_number3;
+    keyboard_settings.velocity_number = velocity_number;
+    keyboard_settings.velocity_number2 = velocity_number2;
+    keyboard_settings.velocity_number3 = velocity_number3;
+    keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
+    keyboard_settings.oledkeyboard = oledkeyboard;
+    keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
+    keyboard_settings.smartchordlightmode = smartchordlightmode;
+    keyboard_settings.keysplitchannel = keysplitchannel;
+    keyboard_settings.keysplit2channel = keysplit2channel;
+    keyboard_settings.keysplitstatus = keysplitstatus;
+    keyboard_settings.keysplittransposestatus = keysplittransposestatus;
+    keyboard_settings.keysplitvelocitystatus = keysplitvelocitystatus;
+    keyboard_settings.custom_layer_animations_enabled = custom_layer_animations_enabled;
+    keyboard_settings.unsynced_mode_active = unsynced_mode_active;
+    keyboard_settings.sample_mode_active = sample_mode_active;
+    keyboard_settings.loop_messaging_enabled = loop_messaging_enabled;
+    keyboard_settings.loop_messaging_channel = loop_messaging_channel;
+    keyboard_settings.sync_midi_mode = sync_midi_mode;
+    keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+    keyboard_settings.colorblindmode = colorblindmode;
+    keyboard_settings.cclooprecording = cclooprecording;
+    keyboard_settings.truesustain = truesustain;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
+}
+
 void save_keyboard_settings_to_slot(uint8_t slot) {
     // Ensure slot is between 0-4
     slot = slot % 5;
+    // Sync all current global variables to struct before saving
+    sync_globals_to_struct();
     eeprom_update_block(&keyboard_settings, (uint8_t*)SETTINGS_EEPROM_ADDR(slot), SETTINGS_SIZE);
 }
 
@@ -4491,8 +4531,7 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
     midi_in_mode = (midi_in_mode + 1) % 5;  // Cycle through 5 modes
-    // Save to EEPROM for persistence
-    keyboard_settings.midi_in_mode = midi_in_mode;
+    // Save ALL settings to EEPROM (syncs all globals automatically)
     save_keyboard_settings_to_slot(0);
     // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
@@ -4508,8 +4547,7 @@ void toggle_midi_in_mode(void) {
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
     usb_midi_mode = (usb_midi_mode + 1) % 3;  // Cycle through 3 modes
-    // Save to EEPROM for persistence
-    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    // Save ALL settings to EEPROM (syncs all globals automatically)
     save_keyboard_settings_to_slot(0);
     // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
@@ -4525,8 +4563,7 @@ void toggle_usb_midi_mode(void) {
 // Toggle MIDI clock source
 void toggle_midi_clock_source(void) {
     midi_clock_source = (midi_clock_source + 1) % 3;  // Cycle through 3 sources
-    // Save to EEPROM for persistence
-    keyboard_settings.midi_clock_source = midi_clock_source;
+    // Save ALL settings to EEPROM (syncs all globals automatically)
     save_keyboard_settings_to_slot(0);
     // Show clock source on OLED temporarily
     #ifdef OLED_ENABLE
