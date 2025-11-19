@@ -15,6 +15,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
+    KEYCODES_HE_VELOCITY_CURVE, KEYCODES_HE_VELOCITY_RANGE, \
     KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL, KEYCODES_MIDI_INOUT
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
@@ -95,6 +96,104 @@ class AsyncCCDialog(QDialog):
             if x_value and y_value:
                 self.callback(int(x_value), int(y_value))
         self.deleteLater()
+
+class AsyncHERangeDialog(QDialog):
+    """Dialog for setting HE velocity min and max range"""
+    def __init__(self, parent, callback):
+        super().__init__(parent)
+        self.callback = callback
+        self.setWindowTitle("Set Dynamic Velocity Range")
+        self.setFixedSize(350, 200)
+
+        layout = QVBoxLayout(self)
+
+        # Instructions
+        instructions = QLabel("Set the HE velocity range (1-127):")
+        layout.addWidget(instructions)
+
+        # Min value input
+        min_label = QLabel("Minimum Velocity:")
+        self.min_input = QLineEdit()
+        self.min_input.setPlaceholderText("Enter min value (1-127)")
+        self.min_input.textChanged.connect(lambda text: self.validate_input(text, self.min_input))
+
+        layout.addWidget(min_label)
+        layout.addWidget(self.min_input)
+
+        # Max value input
+        max_label = QLabel("Maximum Velocity:")
+        self.max_input = QLineEdit()
+        self.max_input.setPlaceholderText("Enter max value (1-127)")
+        self.max_input.textChanged.connect(lambda text: self.validate_input(text, self.max_input))
+
+        layout.addWidget(max_label)
+        layout.addWidget(self.max_input)
+
+        # Confirm button
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.accept)
+        layout.addWidget(confirm_button)
+
+        self.finished.connect(self.on_finished)
+
+    def validate_input(self, text, input_field):
+        """Validate that input is a number between 1 and 127"""
+        if text and (not text.isdigit() or not (1 <= int(text) <= 127)):
+            input_field.clear()
+
+    def on_finished(self, result):
+        if result == QDialog.Accepted:
+            min_val = self.min_input.text()
+            max_val = self.max_input.text()
+            if min_val and max_val:
+                if int(min_val) < int(max_val):
+                    self.callback(min_val, max_val)
+        self.deleteLater()
+
+class HERangeDialog(QDialog):
+    """Sync version of HE Range Dialog for desktop"""
+    def __init__(self, parent, callback):
+        super().__init__(parent)
+        self.callback = callback
+        self.setWindowTitle("Set Dynamic Velocity Range")
+        self.setFixedSize(350, 200)
+
+        layout = QVBoxLayout(self)
+
+        # Instructions
+        instructions = QLabel("Set the HE velocity range (1-127):")
+        layout.addWidget(instructions)
+
+        # Min value input
+        min_label = QLabel("Minimum Velocity:")
+        self.min_input = QLineEdit()
+        self.min_input.setPlaceholderText("Enter min value (1-127)")
+
+        layout.addWidget(min_label)
+        layout.addWidget(self.min_input)
+
+        # Max value input
+        max_label = QLabel("Maximum Velocity:")
+        self.max_input = QLineEdit()
+        self.max_input.setPlaceholderText("Enter max value (1-127)")
+
+        layout.addWidget(max_label)
+        layout.addWidget(self.max_input)
+
+        # Confirm button
+        confirm_button = QPushButton("Confirm")
+        confirm_button.clicked.connect(self.on_confirm)
+        layout.addWidget(confirm_button)
+
+    def on_confirm(self):
+        min_val = self.min_input.text()
+        max_val = self.max_input.text()
+        if min_val and max_val and min_val.isdigit() and max_val.isdigit():
+            min_int = int(min_val)
+            max_int = int(max_val)
+            if 1 <= min_int <= 126 and 2 <= max_int <= 127 and min_int < max_int:
+                self.callback(min_val, max_val)
+                self.accept()
 
 def show_value_dialog(parent, title, min_val, max_val, callback):
     """Factory function that handles both web and desktop environments"""
@@ -1059,16 +1158,31 @@ class midiadvancedTab(QScrollArea):
         """Populate the Velocity Options section with a single row of buttons/dropdowns."""
         layout = self.section_layouts["Show\nVelocity\nOptions"]
 
+        # First row - Original velocity controls
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
 
         # Create and add buttons/dropdowns with fixed width of 200 pixels
-        self.add_value_button("Set Velocity", self.velocity_options, row_layout, 200)
+        self.add_value_button("Set Fixed Velocity", self.velocity_options, row_layout, 200)
         self.add_header_dropdown("Velocity Increment", self.velocity_multiplier_options, row_layout, 200)
         self.add_header_dropdown("Velocity Shuffle", self.velocityshuffle, row_layout, 200)
 
         row_layout.addStretch(1)  # Right spacer
         layout.addLayout(row_layout)
+
+        # Second row - HE Velocity controls
+        he_row_layout = QHBoxLayout()
+        he_row_layout.addStretch(1)  # Left spacer
+
+        # HE Velocity Range button
+        self.add_he_velocity_range_button(he_row_layout, 200)
+
+        # HE Velocity Curve dropdown
+        self.add_header_dropdown("HE Velocity Curve", KEYCODES_HE_VELOCITY_CURVE, he_row_layout, 200)
+
+        he_row_layout.addStretch(1)  # Right spacer
+        layout.addLayout(he_row_layout)
+
         layout.addStretch()
 
     def populate_inout_section(self):
@@ -1251,6 +1365,7 @@ class midiadvancedTab(QScrollArea):
                     "Bank LSB": f"MI_BANK_LSB_{value}",
                     "Bank MSB": f"MI_BANK_MSB_{value}",
                     "Set Velocity": f"MI_VELOCITY_{value}",
+                    "Set Fixed Velocity": f"MI_VELOCITY_{value}",
                     "Key Switch\nVelocity": f"MI_VELOCITY2_{value}",
                     "Triple Switch\nVelocity": f"MI_VELOCITY3_{value}"
                 }
@@ -1292,6 +1407,35 @@ class midiadvancedTab(QScrollArea):
             handle_value
         ))
         layout.addWidget(button)
+
+    def add_he_velocity_range_button(self, layout, width=None):
+        """Create a button that opens a dialog to set HE velocity min and max range."""
+        button = QPushButton("Set Dynamic Velocity Range")
+        button.setFixedHeight(40)
+        if width:
+            button.setFixedWidth(width)
+
+        def handle_range_values(min_val, max_val):
+            if min_val and max_val and min_val.isdigit() and max_val.isdigit():
+                min_int = int(min_val)
+                max_int = int(max_val)
+                if 1 <= min_int <= 126 and 2 <= max_int <= 127 and min_int < max_int:
+                    self.keycode_changed.emit(f"HE_VEL_RANGE_{min_int}_{max_int}")
+
+        button.clicked.connect(lambda: self.open_he_range_dialog(handle_range_values))
+        layout.addWidget(button)
+
+    def open_he_range_dialog(self, callback):
+        """Open a dialog to input HE velocity min and max values."""
+        try:
+            import emscripten
+            # Async dialog for web version
+            dialog = AsyncHERangeDialog(self, callback)
+            dialog.show()
+        except ImportError:
+            # Sync dialog for desktop version
+            dialog = HERangeDialog(self, callback)
+            dialog.exec_()
 
     def open_value_dialog(self, label, keycode_set):
         """Open a dialog to input a value between 0 and 127."""

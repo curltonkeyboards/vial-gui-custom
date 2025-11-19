@@ -39,17 +39,20 @@ extern MidiDevice midi_device;
 #define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
 #define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
 
-// HE Velocity Curve and Range Keycodes
+// HE Velocity Curve and Range Keycodes - Fixed addresses (not relative to KC_CUSTOM)
 #define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
 #define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
 
-// Direct velocity min assignment keycodes (127 keycodes for values 1-127)
-#define HE_VEL_MIN_1        (KC_CUSTOM + 10)
-#define HE_VEL_MIN_127      (HE_VEL_MIN_1 + 126)
+// Direct HE Curve Selection (5 keycodes: 0xCCB0-0xCCB4)
+#define HE_CURVE_SOFTEST    0xCCB0
+#define HE_CURVE_SOFT       0xCCB1
+#define HE_CURVE_MEDIUM     0xCCB2
+#define HE_CURVE_HARD       0xCCB3
+#define HE_CURVE_HARDEST    0xCCB4
 
-// Direct velocity max assignment keycodes (127 keycodes for values 1-127)
-#define HE_VEL_MAX_1        (HE_VEL_MIN_127 + 1)
-#define HE_VEL_MAX_127      (HE_VEL_MAX_1 + 126)
+// HE Velocity Range keycodes (combined min/max) - starts at 0xCCB5
+// Base address for range keycodes (8001 keycodes for valid min < max combinations)
+#define HE_VEL_RANGE_BASE   0xCCB5
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
@@ -8884,7 +8887,30 @@ break;
         // Update the name string with new line
         snprintf(name, sizeof(name), "CC%-3d  %d", cc_number, cc_index);
 	}
-	
+    // Handle HE Velocity Curve keycodes
+    else if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
+        const char* curve_names[] = {"Softest", "Soft", "Medium", "Hard", "Hardest"};
+        uint8_t curve_idx = keycode - HE_CURVE_SOFTEST;
+        snprintf(name, sizeof(name), "HE Curve: %s", curve_names[curve_idx]);
+    }
+    // Handle HE Velocity Range keycodes (combined min/max)
+    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + (127 * 127)) {
+        uint16_t offset = keycode - HE_VEL_RANGE_BASE;
+        uint8_t min_value = (offset / 127) + 1;
+        uint8_t max_value = (offset % 127) + 1;
+        snprintf(name, sizeof(name), "HE Vel: %d-%d", min_value, max_value);
+    }
+    // Handle HE Velocity Min keycodes
+    else if (keycode >= HE_VEL_MIN_1 && keycode <= HE_VEL_MIN_127) {
+        uint8_t min_value = (keycode - HE_VEL_MIN_1) + 1;
+        snprintf(name, sizeof(name), "HE Min: %d", min_value);
+    }
+    // Handle HE Velocity Max keycodes
+    else if (keycode >= HE_VEL_MAX_1 && keycode <= HE_VEL_MAX_127) {
+        uint8_t max_value = (keycode - HE_VEL_MAX_1) + 1;
+        snprintf(name, sizeof(name), "HE Max: %d", max_value);
+    }
+
 	else if (keycode > 0) {
         snprintf(name, sizeof(name), " ");
 	}
@@ -10631,6 +10657,55 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 layer_actuations[layer].he_velocity_max = layer_actuations[layer].he_velocity_min;
             }
             dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Direct HE Curve Selection - affects ALL layers
+    if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
+        if (record->event.pressed) {
+            uint8_t curve_value = keycode - HE_CURVE_SOFTEST;
+            // Update ALL layers
+            for (uint8_t i = 0; i < DYNAMIC_KEYMAP_LAYER_COUNT; i++) {
+                layer_actuations[i].he_velocity_curve = curve_value;
+            }
+            dprintf("All layers HE Curve: %d\n", curve_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // HE Velocity Range (combined min/max) - affects ALL layers
+    if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8001) {
+        if (record->event.pressed) {
+            uint16_t offset = keycode - HE_VEL_RANGE_BASE;
+
+            // Calculate min/max from offset (only valid min < max combinations)
+            uint8_t min_value = 1;
+            uint8_t max_value = 2;
+            uint16_t count = 0;
+
+            for (uint8_t m = 1; m < 127; m++) {
+                for (uint8_t x = m + 1; x < 128; x++) {
+                    if (count == offset) {
+                        min_value = m;
+                        max_value = x;
+                        goto found;
+                    }
+                    count++;
+                }
+            }
+            found:
+
+            // Set both min and max simultaneously for ALL layers
+            for (uint8_t i = 0; i < DYNAMIC_KEYMAP_LAYER_COUNT; i++) {
+                layer_actuations[i].he_velocity_min = min_value;
+                layer_actuations[i].he_velocity_max = max_value;
+            }
+
+            dprintf("All layers HE Vel Range: %d-%d\n", min_value, max_value);
+            set_keylog(keycode, record);
         }
         return false;
     }

@@ -1903,7 +1903,8 @@ class LayerActuationConfigurator(BasicEditor):
         curve_layout.addWidget(curve_label)
 
         he_curve_combo = ArrowComboBox()
-        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        he_curve_combo.setMinimumHeight(30)
+        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; font-size: 12px; } QComboBox QAbstractItemView { min-height: 125px; }")
         he_curve_combo.addItem("Softest", 0)
         he_curve_combo.addItem("Soft", 1)
         he_curve_combo.addItem("Medium", 2)
@@ -2311,7 +2312,8 @@ class LayerActuationConfigurator(BasicEditor):
         curve_layout.addWidget(curve_label)
 
         he_curve_combo = ArrowComboBox()
-        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        he_curve_combo.setMinimumHeight(30)
+        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; font-size: 12px; } QComboBox QAbstractItemView { min-height: 125px; }")
         he_curve_combo.addItem("Softest", 0)
         he_curve_combo.addItem("Soft", 1)
         he_curve_combo.addItem("Medium", 2)
