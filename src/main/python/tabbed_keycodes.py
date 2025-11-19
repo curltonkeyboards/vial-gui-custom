@@ -1830,10 +1830,39 @@ class LoopTab(QScrollArea):
         section.addWidget(container)
         return section
 
+    def create_loop_advanced_section(self):
+        """Create the Loop Advanced section"""
+        loop_advanced_keycodes = [kc for kc in self.advanced_keycodes
+                                 if kc.qmk_id in ["LOOP_QUANTIZE", "LOOP_BPM_DOUBLE"] and
+                                 (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
+
+        if not loop_advanced_keycodes:
+            return None
+
+        section = QVBoxLayout()
+        section.setSpacing(8)
+        section.setAlignment(Qt.AlignTop)
+
+        header = self.create_section_header("Loop Advanced")
+        section.addLayout(header)
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignTop)
+
+        # Display loop advanced controls
+        loop_row = self.create_button_row(loop_advanced_keycodes, 2)
+        layout.addWidget(loop_row)
+
+        section.addWidget(container)
+        return section
+
     def create_nav_save_section(self):
         """Create the Navigation/Save section"""
-        nav_keycodes = [kc for kc in self.advanced_keycodes 
-                       if kc.qmk_id.startswith("DM_NAV_") and 
+        nav_keycodes = [kc for kc in self.advanced_keycodes
+                       if kc.qmk_id.startswith("DM_NAV_") and
                        (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
         playback_keycodes = [kc for kc in self.advanced_keycodes 
                            if kc.qmk_id in ["DM_PLAY_PAUSE", "DM_COPY"] and 
@@ -1915,7 +1944,10 @@ class LoopTab(QScrollArea):
         
         speed = self.create_speed_controls_section()
         if speed: sections.append(("Speed Controls", speed))
-        
+
+        loop_advanced = self.create_loop_advanced_section()
+        if loop_advanced: sections.append(("Loop Advanced", loop_advanced))
+
         nav_save = self.create_nav_save_section()
         if nav_save: sections.append(("Navigation/Save", nav_save))
         
@@ -1926,6 +1958,7 @@ class LoopTab(QScrollArea):
             "Mode Select": 150,
             "BeatSkip": 200,
             "Speed Controls": 180,
+            "Loop Advanced": 120,
             "Navigation/Save": 220
         }
         

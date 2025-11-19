@@ -1558,7 +1558,10 @@ KEYCODES_MIDI_SPLIT2 = [
 ]
 
 KEYCODES_MIDI_ADVANCED = [
-    K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"), 
+    K("MI_ON", "MIDI\nOn", "Turn MIDI on"),
+    K("MI_OFF", "MIDI\nOff", "Turn MIDI off"),
+    K("MI_TOG", "MIDI\nToggle", "Toggle MIDI on/off"),
+    K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),  
     K("MI_VELOCITY_UP", "Velocity\n▲", "Midi increase velocity"),  
     K("MI_CHU", "Channel\n▲", "Midi increase channel"),   
@@ -3113,6 +3116,10 @@ KEYCODES_LOOP_BUTTONS = [
     K("DM_OVERDUB_MUTE_2", "Overdub\nMute 2", "Overdub mute loop 2"),
     K("DM_OVERDUB_MUTE_3", "Overdub\nMute 3", "Overdub mute loop 3"),
     K("DM_OVERDUB_MUTE_4", "Overdub\nMute 4", "Overdub mute loop 4"),
+
+    # Loop advanced controls
+    K("LOOP_QUANTIZE", "Loop\nQuantize", "Quantize loop timing"),
+    K("LOOP_BPM_DOUBLE", "Loop\nBPM x2", "Double loop BPM"),
 ]
 
 # Gaming Controller Keycodes
