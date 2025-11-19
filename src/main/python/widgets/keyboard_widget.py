@@ -911,26 +911,26 @@ class KeyboardWidget2(QWidget):
 
         # Check if there are enough encoders
         if len(encoders) >= 4:
-            # Move the first two encoders down by 90 pixels
-            encoders[0].shift_y += 80
-            encoders[1].shift_y += 80
+            # Move the first two encoders down (but 20px less to bring them inward)
+            encoders[0].shift_y += 60  # Was 80, now 60 (20px less down = inward)
+            encoders[1].shift_y += 60
             encoders[0].shift_x -= 60  # Down encoder - shift left 60 pixels
             encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 0 click button to match encoder 0 position
             if encoder_click_0:
-                encoder_click_0.shift_y += 80
+                encoder_click_0.shift_y += 60  # Match encoder 0
                 encoder_click_0.shift_x -= 50  # Click button - shift left 50 pixels
 
-            # Move the last two encoders down by 45 pixels
-            encoders[2].shift_y += 50
-            encoders[3].shift_y += 50
+            # Move the last two encoders down (but 20px more to bring them inward)
+            encoders[2].shift_y += 70  # Was 50, now 70 (20px more down = inward)
+            encoders[3].shift_y += 70
             encoders[2].shift_x -= 60  # Down encoder - shift left 60 pixels
             encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 1 click button to match encoder 1 position
             if encoder_click_1:
-                encoder_click_1.shift_y += 50
+                encoder_click_1.shift_y += 70  # Match encoder 1
                 encoder_click_1.shift_x -= 50  # Click button - shift left 50 pixels
 
         # Move sustain pedal to correct position
@@ -943,11 +943,16 @@ class KeyboardWidget2(QWidget):
 
 
         # Determine maximum width and height of the container
+        # Exclude injected keys (row 5) from height calculation to prevent container expansion
+        # But include them in width calculation to show sustain pedal
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
+            # Always include in width calculation
             max_w = max(max_w, p.x() * (self.scale * 1.4))
-            max_h = max(max_h, p.y() * (self.scale * 1.5))
+            # Only include in height calculation if NOT an injected key (row != 5)
+            if not (hasattr(key.desc, 'row') and key.desc.row == 5):
+                max_h = max(max_h, p.y() * (self.scale * 1.5))
 
         # Move all widgets right 20 pixels and down 20 pixels
         for widget in self.widgets:
@@ -1122,6 +1127,30 @@ class KeyboardWidget2(QWidget):
             qp.setPen(extra_pen)
             qp.setBrush(extra_brush)
             qp.drawPath(key.extra_draw_path)
+
+            # Draw border around encoder widgets
+            if isinstance(key, EncoderWidget2):
+                encoder_border_pen = QPen(QColor("#fabcad"))
+                encoder_border_pen.setWidth(2)
+                qp.setPen(encoder_border_pen)
+                qp.setBrush(Qt.NoBrush)
+                qp.drawPath(key.background_draw_path)
+
+            # Draw "PUSH" label above encoder click buttons (row 5, col 0 or 1)
+            if hasattr(key.desc, 'row') and key.desc.row == 5 and (key.desc.col == 0 or key.desc.col == 1):
+                qp.setPen(regular_pen)
+                push_font = qp.font()
+                push_font.setPointSize(7)
+                push_font.setBold(True)
+                qp.setFont(push_font)
+                # Draw text above the button
+                text_rect = QRect(
+                    round(key.x),
+                    round(key.y - 15),  # Position above the button
+                    round(key.w),
+                    15
+                )
+                qp.drawText(text_rect, Qt.AlignCenter, "PUSH")
 
             qp.restore()
 
