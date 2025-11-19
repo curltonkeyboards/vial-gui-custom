@@ -975,6 +975,57 @@ class midiadvancedTab(QScrollArea):
                 col = 0
                 row += 1
 
+        # Add KeySplit modifier buttons below the grid
+        modifiers_layout = QHBoxLayout()
+        modifiers_layout.addStretch(1)
+
+        split_buttons = [
+            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
+        ]
+
+        for text, code in split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(60, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: palette(button);
+                    border: 1px solid palette(mid);
+                    border-radius: 8px;
+                }
+                QPushButton:hover {
+                    background: palette(light);
+                }
+                QPushButton:pressed {
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            modifiers_layout.addWidget(btn)
+
+        modifiers_layout.addStretch(1)
+
+        # Add modifiers layout to the keysplit section layout
+        if hasattr(self, 'keysplit_h_layout'):
+            # Create a vertical layout to hold both grid and modifiers
+            keysplit_section_layout = self.section_layouts.get("Show\nKeySplit\nOptions")
+            if keysplit_section_layout:
+                # keysplit_section_layout is the keysplit_h_layout from __init__
+                # We need to add the modifiers below it
+                # Since we can't easily restructure, add a wrapper
+                pass
+
+        # Since the keysplit_h_layout is already set, we need to add the modifiers after the grid
+        # Add a spacer and then the modifiers row
+        self.keysplit_grid.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed), row+1, 0, 1, max_cols)
+
+        # Create container for modifier buttons and add to grid
+        modifiers_widget = QWidget()
+        modifiers_widget.setLayout(modifiers_layout)
+        self.keysplit_grid.addWidget(modifiers_widget, row+2, 0, 1, max_cols)
+
     def populate_advanced_section(self):
         """Populate the Advanced MIDI Options section with buttons."""
         # Clear existing buttons

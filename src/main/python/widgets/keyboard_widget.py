@@ -915,27 +915,27 @@ class KeyboardWidget2(QWidget):
             encoders[0].shift_y += 80  # Original position
             encoders[1].shift_y += 80
             encoders[0].shift_x -= 60  # Down encoder - shift left 60 pixels
-            encoders[1].shift_x += 50  # Up encoder - shift right 50 pixels (30px more)
+            encoders[1].shift_x += 80  # Up encoder - shift right 80 pixels (60px more than original)
 
             # Move encoder 0 click button to its position (keep current)
             if encoder_click_0:
                 encoder_click_0.shift_y += 60  # Keep current position
-                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels (30px more right)
+                encoder_click_0.shift_x += 10  # Click button - shift right 10 pixels (60px more right than original)
 
             # Move the last two encoders to original position
             encoders[2].shift_y += 50  # Original position
             encoders[3].shift_y += 50
             encoders[2].shift_x -= 60  # Down encoder - shift left 60 pixels
-            encoders[3].shift_x += 50  # Up encoder - shift right 50 pixels (30px more)
+            encoders[3].shift_x += 80  # Up encoder - shift right 80 pixels (60px more than original)
 
             # Move encoder 1 click button to its position (keep current)
             if encoder_click_1:
                 encoder_click_1.shift_y += 55  # Keep current position
-                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels (30px more right)
+                encoder_click_1.shift_x += 10  # Click button - shift right 10 pixels (60px more right than original)
 
         # Move sustain pedal to correct position
         if sustain_pedal:
-            sustain_pedal.shift_x -= 160  # Shift left 160 pixels
+            sustain_pedal.shift_x -= 60  # Shift left 60 pixels (100px more right than original)
             sustain_pedal.shift_y -= 700  # Shift up 700 pixels
 
         # Sort widgets by position for proper layout (if needed)
