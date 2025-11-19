@@ -303,6 +303,12 @@ static const char* clock_source_names[] = {
     "CLK:IN"
 };
 
+// Temporary mode display variables
+static uint32_t mode_display_timer = 0;
+static char mode_display_msg[64] = "";
+static bool mode_display_active = false;
+#define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
+
 // ============================================================================
 // EXTERNAL CLOCK RECEPTION STATE
 // ============================================================================
@@ -4543,8 +4549,13 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
     midi_in_mode = (midi_in_mode + 1) % 5;  // Cycle through 5 modes
-    // Force OLED update to show new mode
+    // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
+    snprintf(mode_display_msg, sizeof(mode_display_msg), "MIDI IN: %s | %s",
+             midi_in_mode_names[midi_in_mode],
+             clock_source_names[midi_clock_source]);
+    mode_display_timer = timer_read32();
+    mode_display_active = true;
     oled_display_force_update();
     #endif
 }
@@ -4552,8 +4563,13 @@ void toggle_midi_in_mode(void) {
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
     usb_midi_mode = (usb_midi_mode + 1) % 3;  // Cycle through 3 modes
-    // Force OLED update to show new mode
+    // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
+    snprintf(mode_display_msg, sizeof(mode_display_msg), "USB MIDI: %s | %s",
+             usb_midi_mode_names[usb_midi_mode],
+             clock_source_names[midi_clock_source]);
+    mode_display_timer = timer_read32();
+    mode_display_active = true;
     oled_display_force_update();
     #endif
 }
@@ -4561,8 +4577,12 @@ void toggle_usb_midi_mode(void) {
 // Toggle MIDI clock source
 void toggle_midi_clock_source(void) {
     midi_clock_source = (midi_clock_source + 1) % 3;  // Cycle through 3 sources
-    // Force OLED update to show new source
+    // Show clock source on OLED temporarily
     #ifdef OLED_ENABLE
+    snprintf(mode_display_msg, sizeof(mode_display_msg), "CLOCK: %s",
+             clock_source_names[midi_clock_source]);
+    mode_display_timer = timer_read32();
+    mode_display_active = true;
     oled_display_force_update();
     #endif
 }
@@ -12119,18 +12139,14 @@ bool oled_task_user(void) {
     // Write the layer information to the OLED
     oled_write_P(str, false);
 
-    // Display MIDI routing modes on a new line
-    char midi_str[22] = "";
-    snprintf(midi_str, sizeof(midi_str), " %s | %s",
-             midi_in_mode_names[midi_in_mode],
-             usb_midi_mode_names[usb_midi_mode]);
-    oled_write(midi_str, false);
-
-    // Display clock source
-    char clock_str[22] = "";
-    snprintf(clock_str, sizeof(clock_str), "     %s",
-             clock_source_names[midi_clock_source]);
-    oled_write(clock_str, false);
+    // Display temporary mode message if active
+    if (mode_display_active) {
+        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+            oled_write(mode_display_msg, false);
+        } else {
+            mode_display_active = false;
+        }
+    }
 
     // Render keylog information
     oled_render_keylog();
