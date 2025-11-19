@@ -896,35 +896,68 @@ class KeyboardWidget2(QWidget):
         # Separate encoder widgets
         encoders = [widget for widget in self.widgets if isinstance(widget, EncoderWidget2)]
 
+        # Find encoder click buttons (5,0 and 5,1) and sustain pedal (5,2)
+        encoder_click_0 = None
+        encoder_click_1 = None
+        sustain_pedal = None
+        for widget in self.widgets:
+            if hasattr(widget.desc, 'row') and widget.desc.row == 5:
+                if widget.desc.col == 0:
+                    encoder_click_0 = widget
+                elif widget.desc.col == 1:
+                    encoder_click_1 = widget
+                elif widget.desc.col == 2:
+                    sustain_pedal = widget
+
         # Check if there are enough encoders
         if len(encoders) >= 4:
-            # Move the first two encoders down by 90 pixels
-            encoders[0].shift_y += 80
+            # Move the first two encoders to original position
+            encoders[0].shift_y += 80  # Original position
             encoders[1].shift_y += 80
-            encoders[0].shift_x -= 30
-            encoders[1].shift_x -= 10
+            encoders[0].shift_x -= 60  # Down encoder - shift left 60 pixels
+            encoders[1].shift_x += 50  # Up encoder - shift right 50 pixels (30px more)
 
-            # Move the last two encoders down by 45 pixels
-            encoders[2].shift_y += 50
+            # Move encoder 0 click button to its position (keep current)
+            if encoder_click_0:
+                encoder_click_0.shift_y += 60  # Keep current position
+                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels (30px more right)
+
+            # Move the last two encoders to original position
+            encoders[2].shift_y += 50  # Original position
             encoders[3].shift_y += 50
-            encoders[2].shift_x -= 30
-            encoders[3].shift_x -= 10
+            encoders[2].shift_x -= 60  # Down encoder - shift left 60 pixels
+            encoders[3].shift_x += 50  # Up encoder - shift right 50 pixels (30px more)
+
+            # Move encoder 1 click button to its position (keep current)
+            if encoder_click_1:
+                encoder_click_1.shift_y += 55  # Keep current position
+                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels (30px more right)
+
+        # Move sustain pedal to correct position
+        if sustain_pedal:
+            sustain_pedal.shift_x -= 160  # Shift left 160 pixels
+            sustain_pedal.shift_y -= 700  # Shift up 700 pixels
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
-        
+
 
         # Determine maximum width and height of the container
+        # Exclude injected keys (row 5) from height calculation to prevent container expansion
+        # But include them in width calculation to show sustain pedal
         max_w = max_h = 0
         for key in self.widgets:
             p = key.polygon.boundingRect().bottomRight()
+            # Always include in width calculation
             max_w = max(max_w, p.x() * (self.scale * 1.4))
-            max_h = max(max_h, p.y() * (self.scale * 1.5))
+            # Only include in height calculation if NOT an injected key (row != 5)
+            if not (hasattr(key.desc, 'row') and key.desc.row == 5):
+                max_h = max(max_h, p.y() * (self.scale * 1.5))
 
-        # Move all widgets right 20 pixels and down 20 pixels
+        # Move all widgets right and down to create proper padding
         for widget in self.widgets:
-            widget.shift_x += 30  # Move right
-            widget.shift_y += 20  # Move down
+            widget.shift_x += 30  # Move right 30 pixels
+            widget.shift_y += 20  # Move down 20 pixels
 
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
@@ -1094,6 +1127,31 @@ class KeyboardWidget2(QWidget):
             qp.setPen(extra_pen)
             qp.setBrush(extra_brush)
             qp.drawPath(key.extra_draw_path)
+
+            # Draw border around encoder widgets
+            if isinstance(key, EncoderWidget2):
+                # Use button text color (same as regular text on buttons)
+                encoder_border_pen = QPen(QApplication.palette().color(QPalette.ButtonText))
+                encoder_border_pen.setWidth(1)  # Thin border
+                qp.setPen(encoder_border_pen)
+                qp.setBrush(Qt.NoBrush)
+                qp.drawPath(key.background_draw_path)
+
+            # Draw "PUSH" label above encoder click buttons (row 5, col 0 or 1)
+            if hasattr(key.desc, 'row') and key.desc.row == 5 and (key.desc.col == 0 or key.desc.col == 1):
+                qp.setPen(regular_pen)
+                push_font = qp.font()
+                push_font.setPointSize(7)
+                push_font.setBold(True)
+                qp.setFont(push_font)
+                # Draw text above the button
+                text_rect = QRect(
+                    round(key.x),
+                    round(key.y - 15),  # Position above the button
+                    round(key.w),
+                    15
+                )
+                qp.drawText(text_rect, Qt.AlignCenter, "PUSH")
 
             qp.restore()
 
