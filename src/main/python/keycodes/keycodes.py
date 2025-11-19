@@ -3227,8 +3227,8 @@ KEYCODES_MIDI_VELOCITY = []
 
 for x in range (128):
     KEYCODES_MIDI_VELOCITY.append(K("MI_VELOCITY_{}".format(x),
-                              "Velocity\n{}".format(x),
-                              "Velocity {}".format(x)))
+                              "Fixed\nVelocity\n{}".format(x),
+                              "Fixed Velocity {}".format(x)))
                               
 KEYCODES_MIDI_VELOCITY2 = []
 
@@ -3243,6 +3243,24 @@ for x in range (128):
     KEYCODES_MIDI_VELOCITY3.append(K("MI_VELOCITY3_{}".format(x),
                               "TS\nVelocity\n{}".format(x),
                               "TS\nVelocity {}".format(x)))
+
+# HE Velocity Curve keycodes
+KEYCODES_HE_VELOCITY_CURVE = [
+    K("HE_CURVE_SOFTEST", "HE Curve\nSoftest", "HE Velocity Curve Softest"),
+    K("HE_CURVE_SOFT", "HE Curve\nSoft", "HE Velocity Curve Soft"),
+    K("HE_CURVE_MEDIUM", "HE Curve\nMedium", "HE Velocity Curve Medium"),
+    K("HE_CURVE_HARD", "HE Curve\nHard", "HE Velocity Curve Hard"),
+    K("HE_CURVE_HARDEST", "HE Curve\nHardest", "HE Velocity Curve Hardest"),
+]
+
+# HE Velocity Range keycodes (min/max pairs)
+KEYCODES_HE_VELOCITY_RANGE = []
+
+for min_val in range(1, 128):
+    for max_val in range(min_val, 128):
+        KEYCODES_HE_VELOCITY_RANGE.append(K("HE_VEL_RANGE_{}_{}".format(min_val, max_val),
+                                  "HE Vel\nRange\n{}-{}".format(min_val, max_val),
+                                  "HE Velocity Range {}-{}".format(min_val, max_val)))
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_MIDI_BANK_MSB = []

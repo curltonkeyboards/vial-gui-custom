@@ -376,9 +376,9 @@ class QuickActuationWidget(QGroupBox):
         curve_layout.addWidget(curve_label)
 
         self.he_curve_combo = ArrowComboBox()
-        self.he_curve_combo.setMaximumHeight(25)
+        self.he_curve_combo.setMaximumHeight(30)
         self.he_curve_combo.setMaximumWidth(180)
-        self.he_curve_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; }")
+        self.he_curve_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; }")
         self.he_curve_combo.addItem("Softest", 0)
         self.he_curve_combo.addItem("Soft", 1)
         self.he_curve_combo.addItem("Medium", 2)

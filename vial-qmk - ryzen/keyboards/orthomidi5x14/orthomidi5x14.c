@@ -43,13 +43,26 @@ extern MidiDevice midi_device;
 #define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
 #define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
 
+// Direct HE Curve Selection (5 keycodes for direct selection)
+#define HE_CURVE_SOFTEST    (KC_CUSTOM + 6)
+#define HE_CURVE_SOFT       (KC_CUSTOM + 7)
+#define HE_CURVE_MEDIUM     (KC_CUSTOM + 8)
+#define HE_CURVE_HARD       (KC_CUSTOM + 9)
+#define HE_CURVE_HARDEST    (KC_CUSTOM + 10)
+
 // Direct velocity min assignment keycodes (127 keycodes for values 1-127)
-#define HE_VEL_MIN_1        (KC_CUSTOM + 10)
+#define HE_VEL_MIN_1        (KC_CUSTOM + 20)
 #define HE_VEL_MIN_127      (HE_VEL_MIN_1 + 126)
 
 // Direct velocity max assignment keycodes (127 keycodes for values 1-127)
 #define HE_VEL_MAX_1        (HE_VEL_MIN_127 + 1)
 #define HE_VEL_MAX_127      (HE_VEL_MAX_1 + 126)
+
+// HE Velocity Range keycodes (combined min/max) - starts after HE_VEL_MAX_127
+// Base address for range keycodes
+#define HE_VEL_RANGE_BASE   (HE_VEL_MAX_127 + 1)
+// Helper macro to calculate range keycode from min/max values
+#define HE_VEL_RANGE(min, max) (HE_VEL_RANGE_BASE + ((min - 1) * 127) + (max - 1))
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
@@ -8884,7 +8897,30 @@ break;
         // Update the name string with new line
         snprintf(name, sizeof(name), "CC%-3d  %d", cc_number, cc_index);
 	}
-	
+    // Handle HE Velocity Curve keycodes
+    else if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
+        const char* curve_names[] = {"Softest", "Soft", "Medium", "Hard", "Hardest"};
+        uint8_t curve_idx = keycode - HE_CURVE_SOFTEST;
+        snprintf(name, sizeof(name), "HE Curve: %s", curve_names[curve_idx]);
+    }
+    // Handle HE Velocity Range keycodes (combined min/max)
+    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + (127 * 127)) {
+        uint16_t offset = keycode - HE_VEL_RANGE_BASE;
+        uint8_t min_value = (offset / 127) + 1;
+        uint8_t max_value = (offset % 127) + 1;
+        snprintf(name, sizeof(name), "HE Vel: %d-%d", min_value, max_value);
+    }
+    // Handle HE Velocity Min keycodes
+    else if (keycode >= HE_VEL_MIN_1 && keycode <= HE_VEL_MIN_127) {
+        uint8_t min_value = (keycode - HE_VEL_MIN_1) + 1;
+        snprintf(name, sizeof(name), "HE Min: %d", min_value);
+    }
+    // Handle HE Velocity Max keycodes
+    else if (keycode >= HE_VEL_MAX_1 && keycode <= HE_VEL_MAX_127) {
+        uint8_t max_value = (keycode - HE_VEL_MAX_1) + 1;
+        snprintf(name, sizeof(name), "HE Max: %d", max_value);
+    }
+
 	else if (keycode > 0) {
         snprintf(name, sizeof(name), " ");
 	}
@@ -10631,6 +10667,36 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 layer_actuations[layer].he_velocity_max = layer_actuations[layer].he_velocity_min;
             }
             dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Direct HE Curve Selection
+    if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            layer_actuations[layer].he_velocity_curve = keycode - HE_CURVE_SOFTEST;
+            dprintf("Layer %d HE Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // HE Velocity Range (combined min/max)
+    if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + (127 * 127)) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            uint16_t offset = keycode - HE_VEL_RANGE_BASE;
+            uint8_t min_value = (offset / 127) + 1;
+            uint8_t max_value = (offset % 127) + 1;
+
+            // Set both min and max simultaneously
+            layer_actuations[layer].he_velocity_min = min_value;
+            layer_actuations[layer].he_velocity_max = max_value;
+
+            dprintf("Layer %d HE Vel Range: %d-%d\n", layer, min_value, max_value);
+            set_keylog(keycode, record);
         }
         return false;
     }
