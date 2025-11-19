@@ -3244,7 +3244,8 @@ class KeySplitOnlyTab(QScrollArea):
         split_buttons = [
             ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
             ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
-            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
+            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE"),
+            ("KeySplit\nModifier", "KS_MODIFIER")
         ]
 
         for text, code in split_buttons:
@@ -3338,7 +3339,8 @@ class TripleSplitTab(QScrollArea):
         split_buttons = [
             ("Enable\nChannel\nTripleSplit", "KS_TOGGLE"),
             ("Enable\nVelocity\nTripleSplit", "KS_VELOCITY_TOGGLE"),
-            ("Enable\nTranspose\nTripleSplit", "KS_TRANSPOSE_TOGGLE")
+            ("Enable\nTranspose\nTripleSplit", "KS_TRANSPOSE_TOGGLE"),
+            ("TripleSplit\nModifier", "TS_MODIFIER")
         ]
 
         for text, code in split_buttons:
@@ -3969,7 +3971,7 @@ class midiTab(QScrollArea):
 
         # In midiTab class, restore original control buttons
         self.midi_layout2 = [
-            ["MI_TAP", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
+            ["MI_TAP", "BPM_DOWN", "BPM_UP", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99"]
         ]
 
         self.setWidget(self.scroll_content)
@@ -4001,6 +4003,10 @@ class midiTab(QScrollArea):
                 btn.setText("Smart\nChord")
             elif item == "MI_TAP":
                 btn.setText("Tap\nBPM")
+            elif item == "BPM_UP":
+                btn.setText("BPM\nUp")
+            elif item == "BPM_DOWN":
+                btn.setText("BPM\nDown")
             elif item == "SAVE_SETTINGS":
                 btn.setText("Save\nSettings")
             elif item == "DEFAULT_SETTINGS":
