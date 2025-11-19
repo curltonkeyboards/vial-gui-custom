@@ -53,18 +53,12 @@
 #define SUSTAIN_PEDAL_PIN B10
 
 // MIDI Serial Configuration
-// Hardware MIDI In/Out on USART3
-// NOTE: User reported connecting to pins 45/46 (PB8/PB9), but these pins don't support UART on STM32F412.
-// Using USART3 on alternate pins. Please verify hardware connections:
-// MIDI OUT (TX): Connect to PC10 (USART3_TX, pin 51) or PD8 (USART3_TX, pin 55)
-// MIDI IN  (RX): Connect to PC11 (USART3_RX, pin 52) or PD9 (USART3_RX, pin 56)
-// If using PB8/PB9, you'll need to rewire to supported UART pins.
+// Hardware MIDI In/Out on USART3 using pins 45/46 (PB8/PB9)
+// PB8: USART3_RX (AF7) - MIDI IN (pin 45)
+// PB9: USART3_TX (AF7) - MIDI OUT (pin 46)
 #define MIDI_SERIAL_PORT SD3  // Use USART3 for MIDI serial
-#define SD3_TX_PIN B9         // MIDI OUT - TX pin (user specified B9)
-#define SD3_RX_PIN B8         // MIDI IN - RX pin (user specified B8)
-// Note: B8/B9 don't have UART AF on STM32F412. If this doesn't work, use:
-// #define SD3_TX_PIN C10      // MIDI OUT on PC10 (USART3_TX AF7)
-// #define SD3_RX_PIN C11      // MIDI IN on PC11 (USART3_RX AF7)
+#define SD3_TX_PIN B9         // MIDI OUT - TX pin on PB9 (pin 46)
+#define SD3_RX_PIN B8         // MIDI IN - RX pin on PB8 (pin 45)
 
 #define EEPROM_I2C_24LC256
 

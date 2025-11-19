@@ -281,30 +281,47 @@ typedef enum {
     MIDI_IN_TO_USB,        // Send MIDI In directly to USB only
     MIDI_IN_TO_OUT,        // Send MIDI In directly to MIDI Out only
     MIDI_IN_PROCESS,       // Send MIDI In through keyboard processing
-    MIDI_IN_CLOCK_ONLY     // Only forward clock messages from MIDI In
+    MIDI_IN_CLOCK_ONLY,    // Only forward clock messages from MIDI In
+    MIDI_IN_IGNORE         // Ignore all MIDI In data
 } midi_in_mode_t;
 
 // USB MIDI routing modes (what to do with MIDI from USB)
 typedef enum {
     USB_MIDI_TO_OUT,       // Send USB MIDI directly to MIDI Out
-    USB_MIDI_PROCESS       // Send USB MIDI through keyboard processing
+    USB_MIDI_PROCESS,      // Send USB MIDI through keyboard processing
+    USB_MIDI_IGNORE        // Ignore all USB MIDI data
 } usb_midi_mode_t;
 
 static midi_in_mode_t midi_in_mode = MIDI_IN_PROCESS;  // Default: process through keyboard
 static usb_midi_mode_t usb_midi_mode = USB_MIDI_PROCESS;  // Default: process through keyboard
+midi_clock_source_t midi_clock_source = CLOCK_SOURCE_LOCAL;  // Default: local clock
 
 // MIDI routing state strings for OLED
 static const char* midi_in_mode_names[] = {
     "IN->USB",
     "IN->OUT",
     "IN->PROC",
-    "IN->CLK"
+    "IN->CLK",
+    "IN->IGN"
 };
 
 static const char* usb_midi_mode_names[] = {
     "USB->OUT",
-    "USB->PROC"
+    "USB->PROC",
+    "USB->IGN"
 };
+
+static const char* clock_source_names[] = {
+    "CLK:LOC",
+    "CLK:USB",
+    "CLK:IN"
+};
+
+// Temporary mode display variables
+static uint32_t mode_display_timer = 0;
+static char mode_display_msg[64] = "";
+static bool mode_display_active = false;
+#define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
 // ============================================================================
 // EXTERNAL CLOCK RECEPTION STATE
@@ -2281,6 +2298,7 @@ void reset_keyboard_settings(void) {
     midi_in_mode = MIDI_IN_PROCESS;
     usb_midi_mode = USB_MIDI_PROCESS;
     clock_mode = CLOCK_MODE_INTERNAL;
+    midi_clock_source = CLOCK_SOURCE_LOCAL;
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -2316,7 +2334,7 @@ void reset_keyboard_settings(void) {
     keyboard_settings.truesustain = truesustain;
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
-    keyboard_settings.clock_mode = clock_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -2366,7 +2384,7 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     truesustain = keyboard_settings.truesustain;
     midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
     usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
-    clock_mode = (clock_mode_t)keyboard_settings.clock_mode;
+    midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }
@@ -4472,24 +4490,50 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
-    midi_in_mode = (midi_in_mode + 1) % 4;  // Cycle through 4 modes
+    midi_in_mode = (midi_in_mode + 1) % 5;  // Cycle through 5 modes
     // Save to EEPROM for persistence
     keyboard_settings.midi_in_mode = midi_in_mode;
     save_keyboard_settings_to_slot(0);
-    // Force OLED update to show new mode
+    // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
+    snprintf(mode_display_msg, sizeof(mode_display_msg), "MIDI IN: %s | %s",
+             midi_in_mode_names[midi_in_mode],
+             clock_source_names[midi_clock_source]);
+    mode_display_timer = timer_read32();
+    mode_display_active = true;
     oled_display_force_update();
     #endif
 }
 
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
-    usb_midi_mode = (usb_midi_mode + 1) % 2;  // Cycle through 2 modes
+    usb_midi_mode = (usb_midi_mode + 1) % 3;  // Cycle through 3 modes
     // Save to EEPROM for persistence
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     save_keyboard_settings_to_slot(0);
-    // Force OLED update to show new mode
+    // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
+    snprintf(mode_display_msg, sizeof(mode_display_msg), "USB MIDI: %s | %s",
+             usb_midi_mode_names[usb_midi_mode],
+             clock_source_names[midi_clock_source]);
+    mode_display_timer = timer_read32();
+    mode_display_active = true;
+    oled_display_force_update();
+    #endif
+}
+
+// Toggle MIDI clock source
+void toggle_midi_clock_source(void) {
+    midi_clock_source = (midi_clock_source + 1) % 3;  // Cycle through 3 sources
+    // Save to EEPROM for persistence
+    keyboard_settings.midi_clock_source = midi_clock_source;
+    save_keyboard_settings_to_slot(0);
+    // Show clock source on OLED temporarily
+    #ifdef OLED_ENABLE
+    snprintf(mode_display_msg, sizeof(mode_display_msg), "CLOCK: %s",
+             clock_source_names[midi_clock_source]);
+    mode_display_timer = timer_read32();
+    mode_display_active = true;
     oled_display_force_update();
     #endif
 }

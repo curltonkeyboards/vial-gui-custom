@@ -1558,7 +1558,7 @@ KEYCODES_MIDI_SPLIT2 = [
 ]
 
 KEYCODES_MIDI_ADVANCED = [
-    K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"), 
+    K("MI_TRNSU", "Transpose\n▲", "Midi increase transposition"),
     K("MI_OCTU", "Octave\n▲", "Midi move up an octave"),  
     K("MI_VELOCITY_UP", "Velocity\n▲", "Midi increase velocity"),  
     K("MI_CHU", "Channel\n▲", "Midi increase channel"),   
@@ -1590,6 +1590,22 @@ KEYCODES_MIDI_ADVANCED = [
 KEYCODES_MIDI_PEDAL = [
     K("MI_ALLOFF", "All\nNotes\nOff", "Midi send all notes OFF"),
     K("MI_SUS", "Sustain\nPedal", "Midi Sustain"),
+]
+
+KEYCODES_MIDI_INOUT = [
+    # MIDI Routing Controls
+    K("MIDI_IN_MODE_TOG", "MIDI IN\nMode", "Toggle MIDI IN routing (IN->USB/OUT/PROC/CLK/IGN)"),
+    K("USB_MIDI_MODE_TOG", "USB MIDI\nMode", "Toggle USB MIDI routing (USB->OUT/PROC/IGN)"),
+    K("MIDI_CLOCK_SRC_TOG", "MIDI Clock\nSource", "Toggle MIDI clock source"),
+
+    # Override Toggles
+    K("MI_CH_OVR_TOG", "Channel\nOverride", "Toggle channel override"),
+    K("MI_VEL_OVR_TOG", "Velocity\nOverride", "Toggle velocity override"),
+    K("MI_TRNS_OVR_TOG", "Transpose\nOverride", "Toggle transpose override"),
+
+    # Additional MIDI Toggles
+    K("MI_TRUE_SUS_TOG", "True\nSustain", "Toggle true sustain mode"),
+    K("MI_CC_LOOP_TOG", "CC Loop\nRec", "Toggle CC loop recording"),
 ]
 
 KEYCODES_MIDI_OCTAVE = [
@@ -1732,6 +1748,8 @@ KEYCODES_KEYSPLIT_BUTTONS = [
     K("KS_TOGGLE", "Channel\nSplit\nToggle", "Toggle keysplit mode"),
     K("KS_TRANSPOSE_TOGGLE", "Transpose\nSplit\nToggle", "Toggle keysplit mode"),
     K("KS_VELOCITY_TOGGLE", "Velocity\nSplit\nToggle", "Toggle keysplit mode"),
+    K("KS_MODIFIER", "KeySplit\nModifier", "Key split modifier (hold for double-tap lock)"),
+    K("TS_MODIFIER", "TripleSplit\nModifier", "Triple split modifier (hold for double-tap lock)"),
 ]
 
 KEYCODES_MIDI_CHANNEL_KEYSPLIT2 = [
@@ -3042,10 +3060,16 @@ KEYCODES_LOOP_BUTTONS = [
     # Core control buttons
     K("DM_MUTE", "Mute\nButton", "Global mute button"),
     K("DM_OVERDUB", "Overdub\nButton", "Overdub recording button"),
-    K("DM_UNSYNC", "Unsynced\nMode", "Toggle unsynced mode"),
+    K("DM_UNSYNC", "Sync\nMode", "Toggle sync mode"),
     K("DM_SAMPLE", "Sample\nMode", "Toggle sample mode"),
     K("DM_EDIT_MOD", "Global\nEdit", "Global edit modifier button"),
     K("DM_PLAY_PAUSE", "Play\nPause", "Global play/pause toggle"),
+
+    # Loop modifier keys
+    K("DM_LOOP_MOD_1", "Loop\nMod 1", "Loop modifier 1 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_2", "Loop\nMod 2", "Loop modifier 2 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_3", "Loop\nMod 3", "Loop modifier 3 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_4", "Loop\nMod 4", "Loop modifier 4 (hold + loop for alt function)"),
     
     # Dedicated mute keys
     K("DM_MUTE_1", "Mute\nLoop 1", "Dedicated mute for loop 1"),
@@ -3113,6 +3137,10 @@ KEYCODES_LOOP_BUTTONS = [
     K("DM_OVERDUB_MUTE_2", "Overdub\nMute 2", "Overdub mute loop 2"),
     K("DM_OVERDUB_MUTE_3", "Overdub\nMute 3", "Overdub mute loop 3"),
     K("DM_OVERDUB_MUTE_4", "Overdub\nMute 4", "Overdub mute loop 4"),
+
+    # Loop advanced controls
+    K("LOOP_QUANTIZE", "Loop\nQuantize", "Quantize loop timing"),
+    K("LOOP_BPM_DOUBLE", "Loop\nBPM x2", "Double loop BPM"),
 ]
 
 # Gaming Controller Keycodes
@@ -3267,7 +3295,7 @@ def recreate_keycodes():
                     KEYCODES_F_CHORDPROG_BASIC_MINOR + KEYCODES_F_CHORDPROG_BASIC_MAJOR + KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_CHORDPROG_EXPERT_MINOR + KEYCODES_F_CHORDPROG_EXPERT_MAJOR + KEYCODES_LOOP_BUTTONS + KEYCODES_GAMING +
                     KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR + 
                     KEYCODES_G_CHORDPROG_BASIC_MINOR + KEYCODES_G_CHORDPROG_BASIC_MAJOR + KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_G_CHORDPROG_EXPERT_MINOR + KEYCODES_G_CHORDPROG_EXPERT_MAJOR + KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR + KEYCODES_A_CHORDPROG_BASIC_MINOR + KEYCODES_A_CHORDPROG_BASIC_MAJOR + KEYCODES_A_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_A_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_A_CHORDPROG_EXPERT_MINOR + KEYCODES_A_CHORDPROG_EXPERT_MAJOR + KEYCODES_B_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_B_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR + KEYCODES_B_CHORDPROG_BASIC_MINOR + KEYCODES_B_CHORDPROG_BASIC_MAJOR + KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_B_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_B_CHORDPROG_EXPERT_MINOR + KEYCODES_B_CHORDPROG_EXPERT_MAJOR +
-                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED+KEYCODES_MIDI_SPLIT_BUTTONS+KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_CHORD_PROG_CONTROLS)
+                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED+KEYCODES_MIDI_INOUT+KEYCODES_MIDI_SPLIT_BUTTONS+KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_CHORD_PROG_CONTROLS)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:

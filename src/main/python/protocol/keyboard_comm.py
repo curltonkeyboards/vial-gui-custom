@@ -1087,7 +1087,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "truesustain": data[14] != 0,
                     "midi_in_mode": data[15] if len(data) > 15 else 2,  # Default: MIDI_IN_PROCESS
                     "usb_midi_mode": data[16] if len(data) > 16 else 1,  # Default: USB_MIDI_PROCESS
-                    "clock_mode": data[17] if len(data) > 17 else 0  # Default: CLOCK_MODE_INTERNAL
+                    "midi_clock_source": data[17] if len(data) > 17 else 0  # Default: CLOCK_SOURCE_LOCAL
                 })
                 
             return config if config else None

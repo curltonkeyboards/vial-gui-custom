@@ -12171,7 +12171,7 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     // Read MIDI routing and clock modes
     midi_in_mode = (midi_in_mode_t)(*ptr++);
     usb_midi_mode = (usb_midi_mode_t)(*ptr++);
-    clock_mode = (clock_mode_t)(*ptr++);
+    midi_clock_source = (midi_clock_source_t)(*ptr++);
 
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
@@ -12191,8 +12191,8 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.truesustain = truesustain;
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
-    keyboard_settings.clock_mode = clock_mode;
-    
+    keyboard_settings.midi_clock_source = midi_clock_source;
+
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
         dprintf("HID: Completed save to slot %d with both basic and advanced settings\n", pending_slot_save);
@@ -12254,7 +12254,7 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
-    *ptr++ = keyboard_settings.clock_mode;
+    *ptr++ = keyboard_settings.midi_clock_source;
 
     send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 18);
     
@@ -12416,7 +12416,7 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
-    *ptr++ = keyboard_settings.clock_mode;
+    *ptr++ = keyboard_settings.midi_clock_source;
 
     send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 18);
     

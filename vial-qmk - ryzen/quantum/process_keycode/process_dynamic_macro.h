@@ -309,9 +309,9 @@ typedef struct {
 	bool cclooprecording;
 	bool truesustain;
 	// MIDI routing and clock modes (persisted to EEPROM)
-	uint8_t midi_in_mode;       // midi_in_mode_t (0-3)
-	uint8_t usb_midi_mode;      // usb_midi_mode_t (0-1)
-	uint8_t clock_mode;         // clock_mode_t (0-1: INTERNAL or EXTERNAL)
+	uint8_t midi_in_mode;       // midi_in_mode_t (0-4: TO_USB, TO_OUT, PROCESS, CLOCK_ONLY, IGNORE)
+	uint8_t usb_midi_mode;      // usb_midi_mode_t (0-2: TO_OUT, PROCESS, IGNORE)
+	uint8_t midi_clock_source;  // midi_clock_source_t (0-2: LOCAL, USB, MIDI_IN)
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
