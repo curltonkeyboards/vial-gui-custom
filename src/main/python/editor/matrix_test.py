@@ -5,7 +5,8 @@ import json
 
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
-                           QTableWidget, QHeaderView, QMessageBox, QFileDialog)
+                           QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
+                           QScrollArea, QSlider)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 
@@ -1483,7 +1484,12 @@ class LayerActuationConfigurator(BasicEditor):
                 'vel_speed': 10,
                 'aftertouch_cc': 74,
                 'rapidfire_enabled': False,
-                'midi_rapidfire_enabled': False
+                'midi_rapidfire_enabled': False,
+                # HE Velocity defaults
+                'use_fixed_velocity': False,
+                'he_curve': 2,  # Medium (linear)
+                'he_min': 1,
+                'he_max': 127
             })
         
         # Flag to prevent recursion
@@ -1875,7 +1881,90 @@ class LayerActuationConfigurator(BasicEditor):
         midi_rapid_vel_slider.valueChanged.connect(
             lambda v, lbl=midi_rapid_vel_value_label: self.on_master_slider_changed('midi_rapid_vel', v, lbl)
         )
-        
+
+        # === HE VELOCITY CONTROLS ===
+        # Add separator
+        he_line = QFrame()
+        he_line.setFrameShape(QFrame.HLine)
+        he_line.setFrameShadow(QFrame.Sunken)
+        advanced_layout.addWidget(he_line)
+
+        # Use Fixed Velocity checkbox
+        use_fixed_vel_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Use Fixed Velocity"))
+        use_fixed_vel_checkbox.setChecked(False)
+        use_fixed_vel_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        advanced_layout.addWidget(use_fixed_vel_checkbox)
+        use_fixed_vel_checkbox.stateChanged.connect(self.on_use_fixed_velocity_toggled)
+
+        # HE Velocity Curve (dropdown)
+        curve_layout = QHBoxLayout()
+        curve_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Curve:"))
+        curve_label.setMinimumWidth(200)
+        curve_layout.addWidget(curve_label)
+
+        he_curve_combo = ArrowComboBox()
+        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        he_curve_combo.addItem("Softest", 0)
+        he_curve_combo.addItem("Soft", 1)
+        he_curve_combo.addItem("Medium", 2)
+        he_curve_combo.addItem("Hard", 3)
+        he_curve_combo.addItem("Hardest", 4)
+        he_curve_combo.setCurrentIndex(2)  # Default: Medium
+        he_curve_combo.setEditable(True)
+        he_curve_combo.lineEdit().setReadOnly(True)
+        he_curve_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        curve_layout.addWidget(he_curve_combo)
+        curve_layout.addStretch()
+
+        advanced_layout.addLayout(curve_layout)
+        he_curve_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('he_curve', he_curve_combo)
+        )
+
+        # HE Velocity Min (slider)
+        he_min_layout = QHBoxLayout()
+        he_min_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Min:"))
+        he_min_label.setMinimumWidth(200)
+        he_min_layout.addWidget(he_min_label)
+
+        he_min_slider = QSlider(Qt.Horizontal)
+        he_min_slider.setMinimum(1)
+        he_min_slider.setMaximum(127)
+        he_min_slider.setValue(1)
+        he_min_layout.addWidget(he_min_slider)
+
+        he_min_value_label = QLabel("1")
+        he_min_value_label.setMinimumWidth(100)
+        he_min_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        he_min_layout.addWidget(he_min_value_label)
+
+        advanced_layout.addLayout(he_min_layout)
+        he_min_slider.valueChanged.connect(
+            lambda v, lbl=he_min_value_label: self.on_master_slider_changed('he_min', v, lbl)
+        )
+
+        # HE Velocity Max (slider)
+        he_max_layout = QHBoxLayout()
+        he_max_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Max:"))
+        he_max_label.setMinimumWidth(200)
+        he_max_layout.addWidget(he_max_label)
+
+        he_max_slider = QSlider(Qt.Horizontal)
+        he_max_slider.setMinimum(1)
+        he_max_slider.setMaximum(127)
+        he_max_slider.setValue(127)
+        he_max_layout.addWidget(he_max_slider)
+
+        he_max_value_label = QLabel("127")
+        he_max_value_label.setMinimumWidth(100)
+        he_max_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        he_max_layout.addWidget(he_max_value_label)
+
+        advanced_layout.addLayout(he_max_layout)
+        he_max_slider.valueChanged.connect(
+            lambda v, lbl=he_max_value_label: self.on_master_slider_changed('he_max', v, lbl)
+        )
+
         layout.addWidget(self.advanced_widget)
         
         # Store widgets
@@ -1898,7 +1987,14 @@ class LayerActuationConfigurator(BasicEditor):
             'midi_rapid_sens_widget': midi_rapid_sens_widget,
             'midi_rapid_vel_slider': midi_rapid_vel_slider,
             'midi_rapid_vel_label': midi_rapid_vel_value_label,
-            'midi_rapid_vel_widget': midi_rapid_vel_widget
+            'midi_rapid_vel_widget': midi_rapid_vel_widget,
+            # HE Velocity controls
+            'use_fixed_vel_checkbox': use_fixed_vel_checkbox,
+            'he_curve_combo': he_curve_combo,
+            'he_min_slider': he_min_slider,
+            'he_min_label': he_min_value_label,
+            'he_max_slider': he_max_slider,
+            'he_max_label': he_max_value_label
         }
         
         return group
@@ -2193,7 +2289,95 @@ class LayerActuationConfigurator(BasicEditor):
             midi_rapid_vel_widget.setVisible(enabled)
         
         midi_rapid_checkbox.stateChanged.connect(toggle_midi_rapid_widgets)
-        
+
+        # === HE VELOCITY CONTROLS (PER-LAYER) ===
+        # Add separator
+        he_line = QFrame()
+        he_line.setFrameShape(QFrame.HLine)
+        he_line.setFrameShadow(QFrame.Sunken)
+        layer_advanced_layout.addWidget(he_line)
+
+        # Use Fixed Velocity checkbox
+        use_fixed_vel_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Use Fixed Velocity"))
+        use_fixed_vel_checkbox.setChecked(False)
+        use_fixed_vel_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        layer_advanced_layout.addWidget(use_fixed_vel_checkbox)
+        self.layer_widgets['use_fixed_vel_checkbox'] = use_fixed_vel_checkbox
+
+        # HE Velocity Curve (dropdown)
+        curve_layout = QHBoxLayout()
+        curve_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Curve:"))
+        curve_label.setMinimumWidth(180)
+        curve_layout.addWidget(curve_label)
+
+        he_curve_combo = ArrowComboBox()
+        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        he_curve_combo.addItem("Softest", 0)
+        he_curve_combo.addItem("Soft", 1)
+        he_curve_combo.addItem("Medium", 2)
+        he_curve_combo.addItem("Hard", 3)
+        he_curve_combo.addItem("Hardest", 4)
+        he_curve_combo.setCurrentIndex(2)  # Default: Medium
+        he_curve_combo.setEditable(True)
+        he_curve_combo.lineEdit().setReadOnly(True)
+        he_curve_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        curve_layout.addWidget(he_curve_combo)
+        curve_layout.addStretch()
+
+        layer_advanced_layout.addLayout(curve_layout)
+        he_curve_combo.currentIndexChanged.connect(
+            lambda: self.on_layer_combo_changed('he_curve', he_curve_combo)
+        )
+        self.layer_widgets['he_curve_combo'] = he_curve_combo
+
+        # HE Velocity Min (slider)
+        he_min_layout = QHBoxLayout()
+        he_min_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Min:"))
+        he_min_label.setMinimumWidth(180)
+        he_min_layout.addWidget(he_min_label)
+
+        he_min_slider = QSlider(Qt.Horizontal)
+        he_min_slider.setMinimum(1)
+        he_min_slider.setMaximum(127)
+        he_min_slider.setValue(1)
+        he_min_layout.addWidget(he_min_slider)
+
+        he_min_value_label = QLabel("1")
+        he_min_value_label.setMinimumWidth(100)
+        he_min_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        he_min_layout.addWidget(he_min_value_label)
+
+        layer_advanced_layout.addLayout(he_min_layout)
+        he_min_slider.valueChanged.connect(
+            lambda v, lbl=he_min_value_label: self.on_layer_slider_changed('he_min', v, lbl)
+        )
+        self.layer_widgets['he_min_slider'] = he_min_slider
+        self.layer_widgets['he_min_label'] = he_min_value_label
+
+        # HE Velocity Max (slider)
+        he_max_layout = QHBoxLayout()
+        he_max_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Max:"))
+        he_max_label.setMinimumWidth(180)
+        he_max_layout.addWidget(he_max_label)
+
+        he_max_slider = QSlider(Qt.Horizontal)
+        he_max_slider.setMinimum(1)
+        he_max_slider.setMaximum(127)
+        he_max_slider.setValue(127)
+        he_max_layout.addWidget(he_max_slider)
+
+        he_max_value_label = QLabel("127")
+        he_max_value_label.setMinimumWidth(100)
+        he_max_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        he_max_layout.addWidget(he_max_value_label)
+
+        layer_advanced_layout.addLayout(he_max_layout)
+        he_max_slider.valueChanged.connect(
+            lambda v, lbl=he_max_value_label: self.on_layer_slider_changed('he_max', v, lbl)
+        )
+        self.layer_widgets['he_max_slider'] = he_max_slider
+        self.layer_widgets['he_max_label'] = he_max_value_label
+
         layout.addWidget(layer_advanced_widget)
         self.layer_widgets['advanced_widget'] = layer_advanced_widget
         self.layer_widgets['advanced_checkbox'] = layer_advanced_checkbox
@@ -2252,34 +2436,44 @@ class LayerActuationConfigurator(BasicEditor):
         self.layer_data[layer]['aftertouch_cc'] = self.layer_widgets['aftertouch_cc_combo'].currentData()
         self.layer_data[layer]['rapidfire_enabled'] = self.layer_widgets['rapid_checkbox'].isChecked()
         self.layer_data[layer]['midi_rapidfire_enabled'] = self.layer_widgets['midi_rapid_checkbox'].isChecked()
+        # HE Velocity fields
+        self.layer_data[layer]['use_fixed_velocity'] = self.layer_widgets['use_fixed_vel_checkbox'].isChecked()
+        self.layer_data[layer]['he_curve'] = self.layer_widgets['he_curve_combo'].currentData()
+        self.layer_data[layer]['he_min'] = self.layer_widgets['he_min_slider'].value()
+        self.layer_data[layer]['he_max'] = self.layer_widgets['he_max_slider'].value()
     
     def load_layer_to_ui(self, layer):
         """Load layer data to UI"""
         data = self.layer_data[layer]
-        
+
         # Set sliders
         self.layer_widgets['normal_slider'].setValue(data['normal'])
         self.layer_widgets['midi_slider'].setValue(data['midi'])
-        
+
         # Set combos
-        for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed']:
+        for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed', 'he_curve']:
             combo = self.layer_widgets[f'{key}_combo']
             for i in range(combo.count()):
                 if combo.itemData(i) == data[key]:
                     combo.setCurrentIndex(i)
                     break
-        
+
         # Set rapidfire
         self.layer_widgets['rapid_checkbox'].setChecked(data['rapidfire_enabled'])
         self.layer_widgets['rapid_widget'].setVisible(data['rapidfire_enabled'])
         self.layer_widgets['rapid_slider'].setValue(data['rapid'])
-        
+
         # Set MIDI rapidfire
         self.layer_widgets['midi_rapid_checkbox'].setChecked(data['midi_rapidfire_enabled'])
         self.layer_widgets['midi_rapid_sens_widget'].setVisible(data['midi_rapidfire_enabled'])
         self.layer_widgets['midi_rapid_vel_widget'].setVisible(data['midi_rapidfire_enabled'])
         self.layer_widgets['midi_rapid_sens_slider'].setValue(data['midi_rapid_sens'])
         self.layer_widgets['midi_rapid_vel_slider'].setValue(data['midi_rapid_vel'])
+
+        # Set HE Velocity settings
+        self.layer_widgets['use_fixed_vel_checkbox'].setChecked(data['use_fixed_velocity'])
+        self.layer_widgets['he_min_slider'].setValue(data['he_min'])
+        self.layer_widgets['he_max_slider'].setValue(data['he_max'])
     
     def on_rapidfire_toggled(self):
         """Show/hide rapidfire sensitivity based on checkbox"""
@@ -2295,10 +2489,18 @@ class LayerActuationConfigurator(BasicEditor):
         enabled = self.master_widgets['midi_rapid_checkbox'].isChecked()
         self.master_widgets['midi_rapid_sens_widget'].setVisible(enabled)
         self.master_widgets['midi_rapid_vel_widget'].setVisible(enabled)
-        
+
         if not self.per_layer_enabled:
             for layer_data in self.layer_data:
                 layer_data['midi_rapidfire_enabled'] = enabled
+
+    def on_use_fixed_velocity_toggled(self):
+        """Handle Use Fixed Velocity checkbox toggle"""
+        enabled = self.master_widgets['use_fixed_vel_checkbox'].isChecked()
+
+        if not self.per_layer_enabled:
+            for layer_data in self.layer_data:
+                layer_data['use_fixed_velocity'] = enabled
     
     def on_master_slider_changed(self, key, value, label):
         """Handle master slider changes"""
@@ -2363,9 +2565,14 @@ class LayerActuationConfigurator(BasicEditor):
             'vel_speed': self.master_widgets['vel_speed_combo'].currentData(),
             'aftertouch_cc': self.master_widgets['aftertouch_cc_combo'].currentData(),
             'rapidfire_enabled': self.master_widgets['rapid_checkbox'].isChecked(),
-            'midi_rapidfire_enabled': self.master_widgets['midi_rapid_checkbox'].isChecked()
+            'midi_rapidfire_enabled': self.master_widgets['midi_rapid_checkbox'].isChecked(),
+            # HE Velocity settings
+            'use_fixed_velocity': self.master_widgets['use_fixed_vel_checkbox'].isChecked(),
+            'he_curve': self.master_widgets['he_curve_combo'].currentData(),
+            'he_min': self.master_widgets['he_min_slider'].value(),
+            'he_max': self.master_widgets['he_max_slider'].value()
         }
-        
+
         for i in range(12):
             self.layer_data[i] = master_data.copy()
     
@@ -2379,7 +2586,9 @@ class LayerActuationConfigurator(BasicEditor):
                 flags |= 0x01
             if layer_data['midi_rapidfire_enabled']:
                 flags |= 0x02
-            
+            if layer_data['use_fixed_velocity']:
+                flags |= 0x04
+
             data_dict = {
                 'normal': layer_data['normal'],
                 'midi': layer_data['midi'],
@@ -2390,7 +2599,11 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_vel': layer_data['midi_rapid_vel'],
                 'vel_speed': layer_data['vel_speed'],
                 'aftertouch_cc': layer_data['aftertouch_cc'],
-                'flags': flags
+                'flags': flags,
+                # HE Velocity settings
+                'he_curve': layer_data['he_curve'],
+                'he_min': layer_data['he_min'],
+                'he_max': layer_data['he_max']
             }
             actuations.append(data_dict)
         return actuations
@@ -2407,7 +2620,7 @@ class LayerActuationConfigurator(BasicEditor):
             
             actuations = self.get_all_actuations()
             
-            # Send all 12 layers (10 bytes each)
+            # Send all 12 layers (14 bytes each: layer + 10 original + 3 HE velocity)
             for layer, values in enumerate(actuations):
                 data = bytearray([
                     layer,
@@ -2420,9 +2633,13 @@ class LayerActuationConfigurator(BasicEditor):
                     values['midi_rapid_vel'],
                     values['vel_speed'],
                     values['aftertouch_cc'],
-                    values['flags']
+                    values['flags'],
+                    # HE Velocity fields
+                    values['he_curve'],
+                    values['he_min'],
+                    values['he_max']
                 ])
-                
+
                 if not self.device.keyboard.set_layer_actuation(data):
                     raise RuntimeError(f"Failed to set actuation for layer {layer}")
             
@@ -2439,34 +2656,35 @@ class LayerActuationConfigurator(BasicEditor):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
             
-            # Get all actuations (120 bytes = 12 layers × 10 values)
+            # Get all actuations (156 bytes = 12 layers × 13 values)
+            # 10 original + 3 HE velocity (flags, he_curve, he_min, he_max)
             actuations = self.device.keyboard.get_all_layer_actuations()
-            
-            if not actuations or len(actuations) != 120:
+
+            if not actuations or len(actuations) != 156:
                 raise RuntimeError("Failed to load actuations from keyboard")
-            
+
             # Check if all layers are the same
             all_same = True
             first_values = {}
-            
-            for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 
-                                          'midi_rapid_sens', 'midi_rapid_vel', 'vel_speed', 
-                                          'aftertouch_cc', 'flags']):
+
+            for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid',
+                                          'midi_rapid_sens', 'midi_rapid_vel', 'vel_speed',
+                                          'aftertouch_cc', 'flags', 'he_curve', 'he_min', 'he_max']):
                 first_values[key] = actuations[key_idx]
-                
+
                 for layer in range(1, 12):
-                    offset = layer * 10 + key_idx
+                    offset = layer * 13 + key_idx
                     if actuations[offset] != first_values[key]:
                         all_same = False
                         break
                 if not all_same:
                     break
-            
+
             # Load into layer data
             for layer in range(12):
-                offset = layer * 10
+                offset = layer * 13
                 flags = actuations[offset + 9]
-                
+
                 self.layer_data[layer] = {
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
@@ -2478,7 +2696,12 @@ class LayerActuationConfigurator(BasicEditor):
                     'vel_speed': actuations[offset + 7],
                     'aftertouch_cc': actuations[offset + 8],
                     'rapidfire_enabled': (flags & 0x01) != 0,
-                    'midi_rapidfire_enabled': (flags & 0x02) != 0
+                    'midi_rapidfire_enabled': (flags & 0x02) != 0,
+                    'use_fixed_velocity': (flags & 0x04) != 0,
+                    # HE Velocity fields
+                    'he_curve': actuations[offset + 10],
+                    'he_min': actuations[offset + 11],
+                    'he_max': actuations[offset + 12]
                 }
             
             # Set master controls
@@ -2506,7 +2729,20 @@ class LayerActuationConfigurator(BasicEditor):
             self.master_widgets['midi_rapid_vel_widget'].setVisible(midi_rapid_enabled)
             self.master_widgets['midi_rapid_sens_slider'].setValue(first_values['midi_rapid_sens'])
             self.master_widgets['midi_rapid_vel_slider'].setValue(first_values['midi_rapid_vel'])
-            
+
+            # HE Velocity settings
+            use_fixed_vel = (first_flags & 0x04) != 0
+            self.master_widgets['use_fixed_vel_checkbox'].setChecked(use_fixed_vel)
+            self.master_widgets['he_min_slider'].setValue(first_values['he_min'])
+            self.master_widgets['he_max_slider'].setValue(first_values['he_max'])
+
+            # HE Velocity Curve combo
+            he_curve_combo = self.master_widgets['he_curve_combo']
+            for i in range(he_curve_combo.count()):
+                if he_curve_combo.itemData(i) == first_values['he_curve']:
+                    he_curve_combo.setCurrentIndex(i)
+                    break
+
             # Load current layer to UI if in per-layer mode
             if self.per_layer_enabled:
                 self.load_layer_to_ui(self.current_layer)

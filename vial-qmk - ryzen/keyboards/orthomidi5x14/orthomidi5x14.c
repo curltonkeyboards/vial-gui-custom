@@ -7,9 +7,11 @@
 #include <printf/printf.h>
 #include QMK_KEYBOARD_H
 #include "orthomidi5x14.h"
+#include "analog_matrix.h"
 #include "via.h"
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
+#include <math.h>
 extern MidiDevice midi_device;
 
 #define BANK_SEL_MSB_CC 0
@@ -37,6 +39,18 @@ extern MidiDevice midi_device;
 #define MIDI_IN_MODE_TOG    (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
 #define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
 #define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
+
+// HE Velocity Curve and Range Keycodes
+#define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
+#define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
+
+// Direct velocity min assignment keycodes (127 keycodes for values 1-127)
+#define HE_VEL_MIN_1        (KC_CUSTOM + 10)
+#define HE_VEL_MIN_127      (HE_VEL_MIN_1 + 126)
+
+// Direct velocity max assignment keycodes (127 keycodes for values 1-127)
+#define HE_VEL_MAX_1        (HE_VEL_MIN_127 + 1)
+#define HE_VEL_MAX_127      (HE_VEL_MAX_1 + 126)
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
@@ -302,6 +316,165 @@ static const char* clock_source_names[] = {
     "CLK:USB",
     "CLK:IN"
 };
+
+// ============================================================================
+// HE VELOCITY CURVE AND RANGE SYSTEM
+// ============================================================================
+
+// Global velocity curve and range settings
+velocity_curve_t he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
+uint8_t he_velocity_min = 1;    // Default: 1
+uint8_t he_velocity_max = 127;  // Default: 127
+
+// Velocity curve names for display
+static const char* velocity_curve_names[] = {
+    "SOFTEST",
+    "SOFT",
+    "MEDIUM",
+    "HARD",
+    "HARDEST"
+};
+
+// Apply velocity curve and range to travel value (0-255) -> MIDI velocity (1-127)
+uint8_t apply_he_velocity_curve(uint8_t travel_value) {
+    // Input: travel_value is 0-255 from analog_matrix_get_travel_normalized()
+    // Output: MIDI velocity 1-127 with curve applied
+
+    // Normalize travel to 0.0-1.0 range
+    float normalized = (float)travel_value / 255.0f;
+
+    // Apply velocity curve
+    float curved;
+    switch (he_velocity_curve) {
+        case VELOCITY_CURVE_SOFTEST:
+            // Exponential curve favoring lower velocities
+            // Formula: x^3 (cubic curve, very soft)
+            curved = normalized * normalized * normalized;
+            break;
+
+        case VELOCITY_CURVE_SOFT:
+            // Exponential curve slightly favoring lower velocities
+            // Formula: x^2 (quadratic curve, soft)
+            curved = normalized * normalized;
+            break;
+
+        case VELOCITY_CURVE_MEDIUM:
+            // Linear curve (no transformation)
+            curved = normalized;
+            break;
+
+        case VELOCITY_CURVE_HARD:
+            // Exponential curve favoring higher velocities
+            // Formula: sqrt(x)
+            curved = sqrtf(normalized);
+            break;
+
+        case VELOCITY_CURVE_HARDEST:
+            // Exponential curve strongly favoring higher velocities
+            // Formula: cbrt(x) (cube root)
+            curved = powf(normalized, 1.0f/3.0f);
+            break;
+
+        default:
+            curved = normalized;
+            break;
+    }
+
+    // Map curved value to velocity range
+    // Map 0.0-1.0 to velocity_min-velocity_max
+    uint8_t range = he_velocity_max - he_velocity_min;
+    int16_t velocity = he_velocity_min + (int16_t)(curved * range);
+
+    // Clamp to valid MIDI velocity range (1-127)
+    if (velocity < 1) velocity = 1;
+    if (velocity > 127) velocity = 127;
+
+    return (uint8_t)velocity;
+}
+
+// Cycle through velocity curves
+void cycle_he_velocity_curve(bool forward) {
+    if (forward) {
+        he_velocity_curve = (he_velocity_curve + 1) % VELOCITY_CURVE_COUNT;
+    } else {
+        if (he_velocity_curve == 0) {
+            he_velocity_curve = VELOCITY_CURVE_COUNT - 1;
+        } else {
+            he_velocity_curve--;
+        }
+    }
+}
+
+// Set velocity range with validation
+void set_he_velocity_range(uint8_t min, uint8_t max) {
+    // Ensure valid range
+    if (min < 1) min = 1;
+    if (max > 127) max = 127;
+    if (min > max) {
+        // Swap if reversed
+        uint8_t temp = min;
+        min = max;
+        max = temp;
+    }
+
+    he_velocity_min = min;
+    he_velocity_max = max;
+}
+
+// Get HE velocity from matrix position (row, col) using per-layer settings
+// This is called when a MIDI note is triggered to get the velocity from the analog matrix
+uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
+    // Check if this layer uses fixed velocity
+    if (layer_actuations[current_layer].flags & LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY) {
+        return velocity_number;  // Use global fixed velocity
+    }
+
+    // Get normalized travel value (0-255) from analog matrix
+    uint8_t travel = analog_matrix_get_travel_normalized(row, col);
+
+    // Get per-layer settings
+    uint8_t curve = layer_actuations[current_layer].he_velocity_curve;
+    uint8_t min_vel = layer_actuations[current_layer].he_velocity_min;
+    uint8_t max_vel = layer_actuations[current_layer].he_velocity_max;
+
+    // Normalize travel to 0.0-1.0 range
+    float normalized = (float)travel / 255.0f;
+
+    // Apply per-layer velocity curve
+    float curved;
+    switch (curve) {
+        case 0:  // VELOCITY_CURVE_SOFTEST
+            curved = normalized * normalized * normalized;
+            break;
+        case 1:  // VELOCITY_CURVE_SOFT
+            curved = normalized * normalized;
+            break;
+        case 2:  // VELOCITY_CURVE_MEDIUM
+            curved = normalized;
+            break;
+        case 3:  // VELOCITY_CURVE_HARD
+            curved = sqrtf(normalized);
+            break;
+        case 4:  // VELOCITY_CURVE_HARDEST
+            curved = powf(normalized, 1.0f/3.0f);
+            break;
+        default:
+            curved = normalized;
+            break;
+    }
+
+    // Map curved value to per-layer velocity range
+    uint8_t range = max_vel - min_vel;
+    int16_t velocity = min_vel + (int16_t)(curved * range);
+
+    // Clamp to valid MIDI velocity range (1-127)
+    if (velocity < 1) velocity = 1;
+    if (velocity > 127) velocity = 127;
+
+    return (uint8_t)velocity;
+}
 
 // Temporary mode display variables
 static uint32_t mode_display_timer = 0;
@@ -1938,6 +2111,18 @@ void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
         layer_actuations[i].normal_actuation = 80;  // 2.0mm
         layer_actuations[i].midi_actuation = 80;    // 2.0mm
+        layer_actuations[i].aftertouch_mode = 0;    // Off
+        layer_actuations[i].velocity_mode = 0;      // Fixed
+        layer_actuations[i].rapidfire_sensitivity = 50;
+        layer_actuations[i].midi_rapidfire_sensitivity = 50;
+        layer_actuations[i].midi_rapidfire_velocity = 0;
+        layer_actuations[i].velocity_speed_scale = 10;
+        layer_actuations[i].aftertouch_cc = 0;
+        layer_actuations[i].flags = 0;              // All flags off
+        // HE Velocity defaults
+        layer_actuations[i].he_velocity_curve = 2;  // MEDIUM (linear)
+        layer_actuations[i].he_velocity_min = 1;    // Min velocity
+        layer_actuations[i].he_velocity_max = 127;  // Max velocity
     }
 }
 
@@ -2660,7 +2845,134 @@ void set_and_save_custom_slot_macro_animation(uint8_t slot, uint8_t value) {
 }
 
 void set_and_save_custom_slot_use_influence(uint8_t slot, bool value) {
-    set_custom_slot_use_influence(slot, value);    
+    set_custom_slot_use_influence(slot, value);
+}
+
+// =============================================================================
+// LAYER ACTUATION EEPROM FUNCTIONS
+// =============================================================================
+
+// Define EEPROM address for layer actuations (place after custom animations)
+#ifndef EECONFIG_LAYER_ACTUATIONS
+#define EECONFIG_LAYER_ACTUATIONS (EECONFIG_CUSTOM_ANIMATIONS + EECONFIG_CUSTOM_ANIMATIONS_SIZE)
+#endif
+
+// Save all layer actuations to EEPROM
+void save_layer_actuations(void) {
+    eeprom_update_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+}
+
+// Load all layer actuations from EEPROM
+void load_layer_actuations(void) {
+    eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+}
+
+// Reset all layer actuations to defaults
+void reset_layer_actuations(void) {
+    initialize_layer_actuations();
+    save_layer_actuations();
+}
+
+// Set layer actuation parameters
+void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
+                         uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
+                         uint8_t midi_rapid_vel, uint8_t vel_speed,
+                         uint8_t aftertouch_cc, uint8_t flags,
+                         uint8_t he_curve, uint8_t he_min, uint8_t he_max) {
+    if (layer >= 12) return;
+
+    layer_actuations[layer].normal_actuation = normal;
+    layer_actuations[layer].midi_actuation = midi;
+    layer_actuations[layer].aftertouch_mode = aftertouch;
+    layer_actuations[layer].velocity_mode = velocity;
+    layer_actuations[layer].rapidfire_sensitivity = rapid;
+    layer_actuations[layer].midi_rapidfire_sensitivity = midi_rapid_sens;
+    layer_actuations[layer].midi_rapidfire_velocity = midi_rapid_vel;
+    layer_actuations[layer].velocity_speed_scale = vel_speed;
+    layer_actuations[layer].aftertouch_cc = aftertouch_cc;
+    layer_actuations[layer].flags = flags;
+    layer_actuations[layer].he_velocity_curve = he_curve;
+    layer_actuations[layer].he_velocity_min = he_min;
+    layer_actuations[layer].he_velocity_max = he_max;
+}
+
+// Get layer actuation parameters
+void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
+                         uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
+                         uint8_t *midi_rapid_vel, uint8_t *vel_speed,
+                         uint8_t *aftertouch_cc, uint8_t *flags,
+                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max) {
+    if (layer >= 12) return;
+
+    *normal = layer_actuations[layer].normal_actuation;
+    *midi = layer_actuations[layer].midi_actuation;
+    *aftertouch = layer_actuations[layer].aftertouch_mode;
+    *velocity = layer_actuations[layer].velocity_mode;
+    *rapid = layer_actuations[layer].rapidfire_sensitivity;
+    *midi_rapid_sens = layer_actuations[layer].midi_rapidfire_sensitivity;
+    *midi_rapid_vel = layer_actuations[layer].midi_rapidfire_velocity;
+    *vel_speed = layer_actuations[layer].velocity_speed_scale;
+    *aftertouch_cc = layer_actuations[layer].aftertouch_cc;
+    *flags = layer_actuations[layer].flags;
+    *he_curve = layer_actuations[layer].he_velocity_curve;
+    *he_min = layer_actuations[layer].he_velocity_min;
+    *he_max = layer_actuations[layer].he_velocity_max;
+}
+
+// Helper functions for flag checking
+bool layer_rapidfire_enabled(uint8_t layer) {
+    if (layer >= 12) return false;
+    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) != 0;
+}
+
+bool layer_midi_rapidfire_enabled(uint8_t layer) {
+    if (layer >= 12) return false;
+    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) != 0;
+}
+
+bool layer_use_fixed_velocity(uint8_t layer) {
+    if (layer >= 12) return false;
+    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY) != 0;
+}
+
+// =============================================================================
+// HID HANDLERS FOR LAYER ACTUATION (VIA/VIAL Communication)
+// =============================================================================
+
+// HID command IDs (continue after dynamic macro commands)
+#define HID_CMD_SET_LAYER_ACTUATION    0x50
+#define HID_CMD_GET_LAYER_ACTUATION    0x51
+#define HID_CMD_GET_ALL_LAYER_ACTUATIONS 0x52
+#define HID_CMD_RESET_LAYER_ACTUATIONS 0x53
+
+// Set layer actuation from HID data
+void handle_set_layer_actuation(const uint8_t* data) {
+    uint8_t layer = data[0];
+    if (layer >= 12) return;
+
+    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5],
+                       data[6], data[7], data[8], data[9], data[10],
+                       data[11], data[12], data[13]);
+    save_layer_actuations();
+}
+
+// Get layer actuation and send back via HID
+void handle_get_layer_actuation(uint8_t layer) {
+    // This would send back the data via HID
+    // Implementation depends on your HID protocol
+    // Placeholder for now
+}
+
+// Get all layer actuations
+void handle_get_all_layer_actuations(void) {
+    // This would send all layers back via HID
+    // Implementation depends on your HID protocol
+    // Placeholder for now
+}
+
+// Reset all layer actuations to defaults
+void handle_reset_layer_actuations(void) {
+    reset_layer_actuations();
 }
 
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
@@ -2841,6 +3153,7 @@ void keyboard_post_init_user(void) {
 	load_keyboard_settings();
 	dynamic_macro_init();
 	init_custom_animations();
+	load_layer_actuations();  // Load HE velocity settings from EEPROM
 	dwt_init();
 
 	// Initialize encoder click buttons and sustain pedal pins
@@ -10284,6 +10597,59 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             toggle_midi_clock_source();
         }
         return false;  // Skip further processing
+    }
+
+    // HE Velocity Curve Controls (per-layer)
+    if (keycode == HE_VEL_CURVE_UP) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            layer_actuations[layer].he_velocity_curve = (layer_actuations[layer].he_velocity_curve + 1) % 5;
+            dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+        }
+        return false;
+    }
+
+    if (keycode == HE_VEL_CURVE_DOWN) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            if (layer_actuations[layer].he_velocity_curve == 0) {
+                layer_actuations[layer].he_velocity_curve = 4;
+            } else {
+                layer_actuations[layer].he_velocity_curve--;
+            }
+            dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+        }
+        return false;
+    }
+
+    // Direct HE Velocity Min assignment (HE_VEL_MIN_1 to HE_VEL_MIN_127)
+    if (keycode >= HE_VEL_MIN_1 && keycode <= HE_VEL_MIN_127) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            uint8_t min_value = (keycode - HE_VEL_MIN_1) + 1;  // 1-127
+            layer_actuations[layer].he_velocity_min = min_value;
+            // Ensure min <= max
+            if (layer_actuations[layer].he_velocity_min > layer_actuations[layer].he_velocity_max) {
+                layer_actuations[layer].he_velocity_min = layer_actuations[layer].he_velocity_max;
+            }
+            dprintf("Layer %d HE Velocity Min: %d\n", layer, layer_actuations[layer].he_velocity_min);
+        }
+        return false;
+    }
+
+    // Direct HE Velocity Max assignment (HE_VEL_MAX_1 to HE_VEL_MAX_127)
+    if (keycode >= HE_VEL_MAX_1 && keycode <= HE_VEL_MAX_127) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            uint8_t max_value = (keycode - HE_VEL_MAX_1) + 1;  // 1-127
+            layer_actuations[layer].he_velocity_max = max_value;
+            // Ensure min <= max
+            if (layer_actuations[layer].he_velocity_max < layer_actuations[layer].he_velocity_min) {
+                layer_actuations[layer].he_velocity_max = layer_actuations[layer].he_velocity_min;
+            }
+            dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+        }
+        return false;
     }
 
     if (keycode == 0xC929) {

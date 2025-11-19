@@ -891,7 +891,7 @@ uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_i
 // LAYER-SPECIFIC ACTUATION SETTINGS
 // ============================================================================
 
-// Layer actuation structure (now 10 bytes per layer)
+// Layer actuation structure (expanded with HE velocity controls)
 typedef struct {
     uint8_t normal_actuation;              // 0-100 (0-2.5mm)
     uint8_t midi_actuation;                // 0-100 (0-2.5mm)
@@ -902,34 +902,43 @@ typedef struct {
     uint8_t midi_rapidfire_velocity;       // 0-20 (velocity modifier range ±)
     uint8_t velocity_speed_scale;          // 1-20
     uint8_t aftertouch_cc;                 // 0-127 (CC number for aftertouch)
-    uint8_t flags;                         // Bit 0: rapidfire_enabled, Bit 1: midi_rapidfire_enabled
+    uint8_t flags;                         // Bit 0: rapidfire_enabled, Bit 1: midi_rapidfire_enabled, Bit 2: use_fixed_velocity
+    // HE Velocity curve and range (NEW)
+    uint8_t he_velocity_curve;             // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t he_velocity_min;               // 1-127 (minimum velocity)
+    uint8_t he_velocity_max;               // 1-127 (maximum velocity)
 } layer_actuation_t;
 
 
 // Flag bit definitions
 #define LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED       (1 << 0)
 #define LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED  (1 << 1)
+#define LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY      (1 << 2)
 
 // External declarations
 extern layer_actuation_t layer_actuations[12];
 extern uint8_t aftertouch_mode;
 extern bool aftertouch_pedal_active;
+extern uint8_t analog_mode;  // Global analog mode
 
 void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
-void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch, 
+void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
                          uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
                          uint8_t midi_rapid_vel, uint8_t vel_speed,
-                         uint8_t aftertouch_cc, uint8_t flags);
-                         
+                         uint8_t aftertouch_cc, uint8_t flags,
+                         uint8_t he_curve, uint8_t he_min, uint8_t he_max);
+
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
                          uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
                          uint8_t *midi_rapid_vel, uint8_t *vel_speed,
-                         uint8_t *aftertouch_cc, uint8_t *flags);
+                         uint8_t *aftertouch_cc, uint8_t *flags,
+                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max);
 
 bool layer_rapidfire_enabled(uint8_t layer);
 bool layer_midi_rapidfire_enabled(uint8_t layer);
+bool layer_use_fixed_velocity(uint8_t layer);
 
 // HID handlers
 void handle_set_layer_actuation(const uint8_t* data);

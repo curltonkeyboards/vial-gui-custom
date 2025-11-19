@@ -390,7 +390,7 @@ uint8_t midi_compute_note3(uint16_t keycode) {
 // Add this helper function at the top of process_midi.c
 uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_index) {
     uint8_t final_velocity;
-    
+
     if (analog_mode == 0) {
         // Mode 0: Fixed velocity with random modifier
         final_velocity = base_velocity;
@@ -404,17 +404,38 @@ uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_i
     } else {
         // Modes 1, 2, 3: Use pre-calculated analog velocity from matrix.c
         final_velocity = get_midi_velocity(layer, note_index);
-        
+
         // If velocity is default and we have a base velocity, use that
         if (final_velocity == 64 && base_velocity != 64) {
             final_velocity = base_velocity;
         }
     }
-    
+
     if (final_velocity < 1) final_velocity = 1;
     if (final_velocity > 127) final_velocity = 127;
-    
+
     return final_velocity;
+}
+
+// Helper function for applying HE velocity with row/col from keyrecord
+uint8_t apply_he_velocity_from_record(uint8_t base_velocity, keyrecord_t *record) {
+    if (analog_mode > 0 && record != NULL) {
+        // Get HE velocity from the key's row/col position
+        return get_he_velocity_from_position(record->event.key.row, record->event.key.col);
+    } else {
+        // Fallback to base velocity with random modifier
+        uint8_t final_velocity = base_velocity;
+        if (randomvelocitymodifier != 0) {
+            int16_t random_offset = (rand() % (randomvelocitymodifier * 2 + 1)) - randomvelocitymodifier;
+            int16_t modified_velocity = final_velocity + random_offset;
+            if (modified_velocity < 1) modified_velocity = 1;
+            if (modified_velocity > 127) modified_velocity = 127;
+            final_velocity = (uint8_t)modified_velocity;
+        }
+        if (final_velocity < 1) final_velocity = 1;
+        if (final_velocity > 127) final_velocity = 127;
+        return final_velocity;
+    }
 }
 
 // Modified noteon functions
@@ -710,15 +731,20 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
 // Modified process_midi main switch cases
 bool process_midi(uint16_t keycode, keyrecord_t *record) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    
+
     switch (keycode) {
         case MIDI_TONE_MIN ... MIDI_TONE_MAX: {
             uint8_t channel  = channel_number;
             uint8_t tone     = keycode - MIDI_TONE_MIN;
             uint8_t velocity = velocity_number;
 
-            velocity = apply_velocity_mode(velocity, current_layer, tone);
-            
+            // Use HE velocity curve if analog_mode is enabled
+            if (analog_mode > 0) {
+                velocity = apply_he_velocity_from_record(velocity, record);
+            } else {
+                velocity = apply_velocity_mode(velocity, current_layer, tone);
+            }
+
             if (record->event.pressed) {
                 uint8_t note = midi_compute_note(keycode);
                 midi_send_noteon_with_recording(channel, note, velocity);
@@ -748,7 +774,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             }
             uint8_t toneb     = keycode - 50684;
             uint8_t velocity = 0;
-       
+
 			if (analog_mode == 0) {
 				if (keysplitvelocitystatus == 0) {
 					velocity = velocity_number;
@@ -756,7 +782,9 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 					velocity = velocity_number2;
 				}
 			} else {
-				velocity = apply_velocity_mode(velocity, current_layer, toneb);
+				// Use HE velocity curve
+				uint8_t base_vel = (keysplitvelocitystatus == 0) ? velocity_number : velocity_number2;
+				velocity = apply_he_velocity_from_record(base_vel, record);
 			}
             
             if (record->event.pressed) {
@@ -787,7 +815,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             }
             uint8_t tonec     = keycode - 50796;
             uint8_t velocity = 0;
-			
+
 			if (analog_mode == 0) {
 				if (keysplitvelocitystatus != 2) {
 					velocity = velocity_number;
@@ -795,7 +823,9 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 					velocity = velocity_number3;
 				}
 			} else {
-				velocity = apply_velocity_mode(velocity, current_layer, tonec);
+				// Use HE velocity curve
+				uint8_t base_vel = (keysplitvelocitystatus != 2) ? velocity_number : velocity_number3;
+				velocity = apply_he_velocity_from_record(base_vel, record);
 			}
             
             if (record->event.pressed) {
