@@ -965,7 +965,60 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
-        
+
+        # MIDI Routing Group
+        midi_routing_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "MIDI Routing & Clock"))
+        midi_routing_layout = QGridLayout()
+        midi_routing_layout.setHorizontalSpacing(25)
+        midi_routing_layout.setColumnStretch(0, 1)    # Left spacer
+        midi_routing_layout.setColumnStretch(2, 0)
+        midi_routing_layout.setColumnStretch(4, 0)
+        midi_routing_layout.setColumnStretch(6, 0)
+        midi_routing_layout.setColumnStretch(7, 1)    # Right spacer
+        midi_routing_group.setLayout(midi_routing_layout)
+        main_layout.addWidget(midi_routing_group)
+
+        # MIDI In Mode
+        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI In Mode:")), 0, 1)
+        self.midi_in_mode = ArrowComboBox()
+        self.midi_in_mode.setMinimumWidth(120)
+        self.midi_in_mode.setMinimumHeight(30)
+        self.midi_in_mode.setMaximumHeight(30)
+        self.midi_in_mode.setEditable(True)
+        self.midi_in_mode.lineEdit().setReadOnly(True)
+        self.midi_in_mode.lineEdit().setAlignment(Qt.AlignCenter)
+        self.midi_in_mode.addItem("IN->USB", 0)
+        self.midi_in_mode.addItem("IN->OUT", 1)
+        self.midi_in_mode.addItem("IN->PROC", 2)
+        self.midi_in_mode.addItem("IN->CLK", 3)
+        midi_routing_layout.addWidget(self.midi_in_mode, 0, 2)
+
+        # USB MIDI Mode
+        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "USB MIDI Mode:")), 0, 3)
+        self.usb_midi_mode = ArrowComboBox()
+        self.usb_midi_mode.setMinimumWidth(120)
+        self.usb_midi_mode.setMinimumHeight(30)
+        self.usb_midi_mode.setMaximumHeight(30)
+        self.usb_midi_mode.setEditable(True)
+        self.usb_midi_mode.lineEdit().setReadOnly(True)
+        self.usb_midi_mode.lineEdit().setAlignment(Qt.AlignCenter)
+        self.usb_midi_mode.addItem("USB->OUT", 0)
+        self.usb_midi_mode.addItem("USB->PROC", 1)
+        midi_routing_layout.addWidget(self.usb_midi_mode, 0, 4)
+
+        # Clock Mode
+        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Clock Mode:")), 0, 5)
+        self.clock_mode = ArrowComboBox()
+        self.clock_mode.setMinimumWidth(120)
+        self.clock_mode.setMinimumHeight(30)
+        self.clock_mode.setMaximumHeight(30)
+        self.clock_mode.setEditable(True)
+        self.clock_mode.lineEdit().setReadOnly(True)
+        self.clock_mode.lineEdit().setAlignment(Qt.AlignCenter)
+        self.clock_mode.addItem("Internal", 0)
+        self.clock_mode.addItem("External", 1)
+        midi_routing_layout.addWidget(self.clock_mode, 0, 6)
+
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
         keysplit_modes_layout = QGridLayout()
@@ -1216,7 +1269,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "alternate_restart_mode": self.alternate_restart_mode.currentData(),
             "colorblindmode": self.colorblind_mode.currentData(),
             "cclooprecording": self.cc_loop_recording.currentData(),
-            "truesustain": self.true_sustain.currentData()
+            "truesustain": self.true_sustain.currentData(),
+            "midi_in_mode": self.midi_in_mode.currentData(),
+            "usb_midi_mode": self.usb_midi_mode.currentData(),
+            "clock_mode": self.clock_mode.currentData()
         }
     
     def apply_settings(self, config):
@@ -1260,7 +1316,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.colorblind_mode, config.get("colorblindmode"), 0)
         set_combo_by_data(self.cc_loop_recording, config.get("cclooprecording"), False)
         set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
-    
+        set_combo_by_data(self.midi_in_mode, config.get("midi_in_mode"), 2)  # Default: MIDI_IN_PROCESS
+        set_combo_by_data(self.usb_midi_mode, config.get("usb_midi_mode"), 1)  # Default: USB_MIDI_PROCESS
+        set_combo_by_data(self.clock_mode, config.get("clock_mode"), 0)  # Default: CLOCK_MODE_INTERNAL
+
     def pack_basic_data(self, settings):
         """Pack basic settings into 26-byte structure"""
         data = bytearray(26)
@@ -1289,9 +1348,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 15-byte structure"""
-        data = bytearray(15)
-        
+        """Pack advanced settings into 18-byte structure (added 3 MIDI mode bytes)"""
+        data = bytearray(18)
+
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
         data[offset] = settings["key_split2_channel"]; offset += 1
@@ -1308,7 +1367,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["colorblindmode"]; offset += 1
         data[offset] = 1 if settings["cclooprecording"] else 0; offset += 1
         data[offset] = 1 if settings["truesustain"] else 0; offset += 1
-        
+        data[offset] = settings.get("midi_in_mode", 2); offset += 1  # Default: MIDI_IN_PROCESS
+        data[offset] = settings.get("usb_midi_mode", 1); offset += 1  # Default: USB_MIDI_PROCESS
+        data[offset] = settings.get("clock_mode", 0); offset += 1  # Default: CLOCK_MODE_INTERNAL
+
         return data
     
     def on_save_slot(self, slot):
@@ -1431,7 +1493,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "alternate_restart_mode": False,
             "colorblindmode": 0,
             "cclooprecording": False,
-            "truesustain": False
+            "truesustain": False,
+            "midi_in_mode": 2,  # Default: MIDI_IN_PROCESS
+            "usb_midi_mode": 1,  # Default: USB_MIDI_PROCESS
+            "clock_mode": 0  # Default: CLOCK_MODE_INTERNAL
         }
         self.apply_settings(defaults)
     

@@ -1068,10 +1068,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 
             if HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED in packets:
                 data = packets[HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED][6:]
-                
+
                 config.update({
                     "key_split_channel": data[0],
-                    "key_split2_channel": data[1], 
+                    "key_split2_channel": data[1],
                     "key_split_status": data[2],
                     "key_split_transpose_status": data[3],
                     "key_split_velocity_status": data[4],
@@ -1084,7 +1084,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "alternate_restart_mode": data[11] != 0,
                     "colorblindmode": data[12],
                     "cclooprecording": data[13] != 0,
-                    "truesustain": data[14] != 0
+                    "truesustain": data[14] != 0,
+                    "midi_in_mode": data[15] if len(data) > 15 else 2,  # Default: MIDI_IN_PROCESS
+                    "usb_midi_mode": data[16] if len(data) > 16 else 1,  # Default: USB_MIDI_PROCESS
+                    "clock_mode": data[17] if len(data) > 17 else 0  # Default: CLOCK_MODE_INTERNAL
                 })
                 
             return config if config else None
