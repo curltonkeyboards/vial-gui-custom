@@ -2278,7 +2278,10 @@ void reset_keyboard_settings(void) {
     colorblindmode = 0;
     cclooprecording = false;
     truesustain = false;
-    
+    midi_in_mode = MIDI_IN_PROCESS;
+    usb_midi_mode = USB_MIDI_PROCESS;
+    clock_mode = CLOCK_MODE_INTERNAL;
+
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
     keyboard_settings.cc_sensitivity = cc_sensitivity;
@@ -2311,6 +2314,9 @@ void reset_keyboard_settings(void) {
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.clock_mode = clock_mode;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -2358,7 +2364,10 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     colorblindmode = keyboard_settings.colorblindmode;
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;
-    
+    midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
+    usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
+    clock_mode = (clock_mode_t)keyboard_settings.clock_mode;
+
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }
 
@@ -4464,6 +4473,9 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
     midi_in_mode = (midi_in_mode + 1) % 4;  // Cycle through 4 modes
+    // Save to EEPROM for persistence
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    save_keyboard_settings_to_slot(0);
     // Force OLED update to show new mode
     #ifdef OLED_ENABLE
     oled_display_force_update();
@@ -4473,6 +4485,9 @@ void toggle_midi_in_mode(void) {
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
     usb_midi_mode = (usb_midi_mode + 1) % 2;  // Cycle through 2 modes
+    // Save to EEPROM for persistence
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    save_keyboard_settings_to_slot(0);
     // Force OLED update to show new mode
     #ifdef OLED_ENABLE
     oled_display_force_update();

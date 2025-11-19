@@ -308,6 +308,10 @@ typedef struct {
 	int colorblindmode;
 	bool cclooprecording;
 	bool truesustain;
+	// MIDI routing and clock modes (persisted to EEPROM)
+	uint8_t midi_in_mode;       // midi_in_mode_t (0-3)
+	uint8_t usb_midi_mode;      // usb_midi_mode_t (0-1)
+	uint8_t clock_mode;         // clock_mode_t (0-1: INTERNAL or EXTERNAL)
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
