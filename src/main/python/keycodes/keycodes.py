@@ -3253,14 +3253,10 @@ KEYCODES_HE_VELOCITY_CURVE = [
     K("HE_CURVE_HARDEST", "HE Curve\nHardest", "HE Velocity Curve Hardest"),
 ]
 
-# HE Velocity Range keycodes (min/max pairs)
+# HE Velocity Range keycodes (min/max pairs where min < max)
+# Note: Keycodes are generated dynamically in keycodes_v5.py and keycodes_v6.py
+# to avoid creating 8001 K() objects. This list is kept empty as a placeholder.
 KEYCODES_HE_VELOCITY_RANGE = []
-
-for min_val in range(1, 128):
-    for max_val in range(min_val, 128):
-        KEYCODES_HE_VELOCITY_RANGE.append(K("HE_VEL_RANGE_{}_{}".format(min_val, max_val),
-                                  "HE Vel\nRange\n{}-{}".format(min_val, max_val),
-                                  "HE Velocity Range {}-{}".format(min_val, max_val)))
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_MIDI_BANK_MSB = []
