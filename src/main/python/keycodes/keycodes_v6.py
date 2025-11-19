@@ -2275,6 +2275,16 @@ class keycodes_v6:
         "KS_MODIFIER": 0xCCAD,  # Key split modifier
         "TS_MODIFIER": 0xCCAE,  # Triple split modifier
 
+        # HE Velocity Curve keycodes (0xCCAF-0xCCB3)
+        "HE_CURVE_SOFTEST": 0xCCAF,
+        "HE_CURVE_SOFT": 0xCCB0,
+        "HE_CURVE_MEDIUM": 0xCCB1,
+        "HE_CURVE_HARD": 0xCCB2,
+        "HE_CURVE_HARDEST": 0xCCB3,
+
+        # HE Velocity Range base (for dynamic generation)
+        "HE_VEL_RANGE_1_2": 0xCCB4,  # Base for range keycodes
+
         # MIDI Routing Controls (0xC397-0xC399)
         "MIDI_IN_MODE_TOG": 0xC397,  # MIDI IN routing mode toggle
         "USB_MIDI_MODE_TOG": 0xC398,  # USB MIDI routing mode toggle
@@ -2302,6 +2312,14 @@ for x in range(128):
 for x in range(128):
     for y in range(128):
         keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 128) + y
+
+# Generate HE Velocity Range keycodes dynamically (only where min < max)
+base_addr = keycodes_v6.kc["HE_VEL_RANGE_1_2"]
+idx = 0
+for min_val in range(1, 127):  # 1 to 126
+    for max_val in range(min_val + 1, 128):  # min+1 to 127
+        keycodes_v6.kc["HE_VEL_RANGE_{}_{}".format(min_val, max_val)] = base_addr + idx
+        idx += 1
 
 
 
