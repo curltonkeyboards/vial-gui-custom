@@ -34,8 +34,9 @@ extern MidiDevice midi_device;
 #define KC_CUSTOM (0x8000 + 128 * 7) + 128 * 128 + 5 + 17
 
 // MIDI Routing Toggle Keycodes (after gaming controls)
-#define MIDI_IN_MODE_TOG  (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
-#define USB_MIDI_MODE_TOG (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
+#define MIDI_IN_MODE_TOG    (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
+#define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
+#define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
@@ -279,18 +280,27 @@ static clock_mode_t clock_mode = CLOCK_MODE_INTERNAL;
 // MIDI routing mode variables (types defined in orthomidi5x14.h)
 midi_in_mode_t midi_in_mode = MIDI_IN_PROCESS;  // Default: process through keyboard
 usb_midi_mode_t usb_midi_mode = USB_MIDI_PROCESS;  // Default: process through keyboard
+midi_clock_source_t midi_clock_source = CLOCK_SOURCE_LOCAL;  // Default: local clock
 
 // MIDI routing state strings for OLED
 static const char* midi_in_mode_names[] = {
     "IN->USB",
     "IN->OUT",
     "IN->PROC",
-    "IN->CLK"
+    "IN->CLK",
+    "IN->IGN"
 };
 
 static const char* usb_midi_mode_names[] = {
     "USB->OUT",
-    "USB->PROC"
+    "USB->PROC",
+    "USB->IGN"
+};
+
+static const char* clock_source_names[] = {
+    "CLK:LOC",
+    "CLK:USB",
+    "CLK:IN"
 };
 
 // ============================================================================
@@ -4503,6 +4513,10 @@ void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num
                 midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
             }
             break;
+
+        case MIDI_IN_IGNORE:
+            // Ignore all MIDI In data - do nothing
+            break;
     }
 }
 
@@ -4518,13 +4532,17 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
             // Process through keyboard (default behavior)
             // This happens automatically via QMK's MIDI system
             break;
+
+        case USB_MIDI_IGNORE:
+            // Ignore all USB MIDI data - do nothing
+            break;
     }
 }
 #endif // MIDI_SERIAL_ENABLE
 
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
-    midi_in_mode = (midi_in_mode + 1) % 4;  // Cycle through 4 modes
+    midi_in_mode = (midi_in_mode + 1) % 5;  // Cycle through 5 modes
     // Force OLED update to show new mode
     #ifdef OLED_ENABLE
     oled_display_force_update();
@@ -4533,8 +4551,17 @@ void toggle_midi_in_mode(void) {
 
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
-    usb_midi_mode = (usb_midi_mode + 1) % 2;  // Cycle through 2 modes
+    usb_midi_mode = (usb_midi_mode + 1) % 3;  // Cycle through 3 modes
     // Force OLED update to show new mode
+    #ifdef OLED_ENABLE
+    oled_display_force_update();
+    #endif
+}
+
+// Toggle MIDI clock source
+void toggle_midi_clock_source(void) {
+    midi_clock_source = (midi_clock_source + 1) % 3;  // Cycle through 3 sources
+    // Force OLED update to show new source
     #ifdef OLED_ENABLE
     oled_display_force_update();
     #endif
@@ -10232,6 +10259,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;  // Skip further processing
     }
 
+    if (keycode == MIDI_CLOCK_SRC_TOG) {
+        if (record->event.pressed) {
+            toggle_midi_clock_source();
+        }
+        return false;  // Skip further processing
+    }
+
     if (keycode == 0xC929) {
         if (record->event.pressed) {
             // Key pressed - start timer
@@ -12091,6 +12125,12 @@ bool oled_task_user(void) {
              midi_in_mode_names[midi_in_mode],
              usb_midi_mode_names[usb_midi_mode]);
     oled_write(midi_str, false);
+
+    // Display clock source
+    char clock_str[22] = "";
+    snprintf(clock_str, sizeof(clock_str), "     %s",
+             clock_source_names[midi_clock_source]);
+    oled_write(clock_str, false);
 
     // Render keylog information
     oled_render_keylog();

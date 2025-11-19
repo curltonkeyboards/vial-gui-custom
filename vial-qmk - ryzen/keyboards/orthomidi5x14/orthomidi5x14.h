@@ -88,19 +88,29 @@ typedef enum {
     MIDI_IN_TO_USB,        // Send MIDI In directly to USB only
     MIDI_IN_TO_OUT,        // Send MIDI In directly to MIDI Out only
     MIDI_IN_PROCESS,       // Send MIDI In through keyboard processing
-    MIDI_IN_CLOCK_ONLY     // Only forward clock messages from MIDI In
+    MIDI_IN_CLOCK_ONLY,    // Only forward clock messages from MIDI In
+    MIDI_IN_IGNORE         // Ignore all MIDI In data
 } midi_in_mode_t;
 
 typedef enum {
     USB_MIDI_TO_OUT,       // Send USB MIDI directly to MIDI Out
-    USB_MIDI_PROCESS       // Send USB MIDI through keyboard processing
+    USB_MIDI_PROCESS,      // Send USB MIDI through keyboard processing
+    USB_MIDI_IGNORE        // Ignore all USB MIDI data
 } usb_midi_mode_t;
+
+typedef enum {
+    CLOCK_SOURCE_LOCAL,    // Use local/internal clock generation
+    CLOCK_SOURCE_USB,      // Use clock from USB MIDI
+    CLOCK_SOURCE_MIDI_IN   // Use clock from hardware MIDI IN
+} midi_clock_source_t;
 
 extern midi_in_mode_t midi_in_mode;
 extern usb_midi_mode_t usb_midi_mode;
+extern midi_clock_source_t midi_clock_source;
 
 void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes);
 void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes);
+void toggle_midi_clock_source(void);
 
 #endif // ORTHOMIDI5X14_H
 

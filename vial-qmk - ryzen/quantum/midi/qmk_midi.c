@@ -174,6 +174,9 @@ static void usb_get_midi(MidiDevice* device) {
             route_usb_midi_data(input[0], input[1], input[2], length);
             // Skip all keyboard processing below
             continue;
+        } else if (usb_midi_mode == USB_MIDI_IGNORE) {
+            // Ignore all USB MIDI data
+            continue;
         }
         // If USB_MIDI_PROCESS mode, continue with normal processing below
 #endif
