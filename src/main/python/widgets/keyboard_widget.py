@@ -120,53 +120,79 @@ class KeyWidget:
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
-        path.addRoundedRect(
-            round(self.x),
-            round(self.y),
-            round(self.w),
-            round(self.h),
-            self.corner,
-            self.corner
-        )
 
-        # second part only considered if different from first
-        if self.has2:
-            path2 = QPainterPath()
-            path2.addRoundedRect(
-                round(self.x2),
-                round(self.y2),
-                round(self.w2),
-                round(self.h2),
+        # Check if this is a push encoder button (row 5, col 0 or 1) - make it circular
+        is_push_encoder = (hasattr(self.desc, 'row') and self.desc.row == 5 and
+                          hasattr(self.desc, 'col') and (self.desc.col == 0 or self.desc.col == 1))
+
+        if is_push_encoder:
+            # Create circular shape for push encoder buttons
+            center_x = self.x + self.w / 2
+            center_y = self.y + self.h / 2
+            radius = min(self.w, self.h) / 2
+            path.addEllipse(center_x - radius, center_y - radius, radius * 2, radius * 2)
+        else:
+            path.addRoundedRect(
+                round(self.x),
+                round(self.y),
+                round(self.w),
+                round(self.h),
                 self.corner,
                 self.corner
             )
-            path = path.united(path2)
+
+            # second part only considered if different from first
+            if self.has2:
+                path2 = QPainterPath()
+                path2.addRoundedRect(
+                    round(self.x2),
+                    round(self.y2),
+                    round(self.w2),
+                    round(self.h2),
+                    self.corner,
+                    self.corner
+                )
+                path = path.united(path2)
 
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
-        path.addRoundedRect(
-            round(self.x + self.size * SHADOW_SIDE_PADDING),
-            round(self.y + self.size * SHADOW_TOP_PADDING),
-            round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
-            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
-            self.corner,
-            self.corner
-        )
 
-        # second part only considered if different from first
-        if self.has2:
-            path2 = QPainterPath()
-            path2.addRoundedRect(
-                round(self.x2 + self.size * SHADOW_SIDE_PADDING),
-                round(self.y2 + self.size * SHADOW_TOP_PADDING),
-                round(self.w2 - 2 * self.size * SHADOW_SIDE_PADDING),
-                round(self.h2 - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
+        # Check if this is a push encoder button (row 5, col 0 or 1) - make it circular
+        is_push_encoder = (hasattr(self.desc, 'row') and self.desc.row == 5 and
+                          hasattr(self.desc, 'col') and (self.desc.col == 0 or self.desc.col == 1))
+
+        if is_push_encoder:
+            # Create circular foreground for push encoder buttons (slightly smaller for visual effect)
+            center_x = self.x + self.w / 2
+            center_y = self.y + self.h / 2
+            radius = min(self.w, self.h) / 2
+            # Make foreground slightly smaller to create depth effect
+            inner_radius = radius - self.size * SHADOW_SIDE_PADDING
+            path.addEllipse(center_x - inner_radius, center_y - inner_radius, inner_radius * 2, inner_radius * 2)
+        else:
+            path.addRoundedRect(
+                round(self.x + self.size * SHADOW_SIDE_PADDING),
+                round(self.y + self.size * SHADOW_TOP_PADDING),
+                round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
+                round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
                 self.corner,
                 self.corner
             )
-            path = path.united(path2)
+
+            # second part only considered if different from first
+            if self.has2:
+                path2 = QPainterPath()
+                path2.addRoundedRect(
+                    round(self.x2 + self.size * SHADOW_SIDE_PADDING),
+                    round(self.y2 + self.size * SHADOW_TOP_PADDING),
+                    round(self.w2 - 2 * self.size * SHADOW_SIDE_PADDING),
+                    round(self.h2 - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
+                    self.corner,
+                    self.corner
+                )
+                path = path.united(path2)
 
         return path
 
@@ -659,53 +685,79 @@ class KeyWidget2:
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
-        path.addRoundedRect(
-            round(self.x),
-            round(self.y),
-            round(self.w),
-            round(self.h),
-            self.corner,
-            self.corner
-        )
 
-        # second part only considered if different from first
-        if self.has2:
-            path2 = QPainterPath()
-            path2.addRoundedRect(
-                round(self.x2),
-                round(self.y2),
-                round(self.w2),
-                round(self.h2),
+        # Check if this is a push encoder button (row 5, col 0 or 1) - make it circular
+        is_push_encoder = (hasattr(self.desc, 'row') and self.desc.row == 5 and
+                          hasattr(self.desc, 'col') and (self.desc.col == 0 or self.desc.col == 1))
+
+        if is_push_encoder:
+            # Create circular shape for push encoder buttons
+            center_x = self.x + self.w / 2
+            center_y = self.y + self.h / 2
+            radius = min(self.w, self.h) / 2
+            path.addEllipse(center_x - radius, center_y - radius, radius * 2, radius * 2)
+        else:
+            path.addRoundedRect(
+                round(self.x),
+                round(self.y),
+                round(self.w),
+                round(self.h),
                 self.corner,
                 self.corner
             )
-            path = path.united(path2)
+
+            # second part only considered if different from first
+            if self.has2:
+                path2 = QPainterPath()
+                path2.addRoundedRect(
+                    round(self.x2),
+                    round(self.y2),
+                    round(self.w2),
+                    round(self.h2),
+                    self.corner,
+                    self.corner
+                )
+                path = path.united(path2)
 
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
-        path.addRoundedRect(
-            round(self.x + self.size * SHADOW_SIDE_PADDING),
-            round(self.y + self.size * SHADOW_TOP_PADDING),
-            round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
-            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
-            self.corner,
-            self.corner
-        )
 
-        # second part only considered if different from first
-        if self.has2:
-            path2 = QPainterPath()
-            path2.addRoundedRect(
-                round(self.x2 + self.size * SHADOW_SIDE_PADDING),
-                round(self.y2 + self.size * SHADOW_TOP_PADDING),
-                round(self.w2 - 2 * self.size * SHADOW_SIDE_PADDING),
-                round(self.h2 - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
+        # Check if this is a push encoder button (row 5, col 0 or 1) - make it circular
+        is_push_encoder = (hasattr(self.desc, 'row') and self.desc.row == 5 and
+                          hasattr(self.desc, 'col') and (self.desc.col == 0 or self.desc.col == 1))
+
+        if is_push_encoder:
+            # Create circular foreground for push encoder buttons (slightly smaller for visual effect)
+            center_x = self.x + self.w / 2
+            center_y = self.y + self.h / 2
+            radius = min(self.w, self.h) / 2
+            # Make foreground slightly smaller to create depth effect
+            inner_radius = radius - self.size * SHADOW_SIDE_PADDING
+            path.addEllipse(center_x - inner_radius, center_y - inner_radius, inner_radius * 2, inner_radius * 2)
+        else:
+            path.addRoundedRect(
+                round(self.x + self.size * SHADOW_SIDE_PADDING),
+                round(self.y + self.size * SHADOW_TOP_PADDING),
+                round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
+                round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
                 self.corner,
                 self.corner
             )
-            path = path.united(path2)
+
+            # second part only considered if different from first
+            if self.has2:
+                path2 = QPainterPath()
+                path2.addRoundedRect(
+                    round(self.x2 + self.size * SHADOW_SIDE_PADDING),
+                    round(self.y2 + self.size * SHADOW_TOP_PADDING),
+                    round(self.w2 - 2 * self.size * SHADOW_SIDE_PADDING),
+                    round(self.h2 - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
+                    self.corner,
+                    self.corner
+                )
+                path = path.united(path2)
 
         return path
 
@@ -917,10 +969,10 @@ class KeyboardWidget2(QWidget):
             encoders[0].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 0 click button to its position (keep current)
+            # Move encoder 0 click button to its position
             if encoder_click_0:
-                encoder_click_0.shift_y += 60  # Keep current position
-                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels
+                encoder_click_0.shift_y += 60
+                encoder_click_0.shift_x -= 30  # Move 10 pixels left (from -20 to -30)
 
             # Move the last two encoders to original position
             encoders[2].shift_y += 50  # Original position
@@ -928,15 +980,16 @@ class KeyboardWidget2(QWidget):
             encoders[2].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 1 click button to its position (keep current)
+            # Move encoder 1 click button (highest push encoder)
             if encoder_click_1:
-                encoder_click_1.shift_y += 55  # Keep current position
-                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels
+                encoder_click_1.shift_y += 85  # Move 30 pixels down (from 55 to 85)
+                encoder_click_1.shift_x -= 30  # Move 10 pixels left (from -20 to -30)
 
-        # Move sustain pedal to correct position
+        # Move sustain pedal to match highest push encoder position but 100 pixels higher
         if sustain_pedal:
-            sustain_pedal.shift_x += 40  # Shift right 40 pixels
-            sustain_pedal.shift_y -= 700  # Shift up 700 pixels
+            sustain_pedal.shift_x -= 30  # Same x position as encoder_click_1
+            sustain_pedal.shift_y += -15  # 100 pixels higher than encoder_click_1 (85 - 100 = -15)
+            sustain_pedal.shift_y -= 700  # Original vertical shift
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
@@ -1134,6 +1187,15 @@ class KeyboardWidget2(QWidget):
                 encoder_border_pen = QPen(QApplication.palette().color(QPalette.ButtonText))
                 encoder_border_pen.setWidth(1)  # Thin border
                 qp.setPen(encoder_border_pen)
+                qp.setBrush(Qt.NoBrush)
+                qp.drawPath(key.background_draw_path)
+
+            # Draw border around push encoder buttons (row 5, col 0 or 1)
+            if hasattr(key.desc, 'row') and key.desc.row == 5 and hasattr(key.desc, 'col') and (key.desc.col == 0 or key.desc.col == 1):
+                # Use button text color for consistent appearance
+                push_border_pen = QPen(QApplication.palette().color(QPalette.ButtonText))
+                push_border_pen.setWidth(2)  # Slightly thicker border for visibility
+                qp.setPen(push_border_pen)
                 qp.setBrush(Qt.NoBrush)
                 qp.drawPath(key.background_draw_path)
 
