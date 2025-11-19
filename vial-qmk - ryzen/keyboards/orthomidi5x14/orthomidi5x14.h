@@ -82,5 +82,25 @@ void scan_current_layer_midi_leds(void);
 void scan_keycode_categories(void);
 void update_layer_animations_setting_slot0_direct(bool new_value);
 extern bool truekey_effects_active;
+
+// MIDI Routing Mode Enums and Functions
+typedef enum {
+    MIDI_IN_TO_USB,        // Send MIDI In directly to USB only
+    MIDI_IN_TO_OUT,        // Send MIDI In directly to MIDI Out only
+    MIDI_IN_PROCESS,       // Send MIDI In through keyboard processing
+    MIDI_IN_CLOCK_ONLY     // Only forward clock messages from MIDI In
+} midi_in_mode_t;
+
+typedef enum {
+    USB_MIDI_TO_OUT,       // Send USB MIDI directly to MIDI Out
+    USB_MIDI_PROCESS       // Send USB MIDI through keyboard processing
+} usb_midi_mode_t;
+
+extern midi_in_mode_t midi_in_mode;
+extern usb_midi_mode_t usb_midi_mode;
+
+void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes);
+void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes);
+
 #endif // ORTHOMIDI5X14_H
 

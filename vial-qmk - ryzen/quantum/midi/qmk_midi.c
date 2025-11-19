@@ -10,6 +10,11 @@
 #include "rgb_matrix.h"
 #include "process_rgb.h"
 
+// Include keyboard-specific routing for orthomidi5x14
+#ifdef KEYBOARD_orthomidi5x14
+#    include "keyboards/orthomidi5x14/orthomidi5x14.h"
+#endif
+
 /*******************************************************************************
  * MIDI
  ******************************************************************************/
@@ -161,6 +166,17 @@ static void usb_get_midi(MidiDevice* device) {
         input[0] = event.Data1;
         input[1] = event.Data2;
         input[2] = event.Data3;
+
+#ifdef KEYBOARD_orthomidi5x14
+        // Route USB MIDI based on current mode
+        if (usb_midi_mode == USB_MIDI_TO_OUT) {
+            // Send directly to hardware MIDI OUT without processing
+            route_usb_midi_data(input[0], input[1], input[2], length);
+            // Skip all keyboard processing below
+            continue;
+        }
+        // If USB_MIDI_PROCESS mode, continue with normal processing below
+#endif
 
         // Convert MIDI messages to direct function calls
         if (length == 3) {
