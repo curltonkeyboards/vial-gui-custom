@@ -3066,10 +3066,10 @@ KEYCODES_LOOP_BUTTONS = [
     K("DM_PLAY_PAUSE", "Play\nPause", "Global play/pause toggle"),
 
     # Loop modifier keys
-    K("DM_LOOP_MOD_1", "Loop\nMod 1", "Loop modifier 1 (hold + loop for alt function)"),
-    K("DM_LOOP_MOD_2", "Loop\nMod 2", "Loop modifier 2 (hold + loop for alt function)"),
-    K("DM_LOOP_MOD_3", "Loop\nMod 3", "Loop modifier 3 (hold + loop for alt function)"),
-    K("DM_LOOP_MOD_4", "Loop\nMod 4", "Loop modifier 4 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_1", "Loop 1\nModifier", "Loop modifier 1 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_2", "Loop 2\nModifier", "Loop modifier 2 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_3", "Loop 3\nModifier", "Loop modifier 3 (hold + loop for alt function)"),
+    K("DM_LOOP_MOD_4", "Loop 4\nModifier", "Loop modifier 4 (hold + loop for alt function)"),
     
     # Dedicated mute keys
     K("DM_MUTE_1", "Mute\nLoop 1", "Dedicated mute for loop 1"),
