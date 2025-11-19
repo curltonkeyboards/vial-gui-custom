@@ -15,7 +15,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
-    KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL
+    KEYCODES_MIDI_CHANNEL, KEYCODES_MIDI_UPDOWN, KEYCODES_MIDI_CHORD_0, KEYCODES_MIDI_CHORD_1, KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4, KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_INVERSION, KEYCODES_MIDI_SCALES, KEYCODES_MIDI_OCTAVE, KEYCODES_MIDI_KEY, KEYCODES_MIDI_CC_UP, KEYCODES_MIDI_CC_DOWN, KEYCODES_MIDI_PEDAL, KEYCODES_MIDI_INOUT
 from widgets.square_button import SquareButton
 from widgets.big_square_button import BigSquareButton
 from util import tr, KeycodeDisplay
@@ -633,10 +633,10 @@ from PyQt5.QtCore import pyqtSignal, Qt
 class midiadvancedTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3, inversion_keycodes2, CCencoder, velocityshuffle, inversion_keycodesspecial, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3):
+    def __init__(self, parent, label, inversion_keycodes, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_CC_toggle, CCfixed, CCup, CCdown, velocity_multiplier_options, cc_multiplier_options, channel_options, velocity_options, channel_oneshot, channel_hold, smartchord_octave_1, smartchord_key, ksvelocity2, ksvelocity3, kskey2, kskey3, ksoctave2, ksoctave3, kschannel2, kschannel3, inversion_keycodes2, CCencoder, velocityshuffle, inversion_keycodesspecial, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, keycodes_midi_inout=None):
         super().__init__(parent)
         self.label = label
-        
+
         # Initialize dictionaries first
         self.buttons = {}
 
@@ -672,6 +672,7 @@ class midiadvancedTab(QScrollArea):
         self.keycodes_settings1 = KEYCODES_SETTINGS1
         self.keycodes_settings2 = KEYCODES_SETTINGS2
         self.keycodes_settings3 = KEYCODES_SETTINGS3
+        self.keycodes_midi_inout = keycodes_midi_inout if keycodes_midi_inout is not None else KEYCODES_MIDI_INOUT
 
         # Create scroll area content
         self.scroll_content = QWidget()
@@ -687,6 +688,7 @@ class midiadvancedTab(QScrollArea):
             ("KeySplit", "Show\nKeySplit\nOptions"),
             ("Advanced MIDI", "Show\nAdvanced MIDI\nOptions"),
             ("Velocity", "Show\nVelocity\nOptions"),
+            ("In/Out", "Show\nIn/Out\nOptions"),
             ("Touch Dial", "Show\nTouch Dial\nOptions"),
             ("Presets", "Show\nSetting\nPresets")
         ]
@@ -812,6 +814,7 @@ class midiadvancedTab(QScrollArea):
         self.populate_keysplit_section()
         self.populate_advanced_section()
         self.populate_velocity_section()
+        self.populate_inout_section()
         self.populate_expression_wheel_section()
         self.populate_settings_presets_section()
 
@@ -1015,6 +1018,82 @@ class midiadvancedTab(QScrollArea):
 
         row_layout.addStretch(1)  # Right spacer
         layout.addLayout(row_layout)
+        layout.addStretch()
+
+    def populate_inout_section(self):
+        """Populate the In/Out Options section with MIDI routing and override toggles."""
+        layout = self.section_layouts["Show\nIn/Out\nOptions"]
+
+        # Section 1: MIDI Routing Controls
+        routing_label = QLabel("MIDI Routing")
+        routing_label.setStyleSheet("font-weight: bold; font-size: 10pt; margin-top: 5px;")
+        layout.addWidget(routing_label)
+
+        routing_row_layout = QHBoxLayout()
+        routing_row_layout.addStretch(1)
+
+        # MIDI routing keycodes from KEYCODES_MIDI_INOUT
+        routing_keycodes = [kc for kc in self.keycodes_midi_inout if kc.qmk_id in [
+            "MIDI_IN_MODE_TOG", "USB_MIDI_MODE_TOG", "MIDI_CLOCK_SRC_TOG"
+        ]]
+        for keycode in routing_keycodes:
+            btn = SquareButton()
+            btn.setFixedSize(70, 50)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            routing_row_layout.addWidget(btn)
+            self.buttons[keycode.qmk_id] = btn
+
+        routing_row_layout.addStretch(1)
+        layout.addLayout(routing_row_layout)
+
+        # Section 2: Override Toggles
+        override_label = QLabel("Override Toggles")
+        override_label.setStyleSheet("font-weight: bold; font-size: 10pt; margin-top: 15px;")
+        layout.addWidget(override_label)
+
+        override_row_layout = QHBoxLayout()
+        override_row_layout.addStretch(1)
+
+        override_keycodes = [kc for kc in self.keycodes_midi_inout if kc.qmk_id in [
+            "MI_CH_OVR_TOG", "MI_VEL_OVR_TOG", "MI_TRNS_OVR_TOG"
+        ]]
+        for keycode in override_keycodes:
+            btn = SquareButton()
+            btn.setFixedSize(70, 50)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            override_row_layout.addWidget(btn)
+            self.buttons[keycode.qmk_id] = btn
+
+        override_row_layout.addStretch(1)
+        layout.addLayout(override_row_layout)
+
+        # Section 3: Additional MIDI Toggles
+        additional_label = QLabel("Additional MIDI Toggles")
+        additional_label.setStyleSheet("font-weight: bold; font-size: 10pt; margin-top: 15px;")
+        layout.addWidget(additional_label)
+
+        additional_row_layout = QHBoxLayout()
+        additional_row_layout.addStretch(1)
+
+        additional_keycodes = [kc for kc in self.keycodes_midi_inout if kc.qmk_id in [
+            "MI_TRUE_SUS_TOG", "MI_CC_LOOP_TOG"
+        ]]
+        for keycode in additional_keycodes:
+            btn = SquareButton()
+            btn.setFixedSize(70, 50)
+            btn.setText(Keycode.label(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+            btn.keycode = keycode
+            additional_row_layout.addWidget(btn)
+            self.buttons[keycode.qmk_id] = btn
+
+        additional_row_layout.addStretch(1)
+        layout.addLayout(additional_row_layout)
+
         layout.addStretch()
 
     def populate_expression_wheel_section(self):
@@ -1830,10 +1909,39 @@ class LoopTab(QScrollArea):
         section.addWidget(container)
         return section
 
+    def create_loop_advanced_section(self):
+        """Create the Loop Advanced section"""
+        loop_advanced_keycodes = [kc for kc in self.advanced_keycodes
+                                 if kc.qmk_id in ["LOOP_QUANTIZE", "LOOP_BPM_DOUBLE"] and
+                                 (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
+
+        if not loop_advanced_keycodes:
+            return None
+
+        section = QVBoxLayout()
+        section.setSpacing(8)
+        section.setAlignment(Qt.AlignTop)
+
+        header = self.create_section_header("Loop Advanced")
+        section.addLayout(header)
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignTop)
+
+        # Display loop advanced controls
+        loop_row = self.create_button_row(loop_advanced_keycodes, 2)
+        layout.addWidget(loop_row)
+
+        section.addWidget(container)
+        return section
+
     def create_nav_save_section(self):
         """Create the Navigation/Save section"""
-        nav_keycodes = [kc for kc in self.advanced_keycodes 
-                       if kc.qmk_id.startswith("DM_NAV_") and 
+        nav_keycodes = [kc for kc in self.advanced_keycodes
+                       if kc.qmk_id.startswith("DM_NAV_") and
                        (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
         playback_keycodes = [kc for kc in self.advanced_keycodes 
                            if kc.qmk_id in ["DM_PLAY_PAUSE", "DM_COPY"] and 
@@ -1915,7 +2023,10 @@ class LoopTab(QScrollArea):
         
         speed = self.create_speed_controls_section()
         if speed: sections.append(("Speed Controls", speed))
-        
+
+        loop_advanced = self.create_loop_advanced_section()
+        if loop_advanced: sections.append(("Loop Advanced", loop_advanced))
+
         nav_save = self.create_nav_save_section()
         if nav_save: sections.append(("Navigation/Save", nav_save))
         
@@ -1926,6 +2037,7 @@ class LoopTab(QScrollArea):
             "Mode Select": 150,
             "BeatSkip": 200,
             "Speed Controls": 180,
+            "Loop Advanced": 120,
             "Navigation/Save": 220
         }
         
