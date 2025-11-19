@@ -146,7 +146,7 @@ class AsyncHERangeDialog(QDialog):
             min_val = self.min_input.text()
             max_val = self.max_input.text()
             if min_val and max_val:
-                if int(min_val) <= int(max_val):
+                if int(min_val) < int(max_val):
                     self.callback(min_val, max_val)
         self.deleteLater()
 
@@ -191,7 +191,7 @@ class HERangeDialog(QDialog):
         if min_val and max_val and min_val.isdigit() and max_val.isdigit():
             min_int = int(min_val)
             max_int = int(max_val)
-            if 1 <= min_int <= 127 and 1 <= max_int <= 127 and min_int <= max_int:
+            if 1 <= min_int <= 126 and 2 <= max_int <= 127 and min_int < max_int:
                 self.callback(min_val, max_val)
                 self.accept()
 
@@ -1419,7 +1419,7 @@ class midiadvancedTab(QScrollArea):
             if min_val and max_val and min_val.isdigit() and max_val.isdigit():
                 min_int = int(min_val)
                 max_int = int(max_val)
-                if 1 <= min_int <= 127 and 1 <= max_int <= 127 and min_int <= max_int:
+                if 1 <= min_int <= 126 and 2 <= max_int <= 127 and min_int < max_int:
                     self.keycode_changed.emit(f"HE_VEL_RANGE_{min_int}_{max_int}")
 
         button.clicked.connect(lambda: self.open_he_range_dialog(handle_range_values))
