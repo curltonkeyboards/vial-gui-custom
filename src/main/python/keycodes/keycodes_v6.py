@@ -408,9 +408,6 @@ class keycodes_v6:
         "DYN_REC_STOP": 0x7C55,
         "DYN_MACRO_PLAY1": 0x7C56,
         "DYN_MACRO_PLAY2": 0x7C57,
-        "MI_ON": 0x7100,
-        "MI_OFF": 0x7101,
-        "MI_TOG": 0x7102,
         "MI_C": 0x7103,
         "MI_Cs": 0x7104,
         "MI_D": 0x7105,
@@ -2155,9 +2152,14 @@ class keycodes_v6:
 
         # Core control buttons:
         "DM_MUTE": 0xCC10,  # Mute button
+        "CHORD_PROG_STOP": 0xCC13,  # Chord progression upper bound
         "DM_OVERDUB": 0xCC15,  # Overdub button
         "DM_UNSYNC": 0xCC16,  # Unsynced mode toggle
         "DM_SAMPLE": 0xCC17,  # Sample mode toggle
+        "DM_LOOP_MOD_1": 0xCC18,  # Loop modifier 1
+        "DM_LOOP_MOD_2": 0xCC19,  # Loop modifier 2
+        "DM_LOOP_MOD_3": 0xCC1A,  # Loop modifier 3
+        "DM_LOOP_MOD_4": 0xCC1B,  # Loop modifier 4
         "DM_EDIT_MOD": 0xCC1C,  # Global edit modifier button
 
         # Dedicated mute keys (0xCC0C-0xCC0F):
@@ -2261,6 +2263,22 @@ class keycodes_v6:
         "DPAD_DOWN": 0xCC76,  # D-pad Down (Button 13)
         "DPAD_LEFT": 0xCC77,  # D-pad Left (Button 14)
         "DPAD_RIGHT": 0xCC78,  # D-pad Right (Button 15)
+
+        # MIDI Toggles (0xCCA8-0xCCAC)
+        "MI_TRUE_SUS_TOG": 0xCCA8,  # True sustain toggle
+        "MI_CC_LOOP_TOG": 0xCCA9,  # CC loop recording toggle
+        "MI_CH_OVR_TOG": 0xCCAA,  # Channel override toggle
+        "MI_VEL_OVR_TOG": 0xCCAB,  # Velocity override toggle
+        "MI_TRNS_OVR_TOG": 0xCCAC,  # Transpose override toggle
+
+        # Key Split and Triple Split Modifiers
+        "KS_MODIFIER": 0xCCAD,  # Key split modifier
+        "TS_MODIFIER": 0xCCAE,  # Triple split modifier
+
+        # MIDI Routing Controls (0xC397-0xC399)
+        "MIDI_IN_MODE_TOG": 0xC397,  # MIDI IN routing mode toggle
+        "USB_MIDI_MODE_TOG": 0xC398,  # USB MIDI routing mode toggle
+        "MIDI_CLOCK_SRC_TOG": 0xC399,  # MIDI clock source toggle
 
         "QK_KB": 0xCC57, #custom keycodes safe range
         
