@@ -1725,31 +1725,38 @@ class LoopTab(QScrollArea):
         section = QVBoxLayout()
         section.setSpacing(8)
         section.setAlignment(Qt.AlignTop)
-        
+
         header = self.create_section_header("Global Controls")
         section.addLayout(header)
-        
+
         # Get global control keycodes, excluding the ones moved to Mode Select
-        global_keycodes = [kc for kc in self.basic_keycodes[4:] 
+        global_keycodes = [kc for kc in self.basic_keycodes[4:]
                           if kc.qmk_id not in ["DM_UNSYNC", "DM_SAMPLE"]]
-        
-        if global_keycodes:
+
+        # Add macro modifiers from advanced keycodes (Speed and Slow modifiers)
+        modifier_keycodes = [kc for kc in self.advanced_keycodes
+                            if kc.qmk_id in ["DM_SPEED_MOD", "DM_SLOW_MOD"]]
+
+        # Combine global controls with modifiers
+        all_global_keycodes = global_keycodes + modifier_keycodes
+
+        if all_global_keycodes:
             container = QWidget()
             layout = QVBoxLayout(container)
             layout.setSpacing(8)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setAlignment(Qt.AlignTop)
-            
-            # Display remaining global controls (should be 4: Mute, Overdub, Oct Mod, Edit Mod)
-            if len(global_keycodes) > 2:
-                row1 = self.create_button_row(global_keycodes[:2], 2)
+
+            # Display all global controls and modifiers (Mute, Overdub, Oct Mod, Edit Mod, Speed Mod, Slow Mod)
+            if len(all_global_keycodes) > 3:
+                row1 = self.create_button_row(all_global_keycodes[:3], 3)
                 layout.addWidget(row1)
-                row2 = self.create_button_row(global_keycodes[2:], 2)
+                row2 = self.create_button_row(all_global_keycodes[3:], 3)
                 layout.addWidget(row2)
             else:
-                row = self.create_button_row(global_keycodes, len(global_keycodes))
+                row = self.create_button_row(all_global_keycodes, len(all_global_keycodes))
                 layout.addWidget(row)
-            
+
             section.addWidget(container)
             return section
         return None
