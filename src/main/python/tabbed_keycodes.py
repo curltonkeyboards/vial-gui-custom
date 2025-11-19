@@ -1974,11 +1974,22 @@ class LoopTab(QScrollArea):
 
     def create_loop_advanced_section(self):
         """Create the Loop Advanced section"""
+        # Get loop modifiers (from advanced keycodes)
+        loop_modifier_keycodes = [kc for kc in self.advanced_keycodes
+                                  if kc.qmk_id in ["DM_LOOP_MOD_1", "DM_LOOP_MOD_2", "DM_LOOP_MOD_3", "DM_LOOP_MOD_4"] and
+                                  (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
+
+        # Get sync and sample mode (from basic keycodes since they're in basic_keycode_ids)
+        sync_sample_keycodes = [kc for kc in self.basic_keycodes
+                               if kc.qmk_id in ["DM_UNSYNC", "DM_SAMPLE"] and
+                               (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
+
+        # Get other loop advanced keycodes
         loop_advanced_keycodes = [kc for kc in self.advanced_keycodes
                                  if kc.qmk_id in ["LOOP_QUANTIZE", "LOOP_BPM_DOUBLE"] and
                                  (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
 
-        if not loop_advanced_keycodes:
+        if not (loop_modifier_keycodes or sync_sample_keycodes or loop_advanced_keycodes):
             return None
 
         section = QVBoxLayout()
@@ -1994,41 +2005,49 @@ class LoopTab(QScrollArea):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignTop)
 
-        # Display loop advanced controls
-        loop_row = self.create_button_row(loop_advanced_keycodes, 2)
-        layout.addWidget(loop_row)
+        # Row 1: Loop modifier keys (4 buttons)
+        if loop_modifier_keycodes:
+            loop_mod_row = self.create_button_row(loop_modifier_keycodes, 4)
+            layout.addWidget(loop_mod_row)
+
+        # Row 2: Sync and Sample mode (2 buttons)
+        if sync_sample_keycodes:
+            sync_sample_row = self.create_button_row(sync_sample_keycodes, 2)
+            layout.addWidget(sync_sample_row)
+
+        # Row 3: Loop quantize and BPM double (2 buttons)
+        if loop_advanced_keycodes:
+            loop_row = self.create_button_row(loop_advanced_keycodes, 2)
+            layout.addWidget(loop_row)
 
         section.addWidget(container)
         return section
 
     def create_nav_save_section(self):
-        """Create the Navigation/Save section"""
+        """Create the Navigation section"""
         nav_keycodes = [kc for kc in self.advanced_keycodes
                        if kc.qmk_id.startswith("DM_NAV_") and
                        (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        playback_keycodes = [kc for kc in self.advanced_keycodes 
-                           if kc.qmk_id in ["DM_PLAY_PAUSE", "DM_COPY"] and 
+        playback_keycodes = [kc for kc in self.advanced_keycodes
+                           if kc.qmk_id in ["DM_PLAY_PAUSE", "DM_COPY"] and
                            (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        save_keycodes = [kc for kc in self.advanced_keycodes 
-                        if kc.qmk_id.startswith("DM_SAVE_") and 
-                        (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        
-        if not (nav_keycodes or playback_keycodes or save_keycodes):
+
+        if not (nav_keycodes or playback_keycodes):
             return None
-            
+
         section = QVBoxLayout()
         section.setSpacing(8)
         section.setAlignment(Qt.AlignTop)
-        
-        header = self.create_section_header("Navigation/Save")
+
+        header = self.create_section_header("Navigation")
         section.addLayout(header)
-        
+
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setSpacing(8)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(Qt.AlignTop)
-        
+
         # Row 1: Navigation controls in specific order
         navigation_ordered = []
         nav_bwd_5s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_BWD_5S"), None)
@@ -2036,21 +2055,21 @@ class LoopTab(QScrollArea):
         play_pause = next((kc for kc in playback_keycodes if kc.qmk_id == "DM_PLAY_PAUSE"), None)
         nav_fwd_1s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_FWD_1S"), None)
         nav_fwd_5s = next((kc for kc in nav_keycodes if kc.qmk_id == "DM_NAV_FWD_5S"), None)
-        
+
         for button in [nav_bwd_5s, nav_bwd_1s, play_pause, nav_fwd_1s, nav_fwd_5s]:
             if button:
                 navigation_ordered.append(button)
-        
+
         if navigation_ordered:
             nav_row = self.create_button_row(navigation_ordered, 5)
             layout.addWidget(nav_row)
-        
-        # Row 2: Loop Copy/Save controls
-        copy_save_keycodes = [kc for kc in playback_keycodes if kc.qmk_id == "DM_COPY"] + save_keycodes
-        if copy_save_keycodes:
-            copy_save_row = self.create_button_row(copy_save_keycodes, 5)
-            layout.addWidget(copy_save_row)
-        
+
+        # Row 2: Loop Copy control (without save buttons)
+        copy_keycodes = [kc for kc in playback_keycodes if kc.qmk_id == "DM_COPY"]
+        if copy_keycodes:
+            copy_row = self.create_button_row(copy_keycodes, 1)
+            layout.addWidget(copy_row)
+
         section.addWidget(container)
         return section
 
@@ -2091,8 +2110,8 @@ class LoopTab(QScrollArea):
         if loop_advanced: sections.append(("Loop Advanced", loop_advanced))
 
         nav_save = self.create_nav_save_section()
-        if nav_save: sections.append(("Navigation/Save", nav_save))
-        
+        if nav_save: sections.append(("Navigation", nav_save))
+
         # Calculate approximate section widths
         section_widths = {
             "Main Loop Controls": 200,
@@ -2100,8 +2119,8 @@ class LoopTab(QScrollArea):
             "Mode Select": 150,
             "BeatSkip": 200,
             "Speed Controls": 180,
-            "Loop Advanced": 120,
-            "Navigation/Save": 220
+            "Loop Advanced": 220,
+            "Navigation": 220
         }
         
         # Responsive layout logic
