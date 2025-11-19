@@ -2275,15 +2275,15 @@ class keycodes_v6:
         "KS_MODIFIER": 0xCCAD,  # Key split modifier
         "TS_MODIFIER": 0xCCAE,  # Triple split modifier
 
-        # HE Velocity Curve keycodes (0xCCAF-0xCCB3)
-        "HE_CURVE_SOFTEST": 0xCCAF,
-        "HE_CURVE_SOFT": 0xCCB0,
-        "HE_CURVE_MEDIUM": 0xCCB1,
-        "HE_CURVE_HARD": 0xCCB2,
-        "HE_CURVE_HARDEST": 0xCCB3,
+        # HE Velocity Curve keycodes (0xCCB0-0xCCB4)
+        "HE_CURVE_SOFTEST": 0xCCB0,
+        "HE_CURVE_SOFT": 0xCCB1,
+        "HE_CURVE_MEDIUM": 0xCCB2,
+        "HE_CURVE_HARD": 0xCCB3,
+        "HE_CURVE_HARDEST": 0xCCB4,
 
-        # HE Velocity Range base (for dynamic generation)
-        "HE_VEL_RANGE_1_2": 0xCCB4,  # Base for range keycodes
+        # HE Velocity Range base (for dynamic generation, starts at 0xCCB5)
+        "HE_VEL_RANGE_1_2": 0xCCB5,  # Base for range keycodes
 
         # MIDI Routing Controls (0xC397-0xC399)
         "MIDI_IN_MODE_TOG": 0xC397,  # MIDI IN routing mode toggle

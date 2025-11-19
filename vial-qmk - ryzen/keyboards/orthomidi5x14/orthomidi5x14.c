@@ -39,30 +39,20 @@ extern MidiDevice midi_device;
 #define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
 #define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
 
-// HE Velocity Curve and Range Keycodes
+// HE Velocity Curve and Range Keycodes - Fixed addresses (not relative to KC_CUSTOM)
 #define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
 #define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
 
-// Direct HE Curve Selection (5 keycodes for direct selection)
-#define HE_CURVE_SOFTEST    (KC_CUSTOM + 6)
-#define HE_CURVE_SOFT       (KC_CUSTOM + 7)
-#define HE_CURVE_MEDIUM     (KC_CUSTOM + 8)
-#define HE_CURVE_HARD       (KC_CUSTOM + 9)
-#define HE_CURVE_HARDEST    (KC_CUSTOM + 10)
+// Direct HE Curve Selection (5 keycodes: 0xCCB0-0xCCB4)
+#define HE_CURVE_SOFTEST    0xCCB0
+#define HE_CURVE_SOFT       0xCCB1
+#define HE_CURVE_MEDIUM     0xCCB2
+#define HE_CURVE_HARD       0xCCB3
+#define HE_CURVE_HARDEST    0xCCB4
 
-// Direct velocity min assignment keycodes (127 keycodes for values 1-127)
-#define HE_VEL_MIN_1        (KC_CUSTOM + 20)
-#define HE_VEL_MIN_127      (HE_VEL_MIN_1 + 126)
-
-// Direct velocity max assignment keycodes (127 keycodes for values 1-127)
-#define HE_VEL_MAX_1        (HE_VEL_MIN_127 + 1)
-#define HE_VEL_MAX_127      (HE_VEL_MAX_1 + 126)
-
-// HE Velocity Range keycodes (combined min/max) - starts after HE_VEL_MAX_127
-// Base address for range keycodes
-#define HE_VEL_RANGE_BASE   (HE_VEL_MAX_127 + 1)
-// Helper macro to calculate range keycode from min/max values
-#define HE_VEL_RANGE(min, max) (HE_VEL_RANGE_BASE + ((min - 1) * 127) + (max - 1))
+// HE Velocity Range keycodes (combined min/max) - starts at 0xCCB5
+// Base address for range keycodes (8001 keycodes for valid min < max combinations)
+#define HE_VEL_RANGE_BASE   0xCCB5
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
