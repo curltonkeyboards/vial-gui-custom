@@ -32,5 +32,5 @@ RGB_MATRIX_ENABLE = yes
 RGB_MATRIX_DRIVER = WS2812
 RGB_MATRIX_CUSTOM_USER = yes
 
-CUSTOM_MATRIX = lite
-SRC += matrix.c
+#CUSTOM_MATRIX = lite
+#SRC += matrix.c

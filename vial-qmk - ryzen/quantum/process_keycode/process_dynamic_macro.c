@@ -75,6 +75,9 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_GET_ALL_CONFIG          0xB4  // was 0x44
 #define HID_CMD_RESET_LOOP_CONFIG       0xB5  // was 0x45
 
+// Additional Loop Commands (0xCE+)
+#define HID_CMD_CLEAR_ALL_LOOPS         0xCE  // Clear all loop content
+
 // Keyboard Configuration (0xB6-0xBF)
 #define HID_CMD_SET_KEYBOARD_CONFIG         0xB6  // was 0x50
 #define HID_CMD_GET_KEYBOARD_CONFIG         0xB7  // was 0x51
@@ -11227,6 +11230,187 @@ static void handle_reset_loop_config(void) {
     dprintf("HID: Reset all loop messaging configuration to defaults\n");
 }
 
+// Clear all loop content (same as holding all macro buttons)
+static void handle_clear_all_loops(void) {
+    dprintf("HID: Clearing all loop content\n");
+
+    // Loop through all macros and clear each one
+    for (uint8_t i = 0; i < MAX_MACROS; i++) {
+        uint8_t macro_num = i + 1;
+
+        // Stop main macro
+        if (macro_playback[i].is_playing) {
+            dynamic_macro_cleanup_notes_for_state(&macro_playback[i]);
+            macro_playback[i].is_playing = false;
+            macro_playback[i].current = NULL;
+        }
+
+        // Stop overdub
+        if (overdub_playback[i].is_playing) {
+            dynamic_macro_cleanup_notes_for_state(&overdub_playback[i]);
+            overdub_playback[i].is_playing = false;
+            overdub_playback[i].current = NULL;
+        }
+
+        // Clear temp overdub data AND zero the memory
+        if (overdub_temp_count[i] > 0) {
+            midi_event_t *temp_start = get_overdub_read_start(macro_num);
+            if (temp_start != NULL) {
+                memset(temp_start, 0, overdub_temp_count[i] * sizeof(midi_event_t));
+            }
+        }
+        overdub_temp_count[i] = 0;
+        overdub_merge_pending[i] = false;
+
+        // ZERO OUT THE MAIN MACRO MEMORY CONTENT
+        midi_event_t *macro_start = get_macro_buffer(macro_num);
+        midi_event_t **macro_end_ptr = get_macro_end_ptr(macro_num);
+
+        if (macro_start && macro_end_ptr) {
+            // Calculate how much memory to clear (entire macro buffer)
+            uint32_t macro_buffer_events = MACRO_BUFFER_SIZE / sizeof(midi_event_t);
+            memset(macro_start, 0, macro_buffer_events * sizeof(midi_event_t));
+
+            // Set macro end pointer to start (making it empty)
+            *macro_end_ptr = macro_start;
+        }
+
+        // Clear overdub buffer references (permanent overdub area)
+        overdub_buffers[i] = NULL;
+        overdub_buffer_ends[i] = NULL;
+        overdub_buffer_sizes[i] = 0;
+        overdub_muted[i] = false;
+
+        // COMPLETE PLAYBACK STATE RESET (matching device startup)
+        macro_playback[i].current = NULL;
+        macro_playback[i].end = NULL;
+        macro_playback[i].buffer_start = NULL;
+        macro_playback[i].timer = 0;
+        macro_playback[i].direction = +1;
+        macro_playback[i].is_playing = false;
+        macro_playback[i].waiting_for_loop_gap = false;
+        macro_playback[i].next_event_time = 0;
+        macro_playback[i].loop_gap_time = 0;
+        macro_playback[i].loop_length = 0;
+        macro_main_muted[i] = false;
+
+        // COMPLETE OVERDUB PLAYBACK STATE RESET
+        overdub_playback[i].current = NULL;
+        overdub_playback[i].end = NULL;
+        overdub_playback[i].buffer_start = NULL;
+        overdub_playback[i].timer = 0;
+        overdub_playback[i].direction = +1;
+        overdub_playback[i].is_playing = false;
+        overdub_playback[i].waiting_for_loop_gap = false;
+        overdub_playback[i].next_event_time = 0;
+        overdub_playback[i].loop_gap_time = 0;
+        overdub_playback[i].loop_length = 0;
+        macro_manual_speed[i] = 1.0f;
+        macro_speed_factor[i] = 1.0f;
+        capture_early_overdub_events[i] = false;
+        early_overdub_count[i] = 0;
+        memset(early_overdub_buffer[i], 0, sizeof(early_overdub_buffer[i]));
+        overdub_independent_loop_length[i] = 0;
+        overdub_independent_timer[i] = 0;
+        overdub_independent_gap_time[i] = 0;
+        overdub_independent_start_time[i] = 0;
+        overdub_independent_waiting_for_gap[i] = false;
+        overdub_independent_suspended[i] = false;
+        overdub_independent_suspension_time[i] = 0;
+
+        // Clear recording suspension and pause states
+        recording_suspended[i] = false;
+        pause_timestamps[i] = 0;
+        overdub_pause_timestamps[i] = 0;
+        macro_speed_before_pause[i] = 1.0f;
+
+        // Clear preroll if this macro was collecting it
+        if (collecting_preroll && macro_id == macro_num) {
+            collecting_preroll = false;
+            preroll_buffer_count = 0;
+            preroll_buffer_index = 0;
+            preroll_start_time = 0;
+            memset(preroll_buffer, 0, sizeof(preroll_buffer));
+        }
+
+        // Reset global recording state if this was the recording macro
+        if (macro_id == macro_num) {
+            macro_id = 0;
+            current_macro_id = 0;
+            macro_pointer = NULL;
+            is_macro_primed = false;
+            first_note_recorded = false;
+            is_macro_empty = true;
+            recording_start_time = 0;
+            recording_sustain_active = false;
+            stop_dynamic_macro_recording();
+        }
+
+        // Reset overdub target if this was the target
+        if (overdub_target_macro == macro_num) {
+            overdub_target_macro = 0;
+            current_macro_id = 0;
+            if (macro_id == macro_num) {
+                macro_id = 0;
+                stop_dynamic_macro_recording();
+            }
+        }
+
+        // If this was the BPM source macro, clear the source and reset BPM
+        if (bpm_source_macro == macro_num) {
+            bpm_source_macro = 0;
+            current_bpm = 0;
+            original_system_bpm = 0;
+        }
+
+        macro_recording_bpm[i] = 0;
+        macro_has_content[i] = false;
+        macro_manual_speed[i] = 1.0f;
+
+        // Reset ALL transformation values to device startup state
+        reset_macro_transformations(macro_num);
+
+        // RESET ADDITIONAL MACRO-SPECIFIC FLAGS (matching device startup)
+        skip_autoplay_for_macro[i] = false;
+        ignore_second_press[i] = false;
+        last_macro_press_time[i] = 0;
+        macro_deleted[i] = false;
+
+        // Clear overdub mode flag
+        macro_in_overdub_mode[i] = false;
+
+        // Clear any pending overdub operations
+        overdub_mute_pending[i] = false;
+        overdub_unmute_pending[i] = false;
+
+        // Reset key press tracking
+        key_timers[i] = 0;
+        macro_key_held[i] = false;
+
+        // Clear any queued commands for this macro
+        for (uint8_t j = 0; j < command_batch_count; j++) {
+            if (command_batch[j].macro_id == macro_num) {
+                for (uint8_t k = j; k < command_batch_count - 1; k++) {
+                    command_batch[k] = command_batch[k + 1];
+                }
+                command_batch_count--;
+                j--;
+            }
+        }
+
+        // Send loop clear messages
+        send_loop_message(loop_clear_cc[i], 127);
+        send_loop_message(overdub_clear_cc[i], 127);
+
+        dprintf("dynamic macro: cleared loop %d\n", macro_num);
+    }
+
+    // Clear all live notes
+    force_clear_all_live_notes();
+
+    dprintf("HID: All loops cleared successfully\n");
+}
+
 // Our HID receive handler (called from VIA's raw_hid_receive)
 void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
     // Add static variable to track the type of loading in progress
@@ -11357,7 +11541,12 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			handle_reset_loop_config();
 			send_hid_response(HID_CMD_RESET_LOOP_CONFIG, macro_num, 0, NULL, 0);
 			break;
-			
+
+		case HID_CMD_CLEAR_ALL_LOOPS: // 0xCE
+			handle_clear_all_loops();
+			send_hid_response(HID_CMD_CLEAR_ALL_LOOPS, 0, 0, NULL, 0);
+			break;
+
 		case HID_CMD_SET_KEYBOARD_CONFIG: // 0x50
             if (length >= 32) { // Header + 26 data bytes minimum
                 handle_set_keyboard_config(&data[6]); // Skip header bytes
@@ -12449,14 +12638,14 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
 // ============================================================================
 
 // Save all layer actuations to EEPROM
-void save_layer_actuations(void) {
+__attribute__((weak)) void save_layer_actuations(void) {
     // Save entire array at once - now 10 bytes per layer = 120 bytes total
     eeprom_update_block(&layer_actuations, (void*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
     dprintf("Saved all layer actuations to EEPROM\n");
 }
 
 // Load all layer actuations from EEPROM
-void load_layer_actuations(void) {
+__attribute__((weak)) void load_layer_actuations(void) {
     // Load entire array at once
     eeprom_read_block(&layer_actuations, (void*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
     
@@ -12495,7 +12684,7 @@ void load_layer_actuations(void) {
 }
 
 // Reset all layer actuations to defaults
-void reset_layer_actuations(void) {
+__attribute__((weak)) void reset_layer_actuations(void) {
     for (uint8_t layer = 0; layer < 12; layer++) {
         layer_actuations[layer].normal_actuation = 80;
         layer_actuations[layer].midi_actuation = 80;
@@ -12513,12 +12702,13 @@ void reset_layer_actuations(void) {
 }
 
 // Set actuation for a specific layer
-void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
-                         uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens, 
+__attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
+                         uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
                          uint8_t midi_rapid_vel, uint8_t vel_speed,
-                         uint8_t aftertouch_cc, uint8_t flags) {
+                         uint8_t aftertouch_cc, uint8_t flags,
+                         uint8_t he_curve, uint8_t he_min, uint8_t he_max) {
     if (layer >= 12) return;
-    
+
     // Clamp values to valid ranges
     if (normal > 100) normal = 100;
     if (midi > 100) midi = 100;
@@ -12532,7 +12722,12 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t af
     if (vel_speed < 1) vel_speed = 1;
     if (vel_speed > 20) vel_speed = 20;
     if (aftertouch_cc > 127) aftertouch_cc = 127;
-    
+    if (he_curve > 4) he_curve = 4;
+    if (he_min < 1) he_min = 1;
+    if (he_min > 127) he_min = 127;
+    if (he_max < 1) he_max = 1;
+    if (he_max > 127) he_max = 127;
+
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
     layer_actuations[layer].aftertouch_mode = aftertouch;
@@ -12543,9 +12738,12 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t af
     layer_actuations[layer].velocity_speed_scale = vel_speed;
     layer_actuations[layer].aftertouch_cc = aftertouch_cc;
     layer_actuations[layer].flags = flags;
-    
-    dprintf("Set layer %d: n=%d m=%d at=%d vel=%d rf=%d(%s) mrfs=%d mrfv=%d(%s) vs=%d atcc=%d\n", 
-            layer, normal, midi, aftertouch, velocity, rapid, 
+    layer_actuations[layer].he_velocity_curve = he_curve;
+    layer_actuations[layer].he_velocity_min = he_min;
+    layer_actuations[layer].he_velocity_max = he_max;
+
+    dprintf("Set layer %d: n=%d m=%d at=%d vel=%d rf=%d(%s) mrfs=%d mrfv=%d(%s) vs=%d atcc=%d\n",
+            layer, normal, midi, aftertouch, velocity, rapid,
             (flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) ? "ON" : "OFF",
             midi_rapid_sens, midi_rapid_vel,
             (flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) ? "ON" : "OFF",
@@ -12553,10 +12751,11 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t af
 }
 
 // Get actuation for a specific layer
-void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
+__attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
                          uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
                          uint8_t *midi_rapid_vel, uint8_t *vel_speed,
-                         uint8_t *aftertouch_cc, uint8_t *flags) {
+                         uint8_t *aftertouch_cc, uint8_t *flags,
+                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max) {
     if (layer >= 12) {
         *normal = 80;
         *midi = 80;
@@ -12568,9 +12767,12 @@ void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t 
         *vel_speed = 10;
         *aftertouch_cc = 74;
         *flags = 0;
+        *he_curve = 2;
+        *he_min = 1;
+        *he_max = 127;
         return;
     }
-    
+
     *normal = layer_actuations[layer].normal_actuation;
     *midi = layer_actuations[layer].midi_actuation;
     *aftertouch = layer_actuations[layer].aftertouch_mode;
@@ -12581,15 +12783,18 @@ void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t 
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
     *aftertouch_cc = layer_actuations[layer].aftertouch_cc;
     *flags = layer_actuations[layer].flags;
+    *he_curve = layer_actuations[layer].he_velocity_curve;
+    *he_min = layer_actuations[layer].he_velocity_min;
+    *he_max = layer_actuations[layer].he_velocity_max;
 }
 
 // Helper functions to check flags
-bool layer_rapidfire_enabled(uint8_t layer) {
+__attribute__((weak)) bool layer_rapidfire_enabled(uint8_t layer) {
     if (layer >= 12) return false;
     return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) != 0;
 }
 
-bool layer_midi_rapidfire_enabled(uint8_t layer) {
+__attribute__((weak)) bool layer_midi_rapidfire_enabled(uint8_t layer) {
     if (layer >= 12) return false;
     return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) != 0;
 }
@@ -12598,7 +12803,7 @@ bool layer_midi_rapidfire_enabled(uint8_t layer) {
 // HID COMMAND HANDLERS FOR LAYER ACTUATION
 // ============================================================================
 
-void handle_set_layer_actuation(const uint8_t* data) {
+__attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
     uint8_t normal = data[1];
     uint8_t midi = data[2];
@@ -12610,36 +12815,41 @@ void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t vel_speed = data[8];
     uint8_t aftertouch_cc = data[9];
     uint8_t flags = data[10];
-    
+    uint8_t he_curve = data[11];
+    uint8_t he_min = data[12];
+    uint8_t he_max = data[13];
+
     if (layer >= 12) {
         dprintf("HID: Invalid layer %d for actuation\n", layer);
         return;
     }
-    
-    set_layer_actuation(layer, normal, midi, aftertouch, velocity, rapid, 
-                       midi_rapid_sens, midi_rapid_vel, vel_speed, aftertouch_cc, flags);
+
+    set_layer_actuation(layer, normal, midi, aftertouch, velocity, rapid,
+                       midi_rapid_sens, midi_rapid_vel, vel_speed, aftertouch_cc, flags,
+                       he_curve, he_min, he_max);
     save_layer_actuations();
-    
+
     dprintf("HID: Set layer %d actuation with all params\n", layer);
 }
 
-void handle_get_layer_actuation(uint8_t layer) {
+__attribute__((weak)) void handle_get_layer_actuation(uint8_t layer) {
     if (layer >= 12) {
         dprintf("HID: Invalid layer %d for actuation get\n", layer);
         return;
     }
-    
-    uint8_t response[10];
-    get_layer_actuation(layer, &response[0], &response[1], &response[2], 
-                        &response[3], &response[4], &response[5], &response[6], 
-                        &response[7], &response[8], &response[9]);
-    
-    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 10);
-    
+
+    uint8_t response[13];
+    get_layer_actuation(layer, &response[0], &response[1], &response[2],
+                        &response[3], &response[4], &response[5], &response[6],
+                        &response[7], &response[8], &response[9], &response[10],
+                        &response[11], &response[12]);
+
+    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 13);
+
     dprintf("HID: Sent layer %d actuation\n", layer);
 }
 
-void handle_get_all_layer_actuations(void) {
+__attribute__((weak)) void handle_get_all_layer_actuations(void) {
     load_layer_actuations();
     
     // Send data in chunks (12 layers × 10 bytes = 120 bytes, 5 packets of 26 bytes each)
@@ -12783,7 +12993,7 @@ void handle_get_all_layer_actuations(void) {
     
     dprintf("HID: Sent all layer actuations (5 packets)\n");
 }
-void handle_reset_layer_actuations(void) {
+__attribute__((weak)) void handle_reset_layer_actuations(void) {
     reset_layer_actuations();
     dprintf("HID: Reset all layer actuations to defaults\n");
 }

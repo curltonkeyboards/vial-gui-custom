@@ -417,12 +417,22 @@ uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_i
     return final_velocity;
 }
 
+// Weak default implementation - keyboards can override this
+__attribute__((weak)) uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
+    // Default implementation returns 0, indicating no HE velocity available
+    return 0;
+}
+
 // Helper function for applying HE velocity with row/col from keyrecord
 uint8_t apply_he_velocity_from_record(uint8_t base_velocity, keyrecord_t *record) {
     if (analog_mode > 0 && record != NULL) {
         // Get HE velocity from the key's row/col position
-        return get_he_velocity_from_position(record->event.key.row, record->event.key.col);
-    } else {
+        uint8_t he_vel = get_he_velocity_from_position(record->event.key.row, record->event.key.col);
+        if (he_vel > 0) {
+            return he_vel;
+        }
+    }
+    {
         // Fallback to base velocity with random modifier
         uint8_t final_velocity = base_velocity;
         if (randomvelocitymodifier != 0) {

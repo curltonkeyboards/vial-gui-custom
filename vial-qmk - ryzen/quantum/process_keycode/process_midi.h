@@ -48,6 +48,9 @@ void midi_send_cc_with_recording(uint8_t channel, uint8_t cc, uint8_t value);
 void midi_send_program_with_recording(uint8_t channel, uint8_t program);
 void midi_send_aftertouch_with_recording(uint8_t channel, uint8_t note, uint8_t pressure);
 void midi_send_channel_pressure_with_recording(uint8_t channel, uint8_t pressure);
+
+// HE (Hall Effect) velocity function - can be overridden by keyboard implementation
+uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 void midi_send_pitchbend_with_recording(uint8_t channel, int16_t bend_value);
 void midi_send_external_cc_with_recording(uint8_t channel, uint8_t cc, uint8_t value);
 void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity);

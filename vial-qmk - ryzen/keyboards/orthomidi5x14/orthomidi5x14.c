@@ -7,7 +7,6 @@
 #include <printf/printf.h>
 #include QMK_KEYBOARD_H
 #include "orthomidi5x14.h"
-#include "analog_matrix.h"
 #include "via.h"
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
@@ -327,7 +326,7 @@ uint8_t he_velocity_min = 1;    // Default: 1
 uint8_t he_velocity_max = 127;  // Default: 127
 
 // Velocity curve names for display
-static const char* velocity_curve_names[] = {
+__attribute__((unused)) static const char* velocity_curve_names[] = {
     "SOFTEST",
     "SOFT",
     "MEDIUM",
@@ -2939,11 +2938,7 @@ bool layer_use_fixed_velocity(uint8_t layer) {
 // HID HANDLERS FOR LAYER ACTUATION (VIA/VIAL Communication)
 // =============================================================================
 
-// HID command IDs (continue after dynamic macro commands)
-#define HID_CMD_SET_LAYER_ACTUATION    0x50
-#define HID_CMD_GET_LAYER_ACTUATION    0x51
-#define HID_CMD_GET_ALL_LAYER_ACTUATIONS 0x52
-#define HID_CMD_RESET_LAYER_ACTUATIONS 0x53
+// HID command IDs are defined in quantum/process_keycode/process_dynamic_macro.h
 
 // Set layer actuation from HID data
 void handle_set_layer_actuation(const uint8_t* data) {
@@ -4838,13 +4833,16 @@ void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num
             break;
     }
 }
+#endif // MIDI_SERIAL_ENABLE
 
 // Route MIDI data from USB based on current mode
 void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes) {
     switch (usb_midi_mode) {
         case USB_MIDI_TO_OUT:
+#ifdef MIDI_SERIAL_ENABLE
             // Send USB MIDI directly to hardware MIDI OUT
             midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
+#endif
             break;
 
         case USB_MIDI_PROCESS:
@@ -4857,47 +4855,20 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
             break;
     }
 }
-#endif // MIDI_SERIAL_ENABLE
 
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
     midi_in_mode = (midi_in_mode + 1) % 5;  // Cycle through 5 modes
-    // Show mode on OLED temporarily
-    #ifdef OLED_ENABLE
-    snprintf(mode_display_msg, sizeof(mode_display_msg), "MIDI IN: %s | %s",
-             midi_in_mode_names[midi_in_mode],
-             clock_source_names[midi_clock_source]);
-    mode_display_timer = timer_read32();
-    mode_display_active = true;
-    oled_display_force_update();
-    #endif
 }
 
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
     usb_midi_mode = (usb_midi_mode + 1) % 3;  // Cycle through 3 modes
-    // Show mode on OLED temporarily
-    #ifdef OLED_ENABLE
-    snprintf(mode_display_msg, sizeof(mode_display_msg), "USB MIDI: %s | %s",
-             usb_midi_mode_names[usb_midi_mode],
-             clock_source_names[midi_clock_source]);
-    mode_display_timer = timer_read32();
-    mode_display_active = true;
-    oled_display_force_update();
-    #endif
 }
 
 // Toggle MIDI clock source
 void toggle_midi_clock_source(void) {
     midi_clock_source = (midi_clock_source + 1) % 3;  // Cycle through 3 sources
-    // Show clock source on OLED temporarily
-    #ifdef OLED_ENABLE
-    snprintf(mode_display_msg, sizeof(mode_display_msg), "CLOCK: %s",
-             clock_source_names[midi_clock_source]);
-    mode_display_timer = timer_read32();
-    mode_display_active = true;
-    oled_display_force_update();
-    #endif
 }
 
 bool is_external_clock_active(void) {
@@ -8036,6 +8007,15 @@ break;
 			rgb_matrix_config.hsv.v = hsvplaceholder;
             break;
     }
+
+	// MIDI Routing Toggle Keycodes
+	if (keycode == MIDI_IN_MODE_TOG) {
+		snprintf(name, sizeof(name), "MIDI IN: %s", midi_in_mode_names[midi_in_mode]);
+	} else if (keycode == USB_MIDI_MODE_TOG) {
+		snprintf(name, sizeof(name), "USB MIDI: %s", usb_midi_mode_names[usb_midi_mode]);
+	} else if (keycode == MIDI_CLOCK_SRC_TOG) {
+		snprintf(name, sizeof(name), "CLOCK: %s", clock_source_names[midi_clock_source]);
+	}
 	
 	} else  if (keycode == 0x7185) {
         // Clear all trueheldkey variables
@@ -10581,6 +10561,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == MIDI_IN_MODE_TOG) {
         if (record->event.pressed) {
             toggle_midi_in_mode();
+            set_keylog(keycode, record);
         }
         return false;  // Skip further processing
     }
@@ -10588,6 +10569,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == USB_MIDI_MODE_TOG) {
         if (record->event.pressed) {
             toggle_usb_midi_mode();
+            set_keylog(keycode, record);
         }
         return false;  // Skip further processing
     }
@@ -10595,6 +10577,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == MIDI_CLOCK_SRC_TOG) {
         if (record->event.pressed) {
             toggle_midi_clock_source();
+            set_keylog(keycode, record);
         }
         return false;  // Skip further processing
     }
