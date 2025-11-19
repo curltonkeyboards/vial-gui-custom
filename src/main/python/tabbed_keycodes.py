@@ -1559,40 +1559,45 @@ class LoopTab(QScrollArea):
         header = self.create_section_header("Main Loop Controls")
         main_section.addLayout(header)
         
-        # Get main loop keycodes + mute and overdub
+        # Get main loop keycodes + mute, overdub, and sync mode
         main_loop_keycodes = [kc for kc in self.basic_keycodes[:4]]  # Loop 1-4
         mute_keycode = next((kc for kc in self.basic_keycodes if kc.qmk_id == "DM_MUTE"), None)
         overdub_keycode = next((kc for kc in self.basic_keycodes if kc.qmk_id == "DM_OVERDUB"), None)
-        
+        sync_keycode = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_UNSYNC"), None)
+
         # Combine all controls for basic mode
         all_basic_keycodes = main_loop_keycodes[:]
         if mute_keycode:
             all_basic_keycodes.append(mute_keycode)
         if overdub_keycode:
             all_basic_keycodes.append(overdub_keycode)
+        if sync_keycode:
+            all_basic_keycodes.append(sync_keycode)
         
         if all_basic_keycodes:
-            # Display as 2 rows: 4 buttons (loops) then 2 buttons (mute/overdub)
+            # Display as 2 rows: 4 buttons (loops) then 3 buttons (mute/overdub/sync)
             main_container = QWidget()
             main_layout = QVBoxLayout(main_container)
             main_layout.setSpacing(8)
             main_layout.setContentsMargins(0, 0, 0, 0)
-            
+
             # Row 1: Main loop controls (4 buttons)
             if len(main_loop_keycodes) > 0:
                 loop_row = self.create_button_row(main_loop_keycodes, 4)
                 main_layout.addWidget(loop_row)
-            
-            # Row 2: Mute and Overdub (2 buttons)
-            mute_overdub = []
+
+            # Row 2: Mute, Overdub, and Sync Mode (3 buttons)
+            mute_overdub_sync = []
             if mute_keycode:
-                mute_overdub.append(mute_keycode)
+                mute_overdub_sync.append(mute_keycode)
             if overdub_keycode:
-                mute_overdub.append(overdub_keycode)
-            
-            if mute_overdub:
-                mute_overdub_row = self.create_button_row(mute_overdub, 2)
-                main_layout.addWidget(mute_overdub_row)
+                mute_overdub_sync.append(overdub_keycode)
+            if sync_keycode:
+                mute_overdub_sync.append(sync_keycode)
+
+            if mute_overdub_sync:
+                mute_overdub_sync_row = self.create_button_row(mute_overdub_sync, 3)
+                main_layout.addWidget(mute_overdub_sync_row)
             
             main_section.addWidget(main_container)
         
@@ -2030,12 +2035,12 @@ class EarTrainerTab(QScrollArea):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Horizontal layout for both sections side by side
-        sections_layout = QHBoxLayout()
-        sections_layout.setSpacing(40)  # Increase horizontal spacing between sections
+        # Vertical layout with trainers stacked - Interval at top
+        sections_layout = QVBoxLayout()
+        sections_layout.setSpacing(20)  # Space between trainers
         sections_layout.addStretch(1)
 
-        # Interval Trainer section
+        # Interval Trainer section (at top)
         intervals_section = QVBoxLayout()
         intervals_section.setSpacing(5)
         interval_label = QLabel("Interval Trainer")
@@ -2049,7 +2054,7 @@ class EarTrainerTab(QScrollArea):
 
         sections_layout.addLayout(intervals_section)
 
-        # Chord Trainer section
+        # Chord Trainer section (below interval trainer)
         chords_section = QVBoxLayout()
         chords_section.setSpacing(5)
         chord_label = QLabel("Chord Trainer")
@@ -2092,7 +2097,7 @@ class EarTrainerTab(QScrollArea):
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
                 btn.setStyleSheet("""
-                    background: palette(light);
+                    background: palette(button);
                     border: 1px solid palette(mid);
                     border-radius: 6px;
                 """)
@@ -2108,7 +2113,7 @@ class EarTrainerTab(QScrollArea):
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
                 btn.setStyleSheet("""
-                    background: palette(alternate-base);
+                    background: palette(button);
                     border: 1px solid palette(mid);
                     border-radius: 6px;
                 """)
@@ -3772,7 +3777,7 @@ class midiTab(QScrollArea):
 
         # In midiTab class, restore original control buttons
         self.midi_layout2 = [
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
+            ["MI_TAP", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
         ]
 
         self.setWidget(self.scroll_content)
@@ -3795,27 +3800,15 @@ class midiTab(QScrollArea):
         for item in self.midi_layout2[0]:
             btn = QPushButton()
             btn.setFixedSize(50, 50)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    border-radius: 8px;
-                    color: #333333;
-                    padding: 4px;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-                QPushButton:pressed {
-                    background-color: #d0d0d0;
-                }
-            """)
+            # Use normal theme button styling - no custom colors
             if item == "MI_ALLOFF":
                 btn.setText("All\nNotes\nOff")
             elif item == "MI_SUS":
                 btn.setText("Sustain\nPedal")
             elif item == "MI_CHORD_99":
                 btn.setText("Smart\nChord")
+            elif item == "MI_TAP":
+                btn.setText("Tap\nBPM")
             elif item == "SAVE_SETTINGS":
                 btn.setText("Save\nSettings")
             elif item == "DEFAULT_SETTINGS":
