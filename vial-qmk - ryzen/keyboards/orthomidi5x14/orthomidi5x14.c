@@ -7,9 +7,11 @@
 #include <printf/printf.h>
 #include QMK_KEYBOARD_H
 #include "orthomidi5x14.h"
+#include "analog_matrix.h"
 #include "via.h"
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
+#include <math.h>
 extern MidiDevice midi_device;
 
 #define BANK_SEL_MSB_CC 0
@@ -37,6 +39,14 @@ extern MidiDevice midi_device;
 #define MIDI_IN_MODE_TOG    (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
 #define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
 #define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
+
+// HE Velocity Curve and Range Keycodes
+#define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
+#define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
+#define HE_VEL_MIN_UP       (KC_CUSTOM + 6)  // Increase velocity min
+#define HE_VEL_MIN_DOWN     (KC_CUSTOM + 7)  // Decrease velocity min
+#define HE_VEL_MAX_UP       (KC_CUSTOM + 8)  // Increase velocity max
+#define HE_VEL_MAX_DOWN     (KC_CUSTOM + 9)  // Decrease velocity max
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
@@ -302,6 +312,120 @@ static const char* clock_source_names[] = {
     "CLK:USB",
     "CLK:IN"
 };
+
+// ============================================================================
+// HE VELOCITY CURVE AND RANGE SYSTEM
+// ============================================================================
+
+// Global velocity curve and range settings
+velocity_curve_t he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
+uint8_t he_velocity_min = 1;    // Default: 1
+uint8_t he_velocity_max = 127;  // Default: 127
+
+// Velocity curve names for display
+static const char* velocity_curve_names[] = {
+    "SOFTEST",
+    "SOFT",
+    "MEDIUM",
+    "HARD",
+    "HARDEST"
+};
+
+// Apply velocity curve and range to travel value (0-255) -> MIDI velocity (1-127)
+uint8_t apply_he_velocity_curve(uint8_t travel_value) {
+    // Input: travel_value is 0-255 from analog_matrix_get_travel_normalized()
+    // Output: MIDI velocity 1-127 with curve applied
+
+    // Normalize travel to 0.0-1.0 range
+    float normalized = (float)travel_value / 255.0f;
+
+    // Apply velocity curve
+    float curved;
+    switch (he_velocity_curve) {
+        case VELOCITY_CURVE_SOFTEST:
+            // Exponential curve favoring lower velocities
+            // Formula: x^3 (cubic curve, very soft)
+            curved = normalized * normalized * normalized;
+            break;
+
+        case VELOCITY_CURVE_SOFT:
+            // Exponential curve slightly favoring lower velocities
+            // Formula: x^2 (quadratic curve, soft)
+            curved = normalized * normalized;
+            break;
+
+        case VELOCITY_CURVE_MEDIUM:
+            // Linear curve (no transformation)
+            curved = normalized;
+            break;
+
+        case VELOCITY_CURVE_HARD:
+            // Exponential curve favoring higher velocities
+            // Formula: sqrt(x)
+            curved = sqrtf(normalized);
+            break;
+
+        case VELOCITY_CURVE_HARDEST:
+            // Exponential curve strongly favoring higher velocities
+            // Formula: cbrt(x) (cube root)
+            curved = powf(normalized, 1.0f/3.0f);
+            break;
+
+        default:
+            curved = normalized;
+            break;
+    }
+
+    // Map curved value to velocity range
+    // Map 0.0-1.0 to velocity_min-velocity_max
+    uint8_t range = he_velocity_max - he_velocity_min;
+    int16_t velocity = he_velocity_min + (int16_t)(curved * range);
+
+    // Clamp to valid MIDI velocity range (1-127)
+    if (velocity < 1) velocity = 1;
+    if (velocity > 127) velocity = 127;
+
+    return (uint8_t)velocity;
+}
+
+// Cycle through velocity curves
+void cycle_he_velocity_curve(bool forward) {
+    if (forward) {
+        he_velocity_curve = (he_velocity_curve + 1) % VELOCITY_CURVE_COUNT;
+    } else {
+        if (he_velocity_curve == 0) {
+            he_velocity_curve = VELOCITY_CURVE_COUNT - 1;
+        } else {
+            he_velocity_curve--;
+        }
+    }
+}
+
+// Set velocity range with validation
+void set_he_velocity_range(uint8_t min, uint8_t max) {
+    // Ensure valid range
+    if (min < 1) min = 1;
+    if (max > 127) max = 127;
+    if (min > max) {
+        // Swap if reversed
+        uint8_t temp = min;
+        min = max;
+        max = temp;
+    }
+
+    he_velocity_min = min;
+    he_velocity_max = max;
+}
+
+// Get HE velocity from matrix position (row, col)
+// This is called when a MIDI note is triggered to get the velocity from the analog matrix
+uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
+    // Get normalized travel value (0-255) from analog matrix
+    uint8_t travel = analog_matrix_get_travel_normalized(row, col);
+
+    // Apply velocity curve and range mapping
+    return apply_he_velocity_curve(travel);
+}
 
 // Temporary mode display variables
 static uint32_t mode_display_timer = 0;
@@ -10284,6 +10408,65 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             toggle_midi_clock_source();
         }
         return false;  // Skip further processing
+    }
+
+    // HE Velocity Curve Controls
+    if (keycode == HE_VEL_CURVE_UP) {
+        if (record->event.pressed) {
+            cycle_he_velocity_curve(true);
+            dprintf("HE Velocity Curve: %s\n", velocity_curve_names[he_velocity_curve]);
+        }
+        return false;
+    }
+
+    if (keycode == HE_VEL_CURVE_DOWN) {
+        if (record->event.pressed) {
+            cycle_he_velocity_curve(false);
+            dprintf("HE Velocity Curve: %s\n", velocity_curve_names[he_velocity_curve]);
+        }
+        return false;
+    }
+
+    if (keycode == HE_VEL_MIN_UP) {
+        if (record->event.pressed) {
+            if (he_velocity_min < 127) {
+                he_velocity_min++;
+                if (he_velocity_min > he_velocity_max) he_velocity_min = he_velocity_max;
+                dprintf("HE Velocity Min: %d\n", he_velocity_min);
+            }
+        }
+        return false;
+    }
+
+    if (keycode == HE_VEL_MIN_DOWN) {
+        if (record->event.pressed) {
+            if (he_velocity_min > 1) {
+                he_velocity_min--;
+                dprintf("HE Velocity Min: %d\n", he_velocity_min);
+            }
+        }
+        return false;
+    }
+
+    if (keycode == HE_VEL_MAX_UP) {
+        if (record->event.pressed) {
+            if (he_velocity_max < 127) {
+                he_velocity_max++;
+                dprintf("HE Velocity Max: %d\n", he_velocity_max);
+            }
+        }
+        return false;
+    }
+
+    if (keycode == HE_VEL_MAX_DOWN) {
+        if (record->event.pressed) {
+            if (he_velocity_max > 1) {
+                he_velocity_max--;
+                if (he_velocity_max < he_velocity_min) he_velocity_max = he_velocity_min;
+                dprintf("HE Velocity Max: %d\n", he_velocity_max);
+            }
+        }
+        return false;
     }
 
     if (keycode == 0xC929) {

@@ -112,5 +112,24 @@ void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num
 void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes);
 void toggle_midi_clock_source(void);
 
+// HE Velocity Curve and Range System
+typedef enum {
+    VELOCITY_CURVE_SOFTEST = 0,
+    VELOCITY_CURVE_SOFT,
+    VELOCITY_CURVE_MEDIUM,
+    VELOCITY_CURVE_HARD,
+    VELOCITY_CURVE_HARDEST,
+    VELOCITY_CURVE_COUNT
+} velocity_curve_t;
+
+extern velocity_curve_t he_velocity_curve;
+extern uint8_t he_velocity_min;  // 1-127
+extern uint8_t he_velocity_max;  // 1-127
+
+uint8_t apply_he_velocity_curve(uint8_t travel_value);
+void cycle_he_velocity_curve(bool forward);
+void set_he_velocity_range(uint8_t min, uint8_t max);
+uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
+
 #endif // ORTHOMIDI5X14_H
 
