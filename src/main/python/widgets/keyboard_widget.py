@@ -914,24 +914,29 @@ class KeyboardWidget2(QWidget):
             # Move the first two encoders down by 90 pixels
             encoders[0].shift_y += 80
             encoders[1].shift_y += 80
-            encoders[0].shift_x -= 30
-            encoders[1].shift_x -= 10
+            encoders[0].shift_x -= 60  # Down encoder - shift left 60 pixels
+            encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 0 click button to match encoder 0 position
             if encoder_click_0:
                 encoder_click_0.shift_y += 80
-                encoder_click_0.shift_x -= 20  # Position between the two encoder buttons
+                encoder_click_0.shift_x -= 50  # Click button - shift left 50 pixels
 
             # Move the last two encoders down by 45 pixels
             encoders[2].shift_y += 50
             encoders[3].shift_y += 50
-            encoders[2].shift_x -= 30
-            encoders[3].shift_x -= 10
+            encoders[2].shift_x -= 60  # Down encoder - shift left 60 pixels
+            encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 1 click button to match encoder 1 position
             if encoder_click_1:
                 encoder_click_1.shift_y += 50
-                encoder_click_1.shift_x -= 20  # Position between the two encoder buttons
+                encoder_click_1.shift_x -= 50  # Click button - shift left 50 pixels
+
+        # Move sustain pedal to correct position
+        if sustain_pedal:
+            sustain_pedal.shift_x -= 160  # Shift left 160 pixels
+            sustain_pedal.shift_y -= 700  # Shift up 700 pixels
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))

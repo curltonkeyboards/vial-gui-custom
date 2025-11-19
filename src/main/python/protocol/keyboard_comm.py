@@ -241,10 +241,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             (5, 2, 0.5, 5.5),   # Sustain pedal (bottom left)
         ]
 
-        added_any_keys = False
-        max_row = self.rows - 1
-        max_col = self.cols - 1
-
         for row, col, x_pos, y_pos in required_keys:
             if (row, col) not in self.rowcol:
                 # Create a new key for this position
@@ -263,16 +259,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 # Add to keys list and mark as existing
                 self.keys.append(new_key)
                 self.rowcol[(row, col)] = True
-                added_any_keys = True
 
-                # Track the maximum row/col we need
-                max_row = max(max_row, row)
-                max_col = max(max_col, col)
-
-        # Only update matrix dimensions if we added keys
-        if added_any_keys:
-            self.rows = max_row + 1
-            self.cols = max_col + 1
+        # Do NOT update self.rows and self.cols - keep original firmware dimensions
+        # This prevents the keyboard container from expanding to include the injected keys
 
     def reload_keymap(self):
         """ Load current key mapping from the keyboard """
@@ -300,11 +289,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     self.layout[(layer, row, col)] = "KC_TRNS"
                     continue
 
-                # Check that key is within our extended matrix
-                if row >= self.rows or col >= self.cols:
-                    raise RuntimeError("malformed vial.json, key references {},{} but matrix declares rows={} cols={}"
-                                       .format(row, col, self.rows, self.cols))
-                # determine where this (layer, row, col) will be located in keymap array
+                # For firmware keys, determine where this (layer, row, col) is in keymap array
                 offset = layer * firmware_rows * firmware_cols * 2 + row * firmware_cols * 2 + col * 2
                 keycode = Keycode.serialize(struct.unpack(">H", keymap[offset:offset+2])[0])
                 self.layout[(layer, row, col)] = keycode
