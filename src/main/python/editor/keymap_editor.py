@@ -42,7 +42,12 @@ class QuickActuationWidget(QGroupBox):
                 'vel_speed': 10,
                 'aftertouch_cc': 74,
                 'rapidfire_enabled': False,
-                'midi_rapidfire_enabled': False
+                'midi_rapidfire_enabled': False,
+                # HE Velocity defaults
+                'use_fixed_velocity': False,
+                'he_curve': 2,  # Medium (linear)
+                'he_min': 1,
+                'he_max': 127
             })
         
         self.setMinimumWidth(200)
@@ -346,7 +351,97 @@ class QuickActuationWidget(QGroupBox):
         
         advanced_layout.addLayout(combo_layout)
         self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
-        
+
+        # === HE VELOCITY CONTROLS ===
+        # Separator
+        he_line = QFrame()
+        he_line.setFrameShape(QFrame.HLine)
+        he_line.setFrameShadow(QFrame.Sunken)
+        advanced_layout.addWidget(he_line)
+
+        # Use Fixed Velocity checkbox
+        self.use_fixed_vel_checkbox = QCheckBox(tr("QuickActuationWidget", "Use Fixed Velocity"))
+        self.use_fixed_vel_checkbox.setChecked(False)
+        self.use_fixed_vel_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        advanced_layout.addWidget(self.use_fixed_vel_checkbox)
+        self.use_fixed_vel_checkbox.stateChanged.connect(self.on_combo_changed)
+
+        # HE Velocity Curve combo
+        curve_layout = QHBoxLayout()
+        curve_layout.setContentsMargins(0, 0, 0, 0)
+        curve_layout.setSpacing(6)
+        curve_label = QLabel(tr("QuickActuationWidget", "HE Curve:"))
+        curve_label.setMinimumWidth(90)
+        curve_label.setMaximumWidth(90)
+        curve_layout.addWidget(curve_label)
+
+        self.he_curve_combo = ArrowComboBox()
+        self.he_curve_combo.setMaximumHeight(25)
+        self.he_curve_combo.setMaximumWidth(180)
+        self.he_curve_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; }")
+        self.he_curve_combo.addItem("Softest", 0)
+        self.he_curve_combo.addItem("Soft", 1)
+        self.he_curve_combo.addItem("Medium", 2)
+        self.he_curve_combo.addItem("Hard", 3)
+        self.he_curve_combo.addItem("Hardest", 4)
+        self.he_curve_combo.setCurrentIndex(2)  # Default: Medium
+        curve_layout.addWidget(self.he_curve_combo, 1)
+
+        advanced_layout.addLayout(curve_layout)
+        self.he_curve_combo.currentIndexChanged.connect(self.on_combo_changed)
+
+        # HE Velocity Min slider
+        he_min_layout = QHBoxLayout()
+        he_min_layout.setContentsMargins(0, 0, 0, 0)
+        he_min_layout.setSpacing(6)
+        he_min_label = QLabel(tr("QuickActuationWidget", "HE Min:"))
+        he_min_label.setMinimumWidth(90)
+        he_min_label.setMaximumWidth(90)
+        he_min_layout.addWidget(he_min_label)
+
+        self.he_min_slider = QSlider(Qt.Horizontal)
+        self.he_min_slider.setMinimum(1)
+        self.he_min_slider.setMaximum(127)
+        self.he_min_slider.setValue(1)
+        he_min_layout.addWidget(self.he_min_slider, 1)
+
+        self.he_min_value_label = QLabel("1")
+        self.he_min_value_label.setMinimumWidth(50)
+        self.he_min_value_label.setMaximumWidth(50)
+        self.he_min_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
+        he_min_layout.addWidget(self.he_min_value_label)
+
+        advanced_layout.addLayout(he_min_layout)
+        self.he_min_slider.valueChanged.connect(
+            lambda v: self.on_slider_changed('he_min', v, self.he_min_value_label)
+        )
+
+        # HE Velocity Max slider
+        he_max_layout = QHBoxLayout()
+        he_max_layout.setContentsMargins(0, 0, 0, 0)
+        he_max_layout.setSpacing(6)
+        he_max_label = QLabel(tr("QuickActuationWidget", "HE Max:"))
+        he_max_label.setMinimumWidth(90)
+        he_max_label.setMaximumWidth(90)
+        he_max_layout.addWidget(he_max_label)
+
+        self.he_max_slider = QSlider(Qt.Horizontal)
+        self.he_max_slider.setMinimum(1)
+        self.he_max_slider.setMaximum(127)
+        self.he_max_slider.setValue(127)
+        he_max_layout.addWidget(self.he_max_slider, 1)
+
+        self.he_max_value_label = QLabel("127")
+        self.he_max_value_label.setMinimumWidth(50)
+        self.he_max_value_label.setMaximumWidth(50)
+        self.he_max_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
+        he_max_layout.addWidget(self.he_max_value_label)
+
+        advanced_layout.addLayout(he_max_layout)
+        self.he_max_slider.valueChanged.connect(
+            lambda v: self.on_slider_changed('he_max', v, self.he_max_value_label)
+        )
+
         layout.addWidget(self.advanced_widget)
 
         layout.addStretch()
@@ -445,7 +540,12 @@ class QuickActuationWidget(QGroupBox):
                 'vel_speed': self.vel_speed_combo.currentData(),
                 'aftertouch_cc': self.aftertouch_cc_combo.currentData(),
                 'rapidfire_enabled': self.rapid_checkbox.isChecked(),
-                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
+                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked(),
+                # HE Velocity fields
+                'use_fixed_velocity': self.use_fixed_vel_checkbox.isChecked(),
+                'he_curve': self.he_curve_combo.currentData(),
+                'he_min': self.he_min_slider.value(),
+                'he_max': self.he_max_slider.value()
             }
         else:
             # Save to all layers (master mode)
@@ -460,7 +560,12 @@ class QuickActuationWidget(QGroupBox):
                 'vel_speed': self.vel_speed_combo.currentData(),
                 'aftertouch_cc': self.aftertouch_cc_combo.currentData(),
                 'rapidfire_enabled': self.rapid_checkbox.isChecked(),
-                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
+                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked(),
+                # HE Velocity fields
+                'use_fixed_velocity': self.use_fixed_vel_checkbox.isChecked(),
+                'he_curve': self.he_curve_combo.currentData(),
+                'he_min': self.he_min_slider.value(),
+                'he_max': self.he_max_slider.value()
             }
             for i in range(12):
                 self.layer_data[i] = data.copy()
@@ -512,6 +617,19 @@ class QuickActuationWidget(QGroupBox):
         self.rapid_checkbox.setChecked(data['rapidfire_enabled'])
         self.rapid_widget.setVisible(data['rapidfire_enabled'])
         self.midi_rapid_checkbox.setChecked(data['midi_rapidfire_enabled'])
+
+        # HE Velocity settings
+        self.use_fixed_vel_checkbox.setChecked(data.get('use_fixed_velocity', False))
+        self.he_min_slider.setValue(data.get('he_min', 1))
+        self.he_min_value_label.setText(str(data.get('he_min', 1)))
+        self.he_max_slider.setValue(data.get('he_max', 127))
+        self.he_max_value_label.setText(str(data.get('he_max', 127)))
+
+        # HE Curve combo
+        for i in range(self.he_curve_combo.count()):
+            if self.he_curve_combo.itemData(i) == data.get('he_curve', 2):
+                self.he_curve_combo.setCurrentIndex(i)
+                break
         
         # Update MIDI rapidfire widgets visibility based on advanced state
         if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:
@@ -537,7 +655,9 @@ class QuickActuationWidget(QGroupBox):
                     flags |= 0x01
                 if data['midi_rapidfire_enabled']:
                     flags |= 0x02
-                
+                if data.get('use_fixed_velocity', False):
+                    flags |= 0x04
+
                 payload = bytearray([
                     self.current_layer,
                     data['normal'],
@@ -549,7 +669,11 @@ class QuickActuationWidget(QGroupBox):
                     data['midi_rapid_vel'],
                     data['vel_speed'],
                     data['aftertouch_cc'],
-                    flags
+                    flags,
+                    # HE Velocity fields
+                    data.get('he_curve', 2),
+                    data.get('he_min', 1),
+                    data.get('he_max', 127)
                 ])
                 
                 if not self.device.keyboard.set_layer_actuation(payload):
@@ -566,7 +690,9 @@ class QuickActuationWidget(QGroupBox):
                         flags |= 0x01
                     if data['midi_rapidfire_enabled']:
                         flags |= 0x02
-                    
+                    if data.get('use_fixed_velocity', False):
+                        flags |= 0x04
+
                     payload = bytearray([
                         layer,
                         data['normal'],
@@ -578,7 +704,11 @@ class QuickActuationWidget(QGroupBox):
                         data['midi_rapid_vel'],
                         data['vel_speed'],
                         data['aftertouch_cc'],
-                        flags
+                        flags,
+                        # HE Velocity fields
+                        data.get('he_curve', 2),
+                        data.get('he_min', 1),
+                        data.get('he_max', 127)
                     ])
                     
                     if not self.device.keyboard.set_layer_actuation(payload):
@@ -613,17 +743,17 @@ class QuickActuationWidget(QGroupBox):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 return
-            
+
             actuations = self.device.keyboard.get_all_layer_actuations()
-            
-            if not actuations or len(actuations) != 120:
+
+            if not actuations or len(actuations) != 156:
                 return
-            
+
             # Load all layers into memory
             for layer in range(12):
-                offset = layer * 10
+                offset = layer * 13
                 flags = actuations[offset + 9]
-                
+
                 self.layer_data[layer] = {
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
@@ -635,7 +765,11 @@ class QuickActuationWidget(QGroupBox):
                     'vel_speed': actuations[offset + 7],
                     'aftertouch_cc': actuations[offset + 8],
                     'rapidfire_enabled': (flags & 0x01) != 0,
-                    'midi_rapidfire_enabled': (flags & 0x02) != 0
+                    'midi_rapidfire_enabled': (flags & 0x02) != 0,
+                    'use_fixed_velocity': (flags & 0x04) != 0,
+                    'he_curve': actuations[offset + 10],
+                    'he_min': actuations[offset + 11],
+                    'he_max': actuations[offset + 12]
                 }
         except Exception:
             pass
