@@ -914,28 +914,28 @@ class KeyboardWidget2(QWidget):
             # Move the first two encoders to original position
             encoders[0].shift_y += 80  # Original position
             encoders[1].shift_y += 80
-            encoders[0].shift_x -= 60  # Down encoder - shift left 60 pixels
-            encoders[1].shift_x += 50  # Up encoder - shift right 50 pixels (30px more)
+            encoders[0].shift_x -= 30  # Down encoder - shift left 30 pixels
+            encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 0 click button to its position (keep current)
             if encoder_click_0:
                 encoder_click_0.shift_y += 60  # Keep current position
-                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels (30px more right)
+                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels
 
             # Move the last two encoders to original position
             encoders[2].shift_y += 50  # Original position
             encoders[3].shift_y += 50
-            encoders[2].shift_x -= 60  # Down encoder - shift left 60 pixels
-            encoders[3].shift_x += 50  # Up encoder - shift right 50 pixels (30px more)
+            encoders[2].shift_x -= 30  # Down encoder - shift left 30 pixels
+            encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 1 click button to its position (keep current)
             if encoder_click_1:
                 encoder_click_1.shift_y += 55  # Keep current position
-                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels (30px more right)
+                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels
 
         # Move sustain pedal to correct position
         if sustain_pedal:
-            sustain_pedal.shift_x -= 160  # Shift left 160 pixels
+            sustain_pedal.shift_x += 40  # Shift right 40 pixels
             sustain_pedal.shift_y -= 700  # Shift up 700 pixels
 
         # Sort widgets by position for proper layout (if needed)

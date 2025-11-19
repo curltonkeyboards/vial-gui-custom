@@ -978,6 +978,57 @@ class midiadvancedTab(QScrollArea):
                 col = 0
                 row += 1
 
+        # Add KeySplit modifier buttons below the grid
+        modifiers_layout = QHBoxLayout()
+        modifiers_layout.addStretch(1)
+
+        split_buttons = [
+            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
+            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
+            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
+        ]
+
+        for text, code in split_buttons:
+            btn = QPushButton(text)
+            btn.setFixedSize(60, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: palette(button);
+                    border: 1px solid palette(mid);
+                    border-radius: 8px;
+                }
+                QPushButton:hover {
+                    background: palette(light);
+                }
+                QPushButton:pressed {
+                    background: palette(highlight);
+                    color: palette(highlighted-text);
+                }
+            """)
+            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
+            modifiers_layout.addWidget(btn)
+
+        modifiers_layout.addStretch(1)
+
+        # Add modifiers layout to the keysplit section layout
+        if hasattr(self, 'keysplit_h_layout'):
+            # Create a vertical layout to hold both grid and modifiers
+            keysplit_section_layout = self.section_layouts.get("Show\nKeySplit\nOptions")
+            if keysplit_section_layout:
+                # keysplit_section_layout is the keysplit_h_layout from __init__
+                # We need to add the modifiers below it
+                # Since we can't easily restructure, add a wrapper
+                pass
+
+        # Since the keysplit_h_layout is already set, we need to add the modifiers after the grid
+        # Add a spacer and then the modifiers row
+        self.keysplit_grid.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed), row+1, 0, 1, max_cols)
+
+        # Create container for modifier buttons and add to grid
+        modifiers_widget = QWidget()
+        modifiers_widget.setLayout(modifiers_layout)
+        self.keysplit_grid.addWidget(modifiers_widget, row+2, 0, 1, max_cols)
+
     def populate_advanced_section(self):
         """Populate the Advanced MIDI Options section with buttons."""
         # Clear existing buttons
@@ -1638,40 +1689,45 @@ class LoopTab(QScrollArea):
         header = self.create_section_header("Main Loop Controls")
         main_section.addLayout(header)
         
-        # Get main loop keycodes + mute and overdub
+        # Get main loop keycodes + mute, overdub, and sync mode
         main_loop_keycodes = [kc for kc in self.basic_keycodes[:4]]  # Loop 1-4
         mute_keycode = next((kc for kc in self.basic_keycodes if kc.qmk_id == "DM_MUTE"), None)
         overdub_keycode = next((kc for kc in self.basic_keycodes if kc.qmk_id == "DM_OVERDUB"), None)
-        
+        sync_keycode = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_UNSYNC"), None)
+
         # Combine all controls for basic mode
         all_basic_keycodes = main_loop_keycodes[:]
         if mute_keycode:
             all_basic_keycodes.append(mute_keycode)
         if overdub_keycode:
             all_basic_keycodes.append(overdub_keycode)
+        if sync_keycode:
+            all_basic_keycodes.append(sync_keycode)
         
         if all_basic_keycodes:
-            # Display as 2 rows: 4 buttons (loops) then 2 buttons (mute/overdub)
+            # Display as 2 rows: 4 buttons (loops) then 3 buttons (mute/overdub/sync)
             main_container = QWidget()
             main_layout = QVBoxLayout(main_container)
             main_layout.setSpacing(8)
             main_layout.setContentsMargins(0, 0, 0, 0)
-            
+
             # Row 1: Main loop controls (4 buttons)
             if len(main_loop_keycodes) > 0:
                 loop_row = self.create_button_row(main_loop_keycodes, 4)
                 main_layout.addWidget(loop_row)
-            
-            # Row 2: Mute and Overdub (2 buttons)
-            mute_overdub = []
+
+            # Row 2: Mute, Overdub, and Sync Mode (3 buttons)
+            mute_overdub_sync = []
             if mute_keycode:
-                mute_overdub.append(mute_keycode)
+                mute_overdub_sync.append(mute_keycode)
             if overdub_keycode:
-                mute_overdub.append(overdub_keycode)
-            
-            if mute_overdub:
-                mute_overdub_row = self.create_button_row(mute_overdub, 2)
-                main_layout.addWidget(mute_overdub_row)
+                mute_overdub_sync.append(overdub_keycode)
+            if sync_keycode:
+                mute_overdub_sync.append(sync_keycode)
+
+            if mute_overdub_sync:
+                mute_overdub_sync_row = self.create_button_row(mute_overdub_sync, 3)
+                main_layout.addWidget(mute_overdub_sync_row)
             
             main_section.addWidget(main_container)
         
@@ -1799,31 +1855,38 @@ class LoopTab(QScrollArea):
         section = QVBoxLayout()
         section.setSpacing(8)
         section.setAlignment(Qt.AlignTop)
-        
+
         header = self.create_section_header("Global Controls")
         section.addLayout(header)
-        
+
         # Get global control keycodes, excluding the ones moved to Mode Select
-        global_keycodes = [kc for kc in self.basic_keycodes[4:] 
+        global_keycodes = [kc for kc in self.basic_keycodes[4:]
                           if kc.qmk_id not in ["DM_UNSYNC", "DM_SAMPLE"]]
-        
-        if global_keycodes:
+
+        # Add macro modifiers from advanced keycodes (Speed and Slow modifiers)
+        modifier_keycodes = [kc for kc in self.advanced_keycodes
+                            if kc.qmk_id in ["DM_SPEED_MOD", "DM_SLOW_MOD"]]
+
+        # Combine global controls with modifiers
+        all_global_keycodes = global_keycodes + modifier_keycodes
+
+        if all_global_keycodes:
             container = QWidget()
             layout = QVBoxLayout(container)
             layout.setSpacing(8)
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setAlignment(Qt.AlignTop)
-            
-            # Display remaining global controls (should be 4: Mute, Overdub, Oct Mod, Edit Mod)
-            if len(global_keycodes) > 2:
-                row1 = self.create_button_row(global_keycodes[:2], 2)
+
+            # Display all global controls and modifiers (Mute, Overdub, Oct Mod, Edit Mod, Speed Mod, Slow Mod)
+            if len(all_global_keycodes) > 3:
+                row1 = self.create_button_row(all_global_keycodes[:3], 3)
                 layout.addWidget(row1)
-                row2 = self.create_button_row(global_keycodes[2:], 2)
+                row2 = self.create_button_row(all_global_keycodes[3:], 3)
                 layout.addWidget(row2)
             else:
-                row = self.create_button_row(global_keycodes, len(global_keycodes))
+                row = self.create_button_row(all_global_keycodes, len(all_global_keycodes))
                 layout.addWidget(row)
-            
+
             section.addWidget(container)
             return section
         return None
@@ -2142,14 +2205,16 @@ class EarTrainerTab(QScrollArea):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Horizontal layout for both sections side by side
+        # Horizontal layout with trainers side by side, both aligned to top
         sections_layout = QHBoxLayout()
-        sections_layout.setSpacing(40)  # Increase horizontal spacing between sections
+        sections_layout.setSpacing(40)  # Horizontal spacing between sections
+        sections_layout.setAlignment(Qt.AlignTop)  # Align to top
         sections_layout.addStretch(1)
 
-        # Interval Trainer section
+        # Interval Trainer section (left side)
         intervals_section = QVBoxLayout()
         intervals_section.setSpacing(5)
+        intervals_section.setAlignment(Qt.AlignTop)  # Align to top
         interval_label = QLabel("Interval Trainer")
         interval_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         interval_label.setAlignment(Qt.AlignCenter)
@@ -2161,9 +2226,10 @@ class EarTrainerTab(QScrollArea):
 
         sections_layout.addLayout(intervals_section)
 
-        # Chord Trainer section
+        # Chord Trainer section (right side)
         chords_section = QVBoxLayout()
         chords_section.setSpacing(5)
+        chords_section.setAlignment(Qt.AlignTop)  # Align to top
         chord_label = QLabel("Chord Trainer")
         chord_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         chord_label.setAlignment(Qt.AlignCenter)
@@ -2204,7 +2270,7 @@ class EarTrainerTab(QScrollArea):
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
                 btn.setStyleSheet("""
-                    background: palette(light);
+                    background: palette(button);
                     border: 1px solid palette(mid);
                     border-radius: 6px;
                 """)
@@ -2220,7 +2286,7 @@ class EarTrainerTab(QScrollArea):
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
                 btn.setStyleSheet("""
-                    background: palette(alternate-base);
+                    background: palette(button);
                     border: 1px solid palette(mid);
                     border-radius: 6px;
                 """)
@@ -3884,7 +3950,7 @@ class midiTab(QScrollArea):
 
         # In midiTab class, restore original control buttons
         self.midi_layout2 = [
-            ["KC_NO", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
+            ["MI_TAP", "MI_ALLOFF", "MI_SUS", "MI_CHORD_99", "KC_NO"]
         ]
 
         self.setWidget(self.scroll_content)
@@ -3907,27 +3973,15 @@ class midiTab(QScrollArea):
         for item in self.midi_layout2[0]:
             btn = QPushButton()
             btn.setFixedSize(50, 50)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    border-radius: 8px;
-                    color: #333333;
-                    padding: 4px;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-                QPushButton:pressed {
-                    background-color: #d0d0d0;
-                }
-            """)
+            # Use normal theme button styling - no custom colors
             if item == "MI_ALLOFF":
                 btn.setText("All\nNotes\nOff")
             elif item == "MI_SUS":
                 btn.setText("Sustain\nPedal")
             elif item == "MI_CHORD_99":
                 btn.setText("Smart\nChord")
+            elif item == "MI_TAP":
+                btn.setText("Tap\nBPM")
             elif item == "SAVE_SETTINGS":
                 btn.setText("Save\nSettings")
             elif item == "DEFAULT_SETTINGS":

@@ -3060,7 +3060,7 @@ KEYCODES_LOOP_BUTTONS = [
     # Core control buttons
     K("DM_MUTE", "Mute\nButton", "Global mute button"),
     K("DM_OVERDUB", "Overdub\nButton", "Overdub recording button"),
-    K("DM_UNSYNC", "Unsynced\nMode", "Toggle unsynced mode"),
+    K("DM_UNSYNC", "Sync\nMode", "Toggle sync mode"),
     K("DM_SAMPLE", "Sample\nMode", "Toggle sample mode"),
     K("DM_EDIT_MOD", "Global\nEdit", "Global edit modifier button"),
     K("DM_PLAY_PAUSE", "Play\nPause", "Global play/pause toggle"),

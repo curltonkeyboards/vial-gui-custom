@@ -737,7 +737,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward center
         main_layout.addWidget(loop_group)
         
-        # Unsynced Mode
+        # Sync Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 1)
         self.unsynced_mode = ArrowComboBox()
         self.unsynced_mode.setMinimumWidth(120)
@@ -748,8 +748,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.unsynced_mode.lineEdit().setAlignment(Qt.AlignCenter)
         self.unsynced_mode.addItem("Loop (Note Prime On)", 0)
         self.unsynced_mode.addItem("Loop (Note Prime Off)", 4)
-        self.unsynced_mode.addItem("Unsynced (Note Prime On)", 2)
-        self.unsynced_mode.addItem("Unsynced (Note Prime Off)", 5)
+        self.unsynced_mode.addItem("Sync Mode (Note Prime On)", 2)
+        self.unsynced_mode.addItem("Sync Mode (Note Prime Off)", 5)
         self.unsynced_mode.addItem("BPM Bar", 1)
         self.unsynced_mode.addItem("BPM Beat", 3)
 
