@@ -34,9 +34,8 @@ extern MidiDevice midi_device;
 #define KC_CUSTOM (0x8000 + 128 * 7) + 128 * 128 + 5 + 17
 
 // MIDI Routing Toggle Keycodes (after gaming controls)
-#define MIDI_IN_MODE_TOG    (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
-#define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
-#define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
+#define MIDI_IN_MODE_TOG  (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
+#define USB_MIDI_MODE_TOG (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
@@ -277,9 +276,24 @@ static clock_mode_t clock_mode = CLOCK_MODE_INTERNAL;
 // MIDI ROUTING MODES
 // ============================================================================
 
-// MIDI routing mode variables (types defined in orthomidi5x14.h)
-midi_in_mode_t midi_in_mode = MIDI_IN_PROCESS;  // Default: process through keyboard
-usb_midi_mode_t usb_midi_mode = USB_MIDI_PROCESS;  // Default: process through keyboard
+// MIDI In routing modes (what to do with data from MIDI IN socket)
+typedef enum {
+    MIDI_IN_TO_USB,        // Send MIDI In directly to USB only
+    MIDI_IN_TO_OUT,        // Send MIDI In directly to MIDI Out only
+    MIDI_IN_PROCESS,       // Send MIDI In through keyboard processing
+    MIDI_IN_CLOCK_ONLY,    // Only forward clock messages from MIDI In
+    MIDI_IN_IGNORE         // Ignore all MIDI In data
+} midi_in_mode_t;
+
+// USB MIDI routing modes (what to do with MIDI from USB)
+typedef enum {
+    USB_MIDI_TO_OUT,       // Send USB MIDI directly to MIDI Out
+    USB_MIDI_PROCESS,      // Send USB MIDI through keyboard processing
+    USB_MIDI_IGNORE        // Ignore all USB MIDI data
+} usb_midi_mode_t;
+
+static midi_in_mode_t midi_in_mode = MIDI_IN_PROCESS;  // Default: process through keyboard
+static usb_midi_mode_t usb_midi_mode = USB_MIDI_PROCESS;  // Default: process through keyboard
 midi_clock_source_t midi_clock_source = CLOCK_SOURCE_LOCAL;  // Default: local clock
 
 // MIDI routing state strings for OLED
@@ -2281,7 +2295,11 @@ void reset_keyboard_settings(void) {
     colorblindmode = 0;
     cclooprecording = false;
     truesustain = false;
-    
+    midi_in_mode = MIDI_IN_PROCESS;
+    usb_midi_mode = USB_MIDI_PROCESS;
+    clock_mode = CLOCK_MODE_INTERNAL;
+    midi_clock_source = CLOCK_SOURCE_LOCAL;
+
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
     keyboard_settings.cc_sensitivity = cc_sensitivity;
@@ -2314,11 +2332,54 @@ void reset_keyboard_settings(void) {
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
+}
+
+// Helper function to sync all global variables to keyboard_settings struct
+static void sync_globals_to_struct(void) {
+    keyboard_settings.velocity_sensitivity = velocity_sensitivity;
+    keyboard_settings.cc_sensitivity = cc_sensitivity;
+    keyboard_settings.channel_number = channel_number;
+    keyboard_settings.transpose_number = transpose_number;
+    keyboard_settings.octave_number = octave_number;
+    keyboard_settings.transpose_number2 = transpose_number2;
+    keyboard_settings.octave_number2 = octave_number2;
+    keyboard_settings.transpose_number3 = transpose_number3;
+    keyboard_settings.octave_number3 = octave_number3;
+    keyboard_settings.velocity_number = velocity_number;
+    keyboard_settings.velocity_number2 = velocity_number2;
+    keyboard_settings.velocity_number3 = velocity_number3;
+    keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
+    keyboard_settings.oledkeyboard = oledkeyboard;
+    keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
+    keyboard_settings.smartchordlightmode = smartchordlightmode;
+    keyboard_settings.keysplitchannel = keysplitchannel;
+    keyboard_settings.keysplit2channel = keysplit2channel;
+    keyboard_settings.keysplitstatus = keysplitstatus;
+    keyboard_settings.keysplittransposestatus = keysplittransposestatus;
+    keyboard_settings.keysplitvelocitystatus = keysplitvelocitystatus;
+    keyboard_settings.custom_layer_animations_enabled = custom_layer_animations_enabled;
+    keyboard_settings.unsynced_mode_active = unsynced_mode_active;
+    keyboard_settings.sample_mode_active = sample_mode_active;
+    keyboard_settings.loop_messaging_enabled = loop_messaging_enabled;
+    keyboard_settings.loop_messaging_channel = loop_messaging_channel;
+    keyboard_settings.sync_midi_mode = sync_midi_mode;
+    keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+    keyboard_settings.colorblindmode = colorblindmode;
+    keyboard_settings.cclooprecording = cclooprecording;
+    keyboard_settings.truesustain = truesustain;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
     // Ensure slot is between 0-4
     slot = slot % 5;
+    // Sync all current global variables to struct before saving
+    sync_globals_to_struct();
     eeprom_update_block(&keyboard_settings, (uint8_t*)SETTINGS_EEPROM_ADDR(slot), SETTINGS_SIZE);
 }
 
@@ -2361,7 +2422,10 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     colorblindmode = keyboard_settings.colorblindmode;
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;
-    
+    midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
+    usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
+    midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
+
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }
 
@@ -2850,12 +2914,11 @@ void keyboard_post_init_user(void) {
 
 #ifdef MIDI_SERIAL_ENABLE
 	// Initialize MIDI serial pins for hardware MIDI
+	// Note: The actual USART initialization is handled by QMK's serial driver
+	// This just ensures the pins are configured
 	setPinInputHigh(B8);   // MIDI IN (RX) - PB8 (user specified)
 	setPinOutput(B9);      // MIDI OUT (TX) - PB9 (user specified)
 	// Note: If PB8/PB9 don't work (no UART support), switch to PC10/PC11
-
-	// Initialize serial MIDI device
-	setup_serial_midi();
 #endif
 }
 
@@ -4415,80 +4478,7 @@ bool is_internal_clock_active(void) {
 // ============================================================================
 
 #ifdef MIDI_SERIAL_ENABLE
-#include "uart.h"
-
-// Define the serial MIDI device
-MidiDevice midi_serial_device;
-
-// Serial MIDI send function - sends data to hardware MIDI OUT
-void serial_midi_send_func(MidiDevice* device, uint16_t cnt, uint8_t byte0, uint8_t byte1, uint8_t byte2) {
-    // Send bytes to USART3 (hardware MIDI OUT)
-    if (cnt >= 1) {
-        uart_putchar(MIDI_SERIAL_PORT, byte0);
-    }
-    if (cnt >= 2) {
-        uart_putchar(MIDI_SERIAL_PORT, byte1);
-    }
-    if (cnt >= 3) {
-        uart_putchar(MIDI_SERIAL_PORT, byte2);
-    }
-}
-
-// Serial MIDI receive function - processes incoming data from hardware MIDI IN
-void serial_midi_get_func(MidiDevice* device) {
-    // Read available bytes from USART3 (hardware MIDI IN)
-    uint16_t available = uart_available(MIDI_SERIAL_PORT);
-
-    for (uint16_t i = 0; i < available; i++) {
-        uint8_t data = uart_getchar(MIDI_SERIAL_PORT);
-
-        // Determine message length for routing
-        uint8_t length = 1;
-        uint8_t byte1 = data;
-        uint8_t byte2 = 0;
-        uint8_t byte3 = 0;
-
-        // For multi-byte messages, we need to read additional bytes
-        // This is a simplified approach - full implementation would need proper MIDI parsing
-        if ((data & 0x80) && !(data & 0x08)) {  // Status byte, not realtime
-            // Read data bytes based on message type
-            if ((data & 0xF0) != 0xC0 && (data & 0xF0) != 0xD0) {  // Not Program Change or Channel Pressure
-                // 3-byte message
-                if (uart_available(MIDI_SERIAL_PORT) >= 2) {
-                    byte2 = uart_getchar(MIDI_SERIAL_PORT);
-                    byte3 = uart_getchar(MIDI_SERIAL_PORT);
-                    length = 3;
-                }
-            } else {
-                // 2-byte message
-                if (uart_available(MIDI_SERIAL_PORT) >= 1) {
-                    byte2 = uart_getchar(MIDI_SERIAL_PORT);
-                    length = 2;
-                }
-            }
-        }
-
-        // Route the MIDI IN data based on current mode
-        route_midi_in_data(byte1, byte2, byte3, length);
-
-        // If in PROCESS mode, feed data to the MIDI device for keyboard processing
-        if (midi_in_mode == MIDI_IN_PROCESS) {
-            uint8_t input_data[3] = {byte1, byte2, byte3};
-            midi_device_input(device, length, input_data);
-        }
-    }
-}
-
-// Initialize serial MIDI
-void setup_serial_midi(void) {
-    // Initialize UART for MIDI (31250 baud)
-    uart_init(MIDI_SERIAL_PORT, 31250);
-
-    // Initialize the MIDI device
-    midi_device_init(&midi_serial_device);
-    midi_device_set_send_func(&midi_serial_device, serial_midi_send_func);
-    midi_device_set_pre_input_process_func(&midi_serial_device, serial_midi_get_func);
-}
+extern MidiDevice midi_serial_device;  // Serial MIDI device (hardware MIDI)
 
 // Route MIDI data from hardware MIDI IN based on current mode
 void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes) {
@@ -4519,10 +4509,6 @@ void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num
                 midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
             }
             break;
-
-        case MIDI_IN_IGNORE:
-            // Ignore all MIDI In data - do nothing
-            break;
     }
 }
 
@@ -4538,10 +4524,6 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
             // Process through keyboard (default behavior)
             // This happens automatically via QMK's MIDI system
             break;
-
-        case USB_MIDI_IGNORE:
-            // Ignore all USB MIDI data - do nothing
-            break;
     }
 }
 #endif // MIDI_SERIAL_ENABLE
@@ -4549,6 +4531,8 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 // Toggle MIDI In routing mode
 void toggle_midi_in_mode(void) {
     midi_in_mode = (midi_in_mode + 1) % 5;  // Cycle through 5 modes
+    // Save ALL settings to EEPROM (syncs all globals automatically)
+    save_keyboard_settings_to_slot(0);
     // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
     snprintf(mode_display_msg, sizeof(mode_display_msg), "MIDI IN: %s | %s",
@@ -4563,6 +4547,8 @@ void toggle_midi_in_mode(void) {
 // Toggle USB MIDI routing mode
 void toggle_usb_midi_mode(void) {
     usb_midi_mode = (usb_midi_mode + 1) % 3;  // Cycle through 3 modes
+    // Save ALL settings to EEPROM (syncs all globals automatically)
+    save_keyboard_settings_to_slot(0);
     // Show mode on OLED temporarily
     #ifdef OLED_ENABLE
     snprintf(mode_display_msg, sizeof(mode_display_msg), "USB MIDI: %s | %s",
@@ -4577,6 +4563,8 @@ void toggle_usb_midi_mode(void) {
 // Toggle MIDI clock source
 void toggle_midi_clock_source(void) {
     midi_clock_source = (midi_clock_source + 1) % 3;  // Cycle through 3 sources
+    // Save ALL settings to EEPROM (syncs all globals automatically)
+    save_keyboard_settings_to_slot(0);
     // Show clock source on OLED temporarily
     #ifdef OLED_ENABLE
     snprintf(mode_display_msg, sizeof(mode_display_msg), "CLOCK: %s",
@@ -10279,13 +10267,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;  // Skip further processing
     }
 
-    if (keycode == MIDI_CLOCK_SRC_TOG) {
-        if (record->event.pressed) {
-            toggle_midi_clock_source();
-        }
-        return false;  // Skip further processing
-    }
-
     if (keycode == 0xC929) {
         if (record->event.pressed) {
             // Key pressed - start timer
@@ -12139,14 +12120,12 @@ bool oled_task_user(void) {
     // Write the layer information to the OLED
     oled_write_P(str, false);
 
-    // Display temporary mode message if active
-    if (mode_display_active) {
-        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
-            oled_write(mode_display_msg, false);
-        } else {
-            mode_display_active = false;
-        }
-    }
+    // Display MIDI routing modes on a new line
+    char midi_str[22] = "";
+    snprintf(midi_str, sizeof(midi_str), " %s | %s",
+             midi_in_mode_names[midi_in_mode],
+             usb_midi_mode_names[usb_midi_mode]);
+    oled_write(midi_str, false);
 
     // Render keylog information
     oled_render_keylog();
@@ -12170,11 +12149,6 @@ void matrix_scan_user(void) {
     // Update chord progression timing
     update_chord_progression();
     matrix_scan_user_macro();
-
-#ifdef MIDI_SERIAL_ENABLE
-    // Process serial MIDI (hardware MIDI IN/OUT)
-    midi_device_process(&midi_serial_device);
-#endif
 
     // Check for tap tempo key hold (1.5 seconds = 1500ms)
     if (tap_key_held && (timer_read32() - tap_key_press_time >= 1500)) {

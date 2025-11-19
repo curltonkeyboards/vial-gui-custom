@@ -11369,7 +11369,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			
 				// Add case to your HID handler:
 		case HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED: // 0x55
-			if (length >= 21) { // Header + 15 data bytes
+			if (length >= 24) { // Header + 18 data bytes (added 3 MIDI mode bytes)
 				handle_set_keyboard_config_advanced(&data[6]);
 				send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, NULL, 0);
 			} else {
@@ -12167,7 +12167,12 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     colorblindmode = *ptr++;
     cclooprecording = (*ptr++ != 0);
     truesustain = (*ptr++ != 0);
-    
+
+    // Read MIDI routing and clock modes
+    midi_in_mode = (midi_in_mode_t)(*ptr++);
+    usb_midi_mode = (usb_midi_mode_t)(*ptr++);
+    midi_clock_source = (midi_clock_source_t)(*ptr++);
+
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
     keyboard_settings.keysplit2channel = keysplit2channel;
@@ -12184,7 +12189,10 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
-    
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
+
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
         dprintf("HID: Completed save to slot %d with both basic and advanced settings\n", pending_slot_save);
@@ -12225,10 +12233,10 @@ static void handle_get_keyboard_config(void) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 26);
     wait_ms(5);
     
-    // Packet 2: Advanced settings (15 bytes)
-    uint8_t config_packet2[15];
+    // Packet 2: Advanced settings (18 bytes - added 3 MIDI mode bytes)
+    uint8_t config_packet2[18];
     ptr = config_packet2;
-    
+
     *ptr++ = keyboard_settings.keysplitchannel;
     *ptr++ = keyboard_settings.keysplit2channel;
     *ptr++ = keyboard_settings.keysplitstatus;
@@ -12244,8 +12252,11 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 15);
+    *ptr++ = keyboard_settings.midi_in_mode;
+    *ptr++ = keyboard_settings.usb_midi_mode;
+    *ptr++ = keyboard_settings.midi_clock_source;
+
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 18);
     
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
@@ -12383,11 +12394,11 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 26);
     wait_ms(5);
-    
-    // Packet 2: Advanced settings (15 bytes) - FIXED: Actually fill and send the packet
-    uint8_t config_packet2[15];
+
+    // Packet 2: Advanced settings (18 bytes - added 3 MIDI mode bytes)
+    uint8_t config_packet2[18];
     ptr = config_packet2;
-    
+
     *ptr++ = keyboard_settings.keysplitchannel;
     *ptr++ = keyboard_settings.keysplit2channel;
     *ptr++ = keyboard_settings.keysplitstatus;
@@ -12403,8 +12414,11 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 15);
+    *ptr++ = keyboard_settings.midi_in_mode;
+    *ptr++ = keyboard_settings.usb_midi_mode;
+    *ptr++ = keyboard_settings.midi_clock_source;
+
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 18);
     
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
