@@ -2042,14 +2042,16 @@ class EarTrainerTab(QScrollArea):
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Vertical layout with trainers stacked - Interval at top
-        sections_layout = QVBoxLayout()
-        sections_layout.setSpacing(20)  # Space between trainers
+        # Horizontal layout with trainers side by side, both aligned to top
+        sections_layout = QHBoxLayout()
+        sections_layout.setSpacing(40)  # Horizontal spacing between sections
+        sections_layout.setAlignment(Qt.AlignTop)  # Align to top
         sections_layout.addStretch(1)
 
-        # Interval Trainer section (at top)
+        # Interval Trainer section (left side)
         intervals_section = QVBoxLayout()
         intervals_section.setSpacing(5)
+        intervals_section.setAlignment(Qt.AlignTop)  # Align to top
         interval_label = QLabel("Interval Trainer")
         interval_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         interval_label.setAlignment(Qt.AlignCenter)
@@ -2061,9 +2063,10 @@ class EarTrainerTab(QScrollArea):
 
         sections_layout.addLayout(intervals_section)
 
-        # Chord Trainer section (below interval trainer)
+        # Chord Trainer section (right side)
         chords_section = QVBoxLayout()
         chords_section.setSpacing(5)
+        chords_section.setAlignment(Qt.AlignTop)  # Align to top
         chord_label = QLabel("Chord Trainer")
         chord_label.setStyleSheet("font-size: 11pt; font-weight: 600;")
         chord_label.setAlignment(Qt.AlignCenter)
