@@ -966,7 +966,64 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
-        
+
+        # HE Velocity Settings Group
+        he_velocity_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "HE Velocity Settings"))
+        he_velocity_layout = QGridLayout()
+        he_velocity_layout.setHorizontalSpacing(25)
+        he_velocity_layout.setColumnStretch(0, 1)    # Left spacer
+        he_velocity_layout.setColumnStretch(2, 0)
+        he_velocity_layout.setColumnStretch(4, 0)
+        he_velocity_layout.setColumnStretch(6, 0)
+        he_velocity_layout.setColumnStretch(7, 1)    # Right spacer - centers content
+        he_velocity_group.setLayout(he_velocity_layout)
+        main_layout.addWidget(he_velocity_group)
+
+        # HE Velocity Curve
+        he_velocity_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "HE Curve:")), 0, 1)
+        self.he_velocity_curve = ArrowComboBox()
+        self.he_velocity_curve.setMinimumWidth(120)
+        self.he_velocity_curve.setMinimumHeight(30)
+        self.he_velocity_curve.setMaximumHeight(30)
+        self.he_velocity_curve.setEditable(True)
+        self.he_velocity_curve.lineEdit().setReadOnly(True)
+        self.he_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
+        self.he_velocity_curve.addItem("Softest", 0)
+        self.he_velocity_curve.addItem("Soft", 1)
+        self.he_velocity_curve.addItem("Medium", 2)
+        self.he_velocity_curve.addItem("Hard", 3)
+        self.he_velocity_curve.addItem("Hardest", 4)
+        self.he_velocity_curve.setCurrentIndex(2)  # Default: Medium
+        he_velocity_layout.addWidget(self.he_velocity_curve, 0, 2)
+
+        # HE Velocity Min
+        he_velocity_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "HE Min:")), 0, 3)
+        self.he_velocity_min = ArrowComboBox()
+        self.he_velocity_min.setMinimumWidth(120)
+        self.he_velocity_min.setMinimumHeight(30)
+        self.he_velocity_min.setMaximumHeight(30)
+        self.he_velocity_min.setEditable(True)
+        self.he_velocity_min.lineEdit().setReadOnly(True)
+        self.he_velocity_min.lineEdit().setAlignment(Qt.AlignCenter)
+        for i in range(1, 128):
+            self.he_velocity_min.addItem(str(i), i)
+        self.he_velocity_min.setCurrentIndex(0)  # Default: 1
+        he_velocity_layout.addWidget(self.he_velocity_min, 0, 4)
+
+        # HE Velocity Max
+        he_velocity_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "HE Max:")), 0, 5)
+        self.he_velocity_max = ArrowComboBox()
+        self.he_velocity_max.setMinimumWidth(120)
+        self.he_velocity_max.setMinimumHeight(30)
+        self.he_velocity_max.setMaximumHeight(30)
+        self.he_velocity_max.setEditable(True)
+        self.he_velocity_max.lineEdit().setReadOnly(True)
+        self.he_velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
+        for i in range(1, 128):
+            self.he_velocity_max.addItem(str(i), i)
+        self.he_velocity_max.setCurrentIndex(126)  # Default: 127
+        he_velocity_layout.addWidget(self.he_velocity_max, 0, 6)
+
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
         keysplit_modes_layout = QGridLayout()

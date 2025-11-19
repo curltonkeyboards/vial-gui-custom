@@ -3227,22 +3227,22 @@ KEYCODES_MIDI_VELOCITY = []
 
 for x in range (128):
     KEYCODES_MIDI_VELOCITY.append(K("MI_VELOCITY_{}".format(x),
-                              "Velocity\n{}".format(x),
-                              "Velocity {}".format(x)))
+                              "Fixed\nVelocity\n{}".format(x),
+                              "Fixed Velocity {}".format(x)))
                               
 KEYCODES_MIDI_VELOCITY2 = []
 
 for x in range (128):
     KEYCODES_MIDI_VELOCITY2.append(K("MI_VELOCITY2_{}".format(x),
-                              "KS\nVelocity\n{}".format(x),
-                              "KS\nVelocity {}".format(x)))
-                              
+                              "KS\nFixed\nVelocity\n{}".format(x),
+                              "KS Fixed Velocity {}".format(x)))
+
 KEYCODES_MIDI_VELOCITY3 = []
 
 for x in range (128):
     KEYCODES_MIDI_VELOCITY3.append(K("MI_VELOCITY3_{}".format(x),
-                              "TS\nVelocity\n{}".format(x),
-                              "TS\nVelocity {}".format(x)))
+                              "TS\nFixed\nVelocity\n{}".format(x),
+                              "TS Fixed Velocity {}".format(x)))
 
 KEYCODES_MIDI_BANK = []
 KEYCODES_MIDI_BANK_MSB = []
@@ -3274,6 +3274,50 @@ for x in range(128):
                               "Program\n{}".format(x),
                               "Program change {}".format(x)))
 
+# HE Velocity Curve keycodes
+KEYCODES_HE_CURVE = []
+KEYCODES_HE_CURVE.append(K("MI_HE_CURVE_SOFTEST",
+                           "HE Curve\nSoftest",
+                           "Set HE velocity curve to Softest"))
+KEYCODES_HE_CURVE.append(K("MI_HE_CURVE_SOFT",
+                           "HE Curve\nSoft",
+                           "Set HE velocity curve to Soft"))
+KEYCODES_HE_CURVE.append(K("MI_HE_CURVE_MEDIUM",
+                           "HE Curve\nMedium",
+                           "Set HE velocity curve to Medium"))
+KEYCODES_HE_CURVE.append(K("MI_HE_CURVE_HARD",
+                           "HE Curve\nHard",
+                           "Set HE velocity curve to Hard"))
+KEYCODES_HE_CURVE.append(K("MI_HE_CURVE_HARDEST",
+                           "HE Curve\nHardest",
+                           "Set HE velocity curve to Hardest"))
+
+# HE Velocity Range keycodes - common presets
+KEYCODES_HE_VEL_RANGE = []
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_FULL",
+                               "HE Vel\nFull\n1-127",
+                               "Set HE velocity range to full (1-127)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_LOW",
+                               "HE Vel\nLow\n1-64",
+                               "Set HE velocity range to low (1-64)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_HIGH",
+                               "HE Vel\nHigh\n64-127",
+                               "Set HE velocity range to high (64-127)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_MID",
+                               "HE Vel\nMid\n32-96",
+                               "Set HE velocity range to mid (32-96)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_QUIET",
+                               "HE Vel\nQuiet\n1-32",
+                               "Set HE velocity range to quiet (1-32)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_LOUD",
+                               "HE Vel\nLoud\n96-127",
+                               "Set HE velocity range to loud (96-127)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_VERYNARROW",
+                               "HE Vel\nV.Narrow\n60-68",
+                               "Set HE velocity range to very narrow (60-68)"))
+KEYCODES_HE_VEL_RANGE.append(K("MI_HE_VEL_NARROW",
+                               "HE Vel\nNarrow\n52-76",
+                               "Set HE velocity range to narrow (52-76)"))
 
 K = None
 
@@ -3287,6 +3331,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_EARTRAINER + KEYCODES_SAVE + KEYCODES_SETTINGS1 + KEYCODES_SETTINGS2 + KEYCODES_SETTINGS3 + KEYCODES_CHORDTRAINER + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_RGB_KC_CUSTOM2 + KEYCODES_RGBSAVE + KEYCODES_MIDI_CHANNEL_KEYSPLIT + KEYCODES_MIDI_CHANNEL_KEYSPLIT2 + KEYCODES_KEYSPLIT_BUTTONS +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+KEYCODES_VELOCITY_SHUFFLE + KEYCODES_CC_ENCODERVALUE+ KEYCODES_EXWHEEL +
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_0+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_CHORD_5+KEYCODES_MIDI_SPLIT+KEYCODES_MIDI_SPLIT2+
+                    KEYCODES_HE_CURVE+KEYCODES_HE_VEL_RANGE+
                     KEYCODES_C_CHORDPROG_BASIC_MINOR + KEYCODES_C_CHORDPROG_BASIC_MAJOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_CHORDPROG_EXPERT_MINOR + KEYCODES_C_CHORDPROG_EXPERT_MAJOR + 
                     KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR + 
                     KEYCODES_D_CHORDPROG_BASIC_MINOR + KEYCODES_D_CHORDPROG_BASIC_MAJOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_D_CHORDPROG_EXPERT_MINOR + KEYCODES_D_CHORDPROG_EXPERT_MAJOR + 
