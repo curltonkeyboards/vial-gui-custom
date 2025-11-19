@@ -922,15 +922,15 @@ class KeyboardWidget2(QWidget):
                 encoder_click_0.shift_y += 60  # Match encoder 0
                 encoder_click_0.shift_x -= 50  # Click button - shift left 50 pixels
 
-            # Move the last two encoders down (but 20px more to bring them inward)
-            encoders[2].shift_y += 70  # Was 50, now 70 (20px more down = inward)
-            encoders[3].shift_y += 70
+            # Move the last two encoders down (but 20px more to bring them inward, then up 15px)
+            encoders[2].shift_y += 55  # Was 70, now 55 (moved up 15px)
+            encoders[3].shift_y += 55
             encoders[2].shift_x -= 60  # Down encoder - shift left 60 pixels
             encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
             # Move encoder 1 click button to match encoder 1 position
             if encoder_click_1:
-                encoder_click_1.shift_y += 70  # Match encoder 1
+                encoder_click_1.shift_y += 55  # Match encoder 1
                 encoder_click_1.shift_x -= 50  # Click button - shift left 50 pixels
 
         # Move sustain pedal to correct position
@@ -954,10 +954,10 @@ class KeyboardWidget2(QWidget):
             if not (hasattr(key.desc, 'row') and key.desc.row == 5):
                 max_h = max(max_h, p.y() * (self.scale * 1.5))
 
-        # Move all widgets right 20 pixels and down 20 pixels
+        # Move all widgets right and down to create proper padding
         for widget in self.widgets:
-            widget.shift_x += 30  # Move right
-            widget.shift_y += 20  # Move down
+            widget.shift_x += 130  # Move right 130 pixels (100px more than before)
+            widget.shift_y += 20  # Move down 20 pixels
 
         self.width = round(max_w + 2 * self.padding)
         self.height = round(max_h + 2 * self.padding)
@@ -1130,8 +1130,13 @@ class KeyboardWidget2(QWidget):
 
             # Draw border around encoder widgets
             if isinstance(key, EncoderWidget2):
-                encoder_border_pen = QPen(QColor("#fabcad"))
-                encoder_border_pen.setWidth(2)
+                # Use theme-aware color: white for dark themes, black for light themes
+                bg_color = QApplication.palette().color(QPalette.Window)
+                is_dark_theme = bg_color.lightness() < 128
+                border_color = QColor(Qt.white) if is_dark_theme else QColor(Qt.black)
+
+                encoder_border_pen = QPen(border_color)
+                encoder_border_pen.setWidth(1)  # Thin border
                 qp.setPen(encoder_border_pen)
                 qp.setBrush(Qt.NoBrush)
                 qp.drawPath(key.background_draw_path)
