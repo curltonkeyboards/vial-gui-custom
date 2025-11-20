@@ -2951,18 +2951,16 @@ class GamingConfigurator(BasicEditor):
         min_travel_layout.setSpacing(5)
         min_travel_widget.setLayout(min_travel_layout)
         min_travel_layout.addWidget(QLabel(tr("GamingConfigurator", "Min Travel (mm):")))
-        min_travel_h_layout = QHBoxLayout()
         self.min_travel_slider = QSlider(Qt.Horizontal)
         self.min_travel_slider.setMinimum(0)    # 0.0mm
         self.min_travel_slider.setMaximum(25)   # 2.5mm
         self.min_travel_slider.setValue(10)     # 1.0mm default
         self.min_travel_slider.setTickInterval(1)
         self.min_travel_slider.setMinimumWidth(200)
-        min_travel_h_layout.addWidget(self.min_travel_slider)
+        min_travel_layout.addWidget(self.min_travel_slider)
         self.min_travel_label = QLabel("1.0")
-        self.min_travel_label.setMinimumWidth(40)
-        min_travel_h_layout.addWidget(self.min_travel_label)
-        min_travel_layout.addLayout(min_travel_h_layout)
+        self.min_travel_label.setAlignment(QtCore.Qt.AlignCenter)
+        min_travel_layout.addWidget(self.min_travel_label)
         self.min_travel_slider.valueChanged.connect(
             lambda val: self.min_travel_label.setText(f"{val/10:.1f}")
         )
@@ -2974,18 +2972,16 @@ class GamingConfigurator(BasicEditor):
         max_travel_layout.setSpacing(5)
         max_travel_widget.setLayout(max_travel_layout)
         max_travel_layout.addWidget(QLabel(tr("GamingConfigurator", "Max Travel (mm):")))
-        max_travel_h_layout = QHBoxLayout()
         self.max_travel_slider = QSlider(Qt.Horizontal)
         self.max_travel_slider.setMinimum(0)    # 0.0mm
         self.max_travel_slider.setMaximum(25)   # 2.5mm
         self.max_travel_slider.setValue(20)     # 2.0mm default
         self.max_travel_slider.setTickInterval(1)
         self.max_travel_slider.setMinimumWidth(200)
-        max_travel_h_layout.addWidget(self.max_travel_slider)
+        max_travel_layout.addWidget(self.max_travel_slider)
         self.max_travel_label = QLabel("2.0")
-        self.max_travel_label.setMinimumWidth(40)
-        max_travel_h_layout.addWidget(self.max_travel_label)
-        max_travel_layout.addLayout(max_travel_h_layout)
+        self.max_travel_label.setAlignment(QtCore.Qt.AlignCenter)
+        max_travel_layout.addWidget(self.max_travel_label)
         self.max_travel_slider.valueChanged.connect(
             lambda val: self.max_travel_label.setText(f"{val/10:.1f}")
         )
@@ -3046,14 +3042,21 @@ class GamingConfigurator(BasicEditor):
         # Create 5 columns
         for column_controls in [column1_controls, column2_controls, column3_controls, column4_controls, column5_controls]:
             column_widget = QWidget()
-            column_layout = QGridLayout()
+            column_layout = QVBoxLayout()
             column_layout.setSpacing(5)
             column_widget.setLayout(column_layout)
 
-            for row_idx, (name, control_id) in enumerate(column_controls):
+            for name, control_id in column_controls:
+                # Create horizontal layout for label and button
+                row_widget = QWidget()
+                row_layout = QHBoxLayout()
+                row_layout.setSpacing(5)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_widget.setLayout(row_layout)
+
                 # Control label
                 label = QLabel(name)
-                column_layout.addWidget(label, row_idx, 0)
+                row_layout.addWidget(label)
 
                 # Assign button - 50x50 SQUARE
                 assign_btn = QPushButton("Not Set")
@@ -3061,7 +3064,7 @@ class GamingConfigurator(BasicEditor):
                 assign_btn.setStyleSheet("QPushButton { text-align: center; border-radius: 3px; font-size: 9px; }")
                 assign_btn.setProperty("control_id", control_id)
                 assign_btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
-                column_layout.addWidget(assign_btn, row_idx, 1)
+                row_layout.addWidget(assign_btn)
 
                 # Store reference
                 self.gaming_controls[control_id] = {
@@ -3071,6 +3074,8 @@ class GamingConfigurator(BasicEditor):
                     'col': None,
                     'enabled': False
                 }
+
+                column_layout.addWidget(row_widget)
 
             mappings_layout.addWidget(column_widget)
 
