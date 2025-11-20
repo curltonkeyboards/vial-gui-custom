@@ -3066,6 +3066,9 @@ class GamingConfigurator(BasicEditor):
                 assign_btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
                 row_layout.addWidget(assign_btn)
 
+                # Add stretch to push label and button together to the left
+                row_layout.addStretch()
+
                 # Store reference
                 self.gaming_controls[control_id] = {
                     'button': assign_btn,
