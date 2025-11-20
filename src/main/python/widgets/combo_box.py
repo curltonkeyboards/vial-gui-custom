@@ -2,13 +2,14 @@
 
 from PyQt5.QtWidgets import QComboBox, QStyleOptionComboBox
 from PyQt5.QtGui import QPalette, QPainter, QPolygon, QBrush
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QEvent
 
 
 class ArrowComboBox(QComboBox):
     """
     QComboBox with programmatically drawn dropdown arrow.
     Fixes issues where CSS border triangles don't render properly on some systems.
+    Also allows clicking anywhere on the combobox to open the dropdown.
     """
 
     def paintEvent(self, event):
@@ -37,3 +38,10 @@ class ArrowComboBox(QComboBox):
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(self.palette().color(QPalette.Text)))
         painter.drawPolygon(arrow)
+
+    def mousePressEvent(self, event):
+        """Make the entire combobox clickable to open the dropdown"""
+        if event.button() == Qt.LeftButton:
+            self.showPopup()
+        else:
+            super().mousePressEvent(event)

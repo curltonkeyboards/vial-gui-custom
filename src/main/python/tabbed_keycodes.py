@@ -4378,16 +4378,16 @@ class GamingTab(QScrollArea):
         # Use absolute positioning for buttons on the gamepad
         # We'll position buttons using move() after creating them as children of gamepad_widget
 
-        # Triggers (LT and RT) - LT moved 23px left, RT moved 13px right
+        # Triggers (LT and RT) - LT moved 23px left, RT moved 13px right, both up 15px
         lt_btn = self.create_button("LT", 60, 35)
         if lt_btn:
             lt_btn.setParent(gamepad_widget)
-            lt_btn.move(177, 40)  # Moved 23px left from 200
+            lt_btn.move(177, 25)  # Moved 23px left from 200, 15px up
 
         rt_btn = self.create_button("RT", 60, 35)
         if rt_btn:
             rt_btn.setParent(gamepad_widget)
-            rt_btn.move(503, 40)  # Moved 13px right from 490
+            rt_btn.move(503, 25)  # Moved 13px right from 490, 15px up
 
         # Gaming Mode Toggle (in middle of shoulder buttons) - moved up 10px only
         gaming_mode_btn = self.create_button("GAMING_MODE", 100, 40)
@@ -4395,16 +4395,16 @@ class GamingTab(QScrollArea):
             gaming_mode_btn.setParent(gamepad_widget)
             gaming_mode_btn.move(325, 75)  # Moved up 10px from 85
 
-        # Bumpers (LB and RB) - LB moved 23px left, RB moved 13px right
+        # Bumpers (LB and RB) - LB moved 23px left, RB moved 13px right, both up 15px
         lb_btn = self.create_button("XBOX_LB", 60, 30)
         if lb_btn:
             lb_btn.setParent(gamepad_widget)
-            lb_btn.move(177, 80)  # Moved 23px left from 200
+            lb_btn.move(177, 65)  # Moved 23px left from 200, 15px up
 
         rb_btn = self.create_button("XBOX_RB", 60, 30)
         if rb_btn:
             rb_btn.setParent(gamepad_widget)
-            rb_btn.move(503, 80)  # Moved 13px right from 490
+            rb_btn.move(503, 65)  # Moved 13px right from 490, 15px up
 
         # D-pad (left side) - tapered arrow-shaped buttons, moved up 60px
         # Create custom polygon buttons for dpad with tapered ends
@@ -4412,12 +4412,12 @@ class GamingTab(QScrollArea):
         from PyQt5.QtGui import QPainterPath, QRegion
         from PyQt5.QtCore import QPoint
 
-        # D-pad up: wider at bottom (30px), tapers to curved point at top - moved 20px left
+        # D-pad up: wider at bottom (30px), tapers to curved point at top - moved 20px left, 30px up, 5px right
         dpad_up = self.create_button("DPAD_UP", 30, 52)
         if dpad_up:
             dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(190, 143)  # Moved 20px left from 210
+            dpad_up.move(195, 113)  # Moved 20px left from 210, then 5px right and 30px up
             # Create tapered shape: 30px wide at bottom, tapers to point at top
             path = QPainterPath()
             path.moveTo(15, 52)  # Bottom center
@@ -4429,12 +4429,12 @@ class GamingTab(QScrollArea):
             path.lineTo(15, 52)  # Back to bottom center
             dpad_up.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # D-pad down: wider at top (30px), tapers to curved point at bottom - moved 20px left and 20px up
+        # D-pad down: wider at top (30px), tapers to curved point at bottom - moved 5px left, 14px down, then all dpad 30px up, 5px right
         dpad_down = self.create_button("DPAD_DOWN", 30, 52)
         if dpad_down:
             dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(190, 187)  # Moved 20px left from 210, 20px up from 207
+            dpad_down.move(190, 171)  # 5px left, 14px down from original, then all dpad 30px up, 5px right
             path = QPainterPath()
             path.moveTo(15, 0)   # Top center
             path.lineTo(0, 12)   # Top left
@@ -4445,12 +4445,12 @@ class GamingTab(QScrollArea):
             path.lineTo(15, 0)   # Back to top center
             dpad_down.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # D-pad left: wider at right (30px), tapers to curved point at left - moved 20px left
+        # D-pad left: wider at right (30px), tapers to curved point at left - moved 20px left, then all dpad 30px up, 5px right
         dpad_left = self.create_button("DPAD_LEFT", 52, 30)
         if dpad_left:
             dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
-            dpad_left.move(149, 180)  # Moved 20px left from 169
+            dpad_left.move(154, 150)  # Moved 20px left from 169, then 5px right and 30px up
             path = QPainterPath()
             path.moveTo(52, 15)  # Right center
             path.lineTo(40, 0)   # Right top
@@ -4461,12 +4461,12 @@ class GamingTab(QScrollArea):
             path.lineTo(52, 15)  # Back to right center
             dpad_left.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # D-pad right: wider at left (30px), tapers to curved point at right - moved 40px left total
+        # D-pad right: wider at left (30px), tapers to curved point at right - moved 40px left, then all dpad 30px up, 5px right
         dpad_right = self.create_button("DPAD_RIGHT", 52, 30)
         if dpad_right:
             dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
-            dpad_right.move(203, 180)  # Moved 40px left from 243 (20px + 20px additional)
+            dpad_right.move(208, 150)  # Moved 40px left from 243, then 5px right and 30px up
             path = QPainterPath()
             path.moveTo(0, 15)   # Left center
             path.lineTo(12, 0)   # Left top
@@ -4477,97 +4477,97 @@ class GamingTab(QScrollArea):
             path.lineTo(0, 15)   # Back to left center
             dpad_right.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # Left Analog Stick - moved 23px left
+        # Left Analog Stick - moved 23px left, then 8px right and 25px up
         ls_up = self.create_button("LS_UP", 38, 38)
         if ls_up:
             ls_up.setParent(gamepad_widget)
-            ls_up.move(267, 210)  # Moved 23px left from 290
+            ls_up.move(275, 185)  # Moved 23px left from 290, then 8px right and 25px up
 
         ls_down = self.create_button("LS_DOWN", 38, 38)
         if ls_down:
             ls_down.setParent(gamepad_widget)
-            ls_down.move(267, 286)  # Moved 23px left from 290
+            ls_down.move(275, 261)  # Moved 23px left from 290, then 8px right and 25px up
 
         ls_left = self.create_button("LS_LEFT", 38, 38)
         if ls_left:
             ls_left.setParent(gamepad_widget)
-            ls_left.move(229, 248)  # Moved 23px left from 252
+            ls_left.move(237, 223)  # Moved 23px left from 252, then 8px right and 25px up
 
         ls_right = self.create_button("LS_RIGHT", 38, 38)
         if ls_right:
             ls_right.setParent(gamepad_widget)
-            ls_right.move(305, 248)  # Moved 23px left from 328
+            ls_right.move(313, 223)  # Moved 23px left from 328, then 8px right and 25px up
 
         l3_btn = self.create_button("XBOX_L3", 38, 38)
         if l3_btn:
             l3_btn.setParent(gamepad_widget)
-            l3_btn.move(267, 248)  # Center - moved 23px left from 290
+            l3_btn.move(275, 223)  # Center - moved 23px left from 290, then 8px right and 25px up
 
-        # Center buttons (Back and Start) - moved up 70px (60 + 10 additional)
+        # Center buttons (Back and Start) - moved up 20px
         back_btn = self.create_button("XBOX_BACK", 50, 30)
         if back_btn:
             back_btn.setParent(gamepad_widget)
-            back_btn.move(320, 190)  # Moved up 70px from 260
+            back_btn.move(320, 170)  # Moved up 20px
 
         start_btn = self.create_button("XBOX_START", 50, 30)
         if start_btn:
             start_btn.setParent(gamepad_widget)
-            start_btn.move(380, 190)  # Moved up 70px from 260
+            start_btn.move(380, 170)  # Moved up 20px
 
-        # Right Analog Stick - moved 13px right
+        # Right Analog Stick - moved 13px right, then 25px up
         rs_up = self.create_button("RS_UP", 38, 38)
         if rs_up:
             rs_up.setParent(gamepad_widget)
-            rs_up.move(439, 210)  # Moved 13px right from 426
+            rs_up.move(439, 185)  # Moved 13px right from 426, then 25px up
 
         rs_down = self.create_button("RS_DOWN", 38, 38)
         if rs_down:
             rs_down.setParent(gamepad_widget)
-            rs_down.move(439, 286)  # Moved 13px right from 426
+            rs_down.move(439, 261)  # Moved 13px right from 426, then 25px up
 
         rs_left = self.create_button("RS_LEFT", 38, 38)
         if rs_left:
             rs_left.setParent(gamepad_widget)
-            rs_left.move(401, 248)  # Moved 13px right from 388
+            rs_left.move(401, 223)  # Moved 13px right from 388, then 25px up
 
         rs_right = self.create_button("RS_RIGHT", 38, 38)
         if rs_right:
             rs_right.setParent(gamepad_widget)
-            rs_right.move(477, 248)  # Moved 13px right from 464
+            rs_right.move(477, 223)  # Moved 13px right from 464, then 25px up
 
         r3_btn = self.create_button("XBOX_R3", 38, 38)
         if r3_btn:
             r3_btn.setParent(gamepad_widget)
-            r3_btn.move(439, 248)  # Center - moved 13px right from 426
+            r3_btn.move(439, 223)  # Center - moved 13px right from 426, then 25px up
 
-        # Face Buttons (right side) - Button 1-4 (moved 20px right)
+        # Face Buttons (right side) - Button 1-4 (moved with specific adjustments)
         btn4 = self.create_button("XBOX_Y", 42, 42)
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
             btn4.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn4.move(525, 137)  # Moved 20px right from 505
+            btn4.move(518, 103)  # 7px left, 34px up
 
         btn3 = self.create_button("XBOX_X", 42, 42)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
             btn3.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn3.move(493, 169)  # Moved 20px right from 473
+            btn3.move(485, 140)  # 8px left, 29px up
 
         btn2 = self.create_button("XBOX_B", 42, 42)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
             btn2.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn2.move(557, 169)  # Moved 20px right from 537
+            btn2.move(557, 140)  # 29px up
 
         btn1 = self.create_button("XBOX_A", 42, 42)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
             btn1.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn1.move(525, 201)  # Moved 20px right from 505
+            btn1.move(518, 176)  # 7px left, 25px up
 
         self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
