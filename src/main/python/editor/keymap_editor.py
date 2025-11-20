@@ -810,69 +810,6 @@ class ClickableWidget(QWidget):
         self.clicked.emit()
 
 
-class SustainPedalWidget(QWidget):
-    """Widget containing Pedal and Encoder Buttons sections"""
-
-    def __init__(self):
-        super().__init__()
-
-        self.device = None
-        self.current_layer = 0
-
-        self.setMinimumWidth(200)
-        self.setMaximumWidth(350)
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(main_layout)
-
-        # Pedal section
-        pedal_group = QGroupBox(tr("SustainPedalWidget", "Pedal"))
-        pedal_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
-        pedal_layout = QVBoxLayout()
-        pedal_layout.setSpacing(8)
-        pedal_layout.setContentsMargins(10, 15, 10, 10)
-        pedal_group.setLayout(pedal_layout)
-
-        # Pedal info
-        pedal_info = QLabel(tr("SustainPedalWidget", "Configure sustain pedal on PB10\n(Shows as key above encoder buttons)"))
-        pedal_info.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
-        pedal_info.setWordWrap(True)
-        pedal_layout.addWidget(pedal_info)
-
-        main_layout.addWidget(pedal_group)
-
-        # Encoder Buttons section
-        encoder_group = QGroupBox(tr("SustainPedalWidget", "Encoder Buttons"))
-        encoder_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
-        encoder_layout = QVBoxLayout()
-        encoder_layout.setSpacing(8)
-        encoder_layout.setContentsMargins(10, 15, 10, 10)
-        encoder_group.setLayout(encoder_layout)
-
-        # Encoder info
-        encoder_info = QLabel(tr("SustainPedalWidget", "Encoder click buttons are centered\nbetween encoder up/down buttons"))
-        encoder_info.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
-        encoder_info.setWordWrap(True)
-        encoder_layout.addWidget(encoder_info)
-
-        main_layout.addWidget(encoder_group)
-
-        main_layout.addStretch()
-
-    def set_device(self, device):
-        """Set the device"""
-        self.device = device
-        # Always enable the widget regardless of device type
-        self.setEnabled(True)
-
-    def set_layer(self, layer):
-        """Set current layer"""
-        self.current_layer = layer
-
-
 class KeymapEditor(BasicEditor):
 
     def __init__(self, layout_editor):
@@ -890,23 +827,21 @@ class KeymapEditor(BasicEditor):
         layout_labels_container.addStretch()
         layout_labels_container.addLayout(self.layout_size)
 
-        # Create quick actuation widget and sustain pedal widget
+        # Create quick actuation widget
         self.quick_actuation = QuickActuationWidget()
-        self.sustain_pedal = SustainPedalWidget()
 
         # contains the actual keyboard
         self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Layout with sustain pedal on left, keyboard in center, actuation on right (NO GAP)
+        # Layout with actuation on left, keyboard in center
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(10)  # Small spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
-        keyboard_layout.addWidget(self.sustain_pedal, 0, Qt.AlignTop)
-        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
@@ -997,12 +932,10 @@ class KeymapEditor(BasicEditor):
             TabbedKeycodes.tray.recreate_keycode_buttons()
             self.refresh_layer_display()
             
-        # Set device for quick actuation widget and sustain pedal widget (loads all layers once)
+        # Set device for quick actuation widget (loads all layers once)
         self.quick_actuation.set_device(device)
-        self.sustain_pedal.set_device(device)
         if self.valid():
             self.quick_actuation.set_layer(self.current_layer)
-            self.sustain_pedal.set_layer(self.current_layer)
         self.container.setEnabled(self.valid())
 
     def valid(self):
@@ -1064,9 +997,8 @@ class KeymapEditor(BasicEditor):
     def switch_layer(self, idx):
         self.container.deselect()
         self.current_layer = idx
-        # Update quick actuation widget and sustain pedal widget layer (loads from memory, no lag)
+        # Update quick actuation widget layer (loads from memory, no lag)
         self.quick_actuation.set_layer(idx)
-        self.sustain_pedal.set_layer(idx)
         self.refresh_layer_display()
 
     def set_key(self, keycode):
