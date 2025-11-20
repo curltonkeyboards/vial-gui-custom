@@ -4445,7 +4445,7 @@ class GamingTab(QScrollArea):
             dpad_up.keycode = kc
             dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(182, 102)  # Point at bottom toward center (210, 160)
+            dpad_up.move(180, 105)  # 2px left, 3px down
             # Curved top edge (outside), point at bottom (inside) with 25px taper
             path = QPainterPath()
             path.moveTo(28, 58)  # Bottom point (inside)
@@ -4469,7 +4469,7 @@ class GamingTab(QScrollArea):
             dpad_down.keycode = kc
             dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(182, 160)  # Point at top toward center (210, 160)
+            dpad_down.move(180, 163)  # 2px left, 3px down
             path = QPainterPath()
             path.moveTo(28, 0)   # Top point (inside)
             path.lineTo(3, 25)   # Left side of taper (25px from point)
@@ -4492,7 +4492,7 @@ class GamingTab(QScrollArea):
             dpad_left.keycode = kc
             dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
-            dpad_left.move(152, 132)  # Point at right toward center (210, 160)
+            dpad_left.move(150, 135)  # 2px left, 3px down
             path = QPainterPath()
             path.moveTo(58, 28)  # Right point (inside)
             path.lineTo(33, 3)   # Top side of taper (58-25=33)
@@ -4515,7 +4515,7 @@ class GamingTab(QScrollArea):
             dpad_right.keycode = kc
             dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
-            dpad_right.move(210, 132)  # Point at left toward center (210, 160)
+            dpad_right.move(208, 135)  # 2px left, 3px down
             path = QPainterPath()
             path.moveTo(0, 28)   # Left point (inside)
             path.lineTo(25, 3)   # Top side of taper (25px from point)
