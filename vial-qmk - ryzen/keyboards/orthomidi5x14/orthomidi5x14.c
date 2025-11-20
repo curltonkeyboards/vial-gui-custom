@@ -8894,21 +8894,25 @@ break;
         snprintf(name, sizeof(name), "HE Curve: %s", curve_names[curve_idx]);
     }
     // Handle HE Velocity Range keycodes (combined min/max)
-    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + (127 * 127)) {
+    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8001) {
         uint16_t offset = keycode - HE_VEL_RANGE_BASE;
-        uint8_t min_value = (offset / 127) + 1;
-        uint8_t max_value = (offset % 127) + 1;
+        // Calculate min/max from offset (only valid min < max combinations)
+        uint8_t min_value = 1;
+        uint8_t max_value = 2;
+        uint16_t count = 0;
+
+        for (uint8_t m = 1; m < 127; m++) {
+            for (uint8_t x = m + 1; x < 128; x++) {
+                if (count == offset) {
+                    min_value = m;
+                    max_value = x;
+                    goto found_keylog;
+                }
+                count++;
+            }
+        }
+        found_keylog:
         snprintf(name, sizeof(name), "HE Vel: %d-%d", min_value, max_value);
-    }
-    // Handle HE Velocity Min keycodes
-    else if (keycode >= HE_VEL_MIN_1 && keycode <= HE_VEL_MIN_127) {
-        uint8_t min_value = (keycode - HE_VEL_MIN_1) + 1;
-        snprintf(name, sizeof(name), "HE Min: %d", min_value);
-    }
-    // Handle HE Velocity Max keycodes
-    else if (keycode >= HE_VEL_MAX_1 && keycode <= HE_VEL_MAX_127) {
-        uint8_t max_value = (keycode - HE_VEL_MAX_1) + 1;
-        snprintf(name, sizeof(name), "HE Max: %d", max_value);
     }
 
 	else if (keycode > 0) {
@@ -10627,37 +10631,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 layer_actuations[layer].he_velocity_curve--;
             }
             dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
-        }
-        return false;
-    }
-
-    // Direct HE Velocity Min assignment (HE_VEL_MIN_1 to HE_VEL_MIN_127)
-    if (keycode >= HE_VEL_MIN_1 && keycode <= HE_VEL_MIN_127) {
-        if (record->event.pressed) {
-            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-            uint8_t min_value = (keycode - HE_VEL_MIN_1) + 1;  // 1-127
-            layer_actuations[layer].he_velocity_min = min_value;
-            // Ensure min <= max
-            if (layer_actuations[layer].he_velocity_min > layer_actuations[layer].he_velocity_max) {
-                layer_actuations[layer].he_velocity_min = layer_actuations[layer].he_velocity_max;
-            }
-            dprintf("Layer %d HE Velocity Min: %d\n", layer, layer_actuations[layer].he_velocity_min);
-        }
-        return false;
-    }
-
-    // Direct HE Velocity Max assignment (HE_VEL_MAX_1 to HE_VEL_MAX_127)
-    if (keycode >= HE_VEL_MAX_1 && keycode <= HE_VEL_MAX_127) {
-        if (record->event.pressed) {
-            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-            uint8_t max_value = (keycode - HE_VEL_MAX_1) + 1;  // 1-127
-            layer_actuations[layer].he_velocity_max = max_value;
-            // Ensure min <= max
-            if (layer_actuations[layer].he_velocity_max < layer_actuations[layer].he_velocity_min) {
-                layer_actuations[layer].he_velocity_max = layer_actuations[layer].he_velocity_min;
-            }
-            dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
-            set_keylog(keycode, record);
         }
         return false;
     }
