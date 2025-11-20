@@ -4412,69 +4412,69 @@ class GamingTab(QScrollArea):
         from PyQt5.QtGui import QPainterPath, QRegion
         from PyQt5.QtCore import QPoint
 
-        # D-pad up: wider at bottom (30px), tapers to curved point at top - moved 20px left, 30px up, 5px right
-        dpad_up = self.create_button("DPAD_UP", 30, 52)
+        # D-pad up: wider at bottom (50px + 6px), tapers to curved point at top
+        dpad_up = self.create_button("DPAD_UP", 56, 58)
         if dpad_up:
             dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(195, 113)  # Moved 20px left from 210, then 5px right and 30px up
-            # Create tapered shape: 30px wide at bottom, tapers to point at top
+            dpad_up.move(196, 102)  # Same horizontal as bottom dpad, 11px up from previous
+            # Create tapered shape: 50px wide at bottom, tapers to point at top
             path = QPainterPath()
-            path.moveTo(15, 52)  # Bottom center
-            path.lineTo(0, 40)   # Bottom left
-            path.lineTo(0, 12)   # Top left before taper
-            path.quadTo(5, 0, 15, 0)  # Curved taper to top point
-            path.quadTo(25, 0, 30, 12)  # Curved taper from top point
-            path.lineTo(30, 40)  # Top right
-            path.lineTo(15, 52)  # Back to bottom center
+            path.moveTo(28, 58)  # Bottom center
+            path.lineTo(3, 46)   # Bottom left
+            path.lineTo(3, 12)   # Top left before taper
+            path.quadTo(8, 0, 28, 0)  # Curved taper to top point
+            path.quadTo(48, 0, 53, 12)  # Curved taper from top point
+            path.lineTo(53, 46)  # Top right
+            path.lineTo(28, 58)  # Back to bottom center
             dpad_up.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # D-pad down: wider at top (30px), tapers to curved point at bottom - moved 5px left, 14px down, then all dpad 30px up, 5px right
-        dpad_down = self.create_button("DPAD_DOWN", 30, 52)
+        # D-pad down: wider at top (50px + 6px), tapers to curved point at bottom
+        dpad_down = self.create_button("DPAD_DOWN", 56, 58)
         if dpad_down:
             dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(190, 171)  # 5px left, 14px down from original, then all dpad 30px up, 5px right
+            dpad_down.move(196, 171)  # 6px right from previous, same horizontal as top dpad
             path = QPainterPath()
-            path.moveTo(15, 0)   # Top center
-            path.lineTo(0, 12)   # Top left
-            path.lineTo(0, 40)   # Bottom left before taper
-            path.quadTo(5, 52, 15, 52)  # Curved taper to bottom point
-            path.quadTo(25, 52, 30, 40)  # Curved taper from bottom point
-            path.lineTo(30, 12)  # Bottom right
-            path.lineTo(15, 0)   # Back to top center
+            path.moveTo(28, 0)   # Top center
+            path.lineTo(3, 12)   # Top left
+            path.lineTo(3, 46)   # Bottom left before taper
+            path.quadTo(8, 58, 28, 58)  # Curved taper to bottom point
+            path.quadTo(48, 58, 53, 46)  # Curved taper from bottom point
+            path.lineTo(53, 12)  # Bottom right
+            path.lineTo(28, 0)   # Back to top center
             dpad_down.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # D-pad left: wider at right (30px), tapers to curved point at left - moved 20px left, then all dpad 30px up, 5px right
-        dpad_left = self.create_button("DPAD_LEFT", 52, 30)
+        # D-pad left: wider at right (50px + 6px), tapers to curved point at left
+        dpad_left = self.create_button("DPAD_LEFT", 58, 56)
         if dpad_left:
             dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
-            dpad_left.move(154, 150)  # Moved 20px left from 169, then 5px right and 30px up
+            dpad_left.move(151, 147)  # Adjusted for new size
             path = QPainterPath()
-            path.moveTo(52, 15)  # Right center
-            path.lineTo(40, 0)   # Right top
-            path.lineTo(12, 0)   # Left top before taper
-            path.quadTo(0, 5, 0, 15)  # Curved taper to left point
-            path.quadTo(0, 25, 12, 30)  # Curved taper from left point
-            path.lineTo(40, 30)  # Left bottom
-            path.lineTo(52, 15)  # Back to right center
+            path.moveTo(58, 28)  # Right center
+            path.lineTo(46, 3)   # Right top
+            path.lineTo(12, 3)   # Left top before taper
+            path.quadTo(0, 8, 0, 28)  # Curved taper to left point
+            path.quadTo(0, 48, 12, 53)  # Curved taper from left point
+            path.lineTo(46, 53)  # Left bottom
+            path.lineTo(58, 28)  # Back to right center
             dpad_left.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
-        # D-pad right: wider at left (30px), tapers to curved point at right - moved 40px left, then all dpad 30px up, 5px right
-        dpad_right = self.create_button("DPAD_RIGHT", 52, 30)
+        # D-pad right: wider at left (50px + 6px), tapers to curved point at right
+        dpad_right = self.create_button("DPAD_RIGHT", 58, 56)
         if dpad_right:
             dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
-            dpad_right.move(208, 150)  # Moved 40px left from 243, then 5px right and 30px up
+            dpad_right.move(211, 147)  # Adjusted for new size
             path = QPainterPath()
-            path.moveTo(0, 15)   # Left center
-            path.lineTo(12, 0)   # Left top
-            path.lineTo(40, 0)   # Right top before taper
-            path.quadTo(52, 5, 52, 15)  # Curved taper to right point
-            path.quadTo(52, 25, 40, 30)  # Curved taper from right point
-            path.lineTo(12, 30)  # Right bottom
-            path.lineTo(0, 15)   # Back to left center
+            path.moveTo(0, 28)   # Left center
+            path.lineTo(12, 3)   # Left top
+            path.lineTo(46, 3)   # Right top before taper
+            path.quadTo(58, 8, 58, 28)  # Curved taper to right point
+            path.quadTo(58, 48, 46, 53)  # Curved taper from right point
+            path.lineTo(12, 53)  # Right bottom
+            path.lineTo(0, 28)   # Back to left center
             dpad_right.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
         # Left Analog Stick - moved 23px left, then 8px right and 25px up
@@ -4540,34 +4540,34 @@ class GamingTab(QScrollArea):
             r3_btn.setParent(gamepad_widget)
             r3_btn.move(439, 223)  # Center - moved 13px right from 426, then 25px up
 
-        # Face Buttons (right side) - Button 1-4 (moved with specific adjustments)
+        # Face Buttons (right side) - Button 1-4 (adjusted positions)
         btn4 = self.create_button("XBOX_Y", 42, 42)
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
             btn4.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn4.move(518, 103)  # 7px left, 34px up
+            btn4.move(526, 111)  # Same horizontal as btn1, 8px down
 
         btn3 = self.create_button("XBOX_X", 42, 42)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
             btn3.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn3.move(485, 140)  # 8px left, 29px up
+            btn3.move(485, 143)  # 3px down
 
         btn2 = self.create_button("XBOX_B", 42, 42)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
             btn2.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn2.move(557, 140)  # 29px up
+            btn2.move(557, 143)  # Same vertical as btn3
 
         btn1 = self.create_button("XBOX_A", 42, 42)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
             btn1.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn1.move(518, 176)  # 7px left, 25px up
+            btn1.move(526, 176)  # 8px right
 
         self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
