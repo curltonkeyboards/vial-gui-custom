@@ -2941,53 +2941,49 @@ class GamingConfigurator(BasicEditor):
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
         calibration_group.setMaximumWidth(250)
         calibration_layout = QVBoxLayout()
-        calibration_layout.setSpacing(15)
+        calibration_layout.setSpacing(8)  # Reduced from 15
         calibration_group.setLayout(calibration_layout)
         controls_layout.addWidget(calibration_group, alignment=QtCore.Qt.AlignTop)
+
+        # Helper function to create compact slider
+        def create_compact_slider(label_text, default_value):
+            widget = QWidget()
+            layout = QVBoxLayout()
+            layout.setSpacing(2)  # Minimal spacing
+            layout.setContentsMargins(0, 0, 0, 0)
+            widget.setLayout(layout)
+
+            # Label with value inline
+            label_with_value = QLabel(f"{label_text}: {default_value/10:.1f}")
+            layout.addWidget(label_with_value)
+
+            # Slider
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(0)
+            slider.setMaximum(25)
+            slider.setValue(default_value)
+            slider.setTickInterval(1)
+            slider.setMinimumWidth(200)
+            layout.addWidget(slider)
+
+            # Connect slider to update label
+            slider.valueChanged.connect(
+                lambda val, lbl=label_with_value, txt=label_text: lbl.setText(f"{txt}: {val/10:.1f}")
+            )
+
+            return widget, slider, label_with_value
 
         # LS (Left Stick) Calibration
         ls_label = QLabel("<b>Left Stick</b>")
         calibration_layout.addWidget(ls_label)
 
-        # LS Min Travel
-        ls_min_widget = QWidget()
-        ls_min_layout = QVBoxLayout()
-        ls_min_layout.setSpacing(5)
-        ls_min_widget.setLayout(ls_min_layout)
-        ls_min_layout.addWidget(QLabel(tr("GamingConfigurator", "Min Travel (mm):")))
-        self.ls_min_travel_slider = QSlider(Qt.Horizontal)
-        self.ls_min_travel_slider.setMinimum(0)
-        self.ls_min_travel_slider.setMaximum(25)
-        self.ls_min_travel_slider.setValue(10)
-        self.ls_min_travel_slider.setTickInterval(1)
-        self.ls_min_travel_slider.setMinimumWidth(200)
-        ls_min_layout.addWidget(self.ls_min_travel_slider)
-        self.ls_min_travel_label = QLabel("1.0")
-        self.ls_min_travel_label.setAlignment(QtCore.Qt.AlignCenter)
-        ls_min_layout.addWidget(self.ls_min_travel_label)
-        self.ls_min_travel_slider.valueChanged.connect(
-            lambda val: self.ls_min_travel_label.setText(f"{val/10:.1f}")
+        ls_min_widget, self.ls_min_travel_slider, self.ls_min_travel_label = create_compact_slider(
+            tr("GamingConfigurator", "Min Travel (mm)"), 10
         )
         calibration_layout.addWidget(ls_min_widget)
 
-        # LS Max Travel
-        ls_max_widget = QWidget()
-        ls_max_layout = QVBoxLayout()
-        ls_max_layout.setSpacing(5)
-        ls_max_widget.setLayout(ls_max_layout)
-        ls_max_layout.addWidget(QLabel(tr("GamingConfigurator", "Max Travel (mm):")))
-        self.ls_max_travel_slider = QSlider(Qt.Horizontal)
-        self.ls_max_travel_slider.setMinimum(0)
-        self.ls_max_travel_slider.setMaximum(25)
-        self.ls_max_travel_slider.setValue(20)
-        self.ls_max_travel_slider.setTickInterval(1)
-        self.ls_max_travel_slider.setMinimumWidth(200)
-        ls_max_layout.addWidget(self.ls_max_travel_slider)
-        self.ls_max_travel_label = QLabel("2.0")
-        self.ls_max_travel_label.setAlignment(QtCore.Qt.AlignCenter)
-        ls_max_layout.addWidget(self.ls_max_travel_label)
-        self.ls_max_travel_slider.valueChanged.connect(
-            lambda val: self.ls_max_travel_label.setText(f"{val/10:.1f}")
+        ls_max_widget, self.ls_max_travel_slider, self.ls_max_travel_label = create_compact_slider(
+            tr("GamingConfigurator", "Max Travel (mm)"), 20
         )
         calibration_layout.addWidget(ls_max_widget)
 
@@ -2995,45 +2991,13 @@ class GamingConfigurator(BasicEditor):
         rs_label = QLabel("<b>Right Stick</b>")
         calibration_layout.addWidget(rs_label)
 
-        # RS Min Travel
-        rs_min_widget = QWidget()
-        rs_min_layout = QVBoxLayout()
-        rs_min_layout.setSpacing(5)
-        rs_min_widget.setLayout(rs_min_layout)
-        rs_min_layout.addWidget(QLabel(tr("GamingConfigurator", "Min Travel (mm):")))
-        self.rs_min_travel_slider = QSlider(Qt.Horizontal)
-        self.rs_min_travel_slider.setMinimum(0)
-        self.rs_min_travel_slider.setMaximum(25)
-        self.rs_min_travel_slider.setValue(10)
-        self.rs_min_travel_slider.setTickInterval(1)
-        self.rs_min_travel_slider.setMinimumWidth(200)
-        rs_min_layout.addWidget(self.rs_min_travel_slider)
-        self.rs_min_travel_label = QLabel("1.0")
-        self.rs_min_travel_label.setAlignment(QtCore.Qt.AlignCenter)
-        rs_min_layout.addWidget(self.rs_min_travel_label)
-        self.rs_min_travel_slider.valueChanged.connect(
-            lambda val: self.rs_min_travel_label.setText(f"{val/10:.1f}")
+        rs_min_widget, self.rs_min_travel_slider, self.rs_min_travel_label = create_compact_slider(
+            tr("GamingConfigurator", "Min Travel (mm)"), 10
         )
         calibration_layout.addWidget(rs_min_widget)
 
-        # RS Max Travel
-        rs_max_widget = QWidget()
-        rs_max_layout = QVBoxLayout()
-        rs_max_layout.setSpacing(5)
-        rs_max_widget.setLayout(rs_max_layout)
-        rs_max_layout.addWidget(QLabel(tr("GamingConfigurator", "Max Travel (mm):")))
-        self.rs_max_travel_slider = QSlider(Qt.Horizontal)
-        self.rs_max_travel_slider.setMinimum(0)
-        self.rs_max_travel_slider.setMaximum(25)
-        self.rs_max_travel_slider.setValue(20)
-        self.rs_max_travel_slider.setTickInterval(1)
-        self.rs_max_travel_slider.setMinimumWidth(200)
-        rs_max_layout.addWidget(self.rs_max_travel_slider)
-        self.rs_max_travel_label = QLabel("2.0")
-        self.rs_max_travel_label.setAlignment(QtCore.Qt.AlignCenter)
-        rs_max_layout.addWidget(self.rs_max_travel_label)
-        self.rs_max_travel_slider.valueChanged.connect(
-            lambda val: self.rs_max_travel_label.setText(f"{val/10:.1f}")
+        rs_max_widget, self.rs_max_travel_slider, self.rs_max_travel_label = create_compact_slider(
+            tr("GamingConfigurator", "Max Travel (mm)"), 20
         )
         calibration_layout.addWidget(rs_max_widget)
 
@@ -3041,45 +3005,13 @@ class GamingConfigurator(BasicEditor):
         trigger_label = QLabel("<b>Triggers</b>")
         calibration_layout.addWidget(trigger_label)
 
-        # Trigger Min Travel
-        trigger_min_widget = QWidget()
-        trigger_min_layout = QVBoxLayout()
-        trigger_min_layout.setSpacing(5)
-        trigger_min_widget.setLayout(trigger_min_layout)
-        trigger_min_layout.addWidget(QLabel(tr("GamingConfigurator", "Min Travel (mm):")))
-        self.trigger_min_travel_slider = QSlider(Qt.Horizontal)
-        self.trigger_min_travel_slider.setMinimum(0)
-        self.trigger_min_travel_slider.setMaximum(25)
-        self.trigger_min_travel_slider.setValue(10)
-        self.trigger_min_travel_slider.setTickInterval(1)
-        self.trigger_min_travel_slider.setMinimumWidth(200)
-        trigger_min_layout.addWidget(self.trigger_min_travel_slider)
-        self.trigger_min_travel_label = QLabel("1.0")
-        self.trigger_min_travel_label.setAlignment(QtCore.Qt.AlignCenter)
-        trigger_min_layout.addWidget(self.trigger_min_travel_label)
-        self.trigger_min_travel_slider.valueChanged.connect(
-            lambda val: self.trigger_min_travel_label.setText(f"{val/10:.1f}")
+        trigger_min_widget, self.trigger_min_travel_slider, self.trigger_min_travel_label = create_compact_slider(
+            tr("GamingConfigurator", "Min Travel (mm)"), 10
         )
         calibration_layout.addWidget(trigger_min_widget)
 
-        # Trigger Max Travel
-        trigger_max_widget = QWidget()
-        trigger_max_layout = QVBoxLayout()
-        trigger_max_layout.setSpacing(5)
-        trigger_max_widget.setLayout(trigger_max_layout)
-        trigger_max_layout.addWidget(QLabel(tr("GamingConfigurator", "Max Travel (mm):")))
-        self.trigger_max_travel_slider = QSlider(Qt.Horizontal)
-        self.trigger_max_travel_slider.setMinimum(0)
-        self.trigger_max_travel_slider.setMaximum(25)
-        self.trigger_max_travel_slider.setValue(20)
-        self.trigger_max_travel_slider.setTickInterval(1)
-        self.trigger_max_travel_slider.setMinimumWidth(200)
-        trigger_max_layout.addWidget(self.trigger_max_travel_slider)
-        self.trigger_max_travel_label = QLabel("2.0")
-        self.trigger_max_travel_label.setAlignment(QtCore.Qt.AlignCenter)
-        trigger_max_layout.addWidget(self.trigger_max_travel_label)
-        self.trigger_max_travel_slider.valueChanged.connect(
-            lambda val: self.trigger_max_travel_label.setText(f"{val/10:.1f}")
+        trigger_max_widget, self.trigger_max_travel_slider, self.trigger_max_travel_label = create_compact_slider(
+            tr("GamingConfigurator", "Max Travel (mm)"), 20
         )
         calibration_layout.addWidget(trigger_max_widget)
 
@@ -3361,13 +3293,13 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(False)
                 self.trigger_max_travel_slider.blockSignals(False)
 
-                # Update labels
-                self.ls_min_travel_label.setText(f"{settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                self.ls_max_travel_label.setText(f"{settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                self.rs_min_travel_label.setText(f"{settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                self.rs_max_travel_label.setText(f"{settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                self.trigger_min_travel_label.setText(f"{settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                self.trigger_max_travel_label.setText(f"{settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                # Update labels (with inline format)
+                self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
+                self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
+                self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
+                self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
+                self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
+                self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
 
                 QMessageBox.information(None, "Success", "Gaming configuration loaded from keyboard")
             else:
@@ -3407,6 +3339,8 @@ class GamingConfigurator(BasicEditor):
         super().rebuild(device)
         if self.valid():
             self.keyboard = device.keyboard
+            # Set keyboard reference for tabbed keycodes (so GamingTab can access it)
+            self.tabbed_keycodes.set_keyboard(self.keyboard)
             self.tabbed_keycodes.recreate_keycode_buttons()
             # Try to load settings silently without showing message boxes
             try:
@@ -3434,13 +3368,13 @@ class GamingConfigurator(BasicEditor):
                     self.trigger_min_travel_slider.blockSignals(False)
                     self.trigger_max_travel_slider.blockSignals(False)
 
-                    # Update labels
-                    self.ls_min_travel_label.setText(f"{settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                    self.ls_max_travel_label.setText(f"{settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                    self.rs_min_travel_label.setText(f"{settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                    self.rs_max_travel_label.setText(f"{settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                    self.trigger_min_travel_label.setText(f"{settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                    self.trigger_max_travel_label.setText(f"{settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                    # Update labels (with inline format)
+                    self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
+                    self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
+                    self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
+                    self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
+                    self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
+                    self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
             except:
                 # Silently fail during rebuild - user can manually load if needed
                 pass
