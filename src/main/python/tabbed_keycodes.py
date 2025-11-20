@@ -2,7 +2,7 @@
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
 from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
-from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap
+from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap, QPainterPath, QRegion
 
 from constants import KEYCODE_BTN_RATIO
 from widgets.display_keyboard import DisplayKeyboard
@@ -4318,6 +4318,33 @@ class GamepadWidget(QWidget):
             """)
 
 
+class DpadButton(QPushButton):
+    """Custom QPushButton that draws a border along its masked shape"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.border_path = None
+        self.border_color = QColor(85, 85, 85)  # #555555
+        self.border_width = 2
+
+    def set_border_path(self, path):
+        """Set the path to draw the border along"""
+        self.border_path = QPainterPath(path)
+
+    def paintEvent(self, event):
+        # Let the parent draw the button normally
+        super().paintEvent(event)
+
+        # Draw the border on top
+        if self.border_path:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+            pen = QPen(self.border_color, self.border_width)
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPath(self.border_path)
+
+
 class GamingTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
@@ -4408,17 +4435,17 @@ class GamingTab(QScrollArea):
 
         # D-pad (left side) - tapered arrow-shaped buttons, moved up 60px
         # Create custom polygon buttons for dpad with tapered ends
-        from PyQt5.QtWidgets import QWidget as QW
-        from PyQt5.QtGui import QPainterPath, QRegion
-        from PyQt5.QtCore import QPoint
 
         # D-pad up: curved top (outside), tapers to point at bottom (inside, 25px taper)
-        dpad_up = self.create_button("DPAD_UP", 56, 58)
-        if dpad_up:
+        kc = self.get_keycode("DPAD_UP")
+        if kc:
+            dpad_up = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_up.setFixedSize(56, 58)
+            dpad_up.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_up.keycode = kc
             dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
             dpad_up.move(182, 102)  # Point at bottom toward center (210, 160)
-            dpad_up.setStyleSheet("border: 2px solid #555555;")
             # Curved top edge (outside), point at bottom (inside) with 25px taper
             path = QPainterPath()
             path.moveTo(28, 58)  # Bottom point (inside)
@@ -4429,15 +4456,20 @@ class GamingTab(QScrollArea):
             path.quadTo(48, 3, 53, 8)  # Curved top-right corner
             path.lineTo(53, 33)  # Right straight section
             path.lineTo(28, 58)  # Back to bottom point
+            path.closeSubpath()
             dpad_up.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_up.set_border_path(path)
 
         # D-pad down: curved bottom (outside), tapers to point at top (inside, 25px taper)
-        dpad_down = self.create_button("DPAD_DOWN", 56, 58)
-        if dpad_down:
+        kc = self.get_keycode("DPAD_DOWN")
+        if kc:
+            dpad_down = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_down.setFixedSize(56, 58)
+            dpad_down.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_down.keycode = kc
             dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
             dpad_down.move(182, 160)  # Point at top toward center (210, 160)
-            dpad_down.setStyleSheet("border: 2px solid #555555;")
             path = QPainterPath()
             path.moveTo(28, 0)   # Top point (inside)
             path.lineTo(3, 25)   # Left side of taper (25px from point)
@@ -4447,15 +4479,20 @@ class GamingTab(QScrollArea):
             path.quadTo(48, 55, 53, 50)  # Curved bottom-right corner
             path.lineTo(53, 25)  # Right straight section
             path.lineTo(28, 0)   # Back to top point
+            path.closeSubpath()
             dpad_down.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_down.set_border_path(path)
 
         # D-pad left: curved left (outside), tapers to point at right (inside, 25px taper)
-        dpad_left = self.create_button("DPAD_LEFT", 58, 56)
-        if dpad_left:
+        kc = self.get_keycode("DPAD_LEFT")
+        if kc:
+            dpad_left = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_left.setFixedSize(58, 56)
+            dpad_left.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_left.keycode = kc
             dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
             dpad_left.move(152, 132)  # Point at right toward center (210, 160)
-            dpad_left.setStyleSheet("border: 2px solid #555555;")
             path = QPainterPath()
             path.moveTo(58, 28)  # Right point (inside)
             path.lineTo(33, 3)   # Top side of taper (58-25=33)
@@ -4465,15 +4502,20 @@ class GamingTab(QScrollArea):
             path.quadTo(3, 48, 8, 53)  # Curved bottom-left corner
             path.lineTo(33, 53)  # Bottom straight section
             path.lineTo(58, 28)  # Back to right point
+            path.closeSubpath()
             dpad_left.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_left.set_border_path(path)
 
         # D-pad right: curved right (outside), tapers to point at left (inside, 25px taper)
-        dpad_right = self.create_button("DPAD_RIGHT", 58, 56)
-        if dpad_right:
+        kc = self.get_keycode("DPAD_RIGHT")
+        if kc:
+            dpad_right = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_right.setFixedSize(58, 56)
+            dpad_right.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_right.keycode = kc
             dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
             dpad_right.move(210, 132)  # Point at left toward center (210, 160)
-            dpad_right.setStyleSheet("border: 2px solid #555555;")
             path = QPainterPath()
             path.moveTo(0, 28)   # Left point (inside)
             path.lineTo(25, 3)   # Top side of taper (25px from point)
@@ -4483,7 +4525,9 @@ class GamingTab(QScrollArea):
             path.quadTo(55, 48, 50, 53)  # Curved bottom-right corner
             path.lineTo(25, 53)  # Bottom straight section
             path.lineTo(0, 28)   # Back to left point
+            path.closeSubpath()
             dpad_right.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_right.set_border_path(path)
 
         # Left Analog Stick - moved 23px left, then 8px right and 25px up
         ls_up = self.create_button("LS_UP", 38, 38)
