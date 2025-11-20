@@ -3257,8 +3257,8 @@ KEYCODES_HE_VELOCITY_CURVE = [
 # Generate all valid combinations for proper keymap display
 KEYCODES_HE_VELOCITY_RANGE = []
 
-for min_val in range(1, 127):  # 1 to 126
-    for max_val in range(min_val + 1, 128):  # min+1 to 127 (ensures min < max)
+for min_val in range(1, 128):  # 1 to 127
+    for max_val in range(min_val, 128):  # min to 127 (allows min == max for fixed velocity)
         KEYCODES_HE_VELOCITY_RANGE.append(K("HE_VEL_RANGE_{}_{}".format(min_val, max_val),
                                   "VEL\n{}\n{}".format(min_val, max_val),
                                   "HE Velocity Range {}-{}".format(min_val, max_val)))
