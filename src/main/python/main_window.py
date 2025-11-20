@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
         # Initialize the new configurators
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
-        self.gaming_configurator = GamingConfigurator(self.layout_editor)
+        self.gaming_configurator = GamingConfigurator()
 
         # Initialize MIDI Patch and Loop Manager tabs
         self.midi_patchbay = MIDIPatchBay()

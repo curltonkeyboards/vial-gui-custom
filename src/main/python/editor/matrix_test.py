@@ -2910,10 +2910,9 @@ class LayerActuationConfigurator(BasicEditor):
 
 
 class GamingConfigurator(BasicEditor):
-    
-    def __init__(self, layout_editor):
+
+    def __init__(self):
         super().__init__()
-        self.layout_editor = layout_editor
         self.keyboard = None
         self.gaming_controls = {}
         self.active_control_id = None  # Track which control is being assigned
