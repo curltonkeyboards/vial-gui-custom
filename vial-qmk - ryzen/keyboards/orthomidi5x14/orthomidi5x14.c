@@ -50,8 +50,8 @@ extern MidiDevice midi_device;
 #define HE_CURVE_HARD       0xCCB3
 #define HE_CURVE_HARDEST    0xCCB4
 
-// HE Velocity Range keycodes (combined min/max) - starts at 0xCCB5
-// Base address for range keycodes (16,129 keycodes, allows min == max for fixed velocity)
+// HE Velocity Range keycodes (combined min/max where min ≤ max) - starts at 0xCCB5
+// Base address for range keycodes (8,128 keycodes total: 127×128/2 triangular number)
 #define HE_VEL_RANGE_BASE   0xCCB5
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
@@ -8889,16 +8889,16 @@ break;
         uint8_t curve_idx = keycode - HE_CURVE_SOFTEST;
         snprintf(name, sizeof(name), "HE Curve: %s", curve_names[curve_idx]);
     }
-    // Handle HE Velocity Range keycodes (combined min/max, allows min == max for fixed velocity)
-    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 16129) {
+    // Handle HE Velocity Range keycodes (min ≤ max only, 8,128 keycodes)
+    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8128) {
         uint16_t offset = keycode - HE_VEL_RANGE_BASE;
-        // Calculate min/max from offset (allows min == max)
+        // Calculate min/max from offset using matching generation order
         uint8_t min_value = 1;
         uint8_t max_value = 1;
         uint16_t count = 0;
 
-        for (uint8_t m = 1; m < 128; m++) {
-            for (uint8_t x = m; x < 128; x++) {
+        for (uint8_t m = 1; m <= 127; m++) {
+            for (uint8_t x = m; x <= 127; x++) {
                 if (count == offset) {
                     min_value = m;
                     max_value = x;
@@ -10672,18 +10672,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // HE Velocity Range (combined min/max, allows min == max for fixed velocity) - affects ALL layers
-    if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 16129) {
+    // HE Velocity Range (min ≤ max only, 8,128 keycodes) - affects ALL layers
+    if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8128) {
         if (record->event.pressed) {
             uint16_t offset = keycode - HE_VEL_RANGE_BASE;
 
-            // Calculate min/max from offset (allows min == max)
+            // Calculate min/max from offset using matching generation order
             uint8_t min_value = 1;
             uint8_t max_value = 1;
             uint16_t count = 0;
 
-            for (uint8_t m = 1; m < 128; m++) {
-                for (uint8_t x = m; x < 128; x++) {
+            for (uint8_t m = 1; m <= 127; m++) {
+                for (uint8_t x = m; x <= 127; x++) {
                     if (count == offset) {
                         min_value = m;
                         max_value = x;

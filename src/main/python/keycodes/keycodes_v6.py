@@ -2313,11 +2313,11 @@ for x in range(128):
     for y in range(128):
         keycodes_v6.kc["MI_CC_{}_{}".format(x, y)] = keycodes_v6.kc["MI_CC_0_0"] + (x * 128) + y
 
-# Generate HE Velocity Range keycodes dynamically (allows min == max for fixed velocity)
+# Generate HE Velocity Range keycodes dynamically (min ≤ max only, 8,128 keycodes)
 base_addr = keycodes_v6.kc["HE_VEL_RANGE_1_1"]
 idx = 0
 for min_val in range(1, 128):  # 1 to 127
-    for max_val in range(min_val, 128):  # min to 127 (allows min == max)
+    for max_val in range(min_val, 128):  # min to 127 (includes min == max for fixed velocity)
         keycodes_v6.kc["HE_VEL_RANGE_{}_{}".format(min_val, max_val)] = base_addr + idx
         idx += 1
 

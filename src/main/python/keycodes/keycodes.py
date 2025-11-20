@@ -3253,12 +3253,12 @@ KEYCODES_HE_VELOCITY_CURVE = [
     K("HE_CURVE_HARDEST", "HE Curve\nHardest", "HE Velocity Curve Hardest"),
 ]
 
-# HE Velocity Range keycodes (min/max pairs where min < max)
-# Generate all valid combinations for proper keymap display
+# HE Velocity Range keycodes (min/max pairs where min ≤ max)
+# Generates 8,128 keycodes total (127×128/2 triangular number)
 KEYCODES_HE_VELOCITY_RANGE = []
 
 for min_val in range(1, 128):  # 1 to 127
-    for max_val in range(min_val, 128):  # min to 127 (allows min == max for fixed velocity)
+    for max_val in range(min_val, 128):  # min to 127 (includes min == max for fixed velocity)
         KEYCODES_HE_VELOCITY_RANGE.append(K("HE_VEL_RANGE_{}_{}".format(min_val, max_val),
                                   "VEL\n{}\n{}".format(min_val, max_val),
                                   "HE Velocity Range {}-{}".format(min_val, max_val)))
