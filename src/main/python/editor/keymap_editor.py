@@ -152,7 +152,7 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('rapid', v, self.rapid_value_label)
         )
         
-        # MIDI Keys Actuation slider (visible when advanced is shown)
+        # MIDI Keys Actuation slider - ALWAYS VISIBLE
         midi_slider_layout = QHBoxLayout()
         midi_slider_layout.setContentsMargins(0, 0, 0, 0)
         midi_slider_layout.setSpacing(6)
@@ -160,32 +160,28 @@ class QuickActuationWidget(QGroupBox):
         midi_label.setMinimumWidth(90)
         midi_label.setMaximumWidth(90)
         midi_slider_layout.addWidget(midi_label)
-        
+
         self.midi_slider = QSlider(Qt.Horizontal)
         self.midi_slider.setMinimum(0)
         self.midi_slider.setMaximum(100)
         self.midi_slider.setValue(80)
         midi_slider_layout.addWidget(self.midi_slider, 1)
-        
+
         self.midi_value_label = QLabel("2.00mm")
         self.midi_value_label.setMinimumWidth(50)
         self.midi_value_label.setMaximumWidth(50)
         self.midi_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
         midi_slider_layout.addWidget(self.midi_value_label)
-        
-        self.midi_widget = QWidget()
-        self.midi_widget.setLayout(midi_slider_layout)
-        self.midi_widget.setVisible(False)
-        layout.addWidget(self.midi_widget)
-        
+
+        layout.addLayout(midi_slider_layout)
+
         self.midi_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('midi', v, self.midi_value_label)
         )
-        
-        # Enable MIDI Rapidfire checkbox (visible when advanced is shown)
+
+        # Enable MIDI Rapidfire checkbox - ALWAYS VISIBLE
         self.midi_rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable MIDI Rapidfire"))
         self.midi_rapid_checkbox.setChecked(False)
-        self.midi_rapid_checkbox.setVisible(False)
         layout.addWidget(self.midi_rapid_checkbox)
         self.midi_rapid_checkbox.stateChanged.connect(self.on_midi_rapidfire_toggled)
         
@@ -248,7 +244,87 @@ class QuickActuationWidget(QGroupBox):
         self.midi_rapid_vel_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('midi_rapid_vel', v, self.midi_rapid_vel_value_label)
         )
-        
+
+        # === VELOCITY CURVE CONTROLS (always visible) ===
+        # Velocity Curve combo
+        curve_layout = QHBoxLayout()
+        curve_layout.setContentsMargins(0, 0, 0, 0)
+        curve_layout.setSpacing(6)
+        curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
+        curve_label.setMinimumWidth(90)
+        curve_label.setMaximumWidth(90)
+        curve_layout.addWidget(curve_label)
+
+        self.he_curve_combo = ArrowComboBox()
+        self.he_curve_combo.setMaximumHeight(30)
+        self.he_curve_combo.setMaximumWidth(180)
+        self.he_curve_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.he_curve_combo.setEditable(True)
+        self.he_curve_combo.lineEdit().setReadOnly(True)
+        self.he_curve_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        self.he_curve_combo.addItem("Softest", 0)
+        self.he_curve_combo.addItem("Soft", 1)
+        self.he_curve_combo.addItem("Medium", 2)
+        self.he_curve_combo.addItem("Hard", 3)
+        self.he_curve_combo.addItem("Hardest", 4)
+        self.he_curve_combo.setCurrentIndex(2)  # Default: Medium
+        curve_layout.addWidget(self.he_curve_combo, 1)
+
+        layout.addLayout(curve_layout)
+        self.he_curve_combo.currentIndexChanged.connect(self.on_combo_changed)
+
+        # Velocity Min slider
+        vel_min_layout = QHBoxLayout()
+        vel_min_layout.setContentsMargins(0, 0, 0, 0)
+        vel_min_layout.setSpacing(6)
+        vel_min_label = QLabel(tr("QuickActuationWidget", "Velocity Min:"))
+        vel_min_label.setMinimumWidth(90)
+        vel_min_label.setMaximumWidth(90)
+        vel_min_layout.addWidget(vel_min_label)
+
+        self.he_min_slider = QSlider(Qt.Horizontal)
+        self.he_min_slider.setMinimum(1)
+        self.he_min_slider.setMaximum(127)
+        self.he_min_slider.setValue(1)
+        vel_min_layout.addWidget(self.he_min_slider, 1)
+
+        self.he_min_value_label = QLabel("1")
+        self.he_min_value_label.setMinimumWidth(50)
+        self.he_min_value_label.setMaximumWidth(50)
+        self.he_min_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
+        vel_min_layout.addWidget(self.he_min_value_label)
+
+        layout.addLayout(vel_min_layout)
+        self.he_min_slider.valueChanged.connect(
+            lambda v: self.on_slider_changed('he_min', v, self.he_min_value_label)
+        )
+
+        # Velocity Max slider
+        vel_max_layout = QHBoxLayout()
+        vel_max_layout.setContentsMargins(0, 0, 0, 0)
+        vel_max_layout.setSpacing(6)
+        vel_max_label = QLabel(tr("QuickActuationWidget", "Velocity Max:"))
+        vel_max_label.setMinimumWidth(90)
+        vel_max_label.setMaximumWidth(90)
+        vel_max_layout.addWidget(vel_max_label)
+
+        self.he_max_slider = QSlider(Qt.Horizontal)
+        self.he_max_slider.setMinimum(1)
+        self.he_max_slider.setMaximum(127)
+        self.he_max_slider.setValue(127)
+        vel_max_layout.addWidget(self.he_max_slider, 1)
+
+        self.he_max_value_label = QLabel("127")
+        self.he_max_value_label.setMinimumWidth(50)
+        self.he_max_value_label.setMaximumWidth(50)
+        self.he_max_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
+        vel_max_layout.addWidget(self.he_max_value_label)
+
+        layout.addLayout(vel_max_layout)
+        self.he_max_slider.valueChanged.connect(
+            lambda v: self.on_slider_changed('he_max', v, self.he_max_value_label)
+        )
+
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
         advanced_layout = QVBoxLayout()
@@ -364,99 +440,6 @@ class QuickActuationWidget(QGroupBox):
         advanced_layout.addLayout(combo_layout)
         self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
 
-        # === HE VELOCITY CONTROLS ===
-        # Separator
-        he_line = QFrame()
-        he_line.setFrameShape(QFrame.HLine)
-        he_line.setFrameShadow(QFrame.Sunken)
-        advanced_layout.addWidget(he_line)
-
-        # Use Fixed Velocity checkbox
-        self.use_fixed_vel_checkbox = QCheckBox(tr("QuickActuationWidget", "Use Fixed Velocity"))
-        self.use_fixed_vel_checkbox.setChecked(False)
-        self.use_fixed_vel_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
-        advanced_layout.addWidget(self.use_fixed_vel_checkbox)
-        self.use_fixed_vel_checkbox.stateChanged.connect(self.on_combo_changed)
-
-        # HE Velocity Curve combo
-        curve_layout = QHBoxLayout()
-        curve_layout.setContentsMargins(0, 0, 0, 0)
-        curve_layout.setSpacing(6)
-        curve_label = QLabel(tr("QuickActuationWidget", "HE Curve:"))
-        curve_label.setMinimumWidth(90)
-        curve_label.setMaximumWidth(90)
-        curve_layout.addWidget(curve_label)
-
-        self.he_curve_combo = ArrowComboBox()
-        self.he_curve_combo.setMaximumHeight(30)
-        self.he_curve_combo.setMaximumWidth(180)
-        self.he_curve_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.he_curve_combo.setEditable(True)
-        self.he_curve_combo.lineEdit().setReadOnly(True)
-        self.he_curve_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        self.he_curve_combo.addItem("Softest", 0)
-        self.he_curve_combo.addItem("Soft", 1)
-        self.he_curve_combo.addItem("Medium", 2)
-        self.he_curve_combo.addItem("Hard", 3)
-        self.he_curve_combo.addItem("Hardest", 4)
-        self.he_curve_combo.setCurrentIndex(2)  # Default: Medium
-        curve_layout.addWidget(self.he_curve_combo, 1)
-
-        advanced_layout.addLayout(curve_layout)
-        self.he_curve_combo.currentIndexChanged.connect(self.on_combo_changed)
-
-        # HE Velocity Min slider
-        he_min_layout = QHBoxLayout()
-        he_min_layout.setContentsMargins(0, 0, 0, 0)
-        he_min_layout.setSpacing(6)
-        he_min_label = QLabel(tr("QuickActuationWidget", "HE Min:"))
-        he_min_label.setMinimumWidth(90)
-        he_min_label.setMaximumWidth(90)
-        he_min_layout.addWidget(he_min_label)
-
-        self.he_min_slider = QSlider(Qt.Horizontal)
-        self.he_min_slider.setMinimum(1)
-        self.he_min_slider.setMaximum(127)
-        self.he_min_slider.setValue(1)
-        he_min_layout.addWidget(self.he_min_slider, 1)
-
-        self.he_min_value_label = QLabel("1")
-        self.he_min_value_label.setMinimumWidth(50)
-        self.he_min_value_label.setMaximumWidth(50)
-        self.he_min_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        he_min_layout.addWidget(self.he_min_value_label)
-
-        advanced_layout.addLayout(he_min_layout)
-        self.he_min_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('he_min', v, self.he_min_value_label)
-        )
-
-        # HE Velocity Max slider
-        he_max_layout = QHBoxLayout()
-        he_max_layout.setContentsMargins(0, 0, 0, 0)
-        he_max_layout.setSpacing(6)
-        he_max_label = QLabel(tr("QuickActuationWidget", "HE Max:"))
-        he_max_label.setMinimumWidth(90)
-        he_max_label.setMaximumWidth(90)
-        he_max_layout.addWidget(he_max_label)
-
-        self.he_max_slider = QSlider(Qt.Horizontal)
-        self.he_max_slider.setMinimum(1)
-        self.he_max_slider.setMaximum(127)
-        self.he_max_slider.setValue(127)
-        he_max_layout.addWidget(self.he_max_slider, 1)
-
-        self.he_max_value_label = QLabel("127")
-        self.he_max_value_label.setMinimumWidth(50)
-        self.he_max_value_label.setMaximumWidth(50)
-        self.he_max_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        he_max_layout.addWidget(self.he_max_value_label)
-
-        advanced_layout.addLayout(he_max_layout)
-        self.he_max_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('he_max', v, self.he_max_value_label)
-        )
-
         layout.addWidget(self.advanced_widget)
 
         layout.addStretch()
@@ -472,18 +455,6 @@ class QuickActuationWidget(QGroupBox):
         """Toggle advanced options visibility"""
         show_advanced = self.advanced_checkbox.isChecked()
         self.advanced_widget.setVisible(show_advanced)
-
-        # Show/hide MIDI controls based on advanced state
-        self.midi_widget.setVisible(show_advanced)
-        self.midi_rapid_checkbox.setVisible(show_advanced)
-
-        # Update MIDI rapidfire widgets visibility based on checkbox state
-        if show_advanced and self.midi_rapid_checkbox.isChecked():
-            self.midi_rapid_sens_widget.setVisible(True)
-            self.midi_rapid_vel_widget.setVisible(True)
-        else:
-            self.midi_rapid_sens_widget.setVisible(False)
-            self.midi_rapid_vel_widget.setVisible(False)
     
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
@@ -557,7 +528,7 @@ class QuickActuationWidget(QGroupBox):
                 'rapidfire_enabled': self.rapid_checkbox.isChecked(),
                 'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked(),
                 # HE Velocity fields
-                'use_fixed_velocity': self.use_fixed_vel_checkbox.isChecked(),
+                'use_fixed_velocity': False,  # Fixed velocity feature removed
                 'he_curve': self.he_curve_combo.currentData(),
                 'he_min': self.he_min_slider.value(),
                 'he_max': self.he_max_slider.value()
@@ -577,7 +548,7 @@ class QuickActuationWidget(QGroupBox):
                 'rapidfire_enabled': self.rapid_checkbox.isChecked(),
                 'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked(),
                 # HE Velocity fields
-                'use_fixed_velocity': self.use_fixed_vel_checkbox.isChecked(),
+                'use_fixed_velocity': False,  # Fixed velocity feature removed
                 'he_curve': self.he_curve_combo.currentData(),
                 'he_min': self.he_min_slider.value(),
                 'he_max': self.he_max_slider.value()
@@ -633,21 +604,20 @@ class QuickActuationWidget(QGroupBox):
         self.rapid_widget.setVisible(data['rapidfire_enabled'])
         self.midi_rapid_checkbox.setChecked(data['midi_rapidfire_enabled'])
 
-        # HE Velocity settings
-        self.use_fixed_vel_checkbox.setChecked(data.get('use_fixed_velocity', False))
+        # Velocity settings (renamed from HE Velocity)
         self.he_min_slider.setValue(data.get('he_min', 1))
         self.he_min_value_label.setText(str(data.get('he_min', 1)))
         self.he_max_slider.setValue(data.get('he_max', 127))
         self.he_max_value_label.setText(str(data.get('he_max', 127)))
 
-        # HE Curve combo
+        # Velocity Curve combo (renamed from HE Curve)
         for i in range(self.he_curve_combo.count()):
             if self.he_curve_combo.itemData(i) == data.get('he_curve', 2):
                 self.he_curve_combo.setCurrentIndex(i)
                 break
-        
-        # Update MIDI rapidfire widgets visibility based on advanced state
-        if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:
+
+        # Update MIDI rapidfire widgets visibility based on checkbox state
+        if data['midi_rapidfire_enabled']:
             self.midi_rapid_sens_widget.setVisible(True)
             self.midi_rapid_vel_widget.setVisible(True)
         else:
