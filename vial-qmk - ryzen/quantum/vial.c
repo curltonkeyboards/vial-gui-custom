@@ -582,14 +582,17 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		}
 
 		case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
-			// Format: [cmd, channel, min_mm_x10, max_mm_x10, deadzone_percent]
-			if (length >= 5) {
+			// Format: [cmd, channel, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+			if (length >= 8) {
 				extern gaming_settings_t gaming_settings;
 				extern void gaming_save_settings(void);
 
-				gaming_settings.analog_config.min_travel_mm_x10 = msg[2];
-				gaming_settings.analog_config.max_travel_mm_x10 = msg[3];
-				gaming_settings.analog_config.deadzone_percent = msg[4];
+				gaming_settings.ls_config.min_travel_mm_x10 = msg[2];
+				gaming_settings.ls_config.max_travel_mm_x10 = msg[3];
+				gaming_settings.rs_config.min_travel_mm_x10 = msg[4];
+				gaming_settings.rs_config.max_travel_mm_x10 = msg[5];
+				gaming_settings.trigger_config.min_travel_mm_x10 = msg[6];
+				gaming_settings.trigger_config.max_travel_mm_x10 = msg[7];
 				gaming_save_settings();
 				msg[0] = 0x01; // Success
 			} else {
@@ -604,10 +607,13 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 			memset(msg, 0, length);
 			msg[0] = 0x01; // Success
-			msg[1] = gaming_settings.gaming_mode_enabled;
-			msg[2] = gaming_settings.analog_config.min_travel_mm_x10;
-			msg[3] = gaming_settings.analog_config.max_travel_mm_x10;
-			msg[4] = gaming_settings.analog_config.deadzone_percent;
+			msg[6] = gaming_settings.gaming_mode_enabled;
+			msg[7] = gaming_settings.ls_config.min_travel_mm_x10;
+			msg[8] = gaming_settings.ls_config.max_travel_mm_x10;
+			msg[9] = gaming_settings.rs_config.min_travel_mm_x10;
+			msg[10] = gaming_settings.rs_config.max_travel_mm_x10;
+			msg[11] = gaming_settings.trigger_config.min_travel_mm_x10;
+			msg[12] = gaming_settings.trigger_config.max_travel_mm_x10;
 			// Additional settings can be queried separately via 0xCF for each control
 			break;
 		}
