@@ -231,6 +231,13 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 #define HID_CMD_GET_ALL_LAYER_ACTUATIONS 0xCC
 #define HID_CMD_RESET_LAYER_ACTUATIONS 0xCD
 
+// Gaming/Joystick HID Commands
+#define HID_CMD_GAMING_SET_MODE 0xCE           // Set gaming mode on/off
+#define HID_CMD_GAMING_SET_KEY_MAP 0xCF        // Map key to joystick control
+#define HID_CMD_GAMING_SET_ANALOG_CONFIG 0xD0  // Set min/max travel and deadzone
+#define HID_CMD_GAMING_GET_SETTINGS 0xD1       // Get current gaming settings
+#define HID_CMD_GAMING_RESET 0xD2              // Reset gaming settings to defaults
+
 // =============================================================================
 // EEPROM MEMORY LAYOUT (64KB Total - 65536 bytes)
 // =============================================================================
@@ -259,16 +266,29 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 //
 // 65200-65399: Gap (200 bytes safety buffer)
 //
-// 65400-65535: Layer RGB Settings (136 bytes allocated, 108 used)
+// 65400-65599: Layer RGB Settings (200 bytes allocated, 108 used)
 //              - 12 layers × 9 bytes each = 108 bytes used
-//              - 28 bytes wiggle room for expansion
+//              - 92 bytes wiggle room for expansion
+//
+// 65600-65699: Layer Actuation Settings (100 bytes allocated, ~120 used)
+//              - 12 layers × 10 bytes each
+//
+// 65700-65799: Gaming/Joystick Settings (100 bytes allocated, 60 used)
+//              - gaming_settings_t structure
+//              - Key mappings for sticks, triggers, buttons
+//              - Analog calibration (min/max mm, deadzone)
+//              - 40 bytes wiggle room for expansion
+//
+// 65800-65535: Gap (available for future use) - 736 bytes
 //
 // =============================================================================
 // EEPROM ADDRESSES SUMMARY:
-// Custom Animations:   CUSTOM_ANIMATIONS_EEPROM_ADDR = 64200
-// Loop Settings:       LOOP_SETTINGS_EEPROM_ADDR     = 64600  
+// Custom Animations:   CUSTOM_ANIMATIONS_EEPROM_ADDR = 63700 (64200 old)
+// Loop Settings:       LOOP_SETTINGS_EEPROM_ADDR     = 64600
 // Keyboard Settings:   SETTINGS_BASE_ADDR            = 65000
 // Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 65400
+// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 65600
+// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 65700
 // =============================================================================
 
 // Function declarations for layer settings

@@ -514,7 +514,115 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			msg[0] = 0x01; // Success
 			break;
 		}
-				
+
+		// Gaming/Joystick HID Commands (0xCE-0xD2)
+#ifdef JOYSTICK_ENABLE
+		case 0xCE: {  // HID_CMD_GAMING_SET_MODE
+			if (length >= 3) {
+				extern bool gaming_mode_active;
+				extern gaming_settings_t gaming_settings;
+				extern void gaming_save_settings(void);
+
+				gaming_mode_active = msg[2];
+				gaming_settings.gaming_mode_enabled = gaming_mode_active;
+				gaming_save_settings();
+				msg[0] = 0x01; // Success
+			} else {
+				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case 0xCF: {  // HID_CMD_GAMING_SET_KEY_MAP
+			// Format: [cmd, channel, control_id, row, col, enabled]
+			// control_id: 0-3=LS, 4-7=RS, 8=LT, 9=RT, 10-25=Buttons
+			if (length >= 6) {
+				extern gaming_settings_t gaming_settings;
+				extern void gaming_save_settings(void);
+
+				uint8_t control_id = msg[2];
+				uint8_t row = msg[3];
+				uint8_t col = msg[4];
+				uint8_t enabled = msg[5];
+
+				gaming_key_map_t* target = NULL;
+
+				// Map control_id to the correct structure member
+				switch (control_id) {
+					case 0: target = &gaming_settings.ls_up; break;
+					case 1: target = &gaming_settings.ls_down; break;
+					case 2: target = &gaming_settings.ls_left; break;
+					case 3: target = &gaming_settings.ls_right; break;
+					case 4: target = &gaming_settings.rs_up; break;
+					case 5: target = &gaming_settings.rs_down; break;
+					case 6: target = &gaming_settings.rs_left; break;
+					case 7: target = &gaming_settings.rs_right; break;
+					case 8: target = &gaming_settings.lt; break;
+					case 9: target = &gaming_settings.rt; break;
+					default:
+						if (control_id >= 10 && control_id < 26) {
+							target = &gaming_settings.buttons[control_id - 10];
+						}
+						break;
+				}
+
+				if (target != NULL) {
+					target->row = row;
+					target->col = col;
+					target->enabled = enabled;
+					gaming_save_settings();
+					msg[0] = 0x01; // Success
+				} else {
+					msg[0] = 0x00; // Error: invalid control_id
+				}
+			} else {
+				msg[0] = 0x00; // Error: insufficient data
+			}
+			break;
+		}
+
+		case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
+			// Format: [cmd, channel, min_mm_x10, max_mm_x10, deadzone_percent]
+			if (length >= 5) {
+				extern gaming_settings_t gaming_settings;
+				extern void gaming_save_settings(void);
+
+				gaming_settings.analog_config.min_travel_mm_x10 = msg[2];
+				gaming_settings.analog_config.max_travel_mm_x10 = msg[3];
+				gaming_settings.analog_config.deadzone_percent = msg[4];
+				gaming_save_settings();
+				msg[0] = 0x01; // Success
+			} else {
+				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case 0xD1: {  // HID_CMD_GAMING_GET_SETTINGS
+			// Return all gaming settings
+			extern gaming_settings_t gaming_settings;
+
+			memset(msg, 0, length);
+			msg[0] = 0x01; // Success
+			msg[1] = gaming_settings.gaming_mode_enabled;
+			msg[2] = gaming_settings.analog_config.min_travel_mm_x10;
+			msg[3] = gaming_settings.analog_config.max_travel_mm_x10;
+			msg[4] = gaming_settings.analog_config.deadzone_percent;
+			// Additional settings can be queried separately via 0xCF for each control
+			break;
+		}
+
+		case 0xD2: {  // HID_CMD_GAMING_RESET
+			extern void gaming_reset_settings(void);
+			extern void gaming_save_settings(void);
+
+			gaming_reset_settings();
+			gaming_save_settings();
+			msg[0] = 0x01; // Success
+			break;
+		}
+#endif
+
         // END LAYER RGB CASES
 
         case vial_dynamic_entry_op: {

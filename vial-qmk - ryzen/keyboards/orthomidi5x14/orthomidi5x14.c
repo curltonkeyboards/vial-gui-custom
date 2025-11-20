@@ -3145,6 +3145,214 @@ void init_custom_animations(void) {
     load_custom_animations_from_eeprom();
 }
 
+// =============================================================================
+// GAMING / JOYSTICK SYSTEM IMPLEMENTATION
+// =============================================================================
+
+#ifdef JOYSTICK_ENABLE
+#include "joystick.h"
+
+// Global gaming state
+bool gaming_mode_active = false;
+gaming_settings_t gaming_settings;
+
+// Reset gaming settings to defaults
+void gaming_reset_settings(void) {
+    gaming_settings.gaming_mode_enabled = false;
+
+    // Default analog calibration: 1.0mm min, 2.0mm max, 10% deadzone
+    gaming_settings.analog_config.min_travel_mm_x10 = 10;  // 1.0mm
+    gaming_settings.analog_config.max_travel_mm_x10 = 20;  // 2.0mm
+    gaming_settings.analog_config.deadzone_percent = 10;   // 10%
+
+    // Disable all mappings by default
+    gaming_settings.ls_up.enabled = 0;
+    gaming_settings.ls_down.enabled = 0;
+    gaming_settings.ls_left.enabled = 0;
+    gaming_settings.ls_right.enabled = 0;
+
+    gaming_settings.rs_up.enabled = 0;
+    gaming_settings.rs_down.enabled = 0;
+    gaming_settings.rs_left.enabled = 0;
+    gaming_settings.rs_right.enabled = 0;
+
+    gaming_settings.lt.enabled = 0;
+    gaming_settings.rt.enabled = 0;
+
+    for (uint8_t i = 0; i < 16; i++) {
+        gaming_settings.buttons[i].enabled = 0;
+    }
+
+    gaming_settings.magic = GAMING_SETTINGS_MAGIC;
+}
+
+// Save gaming settings to EEPROM
+void gaming_save_settings(void) {
+    eeprom_update_block(&gaming_settings, (void*)GAMING_SETTINGS_EEPROM_ADDR, sizeof(gaming_settings_t));
+}
+
+// Load gaming settings from EEPROM
+void gaming_load_settings(void) {
+    eeprom_read_block(&gaming_settings, (void*)GAMING_SETTINGS_EEPROM_ADDR, sizeof(gaming_settings_t));
+
+    // Check magic number - if invalid, reset to defaults
+    if (gaming_settings.magic != GAMING_SETTINGS_MAGIC) {
+        gaming_reset_settings();
+        gaming_save_settings();
+    }
+
+    // Update runtime state
+    gaming_mode_active = gaming_settings.gaming_mode_enabled;
+}
+
+// Initialize gaming system
+void gaming_init(void) {
+    gaming_load_settings();
+}
+
+// Convert analog travel to joystick axis value (-32767 to +32767)
+// row, col: Matrix position
+// invert: true to invert direction (for down/right axes)
+int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert) {
+    // Get normalized travel (0-255)
+    uint8_t travel_norm = analog_matrix_get_travel_normalized(row, col);
+
+    // Convert mm*10 to travel units (0-255 maps to 0-4.0mm, so 255/40 per 0.1mm)
+    uint8_t min_threshold = (gaming_settings.analog_config.min_travel_mm_x10 * 255) / 40;
+    uint8_t max_threshold = (gaming_settings.analog_config.max_travel_mm_x10 * 255) / 40;
+
+    // Below minimum threshold = no input
+    if (travel_norm < min_threshold) return 0;
+
+    // Above maximum threshold = full deflection
+    if (travel_norm > max_threshold) {
+        return invert ? -32767 : 32767;
+    }
+
+    // Linear interpolation between min and max
+    uint32_t range = max_threshold - min_threshold;
+    if (range == 0) return 0;  // Avoid division by zero
+
+    uint32_t value = ((uint32_t)(travel_norm - min_threshold) * 32767) / range;
+
+    // Apply deadzone (center deadzone for stick centering)
+    uint32_t deadzone_threshold = (32767 * gaming_settings.analog_config.deadzone_percent) / 100;
+    if (value < deadzone_threshold) {
+        value = 0;
+    }
+
+    return invert ? -(int16_t)value : (int16_t)value;
+}
+
+// Convert analog travel to trigger value (0 to +32767)
+// Returns true if key is pressed enough to register, false otherwise
+bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
+    uint8_t travel_norm = analog_matrix_get_travel_normalized(row, col);
+
+    uint8_t min_threshold = (gaming_settings.analog_config.min_travel_mm_x10 * 255) / 40;
+    uint8_t max_threshold = (gaming_settings.analog_config.max_travel_mm_x10 * 255) / 40;
+
+    if (travel_norm < min_threshold) {
+        *value = 0;
+        return false;
+    }
+
+    if (travel_norm > max_threshold) {
+        *value = 32767;
+        return true;
+    }
+
+    uint32_t range = max_threshold - min_threshold;
+    if (range == 0) {
+        *value = 0;
+        return false;
+    }
+
+    *value = (int16_t)(((uint32_t)(travel_norm - min_threshold) * 32767) / range);
+    return true;
+}
+
+// Update joystick state based on current key states
+void gaming_update_joystick(void) {
+    if (!gaming_mode_active) return;
+
+    // Left stick X axis (left/right)
+    int16_t ls_x = 0;
+    if (gaming_settings.ls_left.enabled) {
+        ls_x += gaming_analog_to_axis(gaming_settings.ls_left.row, gaming_settings.ls_left.col, true);
+    }
+    if (gaming_settings.ls_right.enabled) {
+        ls_x += gaming_analog_to_axis(gaming_settings.ls_right.row, gaming_settings.ls_right.col, false);
+    }
+    joystick_set_axis(0, ls_x);  // Axis 0 = Left Stick X
+
+    // Left stick Y axis (up/down)
+    int16_t ls_y = 0;
+    if (gaming_settings.ls_up.enabled) {
+        ls_y += gaming_analog_to_axis(gaming_settings.ls_up.row, gaming_settings.ls_up.col, true);
+    }
+    if (gaming_settings.ls_down.enabled) {
+        ls_y += gaming_analog_to_axis(gaming_settings.ls_down.row, gaming_settings.ls_down.col, false);
+    }
+    joystick_set_axis(1, ls_y);  // Axis 1 = Left Stick Y
+
+    // Right stick X axis (left/right)
+    int16_t rs_x = 0;
+    if (gaming_settings.rs_left.enabled) {
+        rs_x += gaming_analog_to_axis(gaming_settings.rs_left.row, gaming_settings.rs_left.col, true);
+    }
+    if (gaming_settings.rs_right.enabled) {
+        rs_x += gaming_analog_to_axis(gaming_settings.rs_right.row, gaming_settings.rs_right.col, false);
+    }
+    joystick_set_axis(2, rs_x);  // Axis 2 = Right Stick X
+
+    // Right stick Y axis (up/down)
+    int16_t rs_y = 0;
+    if (gaming_settings.rs_up.enabled) {
+        rs_y += gaming_analog_to_axis(gaming_settings.rs_up.row, gaming_settings.rs_up.col, true);
+    }
+    if (gaming_settings.rs_down.enabled) {
+        rs_y += gaming_analog_to_axis(gaming_settings.rs_down.row, gaming_settings.rs_down.col, false);
+    }
+    joystick_set_axis(3, rs_y);  // Axis 3 = Right Stick Y
+
+    // Left trigger
+    int16_t lt_val = 0;
+    if (gaming_settings.lt.enabled) {
+        gaming_analog_to_trigger(gaming_settings.lt.row, gaming_settings.lt.col, &lt_val);
+    }
+    joystick_set_axis(4, lt_val);  // Axis 4 = Left Trigger
+
+    // Right trigger
+    int16_t rt_val = 0;
+    if (gaming_settings.rt.enabled) {
+        gaming_analog_to_trigger(gaming_settings.rt.row, gaming_settings.rt.col, &rt_val);
+    }
+    joystick_set_axis(5, rt_val);  // Axis 5 = Right Trigger
+
+    // Buttons (simple on/off based on key press state)
+    for (uint8_t i = 0; i < 16; i++) {
+        if (gaming_settings.buttons[i].enabled) {
+            bool pressed = analog_matrix_get_key_state(
+                gaming_settings.buttons[i].row,
+                gaming_settings.buttons[i].col
+            );
+
+            if (pressed) {
+                register_joystick_button(i);
+            } else {
+                unregister_joystick_button(i);
+            }
+        }
+    }
+}
+
+#endif // JOYSTICK_ENABLE
+
+// =============================================================================
+// END GAMING / JOYSTICK SYSTEM
+// =============================================================================
+
 void keyboard_post_init_user(void) {
 	scan_keycode_categories();
 	scan_current_layer_midi_leds();
@@ -3153,6 +3361,10 @@ void keyboard_post_init_user(void) {
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
 	dwt_init();
+
+#ifdef JOYSTICK_ENABLE
+	gaming_init();  // Load gaming/joystick settings from EEPROM
+#endif
 
 	// Initialize encoder click buttons and sustain pedal pins
 	setPinInputHigh(B12);  // Encoder 0 click
@@ -10683,6 +10895,31 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+#ifdef JOYSTICK_ENABLE
+    // Gaming Mode Toggle (0xCC60)
+    if (keycode == 0xCC60) {
+        if (record->event.pressed) {
+            gaming_mode_active = !gaming_mode_active;
+            gaming_settings.gaming_mode_enabled = gaming_mode_active;
+            gaming_save_settings();
+            dprintf("Gaming Mode: %s\n", gaming_mode_active ? "ON" : "OFF");
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Gaming button handlers (0xCC61-0xCC78)
+    // These keycodes are handled by the gaming_update_joystick() in matrix_scan
+    // But we still need to prevent them from triggering normal keyboard actions
+    if (gaming_mode_active && keycode >= 0xCC61 && keycode <= 0xCC78) {
+        // When gaming mode is active and these keys are mapped,
+        // they should not send keyboard events
+        // The actual joystick state is updated in gaming_update_joystick()
+        set_keylog(keycode, record);
+        return false;  // Suppress normal keyboard processing
+    }
+#endif
+
     if (keycode == 0xC929) {
         if (record->event.pressed) {
             // Key pressed - start timer
@@ -12567,6 +12804,11 @@ void matrix_scan_user(void) {
     // Update chord progression timing
     update_chord_progression();
     matrix_scan_user_macro();
+
+#ifdef JOYSTICK_ENABLE
+    // Update joystick/gaming controller state
+    gaming_update_joystick();
+#endif
 
 #ifdef MIDI_SERIAL_ENABLE
     // Process serial MIDI (hardware MIDI IN/OUT)

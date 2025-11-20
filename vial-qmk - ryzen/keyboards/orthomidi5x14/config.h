@@ -62,6 +62,10 @@
 
 #define EEPROM_I2C_24LC256
 
+// Joystick/Gaming Controller Configuration
+#define JOYSTICK_BUTTON_COUNT 16        // Face buttons, shoulder, dpad, stick clicks
+#define JOYSTICK_AXIS_COUNT 6           // Left stick (X,Y), Right stick (X,Y), Triggers (L,R)
+#define JOYSTICK_AXIS_RESOLUTION 16     // 16-bit resolution for smooth analog control
 
 #ifdef OLED_ENABLE
 #    define OLED_DISPLAY_128X128
