@@ -3200,8 +3200,30 @@ class GamingConfigurator(BasicEditor):
         super().rebuild(device)
         if self.valid():
             self.keyboard = device.keyboard
-            # Load current settings
-            self.on_load_from_keyboard()
+            # Try to load settings silently without showing message boxes
+            try:
+                settings = self.keyboard.get_gaming_settings()
+                if settings:
+                    # Block signals while updating
+                    self.min_travel_slider.blockSignals(True)
+                    self.max_travel_slider.blockSignals(True)
+                    self.deadzone_slider.blockSignals(True)
+
+                    self.min_travel_slider.setValue(settings.get('min_travel_mm_x10', 10))
+                    self.max_travel_slider.setValue(settings.get('max_travel_mm_x10', 20))
+                    self.deadzone_slider.setValue(settings.get('deadzone_percent', 10))
+
+                    self.min_travel_slider.blockSignals(False)
+                    self.max_travel_slider.blockSignals(False)
+                    self.deadzone_slider.blockSignals(False)
+
+                    # Update labels
+                    self.min_travel_label.setText(f"{settings.get('min_travel_mm_x10', 10)/10:.1f}")
+                    self.max_travel_label.setText(f"{settings.get('max_travel_mm_x10', 20)/10:.1f}")
+                    self.deadzone_label.setText(str(settings.get('deadzone_percent', 10)))
+            except:
+                # Silently fail during rebuild - user can manually load if needed
+                pass
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)
