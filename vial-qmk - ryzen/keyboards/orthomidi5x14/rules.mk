@@ -18,6 +18,7 @@ AUDIO_ENABLE = no           # Audio output
 ENCODER_ENABLE = yes        # Enable Encoder
 KEYLOGGER_ENABLE      = yes
 WPM_ENABLE = yes
+JOYSTICK_ENABLE = yes       # Enable joystick/gaming controller support
 
 
 KEYBOARD_SHARED_EP = yes

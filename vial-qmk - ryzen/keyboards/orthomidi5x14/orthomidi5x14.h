@@ -131,5 +131,70 @@ void cycle_he_velocity_curve(bool forward);
 void set_he_velocity_range(uint8_t min, uint8_t max);
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 
+// =============================================================================
+// GAMING / JOYSTICK SYSTEM
+// =============================================================================
+
+// Gaming key mapping structure - maps a matrix position to a joystick control
+typedef struct {
+    uint8_t row;     // Matrix row (0-4)
+    uint8_t col;     // Matrix column (0-13)
+    uint8_t enabled; // 1 = enabled, 0 = disabled
+} gaming_key_map_t;
+
+// Analog calibration for joystick axes and triggers (separate for LS/RS/Triggers)
+typedef struct {
+    uint8_t min_travel_mm_x10;  // Minimum travel in 0.1mm units (e.g., 10 = 1.0mm)
+    uint8_t max_travel_mm_x10;  // Maximum travel in 0.1mm units (e.g., 20 = 2.0mm)
+} gaming_analog_config_t;
+
+// Complete gaming settings structure for EEPROM
+typedef struct {
+    bool gaming_mode_enabled;              // Master enable/disable
+
+    // Left stick mappings (Up, Down, Left, Right)
+    gaming_key_map_t ls_up;
+    gaming_key_map_t ls_down;
+    gaming_key_map_t ls_left;
+    gaming_key_map_t ls_right;
+
+    // Right stick mappings (Up, Down, Left, Right)
+    gaming_key_map_t rs_up;
+    gaming_key_map_t rs_down;
+    gaming_key_map_t rs_left;
+    gaming_key_map_t rs_right;
+
+    // Trigger mappings
+    gaming_key_map_t lt;  // Left trigger
+    gaming_key_map_t rt;  // Right trigger
+
+    // Button mappings (16 buttons: Face, Shoulder, DPad, etc.)
+    gaming_key_map_t buttons[16];
+
+    // Analog calibration - separate for LS, RS, and Triggers
+    gaming_analog_config_t ls_config;      // Left stick calibration
+    gaming_analog_config_t rs_config;      // Right stick calibration
+    gaming_analog_config_t trigger_config; // Trigger calibration
+
+    uint16_t magic;  // 0x47A3 (GAME) for validation
+} gaming_settings_t;
+
+// EEPROM address for gaming settings (100 bytes allocated)
+#define GAMING_SETTINGS_EEPROM_ADDR 65700
+#define GAMING_SETTINGS_MAGIC 0x47A3
+
+// Gaming mode global state
+extern bool gaming_mode_active;
+extern gaming_settings_t gaming_settings;
+
+// Gaming system functions
+void gaming_init(void);
+void gaming_save_settings(void);
+void gaming_load_settings(void);
+void gaming_reset_settings(void);
+void gaming_update_joystick(void);
+int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert);
+bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
+
 #endif // ORTHOMIDI5X14_H
 

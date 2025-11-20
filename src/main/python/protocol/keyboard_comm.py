@@ -52,6 +52,13 @@ HID_CMD_SAVE_KEYBOARD_SLOT = 0xB9
 HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
 HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
 
+# Gaming/Joystick Commands (0xCE-0xD2)
+HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
+HID_CMD_GAMING_SET_KEY_MAP = 0xCF        # Map key to joystick control
+HID_CMD_GAMING_SET_ANALOG_CONFIG = 0xD0  # Set min/max travel and deadzone
+HID_CMD_GAMING_GET_SETTINGS = 0xD1       # Get current gaming settings
+HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
+
 class ProtocolError(Exception):
     pass
 
@@ -1228,3 +1235,108 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             self.layer_actuations = self.get_all_layer_actuations()
         except:
             self.layer_actuations = None
+
+    def set_gaming_mode(self, enabled):
+        """Enable or disable gaming mode
+
+        Args:
+            enabled: True to enable gaming mode, False to disable
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_GAMING_SET_MODE, 0, [1 if enabled else 0])
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[0] == 0x01
+        except Exception as e:
+            return False
+
+    def set_gaming_key_map(self, control_id, row, col, enabled):
+        """Map a key to a joystick control
+
+        Args:
+            control_id: Control ID (0-3=LS, 4-7=RS, 8=LT, 9=RT, 10-25=Buttons)
+            row: Matrix row (0-4)
+            col: Matrix column (0-13)
+            enabled: 1 to enable mapping, 0 to disable
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            data = [control_id, row, col, 1 if enabled else 0]
+            packet = self._create_hid_packet(HID_CMD_GAMING_SET_KEY_MAP, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[0] == 0x01
+        except Exception as e:
+            return False
+
+    def set_gaming_analog_config(self, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max):
+        """Set analog calibration configuration for LS, RS, and Triggers
+
+        Args:
+            ls_min: Left Stick minimum travel in 0.1mm units (e.g., 10 = 1.0mm)
+            ls_max: Left Stick maximum travel in 0.1mm units (e.g., 20 = 2.0mm)
+            rs_min: Right Stick minimum travel in 0.1mm units
+            rs_max: Right Stick maximum travel in 0.1mm units
+            trigger_min: Trigger minimum travel in 0.1mm units
+            trigger_max: Trigger maximum travel in 0.1mm units
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+            packet = self._create_hid_packet(HID_CMD_GAMING_SET_ANALOG_CONFIG, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[0] == 0x01
+        except Exception as e:
+            return False
+
+    def get_gaming_settings(self):
+        """Get current gaming settings from keyboard
+
+        Returns:
+            dict: Gaming settings or None on error
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_GAMING_GET_SETTINGS, 0, None)
+            response = self.usb_send(self.dev, packet, retries=20)
+
+            if not response or len(response) < 13:
+                return None
+
+            # Parse gaming settings from response
+            # Response format: [status, enabled, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, ...]
+            return {
+                'enabled': response[6] != 0,
+                'ls_min_travel_mm_x10': response[7],
+                'ls_max_travel_mm_x10': response[8],
+                'rs_min_travel_mm_x10': response[9],
+                'rs_max_travel_mm_x10': response[10],
+                'trigger_min_travel_mm_x10': response[11],
+                'trigger_max_travel_mm_x10': response[12]
+            }
+        except Exception as e:
+            return None
+
+    def reset_gaming_settings(self):
+        """Reset gaming settings to defaults
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_GAMING_RESET, 0, None)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 0 and response[0] == 0x01
+        except Exception as e:
+            return False
+
+    def reload_gaming_settings(self):
+        """Load gaming settings from keyboard"""
+        try:
+            self.gaming_settings = self.get_gaming_settings()
+        except:
+            self.gaming_settings = None

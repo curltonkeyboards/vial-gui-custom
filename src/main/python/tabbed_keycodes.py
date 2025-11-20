@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton, QSlider, QGroupBox, QMessageBox
 from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap, QPainterPath, QRegion
 
 from constants import KEYCODE_BTN_RATIO
@@ -4353,6 +4353,7 @@ class GamingTab(QScrollArea):
         self.label = label
         self.gaming_keycodes = gaming_keycodes
         self.current_keycode_filter = None
+        self.keyboard = None  # Will be set by parent when keyboard is connected
 
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -4621,7 +4622,119 @@ class GamingTab(QScrollArea):
             btn1.setStyleSheet("border-radius: 25px;")  # Make circular
             btn1.move(517, 178)  # Centered between btn3 and btn2, down 6px
 
-        self.main_layout.addWidget(gamepad_widget)
+        # Create horizontal container for calibration (left) and gamepad (right)
+        controller_and_calibration_container = QWidget()
+        controller_calibration_layout = QHBoxLayout()
+        controller_calibration_layout.setSpacing(20)
+        controller_calibration_layout.setContentsMargins(0, 0, 0, 0)
+        controller_and_calibration_container.setLayout(controller_calibration_layout)
+
+        # Calibration group (LEFT SIDE)
+        calibration_group = QGroupBox(tr("GamingTab", "Analog Calibration"))
+        calibration_group.setMaximumWidth(250)
+        calib_content_layout = QVBoxLayout()
+        calib_content_layout.setSpacing(8)
+        calibration_group.setLayout(calib_content_layout)
+
+        # Helper function to create compact slider
+        def create_compact_slider(label_text, default_value):
+            widget = QWidget()
+            layout = QVBoxLayout()
+            layout.setSpacing(2)
+            layout.setContentsMargins(0, 0, 0, 0)
+            widget.setLayout(layout)
+
+            # Label with value inline
+            label_with_value = QLabel(f"{label_text}: {default_value/10:.1f}")
+            layout.addWidget(label_with_value)
+
+            # Slider
+            slider = QSlider(Qt.Horizontal)
+            slider.setMinimum(0)
+            slider.setMaximum(25)
+            slider.setValue(default_value)
+            slider.setTickInterval(1)
+            slider.setMinimumWidth(200)
+            layout.addWidget(slider)
+
+            # Connect slider to update label
+            slider.valueChanged.connect(
+                lambda val, lbl=label_with_value, txt=label_text: lbl.setText(f"{txt}: {val/10:.1f}")
+            )
+
+            return widget, slider, label_with_value
+
+        # LS (Left Stick) Calibration
+        ls_label = QLabel("<b>Left Stick</b>")
+        calib_content_layout.addWidget(ls_label)
+
+        ls_min_widget, self.ls_min_slider, self.ls_min_label = create_compact_slider(
+            tr("GamingTab", "Min Travel (mm)"), 10
+        )
+        calib_content_layout.addWidget(ls_min_widget)
+
+        ls_max_widget, self.ls_max_slider, self.ls_max_label = create_compact_slider(
+            tr("GamingTab", "Max Travel (mm)"), 20
+        )
+        calib_content_layout.addWidget(ls_max_widget)
+
+        # RS (Right Stick) Calibration
+        rs_label = QLabel("<b>Right Stick</b>")
+        calib_content_layout.addWidget(rs_label)
+
+        rs_min_widget, self.rs_min_slider, self.rs_min_label = create_compact_slider(
+            tr("GamingTab", "Min Travel (mm)"), 10
+        )
+        calib_content_layout.addWidget(rs_min_widget)
+
+        rs_max_widget, self.rs_max_slider, self.rs_max_label = create_compact_slider(
+            tr("GamingTab", "Max Travel (mm)"), 20
+        )
+        calib_content_layout.addWidget(rs_max_widget)
+
+        # Triggers Calibration
+        trigger_label = QLabel("<b>Triggers</b>")
+        calib_content_layout.addWidget(trigger_label)
+
+        trigger_min_widget, self.trigger_min_slider, self.trigger_min_label = create_compact_slider(
+            tr("GamingTab", "Min Travel (mm)"), 10
+        )
+        calib_content_layout.addWidget(trigger_min_widget)
+
+        trigger_max_widget, self.trigger_max_slider, self.trigger_max_label = create_compact_slider(
+            tr("GamingTab", "Max Travel (mm)"), 20
+        )
+        calib_content_layout.addWidget(trigger_max_widget)
+
+        # Add buttons (Save, Load, Reset)
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(5)
+
+        save_btn = QPushButton(tr("GamingTab", "Save"))
+        save_btn.setFixedSize(75, 30)
+        save_btn.clicked.connect(self.on_save_calibration)
+        button_layout.addWidget(save_btn)
+
+        load_btn = QPushButton(tr("GamingTab", "Load"))
+        load_btn.setFixedSize(75, 30)
+        load_btn.clicked.connect(self.on_load_calibration)
+        button_layout.addWidget(load_btn)
+
+        reset_btn = QPushButton(tr("GamingTab", "Reset"))
+        reset_btn.setFixedSize(75, 30)
+        reset_btn.clicked.connect(self.on_reset_calibration)
+        button_layout.addWidget(reset_btn)
+
+        calib_content_layout.addLayout(button_layout)
+
+        # Add calibration group to left side of horizontal layout
+        controller_calibration_layout.addWidget(calibration_group, alignment=Qt.AlignTop)
+
+        # Add gamepad widget to right side of horizontal layout
+        controller_calibration_layout.addWidget(gamepad_widget)
+
+        # Add the horizontal container to main layout
+        self.main_layout.addWidget(controller_and_calibration_container)
         self.main_layout.addStretch()
 
     def clear_layout(self, layout):
@@ -4640,6 +4753,164 @@ class GamingTab(QScrollArea):
     def relabel_buttons(self):
         """Relabel all buttons (called when keymap changes)"""
         self.recreate_buttons(self.current_keycode_filter)
+
+    def get_keyboard(self):
+        """Helper method to get keyboard reference"""
+        # Try to get keyboard from stored reference
+        if self.keyboard is not None:
+            return self.keyboard
+
+        # Try to get from parent chain
+        try:
+            parent = self.parent()
+            if hasattr(parent, 'keyboard') and parent.keyboard is not None:
+                return parent.keyboard
+            # Try parent's parent
+            if hasattr(parent, 'parent') and callable(parent.parent):
+                grandparent = parent.parent()
+                if hasattr(grandparent, 'keyboard') and grandparent.keyboard is not None:
+                    return grandparent.keyboard
+        except:
+            pass
+
+        return None
+
+    def on_save_calibration(self):
+        """Save analog calibration settings to keyboard (Gaming tab version)"""
+        keyboard = self.get_keyboard()
+        if not keyboard:
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
+            return
+
+        try:
+            # Get values from sliders
+            ls_min = self.ls_min_slider.value()
+            ls_max = self.ls_max_slider.value()
+            rs_min = self.rs_min_slider.value()
+            rs_max = self.rs_max_slider.value()
+            trigger_min = self.trigger_min_slider.value()
+            trigger_max = self.trigger_max_slider.value()
+
+            # Validate ranges
+            if ls_min >= ls_max:
+                QMessageBox.warning(None, "Invalid Range", "LS Min travel must be less than LS Max travel")
+                return
+            if rs_min >= rs_max:
+                QMessageBox.warning(None, "Invalid Range", "RS Min travel must be less than RS Max travel")
+                return
+            if trigger_min >= trigger_max:
+                QMessageBox.warning(None, "Invalid Range", "Trigger Min travel must be less than Trigger Max travel")
+                return
+
+            # Save to keyboard
+            success = keyboard.set_gaming_analog_config(ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max)
+
+            if success:
+                QMessageBox.information(None, "Success", "Calibration settings saved successfully")
+            else:
+                QMessageBox.warning(None, "Error", "Failed to save calibration settings")
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"Error saving calibration: {str(e)}")
+
+    def on_load_calibration(self):
+        """Load analog calibration from keyboard (Gaming tab version)"""
+        keyboard = self.get_keyboard()
+        if not keyboard:
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
+            return
+
+        try:
+            settings = keyboard.get_gaming_settings()
+            if settings:
+                # Block signals while updating
+                self.ls_min_slider.blockSignals(True)
+                self.ls_max_slider.blockSignals(True)
+                self.rs_min_slider.blockSignals(True)
+                self.rs_max_slider.blockSignals(True)
+                self.trigger_min_slider.blockSignals(True)
+                self.trigger_max_slider.blockSignals(True)
+
+                # Set slider values
+                self.ls_min_slider.setValue(settings.get('ls_min_travel_mm_x10', 10))
+                self.ls_max_slider.setValue(settings.get('ls_max_travel_mm_x10', 20))
+                self.rs_min_slider.setValue(settings.get('rs_min_travel_mm_x10', 10))
+                self.rs_max_slider.setValue(settings.get('rs_max_travel_mm_x10', 20))
+                self.trigger_min_slider.setValue(settings.get('trigger_min_travel_mm_x10', 10))
+                self.trigger_max_slider.setValue(settings.get('trigger_max_travel_mm_x10', 20))
+
+                # Unblock signals
+                self.ls_min_slider.blockSignals(False)
+                self.ls_max_slider.blockSignals(False)
+                self.rs_min_slider.blockSignals(False)
+                self.rs_max_slider.blockSignals(False)
+                self.trigger_min_slider.blockSignals(False)
+                self.trigger_max_slider.blockSignals(False)
+
+                # Update labels
+                self.ls_min_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
+                self.ls_max_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
+                self.rs_min_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
+                self.rs_max_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
+                self.trigger_min_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
+                self.trigger_max_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+
+                QMessageBox.information(None, "Success", "Calibration settings loaded from keyboard")
+            else:
+                QMessageBox.warning(None, "Error", "Failed to load calibration settings")
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"Error loading calibration: {str(e)}")
+
+    def on_reset_calibration(self):
+        """Reset calibration to defaults (Gaming tab version)"""
+        keyboard = self.get_keyboard()
+        if not keyboard:
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
+            return
+
+        reply = QMessageBox.question(None, "Confirm Reset",
+                                     "Reset calibration to defaults (1.0mm min, 2.0mm max)?",
+                                     QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                # Reset to defaults: 10 for min (1.0mm), 20 for max (2.0mm)
+                success = keyboard.set_gaming_analog_config(10, 20, 10, 20, 10, 20)
+
+                if success:
+                    # Update UI
+                    self.ls_min_slider.blockSignals(True)
+                    self.ls_max_slider.blockSignals(True)
+                    self.rs_min_slider.blockSignals(True)
+                    self.rs_max_slider.blockSignals(True)
+                    self.trigger_min_slider.blockSignals(True)
+                    self.trigger_max_slider.blockSignals(True)
+
+                    self.ls_min_slider.setValue(10)
+                    self.ls_max_slider.setValue(20)
+                    self.rs_min_slider.setValue(10)
+                    self.rs_max_slider.setValue(20)
+                    self.trigger_min_slider.setValue(10)
+                    self.trigger_max_slider.setValue(20)
+
+                    self.ls_min_slider.blockSignals(False)
+                    self.ls_max_slider.blockSignals(False)
+                    self.rs_min_slider.blockSignals(False)
+                    self.rs_max_slider.blockSignals(False)
+                    self.trigger_min_slider.blockSignals(False)
+                    self.trigger_max_slider.blockSignals(False)
+
+                    # Update labels
+                    self.ls_min_label.setText("Min Travel (mm): 1.0")
+                    self.ls_max_label.setText("Max Travel (mm): 2.0")
+                    self.rs_min_label.setText("Min Travel (mm): 1.0")
+                    self.rs_max_label.setText("Max Travel (mm): 2.0")
+                    self.trigger_min_label.setText("Min Travel (mm): 1.0")
+                    self.trigger_max_label.setText("Max Travel (mm): 2.0")
+
+                    QMessageBox.information(None, "Success", "Calibration reset to defaults")
+                else:
+                    QMessageBox.warning(None, "Error", "Failed to reset calibration")
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Error resetting calibration: {str(e)}")
 
 
 class KeyboardTab(QWidget):
@@ -5051,6 +5322,12 @@ class FilteredTabbedKeycodes(QTabWidget):
         for tab in self.tabs:
             tab.relabel_buttons()
 
+    def set_keyboard(self, keyboard):
+        """Set keyboard reference for tabs that need it (e.g., GamingTab)"""
+        for tab in self.tabs:
+            if hasattr(tab, 'keyboard'):
+                tab.keyboard = keyboard
+
 
 class TabbedKeycodes(QWidget):
 
@@ -5120,3 +5397,8 @@ class TabbedKeycodes(QWidget):
         else:
             self.all_keycodes.show()
             self.basic_keycodes.hide()
+
+    def set_keyboard(self, keyboard):
+        """Set keyboard reference for all tab widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.set_keyboard(keyboard)
