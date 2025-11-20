@@ -50,8 +50,8 @@ extern MidiDevice midi_device;
 #define HE_CURVE_HARD       0xCCB3
 #define HE_CURVE_HARDEST    0xCCB4
 
-// HE Velocity Range keycodes (combined min/max) - starts at 0xCCB5
-// Base address for range keycodes (8001 keycodes for valid min < max combinations)
+// HE Velocity Range keycodes (combined min/max where min ≤ max) - starts at 0xCCB5
+// Base address for range keycodes (8,128 keycodes total: 127×128/2 triangular number)
 #define HE_VEL_RANGE_BASE   0xCCB5
 
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
@@ -7043,11 +7043,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
 	//program change	
     } else if (keycode >= 49792 && keycode <= 49919) {
         snprintf(name, sizeof(name), "Program %d", keycode - 49792);
-		
-	} else if (keycode >= 0xC950 && keycode <= 0xC960) {
-	randomvelocitymodifier = keycode - 0xC950;
-    snprintf(name, sizeof(name), "Velocity +/- %d", randomvelocitymodifier);
-		
+
 } else if (keycode >= 29043 && keycode <= 29058) { // Channel Absolute
     uint8_t target_channel = keycode - 29043; // 0-15
     
@@ -9104,16 +9100,16 @@ break;
         uint8_t curve_idx = keycode - HE_CURVE_SOFTEST;
         snprintf(name, sizeof(name), "HE Curve: %s", curve_names[curve_idx]);
     }
-    // Handle HE Velocity Range keycodes (combined min/max)
-    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8001) {
+    // Handle HE Velocity Range keycodes (min ≤ max only, 8,128 keycodes)
+    else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8128) {
         uint16_t offset = keycode - HE_VEL_RANGE_BASE;
-        // Calculate min/max from offset (only valid min < max combinations)
+        // Calculate min/max from offset using matching generation order
         uint8_t min_value = 1;
-        uint8_t max_value = 2;
+        uint8_t max_value = 1;
         uint16_t count = 0;
 
-        for (uint8_t m = 1; m < 127; m++) {
-            for (uint8_t x = m + 1; x < 128; x++) {
+        for (uint8_t m = 1; m <= 127; m++) {
+            for (uint8_t x = m; x <= 127; x++) {
                 if (count == offset) {
                     min_value = m;
                     max_value = x;
@@ -9123,7 +9119,11 @@ break;
             }
         }
         found_keylog:
-        snprintf(name, sizeof(name), "HE Vel: %d-%d", min_value, max_value);
+        if (min_value == max_value) {
+            snprintf(name, sizeof(name), "HE Vel: %d", min_value);
+        } else {
+            snprintf(name, sizeof(name), "HE Vel: %d-%d", min_value, max_value);
+        }
     }
 
 	else if (keycode > 0) {
@@ -9199,9 +9199,32 @@ void oled_render_keylog(void) {
 	}else { snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
 	}
 	
-	if (keysplitvelocitystatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n VEL %3d // VEL %3d", velocity_number, velocity_number2);
-	}else if (keysplitvelocitystatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n V %3d /V %3d /V %3d", velocity_number, velocity_number2, velocity_number3);
-	}else { snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", velocity_number);
+	// Get current layer for HE velocity display
+	uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+	uint8_t he_min = layer_actuations[current_layer].he_velocity_min;
+	uint8_t he_max = layer_actuations[current_layer].he_velocity_max;
+
+	if (keysplitvelocitystatus == 1) {
+		// Keysplit mode - show HE range for main and keysplit
+		if (he_min == he_max) {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VEL %3d // VEL %3d", he_min, velocity_number2);
+		} else {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n V%3d-%3d // VEL %3d", he_min, he_max, velocity_number2);
+		}
+	} else if (keysplitvelocitystatus == 2) {
+		// Triplesplit mode - show HE range for main and fixed for splits
+		if (he_min == he_max) {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n V %3d /V %3d /V %3d", he_min, velocity_number2, velocity_number3);
+		} else {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nV%3d-%3d/V%3d/V%3d", he_min, he_max, velocity_number2, velocity_number3);
+		}
+	} else {
+		// Normal mode - show HE velocity range
+		if (he_min == he_max) {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
+		} else {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
+		}
 	}
 	
 	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
@@ -10860,18 +10883,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // HE Velocity Range (combined min/max) - affects ALL layers
-    if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8001) {
+    // HE Velocity Range (min ≤ max only, 8,128 keycodes) - affects ALL layers
+    if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8128) {
         if (record->event.pressed) {
             uint16_t offset = keycode - HE_VEL_RANGE_BASE;
 
-            // Calculate min/max from offset (only valid min < max combinations)
+            // Calculate min/max from offset using matching generation order
             uint8_t min_value = 1;
-            uint8_t max_value = 2;
+            uint8_t max_value = 1;
             uint16_t count = 0;
 
-            for (uint8_t m = 1; m < 127; m++) {
-                for (uint8_t x = m + 1; x < 128; x++) {
+            for (uint8_t m = 1; m <= 127; m++) {
+                for (uint8_t x = m; x <= 127; x++) {
                     if (count == offset) {
                         min_value = m;
                         max_value = x;

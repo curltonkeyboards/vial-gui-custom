@@ -146,7 +146,7 @@ class AsyncHERangeDialog(QDialog):
             min_val = self.min_input.text()
             max_val = self.max_input.text()
             if min_val and max_val:
-                if int(min_val) < int(max_val):
+                if int(min_val) <= int(max_val):
                     self.callback(min_val, max_val)
         self.deleteLater()
 
@@ -191,7 +191,7 @@ class HERangeDialog(QDialog):
         if min_val and max_val and min_val.isdigit() and max_val.isdigit():
             min_int = int(min_val)
             max_int = int(max_val)
-            if 1 <= min_int <= 126 and 2 <= max_int <= 127 and min_int < max_int:
+            if 1 <= min_int <= 127 and 1 <= max_int <= 127 and min_int <= max_int:
                 self.callback(min_val, max_val)
                 self.accept()
 
@@ -1155,26 +1155,24 @@ class midiadvancedTab(QScrollArea):
                 row += 1
 
     def populate_velocity_section(self):
-        """Populate the Velocity Options section with a single row of buttons/dropdowns."""
+        """Populate the Velocity Options section with HE velocity controls."""
         layout = self.section_layouts["Show\nVelocity\nOptions"]
 
-        # First row - Original velocity controls
+        # First row - Velocity Increment (kept for legacy support)
         row_layout = QHBoxLayout()
         row_layout.addStretch(1)  # Left spacer
 
-        # Create and add buttons/dropdowns with fixed width of 200 pixels
-        self.add_value_button("Set Fixed Velocity", self.velocity_options, row_layout, 200)
+        # Velocity Increment dropdown
         self.add_header_dropdown("Velocity Increment", self.velocity_multiplier_options, row_layout, 200)
-        self.add_header_dropdown("Velocity Shuffle", self.velocityshuffle, row_layout, 200)
 
         row_layout.addStretch(1)  # Right spacer
         layout.addLayout(row_layout)
 
-        # Second row - HE Velocity controls
+        # Second row - HE Velocity controls (replaces fixed velocity and shuffle)
         he_row_layout = QHBoxLayout()
         he_row_layout.addStretch(1)  # Left spacer
 
-        # HE Velocity Range button
+        # HE Velocity Range button (replaces fixed velocity)
         self.add_he_velocity_range_button(he_row_layout, 200)
 
         # HE Velocity Curve dropdown
@@ -1419,7 +1417,7 @@ class midiadvancedTab(QScrollArea):
             if min_val and max_val and min_val.isdigit() and max_val.isdigit():
                 min_int = int(min_val)
                 max_int = int(max_val)
-                if 1 <= min_int <= 126 and 2 <= max_int <= 127 and min_int < max_int:
+                if 1 <= min_int <= 127 and 1 <= max_int <= 127 and min_int <= max_int:
                     self.keycode_changed.emit(f"HE_VEL_RANGE_{min_int}_{max_int}")
 
         button.clicked.connect(lambda: self.open_he_range_dialog(handle_range_values))
