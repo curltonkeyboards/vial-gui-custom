@@ -2906,12 +2906,15 @@ class LayerActuationConfigurator(BasicEditor):
         
         self.per_layer_checkbox.setChecked(not all_same)
 
+
 class GamingConfigurator(BasicEditor):
     
-    def __init__(self):
+    def __init__(self, layout_editor):
         super().__init__()
+        self.layout_editor = layout_editor
         self.keyboard = None
         self.gaming_controls = {}
+        self.active_control_id = None  # Track which control is being assigned
         self.setup_ui()
         
     def setup_ui(self):
@@ -2985,76 +2988,91 @@ class GamingConfigurator(BasicEditor):
             lambda val: self.deadzone_label.setText(str(val))
         )
         
-        # Gaming Control Mappings Group
+        # Keyboard widget for key selection
+        keyboard_label = QLabel(tr("GamingConfigurator", "Click 'Assign Key' button, then click a key on the keyboard below:"))
+        main_layout.addWidget(keyboard_label)
+        
+        self.keyboard_widget = KeyboardWidget2(self.layout_editor)
+        self.keyboard_widget.set_enabled(False)
+        self.keyboard_widget.clicked.connect(self.on_key_clicked)
+        main_layout.addWidget(self.keyboard_widget)
+        main_layout.setAlignment(self.keyboard_widget, Qt.AlignCenter)
+        
+        # Gaming Control Mappings Group - 3 columns of 8 rows
         mappings_group = QGroupBox(tr("GamingConfigurator", "Controller Mappings"))
-        mappings_group.setMaximumWidth(900)
         main_layout.addWidget(mappings_group, alignment=QtCore.Qt.AlignHCenter)
-        mappings_layout = QGridLayout()
-        mappings_layout.setSpacing(8)
-        mappings_layout.setContentsMargins(10, 15, 10, 10)
+        mappings_layout = QHBoxLayout()
+        mappings_layout.setSpacing(20)
         mappings_group.setLayout(mappings_layout)
 
-        # Define gaming controls with their identifiers
-        # Format: (Display Name, Control ID, Description)
-        controls = [
-            ("Left Stick Up", 0, "LS_UP"),
-            ("Left Stick Down", 1, "LS_DOWN"),
-            ("Left Stick Left", 2, "LS_LEFT"),
-            ("Left Stick Right", 3, "LS_RIGHT"),
-            ("Right Stick Up", 4, "RS_UP"),
-            ("Right Stick Down", 5, "RS_DOWN"),
-            ("Right Stick Left", 6, "RS_LEFT"),
-            ("Right Stick Right", 7, "RS_RIGHT"),
-            ("Left Trigger", 8, "LT"),
-            ("Right Trigger", 9, "RT"),
-            ("D-pad Up", 10, "DPAD_UP"),
-            ("D-pad Down", 11, "DPAD_DOWN"),
-            ("D-pad Left", 12, "DPAD_LEFT"),
-            ("D-pad Right", 13, "DPAD_RIGHT"),
-            ("Face Button 1 (A)", 14, "BTN_A"),
-            ("Face Button 2 (B)", 15, "BTN_B"),
-            ("Face Button 3 (X)", 16, "BTN_X"),
-            ("Face Button 4 (Y)", 17, "BTN_Y"),
-            ("Left Bumper", 18, "LB"),
-            ("Right Bumper", 19, "RB"),
-            ("Back/Select", 20, "BACK"),
-            ("Start", 21, "START"),
-            ("Left Stick Click", 22, "LS_CLICK"),
-            ("Right Stick Click", 23, "RS_CLICK"),
+        # Define gaming controls in 3 columns
+        # Column 1: D-pad and Left Stick
+        column1_controls = [
+            ("D-pad Up", 10),
+            ("D-pad Down", 11),
+            ("D-pad Left", 12),
+            ("D-pad Right", 13),
+            ("Left Stick Up", 0),
+            ("Left Stick Down", 1),
+            ("Left Stick Left", 2),
+            ("Left Stick Right", 3),
         ]
         
-        # Add column headers
-        header_label = QLabel("Control")
-        header_label.setStyleSheet("font-weight: bold;")
-        mappings_layout.addWidget(header_label, 0, 0)
+        # Column 2: Face Buttons and Right Stick
+        column2_controls = [
+            ("Face Button 1 (A)", 14),
+            ("Face Button 2 (B)", 15),
+            ("Face Button 3 (X)", 16),
+            ("Face Button 4 (Y)", 17),
+            ("Right Stick Up", 4),
+            ("Right Stick Down", 5),
+            ("Right Stick Left", 6),
+            ("Right Stick Right", 7),
+        ]
         
-        header_key = QLabel("Assigned Key")
-        header_key.setStyleSheet("font-weight: bold;")
-        header_key.setAlignment(QtCore.Qt.AlignCenter)
-        mappings_layout.addWidget(header_key, 0, 1)
+        # Column 3: Shoulder Buttons and System
+        column3_controls = [
+            ("Left Bumper", 18),
+            ("Right Bumper", 19),
+            ("Left Trigger", 8),
+            ("Right Trigger", 9),
+            ("Left Stick Click", 22),
+            ("Right Stick Click", 23),
+            ("Back/Select", 20),
+            ("Start", 21),
+        ]
         
-        # Add gaming control rows
-        for row_idx, (name, control_id, desc) in enumerate(controls, start=1):
-            # Control label
-            label = QLabel(name)
-            mappings_layout.addWidget(label, row_idx, 0)
+        # Create 3 columns
+        for column_controls in [column1_controls, column2_controls, column3_controls]:
+            column_widget = QWidget()
+            column_layout = QGridLayout()
+            column_layout.setSpacing(5)
+            column_widget.setLayout(column_layout)
             
-            # Assign button
-            assign_btn = QPushButton("Not Assigned")
-            assign_btn.setMinimumWidth(150)
-            assign_btn.setMaximumHeight(30)
-            assign_btn.setStyleSheet("text-align: center;")
-            assign_btn.setProperty("control_id", control_id)
-            assign_btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
-            mappings_layout.addWidget(assign_btn, row_idx, 1)
+            for row_idx, (name, control_id) in enumerate(column_controls):
+                # Control label
+                label = QLabel(name)
+                column_layout.addWidget(label, row_idx, 0)
+                
+                # Assign button
+                assign_btn = QPushButton("Not Assigned")
+                assign_btn.setMinimumWidth(120)
+                assign_btn.setMaximumWidth(150)
+                assign_btn.setMaximumHeight(30)
+                assign_btn.setStyleSheet("text-align: center;")
+                assign_btn.setProperty("control_id", control_id)
+                assign_btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
+                column_layout.addWidget(assign_btn, row_idx, 1)
+                
+                # Store reference
+                self.gaming_controls[control_id] = {
+                    'button': assign_btn,
+                    'row': None,
+                    'col': None,
+                    'enabled': False
+                }
             
-            # Store reference
-            self.gaming_controls[control_id] = {
-                'button': assign_btn,
-                'row': None,
-                'col': None,
-                'enabled': False
-            }
+            mappings_layout.addWidget(column_widget)
         
         # Buttons
         self.addStretch()
@@ -3101,14 +3119,41 @@ class GamingConfigurator(BasicEditor):
     
     def on_assign_key(self, control_id):
         """Handle key assignment for a gaming control"""
-        # TODO: Implement key picker dialog similar to macro key assignment
-        # For now, just show a message
-        QMessageBox.information(self, "Assign Key", f"Key assignment for control ID {control_id} will be implemented")
+        self.active_control_id = control_id
+        # Highlight the button being assigned
+        for cid, data in self.gaming_controls.items():
+            if cid == control_id:
+                data['button'].setStyleSheet("text-align: center; background-color: #4CAF50; color: white;")
+            else:
+                data['button'].setStyleSheet("text-align: center;")
+    
+    def on_key_clicked(self):
+        """Called when a key on the keyboard widget is clicked"""
+        if self.active_control_id is None or self.keyboard_widget.active_key is None:
+            return
+        
+        # Get the row/col of the clicked key
+        key = self.keyboard_widget.active_key
+        if key.desc.row is not None:
+            row = key.desc.row
+            col = key.desc.col
+            
+            # Assign to the active control
+            data = self.gaming_controls[self.active_control_id]
+            data['row'] = row
+            data['col'] = col
+            data['enabled'] = True
+            data['button'].setText(f"Key({row},{col})")
+            data['button'].setStyleSheet("text-align: center;")
+            
+            # Clear active control
+            self.active_control_id = None
+            self.keyboard_widget.deselect()
     
     def on_save(self):
         """Save gaming configuration to keyboard"""
         if not self.keyboard:
-            QMessageBox.warning(self, "No Keyboard", "No keyboard connected")
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
             return
         
         try:
@@ -3118,7 +3163,7 @@ class GamingConfigurator(BasicEditor):
             deadzone = self.deadzone_slider.value()
             
             if min_travel >= max_travel:
-                QMessageBox.warning(self, "Invalid Range", "Min travel must be less than max travel")
+                QMessageBox.warning(None, "Invalid Range", "Min travel must be less than max travel")
                 return
             
             success = self.keyboard.set_gaming_analog_config(min_travel, max_travel, deadzone)
@@ -3131,16 +3176,16 @@ class GamingConfigurator(BasicEditor):
                     self.keyboard.set_gaming_key_map(control_id, 0, 0, 0)
             
             if success:
-                QMessageBox.information(self, "Success", "Gaming configuration saved successfully")
+                QMessageBox.information(None, "Success", "Gaming configuration saved successfully")
             else:
-                QMessageBox.warning(self, "Error", "Failed to save gaming configuration")
+                QMessageBox.warning(None, "Error", "Failed to save gaming configuration")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error saving configuration: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Error saving configuration: {str(e)}")
     
     def on_load_from_keyboard(self):
         """Load gaming configuration from keyboard"""
         if not self.keyboard:
-            QMessageBox.warning(self, "No Keyboard", "No keyboard connected")
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
             return
         
         try:
@@ -3164,19 +3209,19 @@ class GamingConfigurator(BasicEditor):
                 self.max_travel_label.setText(f"{settings.get('max_travel_mm_x10', 20)/10:.1f}")
                 self.deadzone_label.setText(str(settings.get('deadzone_percent', 10)))
                 
-                QMessageBox.information(self, "Success", "Gaming configuration loaded from keyboard")
+                QMessageBox.information(None, "Success", "Gaming configuration loaded from keyboard")
             else:
-                QMessageBox.warning(self, "Error", "Failed to load gaming configuration")
+                QMessageBox.warning(None, "Error", "Failed to load gaming configuration")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error loading configuration: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Error loading configuration: {str(e)}")
     
     def on_reset(self):
         """Reset gaming configuration to defaults"""
         if not self.keyboard:
-            QMessageBox.warning(self, "No Keyboard", "No keyboard connected")
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
             return
         
-        reply = QMessageBox.question(self, "Confirm Reset",
+        reply = QMessageBox.question(None, "Confirm Reset",
                                      "Reset gaming configuration to defaults?",
                                      QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
@@ -3187,19 +3232,21 @@ class GamingConfigurator(BasicEditor):
                     # Clear all assignments
                     for data in self.gaming_controls.values():
                         data['button'].setText("Not Assigned")
+                        data['button'].setStyleSheet("text-align: center;")
                         data['row'] = None
                         data['col'] = None
                         data['enabled'] = False
-                    QMessageBox.information(self, "Success", "Gaming configuration reset to defaults")
+                    QMessageBox.information(None, "Success", "Gaming configuration reset to defaults")
                 else:
-                    QMessageBox.warning(self, "Error", "Failed to reset gaming configuration")
+                    QMessageBox.warning(None, "Error", "Failed to reset gaming configuration")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Error resetting configuration: {str(e)}")
+                QMessageBox.critical(None, "Error", f"Error resetting configuration: {str(e)}")
     
     def rebuild(self, device):
         super().rebuild(device)
         if self.valid():
             self.keyboard = device.keyboard
+            self.keyboard_widget.set_keys(self.keyboard.keys, self.keyboard.encoders)
             # Try to load settings silently without showing message boxes
             try:
                 settings = self.keyboard.get_gaming_settings()
