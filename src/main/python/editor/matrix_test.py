@@ -2939,6 +2939,7 @@ class GamingConfigurator(BasicEditor):
 
         # Analog Calibration Group (LEFT SIDE)
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
+        calibration_group.setMaximumWidth(250)
         calibration_layout = QVBoxLayout()
         calibration_layout.setSpacing(15)
         calibration_group.setLayout(calibration_layout)
@@ -2989,29 +2990,6 @@ class GamingConfigurator(BasicEditor):
             lambda val: self.max_travel_label.setText(f"{val/10:.1f}")
         )
         calibration_layout.addWidget(max_travel_widget)
-
-        # Deadzone slider (0-100%)
-        deadzone_widget = QWidget()
-        deadzone_layout = QVBoxLayout()
-        deadzone_layout.setSpacing(5)
-        deadzone_widget.setLayout(deadzone_layout)
-        deadzone_layout.addWidget(QLabel(tr("GamingConfigurator", "Deadzone (%):")))
-        deadzone_h_layout = QHBoxLayout()
-        self.deadzone_slider = QSlider(Qt.Horizontal)
-        self.deadzone_slider.setMinimum(0)
-        self.deadzone_slider.setMaximum(100)
-        self.deadzone_slider.setValue(10)   # 10% default
-        self.deadzone_slider.setTickInterval(5)
-        self.deadzone_slider.setMinimumWidth(200)
-        deadzone_h_layout.addWidget(self.deadzone_slider)
-        self.deadzone_label = QLabel("10")
-        self.deadzone_label.setMinimumWidth(40)
-        deadzone_h_layout.addWidget(self.deadzone_label)
-        deadzone_layout.addLayout(deadzone_h_layout)
-        self.deadzone_slider.valueChanged.connect(
-            lambda val: self.deadzone_label.setText(str(val))
-        )
-        calibration_layout.addWidget(deadzone_widget)
 
         # Gaming Control Mappings Group (CENTER) - 5 columns (4 cols of 5 rows + 1 col of 4 rows)
         mappings_group = QGroupBox(tr("GamingConfigurator", "Controller Mappings - Click button to assign"))
@@ -3214,7 +3192,7 @@ class GamingConfigurator(BasicEditor):
             # Save analog configuration
             min_travel = self.min_travel_slider.value()
             max_travel = self.max_travel_slider.value()
-            deadzone = self.deadzone_slider.value()
+            deadzone = 0  # Deadzone is obsolete
 
             if min_travel >= max_travel:
                 QMessageBox.warning(None, "Invalid Range", "Min travel must be less than max travel")
@@ -3248,20 +3226,16 @@ class GamingConfigurator(BasicEditor):
                 # Block signals while updating
                 self.min_travel_slider.blockSignals(True)
                 self.max_travel_slider.blockSignals(True)
-                self.deadzone_slider.blockSignals(True)
 
                 self.min_travel_slider.setValue(settings.get('min_travel_mm_x10', 10))
                 self.max_travel_slider.setValue(settings.get('max_travel_mm_x10', 20))
-                self.deadzone_slider.setValue(settings.get('deadzone_percent', 10))
 
                 self.min_travel_slider.blockSignals(False)
                 self.max_travel_slider.blockSignals(False)
-                self.deadzone_slider.blockSignals(False)
 
                 # Update labels
                 self.min_travel_label.setText(f"{settings.get('min_travel_mm_x10', 10)/10:.1f}")
                 self.max_travel_label.setText(f"{settings.get('max_travel_mm_x10', 20)/10:.1f}")
-                self.deadzone_label.setText(str(settings.get('deadzone_percent', 10)))
 
                 QMessageBox.information(None, "Success", "Gaming configuration loaded from keyboard")
             else:
@@ -3309,20 +3283,16 @@ class GamingConfigurator(BasicEditor):
                     # Block signals while updating
                     self.min_travel_slider.blockSignals(True)
                     self.max_travel_slider.blockSignals(True)
-                    self.deadzone_slider.blockSignals(True)
 
                     self.min_travel_slider.setValue(settings.get('min_travel_mm_x10', 10))
                     self.max_travel_slider.setValue(settings.get('max_travel_mm_x10', 20))
-                    self.deadzone_slider.setValue(settings.get('deadzone_percent', 10))
 
                     self.min_travel_slider.blockSignals(False)
                     self.max_travel_slider.blockSignals(False)
-                    self.deadzone_slider.blockSignals(False)
 
                     # Update labels
                     self.min_travel_label.setText(f"{settings.get('min_travel_mm_x10', 10)/10:.1f}")
                     self.max_travel_label.setText(f"{settings.get('max_travel_mm_x10', 20)/10:.1f}")
-                    self.deadzone_label.setText(str(settings.get('deadzone_percent', 10)))
             except:
                 # Silently fail during rebuild - user can manually load if needed
                 pass
