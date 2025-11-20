@@ -4417,7 +4417,8 @@ class GamingTab(QScrollArea):
         if dpad_up:
             dpad_up.setText("↑")
             dpad_up.setParent(gamepad_widget)
-            dpad_up.move(196, 102)  # Same horizontal as bottom dpad, 11px up from previous
+            dpad_up.move(182, 102)  # Centered between left and right dpad
+            dpad_up.setStyleSheet("border: 2px solid #555555;")
             # Create tapered shape: 50px wide at bottom, tapers to point at top
             path = QPainterPath()
             path.moveTo(28, 58)  # Bottom center
@@ -4434,7 +4435,8 @@ class GamingTab(QScrollArea):
         if dpad_down:
             dpad_down.setText("↓")
             dpad_down.setParent(gamepad_widget)
-            dpad_down.move(196, 171)  # 6px right from previous, same horizontal as top dpad
+            dpad_down.move(182, 160)  # Centered, touching dpad_up
+            dpad_down.setStyleSheet("border: 2px solid #555555;")
             path = QPainterPath()
             path.moveTo(28, 0)   # Top center
             path.lineTo(3, 12)   # Top left
@@ -4451,6 +4453,7 @@ class GamingTab(QScrollArea):
             dpad_left.setText("←")
             dpad_left.setParent(gamepad_widget)
             dpad_left.move(151, 147)  # Adjusted for new size
+            dpad_left.setStyleSheet("border: 2px solid #555555;")
             path = QPainterPath()
             path.moveTo(58, 28)  # Right center
             path.lineTo(46, 3)   # Right top
@@ -4467,6 +4470,7 @@ class GamingTab(QScrollArea):
             dpad_right.setText("→")
             dpad_right.setParent(gamepad_widget)
             dpad_right.move(211, 147)  # Adjusted for new size
+            dpad_right.setStyleSheet("border: 2px solid #555555;")
             path = QPainterPath()
             path.moveTo(0, 28)   # Left center
             path.lineTo(12, 3)   # Left top
@@ -4540,34 +4544,34 @@ class GamingTab(QScrollArea):
             r3_btn.setParent(gamepad_widget)
             r3_btn.move(439, 223)  # Center - moved 13px right from 426, then 25px up
 
-        # Face Buttons (right side) - Button 1-4 (adjusted positions)
-        btn4 = self.create_button("XBOX_Y", 42, 42)
+        # Face Buttons (right side) - Button 1-4, 20% bigger (50x50) and repositioned
+        btn4 = self.create_button("XBOX_Y", 50, 50)
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
-            btn4.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn4.move(526, 111)  # Same horizontal as btn1, 8px down
+            btn4.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn4.move(517, 103)  # Centered between btn3 and btn2, up 4px
 
-        btn3 = self.create_button("XBOX_X", 42, 42)
+        btn3 = self.create_button("XBOX_X", 50, 50)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
-            btn3.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn3.move(485, 143)  # 3px down
+            btn3.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn3.move(481, 139)  # Size adjusted to keep center
 
-        btn2 = self.create_button("XBOX_B", 42, 42)
+        btn2 = self.create_button("XBOX_B", 50, 50)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
-            btn2.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn2.move(557, 143)  # Same vertical as btn3
+            btn2.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn2.move(553, 139)  # Same vertical as btn3, size adjusted
 
-        btn1 = self.create_button("XBOX_A", 42, 42)
+        btn1 = self.create_button("XBOX_A", 50, 50)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
-            btn1.setStyleSheet("border-radius: 21px;")  # Make circular
-            btn1.move(526, 176)  # 8px right
+            btn1.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn1.move(517, 178)  # Centered between btn3 and btn2, down 6px
 
         self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
