@@ -917,10 +917,10 @@ class KeyboardWidget2(QWidget):
             encoders[0].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 0 click button to its position (keep current)
+            # Move encoder 0 click button to same vertical level as encoders, centered horizontally
             if encoder_click_0:
-                encoder_click_0.shift_y += 60  # Keep current position
-                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels
+                encoder_click_0.shift_y += 80  # Same vertical level as encoder pair 0
+                encoder_click_0.shift_x -= 5  # Centered between down (-30) and up (+20): (-30+20)/2 = -5
 
             # Move the last two encoders to original position
             encoders[2].shift_y += 50  # Original position
@@ -928,15 +928,15 @@ class KeyboardWidget2(QWidget):
             encoders[2].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 1 click button to its position (keep current)
+            # Move encoder 1 click button to same vertical level as encoders, centered horizontally
             if encoder_click_1:
-                encoder_click_1.shift_y += 55  # Keep current position
-                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels
+                encoder_click_1.shift_y += 50  # Same vertical level as encoder pair 1
+                encoder_click_1.shift_x -= 5  # Centered between down (-30) and up (+20): (-30+20)/2 = -5
 
-        # Move sustain pedal to correct position
+        # Move sustain pedal to be visible above encoder buttons
         if sustain_pedal:
-            sustain_pedal.shift_x += 40  # Shift right 40 pixels
-            sustain_pedal.shift_y -= 700  # Shift up 700 pixels
+            sustain_pedal.shift_x -= 5  # Align with encoder click buttons horizontally
+            sustain_pedal.shift_y += 20  # Position above the encoder buttons
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))

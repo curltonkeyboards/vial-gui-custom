@@ -810,11 +810,11 @@ class ClickableWidget(QWidget):
         self.clicked.emit()
 
 
-class SustainPedalWidget(QGroupBox):
-    """Sustain Pedal configuration widget"""
+class SustainPedalWidget(QWidget):
+    """Widget containing Pedal and Encoder Buttons sections"""
 
     def __init__(self):
-        super().__init__(tr("SustainPedalWidget", "Sustain Pedal"))
+        super().__init__()
 
         self.device = None
         self.current_layer = 0
@@ -822,26 +822,45 @@ class SustainPedalWidget(QGroupBox):
         self.setMinimumWidth(200)
         self.setMaximumWidth(350)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        self.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
 
-        layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 15, 10, 10)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(main_layout)
 
-        # Info label
-        info_label = QLabel(tr("SustainPedalWidget", "Configure sustain pedal on PB10\n(Shows as key at bottom left)"))
-        info_label.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
+        # Pedal section
+        pedal_group = QGroupBox(tr("SustainPedalWidget", "Pedal"))
+        pedal_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
+        pedal_layout = QVBoxLayout()
+        pedal_layout.setSpacing(8)
+        pedal_layout.setContentsMargins(10, 15, 10, 10)
+        pedal_group.setLayout(pedal_layout)
 
-        # Additional info
-        info_label2 = QLabel(tr("SustainPedalWidget", "Encoder clicks are between\nthe encoder up/down buttons"))
-        info_label2.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
-        info_label2.setWordWrap(True)
-        layout.addWidget(info_label2)
+        # Pedal info
+        pedal_info = QLabel(tr("SustainPedalWidget", "Configure sustain pedal on PB10\n(Shows as key above encoder buttons)"))
+        pedal_info.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
+        pedal_info.setWordWrap(True)
+        pedal_layout.addWidget(pedal_info)
 
-        layout.addStretch()
+        main_layout.addWidget(pedal_group)
+
+        # Encoder Buttons section
+        encoder_group = QGroupBox(tr("SustainPedalWidget", "Encoder Buttons"))
+        encoder_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
+        encoder_layout = QVBoxLayout()
+        encoder_layout.setSpacing(8)
+        encoder_layout.setContentsMargins(10, 15, 10, 10)
+        encoder_group.setLayout(encoder_layout)
+
+        # Encoder info
+        encoder_info = QLabel(tr("SustainPedalWidget", "Encoder click buttons are centered\nbetween encoder up/down buttons"))
+        encoder_info.setStyleSheet("QLabel { font-weight: normal; font-size: 9px; color: #666; }")
+        encoder_info.setWordWrap(True)
+        encoder_layout.addWidget(encoder_info)
+
+        main_layout.addWidget(encoder_group)
+
+        main_layout.addStretch()
 
     def set_device(self, device):
         """Set the device"""

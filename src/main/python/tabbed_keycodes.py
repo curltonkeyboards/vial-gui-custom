@@ -4728,6 +4728,9 @@ class GamingTab(QScrollArea):
         # Add calibration group to left side of horizontal layout
         controller_calibration_layout.addWidget(calibration_group, alignment=Qt.AlignTop)
 
+        # Add spacer to push controller and calibration closer together
+        controller_calibration_layout.addSpacing(30)
+
         # Add gamepad widget to right side of horizontal layout
         controller_calibration_layout.addWidget(gamepad_widget)
 
