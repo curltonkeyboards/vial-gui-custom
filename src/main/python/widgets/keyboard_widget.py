@@ -210,16 +210,20 @@ class EncoderWidget(KeyWidget):
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
-        path.addEllipse(round(self.x), round(self.y), round(self.w), round(self.h))
+        # Make encoder buttons square with rounded corners
+        path.addRoundedRect(round(self.x), round(self.y), round(self.w), round(self.h),
+                           self.corner, self.corner)
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
-        path.addEllipse(
+        # Make encoder buttons square with rounded corners
+        path.addRoundedRect(
             round(self.x + self.size * SHADOW_SIDE_PADDING),
             round(self.y + self.size * SHADOW_TOP_PADDING),
             round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
-            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING))
+            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
+            self.corner, self.corner
         )
         return path
 
@@ -448,6 +452,14 @@ class KeyboardWidget(QWidget):
                 brush = foreground_on_brush
             qp.setBrush(brush)
             qp.drawPath(key.foreground_draw_path)
+
+            # draw 1px border for encoder widgets using theme background color
+            if isinstance(key, EncoderWidget2) or isinstance(key, EncoderWidget):
+                border_pen = QPen(QApplication.palette().color(QPalette.Window))
+                border_pen.setWidth(1)
+                qp.setPen(border_pen)
+                qp.setBrush(Qt.NoBrush)
+                qp.drawPath(key.foreground_draw_path)
 
             # draw key text
             if key.masked:
@@ -749,16 +761,20 @@ class EncoderWidget2(KeyWidget2):
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
-        path.addEllipse(round(self.x), round(self.y), round(self.w), round(self.h))
+        # Make encoder buttons square with rounded corners
+        path.addRoundedRect(round(self.x), round(self.y), round(self.w), round(self.h),
+                           self.corner, self.corner)
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
-        path.addEllipse(
+        # Make encoder buttons square with rounded corners
+        path.addRoundedRect(
             round(self.x + self.size * SHADOW_SIDE_PADDING),
             round(self.y + self.size * SHADOW_TOP_PADDING),
             round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
-            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING))
+            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
+            self.corner, self.corner
         )
         return path
 
@@ -917,10 +933,10 @@ class KeyboardWidget2(QWidget):
             encoders[0].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 0 click button to same vertical level as encoders, centered horizontally
+            # Move encoder 0 click button to same vertical level as encoders, 25px left of center
             if encoder_click_0:
                 encoder_click_0.shift_y += 80  # Same vertical level as encoder pair 0
-                encoder_click_0.shift_x -= 5  # Centered between down (-30) and up (+20): (-30+20)/2 = -5
+                encoder_click_0.shift_x -= 30  # Centered at -5, then 25px left: -5 - 25 = -30
 
             # Move the last two encoders to original position
             encoders[2].shift_y += 50  # Original position
@@ -928,15 +944,15 @@ class KeyboardWidget2(QWidget):
             encoders[2].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 1 click button to same vertical level as encoders, centered horizontally
+            # Move encoder 1 click button to same vertical level as encoders, 25px left of center
             if encoder_click_1:
                 encoder_click_1.shift_y += 50  # Same vertical level as encoder pair 1
-                encoder_click_1.shift_x -= 5  # Centered between down (-30) and up (+20): (-30+20)/2 = -5
+                encoder_click_1.shift_x -= 30  # Centered at -5, then 25px left: -5 - 25 = -30
 
         # Move sustain pedal to be visible above encoder buttons
         if sustain_pedal:
-            sustain_pedal.shift_x -= 5  # Align with encoder click buttons horizontally
-            sustain_pedal.shift_y += 20  # Position above the encoder buttons
+            sustain_pedal.shift_x -= 30  # Align with encoder click buttons horizontally
+            sustain_pedal.shift_y += 15  # Position above the encoder buttons (15 pixels above top encoder row)
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
@@ -1096,6 +1112,14 @@ class KeyboardWidget2(QWidget):
                 brush = foreground_on_brush
             qp.setBrush(brush)
             qp.drawPath(key.foreground_draw_path)
+
+            # draw 1px border for encoder widgets using theme background color
+            if isinstance(key, EncoderWidget2) or isinstance(key, EncoderWidget):
+                border_pen = QPen(QApplication.palette().color(QPalette.Window))
+                border_pen.setWidth(1)
+                qp.setPen(border_pen)
+                qp.setBrush(Qt.NoBrush)
+                qp.drawPath(key.foreground_draw_path)
 
             # draw key text
             if key.masked:

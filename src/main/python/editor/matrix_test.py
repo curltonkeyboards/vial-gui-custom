@@ -3017,6 +3017,7 @@ class GamingConfigurator(BasicEditor):
 
         # Gaming Control Mappings Group (CENTER) - 5 columns (4 cols of 5 rows + 1 col of 4 rows)
         mappings_group = QGroupBox(tr("GamingConfigurator", "Controller Mappings - Click button to assign"))
+        mappings_group.setMaximumWidth(900)
         controls_layout.addWidget(mappings_group)
         mappings_layout = QHBoxLayout()
         mappings_layout.setSpacing(15)
