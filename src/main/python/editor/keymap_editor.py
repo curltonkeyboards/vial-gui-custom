@@ -976,11 +976,6 @@ class KeymapEditor(BasicEditor):
 
             self.tabbed_keycodes.recreate_keycode_buttons()
             TabbedKeycodes.tray.recreate_keycode_buttons()
-
-            # Set keyboard reference for tabs that need it (e.g., GamingTab)
-            self.tabbed_keycodes.set_keyboard(self.keyboard)
-            TabbedKeycodes.tray.set_keyboard(self.keyboard)
-
             self.refresh_layer_display()
             
         # Set device for quick actuation widget and sustain pedal widget (loads all layers once)

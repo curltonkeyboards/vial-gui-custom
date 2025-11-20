@@ -2905,3 +2905,303 @@ class LayerActuationConfigurator(BasicEditor):
             self.load_layer_to_ui(self.current_layer)
         
         self.per_layer_checkbox.setChecked(not all_same)
+
+class GamingConfigurator(BasicEditor):
+    
+    def __init__(self):
+        super().__init__()
+        self.keyboard = None
+        self.gaming_controls = {}
+        self.setup_ui()
+        
+    def setup_ui(self):
+        # Create scroll area for better window resizing
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+        main_widget.setLayout(main_layout)
+
+        scroll_area.setWidget(main_widget)
+        self.addWidget(scroll_area, 1)
+
+        # Analog Calibration Group
+        calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
+        calibration_layout = QGridLayout()
+        calibration_layout.setHorizontalSpacing(25)
+        calibration_layout.setColumnStretch(0, 1)  # Left spacer
+        calibration_layout.setColumnStretch(5, 1)  # Right spacer
+        calibration_group.setLayout(calibration_layout)
+        main_layout.addWidget(calibration_group)
+        
+        # Min Travel slider (0 to 2.5mm, stored as mm×10, so 0-25)
+        calibration_layout.addWidget(QLabel(tr("GamingConfigurator", "Min Travel (mm):")), 0, 1)
+        self.min_travel_slider = QSlider(Qt.Horizontal)
+        self.min_travel_slider.setMinimum(0)    # 0.0mm
+        self.min_travel_slider.setMaximum(25)   # 2.5mm
+        self.min_travel_slider.setValue(10)     # 1.0mm default
+        self.min_travel_slider.setTickInterval(1)
+        self.min_travel_slider.setMinimumWidth(200)
+        calibration_layout.addWidget(self.min_travel_slider, 0, 2)
+        self.min_travel_label = QLabel("1.0")
+        self.min_travel_label.setMinimumWidth(40)
+        calibration_layout.addWidget(self.min_travel_label, 0, 3)
+        self.min_travel_slider.valueChanged.connect(
+            lambda val: self.min_travel_label.setText(f"{val/10:.1f}")
+        )
+        
+        # Max Travel slider (0 to 2.5mm, stored as mm×10, so 0-25)
+        calibration_layout.addWidget(QLabel(tr("GamingConfigurator", "Max Travel (mm):")), 1, 1)
+        self.max_travel_slider = QSlider(Qt.Horizontal)
+        self.max_travel_slider.setMinimum(0)    # 0.0mm
+        self.max_travel_slider.setMaximum(25)   # 2.5mm
+        self.max_travel_slider.setValue(20)     # 2.0mm default
+        self.max_travel_slider.setTickInterval(1)
+        self.max_travel_slider.setMinimumWidth(200)
+        calibration_layout.addWidget(self.max_travel_slider, 1, 2)
+        self.max_travel_label = QLabel("2.0")
+        self.max_travel_label.setMinimumWidth(40)
+        calibration_layout.addWidget(self.max_travel_label, 1, 3)
+        self.max_travel_slider.valueChanged.connect(
+            lambda val: self.max_travel_label.setText(f"{val/10:.1f}")
+        )
+        
+        # Deadzone slider (0-100%)
+        calibration_layout.addWidget(QLabel(tr("GamingConfigurator", "Deadzone (%):")), 2, 1)
+        self.deadzone_slider = QSlider(Qt.Horizontal)
+        self.deadzone_slider.setMinimum(0)
+        self.deadzone_slider.setMaximum(100)
+        self.deadzone_slider.setValue(10)   # 10% default
+        self.deadzone_slider.setTickInterval(5)
+        self.deadzone_slider.setMinimumWidth(200)
+        calibration_layout.addWidget(self.deadzone_slider, 2, 2)
+        self.deadzone_label = QLabel("10")
+        self.deadzone_label.setMinimumWidth(40)
+        calibration_layout.addWidget(self.deadzone_label, 2, 3)
+        self.deadzone_slider.valueChanged.connect(
+            lambda val: self.deadzone_label.setText(str(val))
+        )
+        
+        # Gaming Control Mappings Group
+        mappings_group = QGroupBox(tr("GamingConfigurator", "Controller Mappings"))
+        mappings_group.setMaximumWidth(900)
+        main_layout.addWidget(mappings_group, alignment=QtCore.Qt.AlignHCenter)
+        mappings_layout = QGridLayout()
+        mappings_layout.setSpacing(8)
+        mappings_layout.setContentsMargins(10, 15, 10, 10)
+        mappings_group.setLayout(mappings_layout)
+
+        # Define gaming controls with their identifiers
+        # Format: (Display Name, Control ID, Description)
+        controls = [
+            ("Left Stick Up", 0, "LS_UP"),
+            ("Left Stick Down", 1, "LS_DOWN"),
+            ("Left Stick Left", 2, "LS_LEFT"),
+            ("Left Stick Right", 3, "LS_RIGHT"),
+            ("Right Stick Up", 4, "RS_UP"),
+            ("Right Stick Down", 5, "RS_DOWN"),
+            ("Right Stick Left", 6, "RS_LEFT"),
+            ("Right Stick Right", 7, "RS_RIGHT"),
+            ("Left Trigger", 8, "LT"),
+            ("Right Trigger", 9, "RT"),
+            ("D-pad Up", 10, "DPAD_UP"),
+            ("D-pad Down", 11, "DPAD_DOWN"),
+            ("D-pad Left", 12, "DPAD_LEFT"),
+            ("D-pad Right", 13, "DPAD_RIGHT"),
+            ("Face Button 1 (A)", 14, "BTN_A"),
+            ("Face Button 2 (B)", 15, "BTN_B"),
+            ("Face Button 3 (X)", 16, "BTN_X"),
+            ("Face Button 4 (Y)", 17, "BTN_Y"),
+            ("Left Bumper", 18, "LB"),
+            ("Right Bumper", 19, "RB"),
+            ("Back/Select", 20, "BACK"),
+            ("Start", 21, "START"),
+            ("Left Stick Click", 22, "LS_CLICK"),
+            ("Right Stick Click", 23, "RS_CLICK"),
+        ]
+        
+        # Add column headers
+        header_label = QLabel("Control")
+        header_label.setStyleSheet("font-weight: bold;")
+        mappings_layout.addWidget(header_label, 0, 0)
+        
+        header_key = QLabel("Assigned Key")
+        header_key.setStyleSheet("font-weight: bold;")
+        header_key.setAlignment(QtCore.Qt.AlignCenter)
+        mappings_layout.addWidget(header_key, 0, 1)
+        
+        # Add gaming control rows
+        for row_idx, (name, control_id, desc) in enumerate(controls, start=1):
+            # Control label
+            label = QLabel(name)
+            mappings_layout.addWidget(label, row_idx, 0)
+            
+            # Assign button
+            assign_btn = QPushButton("Not Assigned")
+            assign_btn.setMinimumWidth(150)
+            assign_btn.setMaximumHeight(30)
+            assign_btn.setStyleSheet("text-align: center;")
+            assign_btn.setProperty("control_id", control_id)
+            assign_btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
+            mappings_layout.addWidget(assign_btn, row_idx, 1)
+            
+            # Store reference
+            self.gaming_controls[control_id] = {
+                'button': assign_btn,
+                'row': None,
+                'col': None,
+                'enabled': False
+            }
+        
+        # Buttons
+        self.addStretch()
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+
+        # Button style
+        button_style = "QPushButton { border-radius: 3px; padding: 8px 16px; }"
+
+        save_btn = QPushButton(tr("GamingConfigurator", "Save Configuration"))
+        save_btn.setMinimumHeight(45)
+        save_btn.setMinimumWidth(200)
+        save_btn.setStyleSheet(button_style)
+        save_btn.clicked.connect(self.on_save)
+        buttons_layout.addWidget(save_btn)
+
+        load_btn = QPushButton(tr("GamingConfigurator", "Load from Keyboard"))
+        load_btn.setMinimumHeight(45)
+        load_btn.setMinimumWidth(210)
+        load_btn.setStyleSheet(button_style)
+        load_btn.clicked.connect(self.on_load_from_keyboard)
+        buttons_layout.addWidget(load_btn)
+
+        reset_btn = QPushButton(tr("GamingConfigurator", "Reset to Defaults"))
+        reset_btn.setMinimumHeight(45)
+        reset_btn.setMinimumWidth(180)
+        reset_btn.setStyleSheet(button_style)
+        reset_btn.clicked.connect(self.on_reset)
+        buttons_layout.addWidget(reset_btn)
+
+        self.addLayout(buttons_layout)
+        
+        # Apply stylesheet
+        main_widget.setStyleSheet("""
+            QCheckBox:focus {
+                font-weight: normal;
+                outline: none;
+            }
+            QPushButton:focus {
+                font-weight: normal;
+                outline: none;
+            }
+        """)
+    
+    def on_assign_key(self, control_id):
+        """Handle key assignment for a gaming control"""
+        # TODO: Implement key picker dialog similar to macro key assignment
+        # For now, just show a message
+        QMessageBox.information(self, "Assign Key", f"Key assignment for control ID {control_id} will be implemented")
+    
+    def on_save(self):
+        """Save gaming configuration to keyboard"""
+        if not self.keyboard:
+            QMessageBox.warning(self, "No Keyboard", "No keyboard connected")
+            return
+        
+        try:
+            # Save analog configuration
+            min_travel = self.min_travel_slider.value()
+            max_travel = self.max_travel_slider.value()
+            deadzone = self.deadzone_slider.value()
+            
+            if min_travel >= max_travel:
+                QMessageBox.warning(self, "Invalid Range", "Min travel must be less than max travel")
+                return
+            
+            success = self.keyboard.set_gaming_analog_config(min_travel, max_travel, deadzone)
+            
+            # Save key mappings
+            for control_id, data in self.gaming_controls.items():
+                if data['enabled'] and data['row'] is not None and data['col'] is not None:
+                    self.keyboard.set_gaming_key_map(control_id, data['row'], data['col'], 1)
+                else:
+                    self.keyboard.set_gaming_key_map(control_id, 0, 0, 0)
+            
+            if success:
+                QMessageBox.information(self, "Success", "Gaming configuration saved successfully")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to save gaming configuration")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error saving configuration: {str(e)}")
+    
+    def on_load_from_keyboard(self):
+        """Load gaming configuration from keyboard"""
+        if not self.keyboard:
+            QMessageBox.warning(self, "No Keyboard", "No keyboard connected")
+            return
+        
+        try:
+            settings = self.keyboard.get_gaming_settings()
+            if settings:
+                # Block signals while updating
+                self.min_travel_slider.blockSignals(True)
+                self.max_travel_slider.blockSignals(True)
+                self.deadzone_slider.blockSignals(True)
+                
+                self.min_travel_slider.setValue(settings.get('min_travel_mm_x10', 10))
+                self.max_travel_slider.setValue(settings.get('max_travel_mm_x10', 20))
+                self.deadzone_slider.setValue(settings.get('deadzone_percent', 10))
+                
+                self.min_travel_slider.blockSignals(False)
+                self.max_travel_slider.blockSignals(False)
+                self.deadzone_slider.blockSignals(False)
+                
+                # Update labels
+                self.min_travel_label.setText(f"{settings.get('min_travel_mm_x10', 10)/10:.1f}")
+                self.max_travel_label.setText(f"{settings.get('max_travel_mm_x10', 20)/10:.1f}")
+                self.deadzone_label.setText(str(settings.get('deadzone_percent', 10)))
+                
+                QMessageBox.information(self, "Success", "Gaming configuration loaded from keyboard")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to load gaming configuration")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error loading configuration: {str(e)}")
+    
+    def on_reset(self):
+        """Reset gaming configuration to defaults"""
+        if not self.keyboard:
+            QMessageBox.warning(self, "No Keyboard", "No keyboard connected")
+            return
+        
+        reply = QMessageBox.question(self, "Confirm Reset",
+                                     "Reset gaming configuration to defaults?",
+                                     QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                success = self.keyboard.reset_gaming_settings()
+                if success:
+                    self.on_load_from_keyboard()
+                    # Clear all assignments
+                    for data in self.gaming_controls.values():
+                        data['button'].setText("Not Assigned")
+                        data['row'] = None
+                        data['col'] = None
+                        data['enabled'] = False
+                    QMessageBox.information(self, "Success", "Gaming configuration reset to defaults")
+                else:
+                    QMessageBox.warning(self, "Error", "Failed to reset gaming configuration")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Error resetting configuration: {str(e)}")
+    
+    def rebuild(self, device):
+        super().rebuild(device)
+        if self.valid():
+            self.keyboard = device.keyboard
+            # Load current settings
+            self.on_load_from_keyboard()
+
+    def valid(self):
+        return isinstance(self.device, VialKeyboard)

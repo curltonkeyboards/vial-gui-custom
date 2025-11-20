@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
-from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton, QSlider, QGroupBox
+from PyQt5.QtWidgets import QTabWidget, QWidget, QScrollArea, QApplication, QVBoxLayout, QHBoxLayout, QComboBox, QSizePolicy, QLabel, QGridLayout, QStyleOptionComboBox, QDialog, QLineEdit, QFrame, QListView, QScrollBar, QPushButton
 from PyQt5.QtGui import QPalette, QPainter, QPolygon, QPen, QColor, QBrush, QPixmap, QPainterPath, QRegion
 
 from constants import KEYCODE_BTN_RATIO
@@ -4353,12 +4353,6 @@ class GamingTab(QScrollArea):
         self.label = label
         self.gaming_keycodes = gaming_keycodes
         self.current_keycode_filter = None
-        self.keyboard = None  # Will be set later via set_keyboard()
-
-        # Timer for debouncing slider updates
-        self.analog_config_timer = QTimer()
-        self.analog_config_timer.setSingleShot(True)
-        self.analog_config_timer.timeout.connect(self.send_analog_config)
 
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
@@ -4372,57 +4366,6 @@ class GamingTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.recreate_buttons()
-
-    def set_keyboard(self, keyboard):
-        """Set the keyboard reference for HID communication"""
-        self.keyboard = keyboard
-        # Load current settings from keyboard if available
-        if self.keyboard and hasattr(self.keyboard, 'reload_gaming_settings'):
-            self.keyboard.reload_gaming_settings()
-            self.load_settings_from_keyboard()
-
-    def load_settings_from_keyboard(self):
-        """Load current gaming settings from keyboard and update sliders"""
-        if not self.keyboard or not hasattr(self.keyboard, 'gaming_settings'):
-            return
-
-        settings = self.keyboard.gaming_settings
-        if settings and hasattr(self, 'min_travel_slider'):
-            # Block signals while updating to avoid triggering updates back to keyboard
-            self.min_travel_slider.blockSignals(True)
-            self.max_travel_slider.blockSignals(True)
-            self.deadzone_slider.blockSignals(True)
-
-            self.min_travel_slider.setValue(settings.get('min_travel_mm_x10', 10))
-            self.max_travel_slider.setValue(settings.get('max_travel_mm_x10', 20))
-            self.deadzone_slider.setValue(settings.get('deadzone_percent', 10))
-
-            self.min_travel_slider.blockSignals(False)
-            self.max_travel_slider.blockSignals(False)
-            self.deadzone_slider.blockSignals(False)
-
-    def on_slider_changed(self):
-        """Handle slider value changes with debouncing"""
-        # Restart timer - will only send after 500ms of no changes
-        self.analog_config_timer.stop()
-        self.analog_config_timer.start(500)
-
-    def send_analog_config(self):
-        """Send analog configuration to keyboard"""
-        if not self.keyboard or not hasattr(self, 'min_travel_slider'):
-            return
-
-        min_travel = self.min_travel_slider.value()
-        max_travel = self.max_travel_slider.value()
-        deadzone = self.deadzone_slider.value()
-
-        # Validate min < max
-        if min_travel >= max_travel:
-            return
-
-        # Send to keyboard
-        if hasattr(self.keyboard, 'set_gaming_analog_config'):
-            self.keyboard.set_gaming_analog_config(min_travel, max_travel, deadzone)
 
     def get_keycode(self, qmk_id):
         """Helper to get keycode by qmk_id"""
@@ -4678,73 +4621,7 @@ class GamingTab(QScrollArea):
             btn1.setStyleSheet("border-radius: 25px;")  # Make circular
             btn1.move(517, 178)  # Centered between btn3 and btn2, down 6px
 
-        # Create horizontal layout: sliders on left, gamepad on right
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(20)
-
-        # Left side: Analog calibration sliders
-        sliders_group = QGroupBox("Analog Calibration")
-        sliders_layout = QVBoxLayout()
-        sliders_layout.setSpacing(20)
-
-        # Min Travel slider (0.1mm to 4.0mm, stored as mm×10)
-        min_travel_layout = QVBoxLayout()
-        min_travel_label = QLabel("Min Travel (mm): 1.0")
-        self.min_travel_slider = QSlider(Qt.Horizontal)
-        self.min_travel_slider.setMinimum(1)   # 0.1mm
-        self.min_travel_slider.setMaximum(40)  # 4.0mm
-        self.min_travel_slider.setValue(10)    # 1.0mm default
-        self.min_travel_slider.setTickInterval(1)
-        self.min_travel_slider.valueChanged.connect(
-            lambda val: min_travel_label.setText(f"Min Travel (mm): {val/10:.1f}")
-        )
-        self.min_travel_slider.valueChanged.connect(self.on_slider_changed)
-        min_travel_layout.addWidget(min_travel_label)
-        min_travel_layout.addWidget(self.min_travel_slider)
-        sliders_layout.addLayout(min_travel_layout)
-
-        # Max Travel slider (0.1mm to 4.0mm, stored as mm×10)
-        max_travel_layout = QVBoxLayout()
-        max_travel_label = QLabel("Max Travel (mm): 2.0")
-        self.max_travel_slider = QSlider(Qt.Horizontal)
-        self.max_travel_slider.setMinimum(1)   # 0.1mm
-        self.max_travel_slider.setMaximum(40)  # 4.0mm
-        self.max_travel_slider.setValue(20)    # 2.0mm default
-        self.max_travel_slider.setTickInterval(1)
-        self.max_travel_slider.valueChanged.connect(
-            lambda val: max_travel_label.setText(f"Max Travel (mm): {val/10:.1f}")
-        )
-        self.max_travel_slider.valueChanged.connect(self.on_slider_changed)
-        max_travel_layout.addWidget(max_travel_label)
-        max_travel_layout.addWidget(self.max_travel_slider)
-        sliders_layout.addLayout(max_travel_layout)
-
-        # Deadzone slider (0-100%)
-        deadzone_layout = QVBoxLayout()
-        deadzone_label = QLabel("Deadzone (%): 10")
-        self.deadzone_slider = QSlider(Qt.Horizontal)
-        self.deadzone_slider.setMinimum(0)
-        self.deadzone_slider.setMaximum(100)
-        self.deadzone_slider.setValue(10)  # 10% default
-        self.deadzone_slider.setTickInterval(5)
-        self.deadzone_slider.valueChanged.connect(
-            lambda val: deadzone_label.setText(f"Deadzone (%): {val}")
-        )
-        self.deadzone_slider.valueChanged.connect(self.on_slider_changed)
-        deadzone_layout.addWidget(deadzone_label)
-        deadzone_layout.addWidget(self.deadzone_slider)
-        sliders_layout.addLayout(deadzone_layout)
-
-        sliders_layout.addStretch()
-        sliders_group.setLayout(sliders_layout)
-        sliders_group.setFixedWidth(250)
-
-        # Add to horizontal layout: sliders left, gamepad right
-        content_layout.addWidget(sliders_group)
-        content_layout.addWidget(gamepad_widget)
-        content_layout.addStretch()
-
-        self.main_layout.addLayout(content_layout)
+        self.main_layout.addWidget(gamepad_widget)
         self.main_layout.addStretch()
 
     def clear_layout(self, layout):
@@ -5174,12 +5051,6 @@ class FilteredTabbedKeycodes(QTabWidget):
         for tab in self.tabs:
             tab.relabel_buttons()
 
-    def set_keyboard(self, keyboard):
-        """Set keyboard reference on tabs that need it (e.g., GamingTab)"""
-        for tab in self.tabs:
-            if hasattr(tab, 'set_keyboard'):
-                tab.set_keyboard(keyboard)
-
 
 class TabbedKeycodes(QWidget):
 
@@ -5249,8 +5120,3 @@ class TabbedKeycodes(QWidget):
         else:
             self.all_keycodes.show()
             self.basic_keycodes.hide()
-
-    def set_keyboard(self, keyboard):
-        """Set keyboard reference on all child tabs that need it"""
-        for opt in [self.all_keycodes, self.basic_keycodes]:
-            opt.set_keyboard(keyboard)
