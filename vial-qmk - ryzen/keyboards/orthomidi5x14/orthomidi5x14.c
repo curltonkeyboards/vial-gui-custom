@@ -3160,10 +3160,13 @@ gaming_settings_t gaming_settings;
 void gaming_reset_settings(void) {
     gaming_settings.gaming_mode_enabled = false;
 
-    // Default analog calibration: 1.0mm min, 2.0mm max, 10% deadzone
-    gaming_settings.analog_config.min_travel_mm_x10 = 10;  // 1.0mm
-    gaming_settings.analog_config.max_travel_mm_x10 = 20;  // 2.0mm
-    gaming_settings.analog_config.deadzone_percent = 10;   // 10%
+    // Default analog calibration for LS/RS/Triggers: 1.0mm min, 2.0mm max
+    gaming_settings.ls_config.min_travel_mm_x10 = 10;      // 1.0mm
+    gaming_settings.ls_config.max_travel_mm_x10 = 20;      // 2.0mm
+    gaming_settings.rs_config.min_travel_mm_x10 = 10;      // 1.0mm
+    gaming_settings.rs_config.max_travel_mm_x10 = 20;      // 2.0mm
+    gaming_settings.trigger_config.min_travel_mm_x10 = 10; // 1.0mm
+    gaming_settings.trigger_config.max_travel_mm_x10 = 20; // 2.0mm
 
     // Disable all mappings by default
     gaming_settings.ls_up.enabled = 0;
@@ -3213,13 +3216,14 @@ void gaming_init(void) {
 // Convert analog travel to joystick axis value (-32767 to +32767)
 // row, col: Matrix position
 // invert: true to invert direction (for down/right axes)
-int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert) {
+// config: Which calibration config to use (ls_config or rs_config)
+int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert, gaming_analog_config_t* config) {
     // Get normalized travel (0-255)
     uint8_t travel_norm = analog_matrix_get_travel_normalized(row, col);
 
     // Convert mm*10 to travel units (0-255 maps to 0-4.0mm, so 255/40 per 0.1mm)
-    uint8_t min_threshold = (gaming_settings.analog_config.min_travel_mm_x10 * 255) / 40;
-    uint8_t max_threshold = (gaming_settings.analog_config.max_travel_mm_x10 * 255) / 40;
+    uint8_t min_threshold = (config->min_travel_mm_x10 * 255) / 40;
+    uint8_t max_threshold = (config->max_travel_mm_x10 * 255) / 40;
 
     // Below minimum threshold = no input
     if (travel_norm < min_threshold) return 0;
@@ -3235,12 +3239,6 @@ int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert) {
 
     uint32_t value = ((uint32_t)(travel_norm - min_threshold) * 32767) / range;
 
-    // Apply deadzone (center deadzone for stick centering)
-    uint32_t deadzone_threshold = (32767 * gaming_settings.analog_config.deadzone_percent) / 100;
-    if (value < deadzone_threshold) {
-        value = 0;
-    }
-
     return invert ? -(int16_t)value : (int16_t)value;
 }
 
@@ -3249,8 +3247,9 @@ int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert) {
 bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
     uint8_t travel_norm = analog_matrix_get_travel_normalized(row, col);
 
-    uint8_t min_threshold = (gaming_settings.analog_config.min_travel_mm_x10 * 255) / 40;
-    uint8_t max_threshold = (gaming_settings.analog_config.max_travel_mm_x10 * 255) / 40;
+    // Use trigger-specific config
+    uint8_t min_threshold = (gaming_settings.trigger_config.min_travel_mm_x10 * 255) / 40;
+    uint8_t max_threshold = (gaming_settings.trigger_config.max_travel_mm_x10 * 255) / 40;
 
     if (travel_norm < min_threshold) {
         *value = 0;
@@ -3276,43 +3275,43 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
 void gaming_update_joystick(void) {
     if (!gaming_mode_active) return;
 
-    // Left stick X axis (left/right)
+    // Left stick X axis (left/right) - use LS config
     int16_t ls_x = 0;
     if (gaming_settings.ls_left.enabled) {
-        ls_x += gaming_analog_to_axis(gaming_settings.ls_left.row, gaming_settings.ls_left.col, true);
+        ls_x += gaming_analog_to_axis(gaming_settings.ls_left.row, gaming_settings.ls_left.col, true, &gaming_settings.ls_config);
     }
     if (gaming_settings.ls_right.enabled) {
-        ls_x += gaming_analog_to_axis(gaming_settings.ls_right.row, gaming_settings.ls_right.col, false);
+        ls_x += gaming_analog_to_axis(gaming_settings.ls_right.row, gaming_settings.ls_right.col, false, &gaming_settings.ls_config);
     }
     joystick_set_axis(0, ls_x);  // Axis 0 = Left Stick X
 
-    // Left stick Y axis (up/down)
+    // Left stick Y axis (up/down) - use LS config
     int16_t ls_y = 0;
     if (gaming_settings.ls_up.enabled) {
-        ls_y += gaming_analog_to_axis(gaming_settings.ls_up.row, gaming_settings.ls_up.col, true);
+        ls_y += gaming_analog_to_axis(gaming_settings.ls_up.row, gaming_settings.ls_up.col, true, &gaming_settings.ls_config);
     }
     if (gaming_settings.ls_down.enabled) {
-        ls_y += gaming_analog_to_axis(gaming_settings.ls_down.row, gaming_settings.ls_down.col, false);
+        ls_y += gaming_analog_to_axis(gaming_settings.ls_down.row, gaming_settings.ls_down.col, false, &gaming_settings.ls_config);
     }
     joystick_set_axis(1, ls_y);  // Axis 1 = Left Stick Y
 
-    // Right stick X axis (left/right)
+    // Right stick X axis (left/right) - use RS config
     int16_t rs_x = 0;
     if (gaming_settings.rs_left.enabled) {
-        rs_x += gaming_analog_to_axis(gaming_settings.rs_left.row, gaming_settings.rs_left.col, true);
+        rs_x += gaming_analog_to_axis(gaming_settings.rs_left.row, gaming_settings.rs_left.col, true, &gaming_settings.rs_config);
     }
     if (gaming_settings.rs_right.enabled) {
-        rs_x += gaming_analog_to_axis(gaming_settings.rs_right.row, gaming_settings.rs_right.col, false);
+        rs_x += gaming_analog_to_axis(gaming_settings.rs_right.row, gaming_settings.rs_right.col, false, &gaming_settings.rs_config);
     }
     joystick_set_axis(2, rs_x);  // Axis 2 = Right Stick X
 
-    // Right stick Y axis (up/down)
+    // Right stick Y axis (up/down) - use RS config
     int16_t rs_y = 0;
     if (gaming_settings.rs_up.enabled) {
-        rs_y += gaming_analog_to_axis(gaming_settings.rs_up.row, gaming_settings.rs_up.col, true);
+        rs_y += gaming_analog_to_axis(gaming_settings.rs_up.row, gaming_settings.rs_up.col, true, &gaming_settings.rs_config);
     }
     if (gaming_settings.rs_down.enabled) {
-        rs_y += gaming_analog_to_axis(gaming_settings.rs_down.row, gaming_settings.rs_down.col, false);
+        rs_y += gaming_analog_to_axis(gaming_settings.rs_down.row, gaming_settings.rs_down.col, false, &gaming_settings.rs_config);
     }
     joystick_set_axis(3, rs_y);  // Axis 3 = Right Stick Y
 

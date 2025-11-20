@@ -142,11 +142,10 @@ typedef struct {
     uint8_t enabled; // 1 = enabled, 0 = disabled
 } gaming_key_map_t;
 
-// Analog calibration for joystick axes and triggers
+// Analog calibration for joystick axes and triggers (separate for LS/RS/Triggers)
 typedef struct {
     uint8_t min_travel_mm_x10;  // Minimum travel in 0.1mm units (e.g., 10 = 1.0mm)
     uint8_t max_travel_mm_x10;  // Maximum travel in 0.1mm units (e.g., 20 = 2.0mm)
-    uint8_t deadzone_percent;   // Center deadzone percentage (0-100)
 } gaming_analog_config_t;
 
 // Complete gaming settings structure for EEPROM
@@ -172,8 +171,10 @@ typedef struct {
     // Button mappings (16 buttons: Face, Shoulder, DPad, etc.)
     gaming_key_map_t buttons[16];
 
-    // Analog calibration
-    gaming_analog_config_t analog_config;
+    // Analog calibration - separate for LS, RS, and Triggers
+    gaming_analog_config_t ls_config;      // Left stick calibration
+    gaming_analog_config_t rs_config;      // Right stick calibration
+    gaming_analog_config_t trigger_config; // Trigger calibration
 
     uint16_t magic;  // 0x47A3 (GAME) for validation
 } gaming_settings_t;

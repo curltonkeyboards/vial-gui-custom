@@ -1272,19 +1272,22 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             return False
 
-    def set_gaming_analog_config(self, min_travel_mm_x10, max_travel_mm_x10, deadzone_percent):
-        """Set analog calibration configuration
+    def set_gaming_analog_config(self, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max):
+        """Set analog calibration configuration for LS, RS, and Triggers
 
         Args:
-            min_travel_mm_x10: Minimum travel in 0.1mm units (e.g., 10 = 1.0mm)
-            max_travel_mm_x10: Maximum travel in 0.1mm units (e.g., 20 = 2.0mm)
-            deadzone_percent: Deadzone percentage (0-100)
+            ls_min: Left Stick minimum travel in 0.1mm units (e.g., 10 = 1.0mm)
+            ls_max: Left Stick maximum travel in 0.1mm units (e.g., 20 = 2.0mm)
+            rs_min: Right Stick minimum travel in 0.1mm units
+            rs_max: Right Stick maximum travel in 0.1mm units
+            trigger_min: Trigger minimum travel in 0.1mm units
+            trigger_max: Trigger maximum travel in 0.1mm units
 
         Returns:
             bool: True if successful, False otherwise
         """
         try:
-            data = [min_travel_mm_x10, max_travel_mm_x10, deadzone_percent]
+            data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_ANALOG_CONFIG, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
             return response and len(response) > 0 and response[0] == 0x01
@@ -1301,16 +1304,19 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             packet = self._create_hid_packet(HID_CMD_GAMING_GET_SETTINGS, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
 
-            if not response or len(response) < 10:
+            if not response or len(response) < 13:
                 return None
 
             # Parse gaming settings from response
-            # Response format: [status, enabled, min_travel, max_travel, deadzone, ...]
+            # Response format: [status, enabled, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, ...]
             return {
                 'enabled': response[6] != 0,
-                'min_travel_mm_x10': response[7],
-                'max_travel_mm_x10': response[8],
-                'deadzone_percent': response[9]
+                'ls_min_travel_mm_x10': response[7],
+                'ls_max_travel_mm_x10': response[8],
+                'rs_min_travel_mm_x10': response[9],
+                'rs_max_travel_mm_x10': response[10],
+                'trigger_min_travel_mm_x10': response[11],
+                'trigger_max_travel_mm_x10': response[12]
             }
         except Exception as e:
             return None
