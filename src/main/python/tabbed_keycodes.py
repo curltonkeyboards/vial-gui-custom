@@ -4622,14 +4622,14 @@ class GamingTab(QScrollArea):
             btn1.setStyleSheet("border-radius: 25px;")  # Make circular
             btn1.move(517, 178)  # Centered between btn3 and btn2, down 6px
 
-        self.main_layout.addWidget(gamepad_widget)
+        # Create horizontal container for calibration (left) and gamepad (right)
+        controller_and_calibration_container = QWidget()
+        controller_calibration_layout = QHBoxLayout()
+        controller_calibration_layout.setSpacing(20)
+        controller_calibration_layout.setContentsMargins(0, 0, 0, 0)
+        controller_and_calibration_container.setLayout(controller_calibration_layout)
 
-        # Add compact analog calibration sliders
-        calibration_container = QWidget()
-        calibration_layout = QHBoxLayout()
-        calibration_layout.setContentsMargins(0, 20, 0, 0)
-        calibration_container.setLayout(calibration_layout)
-
+        # Calibration group (LEFT SIDE)
         calibration_group = QGroupBox(tr("GamingTab", "Analog Calibration"))
         calibration_group.setMaximumWidth(250)
         calib_content_layout = QVBoxLayout()
@@ -4727,10 +4727,14 @@ class GamingTab(QScrollArea):
 
         calib_content_layout.addLayout(button_layout)
 
-        calibration_layout.addWidget(calibration_group)
-        calibration_layout.addStretch()
-        self.main_layout.addWidget(calibration_container)
+        # Add calibration group to left side of horizontal layout
+        controller_calibration_layout.addWidget(calibration_group, alignment=Qt.AlignTop)
 
+        # Add gamepad widget to right side of horizontal layout
+        controller_calibration_layout.addWidget(gamepad_widget)
+
+        # Add the horizontal container to main layout
+        self.main_layout.addWidget(controller_and_calibration_container)
         self.main_layout.addStretch()
 
     def clear_layout(self, layout):
