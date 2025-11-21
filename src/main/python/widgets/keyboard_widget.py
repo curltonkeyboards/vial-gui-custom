@@ -210,20 +210,18 @@ class EncoderWidget(KeyWidget):
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
-        # Make encoder buttons square with rounded corners
-        path.addRoundedRect(round(self.x), round(self.y), round(self.w), round(self.h),
-                           self.corner, self.corner)
+        # Make encoder buttons circular
+        path.addEllipse(round(self.x), round(self.y), round(self.w), round(self.h))
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
-        # Make encoder buttons square with rounded corners
-        path.addRoundedRect(
+        # Make encoder buttons circular
+        path.addEllipse(
             round(self.x + self.size * SHADOW_SIDE_PADDING),
             round(self.y + self.size * SHADOW_TOP_PADDING),
             round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
-            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
-            self.corner, self.corner
+            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING))
         )
         return path
 
@@ -764,20 +762,18 @@ class EncoderWidget2(KeyWidget2):
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
-        # Make encoder buttons square with rounded corners
-        path.addRoundedRect(round(self.x), round(self.y), round(self.w), round(self.h),
-                           self.corner, self.corner)
+        # Make encoder buttons circular
+        path.addEllipse(round(self.x), round(self.y), round(self.w), round(self.h))
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
-        # Make encoder buttons square with rounded corners
-        path.addRoundedRect(
+        # Make encoder buttons circular
+        path.addEllipse(
             round(self.x + self.size * SHADOW_SIDE_PADDING),
             round(self.y + self.size * SHADOW_TOP_PADDING),
             round(self.w - 2 * self.size * SHADOW_SIDE_PADDING),
-            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING)),
-            self.corner, self.corner
+            round(self.h - self.size * (SHADOW_BOTTOM_PADDING + SHADOW_TOP_PADDING))
         )
         return path
 

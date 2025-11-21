@@ -152,7 +152,7 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('rapid', v, self.rapid_value_label)
         )
         
-        # MIDI Keys Actuation slider - ALWAYS VISIBLE
+        # MIDI Keys Actuation slider (visible in advanced mode)
         midi_slider_layout = QHBoxLayout()
         midi_slider_layout.setContentsMargins(0, 0, 0, 0)
         midi_slider_layout.setSpacing(6)
@@ -173,15 +173,19 @@ class QuickActuationWidget(QGroupBox):
         self.midi_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
         midi_slider_layout.addWidget(self.midi_value_label)
 
-        layout.addLayout(midi_slider_layout)
+        self.midi_widget = QWidget()
+        self.midi_widget.setLayout(midi_slider_layout)
+        self.midi_widget.setVisible(False)
+        layout.addWidget(self.midi_widget)
 
         self.midi_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('midi', v, self.midi_value_label)
         )
 
-        # Enable MIDI Rapidfire checkbox - ALWAYS VISIBLE
+        # Enable MIDI Rapidfire checkbox (visible in advanced mode)
         self.midi_rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable MIDI Rapidfire"))
         self.midi_rapid_checkbox.setChecked(False)
+        self.midi_rapid_checkbox.setVisible(False)
         layout.addWidget(self.midi_rapid_checkbox)
         self.midi_rapid_checkbox.stateChanged.connect(self.on_midi_rapidfire_toggled)
         
@@ -245,8 +249,8 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('midi_rapid_vel', v, self.midi_rapid_vel_value_label)
         )
 
-        # === VELOCITY CURVE CONTROLS (always visible) ===
-        # Velocity Curve combo
+        # === VELOCITY CURVE CONTROLS ===
+        # Velocity Curve combo (visible in advanced mode)
         curve_layout = QHBoxLayout()
         curve_layout.setContentsMargins(0, 0, 0, 0)
         curve_layout.setSpacing(6)
@@ -270,7 +274,10 @@ class QuickActuationWidget(QGroupBox):
         self.he_curve_combo.setCurrentIndex(2)  # Default: Medium
         curve_layout.addWidget(self.he_curve_combo, 1)
 
-        layout.addLayout(curve_layout)
+        self.velocity_curve_widget = QWidget()
+        self.velocity_curve_widget.setLayout(curve_layout)
+        self.velocity_curve_widget.setVisible(False)
+        layout.addWidget(self.velocity_curve_widget)
         self.he_curve_combo.currentIndexChanged.connect(self.on_combo_changed)
 
         # Velocity Min slider
@@ -455,6 +462,19 @@ class QuickActuationWidget(QGroupBox):
         """Toggle advanced options visibility"""
         show_advanced = self.advanced_checkbox.isChecked()
         self.advanced_widget.setVisible(show_advanced)
+
+        # Show/hide MIDI controls based on advanced state
+        self.midi_widget.setVisible(show_advanced)
+        self.midi_rapid_checkbox.setVisible(show_advanced)
+        self.velocity_curve_widget.setVisible(show_advanced)
+
+        # Update MIDI rapidfire widgets visibility based on checkbox state
+        if show_advanced and self.midi_rapid_checkbox.isChecked():
+            self.midi_rapid_sens_widget.setVisible(True)
+            self.midi_rapid_vel_widget.setVisible(True)
+        else:
+            self.midi_rapid_sens_widget.setVisible(False)
+            self.midi_rapid_vel_widget.setVisible(False)
     
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
@@ -616,8 +636,8 @@ class QuickActuationWidget(QGroupBox):
                 self.he_curve_combo.setCurrentIndex(i)
                 break
 
-        # Update MIDI rapidfire widgets visibility based on checkbox state
-        if data['midi_rapidfire_enabled']:
+        # Update MIDI rapidfire widgets visibility based on checkbox state and advanced mode
+        if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:
             self.midi_rapid_sens_widget.setVisible(True)
             self.midi_rapid_vel_widget.setVisible(True)
         else:
