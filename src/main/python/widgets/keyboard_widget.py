@@ -210,11 +210,13 @@ class EncoderWidget(KeyWidget):
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
+        # Make encoder buttons circular
         path.addEllipse(round(self.x), round(self.y), round(self.w), round(self.h))
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
+        # Make encoder buttons circular
         path.addEllipse(
             round(self.x + self.size * SHADOW_SIDE_PADDING),
             round(self.y + self.size * SHADOW_TOP_PADDING),
@@ -430,7 +432,18 @@ class KeyboardWidget(QWidget):
             active = key.active or (self.active_key == key and not self.active_mask)
 
             # draw keycap background/drop-shadow
-            qp.setPen(active_pen if active else Qt.NoPen)
+            # For encoder widgets and push buttons, draw 2px border with QPalette.Window color when not active
+            if (isinstance(key, EncoderWidget2) or isinstance(key, EncoderWidget) or
+                (hasattr(key.desc, 'row') and key.desc.row == 5 and key.desc.col in [0, 1, 2])):
+                if active:
+                    qp.setPen(active_pen)
+                else:
+                    border_pen = QPen(QApplication.palette().color(QPalette.Window))
+                    border_pen.setWidth(2)
+                    qp.setPen(border_pen)
+            else:
+                qp.setPen(active_pen if active else Qt.NoPen)
+
             brush = background_brush
             if key.pressed:
                 brush = background_pressed_brush
@@ -749,11 +762,13 @@ class EncoderWidget2(KeyWidget2):
 
     def calculate_background_draw_path(self):
         path = QPainterPath()
+        # Make encoder buttons circular
         path.addEllipse(round(self.x), round(self.y), round(self.w), round(self.h))
         return path
 
     def calculate_foreground_draw_path(self):
         path = QPainterPath()
+        # Make encoder buttons circular
         path.addEllipse(
             round(self.x + self.size * SHADOW_SIDE_PADDING),
             round(self.y + self.size * SHADOW_TOP_PADDING),
@@ -917,10 +932,10 @@ class KeyboardWidget2(QWidget):
             encoders[0].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[1].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 0 click button to its position (keep current)
+            # Move encoder 0 click button to same vertical level as encoders, moved 4px right
             if encoder_click_0:
-                encoder_click_0.shift_y += 60  # Keep current position
-                encoder_click_0.shift_x -= 20  # Click button - shift left 20 pixels
+                encoder_click_0.shift_y += 80  # Same vertical level as encoder pair 0
+                encoder_click_0.shift_x -= 26  # Moved 4px right from -30
 
             # Move the last two encoders to original position
             encoders[2].shift_y += 50  # Original position
@@ -928,15 +943,15 @@ class KeyboardWidget2(QWidget):
             encoders[2].shift_x -= 30  # Down encoder - shift left 30 pixels
             encoders[3].shift_x += 20  # Up encoder - shift right 20 pixels
 
-            # Move encoder 1 click button to its position (keep current)
+            # Move encoder 1 click button to same vertical level as encoders, moved 4px right
             if encoder_click_1:
-                encoder_click_1.shift_y += 55  # Keep current position
-                encoder_click_1.shift_x -= 20  # Click button - shift left 20 pixels
+                encoder_click_1.shift_y += 50  # Same vertical level as encoder pair 1
+                encoder_click_1.shift_x -= 26  # Moved 4px right from -30
 
-        # Move sustain pedal to correct position
+        # Move sustain pedal to same row as top encoders, 40px higher
         if sustain_pedal:
-            sustain_pedal.shift_x += 40  # Shift right 40 pixels
-            sustain_pedal.shift_y -= 700  # Shift up 700 pixels
+            sustain_pedal.shift_x -= 26  # Align with encoder click buttons horizontally
+            sustain_pedal.shift_y += 40  # Same row as top encoders (80) minus 40px = 40
 
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
@@ -1078,7 +1093,18 @@ class KeyboardWidget2(QWidget):
             active = key.active or (self.active_key == key and not self.active_mask)
 
             # draw keycap background/drop-shadow
-            qp.setPen(active_pen if active else Qt.NoPen)
+            # For encoder widgets and push buttons, draw 2px border with QPalette.Window color when not active
+            if (isinstance(key, EncoderWidget2) or isinstance(key, EncoderWidget) or
+                (hasattr(key.desc, 'row') and key.desc.row == 5 and key.desc.col in [0, 1, 2])):
+                if active:
+                    qp.setPen(active_pen)
+                else:
+                    border_pen = QPen(QApplication.palette().color(QPalette.Window))
+                    border_pen.setWidth(2)
+                    qp.setPen(border_pen)
+            else:
+                qp.setPen(active_pen if active else Qt.NoPen)
+
             brush = background_brush
             if key.pressed:
                 brush = background_pressed_brush
@@ -1127,15 +1153,6 @@ class KeyboardWidget2(QWidget):
             qp.setPen(extra_pen)
             qp.setBrush(extra_brush)
             qp.drawPath(key.extra_draw_path)
-
-            # Draw border around encoder widgets
-            if isinstance(key, EncoderWidget2):
-                # Use button text color (same as regular text on buttons)
-                encoder_border_pen = QPen(QApplication.palette().color(QPalette.ButtonText))
-                encoder_border_pen.setWidth(1)  # Thin border
-                qp.setPen(encoder_border_pen)
-                qp.setBrush(Qt.NoBrush)
-                qp.drawPath(key.background_draw_path)
 
             # Draw "PUSH" label above encoder click buttons (row 5, col 0 or 1)
             if hasattr(key.desc, 'row') and key.desc.row == 5 and (key.desc.col == 0 or key.desc.col == 1):
