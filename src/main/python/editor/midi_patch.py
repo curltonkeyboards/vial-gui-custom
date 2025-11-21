@@ -26,7 +26,8 @@ class MIDIPatchBay(BasicEditor):
         self.midi_in = None
         self.midi_out = None
         self.midiswitch_output = None
-        self.active_connections = {}  # {input_id: {input, output, callback}}
+        self.active_connections = {}  # {input_id: {input, output, callback, filters}}
+        self.selected_connection_id = None  # Track which connection's filters are shown
         self.device_refresh_timer = QTimer()
         self.device_refresh_timer.timeout.connect(self.refresh_devices)
 
@@ -46,12 +47,6 @@ class MIDIPatchBay(BasicEditor):
         self.addWidget(main_widget)
         self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
 
-        # Title
-        title = QLabel(tr("MIDIPatchBay", "MIDI Patchbay"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
-        title.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(title)
-
         if not MIDI_AVAILABLE:
             error_label = QLabel(tr("MIDIPatchBay",
                 "MIDI support not available. Please install python-rtmidi:\npip install python-rtmidi"))
@@ -62,27 +57,14 @@ class MIDIPatchBay(BasicEditor):
             return
 
         # Connection section
-        connection_group = QGroupBox(tr("MIDIPatchBay", "MIDI Device Routing"))
+        connection_group = QGroupBox()
         connection_layout = QVBoxLayout()
         connection_group.setLayout(connection_layout)
         main_layout.addWidget(connection_group)
 
-        # Status display
-        status_layout = QHBoxLayout()
-        self.status_label = QLabel(tr("MIDIPatchBay", "MIDIswitch Status:"))
-        status_layout.addWidget(self.status_label)
-
-        self.status_indicator = QLabel("●")
-        self.status_indicator.setStyleSheet(
-            "color: red; font-size: 16px; font-weight: bold;"
-        )
-        status_layout.addWidget(self.status_indicator)
-        status_layout.addStretch()
-        connection_layout.addLayout(status_layout)
-
         # Device selector
         device_layout = QHBoxLayout()
-        device_layout.addWidget(QLabel(tr("MIDIPatchBay", "MIDI Input Device:")))
+        device_layout.addWidget(QLabel(tr("MIDIPatchBay", "Connect Device to midiswitch")))
 
         self.device_selector = QComboBox()
         self.device_selector.setMinimumWidth(250)
@@ -93,36 +75,8 @@ class MIDIPatchBay(BasicEditor):
         self.connect_btn.clicked.connect(self.on_connect_device)
         device_layout.addWidget(self.connect_btn)
 
-        self.disconnect_btn = QPushButton(tr("MIDIPatchBay", "Disconnect"))
-        self.disconnect_btn.setMinimumHeight(30)
-        self.disconnect_btn.clicked.connect(self.on_disconnect_device)
-        self.disconnect_btn.setEnabled(False)
-        device_layout.addWidget(self.disconnect_btn)
-
         device_layout.addStretch()
         connection_layout.addLayout(device_layout)
-
-        # Message filtering section
-        filter_group = QGroupBox(tr("MIDIPatchBay", "Message Filtering (Optional)"))
-        filter_layout = QVBoxLayout()
-        filter_group.setLayout(filter_layout)
-        connection_layout.addWidget(filter_group)
-
-        self.filter_enabled = QCheckBox(tr("MIDIPatchBay", "Enable Message Filtering"))
-        filter_layout.addWidget(self.filter_enabled)
-
-        filter_types_layout = QHBoxLayout()
-        self.filter_note = QCheckBox(tr("MIDIPatchBay", "Notes"))
-        self.filter_cc = QCheckBox(tr("MIDIPatchBay", "CC"))
-        self.filter_pc = QCheckBox(tr("MIDIPatchBay", "Program Change"))
-        self.filter_pb = QCheckBox(tr("MIDIPatchBay", "Pitch Bend"))
-
-        filter_types_layout.addWidget(self.filter_note)
-        filter_types_layout.addWidget(self.filter_cc)
-        filter_types_layout.addWidget(self.filter_pc)
-        filter_types_layout.addWidget(self.filter_pb)
-        filter_types_layout.addStretch()
-        filter_layout.addLayout(filter_types_layout)
 
         # Active connections list
         connections_group = QGroupBox(tr("MIDIPatchBay", "Active Connections"))
@@ -132,11 +86,57 @@ class MIDIPatchBay(BasicEditor):
 
         self.connections_list = QListWidget()
         self.connections_list.setMinimumHeight(150)
+        self.connections_list.itemClicked.connect(self.on_connection_selected)
         connections_layout.addWidget(self.connections_list)
 
         disconnect_selected_btn = QPushButton(tr("MIDIPatchBay", "Disconnect Selected"))
         disconnect_selected_btn.clicked.connect(self.on_disconnect_selected)
         connections_layout.addWidget(disconnect_selected_btn)
+
+        # Per-connection filter panel (hidden by default)
+        self.filter_panel = QGroupBox()
+        self.filter_panel.setVisible(False)
+        filter_panel_layout = QVBoxLayout()
+        self.filter_panel.setLayout(filter_panel_layout)
+        main_layout.addWidget(self.filter_panel)
+
+        filter_title = QLabel(tr("MIDIPatchBay", "Send to MIDIswitch"))
+        filter_title.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
+        filter_panel_layout.addWidget(filter_title)
+
+        # Create checkboxes for all message types (all checked by default = pass through)
+        filter_types_layout1 = QHBoxLayout()
+        self.filter_note = QCheckBox(tr("MIDIPatchBay", "Notes"))
+        self.filter_cc = QCheckBox(tr("MIDIPatchBay", "CC"))
+        self.filter_pc = QCheckBox(tr("MIDIPatchBay", "Program Change"))
+        self.filter_pb = QCheckBox(tr("MIDIPatchBay", "Pitch Bend"))
+
+        filter_types_layout1.addWidget(self.filter_note)
+        filter_types_layout1.addWidget(self.filter_cc)
+        filter_types_layout1.addWidget(self.filter_pc)
+        filter_types_layout1.addWidget(self.filter_pb)
+        filter_types_layout1.addStretch()
+        filter_panel_layout.addLayout(filter_types_layout1)
+
+        filter_types_layout2 = QHBoxLayout()
+        self.filter_aftertouch = QCheckBox(tr("MIDIPatchBay", "Aftertouch"))
+        self.filter_poly_aftertouch = QCheckBox(tr("MIDIPatchBay", "Poly Aftertouch"))
+        self.filter_system = QCheckBox(tr("MIDIPatchBay", "System"))
+
+        filter_types_layout2.addWidget(self.filter_aftertouch)
+        filter_types_layout2.addWidget(self.filter_poly_aftertouch)
+        filter_types_layout2.addWidget(self.filter_system)
+        filter_types_layout2.addStretch()
+        filter_panel_layout.addLayout(filter_types_layout2)
+
+        # Connect checkboxes to update filters in real-time
+        self.filter_note.stateChanged.connect(self.on_filter_changed)
+        self.filter_cc.stateChanged.connect(self.on_filter_changed)
+        self.filter_pc.stateChanged.connect(self.on_filter_changed)
+        self.filter_pb.stateChanged.connect(self.on_filter_changed)
+        self.filter_aftertouch.stateChanged.connect(self.on_filter_changed)
+        self.filter_poly_aftertouch.stateChanged.connect(self.on_filter_changed)
+        self.filter_system.stateChanged.connect(self.on_filter_changed)
 
         # Buttons
         self.addStretch()
@@ -186,20 +186,6 @@ class MIDIPatchBay(BasicEditor):
                     self.midiswitch_output = (i, port)
                     break
 
-            # Update status indicator
-            if self.midiswitch_output:
-                self.status_indicator.setStyleSheet(
-                    "color: green; font-size: 16px; font-weight: bold;"
-                )
-                self.status_label.setText(
-                    tr("MIDIPatchBay", f"MIDIswitch Found: {self.midiswitch_output[1]}")
-                )
-            else:
-                self.status_indicator.setStyleSheet(
-                    "color: red; font-size: 16px; font-weight: bold;"
-                )
-                self.status_label.setText(tr("MIDIPatchBay", "MIDIswitch Not Found"))
-
             # Update device selector (exclude MIDIswitch from inputs to prevent feedback)
             self.device_selector.clear()
             for i, port in enumerate(input_ports):
@@ -217,12 +203,9 @@ class MIDIPatchBay(BasicEditor):
     def on_connect_device(self):
         """Connect selected MIDI input to MIDIswitch output"""
         if not self.midiswitch_output:
-            QMessageBox.warning(None, "Warning",
-                "MIDIswitch output not found. Please ensure the device is connected.")
             return
 
         if self.device_selector.currentIndex() < 0:
-            QMessageBox.warning(None, "Warning", "Please select a MIDI input device.")
             return
 
         input_port_idx = self.device_selector.currentData()
@@ -230,7 +213,6 @@ class MIDIPatchBay(BasicEditor):
 
         # Check if already connected
         if input_port_idx in self.active_connections:
-            QMessageBox.information(None, "Info", "This device is already connected.")
             return
 
         try:
@@ -242,54 +224,19 @@ class MIDIPatchBay(BasicEditor):
             midi_out = rtmidi.MidiOut()
             midi_out.open_port(self.midiswitch_output[0])
 
-            # Create callback for MIDI message routing
-            def create_callback(output, filters):
-                def callback(event, data=None):
-                    message, deltatime = event
-
-                    # Apply filtering if enabled
-                    if filters['enabled'] and len(message) > 0:
-                        status = message[0] & 0xF0
-
-                        # Check message type
-                        allow = False
-                        if status in [0x80, 0x90] and filters['note']:  # Note On/Off
-                            allow = True
-                        elif status == 0xB0 and filters['cc']:  # CC
-                            allow = True
-                        elif status == 0xC0 and filters['pc']:  # Program Change
-                            allow = True
-                        elif status == 0xE0 and filters['pb']:  # Pitch Bend
-                            allow = True
-                        elif not any([filters['note'], filters['cc'], filters['pc'], filters['pb']]):
-                            # If no filters selected, allow all
-                            allow = True
-
-                        if not allow:
-                            return
-
-                    # Filter out SysEx to prevent feedback loops
-                    if len(message) > 0 and message[0] == 0xF0:
-                        return
-
-                    # Forward message to MIDIswitch
-                    try:
-                        output.send_message(message)
-                    except:
-                        pass
-
-                return callback
-
-            # Get filter settings
+            # Initialize filters - all True by default (pass through everything)
             filters = {
-                'enabled': self.filter_enabled.isChecked(),
-                'note': self.filter_note.isChecked(),
-                'cc': self.filter_cc.isChecked(),
-                'pc': self.filter_pc.isChecked(),
-                'pb': self.filter_pb.isChecked()
+                'note': True,
+                'cc': True,
+                'pc': True,
+                'pb': True,
+                'aftertouch': True,
+                'poly_aftertouch': True,
+                'system': True
             }
 
-            callback = create_callback(midi_out, filters)
+            # Create callback for MIDI message routing
+            callback = self.create_callback(midi_out, filters)
             midi_in.set_callback(callback)
 
             # Store connection
@@ -297,26 +244,124 @@ class MIDIPatchBay(BasicEditor):
                 'input': midi_in,
                 'output': midi_out,
                 'name': input_port_name,
-                'callback': callback
+                'callback': callback,
+                'filters': filters
             }
 
             # Update UI
             self.update_connections_list()
-            self.disconnect_btn.setEnabled(True)
-
-            QMessageBox.information(None, "Success",
-                f"Connected {input_port_name} → {self.midiswitch_output[1]}")
 
         except Exception as e:
-            QMessageBox.critical(None, "Error", f"Failed to connect device: {str(e)}")
+            print(f"Failed to connect device: {e}")
 
-    def on_disconnect_device(self):
-        """Disconnect currently selected device"""
-        if self.device_selector.currentIndex() < 0:
+    def create_callback(self, output, filters):
+        """Create a MIDI callback that filters messages based on filter settings"""
+        def callback(event, data=None):
+            message, deltatime = event
+
+            if len(message) == 0:
+                return
+
+            # Filter out SysEx to prevent feedback loops
+            if message[0] == 0xF0:
+                return
+
+            status = message[0] & 0xF0
+
+            # Check message type and filter accordingly
+            # If checkbox is checked = pass through, if unchecked = block
+            if status in [0x80, 0x90]:  # Note On/Off
+                if not filters['note']:
+                    return
+            elif status == 0xB0:  # CC
+                if not filters['cc']:
+                    return
+            elif status == 0xC0:  # Program Change
+                if not filters['pc']:
+                    return
+            elif status == 0xE0:  # Pitch Bend
+                if not filters['pb']:
+                    return
+            elif status == 0xD0:  # Aftertouch (Channel Pressure)
+                if not filters['aftertouch']:
+                    return
+            elif status == 0xA0:  # Polyphonic Aftertouch
+                if not filters['poly_aftertouch']:
+                    return
+            elif message[0] >= 0xF0:  # System messages (0xF8 = Clock, 0xFA = Start, etc.)
+                if not filters['system']:
+                    return
+
+            # Forward message to MIDIswitch
+            try:
+                output.send_message(message)
+            except:
+                pass
+
+        return callback
+
+    def on_connection_selected(self, item):
+        """Show filter panel for selected connection"""
+        input_port_idx = item.data(QtCore.Qt.UserRole)
+
+        if input_port_idx not in self.active_connections:
             return
 
-        input_port_idx = self.device_selector.currentData()
-        self.disconnect_connection(input_port_idx)
+        self.selected_connection_id = input_port_idx
+        conn = self.active_connections[input_port_idx]
+        filters = conn['filters']
+
+        # Update checkboxes to match connection's filter settings
+        self.filter_note.blockSignals(True)
+        self.filter_cc.blockSignals(True)
+        self.filter_pc.blockSignals(True)
+        self.filter_pb.blockSignals(True)
+        self.filter_aftertouch.blockSignals(True)
+        self.filter_poly_aftertouch.blockSignals(True)
+        self.filter_system.blockSignals(True)
+
+        self.filter_note.setChecked(filters['note'])
+        self.filter_cc.setChecked(filters['cc'])
+        self.filter_pc.setChecked(filters['pc'])
+        self.filter_pb.setChecked(filters['pb'])
+        self.filter_aftertouch.setChecked(filters['aftertouch'])
+        self.filter_poly_aftertouch.setChecked(filters['poly_aftertouch'])
+        self.filter_system.setChecked(filters['system'])
+
+        self.filter_note.blockSignals(False)
+        self.filter_cc.blockSignals(False)
+        self.filter_pc.blockSignals(False)
+        self.filter_pb.blockSignals(False)
+        self.filter_aftertouch.blockSignals(False)
+        self.filter_poly_aftertouch.blockSignals(False)
+        self.filter_system.blockSignals(False)
+
+        # Show filter panel
+        self.filter_panel.setVisible(True)
+
+    def on_filter_changed(self):
+        """Update filters in real-time when checkboxes change"""
+        if self.selected_connection_id is None:
+            return
+
+        if self.selected_connection_id not in self.active_connections:
+            return
+
+        conn = self.active_connections[self.selected_connection_id]
+
+        # Update filter settings
+        conn['filters']['note'] = self.filter_note.isChecked()
+        conn['filters']['cc'] = self.filter_cc.isChecked()
+        conn['filters']['pc'] = self.filter_pc.isChecked()
+        conn['filters']['pb'] = self.filter_pb.isChecked()
+        conn['filters']['aftertouch'] = self.filter_aftertouch.isChecked()
+        conn['filters']['poly_aftertouch'] = self.filter_poly_aftertouch.isChecked()
+        conn['filters']['system'] = self.filter_system.isChecked()
+
+        # Recreate callback with updated filters
+        new_callback = self.create_callback(conn['output'], conn['filters'])
+        conn['input'].set_callback(new_callback)
+        conn['callback'] = new_callback
 
     def on_disconnect_selected(self):
         """Disconnect selected connection from list"""
@@ -343,14 +388,16 @@ class MIDIPatchBay(BasicEditor):
             # Remove from active connections
             del self.active_connections[input_port_idx]
 
+            # Hide filter panel if this was the selected connection
+            if self.selected_connection_id == input_port_idx:
+                self.filter_panel.setVisible(False)
+                self.selected_connection_id = None
+
             # Update UI
             self.update_connections_list()
 
-            if len(self.active_connections) == 0:
-                self.disconnect_btn.setEnabled(False)
-
         except Exception as e:
-            QMessageBox.critical(None, "Error", f"Failed to disconnect: {str(e)}")
+            print(f"Failed to disconnect: {e}")
 
     def on_disconnect_all(self):
         """Disconnect all active connections"""
@@ -358,7 +405,9 @@ class MIDIPatchBay(BasicEditor):
         for port_idx in port_indices:
             self.disconnect_connection(port_idx)
 
-        QMessageBox.information(None, "Info", "All connections disconnected.")
+        # Hide filter panel
+        self.filter_panel.setVisible(False)
+        self.selected_connection_id = None
 
     def update_connections_list(self):
         """Update the active connections list widget"""
