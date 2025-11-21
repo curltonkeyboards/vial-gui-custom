@@ -193,7 +193,7 @@ void gaming_save_settings(void);
 void gaming_load_settings(void);
 void gaming_reset_settings(void);
 void gaming_update_joystick(void);
-int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert);
+//int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert);
 bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
 #endif // ORTHOMIDI5X14_H
