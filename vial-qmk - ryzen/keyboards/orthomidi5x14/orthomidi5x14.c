@@ -54,6 +54,15 @@ extern MidiDevice midi_device;
 // Base address for range keycodes (8,128 keycodes total: 127×128/2 triangular number)
 #define HE_VEL_RANGE_BASE   0xCCB5
 
+// Macro-aware HE Velocity Controls (0xEC90-0xEC95)
+// These modify pending values during macro recording, or layer settings when not recording
+#define HE_MACRO_CURVE_UP   0xEC90  // Increment curve (with macro awareness)
+#define HE_MACRO_CURVE_DOWN 0xEC91  // Decrement curve (with macro awareness)
+#define HE_MACRO_MIN_UP     0xEC92  // Increment min velocity (with macro awareness)
+#define HE_MACRO_MIN_DOWN   0xEC93  // Decrement min velocity (with macro awareness)
+#define HE_MACRO_MAX_UP     0xEC94  // Increment max velocity (with macro awareness)
+#define HE_MACRO_MAX_DOWN   0xEC95  // Decrement max velocity (with macro awareness)
+
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
 
@@ -10878,6 +10887,97 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 layer_actuations[i].he_velocity_curve = curve_value;
             }
             dprintf("All layers HE Curve: %d\n", curve_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Macro-aware HE Velocity Controls (0xEC90-0xEC95)
+    // These modify the macro recording curve/min/max if a macro is recording,
+    // otherwise they modify the current layer settings
+    if (keycode >= HE_MACRO_CURVE_UP && keycode <= HE_MACRO_MAX_DOWN) {
+        if (record->event.pressed) {
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+
+            if (current_macro_id > 0) {
+                // A macro is recording - modify the macro's recording settings
+                uint8_t curve = get_macro_recording_curve(current_macro_id);
+                uint8_t min = get_macro_recording_min(current_macro_id);
+                uint8_t max = get_macro_recording_max(current_macro_id);
+
+                switch (keycode) {
+                    case HE_MACRO_CURVE_UP:
+                        curve = (curve + 1) % 5;  // 0-4: SOFTEST, SOFT, MEDIUM, HARD, HARDEST
+                        set_macro_recording_curve_target(current_macro_id, curve);
+                        dprintf("Macro %d recording curve: %d\n", current_macro_id, curve);
+                        break;
+                    case HE_MACRO_CURVE_DOWN:
+                        curve = (curve == 0) ? 4 : (curve - 1);
+                        set_macro_recording_curve_target(current_macro_id, curve);
+                        dprintf("Macro %d recording curve: %d\n", current_macro_id, curve);
+                        break;
+                    case HE_MACRO_MIN_UP:
+                        if (min < 127) min++;
+                        set_macro_recording_min_target(current_macro_id, min);
+                        dprintf("Macro %d recording min: %d\n", current_macro_id, min);
+                        break;
+                    case HE_MACRO_MIN_DOWN:
+                        if (min > 1) min--;
+                        set_macro_recording_min_target(current_macro_id, min);
+                        dprintf("Macro %d recording min: %d\n", current_macro_id, min);
+                        break;
+                    case HE_MACRO_MAX_UP:
+                        if (max < 127) max++;
+                        set_macro_recording_max_target(current_macro_id, max);
+                        dprintf("Macro %d recording max: %d\n", current_macro_id, max);
+                        break;
+                    case HE_MACRO_MAX_DOWN:
+                        if (max > 1) max--;
+                        set_macro_recording_max_target(current_macro_id, max);
+                        dprintf("Macro %d recording max: %d\n", current_macro_id, max);
+                        break;
+                }
+            } else {
+                // No macro recording - modify current layer settings
+                switch (keycode) {
+                    case HE_MACRO_CURVE_UP:
+                        layer_actuations[layer].he_velocity_curve = (layer_actuations[layer].he_velocity_curve + 1) % 5;
+                        dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+                        break;
+                    case HE_MACRO_CURVE_DOWN:
+                        if (layer_actuations[layer].he_velocity_curve == 0) {
+                            layer_actuations[layer].he_velocity_curve = 4;
+                        } else {
+                            layer_actuations[layer].he_velocity_curve--;
+                        }
+                        dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+                        break;
+                    case HE_MACRO_MIN_UP:
+                        if (layer_actuations[layer].he_velocity_min < 127) {
+                            layer_actuations[layer].he_velocity_min++;
+                        }
+                        dprintf("Layer %d HE Velocity Min: %d\n", layer, layer_actuations[layer].he_velocity_min);
+                        break;
+                    case HE_MACRO_MIN_DOWN:
+                        if (layer_actuations[layer].he_velocity_min > 1) {
+                            layer_actuations[layer].he_velocity_min--;
+                        }
+                        dprintf("Layer %d HE Velocity Min: %d\n", layer, layer_actuations[layer].he_velocity_min);
+                        break;
+                    case HE_MACRO_MAX_UP:
+                        if (layer_actuations[layer].he_velocity_max < 127) {
+                            layer_actuations[layer].he_velocity_max++;
+                        }
+                        dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+                        break;
+                    case HE_MACRO_MAX_DOWN:
+                        if (layer_actuations[layer].he_velocity_max > 1) {
+                            layer_actuations[layer].he_velocity_max--;
+                        }
+                        dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+                        break;
+                }
+            }
             set_keylog(keycode, record);
         }
         return false;

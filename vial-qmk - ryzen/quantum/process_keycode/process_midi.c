@@ -1,5 +1,6 @@
 #include "process_midi.h"
 #include "process_dynamic_macro.h"
+#include "matrix.h"
 
 #ifdef MIDI_ENABLE
 #    include <LUFA/Drivers/USB/USB.h>
@@ -448,23 +449,33 @@ uint8_t apply_he_velocity_from_record(uint8_t base_velocity, keyrecord_t *record
     }
 }
 
+// Helper function to get raw travel from keyrecord
+// Returns 0-255 raw travel value, or 0 if not available (non-analog)
+uint8_t get_raw_travel_from_record(keyrecord_t *record) {
+    if (analog_mode > 0 && record != NULL) {
+        return analog_matrix_get_travel_normalized(record->event.key.row, record->event.key.col);
+    }
+    return 0; // No analog data available
+}
+
 // Modified noteon functions
 void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
     uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
-    
+
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
-    
+
+    // Smartchord doesn't have raw_travel, use final_velocity as fallback
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, final_velocity);
     }
-    
+
     if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id, 
-                                     current_macro_buffer1, current_macro_buffer2, 
+        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id,
+                                     current_macro_buffer1, current_macro_buffer2,
                                      current_macro_pointer, current_recording_start_time);
     }
 }
@@ -479,17 +490,18 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
     remove_live_note(channel, note);
 	noteoffdisplayupdates(note);
 
-    
+
     // Collect for preroll if it's active (only for slave recordings)
+    // Smartchord doesn't have raw_travel, use velocity as fallback
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
     }
-    
+
     // Check if sustain is active and this is NOT a note from macro playback
     if (sustain_active) {
         // Add to sustain queue instead of sending immediately
         add_sustain_note(channel, note, velocity);
-        
+
         // Don't record the note-off in the macro yet!
         // We'll record it when the sustain pedal is released
     } else {
@@ -498,8 +510,8 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
         remove_lighting_live_note(channel, note);
         // Record to macro if we're recording (and it's not a sustained note)
         if (current_macro_id > 0 && (!sustain_active || is_note_from_macro(channel, note))) {
-            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id, 
-                                          current_macro_buffer1, current_macro_buffer2, 
+            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id,
+                                          current_macro_buffer1, current_macro_buffer2,
                                           current_macro_pointer, current_recording_start_time);
         }
     }
@@ -507,21 +519,22 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
 
 void midi_send_noteon_trainer(uint8_t channel, uint8_t note, uint8_t velocity) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-     
+
     uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
-    
+
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
-    
+
+    // Trainer doesn't have raw_travel, use final_velocity as fallback
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, final_velocity);
     }
-    
+
     if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id, 
-                                     current_macro_buffer1, current_macro_buffer2, 
+        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id,
+                                     current_macro_buffer1, current_macro_buffer2,
                                      current_macro_pointer, current_recording_start_time);
     }
 }
@@ -530,17 +543,18 @@ void midi_send_noteoff_trainer(uint8_t channel, uint8_t note, uint8_t velocity) 
     // Remove from live notes tracking
     if (is_note_from_macro(channel, note) && !is_live_note_active(channel, note)) {
         return; // Don't let live note-offs stop macro notes unless the note is actually live
-    }  
+    }
     // Collect for preroll if it's active (only for slave recordings)
+    // Trainer doesn't have raw_travel, use velocity as fallback
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
     }
-    
+
     // Check if sustain is active and this is NOT a note from macro playback
     if (sustain_active) {
         // Add to sustain queue instead of sending immediately
         add_sustain_note(channel, note, velocity);
-        
+
         // Don't record the note-off in the macro yet!
         // We'll record it when the sustain pedal is released
     } else {
@@ -549,8 +563,8 @@ void midi_send_noteoff_trainer(uint8_t channel, uint8_t note, uint8_t velocity) 
         remove_lighting_live_note(channel, note);
         // Record to macro if we're recording (and it's not a sustained note)
         if (current_macro_id > 0 && (!sustain_active || is_note_from_macro(channel, note))) {
-            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id, 
-                                          current_macro_buffer1, current_macro_buffer2, 
+            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id,
+                                          current_macro_buffer1, current_macro_buffer2,
                                           current_macro_pointer, current_recording_start_time);
         }
     }
@@ -671,31 +685,34 @@ void midi_send_pitchbend_with_recording(uint8_t channel, int16_t bend_value) {
     dprintf("midi: sent Pitchbend ch:%d value:%d\n", channel, bend_value);
 }
 
-void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity) {
+void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-     
+
     uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
-    
+
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     smartchordaddnotes(channel, note, final_velocity);
     smartchorddisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
-    
+
+    // Use raw_travel if available, otherwise use final_velocity as fallback
+    uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : final_velocity;
+
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, final_velocity);
+        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
     }
-    
+
     if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id, 
-                                     current_macro_buffer1, current_macro_buffer2, 
+        dynamic_macro_intercept_noteon(channel, note, travel_for_recording, current_macro_id,
+                                     current_macro_buffer1, current_macro_buffer2,
                                      current_macro_pointer, current_recording_start_time);
     }
 }
 
 
-void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t velocity) {
+void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
     if (is_note_from_macro(channel, note) && !is_live_note_active(channel, note)) {
         return; // Don't let live note-offs stop macro notes unless the note is actually live
     }
@@ -707,22 +724,25 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
             break;
         }
     }
-    
+
     // Remove from live notes tracking
     remove_live_note(channel, note);
     noteoffdisplayupdates(note);
     smartchordremovenotes(channel, note, velocity);
 
+    // Use raw_travel if available, otherwise use velocity as fallback
+    uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : velocity;
+
     // Collect for preroll if it's active (only for slave recordings)
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
+        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, travel_for_recording);
     }
-    
+
     // FIXED: Use was_live_note instead of !is_note_from_macro()
     if (sustain_active) {
         // Add to sustain queue instead of sending immediately
         add_sustain_note(channel, note, velocity);
-        
+
         // Don't record the note-off in the macro yet!
         // We'll record it when the sustain pedal is released
     } else {
@@ -731,8 +751,8 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         remove_lighting_live_note(channel, note);
         // Record to macro if we're recording (and it's not a sustained note)
         if (current_macro_id > 0 && (!sustain_active || !was_live_note)) {
-            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id, 
-                                          current_macro_buffer1, current_macro_buffer2, 
+            dynamic_macro_intercept_noteoff(channel, note, travel_for_recording, current_macro_id,
+                                          current_macro_buffer1, current_macro_buffer2,
                                           current_macro_pointer, current_recording_start_time);
         }
     }
@@ -748,6 +768,9 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             uint8_t tone     = keycode - MIDI_TONE_MIN;
             uint8_t velocity = velocity_number;
 
+            // Get raw travel from analog matrix (0-255) for macro recording
+            uint8_t raw_travel = get_raw_travel_from_record(record);
+
             // Use HE velocity curve if analog_mode is enabled
             if (analog_mode > 0) {
                 velocity = apply_he_velocity_from_record(velocity, record);
@@ -757,7 +780,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 
             if (record->event.pressed) {
                 uint8_t note = midi_compute_note(keycode);
-                midi_send_noteon_with_recording(channel, note, velocity);
+                midi_send_noteon_with_recording(channel, note, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, note, velocity);
                 tone_status[1][tone] += 1;
                 if (tone_status[0][tone] == MIDI_INVALID_NOTE) {
@@ -767,7 +790,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t note = tone_status[0][tone];
                 tone_status[1][tone] -= 1;
                 if (tone_status[1][tone] == 0) {
-                    midi_send_noteoff_with_recording(channel, note, velocity);
+                    midi_send_noteoff_with_recording(channel, note, velocity, raw_travel);
                     dprintf("midi noteoff channel:%d note:%d velocity:%d\n", channel, note, velocity);
                     tone_status[0][tone] = MIDI_INVALID_NOTE;
                 }
@@ -785,6 +808,9 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             uint8_t toneb     = keycode - 50684;
             uint8_t velocity = 0;
 
+            // Get raw travel from analog matrix (0-255) for macro recording
+            uint8_t raw_travel = get_raw_travel_from_record(record);
+
 			if (analog_mode == 0) {
 				if (keysplitvelocitystatus == 0) {
 					velocity = velocity_number;
@@ -796,10 +822,10 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 				uint8_t base_vel = (keysplitvelocitystatus == 0) ? velocity_number : velocity_number2;
 				velocity = apply_he_velocity_from_record(base_vel, record);
 			}
-            
+
             if (record->event.pressed) {
                 uint8_t noteb = midi_compute_note2(keycode);
-                midi_send_noteon_with_recording(channel, noteb, velocity);
+                midi_send_noteon_with_recording(channel, noteb, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
                 toneb_status[1][toneb] += 1;
                 if (toneb_status[0][toneb] == MIDI_INVALID_NOTE) {
@@ -809,7 +835,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t noteb = toneb_status[0][toneb];
                 toneb_status[1][toneb] -= 1;
                 if (toneb_status[1][toneb] == 0) {
-                    midi_send_noteoff_with_recording(channel, noteb, velocity);
+                    midi_send_noteoff_with_recording(channel, noteb, velocity, raw_travel);
                     dprintf("midi noteoff channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
                     toneb_status[0][toneb] = MIDI_INVALID_NOTE;
                 }
@@ -826,6 +852,9 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             uint8_t tonec     = keycode - 50796;
             uint8_t velocity = 0;
 
+            // Get raw travel from analog matrix (0-255) for macro recording
+            uint8_t raw_travel = get_raw_travel_from_record(record);
+
 			if (analog_mode == 0) {
 				if (keysplitvelocitystatus != 2) {
 					velocity = velocity_number;
@@ -837,10 +866,10 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 				uint8_t base_vel = (keysplitvelocitystatus != 2) ? velocity_number : velocity_number3;
 				velocity = apply_he_velocity_from_record(base_vel, record);
 			}
-            
+
             if (record->event.pressed) {
                 uint8_t notec = midi_compute_note3(keycode);
-                midi_send_noteon_with_recording(channel, notec, velocity);
+                midi_send_noteon_with_recording(channel, notec, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, notec, velocity);
                 tonec_status[1][tonec] += 1;
                 if (tonec_status[0][tonec] == MIDI_INVALID_NOTE) {
@@ -850,7 +879,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t notec = tonec_status[0][tonec];
                 tonec_status[1][tonec] -= 1;
                 if (tonec_status[1][tonec] == 0) {
-                    midi_send_noteoff_with_recording(channel, notec, velocity);
+                    midi_send_noteoff_with_recording(channel, notec, velocity, raw_travel);
                     dprintf("midi noteoff channel:%d note:%d velocity:%d\n", channel, notec, velocity);
                     tonec_status[0][tonec] = MIDI_INVALID_NOTE;
                 }

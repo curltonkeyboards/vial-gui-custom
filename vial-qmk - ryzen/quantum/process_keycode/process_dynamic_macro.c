@@ -103,7 +103,7 @@ typedef struct {
     uint8_t type;
     uint8_t channel;
     uint8_t note;
-    uint8_t velocity;
+    uint8_t raw_travel;  // 0-255 raw analog travel value (was velocity)
     uint32_t timestamp;
 } midi_event_t;
 
@@ -275,6 +275,26 @@ static uint8_t macro_velocity_absolute_pending_value[MAX_MACROS] = {0, 0, 0, 0};
 static int8_t macro_velocity_offset_target[MAX_MACROS] = {0, 0, 0, 0};
 static bool macro_velocity_offset_pending[MAX_MACROS] = {false, false, false, false};
 static int8_t macro_velocity_offset_pending_value[MAX_MACROS] = {0, 0, 0, 0};
+
+// Velocity range and curve settings for macro recording/playback
+static uint8_t macro_recording_curve[MAX_MACROS] = {2, 2, 2, 2};  // Default: MEDIUM (2)
+static uint8_t macro_recording_min[MAX_MACROS] = {1, 1, 1, 1};    // Default: 1
+static uint8_t macro_recording_max[MAX_MACROS] = {127, 127, 127, 127};  // Default: 127
+static uint8_t macro_recording_curve_target[MAX_MACROS] = {2, 2, 2, 2};
+static uint8_t macro_recording_min_target[MAX_MACROS] = {1, 1, 1, 1};
+static uint8_t macro_recording_max_target[MAX_MACROS] = {127, 127, 127, 127};
+static bool macro_recording_curve_pending[MAX_MACROS] = {false, false, false, false};
+static bool macro_recording_min_pending[MAX_MACROS] = {false, false, false, false};
+static bool macro_recording_max_pending[MAX_MACROS] = {false, false, false, false};
+static uint8_t macro_recording_curve_pending_value[MAX_MACROS] = {2, 2, 2, 2};
+static uint8_t macro_recording_min_pending_value[MAX_MACROS] = {1, 1, 1, 1};
+static uint8_t macro_recording_max_pending_value[MAX_MACROS] = {127, 127, 127, 127};
+
+// Overdub velocity range and curve settings (separate from main macro)
+static uint8_t overdub_recording_curve[MAX_MACROS] = {2, 2, 2, 2};
+static uint8_t overdub_recording_min[MAX_MACROS] = {1, 1, 1, 1};
+static uint8_t overdub_recording_max[MAX_MACROS] = {127, 127, 127, 127};
+static bool overdub_recording_set[MAX_MACROS] = {false, false, false, false};  // Track if overdub range has been set
 
 static int8_t macro_octave_doubler[MAX_MACROS] = {0, 0, 0, 0};
 static int8_t macro_octave_doubler_target[MAX_MACROS] = {0, 0, 0, 0};
@@ -681,29 +701,143 @@ void set_macro_channel_offset_target(uint8_t macro_num, int8_t channel_offset) {
     }
 }
 
-// Helper function to apply velocity offset and clamp to valid MIDI range
-static uint8_t apply_velocity_transformations(uint8_t original_velocity, int8_t velocity_offset, uint8_t velocity_absolute) {
+// Helper function to apply velocity curve/range, then offset/absolute transformations
+static uint8_t apply_velocity_transformations(uint8_t raw_travel, int8_t velocity_offset, uint8_t velocity_absolute, uint8_t macro_num) {
     uint8_t base_velocity;
-    
-    // Check if absolute velocity is set (not 0)
-    if (velocity_absolute != 0) {
-        // Use absolute velocity as the base
-        base_velocity = velocity_absolute;
+
+    // STEP 1: Apply velocity curve and range to raw_travel (0-255) to get MIDI velocity (1-127)
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+        uint8_t curve = macro_recording_curve[macro_idx];
+        uint8_t min_vel = macro_recording_min[macro_idx];
+        uint8_t max_vel = macro_recording_max[macro_idx];
+
+        // Normalize raw_travel to 0.0-1.0 range
+        float normalized = (float)raw_travel / 255.0f;
+
+        // Apply velocity curve
+        float curved;
+        switch (curve) {
+            case 0:  // VELOCITY_CURVE_SOFTEST
+                curved = normalized * normalized * normalized;
+                break;
+            case 1:  // VELOCITY_CURVE_SOFT
+                curved = normalized * normalized;
+                break;
+            case 2:  // VELOCITY_CURVE_MEDIUM (linear)
+                curved = normalized;
+                break;
+            case 3:  // VELOCITY_CURVE_HARD
+                curved = sqrtf(normalized);
+                break;
+            case 4:  // VELOCITY_CURVE_HARDEST
+                curved = powf(normalized, 1.0f/3.0f);
+                break;
+            default:
+                curved = normalized;
+                break;
+        }
+
+        // Map curved value to velocity range
+        uint8_t range = max_vel - min_vel;
+        int16_t velocity_from_curve = min_vel + (int16_t)(curved * range);
+
+        // Clamp to valid MIDI velocity range (1-127)
+        if (velocity_from_curve < 1) velocity_from_curve = 1;
+        if (velocity_from_curve > 127) velocity_from_curve = 127;
+
+        base_velocity = (uint8_t)velocity_from_curve;
     } else {
-        // Use original velocity as the base
-        base_velocity = original_velocity;
+        // Fallback: use raw_travel as-is (shouldn't happen)
+        base_velocity = (raw_travel > 127) ? 127 : raw_travel;
+        if (base_velocity < 1) base_velocity = 1;
     }
-    
-    // Apply offset to the base velocity
+
+    // STEP 2: Apply absolute velocity override if set
+    if (velocity_absolute != 0) {
+        base_velocity = velocity_absolute;
+    }
+
+    // STEP 3: Apply velocity offset
     int16_t final_velocity = (int16_t)base_velocity + velocity_offset;
-    
-    // Clamp to valid MIDI velocity range (0-127)
+
+    // STEP 4: Clamp to valid MIDI velocity range (0-127)
     if (final_velocity < 0) {
         final_velocity = 0;
     } else if (final_velocity > 127) {
         final_velocity = 127;
     }
-    
+
+    return (uint8_t)final_velocity;
+}
+
+// Helper function to apply overdub velocity curve/range, then offset/absolute transformations
+static uint8_t apply_overdub_velocity_transformations(uint8_t raw_travel, int8_t velocity_offset, uint8_t velocity_absolute, uint8_t macro_num) {
+    uint8_t base_velocity;
+
+    // STEP 1: Apply velocity curve and range to raw_travel (0-255) to get MIDI velocity (1-127)
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+        uint8_t curve = overdub_recording_curve[macro_idx];
+        uint8_t min_vel = overdub_recording_min[macro_idx];
+        uint8_t max_vel = overdub_recording_max[macro_idx];
+
+        // Normalize raw_travel to 0.0-1.0 range
+        float normalized = (float)raw_travel / 255.0f;
+
+        // Apply velocity curve
+        float curved;
+        switch (curve) {
+            case 0:  // VELOCITY_CURVE_SOFTEST
+                curved = normalized * normalized * normalized;
+                break;
+            case 1:  // VELOCITY_CURVE_SOFT
+                curved = normalized * normalized;
+                break;
+            case 2:  // VELOCITY_CURVE_MEDIUM (linear)
+                curved = normalized;
+                break;
+            case 3:  // VELOCITY_CURVE_HARD
+                curved = sqrtf(normalized);
+                break;
+            case 4:  // VELOCITY_CURVE_HARDEST
+                curved = powf(normalized, 1.0f/3.0f);
+                break;
+            default:
+                curved = normalized;
+                break;
+        }
+
+        // Map curved value to velocity range
+        uint8_t range = max_vel - min_vel;
+        int16_t velocity_from_curve = min_vel + (int16_t)(curved * range);
+
+        // Clamp to valid MIDI velocity range (1-127)
+        if (velocity_from_curve < 1) velocity_from_curve = 1;
+        if (velocity_from_curve > 127) velocity_from_curve = 127;
+
+        base_velocity = (uint8_t)velocity_from_curve;
+    } else {
+        // Fallback: use raw_travel as-is (shouldn't happen)
+        base_velocity = (raw_travel > 127) ? 127 : raw_travel;
+        if (base_velocity < 1) base_velocity = 1;
+    }
+
+    // STEP 2: Apply absolute velocity override if set
+    if (velocity_absolute != 0) {
+        base_velocity = velocity_absolute;
+    }
+
+    // STEP 3: Apply velocity offset
+    int16_t final_velocity = (int16_t)base_velocity + velocity_offset;
+
+    // STEP 4: Clamp to valid MIDI velocity range (0-127)
+    if (final_velocity < 0) {
+        final_velocity = 0;
+    } else if (final_velocity > 127) {
+        final_velocity = 127;
+    }
+
     return (uint8_t)final_velocity;
 }
 
@@ -1212,9 +1346,47 @@ static midi_event_t* get_overdub_read_start(uint8_t macro_num) {
 
 
 
+// Helper function to snapshot velocity curve/range settings when recording starts
+static void snapshot_recording_settings(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
+        // Snapshot curve and range from current layer settings
+        macro_recording_curve[macro_idx] = layer_actuations[current_layer].he_velocity_curve;
+        macro_recording_min[macro_idx] = layer_actuations[current_layer].he_velocity_min;
+        macro_recording_max[macro_idx] = layer_actuations[current_layer].he_velocity_max;
+
+        dprintf("dynamic macro: snapshotted recording settings for macro %d - curve:%d min:%d max:%d\n",
+                macro_num, macro_recording_curve[macro_idx],
+                macro_recording_min[macro_idx], macro_recording_max[macro_idx]);
+    }
+}
+
+// Helper function to snapshot overdub recording settings (only if not already set)
+static void snapshot_overdub_recording_settings(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Only snapshot if not already set (for continuous overdubs)
+        if (!overdub_recording_set[macro_idx]) {
+            uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
+            overdub_recording_curve[macro_idx] = layer_actuations[current_layer].he_velocity_curve;
+            overdub_recording_min[macro_idx] = layer_actuations[current_layer].he_velocity_min;
+            overdub_recording_max[macro_idx] = layer_actuations[current_layer].he_velocity_max;
+            overdub_recording_set[macro_idx] = true;
+
+            dprintf("dynamic macro: snapshotted overdub recording settings for macro %d - curve:%d min:%d max:%d\n",
+                    macro_num, overdub_recording_curve[macro_idx],
+                    overdub_recording_min[macro_idx], overdub_recording_max[macro_idx]);
+        }
+    }
+}
+
 void dynamic_macro_record_start(midi_event_t **macro_pointer, midi_event_t *macro_buffer, int8_t direction, uint32_t *start_time) {
     *macro_pointer = macro_buffer;
-    
+
     if (unsynced_mode_active == 4 || unsynced_mode_active == 5) {
         // Skip priming - start recording immediately for modes 4 and 5
         is_macro_primed = false;
@@ -1259,7 +1431,7 @@ void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t 
     preroll_buffer[preroll_buffer_index].type = type;
     preroll_buffer[preroll_buffer_index].channel = channel;
     preroll_buffer[preroll_buffer_index].note = note;
-    preroll_buffer[preroll_buffer_index].velocity = velocity;
+    preroll_buffer[preroll_buffer_index].raw_travel = velocity;
     
     // Calculate time relative to preroll start
     uint32_t now = timer_read32();
@@ -1571,11 +1743,11 @@ void record_early_overdub_event(uint8_t type, uint8_t channel, uint8_t note, uin
             early_overdub_buffer[i][early_overdub_count[i]].type = type;
             early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
             early_overdub_buffer[i][early_overdub_count[i]].note = note;
-            early_overdub_buffer[i][early_overdub_count[i]].velocity = velocity;
+            early_overdub_buffer[i][early_overdub_count[i]].raw_travel = velocity;
             early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
             early_overdub_count[i]++;
-            
-            dprintf("early overdub: recorded event type:%d ch:%d note:%d vel:%d for macro %d\n", 
+
+            dprintf("early overdub: recorded event type:%d ch:%d note:%d vel:%d for macro %d\n",
                     type, channel, note, velocity, i + 1);
             return; // Only capture in one macro
         }
@@ -1587,7 +1759,10 @@ void dynamic_macro_play_overdub(uint8_t macro_num);
 
 static void start_overdub_recording_advanced(uint8_t macro_num) {
     uint8_t macro_idx = macro_num - 1;
-    
+
+    // Snapshot overdub recording settings (only if not already set)
+    snapshot_overdub_recording_settings(macro_num);
+
     // FIRST: Check if any OTHER macros have pending merges and force them
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
         if (i != macro_idx && (overdub_merge_pending[i] || overdub_temp_count[i] > 0)) {
@@ -1728,9 +1903,12 @@ void start_overdub_recording(uint8_t macro_num) {
             }
         }
     }
-    
+
     uint8_t macro_idx = macro_num - 1;
-    
+
+    // Snapshot overdub recording settings (only if not already set)
+    snapshot_overdub_recording_settings(macro_num);
+
     if (overdub_muted[macro_idx]) {
         overdub_muted[macro_idx] = false;
         overdub_mute_pending[macro_idx] = false;
@@ -3351,21 +3529,21 @@ if (is_independent_overdub && macro_num > 0) {
                 if (overdub_advanced_mode) {
                     // ADVANCED MODE: Use overdub-specific transformations
                     transposed_note = apply_transpose(state->current->note, overdub_transpose[macro_idx]);
-                    override_channel = apply_channel_transformations(state->current->channel, 
-                                                          overdub_channel_offset[macro_idx], 
+                    override_channel = apply_channel_transformations(state->current->channel,
+                                                          overdub_channel_offset[macro_idx],
                                                           overdub_channel_absolute[macro_idx]);
-                    offset_velocity = apply_velocity_transformations(state->current->velocity, 
-                                                          overdub_velocity_offset[macro_idx], 
-                                                          overdub_velocity_absolute[macro_idx]);
+                    offset_velocity = apply_overdub_velocity_transformations(state->current->raw_travel,
+                                                          overdub_velocity_offset[macro_idx],
+                                                          overdub_velocity_absolute[macro_idx], macro_num);
                 } else {
                     // NORMAL MODE: Use macro transformations (existing behavior)
                     transposed_note = apply_transpose(state->current->note, macro_transpose[macro_idx]);
-                    override_channel = apply_channel_transformations(state->current->channel, 
-                                                          macro_channel_offset[macro_idx], 
+                    override_channel = apply_channel_transformations(state->current->channel,
+                                                          macro_channel_offset[macro_idx],
                                                           macro_channel_absolute[macro_idx]);
-                    offset_velocity = apply_velocity_transformations(state->current->velocity, 
-                                                          macro_velocity_offset[macro_idx], 
-                                                          macro_velocity_absolute[macro_idx]);
+                    offset_velocity = apply_velocity_transformations(state->current->raw_travel,
+                                                          macro_velocity_offset[macro_idx],
+                                                          macro_velocity_absolute[macro_idx], macro_num);
                 }
                 
                 uint8_t track_id = macro_num + MAX_MACROS;
@@ -3408,21 +3586,21 @@ if (is_independent_overdub && macro_num > 0) {
                 if (overdub_advanced_mode) {
                     // ADVANCED MODE: Use overdub-specific transformations
                     transposed_note = apply_transpose(state->current->note, overdub_transpose[macro_idx]);
-                    override_channel = apply_channel_transformations(state->current->channel, 
-                                                          overdub_channel_offset[macro_idx], 
+                    override_channel = apply_channel_transformations(state->current->channel,
+                                                          overdub_channel_offset[macro_idx],
                                                           overdub_channel_absolute[macro_idx]);
-                    offset_velocity = apply_velocity_transformations(state->current->velocity, 
-                                                          overdub_velocity_offset[macro_idx], 
-                                                          overdub_velocity_absolute[macro_idx]);
+                    offset_velocity = apply_overdub_velocity_transformations(state->current->raw_travel,
+                                                          overdub_velocity_offset[macro_idx],
+                                                          overdub_velocity_absolute[macro_idx], macro_num);
                 } else {
                     // NORMAL MODE: Use macro transformations (existing behavior)
                     transposed_note = apply_transpose(state->current->note, macro_transpose[macro_idx]);
-                    override_channel = apply_channel_transformations(state->current->channel, 
-                                                          macro_channel_offset[macro_idx], 
+                    override_channel = apply_channel_transformations(state->current->channel,
+                                                          macro_channel_offset[macro_idx],
                                                           macro_channel_absolute[macro_idx]);
-                    offset_velocity = apply_velocity_transformations(state->current->velocity, 
-                                                          macro_velocity_offset[macro_idx], 
-                                                          macro_velocity_absolute[macro_idx]);
+                    offset_velocity = apply_velocity_transformations(state->current->raw_travel,
+                                                          macro_velocity_offset[macro_idx],
+                                                          macro_velocity_absolute[macro_idx], macro_num);
                 }
                 
                 uint8_t track_id = macro_num + MAX_MACROS;
@@ -3562,9 +3740,9 @@ if (is_independent_overdub && macro_num > 0) {
                         early_overdub_buffer[macro_idx][early_overdub_count[macro_idx]].timestamp = 0;
                         early_overdub_count[macro_idx]++;
                         
-                        dprintf("overdub preroll: transferred event type:%d ch:%d note:%d vel:%d at natural loop end\n", 
-                                preroll_buffer[idx].type, preroll_buffer[idx].channel, 
-                                preroll_buffer[idx].note, preroll_buffer[idx].velocity);
+                        dprintf("overdub preroll: transferred event type:%d ch:%d note:%d vel:%d at natural loop end\n",
+                                preroll_buffer[idx].type, preroll_buffer[idx].channel,
+                                preroll_buffer[idx].note, preroll_buffer[idx].raw_travel);
                     }
                 }
                 
@@ -3687,29 +3865,29 @@ if (is_independent_overdub && macro_num > 0) {
             {
                 uint8_t transposed_note = state->current->note;
                 uint8_t override_channel = state->current->channel;
-                uint8_t offset_velocity = state->current->velocity;
-                
+                uint8_t offset_velocity = state->current->raw_travel;  // Will be transformed below
+
                 if (macro_num > 0) {
                     uint8_t macro_idx = macro_num - 1;
-                    
+
                     if (is_overdub_state && overdub_advanced_mode) {
                         // Advanced mode overdub: use overdub transformations
                         transposed_note = apply_transpose(state->current->note, overdub_transpose[macro_idx]);
-                        override_channel = apply_channel_transformations(state->current->channel, 
-                                                          overdub_channel_offset[macro_idx], 
+                        override_channel = apply_channel_transformations(state->current->channel,
+                                                          overdub_channel_offset[macro_idx],
                                                           overdub_channel_absolute[macro_idx]);
-                        offset_velocity = apply_velocity_transformations(state->current->velocity, 
-                                                        overdub_velocity_offset[macro_idx], 
-                                                        overdub_velocity_absolute[macro_idx]);
+                        offset_velocity = apply_overdub_velocity_transformations(state->current->raw_travel,
+                                                        overdub_velocity_offset[macro_idx],
+                                                        overdub_velocity_absolute[macro_idx], macro_num);
                     } else {
                         // Normal mode or main macro: use macro transformations
                         transposed_note = apply_transpose(state->current->note, macro_transpose[macro_idx]);
-                        override_channel = apply_channel_transformations(state->current->channel, 
-                                                          macro_channel_offset[macro_idx], 
+                        override_channel = apply_channel_transformations(state->current->channel,
+                                                          macro_channel_offset[macro_idx],
                                                           macro_channel_absolute[macro_idx]);
-                        offset_velocity = apply_velocity_transformations(state->current->velocity, 
-                                                        macro_velocity_offset[macro_idx], 
-                                                        macro_velocity_absolute[macro_idx]);
+                        offset_velocity = apply_velocity_transformations(state->current->raw_travel,
+                                                        macro_velocity_offset[macro_idx],
+                                                        macro_velocity_absolute[macro_idx], macro_num);
                     }
                 }
                 
@@ -3737,13 +3915,13 @@ if (is_independent_overdub && macro_num > 0) {
                         }
                         
                         if (is_overdub_state) {
-                            dprintf("midi macro: played overdub note ch:%d->%d note:%d->%d vel:%d->%d for macro %d\n", 
+                            dprintf("midi macro: played overdub note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                                     state->current->channel, override_channel, state->current->note, transposed_note,
-                                    state->current->velocity, offset_velocity, macro_num);
+                                    state->current->raw_travel, offset_velocity, macro_num);
                         } else {
-                            dprintf("midi macro: played note ch:%d->%d note:%d->%d vel:%d->%d\n", 
+                            dprintf("midi macro: played note ch:%d->%d note:%d->%d raw:%d->vel:%d\n",
                                     state->current->channel, override_channel, state->current->note, transposed_note,
-                                    state->current->velocity, offset_velocity);
+                                    state->current->raw_travel, offset_velocity);
                         }
                     }
                 } else {
@@ -3815,29 +3993,29 @@ if (is_independent_overdub && macro_num > 0) {
           {
                 uint8_t transposed_note_off = state->current->note;
                 uint8_t override_channel_off = state->current->channel;
-                uint8_t offset_velocity_off = state->current->velocity;
-                
+                uint8_t offset_velocity_off = state->current->raw_travel;  // Will be transformed below
+
                 if (macro_num > 0) {
                     uint8_t macro_idx = macro_num - 1;
-                    
+
                     if (is_overdub_state && overdub_advanced_mode) {
                         // Advanced mode overdub: use overdub transformations
                         transposed_note_off = apply_transpose(state->current->note, overdub_transpose[macro_idx]);
-                        override_channel_off = apply_channel_transformations(state->current->channel, 
-                                                          overdub_channel_offset[macro_idx], 
+                        override_channel_off = apply_channel_transformations(state->current->channel,
+                                                          overdub_channel_offset[macro_idx],
                                                           overdub_channel_absolute[macro_idx]);
-                        offset_velocity_off = apply_velocity_transformations(state->current->velocity, 
-                                                            overdub_velocity_offset[macro_idx], 
-                                                            overdub_velocity_absolute[macro_idx]);
+                        offset_velocity_off = apply_overdub_velocity_transformations(state->current->raw_travel,
+                                                            overdub_velocity_offset[macro_idx],
+                                                            overdub_velocity_absolute[macro_idx], macro_num);
                     } else {
                         // Normal mode or main macro: use macro transformations
                         transposed_note_off = apply_transpose(state->current->note, macro_transpose[macro_idx]);
-                        override_channel_off = apply_channel_transformations(state->current->channel, 
-                                                          macro_channel_offset[macro_idx], 
+                        override_channel_off = apply_channel_transformations(state->current->channel,
+                                                          macro_channel_offset[macro_idx],
                                                           macro_channel_absolute[macro_idx]);
-                        offset_velocity_off = apply_velocity_transformations(state->current->velocity, 
-                                                            macro_velocity_offset[macro_idx], 
-                                                            macro_velocity_absolute[macro_idx]);
+                        offset_velocity_off = apply_velocity_transformations(state->current->raw_travel,
+                                                            macro_velocity_offset[macro_idx],
+                                                            macro_velocity_absolute[macro_idx], macro_num);
                     }
                 }
                 
@@ -3850,13 +4028,13 @@ if (is_independent_overdub && macro_num > 0) {
                     }
                     
                     if (is_overdub_state) {
-                        dprintf("midi macro: played overdub note off ch:%d->%d note:%d->%d vel:%d->%d for macro %d\n", 
+                        dprintf("midi macro: played overdub note off ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                                 state->current->channel, override_channel_off, state->current->note, transposed_note_off,
-                                state->current->velocity, offset_velocity_off, macro_num);
+                                state->current->raw_travel, offset_velocity_off, macro_num);
                     } else {
-                        dprintf("midi macro: played note off ch:%d->%d note:%d->%d vel:%d->%d\n", 
+                        dprintf("midi macro: played note off ch:%d->%d note:%d->%d raw:%d->vel:%d\n",
                                 state->current->channel, override_channel_off, state->current->note, transposed_note_off,
-                                state->current->velocity, offset_velocity_off);
+                                state->current->raw_travel, offset_velocity_off);
                     }
                 } else {
                     dprintf("midi macro: skipped note off ch:%d->%d note:%d->%d (active live note)\n", 
@@ -4385,6 +4563,123 @@ void reset_all_macro_velocity_absolute_targets(void) {
         macro_velocity_absolute[i] = 0;
     }
     dprintf("dynamic macro: reset all velocity absolute targets and values to 0\n");
+}
+
+// =============================================================================
+// VELOCITY RANGE AND CURVE GETTER/SETTER FUNCTIONS
+// =============================================================================
+
+// Macro recording curve
+uint8_t get_macro_recording_curve(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        return macro_recording_curve[macro_num - 1];
+    }
+    return 2;  // Default MEDIUM
+}
+
+void set_macro_recording_curve_target(uint8_t macro_num, uint8_t curve) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Clamp to valid range (0-4)
+        if (curve > 4) curve = 4;
+
+        macro_recording_curve_target[macro_idx] = curve;
+
+        // Check if any macros are currently playing
+        bool any_macros_playing = false;
+        for (uint8_t i = 0; i < MAX_MACROS; i++) {
+            if (macro_playback[i].is_playing || overdub_playback[i].is_playing) {
+                any_macros_playing = true;
+                break;
+            }
+        }
+
+        if (any_macros_playing) {
+            macro_recording_curve_pending[macro_idx] = true;
+            macro_recording_curve_pending_value[macro_idx] = curve;
+            dprintf("dynamic macro: set recording curve target for macro %d to %d (queued for loop trigger)\n", macro_num, curve);
+        } else {
+            macro_recording_curve[macro_idx] = curve;
+            dprintf("dynamic macro: immediately applied recording curve %d for macro %d\n", curve, macro_num);
+        }
+    }
+}
+
+// Macro recording min
+uint8_t get_macro_recording_min(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        return macro_recording_min[macro_num - 1];
+    }
+    return 1;
+}
+
+void set_macro_recording_min_target(uint8_t macro_num, uint8_t min) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Clamp to valid range (1-127)
+        if (min < 1) min = 1;
+        if (min > 127) min = 127;
+
+        macro_recording_min_target[macro_idx] = min;
+
+        // Check if any macros are currently playing
+        bool any_macros_playing = false;
+        for (uint8_t i = 0; i < MAX_MACROS; i++) {
+            if (macro_playback[i].is_playing || overdub_playback[i].is_playing) {
+                any_macros_playing = true;
+                break;
+            }
+        }
+
+        if (any_macros_playing) {
+            macro_recording_min_pending[macro_idx] = true;
+            macro_recording_min_pending_value[macro_idx] = min;
+            dprintf("dynamic macro: set recording min target for macro %d to %d (queued for loop trigger)\n", macro_num, min);
+        } else {
+            macro_recording_min[macro_idx] = min;
+            dprintf("dynamic macro: immediately applied recording min %d for macro %d\n", min, macro_num);
+        }
+    }
+}
+
+// Macro recording max
+uint8_t get_macro_recording_max(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        return macro_recording_max[macro_num - 1];
+    }
+    return 127;
+}
+
+void set_macro_recording_max_target(uint8_t macro_num, uint8_t max) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Clamp to valid range (1-127)
+        if (max < 1) max = 1;
+        if (max > 127) max = 127;
+
+        macro_recording_max_target[macro_idx] = max;
+
+        // Check if any macros are currently playing
+        bool any_macros_playing = false;
+        for (uint8_t i = 0; i < MAX_MACROS; i++) {
+            if (macro_playback[i].is_playing || overdub_playback[i].is_playing) {
+                any_macros_playing = true;
+                break;
+            }
+        }
+
+        if (any_macros_playing) {
+            macro_recording_max_pending[macro_idx] = true;
+            macro_recording_max_pending_value[macro_idx] = max;
+            dprintf("dynamic macro: set recording max target for macro %d to %d (queued for loop trigger)\n", macro_num, max);
+        } else {
+            macro_recording_max[macro_idx] = max;
+            dprintf("dynamic macro: immediately applied recording max %d for macro %d\n", max, macro_num);
+        }
+    }
 }
 
 // Reset all transpose values to 0
@@ -5090,12 +5385,12 @@ void dynamic_macro_actual_start(uint32_t *start_time) {
                     original_start[event_count].type = preroll_buffer[idx].type;
                     original_start[event_count].channel = preroll_buffer[idx].channel;
                     original_start[event_count].note = preroll_buffer[idx].note;
-                    original_start[event_count].velocity = preroll_buffer[idx].velocity;
+                    original_start[event_count].raw_travel = preroll_buffer[idx].raw_travel;
                     original_start[event_count].timestamp = adjusted_timestamp;
-                    
-                    dprintf("preroll: added event type:%d ch:%d note:%d vel:%d at time %lu ms (was %lu ms before start)\n", 
-                            original_start[event_count].type, original_start[event_count].channel, 
-                            original_start[event_count].note, original_start[event_count].velocity, 
+
+                    dprintf("preroll: added event type:%d ch:%d note:%d vel:%d at time %lu ms (was %lu ms before start)\n",
+                            original_start[event_count].type, original_start[event_count].channel,
+                            original_start[event_count].note, original_start[event_count].raw_travel,
                             adjusted_timestamp, time_before_start);
                     
                     event_count++;
@@ -6028,21 +6323,21 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                 if (is_independent_overdub) {
                     // Independent overdub: use overdub transformations
                     transposed_note = apply_transpose(event->note, overdub_transpose[macro_idx]);
-                    override_channel = apply_channel_transformations(event->channel, 
-                                                      overdub_channel_offset[macro_idx], 
+                    override_channel = apply_channel_transformations(event->channel,
+                                                      overdub_channel_offset[macro_idx],
                                                       overdub_channel_absolute[macro_idx]);
-                    offset_velocity = apply_velocity_transformations(event->velocity, 
-                                                    overdub_velocity_offset[macro_idx], 
-                                                    overdub_velocity_absolute[macro_idx]);
+                    offset_velocity = apply_overdub_velocity_transformations(event->raw_travel,
+                                                    overdub_velocity_offset[macro_idx],
+                                                    overdub_velocity_absolute[macro_idx], macro_num);
                 } else {
                     // Main macro or synced overdub: use macro transformations
                     transposed_note = apply_transpose(event->note, macro_transpose[macro_idx]);
-                    override_channel = apply_channel_transformations(event->channel, 
-                                                      macro_channel_offset[macro_idx], 
+                    override_channel = apply_channel_transformations(event->channel,
+                                                      macro_channel_offset[macro_idx],
                                                       macro_channel_absolute[macro_idx]);
-                    offset_velocity = apply_velocity_transformations(event->velocity, 
-                                                    macro_velocity_offset[macro_idx], 
-                                                    macro_velocity_absolute[macro_idx]);
+                    offset_velocity = apply_velocity_transformations(event->raw_travel,
+                                                    macro_velocity_offset[macro_idx],
+                                                    macro_velocity_absolute[macro_idx], macro_num);
                 }
                 
                 // Determine track ID based on whether this is an overdub
@@ -7159,6 +7454,7 @@ static bool handle_overdub_advanced_mode(uint8_t macro_num, uint8_t macro_idx,
             } else {
                 dynamic_macro_record_start(&macro_pointer, macro_start, +1, &recording_start_time);
                 macro_id = macro_num;
+                snapshot_recording_settings(macro_num);  // Snapshot curve/min/max when recording starts
                 setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
                 dprintf("dynamic macro: [ADVANCED] immediately started recording macro %d\n", macro_num);
             }
@@ -8456,6 +8752,7 @@ static bool handle_unsynced_mode(uint8_t macro_num, uint8_t macro_idx,
     if (this_macro_empty && macro_id == 0) {
         dynamic_macro_record_start(&macro_pointer, macro_start, +1, &recording_start_time);
         macro_id = macro_num;
+        snapshot_recording_settings(macro_num);  // Snapshot curve/min/max when recording starts
         setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
         dprintf("dynamic macro: unsynced mode - started recording macro %d\n", macro_num);
         return false;
@@ -8619,6 +8916,7 @@ if (was_in_overdub) {
         // Start recording this macro
         dynamic_macro_record_start(&macro_pointer, macro_start, +1, &recording_start_time);
         macro_id = macro_num;
+        snapshot_recording_settings(macro_num);  // Snapshot curve/min/max when recording starts
         setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
         dprintf("dynamic macro: sample mode started recording macro %d\n", macro_num);
         return false;
@@ -8875,8 +9173,9 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 // No macro exists - prime for recording
                 dynamic_macro_record_start(&macro_pointer, macro_start, +1, &recording_start_time);
                 macro_id = macro_num;
+                snapshot_recording_settings(macro_num);  // Snapshot curve/min/max when recording starts
                 setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
-                
+
                 // If overdub button is held, set flag for after recording
                 if (overdub_button_held) {
                     macro_in_overdub_mode[macro_idx] = true;
@@ -9040,8 +9339,8 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
     return false;
 }
 
-void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t macro_id, 
-                                   void *macro_buffer1, void *macro_buffer2, 
+void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t raw_travel, uint8_t macro_id,
+                                   void *macro_buffer1, void *macro_buffer2,
                                    void **macro_pointer, uint32_t *recording_start_time) {
     
     // FIRST: Always check for early overdub capture (independent of regular recording)
@@ -9050,39 +9349,39 @@ void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t veloc
             early_overdub_buffer[i][early_overdub_count[i]].type = MIDI_EVENT_NOTE_ON;
             early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
             early_overdub_buffer[i][early_overdub_count[i]].note = note;
-            early_overdub_buffer[i][early_overdub_count[i]].velocity = velocity;
+            early_overdub_buffer[i][early_overdub_count[i]].raw_travel = raw_travel;
             early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
             early_overdub_count[i]++;
-            
-            dprintf("early overdub: captured note-on ch:%d note:%d vel:%d for macro %d\n", 
-                    channel, note, velocity, i + 1);
+
+            dprintf("early overdub: captured note-on ch:%d note:%d vel:%d for macro %d\n",
+                    channel, note, raw_travel, i + 1);
             return; // Early captured, don't process as normal recording
         }
     }
-    
+
     // SECOND: Check if regular recording is active and not suspended
     if (macro_id == 0 || recording_suspended[macro_id - 1]) {
         return; // No regular recording active or recording suspended
     }
-    
+
     // THIRD: Route to appropriate recording system
     if (macro_in_overdub_mode[macro_id - 1]) {
         // Regular overdub recording (to temp buffer)
-        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_ON, channel, note, velocity);
+        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_ON, channel, note, raw_travel);
     } else {
         // Normal macro recording
         midi_event_t *macro_start = get_macro_buffer(macro_id);
         midi_event_t *macro_end = macro_start + (MACRO_BUFFER_SIZE / sizeof(midi_event_t));
-        
-        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer, 
-                                       macro_end, +1, 
-                                       MIDI_EVENT_NOTE_ON, channel, note, velocity, 
+
+        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer,
+                                       macro_end, +1,
+                                       MIDI_EVENT_NOTE_ON, channel, note, raw_travel,
                                        recording_start_time, macro_id);
     }
 }
 
-void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t macro_id, 
-                                    void *macro_buffer1, void *macro_buffer2, 
+void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t raw_travel, uint8_t macro_id,
+                                    void *macro_buffer1, void *macro_buffer2,
                                     void **macro_pointer, uint32_t *recording_start_time) {
     
     // FIRST: Always check for early overdub capture (independent of regular recording)
@@ -9091,33 +9390,33 @@ void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t velo
             early_overdub_buffer[i][early_overdub_count[i]].type = MIDI_EVENT_NOTE_OFF;
             early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
             early_overdub_buffer[i][early_overdub_count[i]].note = note;
-            early_overdub_buffer[i][early_overdub_count[i]].velocity = velocity;
+            early_overdub_buffer[i][early_overdub_count[i]].raw_travel = raw_travel;
             early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
             early_overdub_count[i]++;
-            
-            dprintf("early overdub: captured note-off ch:%d note:%d vel:%d for macro %d\n", 
-                    channel, note, velocity, i + 1);
+
+            dprintf("early overdub: captured note-off ch:%d note:%d vel:%d for macro %d\n",
+                    channel, note, raw_travel, i + 1);
             return; // Early captured, don't process as normal recording
         }
     }
-    
+
     // SECOND: Check if regular recording is active and not suspended
     if (macro_id == 0 || recording_suspended[macro_id - 1]) {
         return; // No regular recording active or recording suspended
     }
-    
+
     // THIRD: Route to appropriate recording system
     if (macro_in_overdub_mode[macro_id - 1]) {
         // Regular overdub recording (to temp buffer)
-        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
+        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel);
     } else {
         // Normal macro recording
         midi_event_t *macro_start = get_macro_buffer(macro_id);
         midi_event_t *macro_end = macro_start + (MACRO_BUFFER_SIZE / sizeof(midi_event_t));
-        
-        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer, 
-                                       macro_end, +1, 
-                                       MIDI_EVENT_NOTE_OFF, channel, note, velocity, 
+
+        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer,
+                                       macro_end, +1,
+                                       MIDI_EVENT_NOTE_OFF, channel, note, raw_travel,
                                        recording_start_time, macro_id);
     }
 }
@@ -9134,7 +9433,7 @@ void dynamic_macro_intercept_cc(uint8_t channel, uint8_t cc_number, uint8_t valu
                 early_overdub_buffer[i][early_overdub_count[i]].type = MIDI_EVENT_CC;
                 early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
                 early_overdub_buffer[i][early_overdub_count[i]].note = cc_number;
-                early_overdub_buffer[i][early_overdub_count[i]].velocity = value;
+                early_overdub_buffer[i][early_overdub_count[i]].raw_travel = value;
                 early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
                 early_overdub_count[i]++;
                 

@@ -42,8 +42,8 @@ bool channeloverride;
 bool velocityoverride;
 bool transposeoverride;
 
-void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity);
-void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t velocity);
+void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void midi_send_cc_with_recording(uint8_t channel, uint8_t cc, uint8_t value);
 void midi_send_program_with_recording(uint8_t channel, uint8_t program);
 void midi_send_aftertouch_with_recording(uint8_t channel, uint8_t note, uint8_t pressure);
