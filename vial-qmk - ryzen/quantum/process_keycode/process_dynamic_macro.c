@@ -1431,7 +1431,7 @@ void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t 
     preroll_buffer[preroll_buffer_index].type = type;
     preroll_buffer[preroll_buffer_index].channel = channel;
     preroll_buffer[preroll_buffer_index].note = note;
-    preroll_buffer[preroll_buffer_index].velocity = velocity;
+    preroll_buffer[preroll_buffer_index].raw_travel = velocity;
     
     // Calculate time relative to preroll start
     uint32_t now = timer_read32();
@@ -1743,11 +1743,11 @@ void record_early_overdub_event(uint8_t type, uint8_t channel, uint8_t note, uin
             early_overdub_buffer[i][early_overdub_count[i]].type = type;
             early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
             early_overdub_buffer[i][early_overdub_count[i]].note = note;
-            early_overdub_buffer[i][early_overdub_count[i]].velocity = velocity;
+            early_overdub_buffer[i][early_overdub_count[i]].raw_travel = velocity;
             early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
             early_overdub_count[i]++;
-            
-            dprintf("early overdub: recorded event type:%d ch:%d note:%d vel:%d for macro %d\n", 
+
+            dprintf("early overdub: recorded event type:%d ch:%d note:%d vel:%d for macro %d\n",
                     type, channel, note, velocity, i + 1);
             return; // Only capture in one macro
         }
@@ -3740,9 +3740,9 @@ if (is_independent_overdub && macro_num > 0) {
                         early_overdub_buffer[macro_idx][early_overdub_count[macro_idx]].timestamp = 0;
                         early_overdub_count[macro_idx]++;
                         
-                        dprintf("overdub preroll: transferred event type:%d ch:%d note:%d vel:%d at natural loop end\n", 
-                                preroll_buffer[idx].type, preroll_buffer[idx].channel, 
-                                preroll_buffer[idx].note, preroll_buffer[idx].velocity);
+                        dprintf("overdub preroll: transferred event type:%d ch:%d note:%d vel:%d at natural loop end\n",
+                                preroll_buffer[idx].type, preroll_buffer[idx].channel,
+                                preroll_buffer[idx].note, preroll_buffer[idx].raw_travel);
                     }
                 }
                 
@@ -5385,12 +5385,12 @@ void dynamic_macro_actual_start(uint32_t *start_time) {
                     original_start[event_count].type = preroll_buffer[idx].type;
                     original_start[event_count].channel = preroll_buffer[idx].channel;
                     original_start[event_count].note = preroll_buffer[idx].note;
-                    original_start[event_count].velocity = preroll_buffer[idx].velocity;
+                    original_start[event_count].raw_travel = preroll_buffer[idx].raw_travel;
                     original_start[event_count].timestamp = adjusted_timestamp;
-                    
-                    dprintf("preroll: added event type:%d ch:%d note:%d vel:%d at time %lu ms (was %lu ms before start)\n", 
-                            original_start[event_count].type, original_start[event_count].channel, 
-                            original_start[event_count].note, original_start[event_count].velocity, 
+
+                    dprintf("preroll: added event type:%d ch:%d note:%d vel:%d at time %lu ms (was %lu ms before start)\n",
+                            original_start[event_count].type, original_start[event_count].channel,
+                            original_start[event_count].note, original_start[event_count].raw_travel,
                             adjusted_timestamp, time_before_start);
                     
                     event_count++;
@@ -9339,8 +9339,8 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
     return false;
 }
 
-void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t macro_id, 
-                                   void *macro_buffer1, void *macro_buffer2, 
+void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t raw_travel, uint8_t macro_id,
+                                   void *macro_buffer1, void *macro_buffer2,
                                    void **macro_pointer, uint32_t *recording_start_time) {
     
     // FIRST: Always check for early overdub capture (independent of regular recording)
@@ -9349,39 +9349,39 @@ void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t veloc
             early_overdub_buffer[i][early_overdub_count[i]].type = MIDI_EVENT_NOTE_ON;
             early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
             early_overdub_buffer[i][early_overdub_count[i]].note = note;
-            early_overdub_buffer[i][early_overdub_count[i]].velocity = velocity;
+            early_overdub_buffer[i][early_overdub_count[i]].raw_travel = raw_travel;
             early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
             early_overdub_count[i]++;
-            
-            dprintf("early overdub: captured note-on ch:%d note:%d vel:%d for macro %d\n", 
-                    channel, note, velocity, i + 1);
+
+            dprintf("early overdub: captured note-on ch:%d note:%d vel:%d for macro %d\n",
+                    channel, note, raw_travel, i + 1);
             return; // Early captured, don't process as normal recording
         }
     }
-    
+
     // SECOND: Check if regular recording is active and not suspended
     if (macro_id == 0 || recording_suspended[macro_id - 1]) {
         return; // No regular recording active or recording suspended
     }
-    
+
     // THIRD: Route to appropriate recording system
     if (macro_in_overdub_mode[macro_id - 1]) {
         // Regular overdub recording (to temp buffer)
-        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_ON, channel, note, velocity);
+        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_ON, channel, note, raw_travel);
     } else {
         // Normal macro recording
         midi_event_t *macro_start = get_macro_buffer(macro_id);
         midi_event_t *macro_end = macro_start + (MACRO_BUFFER_SIZE / sizeof(midi_event_t));
-        
-        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer, 
-                                       macro_end, +1, 
-                                       MIDI_EVENT_NOTE_ON, channel, note, velocity, 
+
+        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer,
+                                       macro_end, +1,
+                                       MIDI_EVENT_NOTE_ON, channel, note, raw_travel,
                                        recording_start_time, macro_id);
     }
 }
 
-void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t macro_id, 
-                                    void *macro_buffer1, void *macro_buffer2, 
+void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t raw_travel, uint8_t macro_id,
+                                    void *macro_buffer1, void *macro_buffer2,
                                     void **macro_pointer, uint32_t *recording_start_time) {
     
     // FIRST: Always check for early overdub capture (independent of regular recording)
@@ -9390,33 +9390,33 @@ void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t velo
             early_overdub_buffer[i][early_overdub_count[i]].type = MIDI_EVENT_NOTE_OFF;
             early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
             early_overdub_buffer[i][early_overdub_count[i]].note = note;
-            early_overdub_buffer[i][early_overdub_count[i]].velocity = velocity;
+            early_overdub_buffer[i][early_overdub_count[i]].raw_travel = raw_travel;
             early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
             early_overdub_count[i]++;
-            
-            dprintf("early overdub: captured note-off ch:%d note:%d vel:%d for macro %d\n", 
-                    channel, note, velocity, i + 1);
+
+            dprintf("early overdub: captured note-off ch:%d note:%d vel:%d for macro %d\n",
+                    channel, note, raw_travel, i + 1);
             return; // Early captured, don't process as normal recording
         }
     }
-    
+
     // SECOND: Check if regular recording is active and not suspended
     if (macro_id == 0 || recording_suspended[macro_id - 1]) {
         return; // No regular recording active or recording suspended
     }
-    
+
     // THIRD: Route to appropriate recording system
     if (macro_in_overdub_mode[macro_id - 1]) {
         // Regular overdub recording (to temp buffer)
-        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
+        dynamic_macro_record_midi_event_overdub(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel);
     } else {
         // Normal macro recording
         midi_event_t *macro_start = get_macro_buffer(macro_id);
         midi_event_t *macro_end = macro_start + (MACRO_BUFFER_SIZE / sizeof(midi_event_t));
-        
-        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer, 
-                                       macro_end, +1, 
-                                       MIDI_EVENT_NOTE_OFF, channel, note, velocity, 
+
+        dynamic_macro_record_midi_event(macro_start, (midi_event_t**)macro_pointer,
+                                       macro_end, +1,
+                                       MIDI_EVENT_NOTE_OFF, channel, note, raw_travel,
                                        recording_start_time, macro_id);
     }
 }
@@ -9433,7 +9433,7 @@ void dynamic_macro_intercept_cc(uint8_t channel, uint8_t cc_number, uint8_t valu
                 early_overdub_buffer[i][early_overdub_count[i]].type = MIDI_EVENT_CC;
                 early_overdub_buffer[i][early_overdub_count[i]].channel = channel;
                 early_overdub_buffer[i][early_overdub_count[i]].note = cc_number;
-                early_overdub_buffer[i][early_overdub_count[i]].velocity = value;
+                early_overdub_buffer[i][early_overdub_count[i]].raw_travel = value;
                 early_overdub_buffer[i][early_overdub_count[i]].timestamp = 0; // Will be placed at loop start
                 early_overdub_count[i]++;
                 

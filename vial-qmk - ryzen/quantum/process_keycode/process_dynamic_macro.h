@@ -66,13 +66,13 @@ bool process_dynamic_macro(uint16_t keycode, keyrecord_t *record);
 void matrix_scan_user_macro(void);
 
 // MIDI event interception functions
-void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t velocity, 
-                                   uint8_t macro_id, void *macro_buffer1, 
-                                   void *macro_buffer2, void **macro_pointer, 
+void dynamic_macro_intercept_noteon(uint8_t channel, uint8_t note, uint8_t raw_travel,
+                                   uint8_t macro_id, void *macro_buffer1,
+                                   void *macro_buffer2, void **macro_pointer,
                                    uint32_t *recording_start_time);
-void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t velocity, 
-                                    uint8_t macro_id, void *macro_buffer1, 
-                                    void *macro_buffer2, void **macro_pointer, 
+void dynamic_macro_intercept_noteoff(uint8_t channel, uint8_t note, uint8_t raw_travel,
+                                    uint8_t macro_id, void *macro_buffer1,
+                                    void *macro_buffer2, void **macro_pointer,
                                     uint32_t *recording_start_time);
 void dynamic_macro_intercept_cc(uint8_t channel, uint8_t cc_number, uint8_t value, 
                                uint8_t macro_id, void *macro_buffer1, 
@@ -99,6 +99,16 @@ bool dynamic_macro_valid_key_user(uint16_t keycode, keyrecord_t *record);
 
 // Function to get the live sustain state
 bool get_live_sustain_state(void);
+
+// Macro recording velocity curve/range functions (Part 2: velocity transform system)
+uint8_t get_macro_recording_curve(uint8_t macro_num);
+void set_macro_recording_curve_target(uint8_t macro_num, uint8_t curve);
+
+uint8_t get_macro_recording_min(uint8_t macro_num);
+void set_macro_recording_min_target(uint8_t macro_num, uint8_t min);
+
+uint8_t get_macro_recording_max(uint8_t macro_num);
+void set_macro_recording_max_target(uint8_t macro_num, uint8_t max);
 extern bool copy_modifier_active;
 extern bool paste_modifier_active;
 extern uint8_t source_macro_id;
