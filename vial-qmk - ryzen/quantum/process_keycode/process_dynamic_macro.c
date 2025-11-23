@@ -11847,7 +11847,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			break;
 
 		case HID_CMD_SET_KEYBOARD_CONFIG: // 0x50
-            if (length >= 32) { // Header + 26 data bytes minimum
+            if (length >= 41) { // Header + 35 data bytes minimum (expanded for velocity curve/min/max)
                 handle_set_keyboard_config(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG, 0, 0, NULL, 0); // Success
             } else {
@@ -11875,7 +11875,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 
         case HID_CMD_SAVE_KEYBOARD_SLOT: // 0x53
-            if (length >= 32) { // Header + slot + 26 data bytes minimum
+            if (length >= 41) { // Header + slot + 35 data bytes minimum (expanded for velocity curve/min/max)
                 handle_save_keyboard_slot(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SAVE_KEYBOARD_SLOT, 0, 0, NULL, 0); // Success
             } else {
@@ -12703,10 +12703,10 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
 static void handle_get_keyboard_config(void) {
     load_keyboard_settings();
     
-    // Packet 1: Basic settings (26 bytes)
-    uint8_t config_packet1[26];
+    // Packet 1: Basic settings (35 bytes - expanded for velocity curve/min/max)
+    uint8_t config_packet1[35];
     uint8_t* ptr = config_packet1;
-    
+
     *(int32_t*)ptr = keyboard_settings.velocity_sensitivity; ptr += 4;
     *(int32_t*)ptr = keyboard_settings.cc_sensitivity; ptr += 4;
     *ptr++ = keyboard_settings.channel_number;
@@ -12730,8 +12730,8 @@ static void handle_get_keyboard_config(void) {
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
     *ptr++ = keyboard_settings.smartchordlightmode;
-    
-    send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 26);
+
+    send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 35);
     wait_ms(5);
     
     // Packet 2: Advanced settings (15 bytes)
@@ -12883,10 +12883,10 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     dprintf("HID: Loaded keyboard config from slot %d\n", slot);
     
     // Send the loaded configuration back to the webapp using two packets
-    // Packet 1: Basic settings (26 bytes)
-    uint8_t config_packet1[26];
+    // Packet 1: Basic settings (35 bytes - expanded for velocity curve/min/max)
+    uint8_t config_packet1[35];
     uint8_t* ptr = config_packet1;
-    
+
     *(int32_t*)ptr = keyboard_settings.velocity_sensitivity; ptr += 4;
     *(int32_t*)ptr = keyboard_settings.cc_sensitivity; ptr += 4;
     *ptr++ = keyboard_settings.channel_number;
@@ -12910,8 +12910,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
     *ptr++ = keyboard_settings.smartchordlightmode;
-    
-    send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 26);
+
+    send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 35);
     wait_ms(5);
     
     // Packet 2: Advanced settings (15 bytes) - FIXED: Actually fill and send the packet
