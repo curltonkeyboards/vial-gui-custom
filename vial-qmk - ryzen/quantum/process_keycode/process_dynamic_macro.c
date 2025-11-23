@@ -13005,7 +13005,9 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
                          uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
                          uint8_t midi_rapid_vel, uint8_t vel_speed,
                          uint8_t aftertouch_cc, uint8_t flags,
-                         uint8_t he_curve, uint8_t he_min, uint8_t he_max) {
+                         uint8_t he_curve, uint8_t he_min, uint8_t he_max,
+                         uint8_t ks_curve, uint8_t ks_min, uint8_t ks_max,
+                         uint8_t ts_curve, uint8_t ts_min, uint8_t ts_max) {
     if (layer >= 12) return;
 
     // Clamp values to valid ranges
@@ -13026,6 +13028,16 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     if (he_min > 127) he_min = 127;
     if (he_max < 1) he_max = 1;
     if (he_max > 127) he_max = 127;
+    if (ks_curve > 4) ks_curve = 4;
+    if (ks_min < 1) ks_min = 1;
+    if (ks_min > 127) ks_min = 127;
+    if (ks_max < 1) ks_max = 1;
+    if (ks_max > 127) ks_max = 127;
+    if (ts_curve > 4) ts_curve = 4;
+    if (ts_min < 1) ts_min = 1;
+    if (ts_min > 127) ts_min = 127;
+    if (ts_max < 1) ts_max = 1;
+    if (ts_max > 127) ts_max = 127;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
@@ -13040,6 +13052,12 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     layer_actuations[layer].he_velocity_curve = he_curve;
     layer_actuations[layer].he_velocity_min = he_min;
     layer_actuations[layer].he_velocity_max = he_max;
+    layer_actuations[layer].keysplit_he_velocity_curve = ks_curve;
+    layer_actuations[layer].keysplit_he_velocity_min = ks_min;
+    layer_actuations[layer].keysplit_he_velocity_max = ks_max;
+    layer_actuations[layer].triplesplit_he_velocity_curve = ts_curve;
+    layer_actuations[layer].triplesplit_he_velocity_min = ts_min;
+    layer_actuations[layer].triplesplit_he_velocity_max = ts_max;
 
     dprintf("Set layer %d: n=%d m=%d at=%d vel=%d rf=%d(%s) mrfs=%d mrfv=%d(%s) vs=%d atcc=%d\n",
             layer, normal, midi, aftertouch, velocity, rapid,
@@ -13054,7 +13072,9 @@ __attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, u
                          uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
                          uint8_t *midi_rapid_vel, uint8_t *vel_speed,
                          uint8_t *aftertouch_cc, uint8_t *flags,
-                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max) {
+                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max,
+                         uint8_t *ks_curve, uint8_t *ks_min, uint8_t *ks_max,
+                         uint8_t *ts_curve, uint8_t *ts_min, uint8_t *ts_max) {
     if (layer >= 12) {
         *normal = 80;
         *midi = 80;
@@ -13069,6 +13089,12 @@ __attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, u
         *he_curve = 2;
         *he_min = 1;
         *he_max = 127;
+        *ks_curve = 2;
+        *ks_min = 1;
+        *ks_max = 127;
+        *ts_curve = 2;
+        *ts_min = 1;
+        *ts_max = 127;
         return;
     }
 
@@ -13085,6 +13111,12 @@ __attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, u
     *he_curve = layer_actuations[layer].he_velocity_curve;
     *he_min = layer_actuations[layer].he_velocity_min;
     *he_max = layer_actuations[layer].he_velocity_max;
+    *ks_curve = layer_actuations[layer].keysplit_he_velocity_curve;
+    *ks_min = layer_actuations[layer].keysplit_he_velocity_min;
+    *ks_max = layer_actuations[layer].keysplit_he_velocity_max;
+    *ts_curve = layer_actuations[layer].triplesplit_he_velocity_curve;
+    *ts_min = layer_actuations[layer].triplesplit_he_velocity_min;
+    *ts_max = layer_actuations[layer].triplesplit_he_velocity_max;
 }
 
 // Helper functions to check flags
@@ -13117,6 +13149,12 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t he_curve = data[11];
     uint8_t he_min = data[12];
     uint8_t he_max = data[13];
+    uint8_t ks_curve = data[14];
+    uint8_t ks_min = data[15];
+    uint8_t ks_max = data[16];
+    uint8_t ts_curve = data[17];
+    uint8_t ts_min = data[18];
+    uint8_t ts_max = data[19];
 
     if (layer >= 12) {
         dprintf("HID: Invalid layer %d for actuation\n", layer);
@@ -13125,7 +13163,8 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
 
     set_layer_actuation(layer, normal, midi, aftertouch, velocity, rapid,
                        midi_rapid_sens, midi_rapid_vel, vel_speed, aftertouch_cc, flags,
-                       he_curve, he_min, he_max);
+                       he_curve, he_min, he_max, ks_curve, ks_min, ks_max,
+                       ts_curve, ts_min, ts_max);
     save_layer_actuations();
 
     dprintf("HID: Set layer %d actuation with all params\n", layer);
@@ -13137,13 +13176,14 @@ __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer) {
         return;
     }
 
-    uint8_t response[13];
+    uint8_t response[19];
     get_layer_actuation(layer, &response[0], &response[1], &response[2],
                         &response[3], &response[4], &response[5], &response[6],
                         &response[7], &response[8], &response[9], &response[10],
-                        &response[11], &response[12]);
+                        &response[11], &response[12], &response[13], &response[14],
+                        &response[15], &response[16], &response[17], &response[18]);
 
-    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 13);
+    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 19);
 
     dprintf("HID: Sent layer %d actuation\n", layer);
 }
