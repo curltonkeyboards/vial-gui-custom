@@ -811,17 +811,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             // Get raw travel from analog matrix (0-255) for macro recording
             uint8_t raw_travel = get_raw_travel_from_record(record);
 
-			if (analog_mode == 0) {
-				if (keysplitvelocitystatus == 0) {
-					velocity = velocity_number;
-				} else {
-					velocity = velocity_number2;
-				}
-			} else {
-				// Use HE velocity curve
-				uint8_t base_vel = (keysplitvelocitystatus == 0) ? velocity_number : velocity_number2;
-				velocity = apply_he_velocity_from_record(base_vel, record);
-			}
+            // Use Keysplit HE velocity curve from layer settings
+            velocity = get_keysplit_he_velocity_from_position(record->event.key.row, record->event.key.col);
 
             if (record->event.pressed) {
                 uint8_t noteb = midi_compute_note2(keycode);
@@ -855,17 +846,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
             // Get raw travel from analog matrix (0-255) for macro recording
             uint8_t raw_travel = get_raw_travel_from_record(record);
 
-			if (analog_mode == 0) {
-				if (keysplitvelocitystatus != 2) {
-					velocity = velocity_number;
-				} else {
-					velocity = velocity_number3;
-				}
-			} else {
-				// Use HE velocity curve
-				uint8_t base_vel = (keysplitvelocitystatus != 2) ? velocity_number : velocity_number3;
-				velocity = apply_he_velocity_from_record(base_vel, record);
-			}
+            // Use Triplesplit HE velocity curve from layer settings
+            velocity = get_triplesplit_he_velocity_from_position(record->event.key.row, record->event.key.col);
 
             if (record->event.pressed) {
                 uint8_t notec = midi_compute_note3(keycode);
