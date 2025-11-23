@@ -12594,9 +12594,16 @@ static void handle_set_keyboard_config(const uint8_t* data) {
     octave_number2 = *(int8_t*)ptr++;
     transpose_number3 = *(int8_t*)ptr++;
     octave_number3 = *(int8_t*)ptr++;
-    velocity_number = *ptr++;
-    ptr++; // Skip velocity_number2 (deprecated)
-    ptr++; // Skip velocity_number3 (deprecated)
+    // Read velocity settings (curve + range) for all modes
+    velocity_curve = *ptr++;
+    velocity_min = *ptr++;
+    velocity_max = *ptr++;
+    velocity_curve2 = *ptr++;
+    velocity_min2 = *ptr++;
+    velocity_max2 = *ptr++;
+    velocity_curve3 = *ptr++;
+    velocity_min3 = *ptr++;
+    velocity_max3 = *ptr++;
     randomvelocitymodifier = *ptr++;
     
     // Read 32-bit integer for oledkeyboard (FIXED: was missing in original)
@@ -12616,7 +12623,16 @@ static void handle_set_keyboard_config(const uint8_t* data) {
     keyboard_settings.octave_number2 = octave_number2;
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
-    keyboard_settings.velocity_number = velocity_number;
+    // Update velocity settings for all modes
+    keyboard_settings.velocity_curve = velocity_curve;
+    keyboard_settings.velocity_min = velocity_min;
+    keyboard_settings.velocity_max = velocity_max;
+    keyboard_settings.velocity_curve2 = velocity_curve2;
+    keyboard_settings.velocity_min2 = velocity_min2;
+    keyboard_settings.velocity_max2 = velocity_max2;
+    keyboard_settings.velocity_curve3 = velocity_curve3;
+    keyboard_settings.velocity_min3 = velocity_min3;
+    keyboard_settings.velocity_max3 = velocity_max3;
     keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -12700,9 +12716,16 @@ static void handle_get_keyboard_config(void) {
     *(int8_t*)ptr++ = keyboard_settings.octave_number2;
     *(int8_t*)ptr++ = keyboard_settings.transpose_number3;
     *(int8_t*)ptr++ = keyboard_settings.octave_number3;
-    *ptr++ = keyboard_settings.velocity_number;
-    *ptr++ = 0; // velocity_number2 (deprecated)
-    *ptr++ = 0; // velocity_number3 (deprecated)
+    // Send velocity settings (curve + range) for all modes
+    *ptr++ = keyboard_settings.velocity_curve;
+    *ptr++ = keyboard_settings.velocity_min;
+    *ptr++ = keyboard_settings.velocity_max;
+    *ptr++ = keyboard_settings.velocity_curve2;
+    *ptr++ = keyboard_settings.velocity_min2;
+    *ptr++ = keyboard_settings.velocity_max2;
+    *ptr++ = keyboard_settings.velocity_curve3;
+    *ptr++ = keyboard_settings.velocity_min3;
+    *ptr++ = keyboard_settings.velocity_max3;
     *ptr++ = keyboard_settings.randomvelocitymodifier;
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
@@ -12748,7 +12771,16 @@ static void handle_reset_keyboard_config(void) {
     octave_number2 = 0;
     transpose_number3 = 0;
     octave_number3 = 0;
-    velocity_number = 127;
+    // Reset velocity settings to defaults (linear curve, full range)
+    velocity_curve = 0;   // 0 = linear
+    velocity_min = 1;
+    velocity_max = 127;
+    velocity_curve2 = 0;
+    velocity_min2 = 1;
+    velocity_max2 = 127;
+    velocity_curve3 = 0;
+    velocity_min3 = 1;
+    velocity_max3 = 127;
     randomvelocitymodifier = 0;
     oledkeyboard = 0;
     overdub_advanced_mode = false;
@@ -12780,7 +12812,16 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.octave_number2 = octave_number2;
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
-    keyboard_settings.velocity_number = velocity_number;
+    // Update velocity settings
+    keyboard_settings.velocity_curve = velocity_curve;
+    keyboard_settings.velocity_min = velocity_min;
+    keyboard_settings.velocity_max = velocity_max;
+    keyboard_settings.velocity_curve2 = velocity_curve2;
+    keyboard_settings.velocity_min2 = velocity_min2;
+    keyboard_settings.velocity_max2 = velocity_max2;
+    keyboard_settings.velocity_curve3 = velocity_curve3;
+    keyboard_settings.velocity_min3 = velocity_min3;
+    keyboard_settings.velocity_max3 = velocity_max3;
     keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -12855,9 +12896,16 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *(int8_t*)ptr++ = keyboard_settings.octave_number2;
     *(int8_t*)ptr++ = keyboard_settings.transpose_number3;
     *(int8_t*)ptr++ = keyboard_settings.octave_number3;
-    *ptr++ = keyboard_settings.velocity_number;
-    *ptr++ = 0; // velocity_number2 (deprecated)
-    *ptr++ = 0; // velocity_number3 (deprecated)
+    // Send velocity settings (curve + range) for all modes
+    *ptr++ = keyboard_settings.velocity_curve;
+    *ptr++ = keyboard_settings.velocity_min;
+    *ptr++ = keyboard_settings.velocity_max;
+    *ptr++ = keyboard_settings.velocity_curve2;
+    *ptr++ = keyboard_settings.velocity_min2;
+    *ptr++ = keyboard_settings.velocity_max2;
+    *ptr++ = keyboard_settings.velocity_curve3;
+    *ptr++ = keyboard_settings.velocity_min3;
+    *ptr++ = keyboard_settings.velocity_max3;
     *ptr++ = keyboard_settings.randomvelocitymodifier;
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
@@ -12898,7 +12946,16 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     octave_number2 = keyboard_settings.octave_number2;
     transpose_number3 = keyboard_settings.transpose_number3;
     octave_number3 = keyboard_settings.octave_number3;
-    velocity_number = keyboard_settings.velocity_number;
+    // Load velocity settings
+    velocity_curve = keyboard_settings.velocity_curve;
+    velocity_min = keyboard_settings.velocity_min;
+    velocity_max = keyboard_settings.velocity_max;
+    velocity_curve2 = keyboard_settings.velocity_curve2;
+    velocity_min2 = keyboard_settings.velocity_min2;
+    velocity_max2 = keyboard_settings.velocity_max2;
+    velocity_curve3 = keyboard_settings.velocity_curve3;
+    velocity_min3 = keyboard_settings.velocity_min3;
+    velocity_max3 = keyboard_settings.velocity_max3;
     randomvelocitymodifier = keyboard_settings.randomvelocitymodifier;
     oledkeyboard = keyboard_settings.oledkeyboard;
     overdub_advanced_mode = keyboard_settings.overdub_advanced_mode;
