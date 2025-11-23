@@ -1070,6 +1070,7 @@ void release_current_chord(void) {
     // Use the saved channel and velocity for the progression
     uint8_t channel = progression_channel;
     uint8_t velocity = progression_velocity;
+	uint8_t travelvelocity = (progression_velocity + progression_velocity);
     
     if (current_chord_type != 0) {
         // Release the note key first
@@ -1084,7 +1085,7 @@ void release_current_chord(void) {
         
         // Send MIDI note-off for the root note
         if (current_root_midi_note != 0) {
-            midi_send_noteoff_with_recording(channel, current_root_midi_note, velocity);
+            midi_send_noteoff_with_recording(channel, current_root_midi_note, velocity, travelvelocity);
             current_root_midi_note = 0;
         }
     }
@@ -1808,6 +1809,7 @@ if (progressionvoicing == 4) {
 void play_chord(uint16_t chord_type, uint8_t note_offset, bool is_minor_progression) {
     uint8_t channel = progression_channel;
     uint8_t velocity = progression_velocity;
+	uint8_t travelvelocity = (progression_velocity + progression_velocity);
     leds_frozen = false;
     // Set progression_active to false to allow chord functions to work correctly
     progression_active = false;
@@ -1840,7 +1842,7 @@ void play_chord(uint16_t chord_type, uint8_t note_offset, bool is_minor_progress
     current_root_midi_note = midi_note;
     
     // Manually send MIDI note-on for the root note
-    midi_send_noteon_with_recording(channel, midi_note, velocity);
+    midi_send_noteon_with_recording(channel, midi_note, velocity, travelvelocity);
     
     // Track the highest and lowest notes of this chord for voice leading
     if (progressionvoicing == 3 || progressionvoicing == 4) {
@@ -2044,7 +2046,7 @@ void start_chord_progression(uint8_t progression_id, uint8_t key_offset) {
         
         // Take a snapshot of the current channel and velocity
         progression_channel = channel_number;
-        progression_velocity = velocity_number;
+        progression_velocity = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
         
         // Set up new progression
         current_progression = progression_id;
@@ -11202,7 +11204,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    
 if (keycode >= 0xC92A && keycode <= 0xC93B) {
     uint8_t channel = channel_number;
-    uint8_t velocity = velocity_number;
+    uint8_t velocity = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
     bool play_simultaneous = (keycode >= 0xC938);  // Changed to 0xC938 for the new 4 simultaneous modes
     uint16_t base_interval_code = play_simultaneous ? ((keycode * 3) - (0xC938 * 3) + 0xC92A) : keycode;   
     
@@ -11436,7 +11438,7 @@ if (record->event.pressed) {
     
 if (keycode >= 0xC93C && keycode <= 0xC94F) {
     uint8_t channel = channel_number;
-    uint8_t velocity = velocity_number;
+    uint8_t velocity = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
     bool play_simultaneous = (keycode >= 0xC941 && keycode <= 0xC945) || 
                            (keycode >= 0xC94B && keycode <= 0xC94F);
     bool random_octave_down = (keycode >= 0xC946);

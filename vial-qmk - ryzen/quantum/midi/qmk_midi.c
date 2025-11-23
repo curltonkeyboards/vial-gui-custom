@@ -213,7 +213,7 @@ static void usb_get_midi(MidiDevice* device) {
                             velocity = velocity_number & 0x7F; // Ensure valid velocity range (0-127)
                         }
                         
-                        midi_send_noteon_with_recording(channel, note, velocity);
+                        midi_send_noteon_smartchord(channel, note, velocity);
                         
                         // NEW: Trigger RGB lighting effects
                         if (velocity > 0) { // Velocity > 0 means note on
@@ -243,7 +243,7 @@ static void usb_get_midi(MidiDevice* device) {
                             velocity = velocity_number & 0x7F; // Ensure valid velocity range (0-127)
                         }
                         
-                        midi_send_noteoff_with_recording(channel, note, velocity);
+                        midi_send_noteoff_smartchord(channel, note, velocity);
                         
                         // NEW: Clear RGB lighting effects
                         clear_rgb_for_midi_note(note);
