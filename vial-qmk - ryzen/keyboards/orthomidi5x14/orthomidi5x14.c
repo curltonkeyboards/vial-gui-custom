@@ -106,18 +106,6 @@ int8_t transpose_number3 = 0;  // Variable to store the special number
 int8_t octave_number3 = 0;
 uint8_t velocity_number = 127;
 uint8_t velocityplaceholder = 127;
-// Velocity curve and range system (basic)
-uint8_t velocity_curve = 2;  // Default: MEDIUM (linear)
-uint8_t velocity_min = 1;
-uint8_t velocity_max = 127;
-// Keysplit velocity settings
-uint8_t velocity_curve2 = 2;
-uint8_t velocity_min2 = 1;
-uint8_t velocity_max2 = 127;
-// Triplesplit velocity settings
-uint8_t velocity_curve3 = 2;
-uint8_t velocity_min3 = 1;
-uint8_t velocity_max3 = 127;
 int cc_up_value1[128] = {0};   // (value 1) for CC UP for each CC#
 int cc_updown_value[128] = {0};   // (value 2) for CC UP for each CC#[128] = {0};   // (value 2) for CC UP for each CC#
 int cc_down_value1[128] = {0};   // (value 1) for CC UP for each CC#
@@ -2582,16 +2570,6 @@ void reset_keyboard_settings(void) {
     transpose_number3 = 0;
     octave_number3 = 0;
     velocity_number = 127;
-    // Initialize velocity curve and range system
-    velocity_curve = 2;  // MEDIUM (linear)
-    velocity_min = 1;
-    velocity_max = 127;
-    velocity_curve2 = 2;
-    velocity_min2 = 1;
-    velocity_max2 = 127;
-    velocity_curve3 = 2;
-    velocity_min3 = 1;
-    velocity_max3 = 127;
     randomvelocitymodifier = 0;
     oledkeyboard = 0;
     smartchordlight = 0;
@@ -2622,16 +2600,6 @@ void reset_keyboard_settings(void) {
     keyboard_settings.octave_number2 = octave_number2;
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
-    // Copy velocity curve and range settings
-    keyboard_settings.velocity_curve = velocity_curve;
-    keyboard_settings.velocity_min = velocity_min;
-    keyboard_settings.velocity_max = velocity_max;
-    keyboard_settings.velocity_curve2 = velocity_curve2;
-    keyboard_settings.velocity_min2 = velocity_min2;
-    keyboard_settings.velocity_max2 = velocity_max2;
-    keyboard_settings.velocity_curve3 = velocity_curve3;
-    keyboard_settings.velocity_min3 = velocity_min3;
-    keyboard_settings.velocity_max3 = velocity_max3;
     keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -2674,16 +2642,6 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     octave_number2 = keyboard_settings.octave_number2;
     transpose_number3 = keyboard_settings.transpose_number3;
     octave_number3 = keyboard_settings.octave_number3;
-    // Load velocity curve and range settings
-    velocity_curve = keyboard_settings.velocity_curve;
-    velocity_min = keyboard_settings.velocity_min;
-    velocity_max = keyboard_settings.velocity_max;
-    velocity_curve2 = keyboard_settings.velocity_curve2;
-    velocity_min2 = keyboard_settings.velocity_min2;
-    velocity_max2 = keyboard_settings.velocity_max2;
-    velocity_curve3 = keyboard_settings.velocity_curve3;
-    velocity_min3 = keyboard_settings.velocity_min3;
-    velocity_max3 = keyboard_settings.velocity_max3;
     randomvelocitymodifier = keyboard_settings.randomvelocitymodifier;
     oledkeyboard = keyboard_settings.oledkeyboard;
     overdub_advanced_mode = keyboard_settings.overdub_advanced_mode;
@@ -8756,15 +8714,6 @@ break;
 		keyboard_settings.octave_number2 = octave_number2;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
-		keyboard_settings.velocity_curve = velocity_curve;
-		keyboard_settings.velocity_min = velocity_min;
-		keyboard_settings.velocity_max = velocity_max;
-		keyboard_settings.velocity_curve2 = velocity_curve2;
-		keyboard_settings.velocity_min2 = velocity_min2;
-		keyboard_settings.velocity_max2 = velocity_max2;
-		keyboard_settings.velocity_curve3 = velocity_curve3;
-		keyboard_settings.velocity_min3 = velocity_min3;
-		keyboard_settings.velocity_max3 = velocity_max3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8798,15 +8747,6 @@ break;
 		keyboard_settings.octave_number2 = octave_number2;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
-		keyboard_settings.velocity_curve = velocity_curve;
-		keyboard_settings.velocity_min = velocity_min;
-		keyboard_settings.velocity_max = velocity_max;
-		keyboard_settings.velocity_curve2 = velocity_curve2;
-		keyboard_settings.velocity_min2 = velocity_min2;
-		keyboard_settings.velocity_max2 = velocity_max2;
-		keyboard_settings.velocity_curve3 = velocity_curve3;
-		keyboard_settings.velocity_min3 = velocity_min3;
-		keyboard_settings.velocity_max3 = velocity_max3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8840,15 +8780,6 @@ break;
 		keyboard_settings.octave_number2 = octave_number2;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
-		keyboard_settings.velocity_curve = velocity_curve;
-		keyboard_settings.velocity_min = velocity_min;
-		keyboard_settings.velocity_max = velocity_max;
-		keyboard_settings.velocity_curve2 = velocity_curve2;
-		keyboard_settings.velocity_min2 = velocity_min2;
-		keyboard_settings.velocity_max2 = velocity_max2;
-		keyboard_settings.velocity_curve3 = velocity_curve3;
-		keyboard_settings.velocity_min3 = velocity_min3;
-		keyboard_settings.velocity_max3 = velocity_max3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8882,15 +8813,6 @@ break;
 		keyboard_settings.octave_number2 = octave_number2;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
-		keyboard_settings.velocity_curve = velocity_curve;
-		keyboard_settings.velocity_min = velocity_min;
-		keyboard_settings.velocity_max = velocity_max;
-		keyboard_settings.velocity_curve2 = velocity_curve2;
-		keyboard_settings.velocity_min2 = velocity_min2;
-		keyboard_settings.velocity_max2 = velocity_max2;
-		keyboard_settings.velocity_curve3 = velocity_curve3;
-		keyboard_settings.velocity_min3 = velocity_min3;
-		keyboard_settings.velocity_max3 = velocity_max3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8921,15 +8843,6 @@ break;
 		keyboard_settings.octave_number2 = octave_number2;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
-		keyboard_settings.velocity_curve = velocity_curve;
-		keyboard_settings.velocity_min = velocity_min;
-		keyboard_settings.velocity_max = velocity_max;
-		keyboard_settings.velocity_curve2 = velocity_curve2;
-		keyboard_settings.velocity_min2 = velocity_min2;
-		keyboard_settings.velocity_max2 = velocity_max2;
-		keyboard_settings.velocity_curve3 = velocity_curve3;
-		keyboard_settings.velocity_min3 = velocity_min3;
-		keyboard_settings.velocity_max3 = velocity_max3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;

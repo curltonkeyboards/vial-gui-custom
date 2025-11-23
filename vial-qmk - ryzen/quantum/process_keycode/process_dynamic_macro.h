@@ -321,18 +321,6 @@ typedef struct {
     int8_t octave_number2;
     int8_t transpose_number3;
     int8_t octave_number3;
-    // Basic velocity settings (curve + range)
-    uint8_t velocity_curve;
-    uint8_t velocity_min;
-    uint8_t velocity_max;
-    // Keysplit velocity settings
-    uint8_t velocity_curve2;
-    uint8_t velocity_min2;
-    uint8_t velocity_max2;
-    // Triplesplit velocity settings
-    uint8_t velocity_curve3;
-    uint8_t velocity_min3;
-    uint8_t velocity_max3;
     uint8_t randomvelocitymodifier;
     int oledkeyboard;
     bool overdub_advanced_mode;
@@ -364,18 +352,6 @@ extern int8_t transpose_number2;
 extern int8_t octave_number2;
 extern int8_t transpose_number3;
 extern int8_t octave_number3;
-// Basic velocity settings
-extern uint8_t velocity_curve;
-extern uint8_t velocity_min;
-extern uint8_t velocity_max;
-// Keysplit velocity settings
-extern uint8_t velocity_curve2;
-extern uint8_t velocity_min2;
-extern uint8_t velocity_max2;
-// Triplesplit velocity settings
-extern uint8_t velocity_curve3;
-extern uint8_t velocity_min3;
-extern uint8_t velocity_max3;
 extern uint8_t randomvelocitymodifier;
 extern int oledkeyboard;
 extern int smartchordlight;

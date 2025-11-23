@@ -714,51 +714,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.channel_number.addItem(str(i + 1), i)
         basic_layout.addWidget(self.channel_number, 0, 4)
 
-        # Velocity Range
-        basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Vel Range:")), 0, 5)
-        vel_range_container = QWidget()
-        vel_range_layout = QHBoxLayout()
-        vel_range_layout.setContentsMargins(0, 0, 0, 0)
-        vel_range_layout.setSpacing(5)
-        vel_range_container.setLayout(vel_range_layout)
-
-        self.velocity_min = ArrowComboBox()
-        self.velocity_min.setMinimumWidth(60)
-        self.velocity_min.setMaximumHeight(30)
-        self.velocity_min.setEditable(True)
-        self.velocity_min.lineEdit().setReadOnly(True)
-        self.velocity_min.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.velocity_min.addItem(str(i), i)
-        self.velocity_min.setCurrentIndex(0)  # Default to 1
-        vel_range_layout.addWidget(self.velocity_min)
-
-        self.velocity_max = ArrowComboBox()
-        self.velocity_max.setMinimumWidth(60)
-        self.velocity_max.setMaximumHeight(30)
-        self.velocity_max.setEditable(True)
-        self.velocity_max.lineEdit().setReadOnly(True)
-        self.velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.velocity_max.addItem(str(i), i)
-        self.velocity_max.setCurrentIndex(126)  # Default to 127
-        vel_range_layout.addWidget(self.velocity_max)
-
-        basic_layout.addWidget(vel_range_container, 0, 6)
-
-        # Velocity Curve
-        basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Vel Curve:")), 1, 5)
-        self.velocity_curve = ArrowComboBox()
-        self.velocity_curve.setMinimumWidth(120)
-        self.velocity_curve.setMaximumHeight(30)
-        self.velocity_curve.setEditable(True)
-        self.velocity_curve.lineEdit().setReadOnly(True)
-        self.velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(10):
-            self.velocity_curve.addItem(str(i), i)
-        self.velocity_curve.setCurrentIndex(0)  # Default to 0
-        basic_layout.addWidget(self.velocity_curve, 1, 6)
-        
         # Loop Settings Group
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
         loop_layout = QGridLayout()
@@ -1094,55 +1049,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_number2.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.transpose_number2, 2, 2)
 
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Vel Range:")), 3, 1)
-        vel_range_container2 = QWidget()
-        vel_range_layout2 = QHBoxLayout()
-        vel_range_layout2.setContentsMargins(0, 0, 0, 0)
-        vel_range_layout2.setSpacing(5)
-        vel_range_container2.setLayout(vel_range_layout2)
-
-        self.velocity_min2 = ArrowComboBox()
-        self.velocity_min2.setMinimumWidth(60)
-        self.velocity_min2.setMinimumHeight(30)
-        self.velocity_min2.setMaximumHeight(30)
-        self.velocity_min2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_min2.setEditable(True)
-        self.velocity_min2.lineEdit().setReadOnly(True)
-        self.velocity_min2.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.velocity_min2.addItem(str(i), i)
-        self.velocity_min2.setCurrentIndex(0)  # Default to 1
-        vel_range_layout2.addWidget(self.velocity_min2)
-
-        self.velocity_max2 = ArrowComboBox()
-        self.velocity_max2.setMinimumWidth(60)
-        self.velocity_max2.setMinimumHeight(30)
-        self.velocity_max2.setMaximumHeight(30)
-        self.velocity_max2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_max2.setEditable(True)
-        self.velocity_max2.lineEdit().setReadOnly(True)
-        self.velocity_max2.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.velocity_max2.addItem(str(i), i)
-        self.velocity_max2.setCurrentIndex(126)  # Default to 127
-        vel_range_layout2.addWidget(self.velocity_max2)
-
-        keysplit_layout.addWidget(vel_range_container2, 3, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Vel Curve:")), 4, 1)
-        self.velocity_curve2 = ArrowComboBox()
-        self.velocity_curve2.setMinimumWidth(120)
-        self.velocity_curve2.setMinimumHeight(30)
-        self.velocity_curve2.setMaximumHeight(30)
-        self.velocity_curve2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_curve2.setEditable(True)
-        self.velocity_curve2.lineEdit().setReadOnly(True)
-        self.velocity_curve2.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(10):
-            self.velocity_curve2.addItem(str(i), i)
-        self.velocity_curve2.setCurrentIndex(0)  # Default to 0
-        keysplit_layout.addWidget(self.velocity_curve2, 4, 2)
-
         # TripleSplit settings (right column)
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings")), 0, 3, 1, 2)
 
@@ -1173,55 +1079,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_number3.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.transpose_number3, 2, 4)
 
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Vel Range:")), 3, 3)
-        vel_range_container3 = QWidget()
-        vel_range_layout3 = QHBoxLayout()
-        vel_range_layout3.setContentsMargins(0, 0, 0, 0)
-        vel_range_layout3.setSpacing(5)
-        vel_range_container3.setLayout(vel_range_layout3)
-
-        self.velocity_min3 = ArrowComboBox()
-        self.velocity_min3.setMinimumWidth(60)
-        self.velocity_min3.setMinimumHeight(30)
-        self.velocity_min3.setMaximumHeight(30)
-        self.velocity_min3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_min3.setEditable(True)
-        self.velocity_min3.lineEdit().setReadOnly(True)
-        self.velocity_min3.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.velocity_min3.addItem(str(i), i)
-        self.velocity_min3.setCurrentIndex(0)  # Default to 1
-        vel_range_layout3.addWidget(self.velocity_min3)
-
-        self.velocity_max3 = ArrowComboBox()
-        self.velocity_max3.setMinimumWidth(60)
-        self.velocity_max3.setMinimumHeight(30)
-        self.velocity_max3.setMaximumHeight(30)
-        self.velocity_max3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_max3.setEditable(True)
-        self.velocity_max3.lineEdit().setReadOnly(True)
-        self.velocity_max3.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.velocity_max3.addItem(str(i), i)
-        self.velocity_max3.setCurrentIndex(126)  # Default to 127
-        vel_range_layout3.addWidget(self.velocity_max3)
-
-        keysplit_layout.addWidget(vel_range_container3, 3, 4)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Vel Curve:")), 4, 3)
-        self.velocity_curve3 = ArrowComboBox()
-        self.velocity_curve3.setMinimumWidth(120)
-        self.velocity_curve3.setMinimumHeight(30)
-        self.velocity_curve3.setMaximumHeight(30)
-        self.velocity_curve3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_curve3.setEditable(True)
-        self.velocity_curve3.lineEdit().setReadOnly(True)
-        self.velocity_curve3.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(10):
-            self.velocity_curve3.addItem(str(i), i)
-        self.velocity_curve3.setCurrentIndex(0)  # Default to 0
-        keysplit_layout.addWidget(self.velocity_curve3, 4, 4)
-        
         # Buttons
         self.addStretch()
         buttons_layout = QHBoxLayout()
@@ -1298,15 +1155,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "transpose_number": self.transpose_number.currentData(),
             "transpose_number2": self.transpose_number2.currentData(),
             "transpose_number3": self.transpose_number3.currentData(),
-            "velocity_min": self.velocity_min.currentData(),
-            "velocity_max": self.velocity_max.currentData(),
-            "velocity_curve": self.velocity_curve.currentData(),
-            "velocity_min2": self.velocity_min2.currentData(),
-            "velocity_max2": self.velocity_max2.currentData(),
-            "velocity_curve2": self.velocity_curve2.currentData(),
-            "velocity_min3": self.velocity_min3.currentData(),
-            "velocity_max3": self.velocity_max3.currentData(),
-            "velocity_curve3": self.velocity_curve3.currentData(),
             "random_velocity_modifier": self.random_velocity_modifier.currentData(),
             "oled_keyboard": self.oled_keyboard.currentData(),
             "smart_chord_light": self.smart_chord_light.currentData(),
@@ -1347,15 +1195,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.transpose_number, config.get("transpose_number"), 0)
         set_combo_by_data(self.transpose_number2, config.get("transpose_number2"), 0)
         set_combo_by_data(self.transpose_number3, config.get("transpose_number3"), 0)
-        set_combo_by_data(self.velocity_min, config.get("velocity_min"), 1)
-        set_combo_by_data(self.velocity_max, config.get("velocity_max"), 127)
-        set_combo_by_data(self.velocity_curve, config.get("velocity_curve"), 0)
-        set_combo_by_data(self.velocity_min2, config.get("velocity_min2"), 1)
-        set_combo_by_data(self.velocity_max2, config.get("velocity_max2"), 127)
-        set_combo_by_data(self.velocity_curve2, config.get("velocity_curve2"), 0)
-        set_combo_by_data(self.velocity_min3, config.get("velocity_min3"), 1)
-        set_combo_by_data(self.velocity_max3, config.get("velocity_max3"), 127)
-        set_combo_by_data(self.velocity_curve3, config.get("velocity_curve3"), 0)
         set_combo_by_data(self.random_velocity_modifier, config.get("random_velocity_modifier"), 0)
         set_combo_by_data(self.oled_keyboard, config.get("oled_keyboard"), 0)
         set_combo_by_data(self.smart_chord_light, config.get("smart_chord_light"), 0)
@@ -1377,12 +1216,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
     
     def pack_basic_data(self, settings):
-        """Pack basic settings into 26-byte structure"""
-        data = bytearray(26)
-        
+        """Pack basic settings into 17-byte structure"""
+        data = bytearray(17)
+
         struct.pack_into('<I', data, 0, settings["velocity_sensitivity"])
         struct.pack_into('<I', data, 4, settings["cc_sensitivity"])
-        
+
         offset = 8
         data[offset] = settings["channel_number"]; offset += 1
         data[offset] = settings["transpose_number"] & 0xFF; offset += 1
@@ -1391,23 +1230,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = 0; offset += 1  # octave_number2
         data[offset] = settings["transpose_number3"] & 0xFF; offset += 1
         data[offset] = 0; offset += 1  # octave_number3
-        # Pack velocity settings (curve + range) for all modes
-        data[offset] = settings.get("velocity_curve", 0); offset += 1
-        data[offset] = settings.get("velocity_min", 1); offset += 1
-        data[offset] = settings.get("velocity_max", 127); offset += 1
-        data[offset] = settings.get("velocity_curve2", 0); offset += 1
-        data[offset] = settings.get("velocity_min2", 1); offset += 1
-        data[offset] = settings.get("velocity_max2", 127); offset += 1
-        data[offset] = settings.get("velocity_curve3", 0); offset += 1
-        data[offset] = settings.get("velocity_min3", 1); offset += 1
-        data[offset] = settings.get("velocity_max3", 127); offset += 1
         data[offset] = settings["random_velocity_modifier"]; offset += 1
-        
+
         struct.pack_into('<I', data, offset, settings["oled_keyboard"]); offset += 4
-        
+
         data[offset] = settings["smart_chord_light"]; offset += 1
         data[offset] = settings["smart_chord_light_mode"]; offset += 1
-        
+
         return data
     
     def pack_advanced_data(self, settings):
@@ -1532,15 +1361,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "transpose_number": 0,
             "transpose_number2": 0,
             "transpose_number3": 0,
-            "velocity_min": 1,
-            "velocity_max": 127,
-            "velocity_curve": 0,
-            "velocity_min2": 1,
-            "velocity_max2": 127,
-            "velocity_curve2": 0,
-            "velocity_min3": 1,
-            "velocity_max3": 127,
-            "velocity_curve3": 0,
             "random_velocity_modifier": 0,
             "oled_keyboard": 0,
             "smart_chord_light": 0,
