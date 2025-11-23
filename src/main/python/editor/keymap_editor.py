@@ -4,7 +4,7 @@ import struct
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
-                              QSizePolicy, QScrollArea)
+                              QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from widgets.combo_box import ArrowComboBox
