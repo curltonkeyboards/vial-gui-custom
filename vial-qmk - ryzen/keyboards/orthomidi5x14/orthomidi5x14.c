@@ -105,8 +105,6 @@ int8_t octave_number2 = 0;
 int8_t transpose_number3 = 0;  // Variable to store the special number
 int8_t octave_number3 = 0;
 uint8_t velocity_number = 127;
-uint8_t velocity_number2 = 127;
-uint8_t velocity_number3 = 127;
 uint8_t velocityplaceholder = 127;
 int cc_up_value1[128] = {0};   // (value 1) for CC UP for each CC#
 int cc_updown_value[128] = {0};   // (value 2) for CC UP for each CC#[128] = {0};   // (value 2) for CC UP for each CC#
