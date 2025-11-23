@@ -1069,10 +1069,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 
             if HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED in packets:
                 data = packets[HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED][6:]
-                
+
                 config.update({
                     "key_split_channel": data[0],
-                    "key_split2_channel": data[1], 
+                    "key_split2_channel": data[1],
                     "key_split_status": data[2],
                     "key_split_transpose_status": data[3],
                     "key_split_velocity_status": data[4],
@@ -1085,7 +1085,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "alternate_restart_mode": data[11] != 0,
                     "colorblindmode": data[12],
                     "cclooprecording": data[13] != 0,
-                    "truesustain": data[14] != 0
+                    "truesustain": data[14] != 0,
+                    # KeySplit/TripleSplit velocity settings
+                    "velocity_curve2": data[15] if len(data) > 15 else 2,
+                    "velocity_min2": data[16] if len(data) > 16 else 1,
+                    "velocity_max2": data[17] if len(data) > 17 else 127,
+                    "velocity_curve3": data[18] if len(data) > 18 else 2,
+                    "velocity_min3": data[19] if len(data) > 19 else 1,
+                    "velocity_max3": data[20] if len(data) > 20 else 127
                 })
                 
             return config if config else None
@@ -1095,26 +1102,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             
     def set_layer_actuation(self, data):
         """Set actuation for a specific layer
-        
-        Args:
-            data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
-                            velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
-                            velocity_speed_scale, aftertouch_cc]
-        """
-        try:
-            packet = self._create_hid_packet(0xCA, 0, data)  # HID_CMD_SET_LAYER_ACTUATION
-            response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[5] == 0
-        except Exception as e:
-            return False
 
-    def set_layer_actuation(self, data):
-        """Set actuation for a specific layer
-        
         Args:
             data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
                             velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
-                            midi_rapidfire_velocity, velocity_speed_scale, aftertouch_cc, flags]
+                            midi_rapidfire_velocity, velocity_speed_scale, aftertouch_cc, flags,
+                            he_curve, he_min, he_max, transpose, channel] (16 bytes total)
         """
         try:
             packet = self._create_hid_packet(0xCA, 0, data)
@@ -1159,44 +1152,44 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def get_all_layer_actuations(self):
         """Get all layer actuations at once
-        
+
         Returns:
-            list: 120 values (12 layers × 10 bytes) or None on error
+            list: 180 values (12 layers × 15 bytes) or None on error
         """
         try:
             packet = self._create_hid_packet(0xCC, 0, None)
             self.usb_send(self.dev, packet, retries=20)
-            
-            # Collect 5 packets (120 bytes total, 26 bytes per packet except last)
+
+            # Collect 7 packets (180 bytes total, 26 bytes per packet except last)
             packets = []
-            for attempt in range(30):
+            for attempt in range(40):
                 try:
                     if hasattr(self.dev, 'read'):
                         data = self.dev.read(32, timeout_ms=100)
                     else:
                         data = self.dev.get_feature_report(0, 32)
-                    
+
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
-                        if packet_num < 5:
+                        if packet_num < 7:
                             packets.append((packet_num, data[6:32]))
-                        
-                    if len(packets) >= 5:
+
+                    if len(packets) >= 7:
                         break
                 except:
                     time.sleep(0.01)
                     continue
-            
-            if len(packets) < 5:
+
+            if len(packets) < 7:
                 return None
-            
+
             # Sort packets and combine
             packets.sort(key=lambda x: x[0])
             actuations = bytearray()
             for _, packet_data in packets:
                 actuations.extend(packet_data)
-            
-            return actuations[:120]  # 12 layers × 10 bytes
+
+            return actuations[:180]  # 12 layers × 15 bytes
         except Exception as e:
             return None
 

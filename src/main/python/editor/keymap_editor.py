@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import json
+import struct
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
@@ -47,7 +48,10 @@ class QuickActuationWidget(QGroupBox):
                 'use_fixed_velocity': False,
                 'he_curve': 2,  # Medium (linear)
                 'he_min': 1,
-                'he_max': 127
+                'he_max': 127,
+                # Transpose and Channel (moved from keyboard settings)
+                'transpose': 0,
+                'channel': 0
             })
         
         self.setMinimumWidth(200)
@@ -332,6 +336,53 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('he_max', v, self.he_max_value_label)
         )
 
+        # === TRANSPOSE AND CHANNEL (always visible) ===
+        # Transpose combo
+        transpose_layout = QHBoxLayout()
+        transpose_layout.setContentsMargins(0, 0, 0, 0)
+        transpose_layout.setSpacing(6)
+        transpose_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
+        transpose_label.setMinimumWidth(90)
+        transpose_label.setMaximumWidth(90)
+        transpose_layout.addWidget(transpose_label)
+
+        self.transpose_combo = ArrowComboBox()
+        self.transpose_combo.setMaximumHeight(30)
+        self.transpose_combo.setMaximumWidth(180)
+        self.transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        for i in range(-64, 65):
+            self.transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.transpose_combo.setCurrentIndex(64)  # Default: 0
+        self.transpose_combo.setEditable(True)
+        self.transpose_combo.lineEdit().setReadOnly(True)
+        self.transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        transpose_layout.addWidget(self.transpose_combo, 1)
+        layout.addLayout(transpose_layout)
+        self.transpose_combo.currentIndexChanged.connect(self.on_combo_changed)
+
+        # Channel combo
+        channel_layout = QHBoxLayout()
+        channel_layout.setContentsMargins(0, 0, 0, 0)
+        channel_layout.setSpacing(6)
+        channel_label = QLabel(tr("QuickActuationWidget", "Channel:"))
+        channel_label.setMinimumWidth(90)
+        channel_label.setMaximumWidth(90)
+        channel_layout.addWidget(channel_label)
+
+        self.channel_combo = ArrowComboBox()
+        self.channel_combo.setMaximumHeight(30)
+        self.channel_combo.setMaximumWidth(180)
+        self.channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        for i in range(16):
+            self.channel_combo.addItem(f"Channel {i + 1}", i)
+        self.channel_combo.setCurrentIndex(0)  # Default: Channel 1 (0)
+        self.channel_combo.setEditable(True)
+        self.channel_combo.lineEdit().setReadOnly(True)
+        self.channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        channel_layout.addWidget(self.channel_combo, 1)
+        layout.addLayout(channel_layout)
+        self.channel_combo.currentIndexChanged.connect(self.on_combo_changed)
+
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
         advanced_layout = QVBoxLayout()
@@ -551,7 +602,10 @@ class QuickActuationWidget(QGroupBox):
                 'use_fixed_velocity': False,  # Fixed velocity feature removed
                 'he_curve': self.he_curve_combo.currentData(),
                 'he_min': self.he_min_slider.value(),
-                'he_max': self.he_max_slider.value()
+                'he_max': self.he_max_slider.value(),
+                # Transpose and Channel
+                'transpose': self.transpose_combo.currentData(),
+                'channel': self.channel_combo.currentData()
             }
         else:
             # Save to all layers (master mode)
@@ -571,7 +625,10 @@ class QuickActuationWidget(QGroupBox):
                 'use_fixed_velocity': False,  # Fixed velocity feature removed
                 'he_curve': self.he_curve_combo.currentData(),
                 'he_min': self.he_min_slider.value(),
-                'he_max': self.he_max_slider.value()
+                'he_max': self.he_max_slider.value(),
+                # Transpose and Channel
+                'transpose': self.transpose_combo.currentData(),
+                'channel': self.channel_combo.currentData()
             }
             for i in range(12):
                 self.layer_data[i] = data.copy()
@@ -636,6 +693,17 @@ class QuickActuationWidget(QGroupBox):
                 self.he_curve_combo.setCurrentIndex(i)
                 break
 
+        # Transpose and Channel
+        for i in range(self.transpose_combo.count()):
+            if self.transpose_combo.itemData(i) == data.get('transpose', 0):
+                self.transpose_combo.setCurrentIndex(i)
+                break
+
+        for i in range(self.channel_combo.count()):
+            if self.channel_combo.itemData(i) == data.get('channel', 0):
+                self.channel_combo.setCurrentIndex(i)
+                break
+
         # Update MIDI rapidfire widgets visibility based on checkbox state and advanced mode
         if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:
             self.midi_rapid_sens_widget.setVisible(True)
@@ -643,7 +711,7 @@ class QuickActuationWidget(QGroupBox):
         else:
             self.midi_rapid_sens_widget.setVisible(False)
             self.midi_rapid_vel_widget.setVisible(False)
-        
+
         self.syncing = False
     
     def on_save(self):
@@ -678,7 +746,10 @@ class QuickActuationWidget(QGroupBox):
                     # HE Velocity fields
                     data.get('he_curve', 2),
                     data.get('he_min', 1),
-                    data.get('he_max', 127)
+                    data.get('he_max', 127),
+                    # Transpose and Channel
+                    data.get('transpose', 0) & 0xFF,
+                    data.get('channel', 0)
                 ])
                 
                 if not self.device.keyboard.set_layer_actuation(payload):
@@ -713,7 +784,10 @@ class QuickActuationWidget(QGroupBox):
                         # HE Velocity fields
                         data.get('he_curve', 2),
                         data.get('he_min', 1),
-                        data.get('he_max', 127)
+                        data.get('he_max', 127),
+                        # Transpose and Channel
+                        data.get('transpose', 0) & 0xFF,
+                        data.get('channel', 0)
                     ])
                     
                     if not self.device.keyboard.set_layer_actuation(payload):
@@ -751,12 +825,12 @@ class QuickActuationWidget(QGroupBox):
 
             actuations = self.device.keyboard.get_all_layer_actuations()
 
-            if not actuations or len(actuations) != 156:
+            if not actuations or len(actuations) != 180:  # 12 layers * 15 bytes
                 return
 
             # Load all layers into memory
             for layer in range(12):
-                offset = layer * 13
+                offset = layer * 15
                 flags = actuations[offset + 9]
 
                 self.layer_data[layer] = {
@@ -774,7 +848,9 @@ class QuickActuationWidget(QGroupBox):
                     'use_fixed_velocity': (flags & 0x04) != 0,
                     'he_curve': actuations[offset + 10],
                     'he_min': actuations[offset + 11],
-                    'he_max': actuations[offset + 12]
+                    'he_max': actuations[offset + 12],
+                    'transpose': struct.unpack('<b', bytes([actuations[offset + 13]]))[0],  # signed byte
+                    'channel': actuations[offset + 14]
                 }
         except Exception:
             pass
