@@ -215,27 +215,19 @@ void set_custom_animations_eeprom_initialized(void);
 
 
 #define LAYER_ACTUATION_EEPROM_ADDR 65600
-#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 120 bytes for 12 layers
+#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 96 bytes for 12 layers (8 bytes per layer)
 
 // Function declarations
 void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
-void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
-                         uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
-                         uint8_t midi_rapid_vel, uint8_t vel_speed,
-                         uint8_t aftertouch_cc, uint8_t flags,
-                         uint8_t he_curve, uint8_t he_min, uint8_t he_max,
-                         uint8_t ks_curve, uint8_t ks_min, uint8_t ks_max,
-                         uint8_t ts_curve, uint8_t ts_min, uint8_t ts_max);
+void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
+                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
+                         uint8_t vel_speed, uint8_t flags);
 
-void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
-                         uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
-                         uint8_t *midi_rapid_vel, uint8_t *vel_speed,
-                         uint8_t *aftertouch_cc, uint8_t *flags,
-                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max,
-                         uint8_t *ks_curve, uint8_t *ks_min, uint8_t *ks_max,
-                         uint8_t *ts_curve, uint8_t *ts_min, uint8_t *ts_max);
+void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
+                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
+                         uint8_t *vel_speed, uint8_t *flags);
 
 bool layer_rapidfire_enabled(uint8_t layer);
 bool layer_midi_rapidfire_enabled(uint8_t layer);
@@ -270,10 +262,10 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 //
 // 65000-65199: Keyboard Settings (200 bytes allocated, ~150 used)
 //              - 5 slots × 40 bytes each = 200 bytes total
-//              - keyboard_settings_t per slot (~30 bytes)
-//              - 10 bytes wiggle room per slot
+//              - keyboard_settings_t per slot (~45 bytes now with global MIDI settings)
+//              - Includes global MIDI settings: velocity curves, aftertouch, transpose, channel, sustain
 //              - Slot 0: 65000-65039
-//              - Slot 1: 65040-65079  
+//              - Slot 1: 65040-65079
 //              - Slot 2: 65080-65119
 //              - Slot 3: 65120-65159
 //              - Slot 4: 65160-65199
@@ -284,8 +276,9 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 //              - 12 layers × 9 bytes each = 108 bytes used
 //              - 92 bytes wiggle room for expansion
 //
-// 65600-65699: Layer Actuation Settings (100 bytes allocated, ~120 used)
-//              - 12 layers × 10 bytes each
+// 65600-65699: Layer Actuation Settings (100 bytes allocated, 96 used)
+//              - 12 layers × 8 bytes each = 96 bytes used
+//              - Global MIDI settings (velocity, aftertouch, etc) moved to keyboard_settings_t
 //
 // 65700-65799: Gaming/Joystick Settings (100 bytes allocated, 60 used)
 //              - gaming_settings_t structure
@@ -341,6 +334,25 @@ typedef struct {
 	int colorblindmode;
 	bool cclooprecording;
 	bool truesustain;
+    // Global MIDI Settings (moved from per-layer actuation)
+    uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_cc;                // 0-127 (CC number for aftertouch)
+    // Base/Main MIDI HE Velocity curve and range
+    uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t he_velocity_min;              // 1-127 (minimum velocity)
+    uint8_t he_velocity_max;              // 1-127 (maximum velocity)
+    // Keysplit HE Velocity curve and range
+    uint8_t keysplit_he_velocity_curve;   // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t keysplit_he_velocity_min;     // 1-127 (minimum velocity)
+    uint8_t keysplit_he_velocity_max;     // 1-127 (maximum velocity)
+    // Triplesplit HE Velocity curve and range
+    uint8_t triplesplit_he_velocity_curve; // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t triplesplit_he_velocity_min;   // 1-127 (minimum velocity)
+    uint8_t triplesplit_he_velocity_max;   // 1-127 (maximum velocity)
+    // Sustain settings (0=Ignore, 1=ON)
+    uint8_t base_sustain;                 // Base/main MIDI sustain
+    uint8_t keysplit_sustain;             // Keysplit MIDI sustain
+    uint8_t triplesplit_sustain;          // Triplesplit MIDI sustain
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
@@ -371,6 +383,21 @@ extern bool alternate_restart_mode;
 extern int colorblindmode;
 extern bool cclooprecording;
 extern bool truesustain;
+// Global MIDI Settings (moved from per-layer)
+extern uint8_t aftertouch_mode;
+extern uint8_t aftertouch_cc;
+extern uint8_t he_velocity_curve;
+extern uint8_t he_velocity_min;
+extern uint8_t he_velocity_max;
+extern uint8_t keysplit_he_velocity_curve;
+extern uint8_t keysplit_he_velocity_min;
+extern uint8_t keysplit_he_velocity_max;
+extern uint8_t triplesplit_he_velocity_curve;
+extern uint8_t triplesplit_he_velocity_min;
+extern uint8_t triplesplit_he_velocity_max;
+extern uint8_t base_sustain;
+extern uint8_t keysplit_sustain;
+extern uint8_t triplesplit_sustain;
 
 // Keyboard settings instance
 extern keyboard_settings_t keyboard_settings;

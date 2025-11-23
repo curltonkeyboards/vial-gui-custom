@@ -30,28 +30,19 @@ class QuickActuationWidget(QGroupBox):
         self.per_layer_enabled = False
         
         # Cache all layer data in memory to avoid device I/O lag
+        # Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
         self.layer_data = []
         for _ in range(12):
             self.layer_data.append({
                 'normal': 80,
                 'midi': 80,
-                'aftertouch': 0,
-                'velocity': 2,
+                'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
                 'rapid': 4,
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
-                'vel_speed': 10,
-                'aftertouch_cc': 74,
+                'vel_speed': 10,  # Velocity speed scale
                 'rapidfire_enabled': False,
-                'midi_rapidfire_enabled': False,
-                # HE Velocity defaults
-                'use_fixed_velocity': False,
-                'he_curve': 2,  # Medium (linear)
-                'he_min': 1,
-                'he_max': 127,
-                # Transpose and Channel (moved from keyboard settings)
-                'transpose': 0,
-                'channel': 0
+                'midi_rapidfire_enabled': False
             })
         
         self.setMinimumWidth(200)
@@ -728,34 +719,25 @@ class QuickActuationWidget(QGroupBox):
                     flags |= 0x01
                 if data['midi_rapidfire_enabled']:
                     flags |= 0x02
-                if data.get('use_fixed_velocity', False):
-                    flags |= 0x04
 
+                # New structure: 9 bytes total (layer + 8 data bytes)
+                # Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
                 payload = bytearray([
                     self.current_layer,
                     data['normal'],
                     data['midi'],
-                    data['aftertouch'],
-                    data['velocity'],
+                    data['velocity'],  # Velocity mode
                     data['rapid'],
                     data['midi_rapid_sens'],
                     data['midi_rapid_vel'],
                     data['vel_speed'],
-                    data['aftertouch_cc'],
-                    flags,
-                    # HE Velocity fields
-                    data.get('he_curve', 2),
-                    data.get('he_min', 1),
-                    data.get('he_max', 127),
-                    # Transpose and Channel
-                    data.get('transpose', 0) & 0xFF,
-                    data.get('channel', 0)
+                    flags
                 ])
-                
+
                 if not self.device.keyboard.set_layer_actuation(payload):
                     raise RuntimeError(f"Failed to set actuation for layer {self.current_layer}")
-                
-                QMessageBox.information(None, "Success", 
+
+                QMessageBox.information(None, "Success",
                     f"Layer {self.current_layer} actuation saved successfully!")
             else:
                 # Save to all 12 layers
@@ -766,34 +748,25 @@ class QuickActuationWidget(QGroupBox):
                         flags |= 0x01
                     if data['midi_rapidfire_enabled']:
                         flags |= 0x02
-                    if data.get('use_fixed_velocity', False):
-                        flags |= 0x04
 
+                    # New structure: 9 bytes total (layer + 8 data bytes)
+                    # Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
                     payload = bytearray([
                         layer,
                         data['normal'],
                         data['midi'],
-                        data['aftertouch'],
-                        data['velocity'],
+                        data['velocity'],  # Velocity mode
                         data['rapid'],
                         data['midi_rapid_sens'],
                         data['midi_rapid_vel'],
                         data['vel_speed'],
-                        data['aftertouch_cc'],
-                        flags,
-                        # HE Velocity fields
-                        data.get('he_curve', 2),
-                        data.get('he_min', 1),
-                        data.get('he_max', 127),
-                        # Transpose and Channel
-                        data.get('transpose', 0) & 0xFF,
-                        data.get('channel', 0)
+                        flags
                     ])
-                    
+
                     if not self.device.keyboard.set_layer_actuation(payload):
                         raise RuntimeError(f"Failed to set actuation for layer {layer}")
-                
-                QMessageBox.information(None, "Success", 
+
+                QMessageBox.information(None, "Success",
                     "Actuation saved to all layers successfully!")
                 
         except Exception as e:
@@ -825,32 +798,25 @@ class QuickActuationWidget(QGroupBox):
 
             actuations = self.device.keyboard.get_all_layer_actuations()
 
-            if not actuations or len(actuations) != 180:  # 12 layers * 15 bytes
+            if not actuations or len(actuations) != 96:  # 12 layers * 8 bytes
                 return
 
             # Load all layers into memory
+            # Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
             for layer in range(12):
-                offset = layer * 15
-                flags = actuations[offset + 9]
+                offset = layer * 8
+                flags = actuations[offset + 7]
 
                 self.layer_data[layer] = {
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
-                    'aftertouch': actuations[offset + 2],
-                    'velocity': actuations[offset + 3],
-                    'rapid': actuations[offset + 4],
-                    'midi_rapid_sens': actuations[offset + 5],
-                    'midi_rapid_vel': actuations[offset + 6],
-                    'vel_speed': actuations[offset + 7],
-                    'aftertouch_cc': actuations[offset + 8],
+                    'velocity': actuations[offset + 2],  # Velocity mode
+                    'rapid': actuations[offset + 3],
+                    'midi_rapid_sens': actuations[offset + 4],
+                    'midi_rapid_vel': actuations[offset + 5],
+                    'vel_speed': actuations[offset + 6],
                     'rapidfire_enabled': (flags & 0x01) != 0,
-                    'midi_rapidfire_enabled': (flags & 0x02) != 0,
-                    'use_fixed_velocity': (flags & 0x04) != 0,
-                    'he_curve': actuations[offset + 10],
-                    'he_min': actuations[offset + 11],
-                    'he_max': actuations[offset + 12],
-                    'transpose': struct.unpack('<b', bytes([actuations[offset + 13]]))[0],  # signed byte
-                    'channel': actuations[offset + 14]
+                    'midi_rapidfire_enabled': (flags & 0x02) != 0
                 }
         except Exception:
             pass

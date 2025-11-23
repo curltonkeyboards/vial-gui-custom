@@ -1086,13 +1086,25 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "colorblindmode": data[12],
                     "cclooprecording": data[13] != 0,
                     "truesustain": data[14] != 0,
-                    # KeySplit/TripleSplit velocity settings
-                    "velocity_curve2": data[15] if len(data) > 15 else 2,
-                    "velocity_min2": data[16] if len(data) > 16 else 1,
-                    "velocity_max2": data[17] if len(data) > 17 else 127,
-                    "velocity_curve3": data[18] if len(data) > 18 else 2,
-                    "velocity_min3": data[19] if len(data) > 19 else 1,
-                    "velocity_max3": data[20] if len(data) > 20 else 127
+                    # Global MIDI Settings (moved from per-layer)
+                    "aftertouch_mode": data[15] if len(data) > 15 else 0,
+                    "aftertouch_cc": data[16] if len(data) > 16 else 74,
+                    # Base/Main MIDI velocity settings
+                    "he_velocity_curve": data[17] if len(data) > 17 else 2,
+                    "he_velocity_min": data[18] if len(data) > 18 else 1,
+                    "he_velocity_max": data[19] if len(data) > 19 else 127,
+                    # KeySplit velocity settings
+                    "keysplit_he_velocity_curve": data[20] if len(data) > 20 else 2,
+                    "keysplit_he_velocity_min": data[21] if len(data) > 21 else 1,
+                    "keysplit_he_velocity_max": data[22] if len(data) > 22 else 127,
+                    # TripleSplit velocity settings
+                    "triplesplit_he_velocity_curve": data[23] if len(data) > 23 else 2,
+                    "triplesplit_he_velocity_min": data[24] if len(data) > 24 else 1,
+                    "triplesplit_he_velocity_max": data[25] if len(data) > 25 else 127,
+                    # Sustain settings (0=Ignore, 1=ON)
+                    "base_sustain": data[26] if len(data) > 26 else 0,
+                    "keysplit_sustain": data[27] if len(data) > 27 else 0,
+                    "triplesplit_sustain": data[28] if len(data) > 28 else 0
                 })
                 
             return config if config else None
@@ -1104,10 +1116,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Set actuation for a specific layer
 
         Args:
-            data: bytearray [layer, normal_actuation, midi_actuation, aftertouch_mode,
-                            velocity_mode, rapidfire_sensitivity, midi_rapidfire_sensitivity,
-                            midi_rapidfire_velocity, velocity_speed_scale, aftertouch_cc, flags,
-                            he_curve, he_min, he_max, transpose, channel] (16 bytes total)
+            data: bytearray [layer, normal_actuation, midi_actuation, velocity_mode,
+                            rapidfire_sensitivity, midi_rapidfire_sensitivity,
+                            midi_rapidfire_velocity, velocity_speed_scale, flags] (9 bytes total)
+
+        Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
         """
         try:
             packet = self._create_hid_packet(0xCA, 0, data)
@@ -1118,32 +1131,32 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def get_layer_actuation(self, layer):
         """Get actuation for a specific layer
-        
+
         Args:
             layer: Layer number (0-11)
-            
+
         Returns:
-            dict: {normal, midi, aftertouch, velocity, rapid, midi_rapid_sens, midi_rapid_vel,
-                   vel_speed, aftertouch_cc, rapidfire_enabled, midi_rapidfire_enabled} or None
+            dict: {normal, midi, velocity, rapid, midi_rapid_sens, midi_rapid_vel,
+                   vel_speed, rapidfire_enabled, midi_rapidfire_enabled} or None
+
+        Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
         """
         try:
             packet = self._create_hid_packet(0xCB, layer, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            
-            if not response or len(response) < 16:
+
+            if not response or len(response) < 14:
                 return None
-            
-            flags = response[15]
+
+            flags = response[13]
             return {
                 'normal': response[6],
                 'midi': response[7],
-                'aftertouch': response[8],
-                'velocity': response[9],
-                'rapid': response[10],
-                'midi_rapid_sens': response[11],
-                'midi_rapid_vel': response[12],
-                'vel_speed': response[13],
-                'aftertouch_cc': response[14],
+                'velocity': response[8],
+                'rapid': response[9],
+                'midi_rapid_sens': response[10],
+                'midi_rapid_vel': response[11],
+                'vel_speed': response[12],
                 'rapidfire_enabled': (flags & 0x01) != 0,
                 'midi_rapidfire_enabled': (flags & 0x02) != 0
             }
@@ -1154,13 +1167,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once
 
         Returns:
-            list: 180 values (12 layers × 15 bytes) or None on error
+            list: 96 bytes (12 layers × 8 bytes) or None on error
+
+        Note: Global MIDI settings moved to keyboard settings
         """
         try:
             packet = self._create_hid_packet(0xCC, 0, None)
             self.usb_send(self.dev, packet, retries=20)
 
-            # Collect 7 packets (180 bytes total, 26 bytes per packet except last)
+            # Collect 4 packets (96 bytes total, 26 bytes per packet except last)
             packets = []
             for attempt in range(40):
                 try:
@@ -1171,16 +1186,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
-                        if packet_num < 7:
+                        if packet_num < 4:
                             packets.append((packet_num, data[6:32]))
 
-                    if len(packets) >= 7:
+                    if len(packets) >= 4:
                         break
                 except:
                     time.sleep(0.01)
                     continue
 
-            if len(packets) < 7:
+            if len(packets) < 4:
                 return None
 
             # Sort packets and combine
@@ -1189,7 +1204,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             for _, packet_data in packets:
                 actuations.extend(packet_data)
 
-            return actuations[:180]  # 12 layers × 15 bytes
+            return actuations[:96]  # 12 layers × 8 bytes
         except Exception as e:
             return None
 
