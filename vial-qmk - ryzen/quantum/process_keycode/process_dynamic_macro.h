@@ -28,7 +28,7 @@
 // Preroll collection function and state variables - make these accessible
 extern bool is_macro_primed;
 extern bool collecting_preroll;
-void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t velocity);
+void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t raw_travel);
 
 extern bool macro_in_overdub_mode[MAX_MACROS];
 extern float macro_manual_speed[MAX_MACROS];
@@ -39,7 +39,7 @@ extern uint32_t loop_length;
 // Declare the overdub functions
 void start_overdub_recording(uint8_t macro_num);
 void end_overdub_recording(uint8_t macro_num);
-void dynamic_macro_record_midi_event_overdub(uint8_t type, uint8_t channel, uint8_t note, uint8_t velocity);
+void dynamic_macro_record_midi_event_overdub(uint8_t type, uint8_t channel, uint8_t note, uint8_t raw_travel);
 
 // Add this to process_dynamic_macro.h to let midi.c know about the variable:
 extern uint8_t macro_id;  // The currently recording macro ID
@@ -51,7 +51,7 @@ extern uint8_t current_macro_id;
 bool is_macro_in_overdub(uint8_t macro_id);
 
 // Record an event to the overdub buffer
-void record_overdub_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t velocity);
+void record_overdub_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t raw_travel);
 
 // Functions to mark/unmark notes from macros
 void mark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
@@ -134,8 +134,8 @@ void noteondisplayupdates(uint8_t note);
 void smartchorddisplayupdates(uint8_t note);
 
 
-void smartchordaddnotes(uint8_t channel, uint8_t note, uint8_t velocity);
-void smartchordremovenotes(uint8_t channel, uint8_t note, uint8_t velocity);
+void smartchordaddnotes(uint8_t channel, uint8_t note, uint8_t raw_travel);
+void smartchordremovenotes(uint8_t channel, uint8_t note, uint8_t raw_travel);
 void ccondisplayupdates(uint8_t channel, uint8_t cc, uint8_t value);
 void programdisplayupdates(uint8_t channel, uint8_t program);
 void pitchbenddisplayupdates(uint8_t channel, int16_t bend_value);

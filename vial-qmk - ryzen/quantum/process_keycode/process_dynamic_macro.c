@@ -1401,7 +1401,7 @@ void dynamic_macro_record_start(midi_event_t **macro_pointer, midi_event_t *macr
         (*macro_pointer)->type = MIDI_EVENT_DUMMY;
         (*macro_pointer)->channel = 0;
         (*macro_pointer)->note = 0;
-        (*macro_pointer)->velocity = 0;
+        (*macro_pointer)->raw_travel = 0;
         (*macro_pointer)->timestamp = 0;
         
         (*macro_pointer)++;  // Advance the pointer past the dummy event
@@ -1424,27 +1424,27 @@ void dynamic_macro_record_start(midi_event_t **macro_pointer, midi_event_t *macr
     }
 }
 
-void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t velocity) {
+void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t raw_travel) {
     if (!collecting_preroll) return;
-    
+
     // Store the event in the circular buffer
     preroll_buffer[preroll_buffer_index].type = type;
     preroll_buffer[preroll_buffer_index].channel = channel;
     preroll_buffer[preroll_buffer_index].note = note;
-    preroll_buffer[preroll_buffer_index].raw_travel = velocity;
-    
+    preroll_buffer[preroll_buffer_index].raw_travel = raw_travel;
+
     // Calculate time relative to preroll start
     uint32_t now = timer_read32();
     preroll_buffer[preroll_buffer_index].timestamp = now - preroll_start_time;
-    
+
     // Update buffer index and count
     preroll_buffer_index = (preroll_buffer_index + 1) % PREROLL_BUFFER_SIZE;
     if (preroll_buffer_count < PREROLL_BUFFER_SIZE) {
         preroll_buffer_count++;
     }
-    
-    dprintf("preroll: stored event type:%d ch:%d note/cc:%d vel/val:%d at time %lu ms\n", 
-            type, channel, note, velocity, now - preroll_start_time);
+
+    dprintf("preroll: stored event type:%d ch:%d note/cc:%d raw:%d at time %lu ms\n",
+            type, channel, note, raw_travel, now - preroll_start_time);
 }
 
 // Add this new helper function (place it near other static helper functions)
@@ -2067,7 +2067,7 @@ void dynamic_macro_stop_overdub(uint8_t macro_num) {
     }
 }
 
-void dynamic_macro_record_midi_event_overdub(uint8_t type, uint8_t channel, uint8_t note, uint8_t velocity) {
+void dynamic_macro_record_midi_event_overdub(uint8_t type, uint8_t channel, uint8_t note, uint8_t raw_travel) {
     if (overdub_target_macro == 0 || overdub_target_macro > MAX_MACROS) {
         return; // No valid target macro
     }
@@ -2152,14 +2152,14 @@ void dynamic_macro_record_midi_event_overdub(uint8_t type, uint8_t channel, uint
     write_pos->type = type;
     write_pos->channel = channel;
     write_pos->note = note;
-    write_pos->velocity = velocity;
+    write_pos->raw_travel = raw_travel;
     write_pos->timestamp = record_timestamp;
-    
+
     // Increment the count for this macro
     overdub_temp_count[macro_idx]++;
-    
-    dprintf("dynamic macro: recorded %s overdub event type:%d ch:%d note:%d vel:%d at timestamp %lu ms (temp_count now %d)\n", 
-            overdub_advanced_mode ? "INDEPENDENT" : "SYNCED", type, channel, note, velocity, record_timestamp, overdub_temp_count[macro_idx]);
+
+    dprintf("dynamic macro: recorded %s overdub event type:%d ch:%d note:%d raw:%d at timestamp %lu ms (temp_count now %d)\n",
+            overdub_advanced_mode ? "INDEPENDENT" : "SYNCED", type, channel, note, raw_travel, record_timestamp, overdub_temp_count[macro_idx]);
 }
 
 
@@ -2382,13 +2382,13 @@ void end_overdub_recording_deferred(uint8_t macro_num) {
                         // Original mode: use next event timestamp with wrapping
                         uint32_t next_event_timestamp = find_next_event_timestamp_in_loop(macro_num, current_position_in_loop);
                         uint32_t noteoff_timestamp = next_event_timestamp % loop_length;
-                        
+
                         write_pos->type = MIDI_EVENT_NOTE_OFF;
                         write_pos->channel = channel;
                         write_pos->note = note;
-                        write_pos->velocity = 64;
+                        write_pos->raw_travel = 64;
                         write_pos->timestamp = noteoff_timestamp;
-                        
+
                         overdub_temp_count[macro_idx]++;
                     }
                 }
@@ -3552,9 +3552,9 @@ if (is_independent_overdub && macro_num > 0) {
                     midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
                     add_lighting_macro_note(override_channel, transposed_note, track_id);
                     
-                    dprintf("independent overdub: played note ch:%d->%d note:%d->%d vel:%d->%d for macro %d\n", 
+                    dprintf("independent overdub: played note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                             state->current->channel, override_channel, state->current->note, transposed_note,
-                            state->current->velocity, offset_velocity, macro_num);
+                            state->current->raw_travel, offset_velocity, macro_num);
                 } else {
                     dprintf("independent overdub: skipped note on ch:%d->%d note:%d->%d (active live note)\n", 
                             state->current->channel, override_channel, state->current->note, transposed_note);
@@ -3609,9 +3609,9 @@ if (is_independent_overdub && macro_num > 0) {
                     midi_send_noteoff(&midi_device, override_channel, transposed_note, offset_velocity);
                     remove_lighting_macro_note(override_channel, transposed_note, track_id);
                     
-                    dprintf("independent overdub: played note off ch:%d->%d note:%d->%d vel:%d->%d for macro %d\n", 
+                    dprintf("independent overdub: played note off ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                             state->current->channel, override_channel, state->current->note, transposed_note,
-                            state->current->velocity, offset_velocity, macro_num);
+                            state->current->raw_travel, offset_velocity, macro_num);
                 } else {
                     dprintf("independent overdub: skipped note off ch:%d->%d note:%d->%d (active live note)\n", 
                             state->current->channel, override_channel, state->current->note, transposed_note);
@@ -3636,9 +3636,9 @@ if (is_independent_overdub && macro_num > 0) {
             }
             
             case MIDI_EVENT_CC:
-                midi_send_cc(&midi_device, state->current->channel, state->current->note, state->current->velocity);
-                dprintf("independent overdub: played CC ch:%d cc:%d val:%d\n", 
-                        state->current->channel, state->current->note, state->current->velocity);
+                midi_send_cc(&midi_device, state->current->channel, state->current->note, state->current->raw_travel);
+                dprintf("independent overdub: played CC ch:%d cc:%d val:%d\n",
+                        state->current->channel, state->current->note, state->current->raw_travel);
                 break;
         }
         
@@ -3972,13 +3972,13 @@ if (is_independent_overdub && macro_num > 0) {
                                 add_lighting_macro_note(override_channel, octave_note, track_id);
                             }
                             if (is_overdub_state) {
-                                dprintf("midi macro: played overdub octave note ch:%d->%d note:%d->%d vel:%d->%d for macro %d\n", 
+                                dprintf("midi macro: played overdub octave note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                                         state->current->channel, override_channel, octave_note, octave_note,
-                                        state->current->velocity, offset_velocity, macro_num);
+                                        state->current->raw_travel, offset_velocity, macro_num);
                             } else {
-                                dprintf("midi macro: played octave note ch:%d->%d note:%d->%d vel:%d->%d\n", 
+                                dprintf("midi macro: played octave note ch:%d->%d note:%d->%d raw:%d->vel:%d\n",
                                         state->current->channel, override_channel, octave_note, octave_note,
-                                        state->current->velocity, offset_velocity);
+                                        state->current->raw_travel, offset_velocity);
                             }
                         } else {
                             dprintf("midi macro: skipped octave note ch:%d->%d note:%d->%d (active live note)\n", 
@@ -4076,13 +4076,13 @@ if (is_independent_overdub && macro_num > 0) {
                                 remove_lighting_macro_note(override_channel_off, octave_note, track_id);
                             }
                             if (is_overdub_state) {
-                                dprintf("midi macro: played overdub octave note off ch:%d->%d note:%d->%d vel:%d->%d for macro %d\n", 
+                                dprintf("midi macro: played overdub octave note off ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                                         state->current->channel, override_channel_off, octave_note, octave_note,
-                                        state->current->velocity, offset_velocity_off, macro_num);
+                                        state->current->raw_travel, offset_velocity_off, macro_num);
                             } else {
-                                dprintf("midi macro: played octave note off ch:%d->%d note:%d->%d vel:%d->%d\n", 
+                                dprintf("midi macro: played octave note off ch:%d->%d note:%d->%d raw:%d->vel:%d\n",
                                         state->current->channel, override_channel_off, octave_note, octave_note,
-                                        state->current->velocity, offset_velocity_off);
+                                        state->current->raw_travel, offset_velocity_off);
                             }
                         } else {
                             dprintf("midi macro: skipped octave note off ch:%d->%d note:%d->%d (active live note)\n", 
@@ -4093,9 +4093,9 @@ if (is_independent_overdub && macro_num > 0) {
                 break;
             }           
             case MIDI_EVENT_CC:
-                midi_send_cc(&midi_device, state->current->channel, state->current->note, state->current->velocity);
-                dprintf("midi macro: played CC ch:%d cc:%d val:%d\n", 
-                        state->current->channel, state->current->note, state->current->velocity);
+                midi_send_cc(&midi_device, state->current->channel, state->current->note, state->current->raw_travel);
+                dprintf("midi macro: played CC ch:%d cc:%d val:%d\n",
+                        state->current->channel, state->current->note, state->current->raw_travel);
                 break;
         }
         
@@ -5318,12 +5318,12 @@ void dynamic_macro_actual_start(uint32_t *start_time) {
             macro_pointer->type = MIDI_EVENT_DUMMY;
             macro_pointer->channel = 0;
             macro_pointer->note = 0;
-            macro_pointer->velocity = 0;
+            macro_pointer->raw_travel = 0;
             macro_pointer->timestamp = 0;  // Place at the very start
-            
+
             macro_pointer++;
             is_macro_empty = false;
-            
+
             dprintf("dynamic macro: recorded dummy event to mark recording start\n");
         }
     }
@@ -5419,9 +5419,9 @@ void dynamic_macro_actual_start(uint32_t *start_time) {
     dprintln("dynamic macro recording: started from first MIDI note");
 }
 
-void dynamic_macro_record_midi_event(midi_event_t *macro_buffer, midi_event_t **macro_pointer, 
-                                    midi_event_t *macro_end, int8_t direction, 
-                                    uint8_t type, uint8_t channel, uint8_t note, uint8_t velocity,
+void dynamic_macro_record_midi_event(midi_event_t *macro_buffer, midi_event_t **macro_pointer,
+                                    midi_event_t *macro_end, int8_t direction,
+                                    uint8_t type, uint8_t channel, uint8_t note, uint8_t raw_travel,
                                     uint32_t *start_time, uint8_t macro_id) {
     // If we're primed but haven't started recording yet, and this is a note-on event
     if (is_macro_primed && !first_note_recorded && type == MIDI_EVENT_NOTE_ON) {
@@ -5442,14 +5442,14 @@ void dynamic_macro_record_midi_event(midi_event_t *macro_buffer, midi_event_t **
         (*macro_pointer)->type = type;
         (*macro_pointer)->channel = channel;
         (*macro_pointer)->note = note;
-        (*macro_pointer)->velocity = velocity;
-        
+        (*macro_pointer)->raw_travel = raw_travel;
+
         uint32_t now = timer_read32();
         (*macro_pointer)->timestamp = now - *start_time;
-        
-        dprintf("dynamic macro: recorded MIDI event type:%d ch:%d note/cc:%d vel/val:%d at time %lu ms\n", 
-                type, channel, note, velocity, (*macro_pointer)->timestamp);
-        
+
+        dprintf("dynamic macro: recorded MIDI event type:%d ch:%d note/cc:%d raw:%d at time %lu ms\n",
+                type, channel, note, raw_travel, (*macro_pointer)->timestamp);
+
         *macro_pointer += direction;
         is_macro_empty = false;
     } else {
