@@ -49,8 +49,10 @@ void midi_send_program_with_recording(uint8_t channel, uint8_t program);
 void midi_send_aftertouch_with_recording(uint8_t channel, uint8_t note, uint8_t pressure);
 void midi_send_channel_pressure_with_recording(uint8_t channel, uint8_t pressure);
 
-// HE (Hall Effect) velocity function - can be overridden by keyboard implementation
+// HE (Hall Effect) velocity functions - can be overridden by keyboard implementation
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
+uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col);
+uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col);
 void midi_send_pitchbend_with_recording(uint8_t channel, int16_t bend_value);
 void midi_send_external_cc_with_recording(uint8_t channel, uint8_t cc, uint8_t value);
 void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity);
@@ -906,10 +908,18 @@ typedef struct {
     uint8_t velocity_speed_scale;          // 1-20
     uint8_t aftertouch_cc;                 // 0-127 (CC number for aftertouch)
     uint8_t flags;                         // Bit 0: rapidfire_enabled, Bit 1: midi_rapidfire_enabled, Bit 2: use_fixed_velocity
-    // HE Velocity curve and range (NEW)
+    // HE Velocity curve and range (MAIN MIDI NOTES)
     uint8_t he_velocity_curve;             // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
     uint8_t he_velocity_min;               // 1-127 (minimum velocity)
     uint8_t he_velocity_max;               // 1-127 (maximum velocity)
+    // Keysplit HE Velocity curve and range
+    uint8_t keysplit_he_velocity_curve;    // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t keysplit_he_velocity_min;      // 1-127 (minimum velocity)
+    uint8_t keysplit_he_velocity_max;      // 1-127 (maximum velocity)
+    // Triplesplit HE Velocity curve and range
+    uint8_t triplesplit_he_velocity_curve; // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t triplesplit_he_velocity_min;   // 1-127 (minimum velocity)
+    uint8_t triplesplit_he_velocity_max;   // 1-127 (maximum velocity)
 } layer_actuation_t;
 
 
@@ -931,13 +941,17 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t af
                          uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
                          uint8_t midi_rapid_vel, uint8_t vel_speed,
                          uint8_t aftertouch_cc, uint8_t flags,
-                         uint8_t he_curve, uint8_t he_min, uint8_t he_max);
+                         uint8_t he_curve, uint8_t he_min, uint8_t he_max,
+                         uint8_t ks_curve, uint8_t ks_min, uint8_t ks_max,
+                         uint8_t ts_curve, uint8_t ts_min, uint8_t ts_max);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
                          uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
                          uint8_t *midi_rapid_vel, uint8_t *vel_speed,
                          uint8_t *aftertouch_cc, uint8_t *flags,
-                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max);
+                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max,
+                         uint8_t *ks_curve, uint8_t *ks_min, uint8_t *ks_max,
+                         uint8_t *ts_curve, uint8_t *ts_min, uint8_t *ts_max);
 
 bool layer_rapidfire_enabled(uint8_t layer);
 bool layer_midi_rapidfire_enabled(uint8_t layer);
