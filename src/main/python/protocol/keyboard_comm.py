@@ -1049,20 +1049,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 octave_number2 = struct.unpack('<b', data[12:13])[0]
                 transpose_number3 = struct.unpack('<b', data[13:14])[0]
                 octave_number3 = struct.unpack('<b', data[14:15])[0]
-                # Read velocity settings (curve + range) for all modes
-                velocity_curve = data[15]
-                velocity_min = data[16]
-                velocity_max = data[17]
-                velocity_curve2 = data[18]
-                velocity_min2 = data[19]
-                velocity_max2 = data[20]
-                velocity_curve3 = data[21]
-                velocity_min3 = data[22]
-                velocity_max3 = data[23]
-                random_velocity_modifier = data[24]
-                oled_keyboard = struct.unpack('<I', data[25:29])[0]
-                smart_chord_light = data[29]
-                smart_chord_light_mode = data[30]
+                random_velocity_modifier = data[15]
+                oled_keyboard = struct.unpack('<I', data[16:20])[0]
+                smart_chord_light = data[20]
+                smart_chord_light_mode = data[21]
                 
                 config.update({
                     "velocity_sensitivity": velocity_sensitivity,
@@ -1071,18 +1061,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "transpose_number": transpose_number,
                     "transpose_number2": transpose_number2,
                     "transpose_number3": transpose_number3,
-                    # Velocity settings for basic mode
-                    "velocity_curve": velocity_curve,
-                    "velocity_min": velocity_min,
-                    "velocity_max": velocity_max,
-                    # Velocity settings for keysplit mode
-                    "velocity_curve2": velocity_curve2,
-                    "velocity_min2": velocity_min2,
-                    "velocity_max2": velocity_max2,
-                    # Velocity settings for triplesplit mode
-                    "velocity_curve3": velocity_curve3,
-                    "velocity_min3": velocity_min3,
-                    "velocity_max3": velocity_max3,
                     "random_velocity_modifier": random_velocity_modifier,
                     "oled_keyboard": oled_keyboard,
                     "smart_chord_light": smart_chord_light,
