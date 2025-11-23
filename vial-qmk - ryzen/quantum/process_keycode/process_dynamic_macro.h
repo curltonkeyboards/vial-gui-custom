@@ -322,8 +322,6 @@ typedef struct {
     int8_t transpose_number3;
     int8_t octave_number3;
     uint8_t velocity_number;
-    uint8_t velocity_number2;
-    uint8_t velocity_number3;
     uint8_t randomvelocitymodifier;
     int oledkeyboard;
     bool overdub_advanced_mode;
@@ -356,8 +354,6 @@ extern int8_t octave_number2;
 extern int8_t transpose_number3;
 extern int8_t octave_number3;
 extern uint8_t velocity_number;
-extern uint8_t velocity_number2;
-extern uint8_t velocity_number3;
 extern uint8_t randomvelocitymodifier;
 extern int oledkeyboard;
 extern int smartchordlight;

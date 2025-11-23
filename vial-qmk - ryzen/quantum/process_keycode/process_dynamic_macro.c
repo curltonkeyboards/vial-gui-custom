@@ -12595,8 +12595,8 @@ static void handle_set_keyboard_config(const uint8_t* data) {
     transpose_number3 = *(int8_t*)ptr++;
     octave_number3 = *(int8_t*)ptr++;
     velocity_number = *ptr++;
-    velocity_number2 = *ptr++;
-    velocity_number3 = *ptr++;
+    ptr++; // Skip velocity_number2 (deprecated)
+    ptr++; // Skip velocity_number3 (deprecated)
     randomvelocitymodifier = *ptr++;
     
     // Read 32-bit integer for oledkeyboard (FIXED: was missing in original)
@@ -12617,8 +12617,6 @@ static void handle_set_keyboard_config(const uint8_t* data) {
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
     keyboard_settings.velocity_number = velocity_number;
-    keyboard_settings.velocity_number2 = velocity_number2;
-    keyboard_settings.velocity_number3 = velocity_number3;
     keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -12703,8 +12701,8 @@ static void handle_get_keyboard_config(void) {
     *(int8_t*)ptr++ = keyboard_settings.transpose_number3;
     *(int8_t*)ptr++ = keyboard_settings.octave_number3;
     *ptr++ = keyboard_settings.velocity_number;
-    *ptr++ = keyboard_settings.velocity_number2;
-    *ptr++ = keyboard_settings.velocity_number3;
+    *ptr++ = 0; // velocity_number2 (deprecated)
+    *ptr++ = 0; // velocity_number3 (deprecated)
     *ptr++ = keyboard_settings.randomvelocitymodifier;
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
@@ -12751,8 +12749,6 @@ static void handle_reset_keyboard_config(void) {
     transpose_number3 = 0;
     octave_number3 = 0;
     velocity_number = 127;
-    velocity_number2 = 127;
-    velocity_number3 = 127;
     randomvelocitymodifier = 0;
     oledkeyboard = 0;
     overdub_advanced_mode = false;
@@ -12785,8 +12781,6 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
     keyboard_settings.velocity_number = velocity_number;
-    keyboard_settings.velocity_number2 = velocity_number2;
-    keyboard_settings.velocity_number3 = velocity_number3;
     keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -12862,8 +12856,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *(int8_t*)ptr++ = keyboard_settings.transpose_number3;
     *(int8_t*)ptr++ = keyboard_settings.octave_number3;
     *ptr++ = keyboard_settings.velocity_number;
-    *ptr++ = keyboard_settings.velocity_number2;
-    *ptr++ = keyboard_settings.velocity_number3;
+    *ptr++ = 0; // velocity_number2 (deprecated)
+    *ptr++ = 0; // velocity_number3 (deprecated)
     *ptr++ = keyboard_settings.randomvelocitymodifier;
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
@@ -12905,8 +12899,6 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     transpose_number3 = keyboard_settings.transpose_number3;
     octave_number3 = keyboard_settings.octave_number3;
     velocity_number = keyboard_settings.velocity_number;
-    velocity_number2 = keyboard_settings.velocity_number2;
-    velocity_number3 = keyboard_settings.velocity_number3;
     randomvelocitymodifier = keyboard_settings.randomvelocitymodifier;
     oledkeyboard = keyboard_settings.oledkeyboard;
     overdub_advanced_mode = keyboard_settings.overdub_advanced_mode;
