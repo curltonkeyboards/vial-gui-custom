@@ -2570,8 +2570,6 @@ void reset_keyboard_settings(void) {
     transpose_number3 = 0;
     octave_number3 = 0;
     velocity_number = 127;
-    velocity_number2 = 127;
-    velocity_number3 = 127;
     randomvelocitymodifier = 0;
     oledkeyboard = 0;
     smartchordlight = 0;
@@ -2603,8 +2601,6 @@ void reset_keyboard_settings(void) {
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
     keyboard_settings.velocity_number = velocity_number;
-    keyboard_settings.velocity_number2 = velocity_number2;
-    keyboard_settings.velocity_number3 = velocity_number3;
     keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -2648,8 +2644,6 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     transpose_number3 = keyboard_settings.transpose_number3;
     octave_number3 = keyboard_settings.octave_number3;
     velocity_number = keyboard_settings.velocity_number;
-    velocity_number2 = keyboard_settings.velocity_number2;
-    velocity_number3 = keyboard_settings.velocity_number3;
     randomvelocitymodifier = keyboard_settings.randomvelocitymodifier;
     oledkeyboard = keyboard_settings.oledkeyboard;
     overdub_advanced_mode = keyboard_settings.overdub_advanced_mode;
@@ -6485,24 +6479,6 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && velocityencoder != 130) { // E
                 }
             }
         }
-    } else if (keysplitmodifierheld) {
-        // Keysplit modifier is held - affect velocity_number2
-        if (velocity_number2 < 127) {
-            velocity_number2 += velocity_sensitivity;
-            if (velocity_number2 > 127) {
-                velocity_number2 = 127;
-            }
-            snprintf(name, sizeof(name), "Keysplit Velocity: %d", velocity_number2);
-        }
-    } else if (triplesplitmodifierheld) {
-        // Triplesplit modifier is held - affect velocity_number3
-        if (velocity_number3 < 127) {
-            velocity_number3 += velocity_sensitivity;
-            if (velocity_number3 > 127) {
-                velocity_number3 = 127;
-            }
-            snprintf(name, sizeof(name), "Triplesplit Velocity: %d", velocity_number3);
-        }
     }
 } else if (record->event.key.row == KEYLOC_ENCODER_CCW && velocityencoder != 130) { // Encoder turned counter-clockwise
     if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
@@ -6534,26 +6510,6 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && velocityencoder != 130) { // E
                     snprintf(name, sizeof(name), "Macro %d Velocity: %d", i + 1, current_target - velocity_sensitivity);
                 }
             }
-        }
-    } else if (keysplitmodifierheld) {
-        // Keysplit modifier is held - affect velocity_number2
-        if (velocity_number2 > 0) {
-            if (velocity_number2 >= velocity_sensitivity) {
-                velocity_number2 -= velocity_sensitivity;
-            } else {
-                velocity_number2 = 0;
-            }
-            snprintf(name, sizeof(name), "Keysplit Velocity: %d", velocity_number2);
-        }
-    } else if (triplesplitmodifierheld) {
-        // Triplesplit modifier is held - affect velocity_number3
-        if (velocity_number3 > 0) {
-            if (velocity_number3 >= velocity_sensitivity) {
-                velocity_number3 -= velocity_sensitivity;
-            } else {
-                velocity_number3 = 0;
-            }
-            snprintf(name, sizeof(name), "Triplesplit Velocity: %d", velocity_number3);
         }
     }
 }
@@ -7164,22 +7120,14 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
                 snprintf(name, sizeof(name), "Loop: Velocity %d", target_velocity);
             }
         }
-    } else if (keysplitmodifierheld) {
-        // Keysplit modifier is held - affect velocity_number2
-        velocity_number2 = target_velocity;
-        snprintf(name, sizeof(name), "KEYSPLIT VEL %d", velocity_number2);
-    } else if (triplesplitmodifierheld) {
-        // Triplesplit modifier is held - affect velocity_number3
-        velocity_number3 = target_velocity;
-        snprintf(name, sizeof(name), "TRIPLESPLIT VEL %d", velocity_number3);
     }
 }else if (keycode >= 0xC6CA && keycode <= 0xC749) {
-	velocity_number2 = (keycode - 0xC6CA);
-    snprintf(name, sizeof(name), "KS Velocity %d", keycode - 0xC6CA);
+    // Deprecated: keysplit velocity (velocity_number2)
+    snprintf(name, sizeof(name), "KS Velocity (deprecated)");
 	//velocity3
     } else if (keycode >= 0xC77A && keycode <= 0xC7F9) {
-	velocity_number3 = (keycode - 0xC77A);
-    snprintf(name, sizeof(name), "TS Velocity %d", keycode - 0xC77A);
+    // Deprecated: triplesplit velocity (velocity_number3)
+    snprintf(name, sizeof(name), "TS Velocity (deprecated)");
 	//program change	
     } else if (keycode >= 49792 && keycode <= 49919) {
         snprintf(name, sizeof(name), "Program %d", keycode - 49792);
@@ -8655,30 +8603,6 @@ break;
             }
             snprintf(name, sizeof(name), "Loop Velocity Up");
         }
-    } else if (keysplitmodifierheld) {
-        // Keysplit modifier is held - affect velocity_number2
-        snprintf(name, sizeof(name), "KEYSPLIT VEL UP");
-        if (velocity_number2 == 0) {
-            velocity_number2 += (velocity_sensitivity);
-        } else if ((velocity_number2 + (velocity_sensitivity)) < 127) {
-            velocity_number2 += (velocity_sensitivity);
-        } else if ((velocity_number2 + (velocity_sensitivity)) == 127) {
-            velocity_number2 = 127;
-        } else if ((velocity_number2 + (velocity_sensitivity)) > 127){
-            velocity_number2 = 127;
-        }
-    } else if (triplesplitmodifierheld) {
-        // Triplesplit modifier is held - affect velocity_number3
-        snprintf(name, sizeof(name), "TRIPLESPLIT VEL UP");
-        if (velocity_number3 == 0) {
-            velocity_number3 += (velocity_sensitivity);
-        } else if ((velocity_number3 + (velocity_sensitivity)) < 127) {
-            velocity_number3 += (velocity_sensitivity);
-        } else if ((velocity_number3 + (velocity_sensitivity)) == 127) {
-            velocity_number3 = 127;
-        } else if ((velocity_number3 + (velocity_sensitivity)) > 127){
-            velocity_number3 = 127;
-        }
     }
 
 // Velocity Down (0xC437)
@@ -8718,79 +8642,19 @@ break;
             }
             snprintf(name, sizeof(name), "Loop Velocity Down");
         }
-    } else if (keysplitmodifierheld) {
-        // Keysplit modifier is held - affect velocity_number2
-        snprintf(name, sizeof(name), "KEYSPLIT VEL DOWN");
-        if (velocity_number2 == 127) {
-            velocity_number2 -= (velocity_sensitivity);
-        } else if ((velocity_number2 - (velocity_sensitivity)) > 0) {
-            velocity_number2 -= (velocity_sensitivity);
-        } else if ((velocity_number2 - (velocity_sensitivity)) == 0) {
-            velocity_number2 = 0;
-        } else if ((velocity_number2 - (velocity_sensitivity)) < 0){
-            velocity_number2 = 0;
-        }
-    } else if (triplesplitmodifierheld) {
-        // Triplesplit modifier is held - affect velocity_number3
-        snprintf(name, sizeof(name), "TRIPLESPLIT VEL DOWN");
-        if (velocity_number3 == 127) {
-            velocity_number3 -= (velocity_sensitivity);
-        } else if ((velocity_number3 - (velocity_sensitivity)) > 0) {
-            velocity_number3 -= (velocity_sensitivity);
-        } else if ((velocity_number3 - (velocity_sensitivity)) == 0) {
-            velocity_number3 = 0;
-        } else if ((velocity_number3 - (velocity_sensitivity)) < 0){
-            velocity_number3 = 0;
-        }
     }
-	
+
 	} else if (keycode == 0xC74A){
-		 snprintf(name, sizeof(name), "KS VELOCITY UP");
-			if (velocity_number2 == 0) {
-                    velocity_number2 += (velocity_sensitivity);
-               } else if ((velocity_number2 + (velocity_sensitivity)) <127) {
-                    velocity_number2 += (velocity_sensitivity);
-               } else if ((velocity_number2 + (velocity_sensitivity)) == 127) {
-					velocity_number2 = 127;
-               } else if ((velocity_number2 + (velocity_sensitivity)) >127){
-					velocity_number2 = 127;
-               }
-		
+		 snprintf(name, sizeof(name), "KS VELOCITY UP (deprecated)");
+
     } else if (keycode == 0xC74B){
-		 snprintf(name, sizeof(name), "KS VELOCITY DOWN");
-			if (velocity_number2 == 127) {
-                    velocity_number2 -= (velocity_sensitivity);
-                } else if ((velocity_number2 - (velocity_sensitivity)) > 0) {
-                    velocity_number2 -= (velocity_sensitivity);
-                } else if ((velocity_number2 - (velocity_sensitivity)) == 0) {
-					velocity_number2 = 0;
-                } else if ((velocity_number2 - (velocity_sensitivity)) < 0){
-					velocity_number2 = 0;
-                }
-				
+		 snprintf(name, sizeof(name), "KS VELOCITY DOWN (deprecated)");
+
 	} else if (keycode == 0xC7FA){
-		 snprintf(name, sizeof(name), "TS VELOCITY UP");
-			if (velocity_number3 == 0) {
-                    velocity_number3 += (velocity_sensitivity);
-               } else if ((velocity_number3 + (velocity_sensitivity)) <127) {
-                    velocity_number3 += (velocity_sensitivity);
-               } else if ((velocity_number3 + (velocity_sensitivity)) == 127) {
-					velocity_number3 = 127;
-               } else if ((velocity_number3 + (velocity_sensitivity)) >127){
-					velocity_number3 = 127;
-               }
-		
+		 snprintf(name, sizeof(name), "TS VELOCITY UP (deprecated)");
+
     } else if (keycode == 0xC7FB){
-		 snprintf(name, sizeof(name), "TS VELOCITY DOWN");
-			if (velocity_number3 == 127) {
-                    velocity_number3 -= (velocity_sensitivity);
-                } else if ((velocity_number3 - (velocity_sensitivity)) > 0) {
-                    velocity_number3 -= (velocity_sensitivity);
-                } else if ((velocity_number3 - (velocity_sensitivity)) == 0) {
-					velocity_number3 = 0;
-                } else if ((velocity_number3 - (velocity_sensitivity)) < 0){
-					velocity_number3 = 0;
-                }
+		 snprintf(name, sizeof(name), "TS VELOCITY DOWN (deprecated)");
 	} else if (keycode == 0xC81D) {
         inversionposition--;
 		if (inversionposition < 0) {
@@ -8853,8 +8717,6 @@ break;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
 		keyboard_settings.velocity_number = velocity_number;
-		keyboard_settings.velocity_number2 = velocity_number2;
-		keyboard_settings.velocity_number3 = velocity_number3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8889,8 +8751,6 @@ break;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
 		keyboard_settings.velocity_number = velocity_number;
-		keyboard_settings.velocity_number2 = velocity_number2;
-		keyboard_settings.velocity_number3 = velocity_number3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8925,8 +8785,6 @@ break;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
 		keyboard_settings.velocity_number = velocity_number;
-		keyboard_settings.velocity_number2 = velocity_number2;
-		keyboard_settings.velocity_number3 = velocity_number3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8961,8 +8819,6 @@ break;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
 		keyboard_settings.velocity_number = velocity_number;
-		keyboard_settings.velocity_number2 = velocity_number2;
-		keyboard_settings.velocity_number3 = velocity_number3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -8994,8 +8850,6 @@ break;
 		keyboard_settings.transpose_number3 = transpose_number3;
 		keyboard_settings.octave_number3 = octave_number3;
 		keyboard_settings.velocity_number = velocity_number;
-		keyboard_settings.velocity_number2 = velocity_number2;
-		keyboard_settings.velocity_number3 = velocity_number3;
 		keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
 		keyboard_settings.oledkeyboard = oledkeyboard;
 		keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
@@ -9344,27 +9198,11 @@ void oled_render_keylog(void) {
 	uint8_t he_min = layer_actuations[current_layer].he_velocity_min;
 	uint8_t he_max = layer_actuations[current_layer].he_velocity_max;
 
-	if (keysplitvelocitystatus == 1) {
-		// Keysplit mode - show HE range for main and keysplit
-		if (he_min == he_max) {
-			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VEL %3d // VEL %3d", he_min, velocity_number2);
-		} else {
-			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n V%3d-%3d // VEL %3d", he_min, he_max, velocity_number2);
-		}
-	} else if (keysplitvelocitystatus == 2) {
-		// Triplesplit mode - show HE range for main and fixed for splits
-		if (he_min == he_max) {
-			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n V %3d /V %3d /V %3d", he_min, velocity_number2, velocity_number3);
-		} else {
-			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nV%3d-%3d/V%3d/V%3d", he_min, he_max, velocity_number2, velocity_number3);
-		}
+	// Show HE velocity range for current layer
+	if (he_min == he_max) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
 	} else {
-		// Normal mode - show HE velocity range
-		if (he_min == he_max) {
-			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
-		} else {
-			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
-		}
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
 	}
 	
 	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
