@@ -225,13 +225,17 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t af
                          uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
                          uint8_t midi_rapid_vel, uint8_t vel_speed,
                          uint8_t aftertouch_cc, uint8_t flags,
-                         uint8_t he_curve, uint8_t he_min, uint8_t he_max);
-                         
+                         uint8_t he_curve, uint8_t he_min, uint8_t he_max,
+                         uint8_t ks_curve, uint8_t ks_min, uint8_t ks_max,
+                         uint8_t ts_curve, uint8_t ts_min, uint8_t ts_max);
+
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
                          uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
                          uint8_t *midi_rapid_vel, uint8_t *vel_speed,
                          uint8_t *aftertouch_cc, uint8_t *flags,
-                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max);
+                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max,
+                         uint8_t *ks_curve, uint8_t *ks_min, uint8_t *ks_max,
+                         uint8_t *ts_curve, uint8_t *ts_min, uint8_t *ts_max);
 
 bool layer_rapidfire_enabled(uint8_t layer);
 bool layer_midi_rapidfire_enabled(uint8_t layer);
