@@ -378,39 +378,62 @@ class QuickActuationWidget(QWidget):
         # Basic MIDI Settings
         basic_group = QGroupBox(tr("QuickActuationWidget", "Basic MIDI Settings"))
         basic_layout = QVBoxLayout()
-        basic_layout.setSpacing(6)
+        basic_layout.setSpacing(4)
         basic_group.setLayout(basic_layout)
         layout.addWidget(basic_group)
 
         # Channel
         ch_layout = QHBoxLayout()
-        ch_layout.addWidget(QLabel(tr("QuickActuationWidget", "Channel:")))
+        ch_layout.setContentsMargins(0, 0, 0, 0)
+        ch_layout.setSpacing(6)
+        ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
+        ch_label.setMinimumWidth(70)
+        ch_label.setMaximumWidth(70)
+        ch_layout.addWidget(ch_label)
         self.midi_channel = ArrowComboBox()
-        self.midi_channel.setMinimumWidth(100)
+        self.midi_channel.setMaximumHeight(30)
+        self.midi_channel.setMaximumWidth(180)
+        self.midi_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         for i in range(16):
             self.midi_channel.addItem(f"Channel {i + 1}", i)
         self.midi_channel.setCurrentIndex(0)
         self.midi_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_layout.addWidget(self.midi_channel)
+        ch_layout.addStretch()
         basic_layout.addLayout(ch_layout)
 
         # Transpose
         trans_layout = QHBoxLayout()
-        trans_layout.addWidget(QLabel(tr("QuickActuationWidget", "Transpose:")))
+        trans_layout.setContentsMargins(0, 0, 0, 0)
+        trans_layout.setSpacing(6)
+        trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
+        trans_label.setMinimumWidth(70)
+        trans_label.setMaximumWidth(70)
+        trans_layout.addWidget(trans_label)
         self.midi_transpose = ArrowComboBox()
-        self.midi_transpose.setMinimumWidth(100)
+        self.midi_transpose.setMaximumHeight(30)
+        self.midi_transpose.setMaximumWidth(180)
+        self.midi_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         for i in range(-64, 65):
             self.midi_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.midi_transpose.setCurrentIndex(64)  # 0
         self.midi_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
         trans_layout.addWidget(self.midi_transpose)
+        trans_layout.addStretch()
         basic_layout.addLayout(trans_layout)
 
         # Velocity Preset
         vel_preset_layout = QHBoxLayout()
-        vel_preset_layout.addWidget(QLabel(tr("QuickActuationWidget", "Velocity:")))
+        vel_preset_layout.setContentsMargins(0, 0, 0, 0)
+        vel_preset_layout.setSpacing(6)
+        self.midi_velocity_preset_label = QLabel(tr("QuickActuationWidget", "Velocity:"))
+        self.midi_velocity_preset_label.setMinimumWidth(70)
+        self.midi_velocity_preset_label.setMaximumWidth(70)
+        vel_preset_layout.addWidget(self.midi_velocity_preset_label)
         self.midi_velocity_preset = ArrowComboBox()
-        self.midi_velocity_preset.setMinimumWidth(100)
+        self.midi_velocity_preset.setMaximumHeight(30)
+        self.midi_velocity_preset.setMaximumWidth(180)
+        self.midi_velocity_preset.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_velocity_preset.addItem("Softest", 0)
         self.midi_velocity_preset.addItem("Soft", 1)
         self.midi_velocity_preset.addItem("Medium", 2)
@@ -419,6 +442,7 @@ class QuickActuationWidget(QWidget):
         self.midi_velocity_preset.setCurrentIndex(2)
         self.midi_velocity_preset.currentIndexChanged.connect(self.on_velocity_preset_changed)
         vel_preset_layout.addWidget(self.midi_velocity_preset)
+        vel_preset_layout.addStretch()
         basic_layout.addLayout(vel_preset_layout)
 
         # Advanced MIDI checkbox
@@ -444,9 +468,16 @@ class QuickActuationWidget(QWidget):
 
         # Velocity Curve
         curve_layout = QHBoxLayout()
-        curve_layout.addWidget(QLabel(tr("QuickActuationWidget", "Curve:")))
+        curve_layout.setContentsMargins(0, 0, 0, 0)
+        curve_layout.setSpacing(6)
+        curve_label = QLabel(tr("QuickActuationWidget", "Curve:"))
+        curve_label.setMinimumWidth(70)
+        curve_label.setMaximumWidth(70)
+        curve_layout.addWidget(curve_label)
         self.midi_velocity_curve = ArrowComboBox()
-        self.midi_velocity_curve.setMinimumWidth(100)
+        self.midi_velocity_curve.setMaximumHeight(30)
+        self.midi_velocity_curve.setMaximumWidth(180)
+        self.midi_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_velocity_curve.addItem("Softest", 0)
         self.midi_velocity_curve.addItem("Soft", 1)
         self.midi_velocity_curve.addItem("Medium", 2)
@@ -455,30 +486,49 @@ class QuickActuationWidget(QWidget):
         self.midi_velocity_curve.setCurrentIndex(2)
         self.midi_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
         curve_layout.addWidget(self.midi_velocity_curve)
+        curve_layout.addStretch()
         adv_vel_layout.addLayout(curve_layout)
 
-        # Velocity Min
+        # Velocity Min (slider)
         min_layout = QHBoxLayout()
-        min_layout.addWidget(QLabel(tr("QuickActuationWidget", "Min:")))
-        self.midi_velocity_min = ArrowComboBox()
-        self.midi_velocity_min.setMinimumWidth(100)
-        for i in range(1, 128):
-            self.midi_velocity_min.addItem(str(i), i)
-        self.midi_velocity_min.setCurrentIndex(0)
-        self.midi_velocity_min.currentIndexChanged.connect(self.on_midi_settings_changed)
-        min_layout.addWidget(self.midi_velocity_min)
+        min_layout.setContentsMargins(0, 0, 0, 0)
+        min_layout.setSpacing(6)
+        min_label = QLabel(tr("QuickActuationWidget", "Min:"))
+        min_label.setMinimumWidth(70)
+        min_label.setMaximumWidth(70)
+        min_layout.addWidget(min_label)
+        self.midi_velocity_min = QSlider(Qt.Horizontal)
+        self.midi_velocity_min.setMinimum(1)
+        self.midi_velocity_min.setMaximum(127)
+        self.midi_velocity_min.setValue(1)
+        self.midi_velocity_min.valueChanged.connect(lambda v: self.on_midi_velocity_slider_changed('min', v))
+        min_layout.addWidget(self.midi_velocity_min, 1)
+        self.midi_velocity_min_label = QLabel("1")
+        self.midi_velocity_min_label.setMinimumWidth(40)
+        self.midi_velocity_min_label.setMaximumWidth(40)
+        self.midi_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
+        min_layout.addWidget(self.midi_velocity_min_label)
         adv_vel_layout.addLayout(min_layout)
 
-        # Velocity Max
+        # Velocity Max (slider)
         max_layout = QHBoxLayout()
-        max_layout.addWidget(QLabel(tr("QuickActuationWidget", "Max:")))
-        self.midi_velocity_max = ArrowComboBox()
-        self.midi_velocity_max.setMinimumWidth(100)
-        for i in range(1, 128):
-            self.midi_velocity_max.addItem(str(i), i)
-        self.midi_velocity_max.setCurrentIndex(126)
-        self.midi_velocity_max.currentIndexChanged.connect(self.on_midi_settings_changed)
-        max_layout.addWidget(self.midi_velocity_max)
+        max_layout.setContentsMargins(0, 0, 0, 0)
+        max_layout.setSpacing(6)
+        max_label = QLabel(tr("QuickActuationWidget", "Max:"))
+        max_label.setMinimumWidth(70)
+        max_label.setMaximumWidth(70)
+        max_layout.addWidget(max_label)
+        self.midi_velocity_max = QSlider(Qt.Horizontal)
+        self.midi_velocity_max.setMinimum(1)
+        self.midi_velocity_max.setMaximum(127)
+        self.midi_velocity_max.setValue(127)
+        self.midi_velocity_max.valueChanged.connect(lambda v: self.on_midi_velocity_slider_changed('max', v))
+        max_layout.addWidget(self.midi_velocity_max, 1)
+        self.midi_velocity_max_label = QLabel("127")
+        self.midi_velocity_max_label.setMinimumWidth(40)
+        self.midi_velocity_max_label.setMaximumWidth(40)
+        self.midi_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
+        max_layout.addWidget(self.midi_velocity_max_label)
         adv_vel_layout.addLayout(max_layout)
 
         # Aftertouch settings
@@ -490,9 +540,16 @@ class QuickActuationWidget(QWidget):
 
         # Aftertouch
         at_layout = QHBoxLayout()
-        at_layout.addWidget(QLabel(tr("QuickActuationWidget", "Aftertouch:")))
+        at_layout.setContentsMargins(0, 0, 0, 0)
+        at_layout.setSpacing(6)
+        at_label = QLabel(tr("QuickActuationWidget", "Aftertouch:"))
+        at_label.setMinimumWidth(70)
+        at_label.setMaximumWidth(70)
+        at_layout.addWidget(at_label)
         self.midi_aftertouch = ArrowComboBox()
-        self.midi_aftertouch.setMinimumWidth(100)
+        self.midi_aftertouch.setMaximumHeight(30)
+        self.midi_aftertouch.setMaximumWidth(180)
+        self.midi_aftertouch.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_aftertouch.addItem("Off", 0)
         self.midi_aftertouch.addItem("Reverse", 1)
         self.midi_aftertouch.addItem("Bottom-Out", 2)
@@ -501,18 +558,27 @@ class QuickActuationWidget(QWidget):
         self.midi_aftertouch.setCurrentIndex(0)
         self.midi_aftertouch.currentIndexChanged.connect(self.on_midi_settings_changed)
         at_layout.addWidget(self.midi_aftertouch)
+        at_layout.addStretch()
         aftertouch_layout.addLayout(at_layout)
 
         # Aftertouch CC
         atcc_layout = QHBoxLayout()
-        atcc_layout.addWidget(QLabel(tr("QuickActuationWidget", "AT CC:")))
+        atcc_layout.setContentsMargins(0, 0, 0, 0)
+        atcc_layout.setSpacing(6)
+        atcc_label = QLabel(tr("QuickActuationWidget", "AT CC:"))
+        atcc_label.setMinimumWidth(70)
+        atcc_label.setMaximumWidth(70)
+        atcc_layout.addWidget(atcc_label)
         self.midi_aftertouch_cc = ArrowComboBox()
-        self.midi_aftertouch_cc.setMinimumWidth(100)
+        self.midi_aftertouch_cc.setMaximumHeight(30)
+        self.midi_aftertouch_cc.setMaximumWidth(180)
+        self.midi_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         for cc in range(128):
             self.midi_aftertouch_cc.addItem(f"CC#{cc}", cc)
         self.midi_aftertouch_cc.setCurrentIndex(74)
         self.midi_aftertouch_cc.currentIndexChanged.connect(self.on_midi_settings_changed)
         atcc_layout.addWidget(self.midi_aftertouch_cc)
+        atcc_layout.addStretch()
         aftertouch_layout.addLayout(atcc_layout)
 
         # KeySplit Enable
@@ -872,14 +938,10 @@ class QuickActuationWidget(QWidget):
                 if self.midi_velocity_curve.itemData(i) == config['curve']:
                     self.midi_velocity_curve.setCurrentIndex(i)
                     break
-            for i in range(self.midi_velocity_min.count()):
-                if self.midi_velocity_min.itemData(i) == config['min']:
-                    self.midi_velocity_min.setCurrentIndex(i)
-                    break
-            for i in range(self.midi_velocity_max.count()):
-                if self.midi_velocity_max.itemData(i) == config['max']:
-                    self.midi_velocity_max.setCurrentIndex(i)
-                    break
+            self.midi_velocity_min.setValue(config['min'])
+            self.midi_velocity_min_label.setText(str(config['min']))
+            self.midi_velocity_max.setValue(config['max'])
+            self.midi_velocity_max_label.setText(str(config['max']))
             self.syncing = False
 
     def on_midi_advanced_toggled(self):
@@ -891,10 +953,26 @@ class QuickActuationWidget(QWidget):
         # When leaving advanced mode, show preset selector
         if show_advanced:
             self.midi_velocity_preset.setVisible(False)
-            self.midi_velocity_preset.parent().layout().itemAt(0).widget().setVisible(False)
+            self.midi_velocity_preset_label.setVisible(False)
+            # Double the width when showing advanced settings
+            self.setMinimumWidth(350)
+            self.setMaximumWidth(700)
         else:
             self.midi_velocity_preset.setVisible(True)
-            self.midi_velocity_preset.parent().layout().itemAt(0).widget().setVisible(True)
+            self.midi_velocity_preset_label.setVisible(True)
+            # Set both min and max to standard width when not showing advanced
+            self.setMinimumWidth(350)
+            self.setMaximumWidth(350)
+
+    def on_midi_velocity_slider_changed(self, slider_type, value):
+        """Handle velocity slider changes"""
+        if slider_type == 'min':
+            self.midi_velocity_min_label.setText(str(value))
+        elif slider_type == 'max':
+            self.midi_velocity_max_label.setText(str(value))
+
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
 
     def on_keysplit_enabled_toggled(self):
         """Toggle KeySplit settings visibility"""
@@ -914,8 +992,8 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['transpose'] = self.midi_transpose.currentData()
         self.midi_settings['velocity_preset'] = self.midi_velocity_preset.currentData()
         self.midi_settings['velocity_curve'] = self.midi_velocity_curve.currentData()
-        self.midi_settings['velocity_min'] = self.midi_velocity_min.currentData()
-        self.midi_settings['velocity_max'] = self.midi_velocity_max.currentData()
+        self.midi_settings['velocity_min'] = self.midi_velocity_min.value()
+        self.midi_settings['velocity_max'] = self.midi_velocity_max.value()
         self.midi_settings['aftertouch'] = self.midi_aftertouch.currentData()
         self.midi_settings['aftertouch_cc'] = self.midi_aftertouch_cc.currentData()
 
