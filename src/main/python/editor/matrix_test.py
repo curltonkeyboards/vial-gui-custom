@@ -6,7 +6,7 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider)
+                           QScrollArea, QSlider, QTabWidget)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 
@@ -2065,385 +2065,254 @@ class LayerActuationConfigurator(BasicEditor):
         adv_line.setFrameShadow(QFrame.Sunken)
         advanced_layout_main.addWidget(adv_line)
 
-        # Title for MIDI settings section
+        # Title row with Advanced checkbox on the right
+        title_row_layout = QHBoxLayout()
+        title_row_layout.setContentsMargins(0, 0, 0, 0)
+
         midi_settings_title = QLabel(tr("LayerActuationConfigurator", "Basic MIDI Settings"))
         midi_settings_title.setStyleSheet("QLabel { font-weight: bold; font-size: 11px; margin: 5px 0px; }")
-        advanced_layout_main.addWidget(midi_settings_title)
+        title_row_layout.addWidget(midi_settings_title)
 
-        # Container for MIDI settings and split offshoots (side by side)
-        content_container = QHBoxLayout()
+        title_row_layout.addStretch()
+
+        self.advanced_mode_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Advanced"))
+        self.advanced_mode_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.advanced_mode_checkbox.stateChanged.connect(self.on_advanced_mode_toggled)
+        title_row_layout.addWidget(self.advanced_mode_checkbox)
+
+        advanced_layout_main.addLayout(title_row_layout)
+
+        # Main container for MIDI settings (min/max width 300px)
+        self.basic_midi_container = QWidget()
+        self.basic_midi_container.setMinimumWidth(300)
+        self.basic_midi_container.setMaximumWidth(300)
+        self.basic_midi_main_layout = QVBoxLayout()
+        self.basic_midi_main_layout.setSpacing(8)
+        self.basic_midi_main_layout.setContentsMargins(5, 10, 5, 10)
+        self.basic_midi_container.setLayout(self.basic_midi_main_layout)
+
+        # Create the basic MIDI settings content
+        self.basic_midi_content = QWidget()
         advanced_layout = QVBoxLayout()
+        advanced_layout.setSpacing(8)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        self.basic_midi_content.setLayout(advanced_layout)
 
-        # Split Mode control
-        split_mode_layout = QHBoxLayout()
-        split_mode_label = QLabel(tr("LayerActuationConfigurator", "Split Mode:"))
-        split_mode_label.setMinimumWidth(200)
-        split_mode_layout.addWidget(split_mode_label)
+        # Channel control (vertical layout)
+        channel_label = QLabel(tr("LayerActuationConfigurator", "Channel"))
+        channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        advanced_layout.addWidget(channel_label)
 
-        self.actuation_split_mode = ArrowComboBox()
-        self.actuation_split_mode.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.actuation_split_mode.addItem("Disable Keysplit", 0)
-        self.actuation_split_mode.addItem("KeySplit On", 1)
-        self.actuation_split_mode.addItem("TripleSplit On", 2)
-        self.actuation_split_mode.setCurrentIndex(0)
-        self.actuation_split_mode.setEditable(True)
-        self.actuation_split_mode.lineEdit().setReadOnly(True)
-        self.actuation_split_mode.lineEdit().setAlignment(Qt.AlignCenter)
-        self.actuation_split_mode.currentIndexChanged.connect(self.on_actuation_split_mode_changed)
-        split_mode_layout.addWidget(self.actuation_split_mode)
-        split_mode_layout.addStretch()
+        self.actuation_channel = ArrowComboBox()
+        self.actuation_channel.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.actuation_channel.setMaximumWidth(80)
+        for i in range(16):
+            self.actuation_channel.addItem(str(i + 1), i)
+        self.actuation_channel.setCurrentIndex(0)
+        self.actuation_channel.setEditable(True)
+        self.actuation_channel.lineEdit().setReadOnly(True)
+        self.actuation_channel.lineEdit().setAlignment(Qt.AlignCenter)
+        advanced_layout.addWidget(self.actuation_channel)
 
-        advanced_layout.addLayout(split_mode_layout)
+        # Transpose control (vertical layout)
+        transpose_label = QLabel(tr("LayerActuationConfigurator", "Transpose"))
+        transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        advanced_layout.addWidget(transpose_label)
 
-        # MIDI Keys Actuation (slider)
-        midi_slider_layout = QHBoxLayout()
-        midi_label = QLabel(tr("LayerActuationConfigurator", "MIDI Keys Actuation:"))
-        midi_label.setMinimumWidth(200)
-        midi_slider_layout.addWidget(midi_label)
-        
-        midi_slider = QSlider(Qt.Horizontal)
-        midi_slider.setMinimum(0)
-        midi_slider.setMaximum(100)
-        midi_slider.setValue(80)
-        midi_slider_layout.addWidget(midi_slider)
-        
-        midi_value_label = QLabel("2.00mm (80)")
-        midi_value_label.setMinimumWidth(100)
-        midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_slider_layout.addWidget(midi_value_label)
-        
-        advanced_layout.addLayout(midi_slider_layout)
-        midi_slider.valueChanged.connect(
-            lambda v, lbl=midi_value_label: self.on_master_slider_changed('midi', v, lbl)
-        )
-        
-        # Aftertouch Mode (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch Mode:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        aftertouch_combo = ArrowComboBox()
-        aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        aftertouch_combo.addItem("Off", 0)
-        aftertouch_combo.addItem("Reverse", 1)
-        aftertouch_combo.addItem("Bottom-Out", 2)
-        aftertouch_combo.addItem("Post-Actuation", 3)
-        aftertouch_combo.addItem("Vibrato", 4)
-        aftertouch_combo.setCurrentIndex(0)
-        aftertouch_combo.setEditable(True)
-        aftertouch_combo.lineEdit().setReadOnly(True)
-        aftertouch_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(aftertouch_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        aftertouch_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
-        )
-        
-        # Aftertouch CC (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        aftertouch_cc_combo = ArrowComboBox()
-        aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for cc in range(128):
-            aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
-        aftertouch_cc_combo.setCurrentIndex(74)
-        aftertouch_cc_combo.setEditable(True)
-        aftertouch_cc_combo.lineEdit().setReadOnly(True)
-        aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(aftertouch_cc_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        aftertouch_cc_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
-        )
-        
-        # Velocity Mode (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Velocity Mode:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        velocity_combo = ArrowComboBox()
-        velocity_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        velocity_combo.addItem("Fixed (64)", 0)
-        velocity_combo.addItem("Peak at Apex", 1)
-        velocity_combo.addItem("Speed-Based", 2)
-        velocity_combo.addItem("Speed + Peak Combined", 3)
-        velocity_combo.setCurrentIndex(2)
-        velocity_combo.setEditable(True)
-        velocity_combo.lineEdit().setReadOnly(True)
-        velocity_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(velocity_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        velocity_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('velocity', velocity_combo)
-        )
-        
-        # Velocity Speed Scale (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Velocity Speed Scale:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        vel_speed_combo = ArrowComboBox()
-        vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 21):
-            vel_speed_combo.addItem(str(i), i)
-        vel_speed_combo.setCurrentIndex(9)
-        vel_speed_combo.setEditable(True)
-        vel_speed_combo.lineEdit().setReadOnly(True)
-        vel_speed_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(vel_speed_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        vel_speed_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('vel_speed', vel_speed_combo)
-        )
-        
-        # Enable MIDI Rapidfire checkbox
-        midi_rapid_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable MIDI Rapidfire"))
-        midi_rapid_checkbox.setChecked(False)
-        advanced_layout.addWidget(midi_rapid_checkbox)
-        midi_rapid_checkbox.stateChanged.connect(self.on_midi_rapidfire_toggled)
-        
-        # MIDI Rapidfire Sensitivity (slider) - hidden by default
-        midi_rapid_sens_layout = QHBoxLayout()
-        midi_rapid_sens_label = QLabel(tr("LayerActuationConfigurator", "MIDI Rapidfire Sensitivity:"))
-        midi_rapid_sens_label.setMinimumWidth(200)
-        midi_rapid_sens_layout.addWidget(midi_rapid_sens_label)
-        
-        midi_rapid_sens_slider = QSlider(Qt.Horizontal)
-        midi_rapid_sens_slider.setMinimum(1)
-        midi_rapid_sens_slider.setMaximum(100)
-        midi_rapid_sens_slider.setValue(10)
-        midi_rapid_sens_layout.addWidget(midi_rapid_sens_slider)
-        
-        midi_rapid_sens_value_label = QLabel("10")
-        midi_rapid_sens_value_label.setMinimumWidth(100)
-        midi_rapid_sens_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_rapid_sens_layout.addWidget(midi_rapid_sens_value_label)
-        
-        midi_rapid_sens_widget = QWidget()
-        midi_rapid_sens_widget.setLayout(midi_rapid_sens_layout)
-        midi_rapid_sens_widget.setVisible(False)
-        advanced_layout.addWidget(midi_rapid_sens_widget)
-        
-        midi_rapid_sens_slider.valueChanged.connect(
-            lambda v, lbl=midi_rapid_sens_value_label: self.on_master_slider_changed('midi_rapid_sens', v, lbl)
-        )
-        
-        # MIDI Rapidfire Velocity Range (slider) - hidden by default
-        midi_rapid_vel_layout = QHBoxLayout()
-        midi_rapid_vel_label = QLabel(tr("LayerActuationConfigurator", "MIDI Rapidfire Velocity Range:"))
-        midi_rapid_vel_label.setMinimumWidth(200)
-        midi_rapid_vel_layout.addWidget(midi_rapid_vel_label)
-        
-        midi_rapid_vel_slider = QSlider(Qt.Horizontal)
-        midi_rapid_vel_slider.setMinimum(0)
-        midi_rapid_vel_slider.setMaximum(20)
-        midi_rapid_vel_slider.setValue(10)
-        midi_rapid_vel_layout.addWidget(midi_rapid_vel_slider)
-        
-        midi_rapid_vel_value_label = QLabel("±10")
-        midi_rapid_vel_value_label.setMinimumWidth(100)
-        midi_rapid_vel_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_rapid_vel_layout.addWidget(midi_rapid_vel_value_label)
-        
-        midi_rapid_vel_widget = QWidget()
-        midi_rapid_vel_widget.setLayout(midi_rapid_vel_layout)
-        midi_rapid_vel_widget.setVisible(False)
-        advanced_layout.addWidget(midi_rapid_vel_widget)
-        
-        midi_rapid_vel_slider.valueChanged.connect(
-            lambda v, lbl=midi_rapid_vel_value_label: self.on_master_slider_changed('midi_rapid_vel', v, lbl)
-        )
+        self.actuation_transpose = ArrowComboBox()
+        self.actuation_transpose.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.actuation_transpose.setMaximumWidth(80)
+        for i in range(-64, 65):
+            self.actuation_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.actuation_transpose.setCurrentIndex(64)
+        self.actuation_transpose.setEditable(True)
+        self.actuation_transpose.lineEdit().setReadOnly(True)
+        self.actuation_transpose.lineEdit().setAlignment(Qt.AlignCenter)
+        advanced_layout.addWidget(self.actuation_transpose)
 
-        # === HE VELOCITY CONTROLS ===
-        # Add separator
-        he_line = QFrame()
-        he_line.setFrameShape(QFrame.HLine)
-        he_line.setFrameShadow(QFrame.Sunken)
-        advanced_layout.addWidget(he_line)
+        # Sustain control (vertical layout)
+        sustain_label = QLabel(tr("LayerActuationConfigurator", "Sustain"))
+        sustain_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        advanced_layout.addWidget(sustain_label)
 
-        # Use Fixed Velocity checkbox
-        use_fixed_vel_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Use Fixed Velocity"))
-        use_fixed_vel_checkbox.setChecked(False)
-        use_fixed_vel_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
-        advanced_layout.addWidget(use_fixed_vel_checkbox)
-        use_fixed_vel_checkbox.stateChanged.connect(self.on_use_fixed_velocity_toggled)
+        self.actuation_sustain = ArrowComboBox()
+        self.actuation_sustain.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.actuation_sustain.setMaximumWidth(80)
+        self.actuation_sustain.addItem("Allow", 1)
+        self.actuation_sustain.addItem("Ignore", 0)
+        self.actuation_sustain.setCurrentIndex(0)
+        self.actuation_sustain.setEditable(True)
+        self.actuation_sustain.lineEdit().setReadOnly(True)
+        self.actuation_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        advanced_layout.addWidget(self.actuation_sustain)
 
-        # HE Velocity Curve (dropdown)
-        curve_layout = QHBoxLayout()
-        curve_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Curve:"))
-        curve_label.setMinimumWidth(200)
-        curve_layout.addWidget(curve_label)
+        # Add basic MIDI content to main layout
+        self.basic_midi_main_layout.addWidget(self.basic_midi_content)
 
-        he_curve_combo = ArrowComboBox()
-        he_curve_combo.setMinimumHeight(30)
-        he_curve_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; font-size: 12px; } QComboBox QAbstractItemView { min-height: 125px; }")
-        he_curve_combo.addItem("Softest", 0)
-        he_curve_combo.addItem("Soft", 1)
-        he_curve_combo.addItem("Medium", 2)
-        he_curve_combo.addItem("Hard", 3)
-        he_curve_combo.addItem("Hardest", 4)
-        he_curve_combo.setCurrentIndex(2)  # Default: Medium
-        he_curve_combo.setEditable(True)
-        he_curve_combo.lineEdit().setReadOnly(True)
-        he_curve_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        curve_layout.addWidget(he_curve_combo)
-        curve_layout.addStretch()
+        # Advanced mode container (hidden by default, shown when Advanced checkbox is ticked)
+        self.advanced_mode_container = QWidget()
+        self.advanced_mode_layout = QVBoxLayout()
+        self.advanced_mode_layout.setSpacing(8)
+        self.advanced_mode_layout.setContentsMargins(0, 10, 0, 0)
+        self.advanced_mode_container.setLayout(self.advanced_mode_layout)
+        self.advanced_mode_container.setVisible(False)
 
-        advanced_layout.addLayout(curve_layout)
-        he_curve_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('he_curve', he_curve_combo)
-        )
+        # Enable Keysplit checkbox
+        self.enable_keysplit_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable Keysplit"))
+        self.enable_keysplit_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.enable_keysplit_checkbox.stateChanged.connect(self.on_enable_keysplit_toggled)
+        self.advanced_mode_layout.addWidget(self.enable_keysplit_checkbox)
 
-        # HE Velocity Min (slider)
-        he_min_layout = QHBoxLayout()
-        he_min_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Min:"))
-        he_min_label.setMinimumWidth(200)
-        he_min_layout.addWidget(he_min_label)
+        # Enable Triplesplit checkbox
+        self.enable_triplesplit_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable Triplesplit"))
+        self.enable_triplesplit_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.enable_triplesplit_checkbox.stateChanged.connect(self.on_enable_triplesplit_toggled)
+        self.advanced_mode_layout.addWidget(self.enable_triplesplit_checkbox)
 
-        he_min_slider = QSlider(Qt.Horizontal)
-        he_min_slider.setMinimum(1)
-        he_min_slider.setMaximum(127)
-        he_min_slider.setValue(1)
-        he_min_layout.addWidget(he_min_slider)
+        # Add advanced mode container to main layout
+        self.basic_midi_main_layout.addWidget(self.advanced_mode_container)
 
-        he_min_value_label = QLabel("1")
-        he_min_value_label.setMinimumWidth(100)
-        he_min_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        he_min_layout.addWidget(he_min_value_label)
+        # Tab widget for keysplit/triplesplit (hidden by default, shown when either is enabled)
+        self.split_tabs = QTabWidget()
+        self.split_tabs.setStyleSheet("QTabWidget { font-size: 10px; }")
+        self.split_tabs.setVisible(False)
 
-        advanced_layout.addLayout(he_min_layout)
-        he_min_slider.valueChanged.connect(
-            lambda v, lbl=he_min_value_label: self.on_master_slider_changed('he_min', v, lbl)
-        )
+        # Keysplit tab
+        self.keysplit_tab = QWidget()
+        keysplit_layout = QVBoxLayout()
+        keysplit_layout.setSpacing(8)
+        keysplit_layout.setContentsMargins(5, 10, 5, 10)
+        self.keysplit_tab.setLayout(keysplit_layout)
 
-        # HE Velocity Max (slider)
-        he_max_layout = QHBoxLayout()
-        he_max_label = QLabel(tr("LayerActuationConfigurator", "HE Velocity Max:"))
-        he_max_label.setMinimumWidth(200)
-        he_max_layout.addWidget(he_max_label)
+        # Keysplit Channel
+        ks_channel_label = QLabel(tr("LayerActuationConfigurator", "Channel"))
+        ks_channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        keysplit_layout.addWidget(ks_channel_label)
 
-        he_max_slider = QSlider(Qt.Horizontal)
-        he_max_slider.setMinimum(1)
-        he_max_slider.setMaximum(127)
-        he_max_slider.setValue(127)
-        he_max_layout.addWidget(he_max_slider)
+        self.keysplit_channel = ArrowComboBox()
+        self.keysplit_channel.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.keysplit_channel.setMaximumWidth(80)
+        for i in range(16):
+            self.keysplit_channel.addItem(str(i + 1), i)
+        self.keysplit_channel.setCurrentIndex(0)
+        self.keysplit_channel.setEditable(True)
+        self.keysplit_channel.lineEdit().setReadOnly(True)
+        self.keysplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_channel)
 
-        he_max_value_label = QLabel("127")
-        he_max_value_label.setMinimumWidth(100)
-        he_max_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        he_max_layout.addWidget(he_max_value_label)
+        # Keysplit Transpose
+        ks_transpose_label = QLabel(tr("LayerActuationConfigurator", "Transpose"))
+        ks_transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        keysplit_layout.addWidget(ks_transpose_label)
 
-        advanced_layout.addLayout(he_max_layout)
-        he_max_slider.valueChanged.connect(
-            lambda v, lbl=he_max_value_label: self.on_master_slider_changed('he_max', v, lbl)
-        )
+        self.keysplit_transpose = ArrowComboBox()
+        self.keysplit_transpose.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.keysplit_transpose.setMaximumWidth(80)
+        for i in range(-64, 65):
+            self.keysplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.keysplit_transpose.setCurrentIndex(64)
+        self.keysplit_transpose.setEditable(True)
+        self.keysplit_transpose.lineEdit().setReadOnly(True)
+        self.keysplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_transpose)
 
-        # Add the MIDI settings layout to the content container
-        content_container.addLayout(advanced_layout, 1)
+        # Keysplit Sustain
+        ks_sustain_label = QLabel(tr("LayerActuationConfigurator", "Sustain"))
+        ks_sustain_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        keysplit_layout.addWidget(ks_sustain_label)
 
-        # Create KeySplit offshoot window
-        self.keysplit_actuation_offshoot = QGroupBox(tr("LayerActuationConfigurator", "KeySplit Settings"))
-        self.keysplit_actuation_offshoot.setMaximumWidth(300)
-        keysplit_layout = QGridLayout()
-        keysplit_layout.setVerticalSpacing(10)
-        keysplit_layout.setHorizontalSpacing(10)
-        self.keysplit_actuation_offshoot.setLayout(keysplit_layout)
+        self.keysplit_sustain = ArrowComboBox()
+        self.keysplit_sustain.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.keysplit_sustain.setMaximumWidth(80)
+        self.keysplit_sustain.addItem("Allow", 1)
+        self.keysplit_sustain.addItem("Ignore", 0)
+        self.keysplit_sustain.setCurrentIndex(0)
+        self.keysplit_sustain.setEditable(True)
+        self.keysplit_sustain.lineEdit().setReadOnly(True)
+        self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_sustain)
 
-        ks_row = 0
-        keysplit_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "Sustain:")), ks_row, 0)
-        self.keysplit_actuation_sustain = ArrowComboBox()
-        self.keysplit_actuation_sustain.setMinimumWidth(80)
-        self.keysplit_actuation_sustain.setMaximumWidth(120)
-        self.keysplit_actuation_sustain.setMinimumHeight(25)
-        self.keysplit_actuation_sustain.setMaximumHeight(25)
-        self.keysplit_actuation_sustain.addItem("Ignore", 0)
-        self.keysplit_actuation_sustain.addItem("Allow", 1)
-        self.keysplit_actuation_sustain.setCurrentIndex(0)
-        self.keysplit_actuation_sustain.setEditable(True)
-        self.keysplit_actuation_sustain.lineEdit().setReadOnly(True)
-        self.keysplit_actuation_sustain.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.keysplit_actuation_sustain, ks_row, 1)
+        keysplit_layout.addStretch()
 
-        self.keysplit_actuation_offshoot.hide()
+        self.split_tabs.addTab(self.keysplit_tab, "Keysplit")
 
-        # TripleSplit offshoot window
-        self.triplesplit_actuation_offshoot = QGroupBox(tr("LayerActuationConfigurator", "TripleSplit Settings"))
-        self.triplesplit_actuation_offshoot.setMaximumWidth(300)
-        triplesplit_layout = QGridLayout()
-        triplesplit_layout.setVerticalSpacing(10)
-        triplesplit_layout.setHorizontalSpacing(10)
-        self.triplesplit_actuation_offshoot.setLayout(triplesplit_layout)
+        # Triplesplit tab
+        self.triplesplit_tab = QWidget()
+        triplesplit_layout = QVBoxLayout()
+        triplesplit_layout.setSpacing(8)
+        triplesplit_layout.setContentsMargins(5, 10, 5, 10)
+        self.triplesplit_tab.setLayout(triplesplit_layout)
 
-        ts_row = 0
-        triplesplit_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "Sustain:")), ts_row, 0)
-        self.triplesplit_actuation_sustain = ArrowComboBox()
-        self.triplesplit_actuation_sustain.setMinimumWidth(80)
-        self.triplesplit_actuation_sustain.setMaximumWidth(120)
-        self.triplesplit_actuation_sustain.setMinimumHeight(25)
-        self.triplesplit_actuation_sustain.setMaximumHeight(25)
-        self.triplesplit_actuation_sustain.addItem("Ignore", 0)
-        self.triplesplit_actuation_sustain.addItem("Allow", 1)
-        self.triplesplit_actuation_sustain.setCurrentIndex(0)
-        self.triplesplit_actuation_sustain.setEditable(True)
-        self.triplesplit_actuation_sustain.lineEdit().setReadOnly(True)
-        self.triplesplit_actuation_sustain.lineEdit().setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.triplesplit_actuation_sustain, ts_row, 1)
+        # Triplesplit Channel
+        ts_channel_label = QLabel(tr("LayerActuationConfigurator", "Channel"))
+        ts_channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        triplesplit_layout.addWidget(ts_channel_label)
 
-        self.triplesplit_actuation_offshoot.hide()
+        self.triplesplit_channel = ArrowComboBox()
+        self.triplesplit_channel.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.triplesplit_channel.setMaximumWidth(80)
+        for i in range(16):
+            self.triplesplit_channel.addItem(str(i + 1), i)
+        self.triplesplit_channel.setCurrentIndex(0)
+        self.triplesplit_channel.setEditable(True)
+        self.triplesplit_channel.lineEdit().setReadOnly(True)
+        self.triplesplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_channel)
 
-        # Add offshoots to content container (side by side)
-        content_container.addWidget(self.keysplit_actuation_offshoot)
-        content_container.addWidget(self.triplesplit_actuation_offshoot)
+        # Triplesplit Transpose
+        ts_transpose_label = QLabel(tr("LayerActuationConfigurator", "Transpose"))
+        ts_transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        triplesplit_layout.addWidget(ts_transpose_label)
 
-        # Add content container to main advanced layout
-        advanced_layout_main.addLayout(content_container)
+        self.triplesplit_transpose = ArrowComboBox()
+        self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.triplesplit_transpose.setMaximumWidth(80)
+        for i in range(-64, 65):
+            self.triplesplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.triplesplit_transpose.setCurrentIndex(64)
+        self.triplesplit_transpose.setEditable(True)
+        self.triplesplit_transpose.lineEdit().setReadOnly(True)
+        self.triplesplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_transpose)
+
+        # Triplesplit Sustain
+        ts_sustain_label = QLabel(tr("LayerActuationConfigurator", "Sustain"))
+        ts_sustain_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        triplesplit_layout.addWidget(ts_sustain_label)
+
+        self.triplesplit_sustain = ArrowComboBox()
+        self.triplesplit_sustain.setStyleSheet("QComboBox { padding: 2px; text-align: center; }")
+        self.triplesplit_sustain.setMaximumWidth(80)
+        self.triplesplit_sustain.addItem("Allow", 1)
+        self.triplesplit_sustain.addItem("Ignore", 0)
+        self.triplesplit_sustain.setCurrentIndex(0)
+        self.triplesplit_sustain.setEditable(True)
+        self.triplesplit_sustain.lineEdit().setReadOnly(True)
+        self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_sustain)
+
+        triplesplit_layout.addStretch()
+
+        self.split_tabs.addTab(self.triplesplit_tab, "Triplesplit")
+
+        # Add tab widget to main layout
+        self.basic_midi_main_layout.addWidget(self.split_tabs)
+
+        # Add the main container to the advanced layout
+        advanced_layout_main.addWidget(self.basic_midi_container, alignment=Qt.AlignLeft)
 
         layout.addWidget(self.advanced_widget)
-        
+
         # Store widgets
         self.master_widgets = {
             'normal_slider': normal_slider,
             'normal_label': normal_value_label,
-            'midi_slider': midi_slider,
-            'midi_label': midi_value_label,
-            'aftertouch_combo': aftertouch_combo,
-            'aftertouch_cc_combo': aftertouch_cc_combo,
-            'velocity_combo': velocity_combo,
-            'vel_speed_combo': vel_speed_combo,
             'rapid_checkbox': rapid_checkbox,
             'rapid_slider': rapid_slider,
             'rapid_label': rapid_value_label,
             'rapid_widget': rapid_slider_widget,
-            'midi_rapid_checkbox': midi_rapid_checkbox,
-            'midi_rapid_sens_slider': midi_rapid_sens_slider,
-            'midi_rapid_sens_label': midi_rapid_sens_value_label,
-            'midi_rapid_sens_widget': midi_rapid_sens_widget,
-            'midi_rapid_vel_slider': midi_rapid_vel_slider,
-            'midi_rapid_vel_label': midi_rapid_vel_value_label,
-            'midi_rapid_vel_widget': midi_rapid_vel_widget,
-            # HE Velocity controls
-            'use_fixed_vel_checkbox': use_fixed_vel_checkbox,
-            'he_curve_combo': he_curve_combo,
-            'he_min_slider': he_min_slider,
-            'he_min_label': he_min_value_label,
-            'he_max_slider': he_max_slider,
-            'he_max_label': he_max_value_label
         }
-        
+
         return group
     
     def create_layer_group(self):
@@ -2838,23 +2707,55 @@ class LayerActuationConfigurator(BasicEditor):
         self.advanced_shown = self.advanced_checkbox.isChecked()
         self.advanced_widget.setVisible(self.advanced_shown)
 
-    def on_actuation_split_mode_changed(self):
-        """Show/hide split offshoots based on split mode"""
-        if not hasattr(self, 'actuation_split_mode'):
-            return
+    def on_advanced_mode_toggled(self):
+        """Show/hide advanced mode container with keysplit/triplesplit checkboxes"""
+        is_advanced = self.advanced_mode_checkbox.isChecked()
+        self.advanced_mode_container.setVisible(is_advanced)
 
-        split_status = self.actuation_split_mode.currentData()
+        # Hide tabs if advanced mode is turned off
+        if not is_advanced:
+            self.enable_keysplit_checkbox.setChecked(False)
+            self.enable_triplesplit_checkbox.setChecked(False)
+            self.split_tabs.setVisible(False)
+            self.basic_midi_content.setVisible(True)
 
-        # Show/hide offshoot windows based on split mode
-        if split_status == 1:  # KeySplit only
-            self.keysplit_actuation_offshoot.show()
-            self.triplesplit_actuation_offshoot.hide()
-        elif split_status == 2:  # TripleSplit
-            self.keysplit_actuation_offshoot.show()
-            self.triplesplit_actuation_offshoot.show()
-        else:  # No splits
-            self.keysplit_actuation_offshoot.hide()
-            self.triplesplit_actuation_offshoot.hide()
+    def on_enable_keysplit_toggled(self):
+        """Handle enable keysplit checkbox toggle"""
+        is_keysplit_enabled = self.enable_keysplit_checkbox.isChecked()
+        is_triplesplit_enabled = self.enable_triplesplit_checkbox.isChecked()
+
+        if is_keysplit_enabled or is_triplesplit_enabled:
+            # Show tabs and hide basic content
+            self.split_tabs.setVisible(True)
+            self.basic_midi_content.setVisible(False)
+
+            # Set the current tab based on what's enabled
+            if is_keysplit_enabled and not is_triplesplit_enabled:
+                self.split_tabs.setCurrentIndex(0)  # Keysplit tab
+        else:
+            # Hide tabs and show basic content
+            self.split_tabs.setVisible(False)
+            self.basic_midi_content.setVisible(True)
+
+    def on_enable_triplesplit_toggled(self):
+        """Handle enable triplesplit checkbox toggle"""
+        is_triplesplit_enabled = self.enable_triplesplit_checkbox.isChecked()
+
+        if is_triplesplit_enabled:
+            # Auto-tick enable keysplit
+            self.enable_keysplit_checkbox.setChecked(True)
+            # Show tabs and switch to triplesplit tab
+            self.split_tabs.setVisible(True)
+            self.basic_midi_content.setVisible(False)
+            self.split_tabs.setCurrentIndex(1)  # Triplesplit tab
+        else:
+            # Check if keysplit is still enabled
+            if self.enable_keysplit_checkbox.isChecked():
+                self.split_tabs.setCurrentIndex(0)  # Switch to keysplit tab
+            else:
+                # Hide tabs and show basic content
+                self.split_tabs.setVisible(False)
+                self.basic_midi_content.setVisible(True)
 
     def on_layer_advanced_toggled(self):
         """Show/hide advanced options in layer controls"""
