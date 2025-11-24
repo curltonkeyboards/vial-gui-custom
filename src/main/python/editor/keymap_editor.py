@@ -378,21 +378,11 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         tab.setLayout(layout)
 
-        # Title row with "Basic MIDI Settings" on left and "Advanced" checkbox on right
-        title_row = QHBoxLayout()
-        title_row.setContentsMargins(0, 0, 0, 0)
-        title_label = QLabel(tr("QuickActuationWidget", "Basic MIDI Settings"))
-        title_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11px; }")
-        title_row.addWidget(title_label)
-        title_row.addStretch()
-
-        # Advanced MIDI checkbox (outside the container)
-        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Advanced"))
+        # Advanced checkbox at the top
+        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced Options"))
         self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
         self.midi_advanced_checkbox.stateChanged.connect(self.on_midi_advanced_toggled)
-        title_row.addWidget(self.midi_advanced_checkbox)
-
-        layout.addLayout(title_row)
+        layout.addWidget(self.midi_advanced_checkbox)
 
         # Container that will switch between normal view and tabbed view
         self.midi_settings_container = QWidget()
@@ -412,19 +402,27 @@ class QuickActuationWidget(QWidget):
         self.basic_midi_controls = self.create_basic_midi_controls()
         self.basic_group_layout.addWidget(self.basic_midi_controls)
 
-        # Enable KeySplit checkbox (shown when advanced is enabled)
+        # Enable KeySplit and TripleSplit checkboxes on same row (shown when advanced is enabled)
+        split_checkboxes_layout = QHBoxLayout()
+        split_checkboxes_layout.setContentsMargins(0, 0, 0, 0)
+        split_checkboxes_layout.setSpacing(10)
+
         self.keysplit_enabled_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable KeySplit"))
         self.keysplit_enabled_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
         self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
-        self.keysplit_enabled_checkbox.setVisible(False)
-        self.basic_group_layout.addWidget(self.keysplit_enabled_checkbox)
+        split_checkboxes_layout.addWidget(self.keysplit_enabled_checkbox)
 
-        # Enable TripleSplit checkbox (shown when advanced is enabled)
         self.triplesplit_enabled_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable TripleSplit"))
         self.triplesplit_enabled_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
         self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
-        self.triplesplit_enabled_checkbox.setVisible(False)
-        self.basic_group_layout.addWidget(self.triplesplit_enabled_checkbox)
+        split_checkboxes_layout.addWidget(self.triplesplit_enabled_checkbox)
+
+        split_checkboxes_layout.addStretch()
+
+        self.split_checkboxes_widget = QWidget()
+        self.split_checkboxes_widget.setLayout(split_checkboxes_layout)
+        self.split_checkboxes_widget.setVisible(False)
+        self.basic_group_layout.addWidget(self.split_checkboxes_widget)
 
         self.midi_settings_layout.addWidget(self.basic_group)
 
@@ -529,11 +527,18 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
-        # Channel (label above, dropdown below)
+        # Channel and Transpose on same row
+        ch_trans_row = QHBoxLayout()
+        ch_trans_row.setContentsMargins(0, 0, 0, 0)
+        ch_trans_row.setSpacing(10)
+
+        # Channel column
+        ch_col = QVBoxLayout()
+        ch_col.setSpacing(2)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel"))
         ch_label.setStyleSheet("QLabel { font-size: 10px; }")
         ch_label.setAlignment(Qt.AlignLeft)
-        layout.addWidget(ch_label)
+        ch_col.addWidget(ch_label)
 
         self.midi_channel_combo = ArrowComboBox()
         self.midi_channel_combo.setMaximumWidth(60)
@@ -546,13 +551,16 @@ class QuickActuationWidget(QWidget):
             self.midi_channel_combo.addItem(f"{i + 1}", i)
         self.midi_channel_combo.setCurrentIndex(0)
         self.midi_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        layout.addWidget(self.midi_channel_combo)
+        ch_col.addWidget(self.midi_channel_combo)
+        ch_trans_row.addLayout(ch_col)
 
-        # Transpose (label above, dropdown below)
+        # Transpose column
+        trans_col = QVBoxLayout()
+        trans_col.setSpacing(2)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose"))
         trans_label.setStyleSheet("QLabel { font-size: 10px; }")
         trans_label.setAlignment(Qt.AlignLeft)
-        layout.addWidget(trans_label)
+        trans_col.addWidget(trans_label)
 
         self.midi_transpose_combo = ArrowComboBox()
         self.midi_transpose_combo.setMaximumWidth(60)
@@ -565,7 +573,11 @@ class QuickActuationWidget(QWidget):
             self.midi_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.midi_transpose_combo.setCurrentIndex(64)  # Default: 0
         self.midi_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        layout.addWidget(self.midi_transpose_combo)
+        trans_col.addWidget(self.midi_transpose_combo)
+        ch_trans_row.addLayout(trans_col)
+
+        ch_trans_row.addStretch()
+        layout.addLayout(ch_trans_row)
 
         # Sustain (label above, dropdown below)
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain"))
@@ -686,10 +698,35 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
-        # Channel
+        # Enable checkboxes row
+        enable_row = QHBoxLayout()
+        enable_row.setContentsMargins(0, 0, 0, 0)
+        enable_row.setSpacing(10)
+
+        self.keysplit_enabled_checkbox_tab = QCheckBox(tr("QuickActuationWidget", "Enable KeySplit"))
+        self.keysplit_enabled_checkbox_tab.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.keysplit_enabled_checkbox_tab.stateChanged.connect(self.on_keysplit_tab_checkbox_changed)
+        enable_row.addWidget(self.keysplit_enabled_checkbox_tab)
+
+        self.triplesplit_enabled_checkbox_tab_ks = QCheckBox(tr("QuickActuationWidget", "Enable TripleSplit"))
+        self.triplesplit_enabled_checkbox_tab_ks.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.triplesplit_enabled_checkbox_tab_ks.stateChanged.connect(self.on_triplesplit_tab_checkbox_changed)
+        enable_row.addWidget(self.triplesplit_enabled_checkbox_tab_ks)
+
+        enable_row.addStretch()
+        layout.addLayout(enable_row)
+
+        # Channel and Transpose on same row
+        ch_trans_row = QHBoxLayout()
+        ch_trans_row.setContentsMargins(0, 0, 0, 0)
+        ch_trans_row.setSpacing(10)
+
+        # Channel column
+        ch_col = QVBoxLayout()
+        ch_col.setSpacing(2)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel"))
         ch_label.setStyleSheet("QLabel { font-size: 10px; }")
-        layout.addWidget(ch_label)
+        ch_col.addWidget(ch_label)
 
         self.keysplit_channel = ArrowComboBox()
         self.keysplit_channel.setMaximumWidth(60)
@@ -702,12 +739,15 @@ class QuickActuationWidget(QWidget):
             self.keysplit_channel.addItem(f"{i + 1}", i)
         self.keysplit_channel.setCurrentIndex(0)
         self.keysplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
-        layout.addWidget(self.keysplit_channel)
+        ch_col.addWidget(self.keysplit_channel)
+        ch_trans_row.addLayout(ch_col)
 
-        # Transpose
+        # Transpose column
+        trans_col = QVBoxLayout()
+        trans_col.setSpacing(2)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose"))
         trans_label.setStyleSheet("QLabel { font-size: 10px; }")
-        layout.addWidget(trans_label)
+        trans_col.addWidget(trans_label)
 
         self.keysplit_transpose = ArrowComboBox()
         self.keysplit_transpose.setMaximumWidth(60)
@@ -720,7 +760,11 @@ class QuickActuationWidget(QWidget):
             self.keysplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.keysplit_transpose.setCurrentIndex(64)
         self.keysplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
-        layout.addWidget(self.keysplit_transpose)
+        trans_col.addWidget(self.keysplit_transpose)
+        ch_trans_row.addLayout(trans_col)
+
+        ch_trans_row.addStretch()
+        layout.addLayout(ch_trans_row)
 
         # Sustain
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain"))
@@ -811,10 +855,35 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
-        # Channel
+        # Enable checkboxes row
+        enable_row = QHBoxLayout()
+        enable_row.setContentsMargins(0, 0, 0, 0)
+        enable_row.setSpacing(10)
+
+        self.keysplit_enabled_checkbox_tab_ts = QCheckBox(tr("QuickActuationWidget", "Enable KeySplit"))
+        self.keysplit_enabled_checkbox_tab_ts.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.keysplit_enabled_checkbox_tab_ts.stateChanged.connect(self.on_keysplit_tab_checkbox_changed)
+        enable_row.addWidget(self.keysplit_enabled_checkbox_tab_ts)
+
+        self.triplesplit_enabled_checkbox_tab = QCheckBox(tr("QuickActuationWidget", "Enable TripleSplit"))
+        self.triplesplit_enabled_checkbox_tab.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.triplesplit_enabled_checkbox_tab.stateChanged.connect(self.on_triplesplit_tab_checkbox_changed)
+        enable_row.addWidget(self.triplesplit_enabled_checkbox_tab)
+
+        enable_row.addStretch()
+        layout.addLayout(enable_row)
+
+        # Channel and Transpose on same row
+        ch_trans_row = QHBoxLayout()
+        ch_trans_row.setContentsMargins(0, 0, 0, 0)
+        ch_trans_row.setSpacing(10)
+
+        # Channel column
+        ch_col = QVBoxLayout()
+        ch_col.setSpacing(2)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel"))
         ch_label.setStyleSheet("QLabel { font-size: 10px; }")
-        layout.addWidget(ch_label)
+        ch_col.addWidget(ch_label)
 
         self.triplesplit_channel = ArrowComboBox()
         self.triplesplit_channel.setMaximumWidth(60)
@@ -827,12 +896,15 @@ class QuickActuationWidget(QWidget):
             self.triplesplit_channel.addItem(f"{i + 1}", i)
         self.triplesplit_channel.setCurrentIndex(0)
         self.triplesplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
-        layout.addWidget(self.triplesplit_channel)
+        ch_col.addWidget(self.triplesplit_channel)
+        ch_trans_row.addLayout(ch_col)
 
-        # Transpose
+        # Transpose column
+        trans_col = QVBoxLayout()
+        trans_col.setSpacing(2)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose"))
         trans_label.setStyleSheet("QLabel { font-size: 10px; }")
-        layout.addWidget(trans_label)
+        trans_col.addWidget(trans_label)
 
         self.triplesplit_transpose = ArrowComboBox()
         self.triplesplit_transpose.setMaximumWidth(60)
@@ -845,7 +917,11 @@ class QuickActuationWidget(QWidget):
             self.triplesplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.triplesplit_transpose.setCurrentIndex(64)
         self.triplesplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
-        layout.addWidget(self.triplesplit_transpose)
+        trans_col.addWidget(self.triplesplit_transpose)
+        ch_trans_row.addLayout(trans_col)
+
+        ch_trans_row.addStretch()
+        layout.addLayout(ch_trans_row)
 
         # Sustain
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain"))
@@ -1124,8 +1200,7 @@ class QuickActuationWidget(QWidget):
         self.midi_advanced_widget.setVisible(show_advanced)
 
         # Show/hide keysplit/triplesplit checkboxes inside basic group
-        self.keysplit_enabled_checkbox.setVisible(show_advanced)
-        self.triplesplit_enabled_checkbox.setVisible(show_advanced)
+        self.split_checkboxes_widget.setVisible(show_advanced)
 
         # When entering advanced mode, hide preset and show curve/min/max
         # When leaving advanced mode, show preset and hide curve/min/max
@@ -1205,6 +1280,18 @@ class QuickActuationWidget(QWidget):
         keysplit_enabled = self.keysplit_enabled_checkbox.isChecked()
         triplesplit_enabled = self.triplesplit_enabled_checkbox.isChecked()
 
+        # Sync tab checkboxes with main checkboxes
+        self.syncing = True
+        if hasattr(self, 'keysplit_enabled_checkbox_tab'):
+            self.keysplit_enabled_checkbox_tab.setChecked(keysplit_enabled)
+        if hasattr(self, 'keysplit_enabled_checkbox_tab_ts'):
+            self.keysplit_enabled_checkbox_tab_ts.setChecked(keysplit_enabled)
+        if hasattr(self, 'triplesplit_enabled_checkbox_tab'):
+            self.triplesplit_enabled_checkbox_tab.setChecked(triplesplit_enabled)
+        if hasattr(self, 'triplesplit_enabled_checkbox_tab_ks'):
+            self.triplesplit_enabled_checkbox_tab_ks.setChecked(triplesplit_enabled)
+        self.syncing = False
+
         if keysplit_enabled or triplesplit_enabled:
             # Switch to tabbed view
             self.basic_group.setVisible(False)
@@ -1227,6 +1314,50 @@ class QuickActuationWidget(QWidget):
             # Switch to normal view
             self.basic_group.setVisible(True)
             self.midi_tabs.setVisible(False)
+
+    def on_keysplit_tab_checkbox_changed(self):
+        """Handle keysplit checkbox changes from tab widgets"""
+        if self.syncing:
+            return
+        # Get the state from whichever checkbox was changed
+        checked = False
+        if hasattr(self, 'keysplit_enabled_checkbox_tab') and self.sender() == self.keysplit_enabled_checkbox_tab:
+            checked = self.keysplit_enabled_checkbox_tab.isChecked()
+        elif hasattr(self, 'keysplit_enabled_checkbox_tab_ts') and self.sender() == self.keysplit_enabled_checkbox_tab_ts:
+            checked = self.keysplit_enabled_checkbox_tab_ts.isChecked()
+
+        # Update main checkbox
+        self.syncing = True
+        self.keysplit_enabled_checkbox.setChecked(checked)
+        self.syncing = False
+
+        # Update view and save
+        self.update_midi_container_view()
+        self.save_midi_ui_to_memory()
+
+    def on_triplesplit_tab_checkbox_changed(self):
+        """Handle triplesplit checkbox changes from tab widgets"""
+        if self.syncing:
+            return
+        # Get the state from whichever checkbox was changed
+        checked = False
+        if hasattr(self, 'triplesplit_enabled_checkbox_tab') and self.sender() == self.triplesplit_enabled_checkbox_tab:
+            checked = self.triplesplit_enabled_checkbox_tab.isChecked()
+        elif hasattr(self, 'triplesplit_enabled_checkbox_tab_ks') and self.sender() == self.triplesplit_enabled_checkbox_tab_ks:
+            checked = self.triplesplit_enabled_checkbox_tab_ks.isChecked()
+
+        # Update main checkbox (this will trigger auto-tick of keysplit if needed)
+        self.syncing = True
+        self.triplesplit_enabled_checkbox.setChecked(checked)
+        self.syncing = False
+
+        # If enabling triplesplit, also enable keysplit
+        if checked and not self.keysplit_enabled_checkbox.isChecked():
+            self.keysplit_enabled_checkbox.setChecked(True)
+
+        # Update view and save
+        self.update_midi_container_view()
+        self.save_midi_ui_to_memory()
 
     def save_midi_ui_to_memory(self):
         """Save MIDI settings from UI to memory"""
