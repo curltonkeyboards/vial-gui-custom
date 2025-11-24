@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import json
+import struct
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
-                              QSizePolicy, QScrollArea)
+                              QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from widgets.combo_box import ArrowComboBox
@@ -29,25 +30,19 @@ class QuickActuationWidget(QGroupBox):
         self.per_layer_enabled = False
         
         # Cache all layer data in memory to avoid device I/O lag
+        # Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
         self.layer_data = []
         for _ in range(12):
             self.layer_data.append({
                 'normal': 80,
                 'midi': 80,
-                'aftertouch': 0,
-                'velocity': 2,
+                'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
                 'rapid': 4,
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
-                'vel_speed': 10,
-                'aftertouch_cc': 74,
+                'vel_speed': 10,  # Velocity speed scale
                 'rapidfire_enabled': False,
-                'midi_rapidfire_enabled': False,
-                # HE Velocity defaults
-                'use_fixed_velocity': False,
-                'he_curve': 2,  # Medium (linear)
-                'he_min': 1,
-                'he_max': 127
+                'midi_rapidfire_enabled': False
             })
         
         self.setMinimumWidth(200)
@@ -332,6 +327,53 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('he_max', v, self.he_max_value_label)
         )
 
+        # === TRANSPOSE AND CHANNEL (always visible) ===
+        # Transpose combo
+        transpose_layout = QHBoxLayout()
+        transpose_layout.setContentsMargins(0, 0, 0, 0)
+        transpose_layout.setSpacing(6)
+        transpose_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
+        transpose_label.setMinimumWidth(90)
+        transpose_label.setMaximumWidth(90)
+        transpose_layout.addWidget(transpose_label)
+
+        self.transpose_combo = ArrowComboBox()
+        self.transpose_combo.setMaximumHeight(30)
+        self.transpose_combo.setMaximumWidth(180)
+        self.transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        for i in range(-64, 65):
+            self.transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.transpose_combo.setCurrentIndex(64)  # Default: 0
+        self.transpose_combo.setEditable(True)
+        self.transpose_combo.lineEdit().setReadOnly(True)
+        self.transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        transpose_layout.addWidget(self.transpose_combo, 1)
+        layout.addLayout(transpose_layout)
+        self.transpose_combo.currentIndexChanged.connect(self.on_combo_changed)
+
+        # Channel combo
+        channel_layout = QHBoxLayout()
+        channel_layout.setContentsMargins(0, 0, 0, 0)
+        channel_layout.setSpacing(6)
+        channel_label = QLabel(tr("QuickActuationWidget", "Channel:"))
+        channel_label.setMinimumWidth(90)
+        channel_label.setMaximumWidth(90)
+        channel_layout.addWidget(channel_label)
+
+        self.channel_combo = ArrowComboBox()
+        self.channel_combo.setMaximumHeight(30)
+        self.channel_combo.setMaximumWidth(180)
+        self.channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        for i in range(16):
+            self.channel_combo.addItem(f"Channel {i + 1}", i)
+        self.channel_combo.setCurrentIndex(0)  # Default: Channel 1 (0)
+        self.channel_combo.setEditable(True)
+        self.channel_combo.lineEdit().setReadOnly(True)
+        self.channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        channel_layout.addWidget(self.channel_combo, 1)
+        layout.addLayout(channel_layout)
+        self.channel_combo.currentIndexChanged.connect(self.on_combo_changed)
+
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
         advanced_layout = QVBoxLayout()
@@ -551,7 +593,10 @@ class QuickActuationWidget(QGroupBox):
                 'use_fixed_velocity': False,  # Fixed velocity feature removed
                 'he_curve': self.he_curve_combo.currentData(),
                 'he_min': self.he_min_slider.value(),
-                'he_max': self.he_max_slider.value()
+                'he_max': self.he_max_slider.value(),
+                # Transpose and Channel
+                'transpose': self.transpose_combo.currentData(),
+                'channel': self.channel_combo.currentData()
             }
         else:
             # Save to all layers (master mode)
@@ -571,7 +616,10 @@ class QuickActuationWidget(QGroupBox):
                 'use_fixed_velocity': False,  # Fixed velocity feature removed
                 'he_curve': self.he_curve_combo.currentData(),
                 'he_min': self.he_min_slider.value(),
-                'he_max': self.he_max_slider.value()
+                'he_max': self.he_max_slider.value(),
+                # Transpose and Channel
+                'transpose': self.transpose_combo.currentData(),
+                'channel': self.channel_combo.currentData()
             }
             for i in range(12):
                 self.layer_data[i] = data.copy()
@@ -636,6 +684,17 @@ class QuickActuationWidget(QGroupBox):
                 self.he_curve_combo.setCurrentIndex(i)
                 break
 
+        # Transpose and Channel
+        for i in range(self.transpose_combo.count()):
+            if self.transpose_combo.itemData(i) == data.get('transpose', 0):
+                self.transpose_combo.setCurrentIndex(i)
+                break
+
+        for i in range(self.channel_combo.count()):
+            if self.channel_combo.itemData(i) == data.get('channel', 0):
+                self.channel_combo.setCurrentIndex(i)
+                break
+
         # Update MIDI rapidfire widgets visibility based on checkbox state and advanced mode
         if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:
             self.midi_rapid_sens_widget.setVisible(True)
@@ -643,7 +702,7 @@ class QuickActuationWidget(QGroupBox):
         else:
             self.midi_rapid_sens_widget.setVisible(False)
             self.midi_rapid_vel_widget.setVisible(False)
-        
+
         self.syncing = False
     
     def on_save(self):
@@ -660,31 +719,25 @@ class QuickActuationWidget(QGroupBox):
                     flags |= 0x01
                 if data['midi_rapidfire_enabled']:
                     flags |= 0x02
-                if data.get('use_fixed_velocity', False):
-                    flags |= 0x04
 
+                # New structure: 9 bytes total (layer + 8 data bytes)
+                # Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
                 payload = bytearray([
                     self.current_layer,
                     data['normal'],
                     data['midi'],
-                    data['aftertouch'],
-                    data['velocity'],
+                    data['velocity'],  # Velocity mode
                     data['rapid'],
                     data['midi_rapid_sens'],
                     data['midi_rapid_vel'],
                     data['vel_speed'],
-                    data['aftertouch_cc'],
-                    flags,
-                    # HE Velocity fields
-                    data.get('he_curve', 2),
-                    data.get('he_min', 1),
-                    data.get('he_max', 127)
+                    flags
                 ])
-                
+
                 if not self.device.keyboard.set_layer_actuation(payload):
                     raise RuntimeError(f"Failed to set actuation for layer {self.current_layer}")
-                
-                QMessageBox.information(None, "Success", 
+
+                QMessageBox.information(None, "Success",
                     f"Layer {self.current_layer} actuation saved successfully!")
             else:
                 # Save to all 12 layers
@@ -695,31 +748,25 @@ class QuickActuationWidget(QGroupBox):
                         flags |= 0x01
                     if data['midi_rapidfire_enabled']:
                         flags |= 0x02
-                    if data.get('use_fixed_velocity', False):
-                        flags |= 0x04
 
+                    # New structure: 9 bytes total (layer + 8 data bytes)
+                    # Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
                     payload = bytearray([
                         layer,
                         data['normal'],
                         data['midi'],
-                        data['aftertouch'],
-                        data['velocity'],
+                        data['velocity'],  # Velocity mode
                         data['rapid'],
                         data['midi_rapid_sens'],
                         data['midi_rapid_vel'],
                         data['vel_speed'],
-                        data['aftertouch_cc'],
-                        flags,
-                        # HE Velocity fields
-                        data.get('he_curve', 2),
-                        data.get('he_min', 1),
-                        data.get('he_max', 127)
+                        flags
                     ])
-                    
+
                     if not self.device.keyboard.set_layer_actuation(payload):
                         raise RuntimeError(f"Failed to set actuation for layer {layer}")
-                
-                QMessageBox.information(None, "Success", 
+
+                QMessageBox.information(None, "Success",
                     "Actuation saved to all layers successfully!")
                 
         except Exception as e:
@@ -751,30 +798,25 @@ class QuickActuationWidget(QGroupBox):
 
             actuations = self.device.keyboard.get_all_layer_actuations()
 
-            if not actuations or len(actuations) != 156:
+            if not actuations or len(actuations) != 96:  # 12 layers * 8 bytes
                 return
 
             # Load all layers into memory
+            # Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
             for layer in range(12):
-                offset = layer * 13
-                flags = actuations[offset + 9]
+                offset = layer * 8
+                flags = actuations[offset + 7]
 
                 self.layer_data[layer] = {
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
-                    'aftertouch': actuations[offset + 2],
-                    'velocity': actuations[offset + 3],
-                    'rapid': actuations[offset + 4],
-                    'midi_rapid_sens': actuations[offset + 5],
-                    'midi_rapid_vel': actuations[offset + 6],
-                    'vel_speed': actuations[offset + 7],
-                    'aftertouch_cc': actuations[offset + 8],
+                    'velocity': actuations[offset + 2],  # Velocity mode
+                    'rapid': actuations[offset + 3],
+                    'midi_rapid_sens': actuations[offset + 4],
+                    'midi_rapid_vel': actuations[offset + 5],
+                    'vel_speed': actuations[offset + 6],
                     'rapidfire_enabled': (flags & 0x01) != 0,
-                    'midi_rapidfire_enabled': (flags & 0x02) != 0,
-                    'use_fixed_velocity': (flags & 0x04) != 0,
-                    'he_curve': actuations[offset + 10],
-                    'he_min': actuations[offset + 11],
-                    'he_max': actuations[offset + 12]
+                    'midi_rapidfire_enabled': (flags & 0x02) != 0
                 }
         except Exception:
             pass
