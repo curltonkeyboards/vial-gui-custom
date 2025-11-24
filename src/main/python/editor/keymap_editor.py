@@ -244,135 +244,8 @@ class QuickActuationWidget(QGroupBox):
             lambda v: self.on_slider_changed('midi_rapid_vel', v, self.midi_rapid_vel_value_label)
         )
 
-        # === VELOCITY CURVE CONTROLS ===
-        # Velocity Curve combo (visible in advanced mode)
-        curve_layout = QHBoxLayout()
-        curve_layout.setContentsMargins(0, 0, 0, 0)
-        curve_layout.setSpacing(6)
-        curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
-        curve_label.setMinimumWidth(90)
-        curve_label.setMaximumWidth(90)
-        curve_layout.addWidget(curve_label)
-
-        self.he_curve_combo = ArrowComboBox()
-        self.he_curve_combo.setMaximumHeight(30)
-        self.he_curve_combo.setMaximumWidth(180)
-        self.he_curve_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.he_curve_combo.setEditable(True)
-        self.he_curve_combo.lineEdit().setReadOnly(True)
-        self.he_curve_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        self.he_curve_combo.addItem("Softest", 0)
-        self.he_curve_combo.addItem("Soft", 1)
-        self.he_curve_combo.addItem("Medium", 2)
-        self.he_curve_combo.addItem("Hard", 3)
-        self.he_curve_combo.addItem("Hardest", 4)
-        self.he_curve_combo.setCurrentIndex(2)  # Default: Medium
-        curve_layout.addWidget(self.he_curve_combo, 1)
-
-        self.velocity_curve_widget = QWidget()
-        self.velocity_curve_widget.setLayout(curve_layout)
-        self.velocity_curve_widget.setVisible(False)
-        layout.addWidget(self.velocity_curve_widget)
-        self.he_curve_combo.currentIndexChanged.connect(self.on_combo_changed)
-
-        # Velocity Min slider
-        vel_min_layout = QHBoxLayout()
-        vel_min_layout.setContentsMargins(0, 0, 0, 0)
-        vel_min_layout.setSpacing(6)
-        vel_min_label = QLabel(tr("QuickActuationWidget", "Velocity Min:"))
-        vel_min_label.setMinimumWidth(90)
-        vel_min_label.setMaximumWidth(90)
-        vel_min_layout.addWidget(vel_min_label)
-
-        self.he_min_slider = QSlider(Qt.Horizontal)
-        self.he_min_slider.setMinimum(1)
-        self.he_min_slider.setMaximum(127)
-        self.he_min_slider.setValue(1)
-        vel_min_layout.addWidget(self.he_min_slider, 1)
-
-        self.he_min_value_label = QLabel("1")
-        self.he_min_value_label.setMinimumWidth(50)
-        self.he_min_value_label.setMaximumWidth(50)
-        self.he_min_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        vel_min_layout.addWidget(self.he_min_value_label)
-
-        layout.addLayout(vel_min_layout)
-        self.he_min_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('he_min', v, self.he_min_value_label)
-        )
-
-        # Velocity Max slider
-        vel_max_layout = QHBoxLayout()
-        vel_max_layout.setContentsMargins(0, 0, 0, 0)
-        vel_max_layout.setSpacing(6)
-        vel_max_label = QLabel(tr("QuickActuationWidget", "Velocity Max:"))
-        vel_max_label.setMinimumWidth(90)
-        vel_max_label.setMaximumWidth(90)
-        vel_max_layout.addWidget(vel_max_label)
-
-        self.he_max_slider = QSlider(Qt.Horizontal)
-        self.he_max_slider.setMinimum(1)
-        self.he_max_slider.setMaximum(127)
-        self.he_max_slider.setValue(127)
-        vel_max_layout.addWidget(self.he_max_slider, 1)
-
-        self.he_max_value_label = QLabel("127")
-        self.he_max_value_label.setMinimumWidth(50)
-        self.he_max_value_label.setMaximumWidth(50)
-        self.he_max_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        vel_max_layout.addWidget(self.he_max_value_label)
-
-        layout.addLayout(vel_max_layout)
-        self.he_max_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('he_max', v, self.he_max_value_label)
-        )
-
-        # === TRANSPOSE AND CHANNEL (always visible) ===
-        # Transpose combo
-        transpose_layout = QHBoxLayout()
-        transpose_layout.setContentsMargins(0, 0, 0, 0)
-        transpose_layout.setSpacing(6)
-        transpose_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
-        transpose_label.setMinimumWidth(90)
-        transpose_label.setMaximumWidth(90)
-        transpose_layout.addWidget(transpose_label)
-
-        self.transpose_combo = ArrowComboBox()
-        self.transpose_combo.setMaximumHeight(30)
-        self.transpose_combo.setMaximumWidth(180)
-        self.transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        for i in range(-64, 65):
-            self.transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.transpose_combo.setCurrentIndex(64)  # Default: 0
-        self.transpose_combo.setEditable(True)
-        self.transpose_combo.lineEdit().setReadOnly(True)
-        self.transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        transpose_layout.addWidget(self.transpose_combo, 1)
-        layout.addLayout(transpose_layout)
-        self.transpose_combo.currentIndexChanged.connect(self.on_combo_changed)
-
-        # Channel combo
-        channel_layout = QHBoxLayout()
-        channel_layout.setContentsMargins(0, 0, 0, 0)
-        channel_layout.setSpacing(6)
-        channel_label = QLabel(tr("QuickActuationWidget", "Channel:"))
-        channel_label.setMinimumWidth(90)
-        channel_label.setMaximumWidth(90)
-        channel_layout.addWidget(channel_label)
-
-        self.channel_combo = ArrowComboBox()
-        self.channel_combo.setMaximumHeight(30)
-        self.channel_combo.setMaximumWidth(180)
-        self.channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        for i in range(16):
-            self.channel_combo.addItem(f"Channel {i + 1}", i)
-        self.channel_combo.setCurrentIndex(0)  # Default: Channel 1 (0)
-        self.channel_combo.setEditable(True)
-        self.channel_combo.lineEdit().setReadOnly(True)
-        self.channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        channel_layout.addWidget(self.channel_combo, 1)
-        layout.addLayout(channel_layout)
-        self.channel_combo.currentIndexChanged.connect(self.on_combo_changed)
+        # Note: Velocity Curve, Velocity Min/Max, Transpose, Channel, Aftertouch, and Aftertouch CC
+        # have been moved to the MIDI Settings tab as global keyboard settings
 
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
@@ -387,58 +260,7 @@ class QuickActuationWidget(QGroupBox):
         adv_line.setFrameShape(QFrame.HLine)
         adv_line.setFrameShadow(QFrame.Sunken)
         advanced_layout.addWidget(adv_line)
-        
-        # Aftertouch Mode combo
-        combo_layout = QHBoxLayout()
-        combo_layout.setContentsMargins(0, 0, 0, 0)
-        combo_layout.setSpacing(6)
-        label = QLabel(tr("QuickActuationWidget", "Aftertouch:"))
-        label.setMinimumWidth(90)
-        label.setMaximumWidth(90)
-        combo_layout.addWidget(label)
 
-        self.aftertouch_combo = ArrowComboBox()
-        self.aftertouch_combo.setMaximumHeight(30)
-        self.aftertouch_combo.setMaximumWidth(180)
-        self.aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.aftertouch_combo.addItem("Off", 0)
-        self.aftertouch_combo.addItem("Reverse", 1)
-        self.aftertouch_combo.addItem("Bottom-Out", 2)
-        self.aftertouch_combo.addItem("Post-Actuation", 3)
-        self.aftertouch_combo.addItem("Vibrato", 4)
-        self.aftertouch_combo.setCurrentIndex(0)
-        self.aftertouch_combo.setEditable(True)
-        self.aftertouch_combo.lineEdit().setReadOnly(True)
-        self.aftertouch_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(self.aftertouch_combo, 1)
-        
-        advanced_layout.addLayout(combo_layout)
-        self.aftertouch_combo.currentIndexChanged.connect(self.on_combo_changed)
-        
-        # Aftertouch CC combo
-        combo_layout = QHBoxLayout()
-        combo_layout.setContentsMargins(0, 0, 0, 0)
-        combo_layout.setSpacing(6)
-        label = QLabel(tr("QuickActuationWidget", "Aftertouch CC:"))
-        label.setMinimumWidth(90)
-        label.setMaximumWidth(90)
-        combo_layout.addWidget(label)
-
-        self.aftertouch_cc_combo = ArrowComboBox()
-        self.aftertouch_cc_combo.setMaximumHeight(30)
-        self.aftertouch_cc_combo.setMaximumWidth(180)
-        self.aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        for cc in range(128):
-            self.aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
-        self.aftertouch_cc_combo.setCurrentIndex(74)
-        self.aftertouch_cc_combo.setEditable(True)
-        self.aftertouch_cc_combo.lineEdit().setReadOnly(True)
-        self.aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(self.aftertouch_cc_combo, 1)
-        
-        advanced_layout.addLayout(combo_layout)
-        self.aftertouch_cc_combo.currentIndexChanged.connect(self.on_combo_changed)
-        
         # Velocity Mode combo
         combo_layout = QHBoxLayout()
         combo_layout.setContentsMargins(0, 0, 0, 0)
@@ -508,7 +330,6 @@ class QuickActuationWidget(QGroupBox):
         # Show/hide MIDI controls based on advanced state
         self.midi_widget.setVisible(show_advanced)
         self.midi_rapid_checkbox.setVisible(show_advanced)
-        self.velocity_curve_widget.setVisible(show_advanced)
 
         # Update MIDI rapidfire widgets visibility based on checkbox state
         if show_advanced and self.midi_rapid_checkbox.isChecked():
@@ -580,46 +401,26 @@ class QuickActuationWidget(QGroupBox):
             self.layer_data[self.current_layer] = {
                 'normal': self.normal_slider.value(),
                 'midi': self.midi_slider.value(),
-                'aftertouch': self.aftertouch_combo.currentData(),
                 'velocity': self.velocity_combo.currentData(),
                 'rapid': self.rapid_slider.value(),
                 'midi_rapid_sens': self.midi_rapid_sens_slider.value(),
                 'midi_rapid_vel': self.midi_rapid_vel_slider.value(),
                 'vel_speed': self.vel_speed_combo.currentData(),
-                'aftertouch_cc': self.aftertouch_cc_combo.currentData(),
                 'rapidfire_enabled': self.rapid_checkbox.isChecked(),
-                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked(),
-                # HE Velocity fields
-                'use_fixed_velocity': False,  # Fixed velocity feature removed
-                'he_curve': self.he_curve_combo.currentData(),
-                'he_min': self.he_min_slider.value(),
-                'he_max': self.he_max_slider.value(),
-                # Transpose and Channel
-                'transpose': self.transpose_combo.currentData(),
-                'channel': self.channel_combo.currentData()
+                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
             }
         else:
             # Save to all layers (master mode)
             data = {
                 'normal': self.normal_slider.value(),
                 'midi': self.midi_slider.value(),
-                'aftertouch': self.aftertouch_combo.currentData(),
                 'velocity': self.velocity_combo.currentData(),
                 'rapid': self.rapid_slider.value(),
                 'midi_rapid_sens': self.midi_rapid_sens_slider.value(),
                 'midi_rapid_vel': self.midi_rapid_vel_slider.value(),
                 'vel_speed': self.vel_speed_combo.currentData(),
-                'aftertouch_cc': self.aftertouch_cc_combo.currentData(),
                 'rapidfire_enabled': self.rapid_checkbox.isChecked(),
-                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked(),
-                # HE Velocity fields
-                'use_fixed_velocity': False,  # Fixed velocity feature removed
-                'he_curve': self.he_curve_combo.currentData(),
-                'he_min': self.he_min_slider.value(),
-                'he_max': self.he_max_slider.value(),
-                # Transpose and Channel
-                'transpose': self.transpose_combo.currentData(),
-                'channel': self.channel_combo.currentData()
+                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
             }
             for i in range(12):
                 self.layer_data[i] = data.copy()
@@ -645,56 +446,22 @@ class QuickActuationWidget(QGroupBox):
         
         self.midi_rapid_vel_slider.setValue(data['midi_rapid_vel'])
         self.midi_rapid_vel_value_label.setText(f"±{data['midi_rapid_vel']}")
-        
+
         # Set combos
-        # Note: aftertouch is now a global setting, but we handle it for backward compatibility
-        for i in range(self.aftertouch_combo.count()):
-            if self.aftertouch_combo.itemData(i) == data.get('aftertouch', 0):
-                self.aftertouch_combo.setCurrentIndex(i)
-                break
-
-        for i in range(self.aftertouch_cc_combo.count()):
-            if self.aftertouch_cc_combo.itemData(i) == data.get('aftertouch_cc', 74):
-                self.aftertouch_cc_combo.setCurrentIndex(i)
-                break
-
         for i in range(self.velocity_combo.count()):
             if self.velocity_combo.itemData(i) == data['velocity']:
                 self.velocity_combo.setCurrentIndex(i)
                 break
-        
+
         for i in range(self.vel_speed_combo.count()):
             if self.vel_speed_combo.itemData(i) == data['vel_speed']:
                 self.vel_speed_combo.setCurrentIndex(i)
                 break
-        
+
         # Set checkboxes
         self.rapid_checkbox.setChecked(data['rapidfire_enabled'])
         self.rapid_widget.setVisible(data['rapidfire_enabled'])
         self.midi_rapid_checkbox.setChecked(data['midi_rapidfire_enabled'])
-
-        # Velocity settings (renamed from HE Velocity)
-        self.he_min_slider.setValue(data.get('he_min', 1))
-        self.he_min_value_label.setText(str(data.get('he_min', 1)))
-        self.he_max_slider.setValue(data.get('he_max', 127))
-        self.he_max_value_label.setText(str(data.get('he_max', 127)))
-
-        # Velocity Curve combo (renamed from HE Curve)
-        for i in range(self.he_curve_combo.count()):
-            if self.he_curve_combo.itemData(i) == data.get('he_curve', 2):
-                self.he_curve_combo.setCurrentIndex(i)
-                break
-
-        # Transpose and Channel
-        for i in range(self.transpose_combo.count()):
-            if self.transpose_combo.itemData(i) == data.get('transpose', 0):
-                self.transpose_combo.setCurrentIndex(i)
-                break
-
-        for i in range(self.channel_combo.count()):
-            if self.channel_combo.itemData(i) == data.get('channel', 0):
-                self.channel_combo.setCurrentIndex(i)
-                break
 
         # Update MIDI rapidfire widgets visibility based on checkbox state and advanced mode
         if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:

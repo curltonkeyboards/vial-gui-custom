@@ -689,8 +689,130 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         basic_group.setLayout(basic_layout)
         main_layout.addWidget(basic_group)
         
-        # Basic Settings note - transpose and channel moved to layer actuation
-        basic_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Note: Transpose and Channel are now configured in Layer Actuation (Keymap tab)")), 0, 1, 1, 4)
+        # Basic Settings note - removed outdated message
+        # All global MIDI settings are now in the Global MIDI Settings section below
+
+        # Global MIDI Settings Group
+        global_midi_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Global MIDI Settings"))
+        global_midi_layout = QGridLayout()
+        global_midi_layout.setHorizontalSpacing(25)
+        global_midi_layout.setColumnStretch(0, 1)    # Left spacer
+        global_midi_layout.setColumnStretch(2, 0)
+        global_midi_layout.setColumnStretch(4, 0)
+        global_midi_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
+        global_midi_group.setLayout(global_midi_layout)
+        main_layout.addWidget(global_midi_group)
+
+        # Transpose
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 0, 1)
+        self.global_transpose = ArrowComboBox()
+        self.global_transpose.setMinimumWidth(120)
+        self.global_transpose.setMinimumHeight(30)
+        self.global_transpose.setMaximumHeight(30)
+        self.global_transpose.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        for i in range(-64, 65):
+            self.global_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.global_transpose.setCurrentIndex(64)  # Default: 0
+        self.global_transpose.setEditable(True)
+        self.global_transpose.lineEdit().setReadOnly(True)
+        self.global_transpose.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_transpose, 0, 2)
+
+        # Channel
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 3)
+        self.global_channel = ArrowComboBox()
+        self.global_channel.setMinimumWidth(120)
+        self.global_channel.setMinimumHeight(30)
+        self.global_channel.setMaximumHeight(30)
+        self.global_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        for i in range(16):
+            self.global_channel.addItem(f"Channel {i + 1}", i)
+        self.global_channel.setCurrentIndex(0)  # Default: Channel 1 (0)
+        self.global_channel.setEditable(True)
+        self.global_channel.lineEdit().setReadOnly(True)
+        self.global_channel.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_channel, 0, 4)
+
+        # Velocity Curve
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), 1, 1)
+        self.global_velocity_curve = ArrowComboBox()
+        self.global_velocity_curve.setMinimumWidth(120)
+        self.global_velocity_curve.setMinimumHeight(30)
+        self.global_velocity_curve.setMaximumHeight(30)
+        self.global_velocity_curve.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_velocity_curve.addItem("Softest", 0)
+        self.global_velocity_curve.addItem("Soft", 1)
+        self.global_velocity_curve.addItem("Medium", 2)
+        self.global_velocity_curve.addItem("Hard", 3)
+        self.global_velocity_curve.addItem("Hardest", 4)
+        self.global_velocity_curve.setCurrentIndex(2)  # Default: Medium
+        self.global_velocity_curve.setEditable(True)
+        self.global_velocity_curve.lineEdit().setReadOnly(True)
+        self.global_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_velocity_curve, 1, 2)
+
+        # Aftertouch
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch:")), 1, 3)
+        self.global_aftertouch = ArrowComboBox()
+        self.global_aftertouch.setMinimumWidth(120)
+        self.global_aftertouch.setMinimumHeight(30)
+        self.global_aftertouch.setMaximumHeight(30)
+        self.global_aftertouch.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_aftertouch.addItem("Off", 0)
+        self.global_aftertouch.addItem("Reverse", 1)
+        self.global_aftertouch.addItem("Bottom-Out", 2)
+        self.global_aftertouch.addItem("Post-Actuation", 3)
+        self.global_aftertouch.addItem("Vibrato", 4)
+        self.global_aftertouch.setCurrentIndex(0)  # Default: Off
+        self.global_aftertouch.setEditable(True)
+        self.global_aftertouch.lineEdit().setReadOnly(True)
+        self.global_aftertouch.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_aftertouch, 1, 4)
+
+        # Velocity Min
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), 2, 1)
+        self.global_velocity_min = ArrowComboBox()
+        self.global_velocity_min.setMinimumWidth(120)
+        self.global_velocity_min.setMinimumHeight(30)
+        self.global_velocity_min.setMaximumHeight(30)
+        self.global_velocity_min.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        for i in range(1, 128):
+            self.global_velocity_min.addItem(str(i), i)
+        self.global_velocity_min.setCurrentIndex(0)  # Default: 1
+        self.global_velocity_min.setEditable(True)
+        self.global_velocity_min.lineEdit().setReadOnly(True)
+        self.global_velocity_min.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_velocity_min, 2, 2)
+
+        # Velocity Max
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), 2, 3)
+        self.global_velocity_max = ArrowComboBox()
+        self.global_velocity_max.setMinimumWidth(120)
+        self.global_velocity_max.setMinimumHeight(30)
+        self.global_velocity_max.setMaximumHeight(30)
+        self.global_velocity_max.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        for i in range(1, 128):
+            self.global_velocity_max.addItem(str(i), i)
+        self.global_velocity_max.setCurrentIndex(126)  # Default: 127
+        self.global_velocity_max.setEditable(True)
+        self.global_velocity_max.lineEdit().setReadOnly(True)
+        self.global_velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_velocity_max, 2, 4)
+
+        # Aftertouch CC
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch CC:")), 3, 1)
+        self.global_aftertouch_cc = ArrowComboBox()
+        self.global_aftertouch_cc.setMinimumWidth(120)
+        self.global_aftertouch_cc.setMinimumHeight(30)
+        self.global_aftertouch_cc.setMaximumHeight(30)
+        self.global_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        for cc in range(128):
+            self.global_aftertouch_cc.addItem(f"CC#{cc}", cc)
+        self.global_aftertouch_cc.setCurrentIndex(74)  # Default: CC#74
+        self.global_aftertouch_cc.setEditable(True)
+        self.global_aftertouch_cc.lineEdit().setReadOnly(True)
+        self.global_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_aftertouch_cc, 3, 2)
 
         # Loop Settings Group
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
@@ -1248,7 +1370,15 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "velocity_max2": self.velocity_max2.currentData(),
             "velocity_curve3": self.velocity_curve3.currentData(),
             "velocity_min3": self.velocity_min3.currentData(),
-            "velocity_max3": self.velocity_max3.currentData()
+            "velocity_max3": self.velocity_max3.currentData(),
+            # Global MIDI settings
+            "global_transpose": self.global_transpose.currentData(),
+            "global_channel": self.global_channel.currentData(),
+            "global_velocity_curve": self.global_velocity_curve.currentData(),
+            "global_aftertouch": self.global_aftertouch.currentData(),
+            "global_velocity_min": self.global_velocity_min.currentData(),
+            "global_velocity_max": self.global_velocity_max.currentData(),
+            "global_aftertouch_cc": self.global_aftertouch_cc.currentData()
         }
     
     def apply_settings(self, config):
@@ -1294,6 +1424,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.velocity_curve3, config.get("velocity_curve3"), 2)
         set_combo_by_data(self.velocity_min3, config.get("velocity_min3"), 1)
         set_combo_by_data(self.velocity_max3, config.get("velocity_max3"), 127)
+        # Global MIDI settings
+        set_combo_by_data(self.global_transpose, config.get("global_transpose"), 0)
+        set_combo_by_data(self.global_channel, config.get("global_channel"), 0)
+        set_combo_by_data(self.global_velocity_curve, config.get("global_velocity_curve"), 2)
+        set_combo_by_data(self.global_aftertouch, config.get("global_aftertouch"), 0)
+        set_combo_by_data(self.global_velocity_min, config.get("global_velocity_min"), 1)
+        set_combo_by_data(self.global_velocity_max, config.get("global_velocity_max"), 127)
+        set_combo_by_data(self.global_aftertouch_cc, config.get("global_aftertouch_cc"), 74)
     
     def pack_basic_data(self, settings):
         """Pack basic settings into 17-byte structure"""
@@ -1303,8 +1441,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         struct.pack_into('<I', data, 4, settings["cc_sensitivity"])
 
         offset = 8
-        data[offset] = 0; offset += 1  # channel_number (now in layer actuation)
-        data[offset] = 0 & 0xFF; offset += 1  # transpose_number (now in layer actuation)
+        data[offset] = settings["global_channel"]; offset += 1  # global channel
+        data[offset] = settings["global_transpose"] & 0xFF; offset += 1  # global transpose
         data[offset] = 0; offset += 1  # octave_number
         data[offset] = settings["transpose_number2"] & 0xFF; offset += 1
         data[offset] = 0; offset += 1  # octave_number2
@@ -1320,8 +1458,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 21-byte structure (expanded for velocity settings)"""
-        data = bytearray(21)
+        """Pack advanced settings into 26-byte structure (expanded for global velocity settings)"""
+        data = bytearray(26)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -1346,6 +1484,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["velocity_curve3"]; offset += 1
         data[offset] = settings["velocity_min3"]; offset += 1
         data[offset] = settings["velocity_max3"]; offset += 1
+        # Global MIDI velocity and aftertouch settings
+        data[offset] = settings["global_velocity_curve"]; offset += 1
+        data[offset] = settings["global_velocity_min"]; offset += 1
+        data[offset] = settings["global_velocity_max"]; offset += 1
+        data[offset] = settings["global_aftertouch"]; offset += 1
+        data[offset] = settings["global_aftertouch_cc"]; offset += 1
 
         return data
     
