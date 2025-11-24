@@ -13125,15 +13125,7 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t vel_speed = data[8];
     uint8_t aftertouch_cc = data[9];
     uint8_t flags = data[10];
-    uint8_t he_curve = data[11];
-    uint8_t he_min = data[12];
-    uint8_t he_max = data[13];
-    uint8_t ks_curve = data[14];
-    uint8_t ks_min = data[15];
-    uint8_t ks_max = data[16];
-    uint8_t ts_curve = data[17];
-    uint8_t ts_min = data[18];
-    uint8_t ts_max = data[19];
+    // Bytes 11-19 are no longer used (velocity curve/min/max moved to global keyboard_settings)
 
     if (layer >= 12) {
         dprintf("HID: Invalid layer %d for actuation\n", layer);
@@ -13141,12 +13133,10 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     }
 
     set_layer_actuation(layer, normal, midi, aftertouch, velocity, rapid,
-                       midi_rapid_sens, midi_rapid_vel, vel_speed, aftertouch_cc, flags,
-                       he_curve, he_min, he_max, ks_curve, ks_min, ks_max,
-                       ts_curve, ts_min, ts_max);
+                       midi_rapid_sens, midi_rapid_vel, vel_speed, aftertouch_cc, flags);
     save_layer_actuations();
 
-    dprintf("HID: Set layer %d actuation with all params\n", layer);
+    dprintf("HID: Set layer %d actuation (velocity settings now global)\n", layer);
 }
 
 __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer) {
@@ -13155,16 +13145,14 @@ __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer) {
         return;
     }
 
-    uint8_t response[19];
+    uint8_t response[10];  // Reduced from 19 to 10 bytes (removed 9 velocity bytes)
     get_layer_actuation(layer, &response[0], &response[1], &response[2],
                         &response[3], &response[4], &response[5], &response[6],
-                        &response[7], &response[8], &response[9], &response[10],
-                        &response[11], &response[12], &response[13], &response[14],
-                        &response[15], &response[16], &response[17], &response[18]);
+                        &response[7], &response[8], &response[9]);
 
-    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 19);
+    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 10);
 
-    dprintf("HID: Sent layer %d actuation\n", layer);
+    dprintf("HID: Sent layer %d actuation (velocity settings now global)\n", layer);
 }
 
 __attribute__((weak)) void handle_get_all_layer_actuations(void) {

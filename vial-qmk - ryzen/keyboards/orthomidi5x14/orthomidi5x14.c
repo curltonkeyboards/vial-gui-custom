@@ -451,10 +451,10 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get per-layer settings
-    uint8_t curve = layer_actuations[current_layer].he_velocity_curve;
-    uint8_t min_vel = layer_actuations[current_layer].he_velocity_min;
-    uint8_t max_vel = layer_actuations[current_layer].he_velocity_max;
+    // Get global settings
+    uint8_t curve = keyboard_settings.he_velocity_curve;
+    uint8_t min_vel = keyboard_settings.he_velocity_min;
+    uint8_t max_vel = keyboard_settings.he_velocity_max;
 
     // Normalize travel to 0.0-1.0 range
     float normalized = (float)travel / 255.0f;
@@ -500,10 +500,10 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get per-layer keysplit settings
-    uint8_t curve = layer_actuations[current_layer].keysplit_he_velocity_curve;
-    uint8_t min_vel = layer_actuations[current_layer].keysplit_he_velocity_min;
-    uint8_t max_vel = layer_actuations[current_layer].keysplit_he_velocity_max;
+    // Get global keysplit settings
+    uint8_t curve = keyboard_settings.keysplit_he_velocity_curve;
+    uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
+    uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
     // Normalize travel to 0.0-1.0 range
     float normalized = (float)travel / 255.0f;
@@ -549,10 +549,10 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get per-layer triplesplit settings
-    uint8_t curve = layer_actuations[current_layer].triplesplit_he_velocity_curve;
-    uint8_t min_vel = layer_actuations[current_layer].triplesplit_he_velocity_min;
-    uint8_t max_vel = layer_actuations[current_layer].triplesplit_he_velocity_max;
+    // Get global triplesplit settings
+    uint8_t curve = keyboard_settings.triplesplit_he_velocity_curve;
+    uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
+    uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
     // Normalize travel to 0.0-1.0 range
     float normalized = (float)travel / 255.0f;
@@ -2234,18 +2234,7 @@ void initialize_layer_actuations(void) {
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].aftertouch_cc = 0;
         layer_actuations[i].flags = 0;              // All flags off
-        // HE Velocity defaults (Main MIDI notes)
-        layer_actuations[i].he_velocity_curve = 2;  // MEDIUM (linear)
-        layer_actuations[i].he_velocity_min = 1;    // Min velocity
-        layer_actuations[i].he_velocity_max = 127;  // Max velocity
-        // Keysplit HE Velocity defaults
-        layer_actuations[i].keysplit_he_velocity_curve = 2;  // MEDIUM (linear)
-        layer_actuations[i].keysplit_he_velocity_min = 1;    // Min velocity
-        layer_actuations[i].keysplit_he_velocity_max = 127;  // Max velocity
-        // Triplesplit HE Velocity defaults
-        layer_actuations[i].triplesplit_he_velocity_curve = 2;  // MEDIUM (linear)
-        layer_actuations[i].triplesplit_he_velocity_min = 1;    // Min velocity
-        layer_actuations[i].triplesplit_he_velocity_max = 127;  // Max velocity
+        // Note: Velocity curve/min/max settings are now global in keyboard_settings
     }
 }
 
@@ -2988,14 +2977,11 @@ void reset_layer_actuations(void) {
     save_layer_actuations();
 }
 
-// Set layer actuation parameters
+// Set layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
                          uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
                          uint8_t midi_rapid_vel, uint8_t vel_speed,
-                         uint8_t aftertouch_cc, uint8_t flags,
-                         uint8_t he_curve, uint8_t he_min, uint8_t he_max,
-                         uint8_t ks_curve, uint8_t ks_min, uint8_t ks_max,
-                         uint8_t ts_curve, uint8_t ts_min, uint8_t ts_max) {
+                         uint8_t aftertouch_cc, uint8_t flags) {
     if (layer >= 12) return;
 
     layer_actuations[layer].normal_actuation = normal;
@@ -3008,25 +2994,13 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t af
     layer_actuations[layer].velocity_speed_scale = vel_speed;
     layer_actuations[layer].aftertouch_cc = aftertouch_cc;
     layer_actuations[layer].flags = flags;
-    layer_actuations[layer].he_velocity_curve = he_curve;
-    layer_actuations[layer].he_velocity_min = he_min;
-    layer_actuations[layer].he_velocity_max = he_max;
-    layer_actuations[layer].keysplit_he_velocity_curve = ks_curve;
-    layer_actuations[layer].keysplit_he_velocity_min = ks_min;
-    layer_actuations[layer].keysplit_he_velocity_max = ks_max;
-    layer_actuations[layer].triplesplit_he_velocity_curve = ts_curve;
-    layer_actuations[layer].triplesplit_he_velocity_min = ts_min;
-    layer_actuations[layer].triplesplit_he_velocity_max = ts_max;
 }
 
-// Get layer actuation parameters
+// Get layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
                          uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
                          uint8_t *midi_rapid_vel, uint8_t *vel_speed,
-                         uint8_t *aftertouch_cc, uint8_t *flags,
-                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max,
-                         uint8_t *ks_curve, uint8_t *ks_min, uint8_t *ks_max,
-                         uint8_t *ts_curve, uint8_t *ts_min, uint8_t *ts_max) {
+                         uint8_t *aftertouch_cc, uint8_t *flags) {
     if (layer >= 12) return;
 
     *normal = layer_actuations[layer].normal_actuation;
@@ -3039,15 +3013,6 @@ void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t 
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
     *aftertouch_cc = layer_actuations[layer].aftertouch_cc;
     *flags = layer_actuations[layer].flags;
-    *he_curve = layer_actuations[layer].he_velocity_curve;
-    *he_min = layer_actuations[layer].he_velocity_min;
-    *he_max = layer_actuations[layer].he_velocity_max;
-    *ks_curve = layer_actuations[layer].keysplit_he_velocity_curve;
-    *ks_min = layer_actuations[layer].keysplit_he_velocity_min;
-    *ks_max = layer_actuations[layer].keysplit_he_velocity_max;
-    *ts_curve = layer_actuations[layer].triplesplit_he_velocity_curve;
-    *ts_min = layer_actuations[layer].triplesplit_he_velocity_min;
-    *ts_max = layer_actuations[layer].triplesplit_he_velocity_max;
 }
 
 // Helper functions for flag checking
@@ -3072,15 +3037,14 @@ bool layer_use_fixed_velocity(uint8_t layer) {
 
 // HID command IDs are defined in quantum/process_keycode/process_dynamic_macro.h
 
-// Set layer actuation from HID data
+// Set layer actuation from HID data (velocity settings moved to global keyboard_settings)
 void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
     if (layer >= 12) return;
 
+    // Only 11 bytes now: layer + 10 params (removed 9 velocity bytes)
     set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5],
-                       data[6], data[7], data[8], data[9], data[10],
-                       data[11], data[12], data[13], data[14], data[15],
-                       data[16], data[17], data[18], data[19]);
+                       data[6], data[7], data[8], data[9], data[10]);
     save_layer_actuations();
 }
 
@@ -10819,8 +10783,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == HE_VEL_CURVE_UP) {
         if (record->event.pressed) {
             uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-            layer_actuations[layer].he_velocity_curve = (layer_actuations[layer].he_velocity_curve + 1) % 5;
-            dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+            keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 5;
+            dprintf("Layer %d HE Velocity Curve: %d\n", layer, keyboard_settings.he_velocity_curve);
         }
         return false;
     }
@@ -10828,12 +10792,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == HE_VEL_CURVE_DOWN) {
         if (record->event.pressed) {
             uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-            if (layer_actuations[layer].he_velocity_curve == 0) {
-                layer_actuations[layer].he_velocity_curve = 4;
+            if (keyboard_settings.he_velocity_curve == 0) {
+                keyboard_settings.he_velocity_curve = 4;
             } else {
-                layer_actuations[layer].he_velocity_curve--;
+                keyboard_settings.he_velocity_curve--;
             }
-            dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+            dprintf("Layer %d HE Velocity Curve: %d\n", layer, keyboard_settings.he_velocity_curve);
         }
         return false;
     }
@@ -10843,9 +10807,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             uint8_t curve_value = keycode - HE_CURVE_SOFTEST;
             // Update ALL layers
-            for (uint8_t i = 0; i < DYNAMIC_KEYMAP_LAYER_COUNT; i++) {
-                layer_actuations[i].he_velocity_curve = curve_value;
-            }
+            // Update global HE velocity curve
+            keyboard_settings.he_velocity_curve = curve_value;
             dprintf("All layers HE Curve: %d\n", curve_value);
             set_keylog(keycode, record);
         }
@@ -10901,120 +10864,120 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // Keysplit modifier held - modify keysplit HE settings
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        layer_actuations[layer].keysplit_he_velocity_curve = (layer_actuations[layer].keysplit_he_velocity_curve + 1) % 5;
-                        dprintf("Layer %d Keysplit HE Curve: %d\n", layer, layer_actuations[layer].keysplit_he_velocity_curve);
+                        keyboard_settings.keysplit_he_velocity_curve = (keyboard_settings.keysplit_he_velocity_curve + 1) % 5;
+                        dprintf("Global Keysplit HE Curve: %d\n", keyboard_settings.keysplit_he_velocity_curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
-                        if (layer_actuations[layer].keysplit_he_velocity_curve == 0) {
-                            layer_actuations[layer].keysplit_he_velocity_curve = 4;
+                        if (keyboard_settings.keysplit_he_velocity_curve == 0) {
+                            keyboard_settings.keysplit_he_velocity_curve = 4;
                         } else {
-                            layer_actuations[layer].keysplit_he_velocity_curve--;
+                            keyboard_settings.keysplit_he_velocity_curve--;
                         }
-                        dprintf("Layer %d Keysplit HE Curve: %d\n", layer, layer_actuations[layer].keysplit_he_velocity_curve);
+                        dprintf("Global Keysplit HE Curve: %d\n", keyboard_settings.keysplit_he_velocity_curve);
                         break;
                     case HE_MACRO_MIN_UP:
-                        if (layer_actuations[layer].keysplit_he_velocity_min < 127) {
-                            layer_actuations[layer].keysplit_he_velocity_min++;
+                        if (keyboard_settings.keysplit_he_velocity_min < 127) {
+                            keyboard_settings.keysplit_he_velocity_min++;
                         }
-                        dprintf("Layer %d Keysplit HE Min: %d\n", layer, layer_actuations[layer].keysplit_he_velocity_min);
+                        dprintf("Layer %d Keysplit HE Min: %d\n", layer, keyboard_settings.keysplit_he_velocity_min);
                         break;
                     case HE_MACRO_MIN_DOWN:
-                        if (layer_actuations[layer].keysplit_he_velocity_min > 1) {
-                            layer_actuations[layer].keysplit_he_velocity_min--;
+                        if (keyboard_settings.keysplit_he_velocity_min > 1) {
+                            keyboard_settings.keysplit_he_velocity_min--;
                         }
-                        dprintf("Layer %d Keysplit HE Min: %d\n", layer, layer_actuations[layer].keysplit_he_velocity_min);
+                        dprintf("Layer %d Keysplit HE Min: %d\n", layer, keyboard_settings.keysplit_he_velocity_min);
                         break;
                     case HE_MACRO_MAX_UP:
-                        if (layer_actuations[layer].keysplit_he_velocity_max < 127) {
-                            layer_actuations[layer].keysplit_he_velocity_max++;
+                        if (keyboard_settings.keysplit_he_velocity_max < 127) {
+                            keyboard_settings.keysplit_he_velocity_max++;
                         }
-                        dprintf("Layer %d Keysplit HE Max: %d\n", layer, layer_actuations[layer].keysplit_he_velocity_max);
+                        dprintf("Layer %d Keysplit HE Max: %d\n", layer, keyboard_settings.keysplit_he_velocity_max);
                         break;
                     case HE_MACRO_MAX_DOWN:
-                        if (layer_actuations[layer].keysplit_he_velocity_max > 1) {
-                            layer_actuations[layer].keysplit_he_velocity_max--;
+                        if (keyboard_settings.keysplit_he_velocity_max > 1) {
+                            keyboard_settings.keysplit_he_velocity_max--;
                         }
-                        dprintf("Layer %d Keysplit HE Max: %d\n", layer, layer_actuations[layer].keysplit_he_velocity_max);
+                        dprintf("Layer %d Keysplit HE Max: %d\n", layer, keyboard_settings.keysplit_he_velocity_max);
                         break;
                 }
             } else if (triplesplitmodifierheld) {
                 // Triplesplit modifier held - modify triplesplit HE settings
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        layer_actuations[layer].triplesplit_he_velocity_curve = (layer_actuations[layer].triplesplit_he_velocity_curve + 1) % 5;
-                        dprintf("Layer %d Triplesplit HE Curve: %d\n", layer, layer_actuations[layer].triplesplit_he_velocity_curve);
+                        keyboard_settings.triplesplit_he_velocity_curve = (keyboard_settings.triplesplit_he_velocity_curve + 1) % 5;
+                        dprintf("Layer %d Triplesplit HE Curve: %d\n", layer, keyboard_settings.triplesplit_he_velocity_curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
-                        if (layer_actuations[layer].triplesplit_he_velocity_curve == 0) {
-                            layer_actuations[layer].triplesplit_he_velocity_curve = 4;
+                        if (keyboard_settings.triplesplit_he_velocity_curve == 0) {
+                            keyboard_settings.triplesplit_he_velocity_curve = 4;
                         } else {
-                            layer_actuations[layer].triplesplit_he_velocity_curve--;
+                            keyboard_settings.triplesplit_he_velocity_curve--;
                         }
-                        dprintf("Layer %d Triplesplit HE Curve: %d\n", layer, layer_actuations[layer].triplesplit_he_velocity_curve);
+                        dprintf("Layer %d Triplesplit HE Curve: %d\n", layer, keyboard_settings.triplesplit_he_velocity_curve);
                         break;
                     case HE_MACRO_MIN_UP:
-                        if (layer_actuations[layer].triplesplit_he_velocity_min < 127) {
-                            layer_actuations[layer].triplesplit_he_velocity_min++;
+                        if (keyboard_settings.triplesplit_he_velocity_min < 127) {
+                            keyboard_settings.triplesplit_he_velocity_min++;
                         }
-                        dprintf("Layer %d Triplesplit HE Min: %d\n", layer, layer_actuations[layer].triplesplit_he_velocity_min);
+                        dprintf("Layer %d Triplesplit HE Min: %d\n", layer, keyboard_settings.triplesplit_he_velocity_min);
                         break;
                     case HE_MACRO_MIN_DOWN:
-                        if (layer_actuations[layer].triplesplit_he_velocity_min > 1) {
-                            layer_actuations[layer].triplesplit_he_velocity_min--;
+                        if (keyboard_settings.triplesplit_he_velocity_min > 1) {
+                            keyboard_settings.triplesplit_he_velocity_min--;
                         }
-                        dprintf("Layer %d Triplesplit HE Min: %d\n", layer, layer_actuations[layer].triplesplit_he_velocity_min);
+                        dprintf("Layer %d Triplesplit HE Min: %d\n", layer, keyboard_settings.triplesplit_he_velocity_min);
                         break;
                     case HE_MACRO_MAX_UP:
-                        if (layer_actuations[layer].triplesplit_he_velocity_max < 127) {
-                            layer_actuations[layer].triplesplit_he_velocity_max++;
+                        if (keyboard_settings.triplesplit_he_velocity_max < 127) {
+                            keyboard_settings.triplesplit_he_velocity_max++;
                         }
-                        dprintf("Layer %d Triplesplit HE Max: %d\n", layer, layer_actuations[layer].triplesplit_he_velocity_max);
+                        dprintf("Layer %d Triplesplit HE Max: %d\n", layer, keyboard_settings.triplesplit_he_velocity_max);
                         break;
                     case HE_MACRO_MAX_DOWN:
-                        if (layer_actuations[layer].triplesplit_he_velocity_max > 1) {
-                            layer_actuations[layer].triplesplit_he_velocity_max--;
+                        if (keyboard_settings.triplesplit_he_velocity_max > 1) {
+                            keyboard_settings.triplesplit_he_velocity_max--;
                         }
-                        dprintf("Layer %d Triplesplit HE Max: %d\n", layer, layer_actuations[layer].triplesplit_he_velocity_max);
+                        dprintf("Layer %d Triplesplit HE Max: %d\n", layer, keyboard_settings.triplesplit_he_velocity_max);
                         break;
                 }
             } else {
                 // No modifier held - modify main HE settings for current layer
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        layer_actuations[layer].he_velocity_curve = (layer_actuations[layer].he_velocity_curve + 1) % 5;
-                        dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+                        keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 5;
+                        dprintf("Layer %d HE Velocity Curve: %d\n", layer, keyboard_settings.he_velocity_curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
-                        if (layer_actuations[layer].he_velocity_curve == 0) {
-                            layer_actuations[layer].he_velocity_curve = 4;
+                        if (keyboard_settings.he_velocity_curve == 0) {
+                            keyboard_settings.he_velocity_curve = 4;
                         } else {
-                            layer_actuations[layer].he_velocity_curve--;
+                            keyboard_settings.he_velocity_curve--;
                         }
-                        dprintf("Layer %d HE Velocity Curve: %d\n", layer, layer_actuations[layer].he_velocity_curve);
+                        dprintf("Layer %d HE Velocity Curve: %d\n", layer, keyboard_settings.he_velocity_curve);
                         break;
                     case HE_MACRO_MIN_UP:
-                        if (layer_actuations[layer].he_velocity_min < 127) {
-                            layer_actuations[layer].he_velocity_min++;
+                        if (keyboard_settings.he_velocity_min < 127) {
+                            keyboard_settings.he_velocity_min++;
                         }
-                        dprintf("Layer %d HE Velocity Min: %d\n", layer, layer_actuations[layer].he_velocity_min);
+                        dprintf("Layer %d HE Velocity Min: %d\n", layer, keyboard_settings.he_velocity_min);
                         break;
                     case HE_MACRO_MIN_DOWN:
-                        if (layer_actuations[layer].he_velocity_min > 1) {
-                            layer_actuations[layer].he_velocity_min--;
+                        if (keyboard_settings.he_velocity_min > 1) {
+                            keyboard_settings.he_velocity_min--;
                         }
-                        dprintf("Layer %d HE Velocity Min: %d\n", layer, layer_actuations[layer].he_velocity_min);
+                        dprintf("Layer %d HE Velocity Min: %d\n", layer, keyboard_settings.he_velocity_min);
                         break;
                     case HE_MACRO_MAX_UP:
-                        if (layer_actuations[layer].he_velocity_max < 127) {
-                            layer_actuations[layer].he_velocity_max++;
+                        if (keyboard_settings.he_velocity_max < 127) {
+                            keyboard_settings.he_velocity_max++;
                         }
-                        dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+                        dprintf("Layer %d HE Velocity Max: %d\n", layer, keyboard_settings.he_velocity_max);
                         break;
                     case HE_MACRO_MAX_DOWN:
-                        if (layer_actuations[layer].he_velocity_max > 1) {
-                            layer_actuations[layer].he_velocity_max--;
+                        if (keyboard_settings.he_velocity_max > 1) {
+                            keyboard_settings.he_velocity_max--;
                         }
-                        dprintf("Layer %d HE Velocity Max: %d\n", layer, layer_actuations[layer].he_velocity_max);
+                        dprintf("Layer %d HE Velocity Max: %d\n", layer, keyboard_settings.he_velocity_max);
                         break;
                 }
             }
@@ -11037,15 +11000,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 dprintf("Macro %d recording curve set to: %d\n", current_macro_id, curve_value);
             } else if (keysplitmodifierheld) {
                 // Keysplit modifier held - set keysplit curve
-                layer_actuations[layer].keysplit_he_velocity_curve = curve_value;
+                keyboard_settings.keysplit_he_velocity_curve = curve_value;
                 dprintf("Layer %d Keysplit HE Curve set to: %d\n", layer, curve_value);
             } else if (triplesplitmodifierheld) {
                 // Triplesplit modifier held - set triplesplit curve
-                layer_actuations[layer].triplesplit_he_velocity_curve = curve_value;
+                keyboard_settings.triplesplit_he_velocity_curve = curve_value;
                 dprintf("Layer %d Triplesplit HE Curve set to: %d\n", layer, curve_value);
             } else {
                 // No modifier held - set main HE curve for current layer
-                layer_actuations[layer].he_velocity_curve = curve_value;
+                keyboard_settings.he_velocity_curve = curve_value;
                 dprintf("Layer %d HE Velocity Curve set to: %d\n", layer, curve_value);
             }
             set_keylog(keycode, record);
@@ -11077,8 +11040,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
             // Set both min and max simultaneously for ALL layers
             for (uint8_t i = 0; i < DYNAMIC_KEYMAP_LAYER_COUNT; i++) {
-                layer_actuations[i].he_velocity_min = min_value;
-                layer_actuations[i].he_velocity_max = max_value;
+                keyboard_settings.he_velocity_min = min_value;
+                keyboard_settings.he_velocity_max = max_value;
             }
 
             dprintf("All layers HE Vel Range: %d-%d\n", min_value, max_value);
