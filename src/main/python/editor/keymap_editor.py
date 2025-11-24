@@ -670,36 +670,44 @@ class QuickActuationWidget(QWidget):
         ks_curve_layout.addWidget(self.keysplit_velocity_curve)
         keysplit_layout.addLayout(ks_curve_layout)
 
-        # KeySplit Velocity Min
+        # KeySplit Velocity Min (slider with label)
         ks_min_layout = QHBoxLayout()
-        ks_min_layout.addWidget(QLabel(tr("QuickActuationWidget", "Min:")))
-        self.keysplit_velocity_min = ArrowComboBox()
-        self.keysplit_velocity_min.setMinimumWidth(80)
-        self.keysplit_velocity_min.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.keysplit_velocity_min.setEditable(True)
-        self.keysplit_velocity_min.lineEdit().setReadOnly(True)
-        self.keysplit_velocity_min.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.keysplit_velocity_min.addItem(str(i), i)
-        self.keysplit_velocity_min.setCurrentIndex(0)
-        self.keysplit_velocity_min.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ks_min_layout.addWidget(self.keysplit_velocity_min)
+        ks_min_layout.setSpacing(6)
+        ks_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
+        ks_min_title.setMinimumWidth(60)
+        ks_min_title.setStyleSheet("QLabel { font-size: 10px; }")
+        ks_min_layout.addWidget(ks_min_title)
+        self.keysplit_velocity_min = QSlider(Qt.Horizontal)
+        self.keysplit_velocity_min.setMinimum(1)
+        self.keysplit_velocity_min.setMaximum(127)
+        self.keysplit_velocity_min.setValue(1)
+        self.keysplit_velocity_min.valueChanged.connect(lambda v: self.on_keysplit_velocity_slider_changed('min', v))
+        ks_min_layout.addWidget(self.keysplit_velocity_min, 1)
+        self.keysplit_velocity_min_label = QLabel("1")
+        self.keysplit_velocity_min_label.setMinimumWidth(35)
+        self.keysplit_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        self.keysplit_velocity_min_label.setAlignment(Qt.AlignCenter)
+        ks_min_layout.addWidget(self.keysplit_velocity_min_label)
         keysplit_layout.addLayout(ks_min_layout)
 
-        # KeySplit Velocity Max
+        # KeySplit Velocity Max (slider with label)
         ks_max_layout = QHBoxLayout()
-        ks_max_layout.addWidget(QLabel(tr("QuickActuationWidget", "Max:")))
-        self.keysplit_velocity_max = ArrowComboBox()
-        self.keysplit_velocity_max.setMinimumWidth(80)
-        self.keysplit_velocity_max.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.keysplit_velocity_max.setEditable(True)
-        self.keysplit_velocity_max.lineEdit().setReadOnly(True)
-        self.keysplit_velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.keysplit_velocity_max.addItem(str(i), i)
-        self.keysplit_velocity_max.setCurrentIndex(126)
-        self.keysplit_velocity_max.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ks_max_layout.addWidget(self.keysplit_velocity_max)
+        ks_max_layout.setSpacing(6)
+        ks_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
+        ks_max_title.setMinimumWidth(60)
+        ks_max_title.setStyleSheet("QLabel { font-size: 10px; }")
+        ks_max_layout.addWidget(ks_max_title)
+        self.keysplit_velocity_max = QSlider(Qt.Horizontal)
+        self.keysplit_velocity_max.setMinimum(1)
+        self.keysplit_velocity_max.setMaximum(127)
+        self.keysplit_velocity_max.setValue(127)
+        self.keysplit_velocity_max.valueChanged.connect(lambda v: self.on_keysplit_velocity_slider_changed('max', v))
+        ks_max_layout.addWidget(self.keysplit_velocity_max, 1)
+        self.keysplit_velocity_max_label = QLabel("127")
+        self.keysplit_velocity_max_label.setMinimumWidth(35)
+        self.keysplit_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        self.keysplit_velocity_max_label.setAlignment(Qt.AlignCenter)
+        ks_max_layout.addWidget(self.keysplit_velocity_max_label)
         keysplit_layout.addLayout(ks_max_layout)
 
         # TripleSplit Enable
@@ -771,36 +779,44 @@ class QuickActuationWidget(QWidget):
         ts_curve_layout.addWidget(self.triplesplit_velocity_curve)
         triplesplit_layout.addLayout(ts_curve_layout)
 
-        # TripleSplit Velocity Min
+        # TripleSplit Velocity Min (slider with label)
         ts_min_layout = QHBoxLayout()
-        ts_min_layout.addWidget(QLabel(tr("QuickActuationWidget", "Min:")))
-        self.triplesplit_velocity_min = ArrowComboBox()
-        self.triplesplit_velocity_min.setMinimumWidth(80)
-        self.triplesplit_velocity_min.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.triplesplit_velocity_min.setEditable(True)
-        self.triplesplit_velocity_min.lineEdit().setReadOnly(True)
-        self.triplesplit_velocity_min.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.triplesplit_velocity_min.addItem(str(i), i)
-        self.triplesplit_velocity_min.setCurrentIndex(0)
-        self.triplesplit_velocity_min.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ts_min_layout.addWidget(self.triplesplit_velocity_min)
+        ts_min_layout.setSpacing(6)
+        ts_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
+        ts_min_title.setMinimumWidth(60)
+        ts_min_title.setStyleSheet("QLabel { font-size: 10px; }")
+        ts_min_layout.addWidget(ts_min_title)
+        self.triplesplit_velocity_min = QSlider(Qt.Horizontal)
+        self.triplesplit_velocity_min.setMinimum(1)
+        self.triplesplit_velocity_min.setMaximum(127)
+        self.triplesplit_velocity_min.setValue(1)
+        self.triplesplit_velocity_min.valueChanged.connect(lambda v: self.on_triplesplit_velocity_slider_changed('min', v))
+        ts_min_layout.addWidget(self.triplesplit_velocity_min, 1)
+        self.triplesplit_velocity_min_label = QLabel("1")
+        self.triplesplit_velocity_min_label.setMinimumWidth(35)
+        self.triplesplit_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        self.triplesplit_velocity_min_label.setAlignment(Qt.AlignCenter)
+        ts_min_layout.addWidget(self.triplesplit_velocity_min_label)
         triplesplit_layout.addLayout(ts_min_layout)
 
-        # TripleSplit Velocity Max
+        # TripleSplit Velocity Max (slider with label)
         ts_max_layout = QHBoxLayout()
-        ts_max_layout.addWidget(QLabel(tr("QuickActuationWidget", "Max:")))
-        self.triplesplit_velocity_max = ArrowComboBox()
-        self.triplesplit_velocity_max.setMinimumWidth(80)
-        self.triplesplit_velocity_max.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.triplesplit_velocity_max.setEditable(True)
-        self.triplesplit_velocity_max.lineEdit().setReadOnly(True)
-        self.triplesplit_velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 128):
-            self.triplesplit_velocity_max.addItem(str(i), i)
-        self.triplesplit_velocity_max.setCurrentIndex(126)
-        self.triplesplit_velocity_max.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ts_max_layout.addWidget(self.triplesplit_velocity_max)
+        ts_max_layout.setSpacing(6)
+        ts_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
+        ts_max_title.setMinimumWidth(60)
+        ts_max_title.setStyleSheet("QLabel { font-size: 10px; }")
+        ts_max_layout.addWidget(ts_max_title)
+        self.triplesplit_velocity_max = QSlider(Qt.Horizontal)
+        self.triplesplit_velocity_max.setMinimum(1)
+        self.triplesplit_velocity_max.setMaximum(127)
+        self.triplesplit_velocity_max.setValue(127)
+        self.triplesplit_velocity_max.valueChanged.connect(lambda v: self.on_triplesplit_velocity_slider_changed('max', v))
+        ts_max_layout.addWidget(self.triplesplit_velocity_max, 1)
+        self.triplesplit_velocity_max_label = QLabel("127")
+        self.triplesplit_velocity_max_label.setMinimumWidth(35)
+        self.triplesplit_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
+        self.triplesplit_velocity_max_label.setAlignment(Qt.AlignCenter)
+        ts_max_layout.addWidget(self.triplesplit_velocity_max_label)
         triplesplit_layout.addLayout(ts_max_layout)
 
         layout.addStretch()
@@ -1044,6 +1060,26 @@ class QuickActuationWidget(QWidget):
         if not self.syncing:
             self.save_midi_ui_to_memory()
 
+    def on_keysplit_velocity_slider_changed(self, slider_type, value):
+        """Handle keysplit velocity slider changes"""
+        if slider_type == 'min':
+            self.keysplit_velocity_min_label.setText(str(value))
+        elif slider_type == 'max':
+            self.keysplit_velocity_max_label.setText(str(value))
+
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def on_triplesplit_velocity_slider_changed(self, slider_type, value):
+        """Handle triplesplit velocity slider changes"""
+        if slider_type == 'min':
+            self.triplesplit_velocity_min_label.setText(str(value))
+        elif slider_type == 'max':
+            self.triplesplit_velocity_max_label.setText(str(value))
+
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
     def on_keysplit_enabled_toggled(self):
         """Toggle KeySplit settings visibility"""
         self.keysplit_widget.setVisible(self.keysplit_enabled_checkbox.isChecked())
@@ -1071,15 +1107,15 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['keysplit_channel'] = self.keysplit_channel.currentData()
         self.midi_settings['keysplit_transpose'] = self.keysplit_transpose.currentData()
         self.midi_settings['keysplit_velocity_curve'] = self.keysplit_velocity_curve.currentData()
-        self.midi_settings['keysplit_velocity_min'] = self.keysplit_velocity_min.currentData()
-        self.midi_settings['keysplit_velocity_max'] = self.keysplit_velocity_max.currentData()
+        self.midi_settings['keysplit_velocity_min'] = self.keysplit_velocity_min.value()
+        self.midi_settings['keysplit_velocity_max'] = self.keysplit_velocity_max.value()
 
         self.midi_settings['triplesplit_enabled'] = self.triplesplit_enabled_checkbox.isChecked()
         self.midi_settings['triplesplit_channel'] = self.triplesplit_channel.currentData()
         self.midi_settings['triplesplit_transpose'] = self.triplesplit_transpose.currentData()
         self.midi_settings['triplesplit_velocity_curve'] = self.triplesplit_velocity_curve.currentData()
-        self.midi_settings['triplesplit_velocity_min'] = self.triplesplit_velocity_min.currentData()
-        self.midi_settings['triplesplit_velocity_max'] = self.triplesplit_velocity_max.currentData()
+        self.midi_settings['triplesplit_velocity_min'] = self.triplesplit_velocity_min.value()
+        self.midi_settings['triplesplit_velocity_max'] = self.triplesplit_velocity_max.value()
 
     def on_save_actuation(self):
         """Save actuation settings - to all layers or current layer depending on mode"""
