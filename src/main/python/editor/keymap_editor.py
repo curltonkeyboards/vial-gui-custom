@@ -1028,23 +1028,17 @@ class QuickActuationWidget(QWidget):
         # When entering advanced mode, hide preset and show curve/min/max
         # When leaving advanced mode, show preset and hide curve/min/max
         if show_advanced:
-            # Hide velocity preset
-            vel_preset_layout = self.midi_velocity_preset.parent().layout()
-            for i in range(vel_preset_layout.count()):
-                item = vel_preset_layout.itemAt(i)
-                if item.widget():
-                    item.widget().setVisible(False)
+            # Hide velocity preset label and combobox
+            self.midi_velocity_preset_label.setVisible(False)
+            self.midi_velocity_preset.setVisible(False)
             # Show velocity curve, min, max
             self.velocity_curve_widget.setVisible(True)
             self.velocity_min_widget.setVisible(True)
             self.velocity_max_widget.setVisible(True)
         else:
-            # Show velocity preset
-            vel_preset_layout = self.midi_velocity_preset.parent().layout()
-            for i in range(vel_preset_layout.count()):
-                item = vel_preset_layout.itemAt(i)
-                if item.widget():
-                    item.widget().setVisible(True)
+            # Show velocity preset label and combobox
+            self.midi_velocity_preset_label.setVisible(True)
+            self.midi_velocity_preset.setVisible(True)
             # Hide velocity curve, min, max
             self.velocity_curve_widget.setVisible(False)
             self.velocity_min_widget.setVisible(False)
