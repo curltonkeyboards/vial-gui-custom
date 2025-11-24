@@ -664,6 +664,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
+        self.advanced_mode = False
         self.setup_ui()
         
     def setup_ui(self):
@@ -688,58 +689,80 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         basic_layout.setColumnStretch(7, 1)  # Right spacer
         basic_group.setLayout(basic_layout)
         main_layout.addWidget(basic_group)
-        
-        # Basic Settings note - removed outdated message
-        # All global MIDI settings are now in the Global MIDI Settings section below
 
         # Global MIDI Settings Group
         global_midi_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Global MIDI Settings"))
         global_midi_layout = QGridLayout()
-        global_midi_layout.setHorizontalSpacing(25)
+        global_midi_layout.setHorizontalSpacing(20)
+        global_midi_layout.setVerticalSpacing(10)
         global_midi_layout.setColumnStretch(0, 1)    # Left spacer
-        global_midi_layout.setColumnStretch(2, 0)
-        global_midi_layout.setColumnStretch(4, 0)
-        global_midi_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
+        global_midi_layout.setColumnStretch(5, 1)    # Right spacer
         global_midi_group.setLayout(global_midi_layout)
         main_layout.addWidget(global_midi_group)
 
-        # Transpose
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 0, 1)
-        self.global_transpose = ArrowComboBox()
-        self.global_transpose.setMinimumWidth(120)
-        self.global_transpose.setMinimumHeight(30)
-        self.global_transpose.setMaximumHeight(30)
-        self.global_transpose.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(-64, 65):
-            self.global_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.global_transpose.setCurrentIndex(64)  # Default: 0
-        self.global_transpose.setEditable(True)
-        self.global_transpose.lineEdit().setReadOnly(True)
-        self.global_transpose.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_transpose, 0, 2)
+        row = 0
 
-        # Channel
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 3)
+        # Row 0: Channel and Transpose next to each other
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), row, 1)
         self.global_channel = ArrowComboBox()
-        self.global_channel.setMinimumWidth(120)
-        self.global_channel.setMinimumHeight(30)
-        self.global_channel.setMaximumHeight(30)
-        self.global_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_channel.setMinimumWidth(80)
+        self.global_channel.setMinimumHeight(25)
+        self.global_channel.setMaximumHeight(25)
         for i in range(16):
             self.global_channel.addItem(f"Channel {i + 1}", i)
         self.global_channel.setCurrentIndex(0)  # Default: Channel 1 (0)
         self.global_channel.setEditable(True)
         self.global_channel.lineEdit().setReadOnly(True)
         self.global_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_channel, 0, 4)
+        global_midi_layout.addWidget(self.global_channel, row, 2)
 
-        # Velocity Curve
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), 1, 1)
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), row, 3)
+        self.global_transpose = ArrowComboBox()
+        self.global_transpose.setMinimumWidth(80)
+        self.global_transpose.setMinimumHeight(25)
+        self.global_transpose.setMaximumHeight(25)
+        for i in range(-64, 65):
+            self.global_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.global_transpose.setCurrentIndex(64)  # Default: 0
+        self.global_transpose.setEditable(True)
+        self.global_transpose.lineEdit().setReadOnly(True)
+        self.global_transpose.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.global_transpose, row, 4)
+        row += 1
+
+        # Row 1: Advanced checkbox
+        self.advanced_checkbox = QCheckBox(tr("MIDIswitchSettingsConfigurator", "Advanced"))
+        self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
+        global_midi_layout.addWidget(self.advanced_checkbox, row, 1, 1, 4)
+        row += 1
+
+        # Row 2: Velocity Preset (basic mode) OR Velocity Curve (advanced mode)
+        self.velocity_preset_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Preset:"))
+        global_midi_layout.addWidget(self.velocity_preset_label, row, 1)
+
+        self.velocity_preset = ArrowComboBox()
+        self.velocity_preset.setMinimumWidth(120)
+        self.velocity_preset.setMinimumHeight(25)
+        self.velocity_preset.setMaximumHeight(25)
+        self.velocity_preset.addItem("Softest", 0)
+        self.velocity_preset.addItem("Soft", 1)
+        self.velocity_preset.addItem("Medium", 2)
+        self.velocity_preset.addItem("Hard", 3)
+        self.velocity_preset.addItem("Hardest", 4)
+        self.velocity_preset.setCurrentIndex(2)  # Default: Medium
+        self.velocity_preset.setEditable(True)
+        self.velocity_preset.lineEdit().setReadOnly(True)
+        self.velocity_preset.lineEdit().setAlignment(Qt.AlignCenter)
+        self.velocity_preset.currentIndexChanged.connect(self.on_velocity_preset_changed)
+        global_midi_layout.addWidget(self.velocity_preset, row, 2, 1, 3)
+
+        self.velocity_curve_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:"))
+        global_midi_layout.addWidget(self.velocity_curve_label, row, 1)
+
         self.global_velocity_curve = ArrowComboBox()
         self.global_velocity_curve.setMinimumWidth(120)
-        self.global_velocity_curve.setMinimumHeight(30)
-        self.global_velocity_curve.setMaximumHeight(30)
-        self.global_velocity_curve.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_velocity_curve.setMinimumHeight(25)
+        self.global_velocity_curve.setMaximumHeight(25)
         self.global_velocity_curve.addItem("Softest", 0)
         self.global_velocity_curve.addItem("Soft", 1)
         self.global_velocity_curve.addItem("Medium", 2)
@@ -749,52 +772,292 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_curve.setEditable(True)
         self.global_velocity_curve.lineEdit().setReadOnly(True)
         self.global_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_velocity_curve, 1, 2)
+        global_midi_layout.addWidget(self.global_velocity_curve, row, 2, 1, 3)
 
-        # Sustain
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), 1, 3)
+        # Hide curve by default (show preset)
+        self.velocity_curve_label.hide()
+        self.global_velocity_curve.hide()
+        row += 1
+
+        # Row 3: Velocity Min (advanced mode only)
+        self.velocity_min_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:"))
+        global_midi_layout.addWidget(self.velocity_min_label, row, 1)
+
+        self.global_velocity_min = QSlider(Qt.Horizontal)
+        self.global_velocity_min.setMinimum(1)
+        self.global_velocity_min.setMaximum(127)
+        self.global_velocity_min.setValue(1)
+        self.global_velocity_min.setMinimumWidth(150)
+        global_midi_layout.addWidget(self.global_velocity_min, row, 2, 1, 2)
+
+        self.velocity_min_value_label = QLabel("1")
+        self.velocity_min_value_label.setMinimumWidth(30)
+        self.velocity_min_value_label.setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.velocity_min_value_label, row, 4)
+        self.global_velocity_min.valueChanged.connect(
+            lambda v: self.velocity_min_value_label.setText(str(v))
+        )
+
+        # Hide by default
+        self.velocity_min_label.hide()
+        self.global_velocity_min.hide()
+        self.velocity_min_value_label.hide()
+        row += 1
+
+        # Row 4: Velocity Max (advanced mode only)
+        self.velocity_max_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:"))
+        global_midi_layout.addWidget(self.velocity_max_label, row, 1)
+
+        self.global_velocity_max = QSlider(Qt.Horizontal)
+        self.global_velocity_max.setMinimum(1)
+        self.global_velocity_max.setMaximum(127)
+        self.global_velocity_max.setValue(127)
+        self.global_velocity_max.setMinimumWidth(150)
+        global_midi_layout.addWidget(self.global_velocity_max, row, 2, 1, 2)
+
+        self.velocity_max_value_label = QLabel("127")
+        self.velocity_max_value_label.setMinimumWidth(30)
+        self.velocity_max_value_label.setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.velocity_max_value_label, row, 4)
+        self.global_velocity_max.valueChanged.connect(
+            lambda v: self.velocity_max_value_label.setText(str(v))
+        )
+
+        # Hide by default
+        self.velocity_max_label.hide()
+        self.global_velocity_max.hide()
+        self.velocity_max_value_label.hide()
+        row += 1
+
+        # Row 5: Sustain (shown when splits enabled)
+        self.sustain_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:"))
+        global_midi_layout.addWidget(self.sustain_label, row, 1)
+
         self.base_sustain = ArrowComboBox()
         self.base_sustain.setMinimumWidth(120)
-        self.base_sustain.setMinimumHeight(30)
-        self.base_sustain.setMaximumHeight(30)
-        self.base_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.base_sustain.setMinimumHeight(25)
+        self.base_sustain.setMaximumHeight(25)
         self.base_sustain.addItem("Ignore", 0)
         self.base_sustain.addItem("Allow", 1)
         self.base_sustain.setCurrentIndex(0)  # Default: Ignore
         self.base_sustain.setEditable(True)
         self.base_sustain.lineEdit().setReadOnly(True)
         self.base_sustain.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.base_sustain, 1, 4)
+        global_midi_layout.addWidget(self.base_sustain, row, 2, 1, 3)
 
-        # Velocity Min
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), 2, 1)
-        self.global_velocity_min = ArrowComboBox()
-        self.global_velocity_min.setMinimumWidth(120)
-        self.global_velocity_min.setMinimumHeight(30)
-        self.global_velocity_min.setMaximumHeight(30)
-        self.global_velocity_min.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 128):
-            self.global_velocity_min.addItem(str(i), i)
-        self.global_velocity_min.setCurrentIndex(0)  # Default: 1
-        self.global_velocity_min.setEditable(True)
-        self.global_velocity_min.lineEdit().setReadOnly(True)
-        self.global_velocity_min.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_velocity_min, 2, 2)
+        # Hide by default
+        self.sustain_label.hide()
+        self.base_sustain.hide()
 
-        # Velocity Max
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), 2, 3)
-        self.global_velocity_max = ArrowComboBox()
-        self.global_velocity_max.setMinimumWidth(120)
-        self.global_velocity_max.setMinimumHeight(30)
-        self.global_velocity_max.setMaximumHeight(30)
-        self.global_velocity_max.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 128):
-            self.global_velocity_max.addItem(str(i), i)
-        self.global_velocity_max.setCurrentIndex(126)  # Default: 127
-        self.global_velocity_max.setEditable(True)
-        self.global_velocity_max.lineEdit().setReadOnly(True)
-        self.global_velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_velocity_max, 2, 4)
+        # Create offshoot windows for KeySplit and TripleSplit
+        # These will be shown/hidden based on split status
+        self.keysplit_offshoot = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings"))
+        self.keysplit_offshoot.setMaximumWidth(300)
+        keysplit_layout = QGridLayout()
+        keysplit_layout.setVerticalSpacing(10)
+        keysplit_layout.setHorizontalSpacing(10)
+        self.keysplit_offshoot.setLayout(keysplit_layout)
+
+        ks_row = 0
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), ks_row, 0)
+        self.key_split_channel = ArrowComboBox()
+        self.key_split_channel.setMinimumWidth(80)
+        self.key_split_channel.setMaximumWidth(120)
+        self.key_split_channel.setMinimumHeight(25)
+        self.key_split_channel.setMaximumHeight(25)
+        for i in range(16):
+            self.key_split_channel.addItem(f"{i + 1}", i)
+        self.key_split_channel.setEditable(True)
+        self.key_split_channel.lineEdit().setReadOnly(True)
+        self.key_split_channel.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.key_split_channel, ks_row, 1)
+        ks_row += 1
+
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), ks_row, 0)
+        self.transpose_number2 = ArrowComboBox()
+        self.transpose_number2.setMinimumWidth(80)
+        self.transpose_number2.setMaximumWidth(120)
+        self.transpose_number2.setMinimumHeight(25)
+        self.transpose_number2.setMaximumHeight(25)
+        for i in range(-64, 65):
+            self.transpose_number2.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.transpose_number2.setCurrentIndex(64)
+        self.transpose_number2.setEditable(True)
+        self.transpose_number2.lineEdit().setReadOnly(True)
+        self.transpose_number2.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.transpose_number2, ks_row, 1)
+        ks_row += 1
+
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), ks_row, 0)
+        self.velocity_curve2 = ArrowComboBox()
+        self.velocity_curve2.setMinimumWidth(80)
+        self.velocity_curve2.setMaximumWidth(120)
+        self.velocity_curve2.setMinimumHeight(25)
+        self.velocity_curve2.setMaximumHeight(25)
+        self.velocity_curve2.addItem("Softest", 0)
+        self.velocity_curve2.addItem("Soft", 1)
+        self.velocity_curve2.addItem("Medium", 2)
+        self.velocity_curve2.addItem("Hard", 3)
+        self.velocity_curve2.addItem("Hardest", 4)
+        self.velocity_curve2.setCurrentIndex(2)
+        self.velocity_curve2.setEditable(True)
+        self.velocity_curve2.lineEdit().setReadOnly(True)
+        self.velocity_curve2.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.velocity_curve2, ks_row, 1)
+        ks_row += 1
+
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), ks_row, 0)
+        self.velocity_min2 = QSlider(Qt.Horizontal)
+        self.velocity_min2.setMinimum(1)
+        self.velocity_min2.setMaximum(127)
+        self.velocity_min2.setValue(1)
+        keysplit_layout.addWidget(self.velocity_min2, ks_row, 1)
+        self.velocity_min2_value = QLabel("1")
+        self.velocity_min2_value.setMinimumWidth(30)
+        self.velocity_min2_value.setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.velocity_min2_value, ks_row, 2)
+        self.velocity_min2.valueChanged.connect(lambda v: self.velocity_min2_value.setText(str(v)))
+        ks_row += 1
+
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), ks_row, 0)
+        self.velocity_max2 = QSlider(Qt.Horizontal)
+        self.velocity_max2.setMinimum(1)
+        self.velocity_max2.setMaximum(127)
+        self.velocity_max2.setValue(127)
+        keysplit_layout.addWidget(self.velocity_max2, ks_row, 1)
+        self.velocity_max2_value = QLabel("127")
+        self.velocity_max2_value.setMinimumWidth(30)
+        self.velocity_max2_value.setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.velocity_max2_value, ks_row, 2)
+        self.velocity_max2.valueChanged.connect(lambda v: self.velocity_max2_value.setText(str(v)))
+        ks_row += 1
+
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), ks_row, 0)
+        self.keysplit_sustain = ArrowComboBox()
+        self.keysplit_sustain.setMinimumWidth(80)
+        self.keysplit_sustain.setMaximumWidth(120)
+        self.keysplit_sustain.setMinimumHeight(25)
+        self.keysplit_sustain.setMaximumHeight(25)
+        self.keysplit_sustain.addItem("Ignore", 0)
+        self.keysplit_sustain.addItem("Allow", 1)
+        self.keysplit_sustain.setCurrentIndex(0)
+        self.keysplit_sustain.setEditable(True)
+        self.keysplit_sustain.lineEdit().setReadOnly(True)
+        self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_sustain, ks_row, 1)
+
+        self.keysplit_offshoot.hide()
+
+        # TripleSplit offshoot
+        self.triplesplit_offshoot = QGroupBox(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
+        self.triplesplit_offshoot.setMaximumWidth(300)
+        triplesplit_layout = QGridLayout()
+        triplesplit_layout.setVerticalSpacing(10)
+        triplesplit_layout.setHorizontalSpacing(10)
+        self.triplesplit_offshoot.setLayout(triplesplit_layout)
+
+        ts_row = 0
+        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), ts_row, 0)
+        self.key_split2_channel = ArrowComboBox()
+        self.key_split2_channel.setMinimumWidth(80)
+        self.key_split2_channel.setMaximumWidth(120)
+        self.key_split2_channel.setMinimumHeight(25)
+        self.key_split2_channel.setMaximumHeight(25)
+        for i in range(16):
+            self.key_split2_channel.addItem(f"{i + 1}", i)
+        self.key_split2_channel.setEditable(True)
+        self.key_split2_channel.lineEdit().setReadOnly(True)
+        self.key_split2_channel.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.key_split2_channel, ts_row, 1)
+        ts_row += 1
+
+        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), ts_row, 0)
+        self.transpose_number3 = ArrowComboBox()
+        self.transpose_number3.setMinimumWidth(80)
+        self.transpose_number3.setMaximumWidth(120)
+        self.transpose_number3.setMinimumHeight(25)
+        self.transpose_number3.setMaximumHeight(25)
+        for i in range(-64, 65):
+            self.transpose_number3.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.transpose_number3.setCurrentIndex(64)
+        self.transpose_number3.setEditable(True)
+        self.transpose_number3.lineEdit().setReadOnly(True)
+        self.transpose_number3.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.transpose_number3, ts_row, 1)
+        ts_row += 1
+
+        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), ts_row, 0)
+        self.velocity_curve3 = ArrowComboBox()
+        self.velocity_curve3.setMinimumWidth(80)
+        self.velocity_curve3.setMaximumWidth(120)
+        self.velocity_curve3.setMinimumHeight(25)
+        self.velocity_curve3.setMaximumHeight(25)
+        self.velocity_curve3.addItem("Softest", 0)
+        self.velocity_curve3.addItem("Soft", 1)
+        self.velocity_curve3.addItem("Medium", 2)
+        self.velocity_curve3.addItem("Hard", 3)
+        self.velocity_curve3.addItem("Hardest", 4)
+        self.velocity_curve3.setCurrentIndex(2)
+        self.velocity_curve3.setEditable(True)
+        self.velocity_curve3.lineEdit().setReadOnly(True)
+        self.velocity_curve3.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.velocity_curve3, ts_row, 1)
+        ts_row += 1
+
+        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), ts_row, 0)
+        self.velocity_min3 = QSlider(Qt.Horizontal)
+        self.velocity_min3.setMinimum(1)
+        self.velocity_min3.setMaximum(127)
+        self.velocity_min3.setValue(1)
+        triplesplit_layout.addWidget(self.velocity_min3, ts_row, 1)
+        self.velocity_min3_value = QLabel("1")
+        self.velocity_min3_value.setMinimumWidth(30)
+        self.velocity_min3_value.setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.velocity_min3_value, ts_row, 2)
+        self.velocity_min3.valueChanged.connect(lambda v: self.velocity_min3_value.setText(str(v)))
+        ts_row += 1
+
+        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), ts_row, 0)
+        self.velocity_max3 = QSlider(Qt.Horizontal)
+        self.velocity_max3.setMinimum(1)
+        self.velocity_max3.setMaximum(127)
+        self.velocity_max3.setValue(127)
+        triplesplit_layout.addWidget(self.velocity_max3, ts_row, 1)
+        self.velocity_max3_value = QLabel("127")
+        self.velocity_max3_value.setMinimumWidth(30)
+        self.velocity_max3_value.setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.velocity_max3_value, ts_row, 2)
+        self.velocity_max3.valueChanged.connect(lambda v: self.velocity_max3_value.setText(str(v)))
+        ts_row += 1
+
+        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), ts_row, 0)
+        self.triplesplit_sustain = ArrowComboBox()
+        self.triplesplit_sustain.setMinimumWidth(80)
+        self.triplesplit_sustain.setMaximumWidth(120)
+        self.triplesplit_sustain.setMinimumHeight(25)
+        self.triplesplit_sustain.setMaximumHeight(25)
+        self.triplesplit_sustain.addItem("Ignore", 0)
+        self.triplesplit_sustain.addItem("Allow", 1)
+        self.triplesplit_sustain.setCurrentIndex(0)
+        self.triplesplit_sustain.setEditable(True)
+        self.triplesplit_sustain.lineEdit().setReadOnly(True)
+        self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_sustain, ts_row, 1)
+
+        self.triplesplit_offshoot.hide()
+
+        # Create a container for main content and offshoots
+        content_container = QHBoxLayout()
+        main_content = QVBoxLayout()
+
+        # Add global MIDI group to main content
+        main_content.addWidget(global_midi_group)
+
+        content_container.addLayout(main_content, 1)
+        content_container.addWidget(self.keysplit_offshoot)
+        content_container.addWidget(self.triplesplit_offshoot)
+
+        main_layout.addLayout(content_container)
 
         # Loop Settings Group
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
@@ -805,14 +1068,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.setColumnStretch(2, 0)
         loop_layout.setColumnStretch(4, 0)
         loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward center
-        main_layout.addWidget(loop_group)
-        
+        main_content.addWidget(loop_group)
+
         # Sync Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 1)
         self.unsynced_mode = ArrowComboBox()
         self.unsynced_mode.setMinimumWidth(120)
-        self.unsynced_mode.setMinimumHeight(30)
-        self.unsynced_mode.setMaximumHeight(30)
+        self.unsynced_mode.setMinimumHeight(25)
+        self.unsynced_mode.setMaximumHeight(25)
         self.unsynced_mode.setEditable(True)
         self.unsynced_mode.lineEdit().setReadOnly(True)
         self.unsynced_mode.lineEdit().setAlignment(Qt.AlignCenter)
@@ -822,16 +1085,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.unsynced_mode.addItem("Sync Mode (Note Prime Off)", 5)
         self.unsynced_mode.addItem("BPM Bar", 1)
         self.unsynced_mode.addItem("BPM Beat", 3)
-
-
         loop_layout.addWidget(self.unsynced_mode, 0, 2)
 
         # Sample Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sample Mode:")), 0, 3)
         self.sample_mode = ArrowComboBox()
         self.sample_mode.setMinimumWidth(120)
-        self.sample_mode.setMinimumHeight(30)
-        self.sample_mode.setMaximumHeight(30)
+        self.sample_mode.setMinimumHeight(25)
+        self.sample_mode.setMaximumHeight(25)
         self.sample_mode.setEditable(True)
         self.sample_mode.lineEdit().setReadOnly(True)
         self.sample_mode.lineEdit().setAlignment(Qt.AlignCenter)
@@ -843,8 +1104,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")), 1, 1)
         self.loop_messaging_enabled = ArrowComboBox()
         self.loop_messaging_enabled.setMinimumWidth(120)
-        self.loop_messaging_enabled.setMinimumHeight(30)
-        self.loop_messaging_enabled.setMaximumHeight(30)
+        self.loop_messaging_enabled.setMinimumHeight(25)
+        self.loop_messaging_enabled.setMaximumHeight(25)
         self.loop_messaging_enabled.setEditable(True)
         self.loop_messaging_enabled.lineEdit().setReadOnly(True)
         self.loop_messaging_enabled.lineEdit().setAlignment(Qt.AlignCenter)
@@ -856,8 +1117,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")), 1, 3)
         self.loop_messaging_channel = ArrowComboBox()
         self.loop_messaging_channel.setMinimumWidth(120)
-        self.loop_messaging_channel.setMinimumHeight(30)
-        self.loop_messaging_channel.setMaximumHeight(30)
+        self.loop_messaging_channel.setMinimumHeight(25)
+        self.loop_messaging_channel.setMaximumHeight(25)
         self.loop_messaging_channel.setEditable(True)
         self.loop_messaging_channel.lineEdit().setReadOnly(True)
         self.loop_messaging_channel.lineEdit().setAlignment(Qt.AlignCenter)
@@ -870,8 +1131,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")), 2, 1)
         self.sync_midi_mode = ArrowComboBox()
         self.sync_midi_mode.setMinimumWidth(120)
-        self.sync_midi_mode.setMinimumHeight(30)
-        self.sync_midi_mode.setMaximumHeight(30)
+        self.sync_midi_mode.setMinimumHeight(25)
+        self.sync_midi_mode.setMaximumHeight(25)
         self.sync_midi_mode.setEditable(True)
         self.sync_midi_mode.lineEdit().setReadOnly(True)
         self.sync_midi_mode.lineEdit().setAlignment(Qt.AlignCenter)
@@ -883,8 +1144,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")), 2, 3)
         self.alternate_restart_mode = ArrowComboBox()
         self.alternate_restart_mode.setMinimumWidth(120)
-        self.alternate_restart_mode.setMinimumHeight(30)
-        self.alternate_restart_mode.setMaximumHeight(30)
+        self.alternate_restart_mode.setMinimumHeight(25)
+        self.alternate_restart_mode.setMaximumHeight(25)
         self.alternate_restart_mode.setEditable(True)
         self.alternate_restart_mode.lineEdit().setReadOnly(True)
         self.alternate_restart_mode.lineEdit().setAlignment(Qt.AlignCenter)
@@ -896,15 +1157,15 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 3, 1)
         self.smart_chord_light = ArrowComboBox()
         self.smart_chord_light.setMinimumWidth(120)
-        self.smart_chord_light.setMinimumHeight(30)
-        self.smart_chord_light.setMaximumHeight(30)
+        self.smart_chord_light.setMinimumHeight(25)
+        self.smart_chord_light.setMaximumHeight(25)
         self.smart_chord_light.setEditable(True)
         self.smart_chord_light.lineEdit().setReadOnly(True)
         self.smart_chord_light.lineEdit().setAlignment(Qt.AlignCenter)
         self.smart_chord_light.addItem("Default", 0)
         self.smart_chord_light.addItem("8 Track Looper", 1)
         loop_layout.addWidget(self.smart_chord_light, 3, 2)
-        
+
         # Advanced Settings Group
         advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
         advanced_layout = QGridLayout()
@@ -914,14 +1175,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.setColumnStretch(4, 0)
         advanced_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
         advanced_group.setLayout(advanced_layout)
-        main_layout.addWidget(advanced_group)
-        
+        main_content.addWidget(advanced_group)
+
         # Velocity Interval
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")), 0, 1)
         self.velocity_sensitivity = ArrowComboBox()
         self.velocity_sensitivity.setMinimumWidth(120)
-        self.velocity_sensitivity.setMinimumHeight(30)
-        self.velocity_sensitivity.setMaximumHeight(30)
+        self.velocity_sensitivity.setMinimumHeight(25)
+        self.velocity_sensitivity.setMaximumHeight(25)
         self.velocity_sensitivity.setEditable(True)
         self.velocity_sensitivity.lineEdit().setReadOnly(True)
         self.velocity_sensitivity.lineEdit().setAlignment(Qt.AlignCenter)
@@ -933,8 +1194,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")), 0, 3)
         self.cc_sensitivity = ArrowComboBox()
         self.cc_sensitivity.setMinimumWidth(120)
-        self.cc_sensitivity.setMinimumHeight(30)
-        self.cc_sensitivity.setMaximumHeight(30)
+        self.cc_sensitivity.setMinimumHeight(25)
+        self.cc_sensitivity.setMaximumHeight(25)
         self.cc_sensitivity.setEditable(True)
         self.cc_sensitivity.lineEdit().setReadOnly(True)
         self.cc_sensitivity.lineEdit().setAlignment(Qt.AlignCenter)
@@ -946,8 +1207,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Shuffle:")), 1, 1)
         self.random_velocity_modifier = ArrowComboBox()
         self.random_velocity_modifier.setMinimumWidth(120)
-        self.random_velocity_modifier.setMinimumHeight(30)
-        self.random_velocity_modifier.setMaximumHeight(30)
+        self.random_velocity_modifier.setMinimumHeight(25)
+        self.random_velocity_modifier.setMaximumHeight(25)
         self.random_velocity_modifier.setEditable(True)
         self.random_velocity_modifier.lineEdit().setReadOnly(True)
         self.random_velocity_modifier.lineEdit().setAlignment(Qt.AlignCenter)
@@ -959,8 +1220,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "OLED Keyboard:")), 1, 3)
         self.oled_keyboard = ArrowComboBox()
         self.oled_keyboard.setMinimumWidth(120)
-        self.oled_keyboard.setMinimumHeight(30)
-        self.oled_keyboard.setMaximumHeight(30)
+        self.oled_keyboard.setMinimumHeight(25)
+        self.oled_keyboard.setMaximumHeight(25)
         self.oled_keyboard.setEditable(True)
         self.oled_keyboard.lineEdit().setReadOnly(True)
         self.oled_keyboard.lineEdit().setAlignment(Qt.AlignCenter)
@@ -972,8 +1233,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 1)
         self.smart_chord_light_mode = ArrowComboBox()
         self.smart_chord_light_mode.setMinimumWidth(120)
-        self.smart_chord_light_mode.setMinimumHeight(30)
-        self.smart_chord_light_mode.setMaximumHeight(30)
+        self.smart_chord_light_mode.setMinimumHeight(25)
+        self.smart_chord_light_mode.setMaximumHeight(25)
         self.smart_chord_light_mode.setEditable(True)
         self.smart_chord_light_mode.lineEdit().setReadOnly(True)
         self.smart_chord_light_mode.lineEdit().setAlignment(Qt.AlignCenter)
@@ -988,8 +1249,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 2, 3)
         self.colorblind_mode = ArrowComboBox()
         self.colorblind_mode.setMinimumWidth(120)
-        self.colorblind_mode.setMinimumHeight(30)
-        self.colorblind_mode.setMaximumHeight(30)
+        self.colorblind_mode.setMinimumHeight(25)
+        self.colorblind_mode.setMaximumHeight(25)
         self.colorblind_mode.setEditable(True)
         self.colorblind_mode.lineEdit().setReadOnly(True)
         self.colorblind_mode.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1001,8 +1262,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 1)
         self.custom_layer_animations = ArrowComboBox()
         self.custom_layer_animations.setMinimumWidth(120)
-        self.custom_layer_animations.setMinimumHeight(30)
-        self.custom_layer_animations.setMaximumHeight(30)
+        self.custom_layer_animations.setMinimumHeight(25)
+        self.custom_layer_animations.setMaximumHeight(25)
         self.custom_layer_animations.setEditable(True)
         self.custom_layer_animations.lineEdit().setReadOnly(True)
         self.custom_layer_animations.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1014,8 +1275,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 3, 3)
         self.cc_loop_recording = ArrowComboBox()
         self.cc_loop_recording.setMinimumWidth(120)
-        self.cc_loop_recording.setMinimumHeight(30)
-        self.cc_loop_recording.setMaximumHeight(30)
+        self.cc_loop_recording.setMinimumHeight(25)
+        self.cc_loop_recording.setMaximumHeight(25)
         self.cc_loop_recording.setEditable(True)
         self.cc_loop_recording.lineEdit().setReadOnly(True)
         self.cc_loop_recording.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1027,8 +1288,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 1)
         self.true_sustain = ArrowComboBox()
         self.true_sustain.setMinimumWidth(120)
-        self.true_sustain.setMinimumHeight(30)
-        self.true_sustain.setMaximumHeight(30)
+        self.true_sustain.setMinimumHeight(25)
+        self.true_sustain.setMaximumHeight(25)
         self.true_sustain.setEditable(True)
         self.true_sustain.lineEdit().setReadOnly(True)
         self.true_sustain.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1036,13 +1297,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
 
-        # Aftertouch
+        # Aftertouch - REDUCED WIDTH
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch:")), 4, 3)
         self.global_aftertouch = ArrowComboBox()
-        self.global_aftertouch.setMinimumWidth(120)
-        self.global_aftertouch.setMinimumHeight(30)
-        self.global_aftertouch.setMaximumHeight(30)
-        self.global_aftertouch.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_aftertouch.setMinimumWidth(80)  # REDUCED from 120
+        self.global_aftertouch.setMaximumWidth(120)  # Added max width
+        self.global_aftertouch.setMinimumHeight(25)
+        self.global_aftertouch.setMaximumHeight(25)
         self.global_aftertouch.addItem("Off", 0)
         self.global_aftertouch.addItem("Reverse", 1)
         self.global_aftertouch.addItem("Bottom-Out", 2)
@@ -1054,13 +1315,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_aftertouch.lineEdit().setAlignment(Qt.AlignCenter)
         advanced_layout.addWidget(self.global_aftertouch, 4, 4)
 
-        # Aftertouch CC
+        # Aftertouch CC - SAME WIDTH AS CC INTERVAL
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch CC:")), 5, 1)
         self.global_aftertouch_cc = ArrowComboBox()
-        self.global_aftertouch_cc.setMinimumWidth(120)
-        self.global_aftertouch_cc.setMinimumHeight(30)
-        self.global_aftertouch_cc.setMaximumHeight(30)
-        self.global_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_aftertouch_cc.setMinimumWidth(80)  # REDUCED from 120
+        self.global_aftertouch_cc.setMaximumWidth(120)  # Added max width
+        self.global_aftertouch_cc.setMinimumHeight(25)
+        self.global_aftertouch_cc.setMaximumHeight(25)
         for cc in range(128):
             self.global_aftertouch_cc.addItem(f"CC#{cc}", cc)
         self.global_aftertouch_cc.setCurrentIndex(74)  # Default: CC#74
@@ -1068,7 +1329,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_aftertouch_cc.lineEdit().setReadOnly(True)
         self.global_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
         advanced_layout.addWidget(self.global_aftertouch_cc, 5, 2)
-        
+
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
         keysplit_modes_layout = QGridLayout()
@@ -1079,28 +1340,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_modes_layout.setColumnStretch(6, 0)
         keysplit_modes_layout.setColumnStretch(7, 1)    # Right spacer - centers content
         keysplit_modes_group.setLayout(keysplit_modes_layout)
-        main_layout.addWidget(keysplit_modes_group)
+        main_content.addWidget(keysplit_modes_group)
 
         # Channel Mode
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 1)
         self.key_split_status = ArrowComboBox()
         self.key_split_status.setMinimumWidth(120)
-        self.key_split_status.setMinimumHeight(30)
-        self.key_split_status.setMaximumHeight(30)
+        self.key_split_status.setMinimumHeight(25)
+        self.key_split_status.setMaximumHeight(25)
         self.key_split_status.setEditable(True)
         self.key_split_status.lineEdit().setReadOnly(True)
         self.key_split_status.lineEdit().setAlignment(Qt.AlignCenter)
         self.key_split_status.addItem("Disable Keysplit", 0)
         self.key_split_status.addItem("KeySplit On", 1)
         self.key_split_status.addItem("TripleSplit On", 2)
+        self.key_split_status.currentIndexChanged.connect(self.on_split_mode_changed)
         keysplit_modes_layout.addWidget(self.key_split_status, 0, 2)
 
         # Transpose Mode
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 0, 3)
         self.key_split_transpose_status = ArrowComboBox()
         self.key_split_transpose_status.setMinimumWidth(120)
-        self.key_split_transpose_status.setMinimumHeight(30)
-        self.key_split_transpose_status.setMaximumHeight(30)
+        self.key_split_transpose_status.setMinimumHeight(25)
+        self.key_split_transpose_status.setMaximumHeight(25)
         self.key_split_transpose_status.setEditable(True)
         self.key_split_transpose_status.lineEdit().setReadOnly(True)
         self.key_split_transpose_status.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1113,8 +1375,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), 0, 5)
         self.key_split_velocity_status = ArrowComboBox()
         self.key_split_velocity_status.setMinimumWidth(120)
-        self.key_split_velocity_status.setMinimumHeight(30)
-        self.key_split_velocity_status.setMaximumHeight(30)
+        self.key_split_velocity_status.setMinimumHeight(25)
+        self.key_split_velocity_status.setMaximumHeight(25)
         self.key_split_velocity_status.setEditable(True)
         self.key_split_velocity_status.lineEdit().setReadOnly(True)
         self.key_split_velocity_status.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1122,203 +1384,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_velocity_status.addItem("KeySplit On", 1)
         self.key_split_velocity_status.addItem("TripleSplit On", 2)
         keysplit_modes_layout.addWidget(self.key_split_velocity_status, 0, 6)
-        
-        # KeySplit Settings Group
-        keysplit_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit & TripleSplit Settings"))
-        keysplit_layout = QGridLayout()
-        keysplit_layout.setHorizontalSpacing(25)
-        keysplit_layout.setColumnStretch(0, 1)    # Left spacer
-        keysplit_layout.setColumnStretch(2, 0)
-        keysplit_layout.setColumnStretch(4, 0)
-        keysplit_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
-        keysplit_group.setLayout(keysplit_layout)
-        main_layout.addWidget(keysplit_group)
-        
-        # KeySplit settings (left column)
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings")), 0, 1, 1, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 1)
-        self.key_split_channel = ArrowComboBox()
-        self.key_split_channel.setMinimumWidth(120)
-        self.key_split_channel.setMinimumHeight(30)
-        self.key_split_channel.setMaximumHeight(30)
-        self.key_split_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(16):
-            self.key_split_channel.addItem(str(i + 1), i)
-        self.key_split_channel.setEditable(True)
-        self.key_split_channel.lineEdit().setReadOnly(True)
-        self.key_split_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.key_split_channel, 1, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 1)
-        self.transpose_number2 = ArrowComboBox()
-        self.transpose_number2.setMinimumWidth(120)
-        self.transpose_number2.setMinimumHeight(30)
-        self.transpose_number2.setMaximumHeight(30)
-        self.transpose_number2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(-64, 65):
-            self.transpose_number2.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.transpose_number2.setCurrentIndex(64)
-        self.transpose_number2.setEditable(True)
-        self.transpose_number2.lineEdit().setReadOnly(True)
-        self.transpose_number2.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.transpose_number2, 2, 2)
-
-        # KeySplit Velocity Settings
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), 3, 1)
-        self.velocity_curve2 = ArrowComboBox()
-        self.velocity_curve2.setMinimumWidth(120)
-        self.velocity_curve2.setMinimumHeight(30)
-        self.velocity_curve2.setMaximumHeight(30)
-        self.velocity_curve2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_curve2.addItem("Softest", 0)
-        self.velocity_curve2.addItem("Soft", 1)
-        self.velocity_curve2.addItem("Medium", 2)
-        self.velocity_curve2.addItem("Hard", 3)
-        self.velocity_curve2.addItem("Hardest", 4)
-        self.velocity_curve2.setCurrentIndex(2)
-        self.velocity_curve2.setEditable(True)
-        self.velocity_curve2.lineEdit().setReadOnly(True)
-        self.velocity_curve2.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_curve2, 3, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), 4, 1)
-        self.velocity_min2 = ArrowComboBox()
-        self.velocity_min2.setMinimumWidth(120)
-        self.velocity_min2.setMinimumHeight(30)
-        self.velocity_min2.setMaximumHeight(30)
-        self.velocity_min2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 128):
-            self.velocity_min2.addItem(str(i), i)
-        self.velocity_min2.setCurrentIndex(0)
-        self.velocity_min2.setEditable(True)
-        self.velocity_min2.lineEdit().setReadOnly(True)
-        self.velocity_min2.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_min2, 4, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), 5, 1)
-        self.velocity_max2 = ArrowComboBox()
-        self.velocity_max2.setMinimumWidth(120)
-        self.velocity_max2.setMinimumHeight(30)
-        self.velocity_max2.setMaximumHeight(30)
-        self.velocity_max2.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 128):
-            self.velocity_max2.addItem(str(i), i)
-        self.velocity_max2.setCurrentIndex(126)  # Default to 127
-        self.velocity_max2.setEditable(True)
-        self.velocity_max2.lineEdit().setReadOnly(True)
-        self.velocity_max2.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_max2, 5, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), 6, 1)
-        self.keysplit_sustain = ArrowComboBox()
-        self.keysplit_sustain.setMinimumWidth(120)
-        self.keysplit_sustain.setMinimumHeight(30)
-        self.keysplit_sustain.setMaximumHeight(30)
-        self.keysplit_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.keysplit_sustain.addItem("Ignore", 0)
-        self.keysplit_sustain.addItem("Allow", 1)
-        self.keysplit_sustain.setCurrentIndex(0)  # Default: Ignore
-        self.keysplit_sustain.setEditable(True)
-        self.keysplit_sustain.lineEdit().setReadOnly(True)
-        self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.keysplit_sustain, 6, 2)
-
-        # TripleSplit settings (right column)
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings")), 0, 3, 1, 2)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 1, 3)
-        self.key_split2_channel = ArrowComboBox()
-        self.key_split2_channel.setMinimumWidth(120)
-        self.key_split2_channel.setMinimumHeight(30)
-        self.key_split2_channel.setMaximumHeight(30)
-        self.key_split2_channel.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(16):
-            self.key_split2_channel.addItem(str(i + 1), i)
-        self.key_split2_channel.setEditable(True)
-        self.key_split2_channel.lineEdit().setReadOnly(True)
-        self.key_split2_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.key_split2_channel, 1, 4)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), 2, 3)
-        self.transpose_number3 = ArrowComboBox()
-        self.transpose_number3.setMinimumWidth(120)
-        self.transpose_number3.setMinimumHeight(30)
-        self.transpose_number3.setMaximumHeight(30)
-        self.transpose_number3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(-64, 65):
-            self.transpose_number3.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.transpose_number3.setCurrentIndex(64)
-        self.transpose_number3.setEditable(True)
-        self.transpose_number3.lineEdit().setReadOnly(True)
-        self.transpose_number3.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.transpose_number3, 2, 4)
-
-        # TripleSplit Velocity Settings
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), 3, 3)
-        self.velocity_curve3 = ArrowComboBox()
-        self.velocity_curve3.setMinimumWidth(120)
-        self.velocity_curve3.setMinimumHeight(30)
-        self.velocity_curve3.setMaximumHeight(30)
-        self.velocity_curve3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.velocity_curve3.addItem("Softest", 0)
-        self.velocity_curve3.addItem("Soft", 1)
-        self.velocity_curve3.addItem("Medium", 2)
-        self.velocity_curve3.addItem("Hard", 3)
-        self.velocity_curve3.addItem("Hardest", 4)
-        self.velocity_curve3.setCurrentIndex(2)
-        self.velocity_curve3.setEditable(True)
-        self.velocity_curve3.lineEdit().setReadOnly(True)
-        self.velocity_curve3.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_curve3, 3, 4)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), 4, 3)
-        self.velocity_min3 = ArrowComboBox()
-        self.velocity_min3.setMinimumWidth(120)
-        self.velocity_min3.setMinimumHeight(30)
-        self.velocity_min3.setMaximumHeight(30)
-        self.velocity_min3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 128):
-            self.velocity_min3.addItem(str(i), i)
-        self.velocity_min3.setCurrentIndex(0)
-        self.velocity_min3.setEditable(True)
-        self.velocity_min3.lineEdit().setReadOnly(True)
-        self.velocity_min3.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_min3, 4, 4)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), 5, 3)
-        self.velocity_max3 = ArrowComboBox()
-        self.velocity_max3.setMinimumWidth(120)
-        self.velocity_max3.setMinimumHeight(30)
-        self.velocity_max3.setMaximumHeight(30)
-        self.velocity_max3.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 128):
-            self.velocity_max3.addItem(str(i), i)
-        self.velocity_max3.setCurrentIndex(126)  # Default to 127
-        self.velocity_max3.setEditable(True)
-        self.velocity_max3.lineEdit().setReadOnly(True)
-        self.velocity_max3.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_max3, 5, 4)
-
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), 6, 3)
-        self.triplesplit_sustain = ArrowComboBox()
-        self.triplesplit_sustain.setMinimumWidth(120)
-        self.triplesplit_sustain.setMinimumHeight(30)
-        self.triplesplit_sustain.setMaximumHeight(30)
-        self.triplesplit_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.triplesplit_sustain.addItem("Ignore", 0)
-        self.triplesplit_sustain.addItem("Allow", 1)
-        self.triplesplit_sustain.setCurrentIndex(0)  # Default: Ignore
-        self.triplesplit_sustain.setEditable(True)
-        self.triplesplit_sustain.lineEdit().setReadOnly(True)
-        self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.triplesplit_sustain, 6, 4)
 
         # Buttons
         self.addStretch()
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
-        
+
         # Default buttons
         save_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save as Default"))
         save_default_btn.setMinimumHeight(30)
@@ -1373,14 +1444,76 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
         self.addLayout(load_slots_layout)
-        
+
         # Apply stylesheet to center combo box text
         main_widget.setStyleSheet("""
             QComboBox {
                 text-align: center;
             }
         """)
-    
+
+    def on_advanced_toggled(self):
+        """Toggle between basic and advanced velocity settings"""
+        self.advanced_mode = self.advanced_checkbox.isChecked()
+
+        if self.advanced_mode:
+            # Show advanced controls
+            self.velocity_preset_label.hide()
+            self.velocity_preset.hide()
+            self.velocity_curve_label.show()
+            self.global_velocity_curve.show()
+            self.velocity_min_label.show()
+            self.global_velocity_min.show()
+            self.velocity_min_value_label.show()
+            self.velocity_max_label.show()
+            self.global_velocity_max.show()
+            self.velocity_max_value_label.show()
+        else:
+            # Show basic controls
+            self.velocity_preset_label.show()
+            self.velocity_preset.show()
+            self.velocity_curve_label.hide()
+            self.global_velocity_curve.hide()
+            self.velocity_min_label.hide()
+            self.global_velocity_min.hide()
+            self.velocity_min_value_label.hide()
+            self.velocity_max_label.hide()
+            self.global_velocity_max.hide()
+            self.velocity_max_value_label.hide()
+
+    def on_velocity_preset_changed(self):
+        """Sync velocity preset to curve when in basic mode"""
+        if not self.advanced_mode:
+            preset_value = self.velocity_preset.currentData()
+            # Set curve to match preset
+            for i in range(self.global_velocity_curve.count()):
+                if self.global_velocity_curve.itemData(i) == preset_value:
+                    self.global_velocity_curve.setCurrentIndex(i)
+                    break
+
+    def on_split_mode_changed(self):
+        """Show/hide offshoot windows and sustain based on split mode"""
+        split_status = self.key_split_status.currentData()
+
+        # Show/hide sustain in basic settings when splits are enabled
+        if split_status > 0:  # Any split mode enabled
+            self.sustain_label.show()
+            self.base_sustain.show()
+        else:
+            self.sustain_label.hide()
+            self.base_sustain.hide()
+
+        # Show/hide offshoot windows
+        if split_status == 1:  # KeySplit only
+            self.keysplit_offshoot.show()
+            self.triplesplit_offshoot.hide()
+        elif split_status == 2:  # TripleSplit
+            self.keysplit_offshoot.show()
+            self.triplesplit_offshoot.show()
+        else:  # No splits
+            self.keysplit_offshoot.hide()
+            self.triplesplit_offshoot.hide()
+
     def get_current_settings(self):
         """Get current UI settings as dictionary"""
         return {
@@ -1409,18 +1542,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "truesustain": self.true_sustain.currentData(),
             # KeySplit/TripleSplit velocity settings
             "velocity_curve2": self.velocity_curve2.currentData(),
-            "velocity_min2": self.velocity_min2.currentData(),
-            "velocity_max2": self.velocity_max2.currentData(),
+            "velocity_min2": self.velocity_min2.value(),  # Changed from currentData() to value()
+            "velocity_max2": self.velocity_max2.value(),  # Changed from currentData() to value()
             "velocity_curve3": self.velocity_curve3.currentData(),
-            "velocity_min3": self.velocity_min3.currentData(),
-            "velocity_max3": self.velocity_max3.currentData(),
+            "velocity_min3": self.velocity_min3.value(),  # Changed from currentData() to value()
+            "velocity_max3": self.velocity_max3.value(),  # Changed from currentData() to value()
             # Global MIDI settings
             "global_transpose": self.global_transpose.currentData(),
             "global_channel": self.global_channel.currentData(),
             "global_velocity_curve": self.global_velocity_curve.currentData(),
             "global_aftertouch": self.global_aftertouch.currentData(),
-            "global_velocity_min": self.global_velocity_min.currentData(),
-            "global_velocity_max": self.global_velocity_max.currentData(),
+            "global_velocity_min": self.global_velocity_min.value(),  # Changed from currentData() to value()
+            "global_velocity_max": self.global_velocity_max.value(),  # Changed from currentData() to value()
             "global_aftertouch_cc": self.global_aftertouch_cc.currentData(),
             # Sustain settings
             "base_sustain": self.base_sustain.currentData(),
@@ -1466,18 +1599,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
         # KeySplit/TripleSplit velocity settings
         set_combo_by_data(self.velocity_curve2, config.get("velocity_curve2"), 2)
-        set_combo_by_data(self.velocity_min2, config.get("velocity_min2"), 1)
-        set_combo_by_data(self.velocity_max2, config.get("velocity_max2"), 127)
+        self.velocity_min2.setValue(config.get("velocity_min2", 1))  # Changed to slider setValue
+        self.velocity_max2.setValue(config.get("velocity_max2", 127))  # Changed to slider setValue
         set_combo_by_data(self.velocity_curve3, config.get("velocity_curve3"), 2)
-        set_combo_by_data(self.velocity_min3, config.get("velocity_min3"), 1)
-        set_combo_by_data(self.velocity_max3, config.get("velocity_max3"), 127)
+        self.velocity_min3.setValue(config.get("velocity_min3", 1))  # Changed to slider setValue
+        self.velocity_max3.setValue(config.get("velocity_max3", 127))  # Changed to slider setValue
         # Global MIDI settings
         set_combo_by_data(self.global_transpose, config.get("global_transpose"), 0)
         set_combo_by_data(self.global_channel, config.get("global_channel"), 0)
         set_combo_by_data(self.global_velocity_curve, config.get("global_velocity_curve"), 2)
         set_combo_by_data(self.global_aftertouch, config.get("global_aftertouch"), 0)
-        set_combo_by_data(self.global_velocity_min, config.get("global_velocity_min"), 1)
-        set_combo_by_data(self.global_velocity_max, config.get("global_velocity_max"), 127)
+        self.global_velocity_min.setValue(config.get("global_velocity_min", 1))  # Changed to slider setValue
+        self.global_velocity_max.setValue(config.get("global_velocity_max", 127))  # Changed to slider setValue
         set_combo_by_data(self.global_aftertouch_cc, config.get("global_aftertouch_cc"), 74)
         # Sustain settings
         set_combo_by_data(self.base_sustain, config.get("base_sustain"), 0)
