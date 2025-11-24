@@ -647,16 +647,17 @@ class QuickActuationWidget(QGroupBox):
         self.midi_rapid_vel_value_label.setText(f"±{data['midi_rapid_vel']}")
         
         # Set combos
+        # Note: aftertouch is now a global setting, but we handle it for backward compatibility
         for i in range(self.aftertouch_combo.count()):
-            if self.aftertouch_combo.itemData(i) == data['aftertouch']:
+            if self.aftertouch_combo.itemData(i) == data.get('aftertouch', 0):
                 self.aftertouch_combo.setCurrentIndex(i)
                 break
-        
+
         for i in range(self.aftertouch_cc_combo.count()):
-            if self.aftertouch_cc_combo.itemData(i) == data['aftertouch_cc']:
+            if self.aftertouch_cc_combo.itemData(i) == data.get('aftertouch_cc', 74):
                 self.aftertouch_cc_combo.setCurrentIndex(i)
                 break
-        
+
         for i in range(self.velocity_combo.count()):
             if self.velocity_combo.itemData(i) == data['velocity']:
                 self.velocity_combo.setCurrentIndex(i)
