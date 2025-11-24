@@ -681,15 +681,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
-        # Basic Settings Group
-        basic_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Basic Settings"))
-        basic_layout = QGridLayout()
-        basic_layout.setHorizontalSpacing(25)
-        basic_layout.setColumnStretch(0, 1)  # Left spacer
-        basic_layout.setColumnStretch(7, 1)  # Right spacer
-        basic_group.setLayout(basic_layout)
-        main_layout.addWidget(basic_group)
-
         # Global MIDI Settings Group
         global_midi_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Global MIDI Settings"))
         global_midi_layout = QGridLayout()
@@ -946,8 +937,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.keysplit_sustain, ks_row, 1)
 
-        self.keysplit_offshoot.hide()
-
         # TripleSplit offshoot
         self.triplesplit_offshoot = QGroupBox(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
         self.triplesplit_offshoot.setMaximumWidth(300)
@@ -1044,20 +1033,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         triplesplit_layout.addWidget(self.triplesplit_sustain, ts_row, 1)
 
-        self.triplesplit_offshoot.hide()
-
-        # Create a container for main content and offshoots
-        content_container = QHBoxLayout()
-        main_content = QVBoxLayout()
-
-        # Add global MIDI group to main content
-        main_content.addWidget(global_midi_group)
-
-        content_container.addLayout(main_content, 1)
-        content_container.addWidget(self.keysplit_offshoot)
-        content_container.addWidget(self.triplesplit_offshoot)
-
-        main_layout.addLayout(content_container)
+        # Add global MIDI group to main layout
+        main_layout.addWidget(global_midi_group)
 
         # Loop Settings Group
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
@@ -1068,7 +1045,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout.setColumnStretch(2, 0)
         loop_layout.setColumnStretch(4, 0)
         loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward center
-        main_content.addWidget(loop_group)
+        main_layout.addWidget(loop_group)
 
         # Sync Mode
         loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sync Mode:")), 0, 1)
@@ -1175,7 +1152,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_layout.setColumnStretch(4, 0)
         advanced_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
         advanced_group.setLayout(advanced_layout)
-        main_content.addWidget(advanced_group)
+        main_layout.addWidget(advanced_group)
 
         # Velocity Interval
         advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")), 0, 1)
@@ -1340,7 +1317,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_modes_layout.setColumnStretch(6, 0)
         keysplit_modes_layout.setColumnStretch(7, 1)    # Right spacer - centers content
         keysplit_modes_group.setLayout(keysplit_modes_layout)
-        main_content.addWidget(keysplit_modes_group)
+        main_layout.addWidget(keysplit_modes_group)
 
         # Channel Mode
         keysplit_modes_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), 0, 1)
@@ -1384,6 +1361,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_velocity_status.addItem("KeySplit On", 1)
         self.key_split_velocity_status.addItem("TripleSplit On", 2)
         keysplit_modes_layout.addWidget(self.key_split_velocity_status, 0, 6)
+
+        # Split Settings - Always visible at bottom
+        splits_container = QHBoxLayout()
+        splits_container.addStretch()
+        splits_container.addWidget(self.keysplit_offshoot)
+        splits_container.addWidget(self.triplesplit_offshoot)
+        splits_container.addStretch()
+        main_layout.addLayout(splits_container)
 
         # Buttons
         self.addStretch()
@@ -1492,10 +1477,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
                     break
 
     def on_split_mode_changed(self):
-        """Show/hide offshoot windows and sustain based on split mode"""
+        """Show/hide sustain based on split mode"""
         split_status = self.key_split_status.currentData()
 
-        # Show/hide sustain in basic settings when splits are enabled
+        # Show/hide sustain in Global MIDI Settings when splits are enabled
         if split_status > 0:  # Any split mode enabled
             self.sustain_label.show()
             self.base_sustain.show()
@@ -1503,16 +1488,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.sustain_label.hide()
             self.base_sustain.hide()
 
-        # Show/hide offshoot windows
-        if split_status == 1:  # KeySplit only
-            self.keysplit_offshoot.show()
-            self.triplesplit_offshoot.hide()
-        elif split_status == 2:  # TripleSplit
-            self.keysplit_offshoot.show()
-            self.triplesplit_offshoot.show()
-        else:  # No splits
-            self.keysplit_offshoot.hide()
-            self.triplesplit_offshoot.hide()
+        # Split offshoots are now always visible at the bottom
 
     def get_current_settings(self):
         """Get current UI settings as dictionary"""
@@ -2077,18 +2053,48 @@ class LayerActuationConfigurator(BasicEditor):
         
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
-        advanced_layout = QVBoxLayout()
-        advanced_layout.setSpacing(8)
-        advanced_layout.setContentsMargins(0, 10, 0, 0)
-        self.advanced_widget.setLayout(advanced_layout)
+        advanced_layout_main = QVBoxLayout()
+        advanced_layout_main.setSpacing(8)
+        advanced_layout_main.setContentsMargins(0, 10, 0, 0)
+        self.advanced_widget.setLayout(advanced_layout_main)
         self.advanced_widget.setVisible(False)
-        
+
         # Add separator
         adv_line = QFrame()
         adv_line.setFrameShape(QFrame.HLine)
         adv_line.setFrameShadow(QFrame.Sunken)
-        advanced_layout.addWidget(adv_line)
-        
+        advanced_layout_main.addWidget(adv_line)
+
+        # Title for MIDI settings section
+        midi_settings_title = QLabel(tr("LayerActuationConfigurator", "Basic MIDI Settings"))
+        midi_settings_title.setStyleSheet("QLabel { font-weight: bold; font-size: 11px; margin: 5px 0px; }")
+        advanced_layout_main.addWidget(midi_settings_title)
+
+        # Container for MIDI settings and split offshoots (side by side)
+        content_container = QHBoxLayout()
+        advanced_layout = QVBoxLayout()
+
+        # Split Mode control
+        split_mode_layout = QHBoxLayout()
+        split_mode_label = QLabel(tr("LayerActuationConfigurator", "Split Mode:"))
+        split_mode_label.setMinimumWidth(200)
+        split_mode_layout.addWidget(split_mode_label)
+
+        self.actuation_split_mode = ArrowComboBox()
+        self.actuation_split_mode.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.actuation_split_mode.addItem("Disable Keysplit", 0)
+        self.actuation_split_mode.addItem("KeySplit On", 1)
+        self.actuation_split_mode.addItem("TripleSplit On", 2)
+        self.actuation_split_mode.setCurrentIndex(0)
+        self.actuation_split_mode.setEditable(True)
+        self.actuation_split_mode.lineEdit().setReadOnly(True)
+        self.actuation_split_mode.lineEdit().setAlignment(Qt.AlignCenter)
+        self.actuation_split_mode.currentIndexChanged.connect(self.on_actuation_split_mode_changed)
+        split_mode_layout.addWidget(self.actuation_split_mode)
+        split_mode_layout.addStretch()
+
+        advanced_layout.addLayout(split_mode_layout)
+
         # MIDI Keys Actuation (slider)
         midi_slider_layout = QHBoxLayout()
         midi_label = QLabel(tr("LayerActuationConfigurator", "MIDI Keys Actuation:"))
@@ -2345,6 +2351,66 @@ class LayerActuationConfigurator(BasicEditor):
         he_max_slider.valueChanged.connect(
             lambda v, lbl=he_max_value_label: self.on_master_slider_changed('he_max', v, lbl)
         )
+
+        # Add the MIDI settings layout to the content container
+        content_container.addLayout(advanced_layout, 1)
+
+        # Create KeySplit offshoot window
+        self.keysplit_actuation_offshoot = QGroupBox(tr("LayerActuationConfigurator", "KeySplit Settings"))
+        self.keysplit_actuation_offshoot.setMaximumWidth(300)
+        keysplit_layout = QGridLayout()
+        keysplit_layout.setVerticalSpacing(10)
+        keysplit_layout.setHorizontalSpacing(10)
+        self.keysplit_actuation_offshoot.setLayout(keysplit_layout)
+
+        ks_row = 0
+        keysplit_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "Sustain:")), ks_row, 0)
+        self.keysplit_actuation_sustain = ArrowComboBox()
+        self.keysplit_actuation_sustain.setMinimumWidth(80)
+        self.keysplit_actuation_sustain.setMaximumWidth(120)
+        self.keysplit_actuation_sustain.setMinimumHeight(25)
+        self.keysplit_actuation_sustain.setMaximumHeight(25)
+        self.keysplit_actuation_sustain.addItem("Ignore", 0)
+        self.keysplit_actuation_sustain.addItem("Allow", 1)
+        self.keysplit_actuation_sustain.setCurrentIndex(0)
+        self.keysplit_actuation_sustain.setEditable(True)
+        self.keysplit_actuation_sustain.lineEdit().setReadOnly(True)
+        self.keysplit_actuation_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_actuation_sustain, ks_row, 1)
+
+        self.keysplit_actuation_offshoot.hide()
+
+        # TripleSplit offshoot window
+        self.triplesplit_actuation_offshoot = QGroupBox(tr("LayerActuationConfigurator", "TripleSplit Settings"))
+        self.triplesplit_actuation_offshoot.setMaximumWidth(300)
+        triplesplit_layout = QGridLayout()
+        triplesplit_layout.setVerticalSpacing(10)
+        triplesplit_layout.setHorizontalSpacing(10)
+        self.triplesplit_actuation_offshoot.setLayout(triplesplit_layout)
+
+        ts_row = 0
+        triplesplit_layout.addWidget(QLabel(tr("LayerActuationConfigurator", "Sustain:")), ts_row, 0)
+        self.triplesplit_actuation_sustain = ArrowComboBox()
+        self.triplesplit_actuation_sustain.setMinimumWidth(80)
+        self.triplesplit_actuation_sustain.setMaximumWidth(120)
+        self.triplesplit_actuation_sustain.setMinimumHeight(25)
+        self.triplesplit_actuation_sustain.setMaximumHeight(25)
+        self.triplesplit_actuation_sustain.addItem("Ignore", 0)
+        self.triplesplit_actuation_sustain.addItem("Allow", 1)
+        self.triplesplit_actuation_sustain.setCurrentIndex(0)
+        self.triplesplit_actuation_sustain.setEditable(True)
+        self.triplesplit_actuation_sustain.lineEdit().setReadOnly(True)
+        self.triplesplit_actuation_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_actuation_sustain, ts_row, 1)
+
+        self.triplesplit_actuation_offshoot.hide()
+
+        # Add offshoots to content container (side by side)
+        content_container.addWidget(self.keysplit_actuation_offshoot)
+        content_container.addWidget(self.triplesplit_actuation_offshoot)
+
+        # Add content container to main advanced layout
+        advanced_layout_main.addLayout(content_container)
 
         layout.addWidget(self.advanced_widget)
         
@@ -2771,7 +2837,25 @@ class LayerActuationConfigurator(BasicEditor):
         """Show/hide advanced options in master controls"""
         self.advanced_shown = self.advanced_checkbox.isChecked()
         self.advanced_widget.setVisible(self.advanced_shown)
-    
+
+    def on_actuation_split_mode_changed(self):
+        """Show/hide split offshoots based on split mode"""
+        if not hasattr(self, 'actuation_split_mode'):
+            return
+
+        split_status = self.actuation_split_mode.currentData()
+
+        # Show/hide offshoot windows based on split mode
+        if split_status == 1:  # KeySplit only
+            self.keysplit_actuation_offshoot.show()
+            self.triplesplit_actuation_offshoot.hide()
+        elif split_status == 2:  # TripleSplit
+            self.keysplit_actuation_offshoot.show()
+            self.triplesplit_actuation_offshoot.show()
+        else:  # No splits
+            self.keysplit_actuation_offshoot.hide()
+            self.triplesplit_actuation_offshoot.hide()
+
     def on_layer_advanced_toggled(self):
         """Show/hide advanced options in layer controls"""
         shown = self.layer_widgets['advanced_checkbox'].isChecked()
