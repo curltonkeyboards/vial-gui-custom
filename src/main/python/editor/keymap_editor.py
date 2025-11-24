@@ -18,19 +18,18 @@ from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
 
 
-class QuickActuationWidget(QGroupBox):
+class QuickActuationWidget(QWidget):
     """Full-featured per-layer actuation controls in keymap editor"""
-    
+
     def __init__(self):
-        super().__init__(tr("QuickActuationWidget", "Actuation Settings"))
-        
+        super().__init__()
+
         self.device = None
         self.syncing = False
         self.current_layer = 0
         self.per_layer_enabled = False
-        
+
         # Cache all layer data in memory to avoid device I/O lag
-        # Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
         self.layer_data = []
         for _ in range(12):
             self.layer_data.append({
@@ -44,17 +43,61 @@ class QuickActuationWidget(QGroupBox):
                 'rapidfire_enabled': False,
                 'midi_rapidfire_enabled': False
             })
-        
+
+        # MIDI settings (global, per keyboard)
+        self.midi_settings = {
+            'channel': 0,
+            'transpose': 0,
+            'velocity_preset': 2,  # Medium
+            'velocity_curve': 2,
+            'velocity_min': 1,
+            'velocity_max': 127,
+            'aftertouch': 0,
+            'aftertouch_cc': 74,
+            'keysplit_enabled': False,
+            'keysplit_channel': 0,
+            'keysplit_transpose': 0,
+            'keysplit_velocity_curve': 2,
+            'keysplit_velocity_min': 1,
+            'keysplit_velocity_max': 127,
+            'triplesplit_enabled': False,
+            'triplesplit_channel': 0,
+            'triplesplit_transpose': 0,
+            'triplesplit_velocity_curve': 2,
+            'triplesplit_velocity_min': 1,
+            'triplesplit_velocity_max': 127
+        }
+
         self.setMinimumWidth(200)
         self.setMaximumWidth(350)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.setStyleSheet("QGroupBox { font-weight: bold; font-size: 11px; }")
-        
+
         layout = QVBoxLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setContentsMargins(10, 10, 10, 10)
         self.setLayout(layout)
-        
+
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("QTabWidget { font-size: 10px; }")
+        layout.addWidget(self.tab_widget)
+
+        # Create Actuation Settings tab
+        self.actuation_tab = self.create_actuation_tab()
+        self.tab_widget.addTab(self.actuation_tab, "Actuation Settings")
+
+        # Create MIDI Settings tab
+        self.midi_tab = self.create_midi_tab()
+        self.tab_widget.addTab(self.midi_tab, "MIDI Settings")
+
+    def create_actuation_tab(self):
+        """Create the Actuation Settings tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(6)
+        layout.setContentsMargins(10, 10, 10, 10)
+        tab.setLayout(layout)
+
         # Top row with Enable Per-Layer and Show Advanced checkboxes
         top_row_layout = QHBoxLayout()
         top_row_layout.setContentsMargins(0, 0, 0, 0)
@@ -72,7 +115,7 @@ class QuickActuationWidget(QGroupBox):
 
         top_row_layout.addStretch()
         layout.addLayout(top_row_layout)
-        
+
         # Layer indicator (only visible in per-layer mode)
         self.layer_label = QLabel(tr("QuickActuationWidget", "Layer 0"))
         self.layer_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; color: #666; }")
@@ -319,8 +362,331 @@ class QuickActuationWidget(QGroupBox):
         self.save_btn = QPushButton(tr("QuickActuationWidget", "Save to All Layers"))
         self.save_btn.setMaximumHeight(24)
         self.save_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
-        self.save_btn.clicked.connect(self.on_save)
+        self.save_btn.clicked.connect(self.on_save_actuation)
         layout.addWidget(self.save_btn)
+
+        return tab
+
+    def create_midi_tab(self):
+        """Create the MIDI Settings tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(6)
+        layout.setContentsMargins(10, 10, 10, 10)
+        tab.setLayout(layout)
+
+        # Basic MIDI Settings
+        basic_group = QGroupBox(tr("QuickActuationWidget", "Basic MIDI Settings"))
+        basic_layout = QVBoxLayout()
+        basic_layout.setSpacing(6)
+        basic_group.setLayout(basic_layout)
+        layout.addWidget(basic_group)
+
+        # Channel
+        ch_layout = QHBoxLayout()
+        ch_layout.addWidget(QLabel(tr("QuickActuationWidget", "Channel:")))
+        self.midi_channel = ArrowComboBox()
+        self.midi_channel.setMinimumWidth(100)
+        for i in range(16):
+            self.midi_channel.addItem(f"Channel {i + 1}", i)
+        self.midi_channel.setCurrentIndex(0)
+        self.midi_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ch_layout.addWidget(self.midi_channel)
+        basic_layout.addLayout(ch_layout)
+
+        # Transpose
+        trans_layout = QHBoxLayout()
+        trans_layout.addWidget(QLabel(tr("QuickActuationWidget", "Transpose:")))
+        self.midi_transpose = ArrowComboBox()
+        self.midi_transpose.setMinimumWidth(100)
+        for i in range(-64, 65):
+            self.midi_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.midi_transpose.setCurrentIndex(64)  # 0
+        self.midi_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
+        trans_layout.addWidget(self.midi_transpose)
+        basic_layout.addLayout(trans_layout)
+
+        # Velocity Preset
+        vel_preset_layout = QHBoxLayout()
+        vel_preset_layout.addWidget(QLabel(tr("QuickActuationWidget", "Velocity:")))
+        self.midi_velocity_preset = ArrowComboBox()
+        self.midi_velocity_preset.setMinimumWidth(100)
+        self.midi_velocity_preset.addItem("Softest", 0)
+        self.midi_velocity_preset.addItem("Soft", 1)
+        self.midi_velocity_preset.addItem("Medium", 2)
+        self.midi_velocity_preset.addItem("Hard", 3)
+        self.midi_velocity_preset.addItem("Hardest", 4)
+        self.midi_velocity_preset.setCurrentIndex(2)
+        self.midi_velocity_preset.currentIndexChanged.connect(self.on_velocity_preset_changed)
+        vel_preset_layout.addWidget(self.midi_velocity_preset)
+        basic_layout.addLayout(vel_preset_layout)
+
+        # Advanced MIDI checkbox
+        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced MIDI Settings"))
+        self.midi_advanced_checkbox.stateChanged.connect(self.on_midi_advanced_toggled)
+        layout.addWidget(self.midi_advanced_checkbox)
+
+        # Advanced MIDI Settings (hidden by default)
+        self.midi_advanced_widget = QWidget()
+        adv_layout = QVBoxLayout()
+        adv_layout.setSpacing(6)
+        adv_layout.setContentsMargins(0, 5, 0, 0)
+        self.midi_advanced_widget.setLayout(adv_layout)
+        self.midi_advanced_widget.setVisible(False)
+        layout.addWidget(self.midi_advanced_widget)
+
+        # Velocity Min/Max/Curve (replaces preset in advanced mode)
+        adv_vel_group = QGroupBox(tr("QuickActuationWidget", "Velocity Settings"))
+        adv_vel_layout = QVBoxLayout()
+        adv_vel_layout.setSpacing(4)
+        adv_vel_group.setLayout(adv_vel_layout)
+        adv_layout.addWidget(adv_vel_group)
+
+        # Velocity Curve
+        curve_layout = QHBoxLayout()
+        curve_layout.addWidget(QLabel(tr("QuickActuationWidget", "Curve:")))
+        self.midi_velocity_curve = ArrowComboBox()
+        self.midi_velocity_curve.setMinimumWidth(100)
+        self.midi_velocity_curve.addItem("Softest", 0)
+        self.midi_velocity_curve.addItem("Soft", 1)
+        self.midi_velocity_curve.addItem("Medium", 2)
+        self.midi_velocity_curve.addItem("Hard", 3)
+        self.midi_velocity_curve.addItem("Hardest", 4)
+        self.midi_velocity_curve.setCurrentIndex(2)
+        self.midi_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
+        curve_layout.addWidget(self.midi_velocity_curve)
+        adv_vel_layout.addLayout(curve_layout)
+
+        # Velocity Min
+        min_layout = QHBoxLayout()
+        min_layout.addWidget(QLabel(tr("QuickActuationWidget", "Min:")))
+        self.midi_velocity_min = ArrowComboBox()
+        self.midi_velocity_min.setMinimumWidth(100)
+        for i in range(1, 128):
+            self.midi_velocity_min.addItem(str(i), i)
+        self.midi_velocity_min.setCurrentIndex(0)
+        self.midi_velocity_min.currentIndexChanged.connect(self.on_midi_settings_changed)
+        min_layout.addWidget(self.midi_velocity_min)
+        adv_vel_layout.addLayout(min_layout)
+
+        # Velocity Max
+        max_layout = QHBoxLayout()
+        max_layout.addWidget(QLabel(tr("QuickActuationWidget", "Max:")))
+        self.midi_velocity_max = ArrowComboBox()
+        self.midi_velocity_max.setMinimumWidth(100)
+        for i in range(1, 128):
+            self.midi_velocity_max.addItem(str(i), i)
+        self.midi_velocity_max.setCurrentIndex(126)
+        self.midi_velocity_max.currentIndexChanged.connect(self.on_midi_settings_changed)
+        max_layout.addWidget(self.midi_velocity_max)
+        adv_vel_layout.addLayout(max_layout)
+
+        # Aftertouch settings
+        aftertouch_group = QGroupBox(tr("QuickActuationWidget", "Aftertouch Settings"))
+        aftertouch_layout = QVBoxLayout()
+        aftertouch_layout.setSpacing(4)
+        aftertouch_group.setLayout(aftertouch_layout)
+        adv_layout.addWidget(aftertouch_group)
+
+        # Aftertouch
+        at_layout = QHBoxLayout()
+        at_layout.addWidget(QLabel(tr("QuickActuationWidget", "Aftertouch:")))
+        self.midi_aftertouch = ArrowComboBox()
+        self.midi_aftertouch.setMinimumWidth(100)
+        self.midi_aftertouch.addItem("Off", 0)
+        self.midi_aftertouch.addItem("Reverse", 1)
+        self.midi_aftertouch.addItem("Bottom-Out", 2)
+        self.midi_aftertouch.addItem("Post-Actuation", 3)
+        self.midi_aftertouch.addItem("Vibrato", 4)
+        self.midi_aftertouch.setCurrentIndex(0)
+        self.midi_aftertouch.currentIndexChanged.connect(self.on_midi_settings_changed)
+        at_layout.addWidget(self.midi_aftertouch)
+        aftertouch_layout.addLayout(at_layout)
+
+        # Aftertouch CC
+        atcc_layout = QHBoxLayout()
+        atcc_layout.addWidget(QLabel(tr("QuickActuationWidget", "AT CC:")))
+        self.midi_aftertouch_cc = ArrowComboBox()
+        self.midi_aftertouch_cc.setMinimumWidth(100)
+        for cc in range(128):
+            self.midi_aftertouch_cc.addItem(f"CC#{cc}", cc)
+        self.midi_aftertouch_cc.setCurrentIndex(74)
+        self.midi_aftertouch_cc.currentIndexChanged.connect(self.on_midi_settings_changed)
+        atcc_layout.addWidget(self.midi_aftertouch_cc)
+        aftertouch_layout.addLayout(atcc_layout)
+
+        # KeySplit Enable
+        self.keysplit_enabled_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable KeySplit"))
+        self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
+        adv_layout.addWidget(self.keysplit_enabled_checkbox)
+
+        # KeySplit Settings (hidden by default)
+        self.keysplit_widget = QWidget()
+        keysplit_layout = QVBoxLayout()
+        keysplit_layout.setSpacing(4)
+        keysplit_layout.setContentsMargins(20, 5, 0, 0)
+        self.keysplit_widget.setLayout(keysplit_layout)
+        self.keysplit_widget.setVisible(False)
+        adv_layout.addWidget(self.keysplit_widget)
+
+        ks_label = QLabel(tr("QuickActuationWidget", "KeySplit Settings"))
+        ks_label.setStyleSheet("QLabel { font-weight: bold; }")
+        keysplit_layout.addWidget(ks_label)
+
+        # KeySplit Channel
+        ks_ch_layout = QHBoxLayout()
+        ks_ch_layout.addWidget(QLabel(tr("QuickActuationWidget", "Channel:")))
+        self.keysplit_channel = ArrowComboBox()
+        self.keysplit_channel.setMinimumWidth(80)
+        for i in range(16):
+            self.keysplit_channel.addItem(f"{i + 1}", i)
+        self.keysplit_channel.setCurrentIndex(0)
+        self.keysplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ks_ch_layout.addWidget(self.keysplit_channel)
+        keysplit_layout.addLayout(ks_ch_layout)
+
+        # KeySplit Transpose
+        ks_trans_layout = QHBoxLayout()
+        ks_trans_layout.addWidget(QLabel(tr("QuickActuationWidget", "Transpose:")))
+        self.keysplit_transpose = ArrowComboBox()
+        self.keysplit_transpose.setMinimumWidth(80)
+        for i in range(-64, 65):
+            self.keysplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.keysplit_transpose.setCurrentIndex(64)
+        self.keysplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ks_trans_layout.addWidget(self.keysplit_transpose)
+        keysplit_layout.addLayout(ks_trans_layout)
+
+        # KeySplit Velocity Curve
+        ks_curve_layout = QHBoxLayout()
+        ks_curve_layout.addWidget(QLabel(tr("QuickActuationWidget", "Curve:")))
+        self.keysplit_velocity_curve = ArrowComboBox()
+        self.keysplit_velocity_curve.setMinimumWidth(80)
+        self.keysplit_velocity_curve.addItem("Softest", 0)
+        self.keysplit_velocity_curve.addItem("Soft", 1)
+        self.keysplit_velocity_curve.addItem("Medium", 2)
+        self.keysplit_velocity_curve.addItem("Hard", 3)
+        self.keysplit_velocity_curve.addItem("Hardest", 4)
+        self.keysplit_velocity_curve.setCurrentIndex(2)
+        self.keysplit_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ks_curve_layout.addWidget(self.keysplit_velocity_curve)
+        keysplit_layout.addLayout(ks_curve_layout)
+
+        # KeySplit Velocity Min
+        ks_min_layout = QHBoxLayout()
+        ks_min_layout.addWidget(QLabel(tr("QuickActuationWidget", "Min:")))
+        self.keysplit_velocity_min = ArrowComboBox()
+        self.keysplit_velocity_min.setMinimumWidth(80)
+        for i in range(1, 128):
+            self.keysplit_velocity_min.addItem(str(i), i)
+        self.keysplit_velocity_min.setCurrentIndex(0)
+        self.keysplit_velocity_min.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ks_min_layout.addWidget(self.keysplit_velocity_min)
+        keysplit_layout.addLayout(ks_min_layout)
+
+        # KeySplit Velocity Max
+        ks_max_layout = QHBoxLayout()
+        ks_max_layout.addWidget(QLabel(tr("QuickActuationWidget", "Max:")))
+        self.keysplit_velocity_max = ArrowComboBox()
+        self.keysplit_velocity_max.setMinimumWidth(80)
+        for i in range(1, 128):
+            self.keysplit_velocity_max.addItem(str(i), i)
+        self.keysplit_velocity_max.setCurrentIndex(126)
+        self.keysplit_velocity_max.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ks_max_layout.addWidget(self.keysplit_velocity_max)
+        keysplit_layout.addLayout(ks_max_layout)
+
+        # TripleSplit Enable
+        self.triplesplit_enabled_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable TripleSplit"))
+        self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
+        adv_layout.addWidget(self.triplesplit_enabled_checkbox)
+
+        # TripleSplit Settings (hidden by default)
+        self.triplesplit_widget = QWidget()
+        triplesplit_layout = QVBoxLayout()
+        triplesplit_layout.setSpacing(4)
+        triplesplit_layout.setContentsMargins(20, 5, 0, 0)
+        self.triplesplit_widget.setLayout(triplesplit_layout)
+        self.triplesplit_widget.setVisible(False)
+        adv_layout.addWidget(self.triplesplit_widget)
+
+        ts_label = QLabel(tr("QuickActuationWidget", "TripleSplit Settings"))
+        ts_label.setStyleSheet("QLabel { font-weight: bold; }")
+        triplesplit_layout.addWidget(ts_label)
+
+        # TripleSplit Channel
+        ts_ch_layout = QHBoxLayout()
+        ts_ch_layout.addWidget(QLabel(tr("QuickActuationWidget", "Channel:")))
+        self.triplesplit_channel = ArrowComboBox()
+        self.triplesplit_channel.setMinimumWidth(80)
+        for i in range(16):
+            self.triplesplit_channel.addItem(f"{i + 1}", i)
+        self.triplesplit_channel.setCurrentIndex(0)
+        self.triplesplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ts_ch_layout.addWidget(self.triplesplit_channel)
+        triplesplit_layout.addLayout(ts_ch_layout)
+
+        # TripleSplit Transpose
+        ts_trans_layout = QHBoxLayout()
+        ts_trans_layout.addWidget(QLabel(tr("QuickActuationWidget", "Transpose:")))
+        self.triplesplit_transpose = ArrowComboBox()
+        self.triplesplit_transpose.setMinimumWidth(80)
+        for i in range(-64, 65):
+            self.triplesplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
+        self.triplesplit_transpose.setCurrentIndex(64)
+        self.triplesplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ts_trans_layout.addWidget(self.triplesplit_transpose)
+        triplesplit_layout.addLayout(ts_trans_layout)
+
+        # TripleSplit Velocity Curve
+        ts_curve_layout = QHBoxLayout()
+        ts_curve_layout.addWidget(QLabel(tr("QuickActuationWidget", "Curve:")))
+        self.triplesplit_velocity_curve = ArrowComboBox()
+        self.triplesplit_velocity_curve.setMinimumWidth(80)
+        self.triplesplit_velocity_curve.addItem("Softest", 0)
+        self.triplesplit_velocity_curve.addItem("Soft", 1)
+        self.triplesplit_velocity_curve.addItem("Medium", 2)
+        self.triplesplit_velocity_curve.addItem("Hard", 3)
+        self.triplesplit_velocity_curve.addItem("Hardest", 4)
+        self.triplesplit_velocity_curve.setCurrentIndex(2)
+        self.triplesplit_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ts_curve_layout.addWidget(self.triplesplit_velocity_curve)
+        triplesplit_layout.addLayout(ts_curve_layout)
+
+        # TripleSplit Velocity Min
+        ts_min_layout = QHBoxLayout()
+        ts_min_layout.addWidget(QLabel(tr("QuickActuationWidget", "Min:")))
+        self.triplesplit_velocity_min = ArrowComboBox()
+        self.triplesplit_velocity_min.setMinimumWidth(80)
+        for i in range(1, 128):
+            self.triplesplit_velocity_min.addItem(str(i), i)
+        self.triplesplit_velocity_min.setCurrentIndex(0)
+        self.triplesplit_velocity_min.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ts_min_layout.addWidget(self.triplesplit_velocity_min)
+        triplesplit_layout.addLayout(ts_min_layout)
+
+        # TripleSplit Velocity Max
+        ts_max_layout = QHBoxLayout()
+        ts_max_layout.addWidget(QLabel(tr("QuickActuationWidget", "Max:")))
+        self.triplesplit_velocity_max = ArrowComboBox()
+        self.triplesplit_velocity_max.setMinimumWidth(80)
+        for i in range(1, 128):
+            self.triplesplit_velocity_max.addItem(str(i), i)
+        self.triplesplit_velocity_max.setCurrentIndex(126)
+        self.triplesplit_velocity_max.currentIndexChanged.connect(self.on_midi_settings_changed)
+        ts_max_layout.addWidget(self.triplesplit_velocity_max)
+        triplesplit_layout.addLayout(ts_max_layout)
+
+        layout.addStretch()
+
+        # Save MIDI Settings button
+        self.save_midi_btn = QPushButton(tr("QuickActuationWidget", "Save MIDI Settings"))
+        self.save_midi_btn.setMaximumHeight(24)
+        self.save_midi_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
+        self.save_midi_btn.clicked.connect(self.on_save_midi)
+        layout.addWidget(self.save_midi_btn)
+
+        return tab
     
     def on_advanced_toggled(self):
         """Toggle advanced options visibility"""
@@ -473,7 +839,101 @@ class QuickActuationWidget(QGroupBox):
 
         self.syncing = False
     
-    def on_save(self):
+    def on_midi_settings_changed(self):
+        """Handle MIDI settings changes"""
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def on_velocity_preset_changed(self):
+        """Handle velocity preset changes - update curve/min/max accordingly"""
+        if self.syncing:
+            return
+
+        preset = self.midi_velocity_preset.currentData()
+        # Preset mappings: Softest(0), Soft(1), Medium(2), Hard(3), Hardest(4)
+        preset_map = {
+            0: {'curve': 0, 'min': 1, 'max': 90},     # Softest
+            1: {'curve': 1, 'min': 1, 'max': 110},    # Soft
+            2: {'curve': 2, 'min': 1, 'max': 127},    # Medium
+            3: {'curve': 3, 'min': 20, 'max': 127},   # Hard
+            4: {'curve': 4, 'min': 40, 'max': 127}    # Hardest
+        }
+
+        if preset in preset_map:
+            config = preset_map[preset]
+            self.midi_settings['velocity_curve'] = config['curve']
+            self.midi_settings['velocity_min'] = config['min']
+            self.midi_settings['velocity_max'] = config['max']
+            self.midi_settings['velocity_preset'] = preset
+
+            # Update advanced controls (they're synced from preset)
+            self.syncing = True
+            for i in range(self.midi_velocity_curve.count()):
+                if self.midi_velocity_curve.itemData(i) == config['curve']:
+                    self.midi_velocity_curve.setCurrentIndex(i)
+                    break
+            for i in range(self.midi_velocity_min.count()):
+                if self.midi_velocity_min.itemData(i) == config['min']:
+                    self.midi_velocity_min.setCurrentIndex(i)
+                    break
+            for i in range(self.midi_velocity_max.count()):
+                if self.midi_velocity_max.itemData(i) == config['max']:
+                    self.midi_velocity_max.setCurrentIndex(i)
+                    break
+            self.syncing = False
+
+    def on_midi_advanced_toggled(self):
+        """Toggle advanced MIDI options visibility"""
+        show_advanced = self.midi_advanced_checkbox.isChecked()
+        self.midi_advanced_widget.setVisible(show_advanced)
+
+        # When entering advanced mode, hide preset selector
+        # When leaving advanced mode, show preset selector
+        if show_advanced:
+            self.midi_velocity_preset.setVisible(False)
+            self.midi_velocity_preset.parent().layout().itemAt(0).widget().setVisible(False)
+        else:
+            self.midi_velocity_preset.setVisible(True)
+            self.midi_velocity_preset.parent().layout().itemAt(0).widget().setVisible(True)
+
+    def on_keysplit_enabled_toggled(self):
+        """Toggle KeySplit settings visibility"""
+        self.keysplit_widget.setVisible(self.keysplit_enabled_checkbox.isChecked())
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def on_triplesplit_enabled_toggled(self):
+        """Toggle TripleSplit settings visibility"""
+        self.triplesplit_widget.setVisible(self.triplesplit_enabled_checkbox.isChecked())
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def save_midi_ui_to_memory(self):
+        """Save MIDI settings from UI to memory"""
+        self.midi_settings['channel'] = self.midi_channel.currentData()
+        self.midi_settings['transpose'] = self.midi_transpose.currentData()
+        self.midi_settings['velocity_preset'] = self.midi_velocity_preset.currentData()
+        self.midi_settings['velocity_curve'] = self.midi_velocity_curve.currentData()
+        self.midi_settings['velocity_min'] = self.midi_velocity_min.currentData()
+        self.midi_settings['velocity_max'] = self.midi_velocity_max.currentData()
+        self.midi_settings['aftertouch'] = self.midi_aftertouch.currentData()
+        self.midi_settings['aftertouch_cc'] = self.midi_aftertouch_cc.currentData()
+
+        self.midi_settings['keysplit_enabled'] = self.keysplit_enabled_checkbox.isChecked()
+        self.midi_settings['keysplit_channel'] = self.keysplit_channel.currentData()
+        self.midi_settings['keysplit_transpose'] = self.keysplit_transpose.currentData()
+        self.midi_settings['keysplit_velocity_curve'] = self.keysplit_velocity_curve.currentData()
+        self.midi_settings['keysplit_velocity_min'] = self.keysplit_velocity_min.currentData()
+        self.midi_settings['keysplit_velocity_max'] = self.keysplit_velocity_max.currentData()
+
+        self.midi_settings['triplesplit_enabled'] = self.triplesplit_enabled_checkbox.isChecked()
+        self.midi_settings['triplesplit_channel'] = self.triplesplit_channel.currentData()
+        self.midi_settings['triplesplit_transpose'] = self.triplesplit_transpose.currentData()
+        self.midi_settings['triplesplit_velocity_curve'] = self.triplesplit_velocity_curve.currentData()
+        self.midi_settings['triplesplit_velocity_min'] = self.triplesplit_velocity_min.currentData()
+        self.midi_settings['triplesplit_velocity_max'] = self.triplesplit_velocity_max.currentData()
+
+    def on_save_actuation(self):
         """Save actuation settings - to all layers or current layer depending on mode"""
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
@@ -538,9 +998,35 @@ class QuickActuationWidget(QGroupBox):
                     "Actuation saved to all layers successfully!")
                 
         except Exception as e:
-            QMessageBox.critical(None, "Error", 
+            QMessageBox.critical(None, "Error",
                 f"Failed to save actuation settings: {str(e)}")
-    
+
+    def on_save_midi(self):
+        """Save MIDI settings to keyboard"""
+        try:
+            if not self.device or not isinstance(self.device, VialKeyboard):
+                raise RuntimeError("Device not connected")
+
+            # This is a simplified save for per-layer MIDI tab
+            # The full global MIDI config is in the MIDI Settings tab (matrix_test.py)
+            # Here we only save what's visible based on advanced mode state
+
+            show_advanced = self.midi_advanced_checkbox.isChecked()
+            keysplit_enabled = self.keysplit_enabled_checkbox.isChecked()
+            triplesplit_enabled = self.triplesplit_enabled_checkbox.isChecked()
+
+            # Pack the visible settings only
+            # Note: This is a placeholder - actual implementation would need to integrate
+            # with the global keyboard MIDI config system from matrix_test.py
+
+            QMessageBox.information(None, "Info",
+                "MIDI settings are saved globally in the 'MIDI Settings' tab. "
+                "Use that tab for comprehensive MIDI configuration.")
+
+        except Exception as e:
+            QMessageBox.critical(None, "Error",
+                f"Failed to save MIDI settings: {str(e)}")
+
     def set_device(self, device):
         """Set the device and load initial settings from device"""
         self.device = device

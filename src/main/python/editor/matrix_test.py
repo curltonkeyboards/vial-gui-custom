@@ -751,23 +751,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
         global_midi_layout.addWidget(self.global_velocity_curve, 1, 2)
 
-        # Aftertouch
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch:")), 1, 3)
-        self.global_aftertouch = ArrowComboBox()
-        self.global_aftertouch.setMinimumWidth(120)
-        self.global_aftertouch.setMinimumHeight(30)
-        self.global_aftertouch.setMaximumHeight(30)
-        self.global_aftertouch.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        self.global_aftertouch.addItem("Off", 0)
-        self.global_aftertouch.addItem("Reverse", 1)
-        self.global_aftertouch.addItem("Bottom-Out", 2)
-        self.global_aftertouch.addItem("Post-Actuation", 3)
-        self.global_aftertouch.addItem("Vibrato", 4)
-        self.global_aftertouch.setCurrentIndex(0)  # Default: Off
-        self.global_aftertouch.setEditable(True)
-        self.global_aftertouch.lineEdit().setReadOnly(True)
-        self.global_aftertouch.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_aftertouch, 1, 4)
+        # Sustain
+        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), 1, 3)
+        self.base_sustain = ArrowComboBox()
+        self.base_sustain.setMinimumWidth(120)
+        self.base_sustain.setMinimumHeight(30)
+        self.base_sustain.setMaximumHeight(30)
+        self.base_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.base_sustain.addItem("Ignore", 0)
+        self.base_sustain.addItem("Allow", 1)
+        self.base_sustain.setCurrentIndex(0)  # Default: Ignore
+        self.base_sustain.setEditable(True)
+        self.base_sustain.lineEdit().setReadOnly(True)
+        self.base_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        global_midi_layout.addWidget(self.base_sustain, 1, 4)
 
         # Velocity Min
         global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), 2, 1)
@@ -798,21 +795,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_max.lineEdit().setReadOnly(True)
         self.global_velocity_max.lineEdit().setAlignment(Qt.AlignCenter)
         global_midi_layout.addWidget(self.global_velocity_max, 2, 4)
-
-        # Aftertouch CC
-        global_midi_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch CC:")), 3, 1)
-        self.global_aftertouch_cc = ArrowComboBox()
-        self.global_aftertouch_cc.setMinimumWidth(120)
-        self.global_aftertouch_cc.setMinimumHeight(30)
-        self.global_aftertouch_cc.setMaximumHeight(30)
-        self.global_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for cc in range(128):
-            self.global_aftertouch_cc.addItem(f"CC#{cc}", cc)
-        self.global_aftertouch_cc.setCurrentIndex(74)  # Default: CC#74
-        self.global_aftertouch_cc.setEditable(True)
-        self.global_aftertouch_cc.lineEdit().setReadOnly(True)
-        self.global_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
-        global_midi_layout.addWidget(self.global_aftertouch_cc, 3, 2)
 
         # Loop Settings Group
         loop_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
@@ -1053,6 +1035,39 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
+
+        # Aftertouch
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch:")), 4, 3)
+        self.global_aftertouch = ArrowComboBox()
+        self.global_aftertouch.setMinimumWidth(120)
+        self.global_aftertouch.setMinimumHeight(30)
+        self.global_aftertouch.setMaximumHeight(30)
+        self.global_aftertouch.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.global_aftertouch.addItem("Off", 0)
+        self.global_aftertouch.addItem("Reverse", 1)
+        self.global_aftertouch.addItem("Bottom-Out", 2)
+        self.global_aftertouch.addItem("Post-Actuation", 3)
+        self.global_aftertouch.addItem("Vibrato", 4)
+        self.global_aftertouch.setCurrentIndex(0)  # Default: Off
+        self.global_aftertouch.setEditable(True)
+        self.global_aftertouch.lineEdit().setReadOnly(True)
+        self.global_aftertouch.lineEdit().setAlignment(Qt.AlignCenter)
+        advanced_layout.addWidget(self.global_aftertouch, 4, 4)
+
+        # Aftertouch CC
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch CC:")), 5, 1)
+        self.global_aftertouch_cc = ArrowComboBox()
+        self.global_aftertouch_cc.setMinimumWidth(120)
+        self.global_aftertouch_cc.setMinimumHeight(30)
+        self.global_aftertouch_cc.setMaximumHeight(30)
+        self.global_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        for cc in range(128):
+            self.global_aftertouch_cc.addItem(f"CC#{cc}", cc)
+        self.global_aftertouch_cc.setCurrentIndex(74)  # Default: CC#74
+        self.global_aftertouch_cc.setEditable(True)
+        self.global_aftertouch_cc.lineEdit().setReadOnly(True)
+        self.global_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
+        advanced_layout.addWidget(self.global_aftertouch_cc, 5, 2)
         
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
@@ -1195,6 +1210,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_max2.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.velocity_max2, 5, 2)
 
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), 6, 1)
+        self.keysplit_sustain = ArrowComboBox()
+        self.keysplit_sustain.setMinimumWidth(120)
+        self.keysplit_sustain.setMinimumHeight(30)
+        self.keysplit_sustain.setMaximumHeight(30)
+        self.keysplit_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.keysplit_sustain.addItem("Ignore", 0)
+        self.keysplit_sustain.addItem("Allow", 1)
+        self.keysplit_sustain.setCurrentIndex(0)  # Default: Ignore
+        self.keysplit_sustain.setEditable(True)
+        self.keysplit_sustain.lineEdit().setReadOnly(True)
+        self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_sustain, 6, 2)
+
         # TripleSplit settings (right column)
         keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings")), 0, 3, 1, 2)
 
@@ -1270,6 +1299,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_max3.lineEdit().setReadOnly(True)
         self.velocity_max3.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.velocity_max3, 5, 4)
+
+        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), 6, 3)
+        self.triplesplit_sustain = ArrowComboBox()
+        self.triplesplit_sustain.setMinimumWidth(120)
+        self.triplesplit_sustain.setMinimumHeight(30)
+        self.triplesplit_sustain.setMaximumHeight(30)
+        self.triplesplit_sustain.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        self.triplesplit_sustain.addItem("Ignore", 0)
+        self.triplesplit_sustain.addItem("Allow", 1)
+        self.triplesplit_sustain.setCurrentIndex(0)  # Default: Ignore
+        self.triplesplit_sustain.setEditable(True)
+        self.triplesplit_sustain.lineEdit().setReadOnly(True)
+        self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.triplesplit_sustain, 6, 4)
 
         # Buttons
         self.addStretch()
@@ -1378,7 +1421,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "global_aftertouch": self.global_aftertouch.currentData(),
             "global_velocity_min": self.global_velocity_min.currentData(),
             "global_velocity_max": self.global_velocity_max.currentData(),
-            "global_aftertouch_cc": self.global_aftertouch_cc.currentData()
+            "global_aftertouch_cc": self.global_aftertouch_cc.currentData(),
+            # Sustain settings
+            "base_sustain": self.base_sustain.currentData(),
+            "keysplit_sustain": self.keysplit_sustain.currentData(),
+            "triplesplit_sustain": self.triplesplit_sustain.currentData()
         }
     
     def apply_settings(self, config):
@@ -1432,6 +1479,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.global_velocity_min, config.get("global_velocity_min"), 1)
         set_combo_by_data(self.global_velocity_max, config.get("global_velocity_max"), 127)
         set_combo_by_data(self.global_aftertouch_cc, config.get("global_aftertouch_cc"), 74)
+        # Sustain settings
+        set_combo_by_data(self.base_sustain, config.get("base_sustain"), 0)
+        set_combo_by_data(self.keysplit_sustain, config.get("keysplit_sustain"), 0)
+        set_combo_by_data(self.triplesplit_sustain, config.get("triplesplit_sustain"), 0)
     
     def pack_basic_data(self, settings):
         """Pack basic settings into 17-byte structure"""
@@ -1458,8 +1509,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 26-byte structure (expanded for global velocity settings)"""
-        data = bytearray(26)
+        """Pack advanced settings into 29-byte structure (expanded for global velocity settings and sustain)"""
+        data = bytearray(29)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -1490,6 +1541,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["global_velocity_max"]; offset += 1
         data[offset] = settings["global_aftertouch"]; offset += 1
         data[offset] = settings["global_aftertouch_cc"]; offset += 1
+        # Sustain settings (bytes 26-28)
+        data[offset] = settings["base_sustain"]; offset += 1
+        data[offset] = settings["keysplit_sustain"]; offset += 1
+        data[offset] = settings["triplesplit_sustain"]; offset += 1
 
         return data
     
@@ -1614,7 +1669,17 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "velocity_max2": 127,
             "velocity_curve3": 2,
             "velocity_min3": 1,
-            "velocity_max3": 127
+            "velocity_max3": 127,
+            "global_transpose": 0,
+            "global_channel": 0,
+            "global_velocity_curve": 2,
+            "global_aftertouch": 0,
+            "global_velocity_min": 1,
+            "global_velocity_max": 127,
+            "global_aftertouch_cc": 74,
+            "base_sustain": 0,
+            "keysplit_sustain": 0,
+            "triplesplit_sustain": 0
         }
         self.apply_settings(defaults)
     
