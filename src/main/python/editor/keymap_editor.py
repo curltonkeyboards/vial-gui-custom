@@ -1909,8 +1909,9 @@ class EncoderAssignWidget(QWidget):
         self.setMaximumWidth(185)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
-        # Set background to make overlay visible
-        self.setAutoFillBackground(True)
+        # Make background transparent so keyboard background shows through
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setStyleSheet("background: transparent;")
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
@@ -1919,14 +1920,14 @@ class EncoderAssignWidget(QWidget):
 
         # Title
         title = QLabel(tr("EncoderAssignWidget", "Encoder/Sustain"))
-        title.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        title.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; background: transparent; }")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
         # Create visual encoder/sustain widgets
         # Encoder 1 group
         encoder1_label = QLabel("Encoder 1")
-        encoder1_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; }")
+        encoder1_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
         encoder1_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(encoder1_label)
 
@@ -1956,7 +1957,7 @@ class EncoderAssignWidget(QWidget):
 
         # Encoder 2 group
         encoder2_label = QLabel("Encoder 2")
-        encoder2_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; }")
+        encoder2_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
         encoder2_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(encoder2_label)
 
@@ -1986,7 +1987,7 @@ class EncoderAssignWidget(QWidget):
 
         # Sustain pedal group
         sustain_label = QLabel("Sustain Pedal")
-        sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; }")
+        sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
         sustain_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(sustain_label)
 
