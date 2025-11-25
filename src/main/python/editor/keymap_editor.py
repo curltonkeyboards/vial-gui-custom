@@ -1909,6 +1909,9 @@ class EncoderAssignWidget(QWidget):
         self.setMaximumWidth(185)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
+        # Set background to make overlay visible
+        self.setAutoFillBackground(True)
+
         layout = QVBoxLayout()
         layout.setSpacing(10)
         layout.setContentsMargins(5, 10, 5, 10)
@@ -2056,6 +2059,33 @@ class ClickableWidget(QWidget):
         self.clicked.emit()
 
 
+class OverlayContainer(QWidget):
+    """Container that overlays encoder widget on top of keyboard widget"""
+
+    def __init__(self, keyboard_widget, encoder_widget):
+        super().__init__()
+        self.keyboard_widget = keyboard_widget
+        self.encoder_widget = encoder_widget
+
+        # Set up layout with no spacing
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(keyboard_widget)
+        self.setLayout(layout)
+
+        # Make encoder widget a child of this container for overlay
+        encoder_widget.setParent(self)
+        encoder_widget.raise_()  # Bring to front
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Position encoder widget to overlay the left side of keyboard widget
+        # Position it at the left edge of the keyboard widget
+        keyboard_pos = self.keyboard_widget.pos()
+        self.encoder_widget.move(keyboard_pos.x(), keyboard_pos.y())
+
+
 class KeymapEditor(BasicEditor):
 
     def __init__(self, layout_editor):
@@ -2087,14 +2117,16 @@ class KeymapEditor(BasicEditor):
         # Connect encoder widget signals
         self.encoder_assign.clicked.connect(self.on_encoder_clicked)
 
-        # Layout with actuation on left, encoder/sustain next, then keyboard
+        # Create overlay container with encoder widget overlaying keyboard
+        self.keyboard_overlay = OverlayContainer(self.container, self.encoder_assign)
+
+        # Layout with actuation on left, then keyboard with encoder overlay
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(0)  # No spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
-        keyboard_layout.addWidget(self.encoder_assign, 0, Qt.AlignTop)
-        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.keyboard_overlay, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
