@@ -1678,6 +1678,211 @@ class QuickActuationWidget(QWidget):
             self.load_layer_from_memory()
 
 
+class EncoderButton(QWidget):
+    """Circular encoder button widget with arrow indicator"""
+
+    clicked = pyqtSignal()
+
+    def __init__(self, is_up=True):
+        super().__init__()
+        self.is_up = is_up
+        self.is_selected = False
+        self.text = "KC_NO"
+        self.setFixedSize(70, 70)
+        self.setMouseTracking(True)
+
+    def setChecked(self, checked):
+        self.is_selected = checked
+        self.update()
+
+    def setText(self, text):
+        self.text = text
+        self.update()
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+
+    def paintEvent(self, event):
+        from PyQt5.QtGui import QPainter, QPainterPath, QPen, QBrush, QFont
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+        from PyQt5.QtCore import Qt
+
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        # Draw circular background
+        if self.is_selected:
+            pen = QPen(QApplication.palette().color(QPalette.Highlight))
+            pen.setWidth(2)
+            qp.setPen(pen)
+        else:
+            pen = QPen(QApplication.palette().color(QPalette.Window))
+            pen.setWidth(2)
+            qp.setPen(pen)
+
+        brush = QBrush(QApplication.palette().color(QPalette.Button))
+        qp.setBrush(brush)
+        qp.drawEllipse(5, 5, 60, 60)
+
+        # Draw arrow indicator
+        path = QPainterPath()
+        center_x = 35
+        center_y = 35
+
+        if self.is_up:
+            # Up arrow (pointing up)
+            path.moveTo(center_x, center_y - 10)
+            path.lineTo(center_x + 5, center_y - 3)
+            path.lineTo(center_x, center_y + 3)
+            path.lineTo(center_x - 5, center_y - 3)
+            path.lineTo(center_x, center_y - 10)
+        else:
+            # Down arrow (pointing down)
+            path.moveTo(center_x, center_y + 10)
+            path.lineTo(center_x + 5, center_y + 3)
+            path.lineTo(center_x, center_y - 3)
+            path.lineTo(center_x - 5, center_y + 3)
+            path.lineTo(center_x, center_y + 10)
+
+        arrow_brush = QBrush(QApplication.palette().color(QPalette.ButtonText))
+        qp.setBrush(arrow_brush)
+        qp.setPen(Qt.NoPen)
+        qp.drawPath(path)
+
+        # Draw keycode text below arrow
+        qp.setPen(QApplication.palette().color(QPalette.ButtonText))
+        font = QFont()
+        font.setPointSize(7)
+        qp.setFont(font)
+        text_rect = self.rect().adjusted(5, 40, -5, -5)
+        qp.drawText(text_rect, Qt.AlignCenter, self.text)
+
+        qp.end()
+
+
+class PushButton(QWidget):
+    """Square push button widget"""
+
+    clicked = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.is_selected = False
+        self.text = "KC_NO"
+        self.setFixedSize(70, 70)
+        self.setMouseTracking(True)
+
+    def setChecked(self, checked):
+        self.is_selected = checked
+        self.update()
+
+    def setText(self, text):
+        self.text = text
+        self.update()
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+
+    def paintEvent(self, event):
+        from PyQt5.QtGui import QPainter, QPen, QBrush, QFont
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+        from PyQt5.QtCore import Qt
+
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        # Draw square background
+        if self.is_selected:
+            pen = QPen(QApplication.palette().color(QPalette.Highlight))
+            pen.setWidth(2)
+            qp.setPen(pen)
+        else:
+            pen = QPen(QApplication.palette().color(QPalette.Window))
+            pen.setWidth(2)
+            qp.setPen(pen)
+
+        brush = QBrush(QApplication.palette().color(QPalette.Button))
+        qp.setBrush(brush)
+        qp.drawRoundedRect(5, 5, 60, 60, 5, 5)
+
+        # Draw "PUSH" label
+        qp.setPen(QApplication.palette().color(QPalette.ButtonText))
+        font = QFont()
+        font.setPointSize(7)
+        font.setBold(True)
+        qp.setFont(font)
+        text_rect = self.rect().adjusted(5, 5, -5, -30)
+        qp.drawText(text_rect, Qt.AlignCenter, "PUSH")
+
+        # Draw keycode text
+        font.setBold(False)
+        font.setPointSize(7)
+        qp.setFont(font)
+        text_rect = self.rect().adjusted(5, 30, -5, -5)
+        qp.drawText(text_rect, Qt.AlignCenter, self.text)
+
+        qp.end()
+
+
+class SustainButton(QWidget):
+    """Sustain pedal button widget"""
+
+    clicked = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.is_selected = False
+        self.text = "KC_NO"
+        self.setFixedSize(90, 70)
+        self.setMouseTracking(True)
+
+    def setChecked(self, checked):
+        self.is_selected = checked
+        self.update()
+
+    def setText(self, text):
+        self.text = text
+        self.update()
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+
+    def paintEvent(self, event):
+        from PyQt5.QtGui import QPainter, QPen, QBrush, QFont
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+        from PyQt5.QtCore import Qt
+
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        # Draw rounded rectangle background
+        if self.is_selected:
+            pen = QPen(QApplication.palette().color(QPalette.Highlight))
+            pen.setWidth(2)
+            qp.setPen(pen)
+        else:
+            pen = QPen(QApplication.palette().color(QPalette.Window))
+            pen.setWidth(2)
+            qp.setPen(pen)
+
+        brush = QBrush(QApplication.palette().color(QPalette.Button))
+        qp.setBrush(brush)
+        qp.drawRoundedRect(5, 5, 80, 60, 5, 5)
+
+        # Draw keycode text
+        qp.setPen(QApplication.palette().color(QPalette.ButtonText))
+        font = QFont()
+        font.setPointSize(8)
+        qp.setFont(font)
+        text_rect = self.rect().adjusted(5, 5, -5, -5)
+        qp.drawText(text_rect, Qt.AlignCenter, self.text)
+
+        qp.end()
+
+
 class EncoderAssignWidget(QWidget):
     """Widget for assigning keycodes to encoders and sustain pedal per layer"""
 
@@ -1700,39 +1905,99 @@ class EncoderAssignWidget(QWidget):
             "Sustain Pedal"
         ]
 
-        self.setMinimumWidth(200)
-        self.setMaximumWidth(200)
+        self.setMinimumWidth(280)
+        self.setMaximumWidth(280)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
         layout = QVBoxLayout()
-        layout.setSpacing(8)
-        layout.setContentsMargins(0, 10, 10, 10)  # No left margin for flush layout
+        layout.setSpacing(15)
+        layout.setContentsMargins(10, 10, 10, 10)
         self.setLayout(layout)
 
         # Title
         title = QLabel(tr("EncoderAssignWidget", "Encoder/Sustain"))
-        title.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        title.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        # Create buttons for each encoder/sustain assignment
-        for idx, label_text in enumerate(self.labels):
-            btn_layout = QHBoxLayout()
-            btn_layout.setSpacing(5)
+        # Create visual encoder/sustain widgets
+        # Encoder 1 group
+        encoder1_label = QLabel("Encoder 1")
+        encoder1_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; }")
+        encoder1_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(encoder1_label)
 
-            label = QLabel(tr("EncoderAssignWidget", label_text))
-            label.setStyleSheet("QLabel { font-size: 10px; }")
-            label.setMinimumWidth(100)
-            btn_layout.addWidget(label)
+        # Encoder 1 buttons (Up/Down circular, Press square)
+        encoder1_layout = QHBoxLayout()
+        encoder1_layout.setSpacing(5)
 
-            btn = SquareButton()
-            btn.setFixedSize(55, 55)
-            btn.setCheckable(True)
-            btn.clicked.connect(lambda checked, i=idx: self.on_button_clicked(i))
-            self.buttons.append(btn)
-            btn_layout.addWidget(btn)
+        # Up button (circular)
+        enc1_up_btn = EncoderButton(is_up=True)
+        enc1_up_btn.clicked.connect(lambda: self.on_button_clicked(0))
+        self.buttons.append(enc1_up_btn)
+        encoder1_layout.addWidget(enc1_up_btn)
 
-            layout.addLayout(btn_layout)
+        # Down button (circular)
+        enc1_down_btn = EncoderButton(is_up=False)
+        enc1_down_btn.clicked.connect(lambda: self.on_button_clicked(1))
+        self.buttons.append(enc1_down_btn)
+        encoder1_layout.addWidget(enc1_down_btn)
+
+        # Push button (square)
+        enc1_push_btn = PushButton()
+        enc1_push_btn.clicked.connect(lambda: self.on_button_clicked(2))
+        self.buttons.append(enc1_push_btn)
+        encoder1_layout.addWidget(enc1_push_btn)
+
+        layout.addLayout(encoder1_layout)
+
+        # Encoder 2 group
+        encoder2_label = QLabel("Encoder 2")
+        encoder2_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; }")
+        encoder2_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(encoder2_label)
+
+        # Encoder 2 buttons (Up/Down circular, Press square)
+        encoder2_layout = QHBoxLayout()
+        encoder2_layout.setSpacing(5)
+
+        # Up button (circular)
+        enc2_up_btn = EncoderButton(is_up=True)
+        enc2_up_btn.clicked.connect(lambda: self.on_button_clicked(3))
+        self.buttons.append(enc2_up_btn)
+        encoder2_layout.addWidget(enc2_up_btn)
+
+        # Down button (circular)
+        enc2_down_btn = EncoderButton(is_up=False)
+        enc2_down_btn.clicked.connect(lambda: self.on_button_clicked(4))
+        self.buttons.append(enc2_down_btn)
+        encoder2_layout.addWidget(enc2_down_btn)
+
+        # Push button (square)
+        enc2_push_btn = PushButton()
+        enc2_push_btn.clicked.connect(lambda: self.on_button_clicked(5))
+        self.buttons.append(enc2_push_btn)
+        encoder2_layout.addWidget(enc2_push_btn)
+
+        layout.addLayout(encoder2_layout)
+
+        # Sustain pedal group
+        sustain_label = QLabel("Sustain Pedal")
+        sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; }")
+        sustain_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(sustain_label)
+
+        sustain_layout = QHBoxLayout()
+        sustain_layout.setSpacing(5)
+        sustain_layout.addStretch()
+
+        sustain_btn = SustainButton()
+        sustain_btn.clicked.connect(lambda: self.on_button_clicked(6))
+        self.buttons.append(sustain_btn)
+        sustain_layout.addWidget(sustain_btn)
+        sustain_layout.addStretch()
+
+        layout.addLayout(sustain_layout)
 
         layout.addStretch()
 
