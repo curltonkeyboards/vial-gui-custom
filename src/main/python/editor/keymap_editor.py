@@ -71,8 +71,8 @@ class QuickActuationWidget(QWidget):
             'triplesplit_velocity_max': 127
         }
 
-        self.setMinimumWidth(300)
-        self.setMaximumWidth(300)
+        self.setMinimumWidth(320)
+        self.setMaximumWidth(320)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
         layout = QVBoxLayout()
@@ -793,6 +793,9 @@ class QuickActuationWidget(QWidget):
         curve_row.addStretch()
         layout.addLayout(curve_row)
 
+        # 5px spacing between velocity curve and sustain
+        layout.addSpacing(5)
+
         # Sustain (label next to dropdown) - below velocity min/max - hidden unless splits enabled
         sustain_row = QHBoxLayout()
         sustain_row.setContentsMargins(0, 0, 0, 0)
@@ -800,12 +803,12 @@ class QuickActuationWidget(QWidget):
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
         sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
-        sustain_label.setMinimumWidth(60)
-        sustain_label.setMaximumWidth(60)
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
 
         self.midi_sustain_combo = ArrowComboBox()
-        self.midi_sustain_combo.setMaximumWidth(80)
+        self.midi_sustain_combo.setMaximumWidth(120)
         self.midi_sustain_combo.setMaximumHeight(30)
         self.midi_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.midi_sustain_combo.setEditable(True)
@@ -1669,6 +1672,86 @@ class QuickActuationWidget(QWidget):
             self.load_layer_from_memory()
 
 
+class EncoderAssignWidget(QWidget):
+    """Widget for assigning keycodes to encoders and sustain pedal per layer"""
+
+    keycode_changed = pyqtSignal(int, object)  # button_index, keycode
+
+    def __init__(self):
+        super().__init__()
+
+        self.current_layer = 0
+        self.buttons = []
+        self.labels = [
+            "Encoder 1 Up",
+            "Encoder 1 Down",
+            "Encoder 1 Press",
+            "Encoder 2 Up",
+            "Encoder 2 Down",
+            "Encoder 2 Press",
+            "Sustain Pedal"
+        ]
+
+        self.setMinimumWidth(200)
+        self.setMaximumWidth(200)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(10, 10, 10, 10)
+        self.setLayout(layout)
+
+        # Title
+        title = QLabel(tr("EncoderAssignWidget", "Encoder/Sustain"))
+        title.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        # Create buttons for each encoder/sustain assignment
+        for idx, label_text in enumerate(self.labels):
+            btn_layout = QHBoxLayout()
+            btn_layout.setSpacing(5)
+
+            label = QLabel(tr("EncoderAssignWidget", label_text))
+            label.setStyleSheet("QLabel { font-size: 10px; }")
+            label.setMinimumWidth(100)
+            btn_layout.addWidget(label)
+
+            btn = SquareButton()
+            btn.setRelSize(1.4)
+            btn.clicked.connect(lambda checked, i=idx: self.on_button_clicked(i))
+            self.buttons.append(btn)
+            btn_layout.addWidget(btn)
+
+            layout.addLayout(btn_layout)
+
+        layout.addStretch()
+
+    def on_button_clicked(self, index):
+        """Handle button click to assign keycode"""
+        current_code = self.buttons[index].keycode
+        dlg = AnyKeycodeDialog(current_code)
+        if dlg.exec_():
+            code = dlg.value
+            self.buttons[index].setKeycode(code)
+            self.keycode_changed.emit(index, code)
+
+    def set_keycode(self, index, keycode):
+        """Set keycode for a button"""
+        if 0 <= index < len(self.buttons):
+            self.buttons[index].setKeycode(keycode)
+
+    def get_keycode(self, index):
+        """Get keycode from a button"""
+        if 0 <= index < len(self.buttons):
+            return self.buttons[index].keycode
+        return None
+
+    def set_layer(self, layer):
+        """Update current layer"""
+        self.current_layer = layer
+
+
 class ClickableWidget(QWidget):
 
     clicked = pyqtSignal()
@@ -1698,18 +1781,22 @@ class KeymapEditor(BasicEditor):
         # Create quick actuation widget
         self.quick_actuation = QuickActuationWidget()
 
+        # Create encoder assignment widget
+        self.encoder_assign = EncoderAssignWidget()
+
         # contains the actual keyboard
         self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Layout with actuation on left, keyboard in center
+        # Layout with actuation on left, keyboard in center, encoder on right
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(0)  # No spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.encoder_assign, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
