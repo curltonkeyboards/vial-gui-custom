@@ -1721,8 +1721,7 @@ class EncoderButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
-        qp.setBrush(brush)
+        qp.setBrush(Qt.NoBrush)
         qp.drawEllipse(3, 3, 49, 49)
 
         # Draw arrow indicator
@@ -1803,8 +1802,7 @@ class PushButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
-        qp.setBrush(brush)
+        qp.setBrush(Qt.NoBrush)
         qp.drawRoundedRect(3, 3, 49, 49, 4, 4)
 
         # Draw "PUSH" label
@@ -1868,8 +1866,7 @@ class SustainButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
-        qp.setBrush(brush)
+        qp.setBrush(Qt.NoBrush)
         qp.drawRoundedRect(3, 3, 159, 49, 4, 4)
 
         # Draw keycode text
@@ -1894,7 +1891,6 @@ class EncoderAssignWidget(QWidget):
         self.current_layer = 0
         self.selected_button = None
         self.buttons = []
-        self.encoder_keycodes = {}  # Storage: {layer: [7 keycodes]}
         self.labels = [
             "Encoder 1 Up",
             "Encoder 1 Down",
@@ -1918,13 +1914,44 @@ class EncoderAssignWidget(QWidget):
         layout.setContentsMargins(5, 10, 5, 10)
         self.setLayout(layout)
 
-        # Title
-        title = QLabel(tr("EncoderAssignWidget", "Encoder/Sustain"))
-        title.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; background: transparent; }")
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
+        # Create buttons in logical order (indices 0-6) before adding to UI
+        # Index 0: Encoder 1 Up
+        enc1_up_btn = EncoderButton(is_up=True)
+        enc1_up_btn.clicked.connect(lambda: self.on_button_clicked(0))
+        self.buttons.append(enc1_up_btn)
 
-        # Sustain pedal group - MOVED TO TOP
+        # Index 1: Encoder 1 Down
+        enc1_down_btn = EncoderButton(is_up=False)
+        enc1_down_btn.clicked.connect(lambda: self.on_button_clicked(1))
+        self.buttons.append(enc1_down_btn)
+
+        # Index 2: Encoder 1 Press
+        enc1_push_btn = PushButton()
+        enc1_push_btn.clicked.connect(lambda: self.on_button_clicked(2))
+        self.buttons.append(enc1_push_btn)
+
+        # Index 3: Encoder 2 Up
+        enc2_up_btn = EncoderButton(is_up=True)
+        enc2_up_btn.clicked.connect(lambda: self.on_button_clicked(3))
+        self.buttons.append(enc2_up_btn)
+
+        # Index 4: Encoder 2 Down
+        enc2_down_btn = EncoderButton(is_up=False)
+        enc2_down_btn.clicked.connect(lambda: self.on_button_clicked(4))
+        self.buttons.append(enc2_down_btn)
+
+        # Index 5: Encoder 2 Press
+        enc2_push_btn = PushButton()
+        enc2_push_btn.clicked.connect(lambda: self.on_button_clicked(5))
+        self.buttons.append(enc2_push_btn)
+
+        # Index 6: Sustain Pedal
+        sustain_btn = SustainButton()
+        sustain_btn.clicked.connect(lambda: self.on_button_clicked(6))
+        self.buttons.append(sustain_btn)
+
+        # Now add to UI layout in display order (sustain at top, then encoders)
+        # Sustain pedal group - at top
         sustain_label = QLabel("Sustain Pedal")
         sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
         sustain_label.setAlignment(Qt.AlignCenter)
@@ -1932,12 +1959,7 @@ class EncoderAssignWidget(QWidget):
 
         sustain_layout = QHBoxLayout()
         sustain_layout.setSpacing(5)
-
-        sustain_btn = SustainButton()
-        sustain_btn.clicked.connect(lambda: self.on_button_clicked(6))
-        self.buttons.append(sustain_btn)
         sustain_layout.addWidget(sustain_btn)
-
         layout.addLayout(sustain_layout)
 
         # Encoder 1 group
@@ -1949,25 +1971,9 @@ class EncoderAssignWidget(QWidget):
         # Encoder 1 buttons (Up/Down circular, Press square)
         encoder1_layout = QHBoxLayout()
         encoder1_layout.setSpacing(5)
-
-        # Up button (circular)
-        enc1_up_btn = EncoderButton(is_up=True)
-        enc1_up_btn.clicked.connect(lambda: self.on_button_clicked(0))
-        self.buttons.append(enc1_up_btn)
         encoder1_layout.addWidget(enc1_up_btn)
-
-        # Down button (circular)
-        enc1_down_btn = EncoderButton(is_up=False)
-        enc1_down_btn.clicked.connect(lambda: self.on_button_clicked(1))
-        self.buttons.append(enc1_down_btn)
         encoder1_layout.addWidget(enc1_down_btn)
-
-        # Push button (square)
-        enc1_push_btn = PushButton()
-        enc1_push_btn.clicked.connect(lambda: self.on_button_clicked(2))
-        self.buttons.append(enc1_push_btn)
         encoder1_layout.addWidget(enc1_push_btn)
-
         layout.addLayout(encoder1_layout)
 
         # Encoder 2 group
@@ -1979,25 +1985,9 @@ class EncoderAssignWidget(QWidget):
         # Encoder 2 buttons (Up/Down circular, Press square)
         encoder2_layout = QHBoxLayout()
         encoder2_layout.setSpacing(5)
-
-        # Up button (circular)
-        enc2_up_btn = EncoderButton(is_up=True)
-        enc2_up_btn.clicked.connect(lambda: self.on_button_clicked(3))
-        self.buttons.append(enc2_up_btn)
         encoder2_layout.addWidget(enc2_up_btn)
-
-        # Down button (circular)
-        enc2_down_btn = EncoderButton(is_up=False)
-        enc2_down_btn.clicked.connect(lambda: self.on_button_clicked(4))
-        self.buttons.append(enc2_down_btn)
         encoder2_layout.addWidget(enc2_down_btn)
-
-        # Push button (square)
-        enc2_push_btn = PushButton()
-        enc2_push_btn.clicked.connect(lambda: self.on_button_clicked(5))
-        self.buttons.append(enc2_push_btn)
         encoder2_layout.addWidget(enc2_push_btn)
-
         layout.addLayout(encoder2_layout)
 
         layout.addStretch()
@@ -2018,33 +2008,37 @@ class EncoderAssignWidget(QWidget):
         self.selected_button = None
 
     def set_keycode(self, index, keycode):
-        """Set keycode for a button and update its display"""
+        """Update button display with keycode"""
         if 0 <= index < len(self.buttons):
-            # Initialize layer if needed
-            if self.current_layer not in self.encoder_keycodes:
-                self.encoder_keycodes[self.current_layer] = ["KC_NO"] * 7
-
-            self.encoder_keycodes[self.current_layer][index] = keycode
             self.buttons[index].setText(Keycode.label(keycode))
 
-    def get_keycode(self, index):
-        """Get keycode from a button"""
-        if self.current_layer in self.encoder_keycodes and 0 <= index < len(self.encoder_keycodes[self.current_layer]):
-            return self.encoder_keycodes[self.current_layer][index]
-        return "KC_NO"
-
-    def set_layer(self, layer):
-        """Update current layer and refresh button displays"""
+    def set_layer(self, layer, keyboard=None):
+        """Update current layer and refresh button displays from keyboard"""
         self.current_layer = layer
 
-        # Initialize layer if needed
-        if layer not in self.encoder_keycodes:
-            self.encoder_keycodes[layer] = ["KC_NO"] * 7
+        # Load keycodes from keyboard if provided
+        if keyboard is not None:
+            # Map button indices to encoder/key parameters
+            # Buttons 0-5 are encoders, button 6 is sustain pedal
+            encoder_mapping = {
+                0: (0, 1),  # Encoder 1 Up (enc_idx=0, dir=1)
+                1: (0, 0),  # Encoder 1 Down (enc_idx=0, dir=0)
+                2: (0, 2),  # Encoder 1 Press (enc_idx=0, dir=2)
+                3: (1, 1),  # Encoder 2 Up (enc_idx=1, dir=1)
+                4: (1, 0),  # Encoder 2 Down (enc_idx=1, dir=0)
+                5: (1, 2),  # Encoder 2 Press (enc_idx=1, dir=2)
+            }
 
-        # Update button displays
-        for idx in range(len(self.buttons)):
-            keycode = self.encoder_keycodes[layer][idx]
-            self.buttons[idx].setText(Keycode.label(keycode))
+            # Update encoder buttons
+            for idx in range(6):
+                if idx in encoder_mapping:
+                    enc_idx, direction = encoder_mapping[idx]
+                    keycode = keyboard.encoder_layout.get((layer, enc_idx, direction), "KC_NO")
+                    self.buttons[idx].setText(Keycode.label(keycode))
+
+            # Update sustain pedal button (row=5, col=2)
+            sustain_keycode = keyboard.layout.get((layer, 5, 2), "KC_NO")
+            self.buttons[6].setText(Keycode.label(sustain_keycode))
 
         # Deselect when changing layers
         self.deselect()
@@ -2081,9 +2075,9 @@ class OverlayContainer(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # Position encoder widget to overlay the left side of keyboard widget
-        # Position it at the left edge of the keyboard widget
+        # Position it at the left edge of the keyboard widget, offset down by 30 pixels
         keyboard_pos = self.keyboard_widget.pos()
-        self.encoder_widget.move(keyboard_pos.x(), keyboard_pos.y())
+        self.encoder_widget.move(keyboard_pos.x(), keyboard_pos.y() + 30)
 
 
 class KeymapEditor(BasicEditor):
@@ -2170,7 +2164,7 @@ class KeymapEditor(BasicEditor):
     def on_keycode_changed(self, code):
         # Check if encoder button is selected
         if self.encoder_assign.selected_button is not None:
-            self.encoder_assign.set_keycode(self.encoder_assign.selected_button, code)
+            self.set_encoder_keycode(self.encoder_assign.selected_button, code)
         else:
             # Otherwise, set keyboard key
             self.set_key(code)
@@ -2221,8 +2215,12 @@ class KeymapEditor(BasicEditor):
 
             self.tabbed_keycodes.recreate_keycode_buttons()
             TabbedKeycodes.tray.recreate_keycode_buttons()
+
+            # Initialize encoder widget with keyboard data
+            self.encoder_assign.set_layer(self.current_layer, self.keyboard)
+
             self.refresh_layer_display()
-            
+
         # Set device for quick actuation widget (loads all layers once)
         self.quick_actuation.set_device(device)
         if self.valid():
@@ -2290,8 +2288,8 @@ class KeymapEditor(BasicEditor):
         self.current_layer = idx
         # Update quick actuation widget layer (loads from memory, no lag)
         self.quick_actuation.set_layer(idx)
-        # Update encoder widget layer
-        self.encoder_assign.set_layer(idx)
+        # Update encoder widget layer (load from keyboard)
+        self.encoder_assign.set_layer(idx, self.keyboard)
         self.refresh_layer_display()
 
     def set_key(self, keycode):
@@ -2306,6 +2304,41 @@ class KeymapEditor(BasicEditor):
             self.set_key_matrix(keycode)
 
         self.container.select_next()
+
+    def set_encoder_keycode(self, button_index, keycode):
+        """Set keycode for encoder/sustain button and send to keyboard via USB"""
+        l = self.current_layer
+
+        # Map button index to encoder parameters or sustain pedal key position
+        # Button 0: Encoder 1 Up (enc_idx=0, dir=1)
+        # Button 1: Encoder 1 Down (enc_idx=0, dir=0)
+        # Button 2: Encoder 1 Press (enc_idx=0, dir=2)
+        # Button 3: Encoder 2 Up (enc_idx=1, dir=1)
+        # Button 4: Encoder 2 Down (enc_idx=1, dir=0)
+        # Button 5: Encoder 2 Press (enc_idx=1, dir=2)
+        # Button 6: Sustain Pedal (row=5, col=2)
+
+        if button_index == 6:
+            # Sustain pedal is a regular matrix key at row=5, col=2
+            self.keyboard.set_key(l, 5, 2, keycode)
+        else:
+            # Map button index to encoder index and direction
+            encoder_mapping = {
+                0: (0, 1),  # Encoder 1 Up
+                1: (0, 0),  # Encoder 1 Down
+                2: (0, 2),  # Encoder 1 Press
+                3: (1, 1),  # Encoder 2 Up
+                4: (1, 0),  # Encoder 2 Down
+                5: (1, 2),  # Encoder 2 Press
+            }
+
+            if button_index in encoder_mapping:
+                enc_idx, direction = encoder_mapping[button_index]
+                self.keyboard.set_encoder(l, enc_idx, direction, keycode)
+
+        # Update the button display
+        self.encoder_assign.set_keycode(button_index, keycode)
+        self.refresh_layer_display()
 
     def set_key_encoder(self, keycode):
         l, i, d = self.current_layer, self.container.active_key.desc.encoder_idx,\
