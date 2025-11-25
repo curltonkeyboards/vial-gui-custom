@@ -916,11 +916,6 @@ class KeyboardWidget2(QWidget):
         # Sort widgets by position for proper layout (if needed)
         self.widgets.sort(key=lambda w: (w.y, w.x))
 
-        # Crop 185 pixels from the left by shifting all widgets left
-        left_crop = 185
-        for widget in self.widgets:
-            widget.shift_x -= left_crop
-
         # Determine maximum width and height of the container
         max_w = max_h = 0
         for key in self.widgets:

@@ -1688,7 +1688,7 @@ class EncoderButton(QWidget):
         self.is_up = is_up
         self.is_selected = False
         self.text = "KC_NO"
-        self.setFixedSize(70, 70)
+        self.setFixedSize(55, 55)
         self.setMouseTracking(True)
 
     def setChecked(self, checked):
@@ -1723,27 +1723,27 @@ class EncoderButton(QWidget):
 
         brush = QBrush(QApplication.palette().color(QPalette.Button))
         qp.setBrush(brush)
-        qp.drawEllipse(5, 5, 60, 60)
+        qp.drawEllipse(3, 3, 49, 49)
 
         # Draw arrow indicator
         path = QPainterPath()
-        center_x = 35
-        center_y = 35
+        center_x = 27.5
+        center_y = 27.5
 
         if self.is_up:
             # Up arrow (pointing up)
-            path.moveTo(center_x, center_y - 10)
-            path.lineTo(center_x + 5, center_y - 3)
-            path.lineTo(center_x, center_y + 3)
-            path.lineTo(center_x - 5, center_y - 3)
-            path.lineTo(center_x, center_y - 10)
+            path.moveTo(center_x, center_y - 8)
+            path.lineTo(center_x + 4, center_y - 2)
+            path.lineTo(center_x, center_y + 2)
+            path.lineTo(center_x - 4, center_y - 2)
+            path.lineTo(center_x, center_y - 8)
         else:
             # Down arrow (pointing down)
-            path.moveTo(center_x, center_y + 10)
-            path.lineTo(center_x + 5, center_y + 3)
-            path.lineTo(center_x, center_y - 3)
-            path.lineTo(center_x - 5, center_y + 3)
-            path.lineTo(center_x, center_y + 10)
+            path.moveTo(center_x, center_y + 8)
+            path.lineTo(center_x + 4, center_y + 2)
+            path.lineTo(center_x, center_y - 2)
+            path.lineTo(center_x - 4, center_y + 2)
+            path.lineTo(center_x, center_y + 8)
 
         arrow_brush = QBrush(QApplication.palette().color(QPalette.ButtonText))
         qp.setBrush(arrow_brush)
@@ -1753,9 +1753,9 @@ class EncoderButton(QWidget):
         # Draw keycode text below arrow
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(7)
+        font.setPointSize(6)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(5, 40, -5, -5)
+        text_rect = self.rect().adjusted(3, 32, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1770,7 +1770,7 @@ class PushButton(QWidget):
         super().__init__()
         self.is_selected = False
         self.text = "KC_NO"
-        self.setFixedSize(70, 70)
+        self.setFixedSize(55, 55)
         self.setMouseTracking(True)
 
     def setChecked(self, checked):
@@ -1805,22 +1805,22 @@ class PushButton(QWidget):
 
         brush = QBrush(QApplication.palette().color(QPalette.Button))
         qp.setBrush(brush)
-        qp.drawRoundedRect(5, 5, 60, 60, 5, 5)
+        qp.drawRoundedRect(3, 3, 49, 49, 4, 4)
 
         # Draw "PUSH" label
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(7)
+        font.setPointSize(6)
         font.setBold(True)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(5, 5, -5, -30)
+        text_rect = self.rect().adjusted(3, 3, -3, -25)
         qp.drawText(text_rect, Qt.AlignCenter, "PUSH")
 
         # Draw keycode text
         font.setBold(False)
-        font.setPointSize(7)
+        font.setPointSize(6)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(5, 30, -5, -5)
+        text_rect = self.rect().adjusted(3, 25, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1835,7 +1835,7 @@ class SustainButton(QWidget):
         super().__init__()
         self.is_selected = False
         self.text = "KC_NO"
-        self.setFixedSize(90, 70)
+        self.setFixedSize(165, 55)
         self.setMouseTracking(True)
 
     def setChecked(self, checked):
@@ -1870,14 +1870,14 @@ class SustainButton(QWidget):
 
         brush = QBrush(QApplication.palette().color(QPalette.Button))
         qp.setBrush(brush)
-        qp.drawRoundedRect(5, 5, 80, 60, 5, 5)
+        qp.drawRoundedRect(3, 3, 159, 49, 4, 4)
 
         # Draw keycode text
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(8)
+        font.setPointSize(7)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(5, 5, -5, -5)
+        text_rect = self.rect().adjusted(3, 3, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1905,13 +1905,13 @@ class EncoderAssignWidget(QWidget):
             "Sustain Pedal"
         ]
 
-        self.setMinimumWidth(280)
-        self.setMaximumWidth(280)
+        self.setMinimumWidth(185)
+        self.setMaximumWidth(185)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
         layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+        layout.setContentsMargins(5, 10, 5, 10)
         self.setLayout(layout)
 
         # Title
@@ -1989,13 +1989,11 @@ class EncoderAssignWidget(QWidget):
 
         sustain_layout = QHBoxLayout()
         sustain_layout.setSpacing(5)
-        sustain_layout.addStretch()
 
         sustain_btn = SustainButton()
         sustain_btn.clicked.connect(lambda: self.on_button_clicked(6))
         self.buttons.append(sustain_btn)
         sustain_layout.addWidget(sustain_btn)
-        sustain_layout.addStretch()
 
         layout.addLayout(sustain_layout)
 
@@ -2089,14 +2087,14 @@ class KeymapEditor(BasicEditor):
         # Connect encoder widget signals
         self.encoder_assign.clicked.connect(self.on_encoder_clicked)
 
-        # Layout with actuation on left, keyboard in center, encoder on right
+        # Layout with actuation on left, encoder/sustain next, then keyboard
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(0)  # No spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
-        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.encoder_assign, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
