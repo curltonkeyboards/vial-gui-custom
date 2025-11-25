@@ -384,7 +384,7 @@ class QuickActuationWidget(QWidget):
         advanced_row.setSpacing(15)
 
         self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced Options"))
-        self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); }")
         self.midi_advanced_checkbox.stateChanged.connect(self.on_midi_advanced_toggled)
         advanced_row.addWidget(self.midi_advanced_checkbox)
 
@@ -407,6 +407,7 @@ class QuickActuationWidget(QWidget):
         keysplit_row.addWidget(keysplit_label)
 
         self.keysplit_enabled_checkbox = QCheckBox()
+        self.keysplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); }")
         self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
         keysplit_row.addWidget(self.keysplit_enabled_checkbox)
 
@@ -437,6 +438,7 @@ class QuickActuationWidget(QWidget):
         triplesplit_row.addWidget(triplesplit_label)
 
         self.triplesplit_enabled_checkbox = QCheckBox()
+        self.triplesplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); }")
         self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
         triplesplit_row.addWidget(self.triplesplit_enabled_checkbox)
 
@@ -585,7 +587,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.simple_channel_combo = ArrowComboBox()
-        self.simple_channel_combo.setMaximumWidth(20)
+        self.simple_channel_combo.setFixedWidth(15)
         self.simple_channel_combo.setMaximumHeight(30)
         self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.simple_channel_combo.setEditable(True)
@@ -607,7 +609,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.simple_transpose_combo = ArrowComboBox()
-        self.simple_transpose_combo.setMaximumWidth(20)
+        self.simple_transpose_combo.setFixedWidth(15)
         self.simple_transpose_combo.setMaximumHeight(30)
         self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.simple_transpose_combo.setEditable(True)
@@ -658,11 +660,8 @@ class QuickActuationWidget(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
-
-        # Add vertical spacing above channel to prevent tab overlap
-        layout.addSpacing(8)
 
         # Channel and Transpose on same row
         ch_trans_row = QHBoxLayout()
@@ -677,7 +676,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.midi_channel_combo = ArrowComboBox()
-        self.midi_channel_combo.setMaximumWidth(20)
+        self.midi_channel_combo.setFixedWidth(15)
         self.midi_channel_combo.setMaximumHeight(30)
         self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_channel_combo.setEditable(True)
@@ -699,7 +698,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.midi_transpose_combo = ArrowComboBox()
-        self.midi_transpose_combo.setMaximumWidth(20)
+        self.midi_transpose_combo.setFixedWidth(15)
         self.midi_transpose_combo.setMaximumHeight(30)
         self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_transpose_combo.setEditable(True)
@@ -820,11 +819,8 @@ class QuickActuationWidget(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
-
-        # Add vertical spacing above channel to prevent tab overlap
-        layout.addSpacing(8)
 
         # Channel and Transpose on same row
         ch_trans_row = QHBoxLayout()
@@ -839,7 +835,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.keysplit_channel = ArrowComboBox()
-        self.keysplit_channel.setMaximumWidth(20)
+        self.keysplit_channel.setFixedWidth(15)
         self.keysplit_channel.setMaximumHeight(30)
         self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.keysplit_channel.setEditable(True)
@@ -861,7 +857,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.keysplit_transpose = ArrowComboBox()
-        self.keysplit_transpose.setMaximumWidth(20)
+        self.keysplit_transpose.setFixedWidth(15)
         self.keysplit_transpose.setMaximumHeight(30)
         self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.keysplit_transpose.setEditable(True)
@@ -978,11 +974,8 @@ class QuickActuationWidget(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
-
-        # Add vertical spacing above channel to prevent tab overlap
-        layout.addSpacing(8)
 
         # Channel and Transpose on same row
         ch_trans_row = QHBoxLayout()
@@ -997,7 +990,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.triplesplit_channel = ArrowComboBox()
-        self.triplesplit_channel.setMaximumWidth(20)
+        self.triplesplit_channel.setFixedWidth(15)
         self.triplesplit_channel.setMaximumHeight(30)
         self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.triplesplit_channel.setEditable(True)
@@ -1019,7 +1012,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.triplesplit_transpose = ArrowComboBox()
-        self.triplesplit_transpose.setMaximumWidth(20)
+        self.triplesplit_transpose.setFixedWidth(15)
         self.triplesplit_transpose.setMaximumHeight(30)
         self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.triplesplit_transpose.setEditable(True)
