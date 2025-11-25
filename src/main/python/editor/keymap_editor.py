@@ -77,7 +77,7 @@ class QuickActuationWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(10, 10, 0, 10)  # No right margin for flush layout
         self.setLayout(layout)
 
         # Create tab widget
@@ -956,6 +956,9 @@ class QuickActuationWidget(QWidget):
         curve_row.addStretch()
         layout.addLayout(curve_row)
 
+        # 5px spacing between velocity curve and sustain
+        layout.addSpacing(5)
+
         # Sustain (label next to dropdown) - below velocity min/max
         sustain_row = QHBoxLayout()
         sustain_row.setContentsMargins(0, 0, 0, 0)
@@ -963,12 +966,12 @@ class QuickActuationWidget(QWidget):
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
         sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
-        sustain_label.setMinimumWidth(60)
-        sustain_label.setMaximumWidth(60)
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
 
         self.keysplit_sustain_combo = ArrowComboBox()
-        self.keysplit_sustain_combo.setMaximumWidth(80)
+        self.keysplit_sustain_combo.setMaximumWidth(120)
         self.keysplit_sustain_combo.setMaximumHeight(30)
         self.keysplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.keysplit_sustain_combo.setEditable(True)
@@ -1112,6 +1115,9 @@ class QuickActuationWidget(QWidget):
         curve_row.addStretch()
         layout.addLayout(curve_row)
 
+        # 5px spacing between velocity curve and sustain
+        layout.addSpacing(5)
+
         # Sustain (label next to dropdown) - below velocity min/max
         sustain_row = QHBoxLayout()
         sustain_row.setContentsMargins(0, 0, 0, 0)
@@ -1119,12 +1125,12 @@ class QuickActuationWidget(QWidget):
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
         sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
-        sustain_label.setMinimumWidth(60)
-        sustain_label.setMaximumWidth(60)
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
 
         self.triplesplit_sustain_combo = ArrowComboBox()
-        self.triplesplit_sustain_combo.setMaximumWidth(80)
+        self.triplesplit_sustain_combo.setMaximumWidth(120)
         self.triplesplit_sustain_combo.setMaximumHeight(30)
         self.triplesplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.triplesplit_sustain_combo.setEditable(True)
@@ -1675,13 +1681,15 @@ class QuickActuationWidget(QWidget):
 class EncoderAssignWidget(QWidget):
     """Widget for assigning keycodes to encoders and sustain pedal per layer"""
 
-    keycode_changed = pyqtSignal(int, object)  # button_index, keycode
+    clicked = pyqtSignal()  # Emitted when a button is clicked (for tabbed_keycodes integration)
 
     def __init__(self):
         super().__init__()
 
         self.current_layer = 0
+        self.selected_button = None
         self.buttons = []
+        self.encoder_keycodes = {}  # Storage: {layer: [7 keycodes]}
         self.labels = [
             "Encoder 1 Up",
             "Encoder 1 Down",
@@ -1698,7 +1706,7 @@ class EncoderAssignWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.setSpacing(8)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(0, 10, 10, 10)  # No left margin for flush layout
         self.setLayout(layout)
 
         # Title
@@ -1718,7 +1726,8 @@ class EncoderAssignWidget(QWidget):
             btn_layout.addWidget(label)
 
             btn = SquareButton()
-            btn.setRelSize(1.4)
+            btn.setFixedSize(55, 55)
+            btn.setCheckable(True)
             btn.clicked.connect(lambda checked, i=idx: self.on_button_clicked(i))
             self.buttons.append(btn)
             btn_layout.addWidget(btn)
@@ -1728,28 +1737,51 @@ class EncoderAssignWidget(QWidget):
         layout.addStretch()
 
     def on_button_clicked(self, index):
-        """Handle button click to assign keycode"""
-        current_code = self.buttons[index].keycode
-        dlg = AnyKeycodeDialog(current_code)
-        if dlg.exec_():
-            code = dlg.value
-            self.buttons[index].setKeycode(code)
-            self.keycode_changed.emit(index, code)
+        """Handle button click - mark as selected and notify parent"""
+        # Deselect all other buttons
+        for i, btn in enumerate(self.buttons):
+            btn.setChecked(i == index)
+
+        self.selected_button = index
+        self.clicked.emit()
+
+    def deselect(self):
+        """Deselect all buttons"""
+        for btn in self.buttons:
+            btn.setChecked(False)
+        self.selected_button = None
 
     def set_keycode(self, index, keycode):
-        """Set keycode for a button"""
+        """Set keycode for a button and update its display"""
         if 0 <= index < len(self.buttons):
-            self.buttons[index].setKeycode(keycode)
+            # Initialize layer if needed
+            if self.current_layer not in self.encoder_keycodes:
+                self.encoder_keycodes[self.current_layer] = ["KC_NO"] * 7
+
+            self.encoder_keycodes[self.current_layer][index] = keycode
+            self.buttons[index].setText(Keycode.label(keycode))
 
     def get_keycode(self, index):
         """Get keycode from a button"""
-        if 0 <= index < len(self.buttons):
-            return self.buttons[index].keycode
-        return None
+        if self.current_layer in self.encoder_keycodes and 0 <= index < len(self.encoder_keycodes[self.current_layer]):
+            return self.encoder_keycodes[self.current_layer][index]
+        return "KC_NO"
 
     def set_layer(self, layer):
-        """Update current layer"""
+        """Update current layer and refresh button displays"""
         self.current_layer = layer
+
+        # Initialize layer if needed
+        if layer not in self.encoder_keycodes:
+            self.encoder_keycodes[layer] = ["KC_NO"] * 7
+
+        # Update button displays
+        for idx in range(len(self.buttons)):
+            keycode = self.encoder_keycodes[layer][idx]
+            self.buttons[idx].setText(Keycode.label(keycode))
+
+        # Deselect when changing layers
+        self.deselect()
 
 
 class ClickableWidget(QWidget):
@@ -1788,6 +1820,9 @@ class KeymapEditor(BasicEditor):
         self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
+
+        # Connect encoder widget signals
+        self.encoder_assign.clicked.connect(self.on_encoder_clicked)
 
         # Layout with actuation on left, keyboard in center, encoder on right
         keyboard_layout = QHBoxLayout()
@@ -1834,10 +1869,16 @@ class KeymapEditor(BasicEditor):
 
     def on_empty_space_clicked(self):
         self.container.deselect()
+        self.encoder_assign.deselect()
         self.container.update()
 
     def on_keycode_changed(self, code):
-        self.set_key(code)
+        # Check if encoder button is selected
+        if self.encoder_assign.selected_button is not None:
+            self.encoder_assign.set_keycode(self.encoder_assign.selected_button, code)
+        else:
+            # Otherwise, set keyboard key
+            self.set_key(code)
 
     def rebuild_layers(self):
         # delete old layer labels
@@ -1954,6 +1995,8 @@ class KeymapEditor(BasicEditor):
         self.current_layer = idx
         # Update quick actuation widget layer (loads from memory, no lag)
         self.quick_actuation.set_layer(idx)
+        # Update encoder widget layer
+        self.encoder_assign.set_layer(idx)
         self.refresh_layer_display()
 
     def set_key(self, keycode):
@@ -2003,6 +2046,9 @@ class KeymapEditor(BasicEditor):
 
     def on_key_clicked(self):
         """ Called when a key on the keyboard widget is clicked """
+        # Deselect encoder buttons when keyboard is clicked
+        self.encoder_assign.deselect()
+
         self.refresh_layer_display()
         if self.container.active_mask:
             self.tabbed_keycodes.set_keycode_filter(keycode_filter_masked)
@@ -2010,6 +2056,15 @@ class KeymapEditor(BasicEditor):
             self.tabbed_keycodes.set_keycode_filter(None)
 
     def on_key_deselected(self):
+        self.tabbed_keycodes.set_keycode_filter(None)
+
+    def on_encoder_clicked(self):
+        """ Called when an encoder button is clicked """
+        # Deselect keyboard keys when encoder button is clicked
+        self.container.deselect()
+        self.container.update()
+
+        # No filter needed for encoder assignments
         self.tabbed_keycodes.set_keycode_filter(None)
 
     def on_layout_changed(self):
