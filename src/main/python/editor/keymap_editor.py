@@ -71,13 +71,13 @@ class QuickActuationWidget(QWidget):
             'triplesplit_velocity_max': 127
         }
 
-        self.setMinimumWidth(300)
-        self.setMaximumWidth(300)
+        self.setMinimumWidth(320)
+        self.setMaximumWidth(320)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
         layout = QVBoxLayout()
         layout.setSpacing(6)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(10, 10, 0, 10)  # No right margin for flush layout
         self.setLayout(layout)
 
         # Create tab widget
@@ -107,12 +107,12 @@ class QuickActuationWidget(QWidget):
         top_row_layout.setSpacing(10)
 
         self.per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer"))
-        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; }")
+        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
         top_row_layout.addWidget(self.per_layer_checkbox)
 
         self.advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced"))
-        self.advanced_checkbox.setStyleSheet("QCheckBox { font-weight: normal; font-size: 10px; }")
+        self.advanced_checkbox.setStyleSheet("QCheckBox { font-weight: normal; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
         self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
         top_row_layout.addWidget(self.advanced_checkbox)
 
@@ -383,34 +383,36 @@ class QuickActuationWidget(QWidget):
         advanced_row.setContentsMargins(0, 0, 0, 0)
         advanced_row.setSpacing(15)
 
-        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced Options"))
-        self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; }")
+        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced"))
+        self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
         self.midi_advanced_checkbox.stateChanged.connect(self.on_midi_advanced_toggled)
         advanced_row.addWidget(self.midi_advanced_checkbox)
 
-        # Enable KeySplit - "Enable" above, "KeySplit" with checkbox next to it
-        keysplit_container = QVBoxLayout()
-        keysplit_container.setSpacing(2)
+        # Enable KeySplit - Checkbox on left, labels on right vertically centered
+        keysplit_container = QHBoxLayout()
+        keysplit_container.setSpacing(5)
         keysplit_container.setContentsMargins(0, 0, 0, 0)
+
+        self.keysplit_enabled_checkbox = QCheckBox()
+        self.keysplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
+        self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
+        keysplit_container.addWidget(self.keysplit_enabled_checkbox, 0, Qt.AlignCenter)
+
+        keysplit_labels = QVBoxLayout()
+        keysplit_labels.setSpacing(0)
+        keysplit_labels.setContentsMargins(0, 0, 0, 0)
 
         enable_label_ks = QLabel(tr("QuickActuationWidget", "Enable"))
         enable_label_ks.setStyleSheet("QLabel { font-size: 9px; }")
-        enable_label_ks.setAlignment(Qt.AlignCenter)
-        keysplit_container.addWidget(enable_label_ks)
-
-        keysplit_row = QHBoxLayout()
-        keysplit_row.setSpacing(3)
-        keysplit_row.setContentsMargins(0, 0, 0, 0)
+        enable_label_ks.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        keysplit_labels.addWidget(enable_label_ks)
 
         keysplit_label = QLabel(tr("QuickActuationWidget", "KeySplit"))
         keysplit_label.setStyleSheet("QLabel { font-size: 10px; }")
-        keysplit_row.addWidget(keysplit_label)
+        keysplit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        keysplit_labels.addWidget(keysplit_label)
 
-        self.keysplit_enabled_checkbox = QCheckBox()
-        self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
-        keysplit_row.addWidget(self.keysplit_enabled_checkbox)
-
-        keysplit_container.addLayout(keysplit_row)
+        keysplit_container.addLayout(keysplit_labels)
 
         keysplit_widget = QWidget()
         keysplit_widget.setLayout(keysplit_container)
@@ -418,29 +420,31 @@ class QuickActuationWidget(QWidget):
         advanced_row.addWidget(keysplit_widget)
         self.keysplit_enable_widget = keysplit_widget
 
-        # Enable TripleSplit - "Enable" above, "TripleSplit" with checkbox next to it
-        triplesplit_container = QVBoxLayout()
-        triplesplit_container.setSpacing(2)
+        # Enable TripleSplit - Checkbox on left, labels on right vertically centered
+        triplesplit_container = QHBoxLayout()
+        triplesplit_container.setSpacing(5)
         triplesplit_container.setContentsMargins(0, 0, 0, 0)
+
+        self.triplesplit_enabled_checkbox = QCheckBox()
+        self.triplesplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
+        self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
+        triplesplit_container.addWidget(self.triplesplit_enabled_checkbox, 0, Qt.AlignCenter)
+
+        triplesplit_labels = QVBoxLayout()
+        triplesplit_labels.setSpacing(0)
+        triplesplit_labels.setContentsMargins(0, 0, 0, 0)
 
         enable_label_ts = QLabel(tr("QuickActuationWidget", "Enable"))
         enable_label_ts.setStyleSheet("QLabel { font-size: 9px; }")
-        enable_label_ts.setAlignment(Qt.AlignCenter)
-        triplesplit_container.addWidget(enable_label_ts)
-
-        triplesplit_row = QHBoxLayout()
-        triplesplit_row.setSpacing(3)
-        triplesplit_row.setContentsMargins(0, 0, 0, 0)
+        enable_label_ts.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        triplesplit_labels.addWidget(enable_label_ts)
 
         triplesplit_label = QLabel(tr("QuickActuationWidget", "TripleSplit"))
         triplesplit_label.setStyleSheet("QLabel { font-size: 10px; }")
-        triplesplit_row.addWidget(triplesplit_label)
+        triplesplit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        triplesplit_labels.addWidget(triplesplit_label)
 
-        self.triplesplit_enabled_checkbox = QCheckBox()
-        self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
-        triplesplit_row.addWidget(self.triplesplit_enabled_checkbox)
-
-        triplesplit_container.addLayout(triplesplit_row)
+        triplesplit_container.addLayout(triplesplit_labels)
 
         triplesplit_widget = QWidget()
         triplesplit_widget.setLayout(triplesplit_container)
@@ -462,7 +466,7 @@ class QuickActuationWidget(QWidget):
         # Create tabbed container (always shown, tabs dynamically added/removed)
         self.midi_tabs = QTabWidget()
         self.midi_tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #ccc; }
+            QTabWidget::pane { border: 1px solid palette(mid); }
             QTabBar::tab {
                 font-size: 9px;
                 padding: 4px 8px;
@@ -496,10 +500,11 @@ class QuickActuationWidget(QWidget):
         self.midi_advanced_widget.setVisible(False)
         layout.addWidget(self.midi_advanced_widget)
 
-        # Aftertouch settings
-        aftertouch_group = QGroupBox(tr("QuickActuationWidget", "Aftertouch Settings"))
+        # Aftertouch settings (no title to save space)
+        aftertouch_group = QWidget()
         aftertouch_layout = QVBoxLayout()
         aftertouch_layout.setSpacing(4)
+        aftertouch_layout.setContentsMargins(0, 0, 0, 0)
         aftertouch_group.setLayout(aftertouch_layout)
         adv_layout.addWidget(aftertouch_group)
 
@@ -513,7 +518,7 @@ class QuickActuationWidget(QWidget):
         at_container.setSpacing(2)
         at_label = QLabel(tr("QuickActuationWidget", "Aftertouch"))
         at_label.setAlignment(Qt.AlignCenter)
-        at_label.setStyleSheet("QLabel { font-size: 10px; }")
+        at_label.setStyleSheet("QLabel { font-size: 12px; }")
         at_container.addWidget(at_label)
         self.midi_aftertouch = ArrowComboBox()
         self.midi_aftertouch.setMaximumHeight(30)
@@ -531,12 +536,12 @@ class QuickActuationWidget(QWidget):
         at_container.addWidget(self.midi_aftertouch)
         at_row_layout.addLayout(at_container, 1)
 
-        # AT CC (same width as Aftertouch)
+        # Aftertouch CC (same width as Aftertouch)
         atcc_container = QVBoxLayout()
         atcc_container.setSpacing(2)
-        atcc_label = QLabel(tr("QuickActuationWidget", "AT CC"))
+        atcc_label = QLabel(tr("QuickActuationWidget", "Aftertouch CC"))
         atcc_label.setAlignment(Qt.AlignCenter)
-        atcc_label.setStyleSheet("QLabel { font-size: 10px; }")
+        atcc_label.setStyleSheet("QLabel { font-size: 12px; }")
         atcc_container.addWidget(atcc_label)
         self.midi_aftertouch_cc = ArrowComboBox()
         self.midi_aftertouch_cc.setMaximumHeight(30)
@@ -572,22 +577,22 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
-        # Channel and Transpose on same row
-        ch_trans_row = QHBoxLayout()
-        ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(6)
+        # Channel on separate row
+        ch_row = QHBoxLayout()
+        ch_row.setContentsMargins(0, 0, 0, 0)
+        ch_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
-        ch_label.setStyleSheet("QLabel { font-size: 12px; }")
-        ch_label.setMinimumWidth(60)
-        ch_label.setMaximumWidth(60)
-        ch_trans_row.addWidget(ch_label)
+        ch_label.setStyleSheet("QLabel { font-size: 14px; }")
+        ch_label.setMinimumWidth(80)
+        ch_label.setMaximumWidth(80)
+        ch_row.addWidget(ch_label)
 
         self.simple_channel_combo = ArrowComboBox()
-        self.simple_channel_combo.setFixedWidth(30)
-        self.simple_channel_combo.setMaximumHeight(30)
-        self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.simple_channel_combo.setFixedWidth(70)
+        self.simple_channel_combo.setMaximumHeight(35)
+        self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 70px; max-width: 70px; }")
         self.simple_channel_combo.setEditable(True)
         self.simple_channel_combo.lineEdit().setReadOnly(True)
         self.simple_channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -595,21 +600,27 @@ class QuickActuationWidget(QWidget):
             self.simple_channel_combo.addItem(f"{i + 1}", i)
         self.simple_channel_combo.setCurrentIndex(0)
         self.simple_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ch_trans_row.addWidget(self.simple_channel_combo)
+        ch_row.addWidget(self.simple_channel_combo)
 
-        ch_trans_row.addSpacing(15)
+        ch_row.addStretch()
+        layout.addLayout(ch_row)
 
-        # Transpose (label next to dropdown)
-        trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
-        trans_label.setStyleSheet("QLabel { font-size: 12px; }")
-        trans_label.setMinimumWidth(70)
-        trans_label.setMaximumWidth(70)
-        ch_trans_row.addWidget(trans_label)
+        # Transposition on separate row
+        trans_row = QHBoxLayout()
+        trans_row.setContentsMargins(0, 0, 0, 0)
+        trans_row.setSpacing(6)
+
+        # Transposition (label next to dropdown)
+        trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
+        trans_label.setStyleSheet("QLabel { font-size: 14px; }")
+        trans_label.setMinimumWidth(80)
+        trans_label.setMaximumWidth(80)
+        trans_row.addWidget(trans_label)
 
         self.simple_transpose_combo = ArrowComboBox()
-        self.simple_transpose_combo.setFixedWidth(30)
-        self.simple_transpose_combo.setMaximumHeight(30)
-        self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.simple_transpose_combo.setFixedWidth(70)
+        self.simple_transpose_combo.setMaximumHeight(35)
+        self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 70px; max-width: 70px; }")
         self.simple_transpose_combo.setEditable(True)
         self.simple_transpose_combo.lineEdit().setReadOnly(True)
         self.simple_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -617,26 +628,27 @@ class QuickActuationWidget(QWidget):
             self.simple_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.simple_transpose_combo.setCurrentIndex(12)
         self.simple_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ch_trans_row.addWidget(self.simple_transpose_combo)
+        self.simple_transpose_combo.view().setMinimumWidth(200)
+        trans_row.addWidget(self.simple_transpose_combo)
 
-        ch_trans_row.addStretch()
-        layout.addLayout(ch_trans_row)
+        trans_row.addStretch()
+        layout.addLayout(trans_row)
 
-        # Velocity Preset (label next to dropdown)
+        # Velocity (label next to dropdown)
         preset_row = QHBoxLayout()
         preset_row.setContentsMargins(0, 0, 0, 0)
         preset_row.setSpacing(6)
 
-        preset_label = QLabel(tr("QuickActuationWidget", "Velocity Preset:"))
-        preset_label.setStyleSheet("QLabel { font-size: 12px; }")
-        preset_label.setMinimumWidth(100)
-        preset_label.setMaximumWidth(100)
+        preset_label = QLabel(tr("QuickActuationWidget", "Velocity:"))
+        preset_label.setStyleSheet("QLabel { font-size: 14px; }")
+        preset_label.setMinimumWidth(80)
+        preset_label.setMaximumWidth(80)
         preset_row.addWidget(preset_label)
 
         self.simple_velocity_preset_combo = ArrowComboBox()
-        self.simple_velocity_preset_combo.setMaximumWidth(120)
-        self.simple_velocity_preset_combo.setMaximumHeight(30)
-        self.simple_velocity_preset_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.simple_velocity_preset_combo.setFixedWidth(70)
+        self.simple_velocity_preset_combo.setMaximumHeight(35)
+        self.simple_velocity_preset_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.simple_velocity_preset_combo.setEditable(True)
         self.simple_velocity_preset_combo.lineEdit().setReadOnly(True)
         self.simple_velocity_preset_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -658,28 +670,25 @@ class QuickActuationWidget(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
 
-        # Add vertical spacing above channel to prevent tab overlap
-        layout.addSpacing(8)
-
-        # Channel and Transpose on same row
+        # Channel and Transposition on same row
         ch_trans_row = QHBoxLayout()
         ch_trans_row.setContentsMargins(0, 0, 0, 0)
         ch_trans_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
-        ch_label.setStyleSheet("QLabel { font-size: 12px; }")
-        ch_label.setMinimumWidth(60)
-        ch_label.setMaximumWidth(60)
+        ch_label.setStyleSheet("QLabel { font-size: 14px; }")
+        ch_label.setMinimumWidth(70)
+        ch_label.setMaximumWidth(70)
         ch_trans_row.addWidget(ch_label)
 
         self.midi_channel_combo = ArrowComboBox()
-        self.midi_channel_combo.setFixedWidth(30)
+        self.midi_channel_combo.setFixedWidth(50)
         self.midi_channel_combo.setMaximumHeight(30)
-        self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.midi_channel_combo.setEditable(True)
         self.midi_channel_combo.lineEdit().setReadOnly(True)
         self.midi_channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -689,19 +698,19 @@ class QuickActuationWidget(QWidget):
         self.midi_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.midi_channel_combo)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
-        # Transpose (label next to dropdown)
-        trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
-        trans_label.setStyleSheet("QLabel { font-size: 12px; }")
-        trans_label.setMinimumWidth(70)
-        trans_label.setMaximumWidth(70)
+        # Transposition (label next to dropdown)
+        trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
+        trans_label.setStyleSheet("QLabel { font-size: 14px; }")
+        trans_label.setMinimumWidth(90)
+        trans_label.setMaximumWidth(90)
         ch_trans_row.addWidget(trans_label)
 
         self.midi_transpose_combo = ArrowComboBox()
-        self.midi_transpose_combo.setFixedWidth(30)
+        self.midi_transpose_combo.setFixedWidth(50)
         self.midi_transpose_combo.setMaximumHeight(30)
-        self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.midi_transpose_combo.setEditable(True)
         self.midi_transpose_combo.lineEdit().setReadOnly(True)
         self.midi_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -709,10 +718,51 @@ class QuickActuationWidget(QWidget):
             self.midi_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.midi_transpose_combo.setCurrentIndex(12)  # Default: 0
         self.midi_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
+        self.midi_transpose_combo.view().setMinimumWidth(200)
         ch_trans_row.addWidget(self.midi_transpose_combo)
 
         ch_trans_row.addStretch()
         layout.addLayout(ch_trans_row)
+
+        # Velocity Min (slider with label)
+        vel_min_layout = QHBoxLayout()
+        vel_min_layout.setSpacing(2)
+        vel_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
+        vel_min_title.setMinimumWidth(60)
+        vel_min_title.setStyleSheet("QLabel { font-size: 14px; }")
+        vel_min_layout.addWidget(vel_min_title)
+        self.midi_velocity_min = QSlider(Qt.Horizontal)
+        self.midi_velocity_min.setMinimum(1)
+        self.midi_velocity_min.setMaximum(127)
+        self.midi_velocity_min.setValue(1)
+        self.midi_velocity_min.valueChanged.connect(lambda v: self.on_midi_velocity_slider_changed('min', v))
+        vel_min_layout.addWidget(self.midi_velocity_min, 1)
+        self.midi_velocity_min_label = QLabel("1")
+        self.midi_velocity_min_label.setMinimumWidth(35)
+        self.midi_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        self.midi_velocity_min_label.setAlignment(Qt.AlignCenter)
+        vel_min_layout.addWidget(self.midi_velocity_min_label)
+        layout.addLayout(vel_min_layout)
+
+        # Velocity Max (slider with label)
+        vel_max_layout = QHBoxLayout()
+        vel_max_layout.setSpacing(2)
+        vel_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
+        vel_max_title.setMinimumWidth(60)
+        vel_max_title.setStyleSheet("QLabel { font-size: 14px; }")
+        vel_max_layout.addWidget(vel_max_title)
+        self.midi_velocity_max = QSlider(Qt.Horizontal)
+        self.midi_velocity_max.setMinimum(1)
+        self.midi_velocity_max.setMaximum(127)
+        self.midi_velocity_max.setValue(127)
+        self.midi_velocity_max.valueChanged.connect(lambda v: self.on_midi_velocity_slider_changed('max', v))
+        vel_max_layout.addWidget(self.midi_velocity_max, 1)
+        self.midi_velocity_max_label = QLabel("127")
+        self.midi_velocity_max_label.setMinimumWidth(35)
+        self.midi_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        self.midi_velocity_max_label.setAlignment(Qt.AlignCenter)
+        vel_max_layout.addWidget(self.midi_velocity_max_label)
+        layout.addLayout(vel_max_layout)
 
         # Velocity Curve (label next to dropdown)
         curve_row = QHBoxLayout()
@@ -720,7 +770,7 @@ class QuickActuationWidget(QWidget):
         curve_row.setSpacing(6)
 
         curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
-        curve_label.setStyleSheet("QLabel { font-size: 12px; }")
+        curve_label.setStyleSheet("QLabel { font-size: 14px; }")
         curve_label.setMinimumWidth(100)
         curve_label.setMaximumWidth(100)
         curve_row.addWidget(curve_label)
@@ -728,7 +778,7 @@ class QuickActuationWidget(QWidget):
         self.midi_velocity_curve = ArrowComboBox()
         self.midi_velocity_curve.setMaximumWidth(120)
         self.midi_velocity_curve.setMaximumHeight(30)
-        self.midi_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.midi_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.midi_velocity_curve.setEditable(True)
         self.midi_velocity_curve.lineEdit().setReadOnly(True)
         self.midi_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
@@ -743,61 +793,24 @@ class QuickActuationWidget(QWidget):
         curve_row.addStretch()
         layout.addLayout(curve_row)
 
-        # Velocity Min (slider with label)
-        vel_min_layout = QHBoxLayout()
-        vel_min_layout.setSpacing(2)
-        vel_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
-        vel_min_title.setMinimumWidth(60)
-        vel_min_title.setStyleSheet("QLabel { font-size: 10px; }")
-        vel_min_layout.addWidget(vel_min_title)
-        self.midi_velocity_min = QSlider(Qt.Horizontal)
-        self.midi_velocity_min.setMinimum(1)
-        self.midi_velocity_min.setMaximum(127)
-        self.midi_velocity_min.setValue(1)
-        self.midi_velocity_min.valueChanged.connect(lambda v: self.on_midi_velocity_slider_changed('min', v))
-        vel_min_layout.addWidget(self.midi_velocity_min, 1)
-        self.midi_velocity_min_label = QLabel("1")
-        self.midi_velocity_min_label.setMinimumWidth(35)
-        self.midi_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
-        self.midi_velocity_min_label.setAlignment(Qt.AlignCenter)
-        vel_min_layout.addWidget(self.midi_velocity_min_label)
-        layout.addLayout(vel_min_layout)
+        # 5px spacing between velocity curve and sustain
+        layout.addSpacing(5)
 
-        # Velocity Max (slider with label)
-        vel_max_layout = QHBoxLayout()
-        vel_max_layout.setSpacing(2)
-        vel_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
-        vel_max_title.setMinimumWidth(60)
-        vel_max_title.setStyleSheet("QLabel { font-size: 10px; }")
-        vel_max_layout.addWidget(vel_max_title)
-        self.midi_velocity_max = QSlider(Qt.Horizontal)
-        self.midi_velocity_max.setMinimum(1)
-        self.midi_velocity_max.setMaximum(127)
-        self.midi_velocity_max.setValue(127)
-        self.midi_velocity_max.valueChanged.connect(lambda v: self.on_midi_velocity_slider_changed('max', v))
-        vel_max_layout.addWidget(self.midi_velocity_max, 1)
-        self.midi_velocity_max_label = QLabel("127")
-        self.midi_velocity_max_label.setMinimumWidth(35)
-        self.midi_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
-        self.midi_velocity_max_label.setAlignment(Qt.AlignCenter)
-        vel_max_layout.addWidget(self.midi_velocity_max_label)
-        layout.addLayout(vel_max_layout)
-
-        # Sustain (label next to dropdown) - below velocity min/max
+        # Sustain (label next to dropdown) - below velocity min/max - hidden unless splits enabled
         sustain_row = QHBoxLayout()
         sustain_row.setContentsMargins(0, 0, 0, 0)
         sustain_row.setSpacing(6)
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
-        sustain_label.setStyleSheet("QLabel { font-size: 12px; }")
-        sustain_label.setMinimumWidth(60)
-        sustain_label.setMaximumWidth(60)
+        sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
 
         self.midi_sustain_combo = ArrowComboBox()
-        self.midi_sustain_combo.setMaximumWidth(80)
+        self.midi_sustain_combo.setMaximumWidth(120)
         self.midi_sustain_combo.setMaximumHeight(30)
-        self.midi_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.midi_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.midi_sustain_combo.setEditable(True)
         self.midi_sustain_combo.lineEdit().setReadOnly(True)
         self.midi_sustain_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -807,7 +820,11 @@ class QuickActuationWidget(QWidget):
         self.midi_sustain_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
         sustain_row.addWidget(self.midi_sustain_combo)
         sustain_row.addStretch()
-        layout.addLayout(sustain_row)
+
+        self.midi_sustain_widget = QWidget()
+        self.midi_sustain_widget.setLayout(sustain_row)
+        self.midi_sustain_widget.setVisible(False)  # Hidden by default
+        layout.addWidget(self.midi_sustain_widget)
 
         return widget
 
@@ -816,28 +833,25 @@ class QuickActuationWidget(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
 
-        # Add vertical spacing above channel to prevent tab overlap
-        layout.addSpacing(8)
-
-        # Channel and Transpose on same row
+        # Channel and Transposition on same row
         ch_trans_row = QHBoxLayout()
         ch_trans_row.setContentsMargins(0, 0, 0, 0)
         ch_trans_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
-        ch_label.setStyleSheet("QLabel { font-size: 12px; }")
-        ch_label.setMinimumWidth(60)
-        ch_label.setMaximumWidth(60)
+        ch_label.setStyleSheet("QLabel { font-size: 14px; }")
+        ch_label.setMinimumWidth(70)
+        ch_label.setMaximumWidth(70)
         ch_trans_row.addWidget(ch_label)
 
         self.keysplit_channel = ArrowComboBox()
-        self.keysplit_channel.setFixedWidth(30)
+        self.keysplit_channel.setFixedWidth(50)
         self.keysplit_channel.setMaximumHeight(30)
-        self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.keysplit_channel.setEditable(True)
         self.keysplit_channel.lineEdit().setReadOnly(True)
         self.keysplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
@@ -847,19 +861,19 @@ class QuickActuationWidget(QWidget):
         self.keysplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.keysplit_channel)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
-        # Transpose (label next to dropdown)
-        trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
-        trans_label.setStyleSheet("QLabel { font-size: 12px; }")
-        trans_label.setMinimumWidth(70)
-        trans_label.setMaximumWidth(70)
+        # Transposition (label next to dropdown)
+        trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
+        trans_label.setStyleSheet("QLabel { font-size: 14px; }")
+        trans_label.setMinimumWidth(90)
+        trans_label.setMaximumWidth(90)
         ch_trans_row.addWidget(trans_label)
 
         self.keysplit_transpose = ArrowComboBox()
-        self.keysplit_transpose.setFixedWidth(30)
+        self.keysplit_transpose.setFixedWidth(50)
         self.keysplit_transpose.setMaximumHeight(30)
-        self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.keysplit_transpose.setEditable(True)
         self.keysplit_transpose.lineEdit().setReadOnly(True)
         self.keysplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
@@ -867,10 +881,51 @@ class QuickActuationWidget(QWidget):
             self.keysplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.keysplit_transpose.setCurrentIndex(12)
         self.keysplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
+        self.keysplit_transpose.view().setMinimumWidth(200)
         ch_trans_row.addWidget(self.keysplit_transpose)
 
         ch_trans_row.addStretch()
         layout.addLayout(ch_trans_row)
+
+        # Velocity Min (slider with label)
+        ks_min_layout = QHBoxLayout()
+        ks_min_layout.setSpacing(2)
+        ks_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
+        ks_min_title.setMinimumWidth(60)
+        ks_min_title.setStyleSheet("QLabel { font-size: 14px; }")
+        ks_min_layout.addWidget(ks_min_title)
+        self.keysplit_velocity_min = QSlider(Qt.Horizontal)
+        self.keysplit_velocity_min.setMinimum(1)
+        self.keysplit_velocity_min.setMaximum(127)
+        self.keysplit_velocity_min.setValue(1)
+        self.keysplit_velocity_min.valueChanged.connect(lambda v: self.on_keysplit_velocity_slider_changed('min', v))
+        ks_min_layout.addWidget(self.keysplit_velocity_min, 1)
+        self.keysplit_velocity_min_label = QLabel("1")
+        self.keysplit_velocity_min_label.setMinimumWidth(35)
+        self.keysplit_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        self.keysplit_velocity_min_label.setAlignment(Qt.AlignCenter)
+        ks_min_layout.addWidget(self.keysplit_velocity_min_label)
+        layout.addLayout(ks_min_layout)
+
+        # Velocity Max (slider with label)
+        ks_max_layout = QHBoxLayout()
+        ks_max_layout.setSpacing(2)
+        ks_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
+        ks_max_title.setMinimumWidth(60)
+        ks_max_title.setStyleSheet("QLabel { font-size: 14px; }")
+        ks_max_layout.addWidget(ks_max_title)
+        self.keysplit_velocity_max = QSlider(Qt.Horizontal)
+        self.keysplit_velocity_max.setMinimum(1)
+        self.keysplit_velocity_max.setMaximum(127)
+        self.keysplit_velocity_max.setValue(127)
+        self.keysplit_velocity_max.valueChanged.connect(lambda v: self.on_keysplit_velocity_slider_changed('max', v))
+        ks_max_layout.addWidget(self.keysplit_velocity_max, 1)
+        self.keysplit_velocity_max_label = QLabel("127")
+        self.keysplit_velocity_max_label.setMinimumWidth(35)
+        self.keysplit_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        self.keysplit_velocity_max_label.setAlignment(Qt.AlignCenter)
+        ks_max_layout.addWidget(self.keysplit_velocity_max_label)
+        layout.addLayout(ks_max_layout)
 
         # Velocity Curve (label next to dropdown)
         curve_row = QHBoxLayout()
@@ -878,7 +933,7 @@ class QuickActuationWidget(QWidget):
         curve_row.setSpacing(6)
 
         curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
-        curve_label.setStyleSheet("QLabel { font-size: 12px; }")
+        curve_label.setStyleSheet("QLabel { font-size: 14px; }")
         curve_label.setMinimumWidth(100)
         curve_label.setMaximumWidth(100)
         curve_row.addWidget(curve_label)
@@ -886,7 +941,7 @@ class QuickActuationWidget(QWidget):
         self.keysplit_velocity_curve = ArrowComboBox()
         self.keysplit_velocity_curve.setMaximumWidth(120)
         self.keysplit_velocity_curve.setMaximumHeight(30)
-        self.keysplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.keysplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.keysplit_velocity_curve.setEditable(True)
         self.keysplit_velocity_curve.lineEdit().setReadOnly(True)
         self.keysplit_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
@@ -901,45 +956,8 @@ class QuickActuationWidget(QWidget):
         curve_row.addStretch()
         layout.addLayout(curve_row)
 
-        # Velocity Min (slider with label)
-        ks_min_layout = QHBoxLayout()
-        ks_min_layout.setSpacing(2)
-        ks_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
-        ks_min_title.setMinimumWidth(60)
-        ks_min_title.setStyleSheet("QLabel { font-size: 10px; }")
-        ks_min_layout.addWidget(ks_min_title)
-        self.keysplit_velocity_min = QSlider(Qt.Horizontal)
-        self.keysplit_velocity_min.setMinimum(1)
-        self.keysplit_velocity_min.setMaximum(127)
-        self.keysplit_velocity_min.setValue(1)
-        self.keysplit_velocity_min.valueChanged.connect(lambda v: self.on_keysplit_velocity_slider_changed('min', v))
-        ks_min_layout.addWidget(self.keysplit_velocity_min, 1)
-        self.keysplit_velocity_min_label = QLabel("1")
-        self.keysplit_velocity_min_label.setMinimumWidth(35)
-        self.keysplit_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
-        self.keysplit_velocity_min_label.setAlignment(Qt.AlignCenter)
-        ks_min_layout.addWidget(self.keysplit_velocity_min_label)
-        layout.addLayout(ks_min_layout)
-
-        # Velocity Max (slider with label)
-        ks_max_layout = QHBoxLayout()
-        ks_max_layout.setSpacing(2)
-        ks_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
-        ks_max_title.setMinimumWidth(60)
-        ks_max_title.setStyleSheet("QLabel { font-size: 10px; }")
-        ks_max_layout.addWidget(ks_max_title)
-        self.keysplit_velocity_max = QSlider(Qt.Horizontal)
-        self.keysplit_velocity_max.setMinimum(1)
-        self.keysplit_velocity_max.setMaximum(127)
-        self.keysplit_velocity_max.setValue(127)
-        self.keysplit_velocity_max.valueChanged.connect(lambda v: self.on_keysplit_velocity_slider_changed('max', v))
-        ks_max_layout.addWidget(self.keysplit_velocity_max, 1)
-        self.keysplit_velocity_max_label = QLabel("127")
-        self.keysplit_velocity_max_label.setMinimumWidth(35)
-        self.keysplit_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
-        self.keysplit_velocity_max_label.setAlignment(Qt.AlignCenter)
-        ks_max_layout.addWidget(self.keysplit_velocity_max_label)
-        layout.addLayout(ks_max_layout)
+        # 5px spacing between velocity curve and sustain
+        layout.addSpacing(5)
 
         # Sustain (label next to dropdown) - below velocity min/max
         sustain_row = QHBoxLayout()
@@ -947,15 +965,15 @@ class QuickActuationWidget(QWidget):
         sustain_row.setSpacing(6)
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
-        sustain_label.setStyleSheet("QLabel { font-size: 12px; }")
-        sustain_label.setMinimumWidth(60)
-        sustain_label.setMaximumWidth(60)
+        sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
 
         self.keysplit_sustain_combo = ArrowComboBox()
-        self.keysplit_sustain_combo.setMaximumWidth(80)
+        self.keysplit_sustain_combo.setMaximumWidth(120)
         self.keysplit_sustain_combo.setMaximumHeight(30)
-        self.keysplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.keysplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.keysplit_sustain_combo.setEditable(True)
         self.keysplit_sustain_combo.lineEdit().setReadOnly(True)
         self.keysplit_sustain_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -974,28 +992,25 @@ class QuickActuationWidget(QWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
 
-        # Add vertical spacing above channel to prevent tab overlap
-        layout.addSpacing(8)
-
-        # Channel and Transpose on same row
+        # Channel and Transposition on same row
         ch_trans_row = QHBoxLayout()
         ch_trans_row.setContentsMargins(0, 0, 0, 0)
         ch_trans_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
-        ch_label.setStyleSheet("QLabel { font-size: 12px; }")
-        ch_label.setMinimumWidth(60)
-        ch_label.setMaximumWidth(60)
+        ch_label.setStyleSheet("QLabel { font-size: 14px; }")
+        ch_label.setMinimumWidth(70)
+        ch_label.setMaximumWidth(70)
         ch_trans_row.addWidget(ch_label)
 
         self.triplesplit_channel = ArrowComboBox()
-        self.triplesplit_channel.setFixedWidth(30)
+        self.triplesplit_channel.setFixedWidth(50)
         self.triplesplit_channel.setMaximumHeight(30)
-        self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.triplesplit_channel.setEditable(True)
         self.triplesplit_channel.lineEdit().setReadOnly(True)
         self.triplesplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1005,19 +1020,19 @@ class QuickActuationWidget(QWidget):
         self.triplesplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.triplesplit_channel)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
-        # Transpose (label next to dropdown)
-        trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
-        trans_label.setStyleSheet("QLabel { font-size: 12px; }")
-        trans_label.setMinimumWidth(70)
-        trans_label.setMaximumWidth(70)
+        # Transposition (label next to dropdown)
+        trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
+        trans_label.setStyleSheet("QLabel { font-size: 14px; }")
+        trans_label.setMinimumWidth(90)
+        trans_label.setMaximumWidth(90)
         ch_trans_row.addWidget(trans_label)
 
         self.triplesplit_transpose = ArrowComboBox()
-        self.triplesplit_transpose.setFixedWidth(30)
+        self.triplesplit_transpose.setFixedWidth(50)
         self.triplesplit_transpose.setMaximumHeight(30)
-        self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.triplesplit_transpose.setEditable(True)
         self.triplesplit_transpose.lineEdit().setReadOnly(True)
         self.triplesplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1025,10 +1040,51 @@ class QuickActuationWidget(QWidget):
             self.triplesplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
         self.triplesplit_transpose.setCurrentIndex(12)
         self.triplesplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
+        self.triplesplit_transpose.view().setMinimumWidth(200)
         ch_trans_row.addWidget(self.triplesplit_transpose)
 
         ch_trans_row.addStretch()
         layout.addLayout(ch_trans_row)
+
+        # Velocity Min (slider with label)
+        ts_min_layout = QHBoxLayout()
+        ts_min_layout.setSpacing(2)
+        ts_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
+        ts_min_title.setMinimumWidth(60)
+        ts_min_title.setStyleSheet("QLabel { font-size: 14px; }")
+        ts_min_layout.addWidget(ts_min_title)
+        self.triplesplit_velocity_min = QSlider(Qt.Horizontal)
+        self.triplesplit_velocity_min.setMinimum(1)
+        self.triplesplit_velocity_min.setMaximum(127)
+        self.triplesplit_velocity_min.setValue(1)
+        self.triplesplit_velocity_min.valueChanged.connect(lambda v: self.on_triplesplit_velocity_slider_changed('min', v))
+        ts_min_layout.addWidget(self.triplesplit_velocity_min, 1)
+        self.triplesplit_velocity_min_label = QLabel("1")
+        self.triplesplit_velocity_min_label.setMinimumWidth(35)
+        self.triplesplit_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        self.triplesplit_velocity_min_label.setAlignment(Qt.AlignCenter)
+        ts_min_layout.addWidget(self.triplesplit_velocity_min_label)
+        layout.addLayout(ts_min_layout)
+
+        # Velocity Max (slider with label)
+        ts_max_layout = QHBoxLayout()
+        ts_max_layout.setSpacing(2)
+        ts_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
+        ts_max_title.setMinimumWidth(60)
+        ts_max_title.setStyleSheet("QLabel { font-size: 14px; }")
+        ts_max_layout.addWidget(ts_max_title)
+        self.triplesplit_velocity_max = QSlider(Qt.Horizontal)
+        self.triplesplit_velocity_max.setMinimum(1)
+        self.triplesplit_velocity_max.setMaximum(127)
+        self.triplesplit_velocity_max.setValue(127)
+        self.triplesplit_velocity_max.valueChanged.connect(lambda v: self.on_triplesplit_velocity_slider_changed('max', v))
+        ts_max_layout.addWidget(self.triplesplit_velocity_max, 1)
+        self.triplesplit_velocity_max_label = QLabel("127")
+        self.triplesplit_velocity_max_label.setMinimumWidth(35)
+        self.triplesplit_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        self.triplesplit_velocity_max_label.setAlignment(Qt.AlignCenter)
+        ts_max_layout.addWidget(self.triplesplit_velocity_max_label)
+        layout.addLayout(ts_max_layout)
 
         # Velocity Curve (label next to dropdown)
         curve_row = QHBoxLayout()
@@ -1036,7 +1092,7 @@ class QuickActuationWidget(QWidget):
         curve_row.setSpacing(6)
 
         curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
-        curve_label.setStyleSheet("QLabel { font-size: 12px; }")
+        curve_label.setStyleSheet("QLabel { font-size: 14px; }")
         curve_label.setMinimumWidth(100)
         curve_label.setMaximumWidth(100)
         curve_row.addWidget(curve_label)
@@ -1044,7 +1100,7 @@ class QuickActuationWidget(QWidget):
         self.triplesplit_velocity_curve = ArrowComboBox()
         self.triplesplit_velocity_curve.setMaximumWidth(120)
         self.triplesplit_velocity_curve.setMaximumHeight(30)
-        self.triplesplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.triplesplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.triplesplit_velocity_curve.setEditable(True)
         self.triplesplit_velocity_curve.lineEdit().setReadOnly(True)
         self.triplesplit_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1059,45 +1115,8 @@ class QuickActuationWidget(QWidget):
         curve_row.addStretch()
         layout.addLayout(curve_row)
 
-        # Velocity Min (slider with label)
-        ts_min_layout = QHBoxLayout()
-        ts_min_layout.setSpacing(2)
-        ts_min_title = QLabel(tr("QuickActuationWidget", "Vel Min"))
-        ts_min_title.setMinimumWidth(60)
-        ts_min_title.setStyleSheet("QLabel { font-size: 10px; }")
-        ts_min_layout.addWidget(ts_min_title)
-        self.triplesplit_velocity_min = QSlider(Qt.Horizontal)
-        self.triplesplit_velocity_min.setMinimum(1)
-        self.triplesplit_velocity_min.setMaximum(127)
-        self.triplesplit_velocity_min.setValue(1)
-        self.triplesplit_velocity_min.valueChanged.connect(lambda v: self.on_triplesplit_velocity_slider_changed('min', v))
-        ts_min_layout.addWidget(self.triplesplit_velocity_min, 1)
-        self.triplesplit_velocity_min_label = QLabel("1")
-        self.triplesplit_velocity_min_label.setMinimumWidth(35)
-        self.triplesplit_velocity_min_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
-        self.triplesplit_velocity_min_label.setAlignment(Qt.AlignCenter)
-        ts_min_layout.addWidget(self.triplesplit_velocity_min_label)
-        layout.addLayout(ts_min_layout)
-
-        # Velocity Max (slider with label)
-        ts_max_layout = QHBoxLayout()
-        ts_max_layout.setSpacing(2)
-        ts_max_title = QLabel(tr("QuickActuationWidget", "Vel Max"))
-        ts_max_title.setMinimumWidth(60)
-        ts_max_title.setStyleSheet("QLabel { font-size: 10px; }")
-        ts_max_layout.addWidget(ts_max_title)
-        self.triplesplit_velocity_max = QSlider(Qt.Horizontal)
-        self.triplesplit_velocity_max.setMinimum(1)
-        self.triplesplit_velocity_max.setMaximum(127)
-        self.triplesplit_velocity_max.setValue(127)
-        self.triplesplit_velocity_max.valueChanged.connect(lambda v: self.on_triplesplit_velocity_slider_changed('max', v))
-        ts_max_layout.addWidget(self.triplesplit_velocity_max, 1)
-        self.triplesplit_velocity_max_label = QLabel("127")
-        self.triplesplit_velocity_max_label.setMinimumWidth(35)
-        self.triplesplit_velocity_max_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; }")
-        self.triplesplit_velocity_max_label.setAlignment(Qt.AlignCenter)
-        ts_max_layout.addWidget(self.triplesplit_velocity_max_label)
-        layout.addLayout(ts_max_layout)
+        # 5px spacing between velocity curve and sustain
+        layout.addSpacing(5)
 
         # Sustain (label next to dropdown) - below velocity min/max
         sustain_row = QHBoxLayout()
@@ -1105,15 +1124,15 @@ class QuickActuationWidget(QWidget):
         sustain_row.setSpacing(6)
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
-        sustain_label.setStyleSheet("QLabel { font-size: 12px; }")
-        sustain_label.setMinimumWidth(60)
-        sustain_label.setMaximumWidth(60)
+        sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
 
         self.triplesplit_sustain_combo = ArrowComboBox()
-        self.triplesplit_sustain_combo.setMaximumWidth(80)
+        self.triplesplit_sustain_combo.setMaximumWidth(120)
         self.triplesplit_sustain_combo.setMaximumHeight(30)
-        self.triplesplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
+        self.triplesplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
         self.triplesplit_sustain_combo.setEditable(True)
         self.triplesplit_sustain_combo.lineEdit().setReadOnly(True)
         self.triplesplit_sustain_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1422,6 +1441,10 @@ class QuickActuationWidget(QWidget):
         keysplit_enabled = self.keysplit_enabled_checkbox.isChecked()
         triplesplit_enabled = self.triplesplit_enabled_checkbox.isChecked()
 
+        # Show/hide sustain widget in Basic tab based on split settings
+        if hasattr(self, 'midi_sustain_widget'):
+            self.midi_sustain_widget.setVisible(keysplit_enabled or triplesplit_enabled)
+
         # Tabs are always shown, just rebuild which tabs are visible
         self.midi_tabs.clear()
         self.midi_tabs.addTab(self.basic_tab_widget, "Basic")
@@ -1655,6 +1678,112 @@ class QuickActuationWidget(QWidget):
             self.load_layer_from_memory()
 
 
+class EncoderAssignWidget(QWidget):
+    """Widget for assigning keycodes to encoders and sustain pedal per layer"""
+
+    clicked = pyqtSignal()  # Emitted when a button is clicked (for tabbed_keycodes integration)
+
+    def __init__(self):
+        super().__init__()
+
+        self.current_layer = 0
+        self.selected_button = None
+        self.buttons = []
+        self.encoder_keycodes = {}  # Storage: {layer: [7 keycodes]}
+        self.labels = [
+            "Encoder 1 Up",
+            "Encoder 1 Down",
+            "Encoder 1 Press",
+            "Encoder 2 Up",
+            "Encoder 2 Down",
+            "Encoder 2 Press",
+            "Sustain Pedal"
+        ]
+
+        self.setMinimumWidth(200)
+        self.setMaximumWidth(200)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(0, 10, 10, 10)  # No left margin for flush layout
+        self.setLayout(layout)
+
+        # Title
+        title = QLabel(tr("EncoderAssignWidget", "Encoder/Sustain"))
+        title.setStyleSheet("QLabel { font-weight: bold; font-size: 12px; }")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        # Create buttons for each encoder/sustain assignment
+        for idx, label_text in enumerate(self.labels):
+            btn_layout = QHBoxLayout()
+            btn_layout.setSpacing(5)
+
+            label = QLabel(tr("EncoderAssignWidget", label_text))
+            label.setStyleSheet("QLabel { font-size: 10px; }")
+            label.setMinimumWidth(100)
+            btn_layout.addWidget(label)
+
+            btn = SquareButton()
+            btn.setFixedSize(55, 55)
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda checked, i=idx: self.on_button_clicked(i))
+            self.buttons.append(btn)
+            btn_layout.addWidget(btn)
+
+            layout.addLayout(btn_layout)
+
+        layout.addStretch()
+
+    def on_button_clicked(self, index):
+        """Handle button click - mark as selected and notify parent"""
+        # Deselect all other buttons
+        for i, btn in enumerate(self.buttons):
+            btn.setChecked(i == index)
+
+        self.selected_button = index
+        self.clicked.emit()
+
+    def deselect(self):
+        """Deselect all buttons"""
+        for btn in self.buttons:
+            btn.setChecked(False)
+        self.selected_button = None
+
+    def set_keycode(self, index, keycode):
+        """Set keycode for a button and update its display"""
+        if 0 <= index < len(self.buttons):
+            # Initialize layer if needed
+            if self.current_layer not in self.encoder_keycodes:
+                self.encoder_keycodes[self.current_layer] = ["KC_NO"] * 7
+
+            self.encoder_keycodes[self.current_layer][index] = keycode
+            self.buttons[index].setText(Keycode.label(keycode))
+
+    def get_keycode(self, index):
+        """Get keycode from a button"""
+        if self.current_layer in self.encoder_keycodes and 0 <= index < len(self.encoder_keycodes[self.current_layer]):
+            return self.encoder_keycodes[self.current_layer][index]
+        return "KC_NO"
+
+    def set_layer(self, layer):
+        """Update current layer and refresh button displays"""
+        self.current_layer = layer
+
+        # Initialize layer if needed
+        if layer not in self.encoder_keycodes:
+            self.encoder_keycodes[layer] = ["KC_NO"] * 7
+
+        # Update button displays
+        for idx in range(len(self.buttons)):
+            keycode = self.encoder_keycodes[layer][idx]
+            self.buttons[idx].setText(Keycode.label(keycode))
+
+        # Deselect when changing layers
+        self.deselect()
+
+
 class ClickableWidget(QWidget):
 
     clicked = pyqtSignal()
@@ -1684,18 +1813,25 @@ class KeymapEditor(BasicEditor):
         # Create quick actuation widget
         self.quick_actuation = QuickActuationWidget()
 
+        # Create encoder assignment widget
+        self.encoder_assign = EncoderAssignWidget()
+
         # contains the actual keyboard
         self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Layout with actuation on left, keyboard in center
+        # Connect encoder widget signals
+        self.encoder_assign.clicked.connect(self.on_encoder_clicked)
+
+        # Layout with actuation on left, keyboard in center, encoder on right
         keyboard_layout = QHBoxLayout()
         keyboard_layout.setSpacing(0)  # No spacing between widgets
         keyboard_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_layout.addStretch(1)  # Add stretch before
         keyboard_layout.addWidget(self.quick_actuation, 0, Qt.AlignTop)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
+        keyboard_layout.addWidget(self.encoder_assign, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)  # Add stretch after
 
         layout = QVBoxLayout()
@@ -1733,10 +1869,16 @@ class KeymapEditor(BasicEditor):
 
     def on_empty_space_clicked(self):
         self.container.deselect()
+        self.encoder_assign.deselect()
         self.container.update()
 
     def on_keycode_changed(self, code):
-        self.set_key(code)
+        # Check if encoder button is selected
+        if self.encoder_assign.selected_button is not None:
+            self.encoder_assign.set_keycode(self.encoder_assign.selected_button, code)
+        else:
+            # Otherwise, set keyboard key
+            self.set_key(code)
 
     def rebuild_layers(self):
         # delete old layer labels
@@ -1853,6 +1995,8 @@ class KeymapEditor(BasicEditor):
         self.current_layer = idx
         # Update quick actuation widget layer (loads from memory, no lag)
         self.quick_actuation.set_layer(idx)
+        # Update encoder widget layer
+        self.encoder_assign.set_layer(idx)
         self.refresh_layer_display()
 
     def set_key(self, keycode):
@@ -1902,6 +2046,9 @@ class KeymapEditor(BasicEditor):
 
     def on_key_clicked(self):
         """ Called when a key on the keyboard widget is clicked """
+        # Deselect encoder buttons when keyboard is clicked
+        self.encoder_assign.deselect()
+
         self.refresh_layer_display()
         if self.container.active_mask:
             self.tabbed_keycodes.set_keycode_filter(keycode_filter_masked)
@@ -1909,6 +2056,15 @@ class KeymapEditor(BasicEditor):
             self.tabbed_keycodes.set_keycode_filter(None)
 
     def on_key_deselected(self):
+        self.tabbed_keycodes.set_keycode_filter(None)
+
+    def on_encoder_clicked(self):
+        """ Called when an encoder button is clicked """
+        # Deselect keyboard keys when encoder button is clicked
+        self.container.deselect()
+        self.container.update()
+
+        # No filter needed for encoder assignments
         self.tabbed_keycodes.set_keycode_filter(None)
 
     def on_layout_changed(self):
