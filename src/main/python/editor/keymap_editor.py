@@ -1711,7 +1711,7 @@ class EncoderButton(QWidget):
         qp = QPainter(self)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        # Draw circular background
+        # Draw circular border only (no fill)
         if self.is_selected:
             pen = QPen(QApplication.palette().color(QPalette.Highlight))
             pen.setWidth(2)
@@ -1721,41 +1721,24 @@ class EncoderButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
-        qp.setBrush(brush)
+        qp.setBrush(Qt.NoBrush)  # No fill
         qp.drawEllipse(3, 3, 49, 49)
 
-        # Draw arrow indicator
-        path = QPainterPath()
-        center_x = 27.5
-        center_y = 27.5
-
-        if self.is_up:
-            # Up arrow (pointing up)
-            path.moveTo(center_x, center_y - 8)
-            path.lineTo(center_x + 4, center_y - 2)
-            path.lineTo(center_x, center_y + 2)
-            path.lineTo(center_x - 4, center_y - 2)
-            path.lineTo(center_x, center_y - 8)
-        else:
-            # Down arrow (pointing down)
-            path.moveTo(center_x, center_y + 8)
-            path.lineTo(center_x + 4, center_y + 2)
-            path.lineTo(center_x, center_y - 2)
-            path.lineTo(center_x - 4, center_y + 2)
-            path.lineTo(center_x, center_y + 8)
-
-        arrow_brush = QBrush(QApplication.palette().color(QPalette.ButtonText))
-        qp.setBrush(arrow_brush)
-        qp.setPen(Qt.NoPen)
-        qp.drawPath(path)
-
-        # Draw keycode text below arrow
+        # Draw "UP" or "DOWN" text at top
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
+        font.setPointSize(7)
+        font.setBold(True)
+        qp.setFont(font)
+        label_text = "UP" if self.is_up else "DOWN"
+        text_rect = self.rect().adjusted(3, 5, -3, -35)
+        qp.drawText(text_rect, Qt.AlignCenter, label_text)
+
+        # Draw keycode text at bottom
+        font.setBold(False)
         font.setPointSize(6)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 32, -3, -3)
+        text_rect = self.rect().adjusted(3, 30, -3, -5)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1803,8 +1786,7 @@ class PushButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
-        qp.setBrush(brush)
+        qp.setBrush(Qt.NoBrush)  # No fill
         qp.drawRoundedRect(3, 3, 49, 49, 4, 4)
 
         # Draw "PUSH" label
@@ -1868,8 +1850,7 @@ class SustainButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
-        qp.setBrush(brush)
+        qp.setBrush(Qt.NoBrush)  # No fill
         qp.drawRoundedRect(3, 3, 159, 49, 4, 4)
 
         # Draw keycode text
@@ -1918,11 +1899,8 @@ class EncoderAssignWidget(QWidget):
         layout.setContentsMargins(5, 10, 5, 10)
         self.setLayout(layout)
 
-        # Title
-        title = QLabel(tr("EncoderAssignWidget", "Encoder/Sustain"))
-        title.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; background: transparent; }")
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
+        # Add spacing to move encoders down 130px
+        layout.addSpacing(130)
 
         # Create visual encoder/sustain widgets
         # Encoder 1 group
@@ -1984,6 +1962,9 @@ class EncoderAssignWidget(QWidget):
         encoder2_layout.addWidget(enc2_push_btn)
 
         layout.addLayout(encoder2_layout)
+
+        # Move sustain pedal up 140px by adding negative spacing
+        layout.addSpacing(-140)
 
         # Sustain pedal group
         sustain_label = QLabel("Sustain Pedal")
