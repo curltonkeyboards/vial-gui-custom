@@ -585,7 +585,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.simple_channel_combo = ArrowComboBox()
-        self.simple_channel_combo.setFixedWidth(45)
+        self.simple_channel_combo.setFixedWidth(30)
         self.simple_channel_combo.setMaximumHeight(30)
         self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.simple_channel_combo.setEditable(True)
@@ -607,15 +607,15 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.simple_transpose_combo = ArrowComboBox()
-        self.simple_transpose_combo.setFixedWidth(45)
+        self.simple_transpose_combo.setFixedWidth(30)
         self.simple_transpose_combo.setMaximumHeight(30)
         self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.simple_transpose_combo.setEditable(True)
         self.simple_transpose_combo.lineEdit().setReadOnly(True)
         self.simple_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-64, 65):
+        for i in range(-12, 13):
             self.simple_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.simple_transpose_combo.setCurrentIndex(64)
+        self.simple_transpose_combo.setCurrentIndex(12)
         self.simple_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.simple_transpose_combo)
 
@@ -646,7 +646,7 @@ class QuickActuationWidget(QWidget):
         self.simple_velocity_preset_combo.addItem("Hard", 3)
         self.simple_velocity_preset_combo.addItem("Hardest", 4)
         self.simple_velocity_preset_combo.setCurrentIndex(2)
-        self.simple_velocity_preset_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
+        self.simple_velocity_preset_combo.currentIndexChanged.connect(self.on_velocity_preset_changed)
         preset_row.addWidget(self.simple_velocity_preset_combo)
         preset_row.addStretch()
         layout.addLayout(preset_row)
@@ -677,7 +677,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.midi_channel_combo = ArrowComboBox()
-        self.midi_channel_combo.setFixedWidth(45)
+        self.midi_channel_combo.setFixedWidth(30)
         self.midi_channel_combo.setMaximumHeight(30)
         self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_channel_combo.setEditable(True)
@@ -699,15 +699,15 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.midi_transpose_combo = ArrowComboBox()
-        self.midi_transpose_combo.setFixedWidth(45)
+        self.midi_transpose_combo.setFixedWidth(30)
         self.midi_transpose_combo.setMaximumHeight(30)
         self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.midi_transpose_combo.setEditable(True)
         self.midi_transpose_combo.lineEdit().setReadOnly(True)
         self.midi_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-64, 65):
+        for i in range(-12, 13):
             self.midi_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.midi_transpose_combo.setCurrentIndex(64)  # Default: 0
+        self.midi_transpose_combo.setCurrentIndex(12)  # Default: 0
         self.midi_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.midi_transpose_combo)
 
@@ -835,7 +835,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.keysplit_channel = ArrowComboBox()
-        self.keysplit_channel.setFixedWidth(45)
+        self.keysplit_channel.setFixedWidth(30)
         self.keysplit_channel.setMaximumHeight(30)
         self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.keysplit_channel.setEditable(True)
@@ -857,15 +857,15 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.keysplit_transpose = ArrowComboBox()
-        self.keysplit_transpose.setFixedWidth(45)
+        self.keysplit_transpose.setFixedWidth(30)
         self.keysplit_transpose.setMaximumHeight(30)
         self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.keysplit_transpose.setEditable(True)
         self.keysplit_transpose.lineEdit().setReadOnly(True)
         self.keysplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-64, 65):
+        for i in range(-12, 13):
             self.keysplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.keysplit_transpose.setCurrentIndex(64)
+        self.keysplit_transpose.setCurrentIndex(12)
         self.keysplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.keysplit_transpose)
 
@@ -993,7 +993,7 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.triplesplit_channel = ArrowComboBox()
-        self.triplesplit_channel.setFixedWidth(45)
+        self.triplesplit_channel.setFixedWidth(30)
         self.triplesplit_channel.setMaximumHeight(30)
         self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.triplesplit_channel.setEditable(True)
@@ -1015,15 +1015,15 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.triplesplit_transpose = ArrowComboBox()
-        self.triplesplit_transpose.setFixedWidth(45)
+        self.triplesplit_transpose.setFixedWidth(30)
         self.triplesplit_transpose.setMaximumHeight(30)
         self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
         self.triplesplit_transpose.setEditable(True)
         self.triplesplit_transpose.lineEdit().setReadOnly(True)
         self.triplesplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-64, 65):
+        for i in range(-12, 13):
             self.triplesplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.triplesplit_transpose.setCurrentIndex(64)
+        self.triplesplit_transpose.setCurrentIndex(12)
         self.triplesplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.triplesplit_transpose)
 
@@ -1288,7 +1288,7 @@ class QuickActuationWidget(QWidget):
         if self.syncing:
             return
 
-        preset = self.midi_velocity_preset.currentData()
+        preset = self.simple_velocity_preset_combo.currentData()
         # Preset mappings: Softest(0), Soft(1), Medium(2), Hard(3), Hardest(4)
         preset_map = {
             0: {'curve': 0, 'min': 1, 'max': 90},     # Softest
@@ -1397,6 +1397,11 @@ class QuickActuationWidget(QWidget):
 
     def on_keysplit_enabled_toggled(self):
         """Toggle KeySplit settings - switch to tabbed view when enabled"""
+        # If keysplit is being unchecked, also uncheck triplesplit
+        if not self.keysplit_enabled_checkbox.isChecked():
+            if self.triplesplit_enabled_checkbox.isChecked():
+                self.triplesplit_enabled_checkbox.setChecked(False)
+
         self.update_midi_container_view()
         if not self.syncing:
             self.save_midi_ui_to_memory()
@@ -1474,7 +1479,6 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['channel'] = self.midi_channel_combo.currentData()
         self.midi_settings['transpose'] = self.midi_transpose_combo.currentData()
         self.midi_settings['sustain'] = self.midi_sustain_combo.currentData()
-        self.midi_settings['velocity_preset'] = self.midi_velocity_preset.currentData()
         self.midi_settings['velocity_curve'] = self.midi_velocity_curve.currentData()
         self.midi_settings['velocity_min'] = self.midi_velocity_min.value()
         self.midi_settings['velocity_max'] = self.midi_velocity_max.value()
