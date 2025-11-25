@@ -383,35 +383,36 @@ class QuickActuationWidget(QWidget):
         advanced_row.setContentsMargins(0, 0, 0, 0)
         advanced_row.setSpacing(15)
 
-        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced Options"))
-        self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); }")
+        self.midi_advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced"))
+        self.midi_advanced_checkbox.setStyleSheet("QCheckBox { font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); } QCheckBox::indicator:checked { image: none; border: 1px solid palette(mid); background-color: palette(mid); }")
         self.midi_advanced_checkbox.stateChanged.connect(self.on_midi_advanced_toggled)
         advanced_row.addWidget(self.midi_advanced_checkbox)
 
-        # Enable KeySplit - "Enable" above, "KeySplit" with checkbox next to it
-        keysplit_container = QVBoxLayout()
-        keysplit_container.setSpacing(2)
+        # Enable KeySplit - Checkbox on left, labels on right vertically centered
+        keysplit_container = QHBoxLayout()
+        keysplit_container.setSpacing(5)
         keysplit_container.setContentsMargins(0, 0, 0, 0)
+
+        self.keysplit_enabled_checkbox = QCheckBox()
+        self.keysplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); } QCheckBox::indicator:checked { image: none; border: 1px solid palette(mid); background-color: palette(mid); }")
+        self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
+        keysplit_container.addWidget(self.keysplit_enabled_checkbox, 0, Qt.AlignCenter)
+
+        keysplit_labels = QVBoxLayout()
+        keysplit_labels.setSpacing(0)
+        keysplit_labels.setContentsMargins(0, 0, 0, 0)
 
         enable_label_ks = QLabel(tr("QuickActuationWidget", "Enable"))
         enable_label_ks.setStyleSheet("QLabel { font-size: 9px; }")
-        enable_label_ks.setAlignment(Qt.AlignCenter)
-        keysplit_container.addWidget(enable_label_ks)
-
-        keysplit_row = QHBoxLayout()
-        keysplit_row.setSpacing(3)
-        keysplit_row.setContentsMargins(0, 0, 0, 0)
+        enable_label_ks.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        keysplit_labels.addWidget(enable_label_ks)
 
         keysplit_label = QLabel(tr("QuickActuationWidget", "KeySplit"))
         keysplit_label.setStyleSheet("QLabel { font-size: 10px; }")
-        keysplit_row.addWidget(keysplit_label)
+        keysplit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        keysplit_labels.addWidget(keysplit_label)
 
-        self.keysplit_enabled_checkbox = QCheckBox()
-        self.keysplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); }")
-        self.keysplit_enabled_checkbox.stateChanged.connect(self.on_keysplit_enabled_toggled)
-        keysplit_row.addWidget(self.keysplit_enabled_checkbox)
-
-        keysplit_container.addLayout(keysplit_row)
+        keysplit_container.addLayout(keysplit_labels)
 
         keysplit_widget = QWidget()
         keysplit_widget.setLayout(keysplit_container)
@@ -419,30 +420,31 @@ class QuickActuationWidget(QWidget):
         advanced_row.addWidget(keysplit_widget)
         self.keysplit_enable_widget = keysplit_widget
 
-        # Enable TripleSplit - "Enable" above, "TripleSplit" with checkbox next to it
-        triplesplit_container = QVBoxLayout()
-        triplesplit_container.setSpacing(2)
+        # Enable TripleSplit - Checkbox on left, labels on right vertically centered
+        triplesplit_container = QHBoxLayout()
+        triplesplit_container.setSpacing(5)
         triplesplit_container.setContentsMargins(0, 0, 0, 0)
+
+        self.triplesplit_enabled_checkbox = QCheckBox()
+        self.triplesplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); } QCheckBox::indicator:checked { image: none; border: 1px solid palette(mid); background-color: palette(mid); }")
+        self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
+        triplesplit_container.addWidget(self.triplesplit_enabled_checkbox, 0, Qt.AlignCenter)
+
+        triplesplit_labels = QVBoxLayout()
+        triplesplit_labels.setSpacing(0)
+        triplesplit_labels.setContentsMargins(0, 0, 0, 0)
 
         enable_label_ts = QLabel(tr("QuickActuationWidget", "Enable"))
         enable_label_ts.setStyleSheet("QLabel { font-size: 9px; }")
-        enable_label_ts.setAlignment(Qt.AlignCenter)
-        triplesplit_container.addWidget(enable_label_ts)
-
-        triplesplit_row = QHBoxLayout()
-        triplesplit_row.setSpacing(3)
-        triplesplit_row.setContentsMargins(0, 0, 0, 0)
+        enable_label_ts.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        triplesplit_labels.addWidget(enable_label_ts)
 
         triplesplit_label = QLabel(tr("QuickActuationWidget", "TripleSplit"))
         triplesplit_label.setStyleSheet("QLabel { font-size: 10px; }")
-        triplesplit_row.addWidget(triplesplit_label)
+        triplesplit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        triplesplit_labels.addWidget(triplesplit_label)
 
-        self.triplesplit_enabled_checkbox = QCheckBox()
-        self.triplesplit_enabled_checkbox.setStyleSheet("QCheckBox::indicator { border: 1px solid palette(mid); }")
-        self.triplesplit_enabled_checkbox.stateChanged.connect(self.on_triplesplit_enabled_toggled)
-        triplesplit_row.addWidget(self.triplesplit_enabled_checkbox)
-
-        triplesplit_container.addLayout(triplesplit_row)
+        triplesplit_container.addLayout(triplesplit_labels)
 
         triplesplit_widget = QWidget()
         triplesplit_widget.setLayout(triplesplit_container)
@@ -587,9 +589,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.simple_channel_combo = ArrowComboBox()
-        self.simple_channel_combo.setFixedWidth(25)
+        self.simple_channel_combo.setFixedWidth(50)
         self.simple_channel_combo.setMaximumHeight(30)
-        self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.simple_channel_combo.setEditable(True)
         self.simple_channel_combo.lineEdit().setReadOnly(True)
         self.simple_channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -599,7 +601,7 @@ class QuickActuationWidget(QWidget):
         self.simple_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.simple_channel_combo)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
         # Transpose (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
@@ -609,9 +611,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.simple_transpose_combo = ArrowComboBox()
-        self.simple_transpose_combo.setFixedWidth(25)
+        self.simple_transpose_combo.setFixedWidth(50)
         self.simple_transpose_combo.setMaximumHeight(30)
-        self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.simple_transpose_combo.setEditable(True)
         self.simple_transpose_combo.lineEdit().setReadOnly(True)
         self.simple_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -676,9 +678,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.midi_channel_combo = ArrowComboBox()
-        self.midi_channel_combo.setFixedWidth(25)
+        self.midi_channel_combo.setFixedWidth(50)
         self.midi_channel_combo.setMaximumHeight(30)
-        self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.midi_channel_combo.setEditable(True)
         self.midi_channel_combo.lineEdit().setReadOnly(True)
         self.midi_channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -688,7 +690,7 @@ class QuickActuationWidget(QWidget):
         self.midi_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.midi_channel_combo)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
         # Transpose (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
@@ -698,9 +700,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.midi_transpose_combo = ArrowComboBox()
-        self.midi_transpose_combo.setFixedWidth(25)
+        self.midi_transpose_combo.setFixedWidth(50)
         self.midi_transpose_combo.setMaximumHeight(30)
-        self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.midi_transpose_combo.setEditable(True)
         self.midi_transpose_combo.lineEdit().setReadOnly(True)
         self.midi_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -835,9 +837,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.keysplit_channel = ArrowComboBox()
-        self.keysplit_channel.setFixedWidth(25)
+        self.keysplit_channel.setFixedWidth(50)
         self.keysplit_channel.setMaximumHeight(30)
-        self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.keysplit_channel.setEditable(True)
         self.keysplit_channel.lineEdit().setReadOnly(True)
         self.keysplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
@@ -847,7 +849,7 @@ class QuickActuationWidget(QWidget):
         self.keysplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.keysplit_channel)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
         # Transpose (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
@@ -857,9 +859,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.keysplit_transpose = ArrowComboBox()
-        self.keysplit_transpose.setFixedWidth(25)
+        self.keysplit_transpose.setFixedWidth(50)
         self.keysplit_transpose.setMaximumHeight(30)
-        self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.keysplit_transpose.setEditable(True)
         self.keysplit_transpose.lineEdit().setReadOnly(True)
         self.keysplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
@@ -990,9 +992,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(ch_label)
 
         self.triplesplit_channel = ArrowComboBox()
-        self.triplesplit_channel.setFixedWidth(25)
+        self.triplesplit_channel.setFixedWidth(50)
         self.triplesplit_channel.setMaximumHeight(30)
-        self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.triplesplit_channel.setEditable(True)
         self.triplesplit_channel.lineEdit().setReadOnly(True)
         self.triplesplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1002,7 +1004,7 @@ class QuickActuationWidget(QWidget):
         self.triplesplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
         ch_trans_row.addWidget(self.triplesplit_channel)
 
-        ch_trans_row.addSpacing(15)
+        ch_trans_row.addSpacing(7)
 
         # Transpose (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transpose:"))
@@ -1012,9 +1014,9 @@ class QuickActuationWidget(QWidget):
         ch_trans_row.addWidget(trans_label)
 
         self.triplesplit_transpose = ArrowComboBox()
-        self.triplesplit_transpose.setFixedWidth(25)
+        self.triplesplit_transpose.setFixedWidth(50)
         self.triplesplit_transpose.setMaximumHeight(30)
-        self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 25px; max-width: 25px; }")
+        self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; min-width: 50px; max-width: 50px; }")
         self.triplesplit_transpose.setEditable(True)
         self.triplesplit_transpose.lineEdit().setReadOnly(True)
         self.triplesplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
