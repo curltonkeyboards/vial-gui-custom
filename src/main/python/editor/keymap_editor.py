@@ -1933,15 +1933,15 @@ class EncoderAssignWidget(QWidget):
         # Sustain pedal group - at top, center aligned with 20px left shift
         sustain_label = QLabel("Sustain Pedal")
         sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
-        sustain_label.setAlignment(Qt.AlignCenter)
+        sustain_label.setAlignment(Qt.AlignLeft)
         sustain_label_container = QHBoxLayout()
-        sustain_label_container.addSpacing(20)  # 20px left shift
+        sustain_label_container.addSpacing(40)  # 20px left shift
         sustain_label_container.addWidget(sustain_label)
         layout.addLayout(sustain_label_container)
 
         sustain_layout = QHBoxLayout()
         sustain_layout.setSpacing(5)
-        sustain_layout.addSpacing(20)  # 20px left shift
+        sustain_layout.addSpacing(40)  # 20px left shift
         sustain_layout.addWidget(sustain_btn)
         sustain_layout.addStretch()
         layout.addLayout(sustain_layout)
@@ -1956,11 +1956,11 @@ class EncoderAssignWidget(QWidget):
         layout.addWidget(encoder1_label)
 
         # 7px spacing between Encoder 1 title and button labels
-        layout.addSpacing(7)
+        layout.setSpacing(7)
 
         # Encoder 1 button labels (above buttons)
         encoder1_labels_layout = QHBoxLayout()
-        encoder1_labels_layout.setSpacing(5)
+        encoder1_labels_layout.setSpacing(0)
         enc1_up_label = QLabel("UP")
         enc1_up_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
         enc1_up_label.setAlignment(Qt.AlignCenter)
@@ -1980,7 +1980,7 @@ class EncoderAssignWidget(QWidget):
         layout.addLayout(encoder1_labels_layout)
 
         # 3px spacing between labels and buttons
-        layout.addSpacing(3)
+        layout.setSpacing(3)
 
         # Encoder 1 buttons (Up/Down circular, Press square)
         encoder1_layout = QHBoxLayout()
@@ -1992,7 +1992,7 @@ class EncoderAssignWidget(QWidget):
         layout.addLayout(encoder1_layout)
 
         # 7px spacing between Encoder 1 buttons and Encoder 2 title
-        layout.addSpacing(7)
+        layout.setSpacing(7)
 
         # Encoder 2 group
         encoder2_label = QLabel("Encoder 2")
@@ -2001,7 +2001,7 @@ class EncoderAssignWidget(QWidget):
         layout.addWidget(encoder2_label)
 
         # 7px spacing between Encoder 2 title and button labels
-        layout.addSpacing(7)
+        layout.setSpacing(7)
 
         # Encoder 2 button labels (above buttons)
         encoder2_labels_layout = QHBoxLayout()
@@ -2025,7 +2025,7 @@ class EncoderAssignWidget(QWidget):
         layout.addLayout(encoder2_labels_layout)
 
         # 3px spacing between labels and buttons
-        layout.addSpacing(3)
+        layout.setSpacing(3)
 
         # Encoder 2 buttons (Up/Down circular, Press square)
         encoder2_layout = QHBoxLayout()
