@@ -1177,16 +1177,16 @@ class QuickActuationWidget(QWidget):
             self.save_btn.setText(tr("QuickActuationWidget", "Save to All Layers"))
     
     def on_simple_channel_changed(self, value):
-    """Handle simple channel slider changes"""
-    self.simple_channel_label.setText(str(value + 1))
-    if not self.syncing:
-        self.midi_settings['channel'] = value
-        # Sync to advanced control if it exists
-        if hasattr(self, 'midi_channel_slider'):
-            self.syncing = True
-            self.midi_channel_slider.setValue(value)
-            self.midi_channel_label.setText(str(value + 1))
-            self.syncing = False
+        """Handle simple channel slider changes"""
+        self.simple_channel_label.setText(str(value + 1))
+        if not self.syncing:
+            self.midi_settings['channel'] = value
+            # Sync to advanced control if it exists
+            if hasattr(self, 'midi_channel_slider'):
+                self.syncing = True
+                self.midi_channel_slider.setValue(value)
+                self.midi_channel_label.setText(str(value + 1))
+                self.syncing = False
 
     def on_simple_transpose_changed(self, value):
         """Handle simple transpose slider changes"""
