@@ -1724,20 +1724,12 @@ class EncoderButton(QWidget):
         qp.setBrush(Qt.NoBrush)
         qp.drawEllipse(3, 3, 49, 49)
 
-        # Draw direction label at top
+        # Draw keycode text (label is now outside button)
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(7)
-        font.setBold(True)
-        qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 5, -3, -35)
-        qp.drawText(text_rect, Qt.AlignCenter, "UP" if self.is_up else "DOWN")
-
-        # Draw keycode text below direction label
-        font.setBold(False)
         font.setPointSize(8)  # Match keyboard widget font size
         qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 25, -3, -3)
+        text_rect = self.rect().adjusted(3, 3, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1788,20 +1780,12 @@ class PushButton(QWidget):
         qp.setBrush(Qt.NoBrush)
         qp.drawRoundedRect(3, 3, 49, 49, 4, 4)
 
-        # Draw "PUSH" label at top
+        # Draw keycode text (label is now outside button)
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(7)
-        font.setBold(True)
-        qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 5, -3, -35)
-        qp.drawText(text_rect, Qt.AlignCenter, "PUSH")
-
-        # Draw keycode text
-        font.setBold(False)
         font.setPointSize(8)  # Match keyboard widget font size
         qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 25, -3, -3)
+        text_rect = self.rect().adjusted(3, 3, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1816,7 +1800,7 @@ class SustainButton(QWidget):
         super().__init__()
         self.is_selected = False
         self.text = "KC_NO"
-        self.setFixedSize(165, 55)
+        self.setFixedSize(50, 50)
         self.setMouseTracking(True)
 
     def setChecked(self, checked):
@@ -1839,7 +1823,7 @@ class SustainButton(QWidget):
         qp = QPainter(self)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        # Draw rounded rectangle background
+        # Draw rounded rectangle background with 50% opacity
         if self.is_selected:
             pen = QPen(QApplication.palette().color(QPalette.Highlight))
             pen.setWidth(2)
@@ -1849,9 +1833,12 @@ class SustainButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        brush = QBrush(QApplication.palette().color(QPalette.Button))
+        # Create brush with 50% opacity
+        button_color = QApplication.palette().color(QPalette.Button)
+        button_color.setAlpha(128)  # 50% opacity
+        brush = QBrush(button_color)
         qp.setBrush(brush)
-        qp.drawRoundedRect(3, 3, 159, 49, 4, 4)
+        qp.drawRoundedRect(3, 3, 44, 44, 4, 4)
 
         # Draw keycode text
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
@@ -1895,7 +1882,7 @@ class EncoderAssignWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
-        layout.setContentsMargins(5, 40, 5, 10)  # 40px top margin (30px extra) to move content down
+        layout.setContentsMargins(5, 45, 5, 10)  # 45px top margin
         self.setLayout(layout)
 
         # Create buttons in logical order (indices 0-6) before adding to UI
@@ -1935,16 +1922,25 @@ class EncoderAssignWidget(QWidget):
         self.buttons.append(sustain_btn)
 
         # Now add to UI layout in display order (sustain at top, then encoders)
-        # Sustain pedal group - at top
+        # Sustain pedal group - at top, shifted 20px to the left
         sustain_label = QLabel("Sustain Pedal")
         sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
-        sustain_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(sustain_label)
+        sustain_label.setAlignment(Qt.AlignLeft)
+        sustain_label_container = QHBoxLayout()
+        sustain_label_container.addSpacing(5)  # Base left margin
+        sustain_label_container.addWidget(sustain_label)
+        sustain_label_container.addStretch()
+        layout.addLayout(sustain_label_container)
 
         sustain_layout = QHBoxLayout()
         sustain_layout.setSpacing(5)
+        sustain_layout.addSpacing(5)  # Base left margin (total 25px from widget edge to create 20px left shift)
         sustain_layout.addWidget(sustain_btn)
+        sustain_layout.addStretch()
         layout.addLayout(sustain_layout)
+
+        # Add 10px spacer below sustain button
+        layout.addSpacing(10)
 
         # Encoder 1 group
         encoder1_label = QLabel("Encoder 1")
@@ -1952,12 +1948,34 @@ class EncoderAssignWidget(QWidget):
         encoder1_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(encoder1_label)
 
+        # Encoder 1 button labels (above buttons)
+        encoder1_labels_layout = QHBoxLayout()
+        encoder1_labels_layout.setSpacing(5)
+        enc1_up_label = QLabel("UP")
+        enc1_up_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
+        enc1_up_label.setAlignment(Qt.AlignCenter)
+        enc1_up_label.setFixedWidth(55)
+        enc1_down_label = QLabel("DOWN")
+        enc1_down_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
+        enc1_down_label.setAlignment(Qt.AlignCenter)
+        enc1_down_label.setFixedWidth(55)
+        enc1_push_label = QLabel("PUSH")
+        enc1_push_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
+        enc1_push_label.setAlignment(Qt.AlignCenter)
+        enc1_push_label.setFixedWidth(55)
+        encoder1_labels_layout.addWidget(enc1_up_label)
+        encoder1_labels_layout.addWidget(enc1_down_label)
+        encoder1_labels_layout.addWidget(enc1_push_label)
+        encoder1_labels_layout.addStretch()
+        layout.addLayout(encoder1_labels_layout)
+
         # Encoder 1 buttons (Up/Down circular, Press square)
         encoder1_layout = QHBoxLayout()
         encoder1_layout.setSpacing(5)
         encoder1_layout.addWidget(enc1_up_btn)
         encoder1_layout.addWidget(enc1_down_btn)
         encoder1_layout.addWidget(enc1_push_btn)
+        encoder1_layout.addStretch()
         layout.addLayout(encoder1_layout)
 
         # Encoder 2 group
@@ -1966,12 +1984,34 @@ class EncoderAssignWidget(QWidget):
         encoder2_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(encoder2_label)
 
+        # Encoder 2 button labels (above buttons)
+        encoder2_labels_layout = QHBoxLayout()
+        encoder2_labels_layout.setSpacing(5)
+        enc2_up_label = QLabel("UP")
+        enc2_up_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
+        enc2_up_label.setAlignment(Qt.AlignCenter)
+        enc2_up_label.setFixedWidth(55)
+        enc2_down_label = QLabel("DOWN")
+        enc2_down_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
+        enc2_down_label.setAlignment(Qt.AlignCenter)
+        enc2_down_label.setFixedWidth(55)
+        enc2_push_label = QLabel("PUSH")
+        enc2_push_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
+        enc2_push_label.setAlignment(Qt.AlignCenter)
+        enc2_push_label.setFixedWidth(55)
+        encoder2_labels_layout.addWidget(enc2_up_label)
+        encoder2_labels_layout.addWidget(enc2_down_label)
+        encoder2_labels_layout.addWidget(enc2_push_label)
+        encoder2_labels_layout.addStretch()
+        layout.addLayout(encoder2_labels_layout)
+
         # Encoder 2 buttons (Up/Down circular, Press square)
         encoder2_layout = QHBoxLayout()
         encoder2_layout.setSpacing(5)
         encoder2_layout.addWidget(enc2_up_btn)
         encoder2_layout.addWidget(enc2_down_btn)
         encoder2_layout.addWidget(enc2_push_btn)
+        encoder2_layout.addStretch()
         layout.addLayout(encoder2_layout)
 
         layout.addStretch()
