@@ -1940,6 +1940,7 @@ class EncoderAssignWidget(QWidget):
 
         sustain_layout = QHBoxLayout()
         sustain_layout.setSpacing(5)
+        sustain_layout.addSpacing(63)  # 20px left shift
         sustain_layout.addWidget(sustain_btn)
         sustain_layout.addStretch()
         layout.addLayout(sustain_layout)
