@@ -1724,37 +1724,20 @@ class EncoderButton(QWidget):
         qp.setBrush(Qt.NoBrush)
         qp.drawEllipse(3, 3, 49, 49)
 
-        # Draw arrow indicator
-        path = QPainterPath()
-        center_x = 27.5
-        center_y = 27.5
-
-        if self.is_up:
-            # Up arrow (pointing up)
-            path.moveTo(center_x, center_y - 8)
-            path.lineTo(center_x + 4, center_y - 2)
-            path.lineTo(center_x, center_y + 2)
-            path.lineTo(center_x - 4, center_y - 2)
-            path.lineTo(center_x, center_y - 8)
-        else:
-            # Down arrow (pointing down)
-            path.moveTo(center_x, center_y + 8)
-            path.lineTo(center_x + 4, center_y + 2)
-            path.lineTo(center_x, center_y - 2)
-            path.lineTo(center_x - 4, center_y + 2)
-            path.lineTo(center_x, center_y + 8)
-
-        arrow_brush = QBrush(QApplication.palette().color(QPalette.ButtonText))
-        qp.setBrush(arrow_brush)
-        qp.setPen(Qt.NoPen)
-        qp.drawPath(path)
-
-        # Draw keycode text below arrow
+        # Draw direction label at top
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(6)
+        font.setPointSize(7)
+        font.setBold(True)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 32, -3, -3)
+        text_rect = self.rect().adjusted(3, 5, -3, -35)
+        qp.drawText(text_rect, Qt.AlignCenter, "UP" if self.is_up else "DOWN")
+
+        # Draw keycode text below direction label
+        font.setBold(False)
+        font.setPointSize(8)  # Match keyboard widget font size
+        qp.setFont(font)
+        text_rect = self.rect().adjusted(3, 25, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
 
         qp.end()
@@ -1805,18 +1788,18 @@ class PushButton(QWidget):
         qp.setBrush(Qt.NoBrush)
         qp.drawRoundedRect(3, 3, 49, 49, 4, 4)
 
-        # Draw "PUSH" label
+        # Draw "PUSH" label at top
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(6)
+        font.setPointSize(7)
         font.setBold(True)
         qp.setFont(font)
-        text_rect = self.rect().adjusted(3, 3, -3, -25)
+        text_rect = self.rect().adjusted(3, 5, -3, -35)
         qp.drawText(text_rect, Qt.AlignCenter, "PUSH")
 
         # Draw keycode text
         font.setBold(False)
-        font.setPointSize(6)
+        font.setPointSize(8)  # Match keyboard widget font size
         qp.setFont(font)
         text_rect = self.rect().adjusted(3, 25, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
@@ -1866,13 +1849,14 @@ class SustainButton(QWidget):
             pen.setWidth(2)
             qp.setPen(pen)
 
-        qp.setBrush(Qt.NoBrush)
+        brush = QBrush(QApplication.palette().color(QPalette.Button))
+        qp.setBrush(brush)
         qp.drawRoundedRect(3, 3, 159, 49, 4, 4)
 
         # Draw keycode text
         qp.setPen(QApplication.palette().color(QPalette.ButtonText))
         font = QFont()
-        font.setPointSize(7)
+        font.setPointSize(8)  # Match keyboard widget font size
         qp.setFont(font)
         text_rect = self.rect().adjusted(3, 3, -3, -3)
         qp.drawText(text_rect, Qt.AlignCenter, self.text)
@@ -1911,7 +1895,7 @@ class EncoderAssignWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.setSpacing(10)
-        layout.setContentsMargins(5, 10, 5, 10)
+        layout.setContentsMargins(5, 40, 5, 10)  # 40px top margin (30px extra) to move content down
         self.setLayout(layout)
 
         # Create buttons in logical order (indices 0-6) before adding to UI
