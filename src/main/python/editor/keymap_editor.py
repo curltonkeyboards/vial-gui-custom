@@ -613,8 +613,6 @@ class QuickActuationWidget(QWidget):
         # Transposition (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
-        trans_label.setMinimumWidth(80)
-        trans_label.setMaximumWidth(80)
         trans_row.addWidget(trans_label)
 
         self.simple_transpose_combo = ArrowComboBox()
@@ -681,8 +679,6 @@ class QuickActuationWidget(QWidget):
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_label.setMinimumWidth(70)
-        ch_label.setMaximumWidth(70)
         ch_trans_row.addWidget(ch_label)
 
         self.midi_channel_combo = ArrowComboBox()
@@ -844,8 +840,6 @@ class QuickActuationWidget(QWidget):
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_label.setMinimumWidth(70)
-        ch_label.setMaximumWidth(70)
         ch_trans_row.addWidget(ch_label)
 
         self.keysplit_channel = ArrowComboBox()
@@ -866,8 +860,6 @@ class QuickActuationWidget(QWidget):
         # Transposition (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
-        trans_label.setMinimumWidth(90)
-        trans_label.setMaximumWidth(90)
         ch_trans_row.addWidget(trans_label)
 
         self.keysplit_transpose = ArrowComboBox()
@@ -1003,8 +995,6 @@ class QuickActuationWidget(QWidget):
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_label.setMinimumWidth(70)
-        ch_label.setMaximumWidth(70)
         ch_trans_row.addWidget(ch_label)
 
         self.triplesplit_channel = ArrowComboBox()
@@ -1025,8 +1015,6 @@ class QuickActuationWidget(QWidget):
         # Transposition (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
-        trans_label.setMinimumWidth(90)
-        trans_label.setMaximumWidth(90)
         ch_trans_row.addWidget(trans_label)
 
         self.triplesplit_transpose = ArrowComboBox()
