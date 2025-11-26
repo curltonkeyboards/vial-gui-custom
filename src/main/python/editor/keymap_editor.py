@@ -1960,7 +1960,7 @@ class EncoderAssignWidget(QWidget):
 
         # Encoder 1 button labels (above buttons)
         encoder1_labels_layout = QHBoxLayout()
-        encoder1_labels_layout.setSpacing(0)
+        encoder1_labels_layout.setSpacing(5)
         enc1_up_label = QLabel("UP")
         enc1_up_label.setStyleSheet("QLabel { font-size: 9px; background: transparent; }")
         enc1_up_label.setAlignment(Qt.AlignCenter)
