@@ -13,6 +13,16 @@ from PyQt5 import QtCore
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
+from protocol.keyboard_comm import (
+    PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
+    PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
+    PARAM_KEYSPLIT_HE_VELOCITY_CURVE, PARAM_KEYSPLIT_HE_VELOCITY_MIN, PARAM_KEYSPLIT_HE_VELOCITY_MAX,
+    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, PARAM_TRIPLESPLIT_HE_VELOCITY_MAX,
+    PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
+    PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
+    PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS,
+    PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS
+)
 from widgets.keyboard_widget import KeyboardWidget2
 from util import tr
 from vial_device import VialKeyboard
@@ -664,7 +674,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def __init__(self):
         super().__init__()
-        self.advanced_mode = False
         self.setup_ui()
         
     def setup_ui(self):
@@ -721,32 +730,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         global_midi_layout.addWidget(self.global_transpose, row, 4)
         row += 1
 
-        # Row 1: Advanced checkbox
-        self.advanced_checkbox = QCheckBox(tr("MIDIswitchSettingsConfigurator", "Advanced"))
-        self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
-        global_midi_layout.addWidget(self.advanced_checkbox, row, 1, 1, 4)
-        row += 1
-
-        # Row 2: Velocity Preset (basic mode) OR Velocity Curve (advanced mode)
-        self.velocity_preset_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Preset:"))
-        global_midi_layout.addWidget(self.velocity_preset_label, row, 1)
-
-        self.velocity_preset = ArrowComboBox()
-        self.velocity_preset.setMinimumWidth(120)
-        self.velocity_preset.setMinimumHeight(25)
-        self.velocity_preset.setMaximumHeight(25)
-        self.velocity_preset.addItem("Softest", 0)
-        self.velocity_preset.addItem("Soft", 1)
-        self.velocity_preset.addItem("Medium", 2)
-        self.velocity_preset.addItem("Hard", 3)
-        self.velocity_preset.addItem("Hardest", 4)
-        self.velocity_preset.setCurrentIndex(2)  # Default: Medium
-        self.velocity_preset.setEditable(True)
-        self.velocity_preset.lineEdit().setReadOnly(True)
-        self.velocity_preset.lineEdit().setAlignment(Qt.AlignCenter)
-        self.velocity_preset.currentIndexChanged.connect(self.on_velocity_preset_changed)
-        global_midi_layout.addWidget(self.velocity_preset, row, 2, 1, 3)
-
+        # Row 1: Velocity Curve (always visible)
         self.velocity_curve_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:"))
         global_midi_layout.addWidget(self.velocity_curve_label, row, 1)
 
@@ -764,13 +748,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_curve.lineEdit().setReadOnly(True)
         self.global_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
         global_midi_layout.addWidget(self.global_velocity_curve, row, 2, 1, 3)
-
-        # Hide curve by default (show preset)
-        self.velocity_curve_label.hide()
-        self.global_velocity_curve.hide()
         row += 1
 
-        # Row 3: Velocity Min (advanced mode only)
+        # Row 2: Velocity Min (always visible)
         self.velocity_min_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:"))
         global_midi_layout.addWidget(self.velocity_min_label, row, 1)
 
@@ -788,14 +768,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_min.valueChanged.connect(
             lambda v: self.velocity_min_value_label.setText(str(v))
         )
-
-        # Hide by default
-        self.velocity_min_label.hide()
-        self.global_velocity_min.hide()
-        self.velocity_min_value_label.hide()
         row += 1
 
-        # Row 4: Velocity Max (advanced mode only)
+        # Row 3: Velocity Max (always visible)
         self.velocity_max_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:"))
         global_midi_layout.addWidget(self.velocity_max_label, row, 1)
 
@@ -813,14 +788,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_max.valueChanged.connect(
             lambda v: self.velocity_max_value_label.setText(str(v))
         )
-
-        # Hide by default
-        self.velocity_max_label.hide()
-        self.global_velocity_max.hide()
-        self.velocity_max_value_label.hide()
         row += 1
 
-        # Row 5: Sustain (shown when splits enabled)
+        # Row 4: Sustain (always visible)
         self.sustain_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:"))
         global_midi_layout.addWidget(self.sustain_label, row, 1)
 
@@ -835,10 +805,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.base_sustain.lineEdit().setReadOnly(True)
         self.base_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         global_midi_layout.addWidget(self.base_sustain, row, 2, 1, 3)
-
-        # Hide by default
-        self.sustain_label.hide()
-        self.base_sustain.hide()
+        row += 1
 
         # Create offshoot windows for KeySplit and TripleSplit
         # These will be shown/hidden based on split status
@@ -1437,56 +1404,97 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             }
         """)
 
-    def on_advanced_toggled(self):
-        """Toggle between basic and advanced velocity settings"""
-        self.advanced_mode = self.advanced_checkbox.isChecked()
+        # Connect widgets to real-time HID updates
+        self.global_channel.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_CHANNEL_NUMBER, self.global_channel.currentData())
+        )
+        self.global_transpose.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRANSPOSE_NUMBER, self.global_transpose.currentData())
+        )
+        self.global_velocity_curve.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_HE_VELOCITY_CURVE, self.global_velocity_curve.currentData())
+        )
+        self.global_velocity_min.valueChanged.connect(
+            lambda v: [self.velocity_min_value_label.setText(str(v)),
+                      self.send_param_update(PARAM_HE_VELOCITY_MIN, v)]
+        )
+        self.global_velocity_max.valueChanged.connect(
+            lambda v: [self.velocity_max_value_label.setText(str(v)),
+                      self.send_param_update(PARAM_HE_VELOCITY_MAX, v)]
+        )
+        self.base_sustain.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_BASE_SUSTAIN, self.base_sustain.currentData())
+        )
+        self.global_aftertouch.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_AFTERTOUCH_MODE, self.global_aftertouch.currentData())
+        )
+        self.global_aftertouch_cc.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_AFTERTOUCH_CC, self.global_aftertouch_cc.currentData())
+        )
 
-        if self.advanced_mode:
-            # Show advanced controls
-            self.velocity_preset_label.hide()
-            self.velocity_preset.hide()
-            self.velocity_curve_label.show()
-            self.global_velocity_curve.show()
-            self.velocity_min_label.show()
-            self.global_velocity_min.show()
-            self.velocity_min_value_label.show()
-            self.velocity_max_label.show()
-            self.global_velocity_max.show()
-            self.velocity_max_value_label.show()
-        else:
-            # Show basic controls
-            self.velocity_preset_label.show()
-            self.velocity_preset.show()
-            self.velocity_curve_label.hide()
-            self.global_velocity_curve.hide()
-            self.velocity_min_label.hide()
-            self.global_velocity_min.hide()
-            self.velocity_min_value_label.hide()
-            self.velocity_max_label.hide()
-            self.global_velocity_max.hide()
-            self.velocity_max_value_label.hide()
+        # KeySplit widgets
+        self.key_split_channel.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLITCHANNEL, self.key_split_channel.currentData())
+        )
+        self.transpose_number2.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRANSPOSE_NUMBER2, self.transpose_number2.currentData())
+        )
+        self.velocity_curve2.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_CURVE, self.velocity_curve2.currentData())
+        )
+        self.velocity_min2.valueChanged.connect(
+            lambda v: [self.velocity_min2_value.setText(str(v)),
+                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MIN, v)]
+        )
+        self.velocity_max2.valueChanged.connect(
+            lambda v: [self.velocity_max2_value.setText(str(v)),
+                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MAX, v)]
+        )
+        self.keysplit_sustain.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLIT_SUSTAIN, self.keysplit_sustain.currentData())
+        )
 
-    def on_velocity_preset_changed(self):
-        """Sync velocity preset to curve when in basic mode"""
-        if not self.advanced_mode:
-            preset_value = self.velocity_preset.currentData()
-            # Set curve to match preset
-            for i in range(self.global_velocity_curve.count()):
-                if self.global_velocity_curve.itemData(i) == preset_value:
-                    self.global_velocity_curve.setCurrentIndex(i)
-                    break
+        # TripleSplit widgets
+        self.key_split2_channel.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLIT2CHANNEL, self.key_split2_channel.currentData())
+        )
+        self.transpose_number3.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRANSPOSE_NUMBER3, self.transpose_number3.currentData())
+        )
+        self.velocity_curve3.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, self.velocity_curve3.currentData())
+        )
+        self.velocity_min3.valueChanged.connect(
+            lambda v: [self.velocity_min3_value.setText(str(v)),
+                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, v)]
+        )
+        self.velocity_max3.valueChanged.connect(
+            lambda v: [self.velocity_max3_value.setText(str(v)),
+                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MAX, v)]
+        )
+        self.triplesplit_sustain.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRIPLESPLIT_SUSTAIN, self.triplesplit_sustain.currentData())
+        )
+
+        # Split status
+        self.key_split_status.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLITSTATUS, self.key_split_status.currentData())
+        )
+
+    def send_param_update(self, param_id, value):
+        """Send real-time HID parameter update to keyboard"""
+        try:
+            if self.device and isinstance(self.device, VialKeyboard):
+                self.device.keyboard.set_keyboard_param_single(param_id, value)
+        except Exception as e:
+            # Silently fail - firmware may not support this parameter yet
+            pass
 
     def on_split_mode_changed(self):
-        """Show/hide sustain based on split mode"""
+        """Handle split mode changes"""
         split_status = self.key_split_status.currentData()
-
-        # Show/hide sustain in Global MIDI Settings when splits are enabled
-        if split_status > 0:  # Any split mode enabled
-            self.sustain_label.show()
-            self.base_sustain.show()
-        else:
-            self.sustain_label.hide()
-            self.base_sustain.hide()
+        # Sustain is now always visible, no need to show/hide
+        # This function can be used for other split-related logic if needed
 
         # Split offshoots are now always visible at the bottom
 
