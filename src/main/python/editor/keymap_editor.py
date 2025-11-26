@@ -1573,8 +1573,8 @@ class QuickActuationWidget(QWidget):
 
     def save_midi_ui_to_memory(self):
         """Save MIDI settings from UI to memory"""
-        self.midi_settings['channel'] = self.midi_channel_combo.currentData()
-        self.midi_settings['transpose'] = self.midi_transpose_combo.currentData()
+        self.midi_settings['channel'] = self.midi_channel_slider.value()
+        self.midi_settings['transpose'] = self.midi_transpose_slider.value()
         self.midi_settings['sustain'] = self.midi_sustain_combo.currentData()
         self.midi_settings['velocity_curve'] = self.midi_velocity_curve.currentData()
         self.midi_settings['velocity_min'] = self.midi_velocity_min.value()
@@ -1583,16 +1583,16 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['aftertouch_cc'] = self.midi_aftertouch_cc.currentData()
 
         self.midi_settings['keysplit_enabled'] = self.keysplit_enabled_checkbox.isChecked()
-        self.midi_settings['keysplit_channel'] = self.keysplit_channel.currentData()
-        self.midi_settings['keysplit_transpose'] = self.keysplit_transpose.currentData()
+        self.midi_settings['keysplit_channel'] = self.keysplit_channel_slider.value()
+        self.midi_settings['keysplit_transpose'] = self.keysplit_transpose_slider.value()
         self.midi_settings['keysplit_sustain'] = self.keysplit_sustain_combo.currentData()
         self.midi_settings['keysplit_velocity_curve'] = self.keysplit_velocity_curve.currentData()
         self.midi_settings['keysplit_velocity_min'] = self.keysplit_velocity_min.value()
         self.midi_settings['keysplit_velocity_max'] = self.keysplit_velocity_max.value()
 
         self.midi_settings['triplesplit_enabled'] = self.triplesplit_enabled_checkbox.isChecked()
-        self.midi_settings['triplesplit_channel'] = self.triplesplit_channel.currentData()
-        self.midi_settings['triplesplit_transpose'] = self.triplesplit_transpose.currentData()
+        self.midi_settings['triplesplit_channel'] = self.triplesplit_channel_slider.value()
+        self.midi_settings['triplesplit_transpose'] = self.triplesplit_transpose_slider.value()
         self.midi_settings['triplesplit_sustain'] = self.triplesplit_sustain_combo.currentData()
         self.midi_settings['triplesplit_velocity_curve'] = self.triplesplit_velocity_curve.currentData()
         self.midi_settings['triplesplit_velocity_min'] = self.triplesplit_velocity_min.value()
