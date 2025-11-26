@@ -674,7 +674,7 @@ class QuickActuationWidget(QWidget):
         # Channel and Transposition on same row
         ch_trans_row = QHBoxLayout()
         ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(0)
+        ch_trans_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
@@ -835,7 +835,7 @@ class QuickActuationWidget(QWidget):
         # Channel and Transposition on same row
         ch_trans_row = QHBoxLayout()
         ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(0)
+        ch_trans_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
@@ -990,7 +990,7 @@ class QuickActuationWidget(QWidget):
         # Channel and Transposition on same row
         ch_trans_row = QHBoxLayout()
         ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(0)
+        ch_trans_row.setSpacing(6)
 
         # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
