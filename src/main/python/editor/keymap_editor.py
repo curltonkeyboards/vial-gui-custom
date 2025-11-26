@@ -1933,21 +1933,19 @@ class EncoderAssignWidget(QWidget):
         # Sustain pedal group - at top, center aligned with 20px left shift
         sustain_label = QLabel("Sustain Pedal")
         sustain_label.setStyleSheet("QLabel { font-size: 11px; font-weight: bold; background: transparent; }")
-        sustain_label.setAlignment(Qt.AlignLeft)
+        sustain_label.setAlignment(Qt.AlignCenter)
         sustain_label_container = QHBoxLayout()
-        sustain_label_container.addSpacing(40)  # 20px left shift
         sustain_label_container.addWidget(sustain_label)
         layout.addLayout(sustain_label_container)
 
         sustain_layout = QHBoxLayout()
         sustain_layout.setSpacing(5)
-        sustain_layout.addSpacing(40)  # 20px left shift
         sustain_layout.addWidget(sustain_btn)
         sustain_layout.addStretch()
         layout.addLayout(sustain_layout)
 
         # Add 10px spacer below sustain button
-        layout.addSpacing(10)
+        layout.addSpacing(23)
 
         # Encoder 1 group
         encoder1_label = QLabel("Encoder 1")
