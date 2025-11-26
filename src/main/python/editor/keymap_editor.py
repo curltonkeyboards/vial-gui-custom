@@ -577,70 +577,67 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         widget.setLayout(layout)
 
-        # Channel on separate row
+        # Channel slider
         ch_row = QHBoxLayout()
         ch_row.setContentsMargins(0, 0, 0, 0)
         ch_row.setSpacing(6)
 
-        # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_label.setMinimumWidth(80)
-        ch_label.setMaximumWidth(80)
+        ch_label.setMinimumWidth(90)
+        ch_label.setMaximumWidth(90)
         ch_row.addWidget(ch_label)
 
-        self.simple_channel_combo = ArrowComboBox()
-        self.simple_channel_combo.setFixedWidth(70)
-        self.simple_channel_combo.setMaximumHeight(35)
-        self.simple_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 70px; max-width: 70px; }")
-        self.simple_channel_combo.setEditable(True)
-        self.simple_channel_combo.lineEdit().setReadOnly(True)
-        self.simple_channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(16):
-            self.simple_channel_combo.addItem(f"{i + 1}", i)
-        self.simple_channel_combo.setCurrentIndex(0)
-        self.simple_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ch_row.addWidget(self.simple_channel_combo)
+        self.simple_channel_slider = QSlider(Qt.Horizontal)
+        self.simple_channel_slider.setMinimum(0)
+        self.simple_channel_slider.setMaximum(15)
+        self.simple_channel_slider.setValue(0)
+        self.simple_channel_slider.valueChanged.connect(lambda v: self.on_simple_channel_changed(v))
+        ch_row.addWidget(self.simple_channel_slider, 1)
 
-        ch_row.addStretch()
+        self.simple_channel_label = QLabel("1")
+        self.simple_channel_label.setMinimumWidth(35)
+        self.simple_channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.simple_channel_label.setAlignment(Qt.AlignCenter)
+        ch_row.addWidget(self.simple_channel_label)
+
         layout.addLayout(ch_row)
 
-        # Transposition on separate row
+        # Transposition slider
         trans_row = QHBoxLayout()
         trans_row.setContentsMargins(0, 0, 0, 0)
         trans_row.setSpacing(6)
 
-        # Transposition (label next to dropdown)
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
+        trans_label.setMinimumWidth(90)
+        trans_label.setMaximumWidth(90)
         trans_row.addWidget(trans_label)
 
-        self.simple_transpose_combo = ArrowComboBox()
-        self.simple_transpose_combo.setFixedWidth(70)
-        self.simple_transpose_combo.setMaximumHeight(35)
-        self.simple_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 70px; max-width: 70px; }")
-        self.simple_transpose_combo.setEditable(True)
-        self.simple_transpose_combo.lineEdit().setReadOnly(True)
-        self.simple_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-12, 13):
-            self.simple_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.simple_transpose_combo.setCurrentIndex(12)
-        self.simple_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        self.simple_transpose_combo.view().setMinimumWidth(200)
-        trans_row.addWidget(self.simple_transpose_combo)
+        self.simple_transpose_slider = QSlider(Qt.Horizontal)
+        self.simple_transpose_slider.setMinimum(-12)
+        self.simple_transpose_slider.setMaximum(12)
+        self.simple_transpose_slider.setValue(0)
+        self.simple_transpose_slider.valueChanged.connect(lambda v: self.on_simple_transpose_changed(v))
+        trans_row.addWidget(self.simple_transpose_slider, 1)
 
-        trans_row.addStretch()
+        self.simple_transpose_label = QLabel("0")
+        self.simple_transpose_label.setMinimumWidth(35)
+        self.simple_transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.simple_transpose_label.setAlignment(Qt.AlignCenter)
+        trans_row.addWidget(self.simple_transpose_label)
+
         layout.addLayout(trans_row)
 
-        # Velocity (label next to dropdown)
+        # Velocity preset (label next to dropdown)
         preset_row = QHBoxLayout()
         preset_row.setContentsMargins(0, 0, 0, 0)
         preset_row.setSpacing(6)
 
         preset_label = QLabel(tr("QuickActuationWidget", "Velocity:"))
         preset_label.setStyleSheet("QLabel { font-size: 14px; }")
-        preset_label.setMinimumWidth(80)
-        preset_label.setMaximumWidth(80)
+        preset_label.setMinimumWidth(90)
+        preset_label.setMaximumWidth(90)
         preset_row.addWidget(preset_label)
 
         self.simple_velocity_preset_combo = ArrowComboBox()
@@ -671,54 +668,57 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
 
-        # Channel and Transposition on same row
-        ch_trans_row = QHBoxLayout()
-        ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(6)
+        # Channel slider
+        ch_row = QHBoxLayout()
+        ch_row.setContentsMargins(0, 0, 0, 0)
+        ch_row.setSpacing(6)
 
-        # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_trans_row.addWidget(ch_label)
+        ch_label.setMinimumWidth(90)
+        ch_label.setMaximumWidth(90)
+        ch_row.addWidget(ch_label)
 
-        self.midi_channel_combo = ArrowComboBox()
-        self.midi_channel_combo.setFixedWidth(50)
-        self.midi_channel_combo.setMaximumHeight(30)
-        self.midi_channel_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
-        self.midi_channel_combo.setEditable(True)
-        self.midi_channel_combo.lineEdit().setReadOnly(True)
-        self.midi_channel_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(16):
-            self.midi_channel_combo.addItem(f"{i + 1}", i)
-        self.midi_channel_combo.setCurrentIndex(0)
-        self.midi_channel_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ch_trans_row.addWidget(self.midi_channel_combo)
+        self.midi_channel_slider = QSlider(Qt.Horizontal)
+        self.midi_channel_slider.setMinimum(0)
+        self.midi_channel_slider.setMaximum(15)
+        self.midi_channel_slider.setValue(0)
+        self.midi_channel_slider.valueChanged.connect(lambda v: self.on_midi_channel_changed(v))
+        ch_row.addWidget(self.midi_channel_slider, 1)
 
-        ch_trans_row.addSpacing(7)
+        self.midi_channel_label = QLabel("1")
+        self.midi_channel_label.setMinimumWidth(35)
+        self.midi_channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.midi_channel_label.setAlignment(Qt.AlignCenter)
+        ch_row.addWidget(self.midi_channel_label)
 
-        # Transposition (label next to dropdown)
+        layout.addLayout(ch_row)
+
+        # Transposition slider
+        trans_row = QHBoxLayout()
+        trans_row.setContentsMargins(0, 0, 0, 0)
+        trans_row.setSpacing(6)
+
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
         trans_label.setMinimumWidth(90)
         trans_label.setMaximumWidth(90)
-        ch_trans_row.addWidget(trans_label)
+        trans_row.addWidget(trans_label)
 
-        self.midi_transpose_combo = ArrowComboBox()
-        self.midi_transpose_combo.setFixedWidth(50)
-        self.midi_transpose_combo.setMaximumHeight(30)
-        self.midi_transpose_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
-        self.midi_transpose_combo.setEditable(True)
-        self.midi_transpose_combo.lineEdit().setReadOnly(True)
-        self.midi_transpose_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-12, 13):
-            self.midi_transpose_combo.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.midi_transpose_combo.setCurrentIndex(12)  # Default: 0
-        self.midi_transpose_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
-        self.midi_transpose_combo.view().setMinimumWidth(200)
-        ch_trans_row.addWidget(self.midi_transpose_combo)
+        self.midi_transpose_slider = QSlider(Qt.Horizontal)
+        self.midi_transpose_slider.setMinimum(-12)
+        self.midi_transpose_slider.setMaximum(12)
+        self.midi_transpose_slider.setValue(0)
+        self.midi_transpose_slider.valueChanged.connect(lambda v: self.on_midi_transpose_changed(v))
+        trans_row.addWidget(self.midi_transpose_slider, 1)
 
-        ch_trans_row.addStretch()
-        layout.addLayout(ch_trans_row)
+        self.midi_transpose_label = QLabel("0")
+        self.midi_transpose_label.setMinimumWidth(35)
+        self.midi_transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.midi_transpose_label.setAlignment(Qt.AlignCenter)
+        trans_row.addWidget(self.midi_transpose_label)
+
+        layout.addLayout(trans_row)
 
         # Velocity Min (slider with label)
         vel_min_layout = QHBoxLayout()
@@ -832,52 +832,57 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
 
-        # Channel and Transposition on same row
-        ch_trans_row = QHBoxLayout()
-        ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(6)
+        # Channel slider
+        ch_row = QHBoxLayout()
+        ch_row.setContentsMargins(0, 0, 0, 0)
+        ch_row.setSpacing(6)
 
-        # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_trans_row.addWidget(ch_label)
+        ch_label.setMinimumWidth(90)
+        ch_label.setMaximumWidth(90)
+        ch_row.addWidget(ch_label)
 
-        self.keysplit_channel = ArrowComboBox()
-        self.keysplit_channel.setFixedWidth(50)
-        self.keysplit_channel.setMaximumHeight(30)
-        self.keysplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
-        self.keysplit_channel.setEditable(True)
-        self.keysplit_channel.lineEdit().setReadOnly(True)
-        self.keysplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(16):
-            self.keysplit_channel.addItem(f"{i + 1}", i)
-        self.keysplit_channel.setCurrentIndex(0)
-        self.keysplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ch_trans_row.addWidget(self.keysplit_channel)
+        self.keysplit_channel_slider = QSlider(Qt.Horizontal)
+        self.keysplit_channel_slider.setMinimum(0)
+        self.keysplit_channel_slider.setMaximum(15)
+        self.keysplit_channel_slider.setValue(0)
+        self.keysplit_channel_slider.valueChanged.connect(lambda v: self.on_keysplit_channel_changed(v))
+        ch_row.addWidget(self.keysplit_channel_slider, 1)
 
-        ch_trans_row.addSpacing(7)
+        self.keysplit_channel_label = QLabel("1")
+        self.keysplit_channel_label.setMinimumWidth(35)
+        self.keysplit_channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.keysplit_channel_label.setAlignment(Qt.AlignCenter)
+        ch_row.addWidget(self.keysplit_channel_label)
 
-        # Transposition (label next to dropdown)
+        layout.addLayout(ch_row)
+
+        # Transposition slider
+        trans_row = QHBoxLayout()
+        trans_row.setContentsMargins(0, 0, 0, 0)
+        trans_row.setSpacing(6)
+
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_trans_row.addWidget(trans_label)
+        trans_label.setMinimumWidth(90)
+        trans_label.setMaximumWidth(90)
+        trans_row.addWidget(trans_label)
 
-        self.keysplit_transpose = ArrowComboBox()
-        self.keysplit_transpose.setFixedWidth(50)
-        self.keysplit_transpose.setMaximumHeight(30)
-        self.keysplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
-        self.keysplit_transpose.setEditable(True)
-        self.keysplit_transpose.lineEdit().setReadOnly(True)
-        self.keysplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-12, 13):
-            self.keysplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.keysplit_transpose.setCurrentIndex(12)
-        self.keysplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
-        self.keysplit_transpose.view().setMinimumWidth(200)
-        ch_trans_row.addWidget(self.keysplit_transpose)
+        self.keysplit_transpose_slider = QSlider(Qt.Horizontal)
+        self.keysplit_transpose_slider.setMinimum(-12)
+        self.keysplit_transpose_slider.setMaximum(12)
+        self.keysplit_transpose_slider.setValue(0)
+        self.keysplit_transpose_slider.valueChanged.connect(lambda v: self.on_keysplit_transpose_changed(v))
+        trans_row.addWidget(self.keysplit_transpose_slider, 1)
 
-        ch_trans_row.addStretch()
-        layout.addLayout(ch_trans_row)
+        self.keysplit_transpose_label = QLabel("0")
+        self.keysplit_transpose_label.setMinimumWidth(35)
+        self.keysplit_transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.keysplit_transpose_label.setAlignment(Qt.AlignCenter)
+        trans_row.addWidget(self.keysplit_transpose_label)
+
+        layout.addLayout(trans_row)
 
         # Velocity Min (slider with label)
         ks_min_layout = QHBoxLayout()
@@ -987,52 +992,57 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         widget.setLayout(layout)
 
-        # Channel and Transposition on same row
-        ch_trans_row = QHBoxLayout()
-        ch_trans_row.setContentsMargins(0, 0, 0, 0)
-        ch_trans_row.setSpacing(6)
+        # Channel slider
+        ch_row = QHBoxLayout()
+        ch_row.setContentsMargins(0, 0, 0, 0)
+        ch_row.setSpacing(6)
 
-        # Channel (label next to dropdown)
         ch_label = QLabel(tr("QuickActuationWidget", "Channel:"))
         ch_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_trans_row.addWidget(ch_label)
+        ch_label.setMinimumWidth(90)
+        ch_label.setMaximumWidth(90)
+        ch_row.addWidget(ch_label)
 
-        self.triplesplit_channel = ArrowComboBox()
-        self.triplesplit_channel.setFixedWidth(50)
-        self.triplesplit_channel.setMaximumHeight(30)
-        self.triplesplit_channel.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
-        self.triplesplit_channel.setEditable(True)
-        self.triplesplit_channel.lineEdit().setReadOnly(True)
-        self.triplesplit_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(16):
-            self.triplesplit_channel.addItem(f"{i + 1}", i)
-        self.triplesplit_channel.setCurrentIndex(0)
-        self.triplesplit_channel.currentIndexChanged.connect(self.on_midi_settings_changed)
-        ch_trans_row.addWidget(self.triplesplit_channel)
+        self.triplesplit_channel_slider = QSlider(Qt.Horizontal)
+        self.triplesplit_channel_slider.setMinimum(0)
+        self.triplesplit_channel_slider.setMaximum(15)
+        self.triplesplit_channel_slider.setValue(0)
+        self.triplesplit_channel_slider.valueChanged.connect(lambda v: self.on_triplesplit_channel_changed(v))
+        ch_row.addWidget(self.triplesplit_channel_slider, 1)
 
-        ch_trans_row.addSpacing(7)
+        self.triplesplit_channel_label = QLabel("1")
+        self.triplesplit_channel_label.setMinimumWidth(35)
+        self.triplesplit_channel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.triplesplit_channel_label.setAlignment(Qt.AlignCenter)
+        ch_row.addWidget(self.triplesplit_channel_label)
 
-        # Transposition (label next to dropdown)
+        layout.addLayout(ch_row)
+
+        # Transposition slider
+        trans_row = QHBoxLayout()
+        trans_row.setContentsMargins(0, 0, 0, 0)
+        trans_row.setSpacing(6)
+
         trans_label = QLabel(tr("QuickActuationWidget", "Transposition:"))
         trans_label.setStyleSheet("QLabel { font-size: 14px; }")
-        ch_trans_row.addWidget(trans_label)
+        trans_label.setMinimumWidth(90)
+        trans_label.setMaximumWidth(90)
+        trans_row.addWidget(trans_label)
 
-        self.triplesplit_transpose = ArrowComboBox()
-        self.triplesplit_transpose.setFixedWidth(50)
-        self.triplesplit_transpose.setMaximumHeight(30)
-        self.triplesplit_transpose.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; min-width: 50px; max-width: 50px; }")
-        self.triplesplit_transpose.setEditable(True)
-        self.triplesplit_transpose.lineEdit().setReadOnly(True)
-        self.triplesplit_transpose.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(-12, 13):
-            self.triplesplit_transpose.addItem(f"{'+' if i >= 0 else ''}{i}", i)
-        self.triplesplit_transpose.setCurrentIndex(12)
-        self.triplesplit_transpose.currentIndexChanged.connect(self.on_midi_settings_changed)
-        self.triplesplit_transpose.view().setMinimumWidth(200)
-        ch_trans_row.addWidget(self.triplesplit_transpose)
+        self.triplesplit_transpose_slider = QSlider(Qt.Horizontal)
+        self.triplesplit_transpose_slider.setMinimum(-12)
+        self.triplesplit_transpose_slider.setMaximum(12)
+        self.triplesplit_transpose_slider.setValue(0)
+        self.triplesplit_transpose_slider.valueChanged.connect(lambda v: self.on_triplesplit_transpose_changed(v))
+        trans_row.addWidget(self.triplesplit_transpose_slider, 1)
 
-        ch_trans_row.addStretch()
-        layout.addLayout(ch_trans_row)
+        self.triplesplit_transpose_label = QLabel("0")
+        self.triplesplit_transpose_label.setMinimumWidth(35)
+        self.triplesplit_transpose_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
+        self.triplesplit_transpose_label.setAlignment(Qt.AlignCenter)
+        trans_row.addWidget(self.triplesplit_transpose_label)
+
+        layout.addLayout(trans_row)
 
         # Velocity Min (slider with label)
         ts_min_layout = QHBoxLayout()
@@ -1133,7 +1143,7 @@ class QuickActuationWidget(QWidget):
         layout.addLayout(sustain_row)
 
         return widget
-    
+        
     def on_advanced_toggled(self):
         """Toggle advanced options visibility"""
         show_advanced = self.advanced_checkbox.isChecked()
@@ -1165,6 +1175,78 @@ class QuickActuationWidget(QWidget):
             self.load_layer_from_memory()
         else:
             self.save_btn.setText(tr("QuickActuationWidget", "Save to All Layers"))
+    
+    def on_simple_channel_changed(self, value):
+    """Handle simple channel slider changes"""
+    self.simple_channel_label.setText(str(value + 1))
+    if not self.syncing:
+        self.midi_settings['channel'] = value
+        # Sync to advanced control if it exists
+        if hasattr(self, 'midi_channel_slider'):
+            self.syncing = True
+            self.midi_channel_slider.setValue(value)
+            self.midi_channel_label.setText(str(value + 1))
+            self.syncing = False
+
+    def on_simple_transpose_changed(self, value):
+        """Handle simple transpose slider changes"""
+        self.simple_transpose_label.setText(f"{'+' if value >= 0 else ''}{value}")
+        if not self.syncing:
+            self.midi_settings['transpose'] = value
+            # Sync to advanced control if it exists
+            if hasattr(self, 'midi_transpose_slider'):
+                self.syncing = True
+                self.midi_transpose_slider.setValue(value)
+                self.midi_transpose_label.setText(f"{'+' if value >= 0 else ''}{value}")
+                self.syncing = False
+
+    def on_midi_channel_changed(self, value):
+        """Handle MIDI channel slider changes"""
+        self.midi_channel_label.setText(str(value + 1))
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+            # Sync to simple control if it exists
+            if hasattr(self, 'simple_channel_slider'):
+                self.syncing = True
+                self.simple_channel_slider.setValue(value)
+                self.simple_channel_label.setText(str(value + 1))
+                self.syncing = False
+
+    def on_midi_transpose_changed(self, value):
+        """Handle MIDI transpose slider changes"""
+        self.midi_transpose_label.setText(f"{'+' if value >= 0 else ''}{value}")
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+            # Sync to simple control if it exists
+            if hasattr(self, 'simple_transpose_slider'):
+                self.syncing = True
+                self.simple_transpose_slider.setValue(value)
+                self.simple_transpose_label.setText(f"{'+' if value >= 0 else ''}{value}")
+                self.syncing = False
+
+    def on_keysplit_channel_changed(self, value):
+        """Handle keysplit channel slider changes"""
+        self.keysplit_channel_label.setText(str(value + 1))
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def on_keysplit_transpose_changed(self, value):
+        """Handle keysplit transpose slider changes"""
+        self.keysplit_transpose_label.setText(f"{'+' if value >= 0 else ''}{value}")
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def on_triplesplit_channel_changed(self, value):
+        """Handle triplesplit channel slider changes"""
+        self.triplesplit_channel_label.setText(str(value + 1))
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
+
+    def on_triplesplit_transpose_changed(self, value):
+        """Handle triplesplit transpose slider changes"""
+        self.triplesplit_transpose_label.setText(f"{'+' if value >= 0 else ''}{value}")
+        if not self.syncing:
+            self.save_midi_ui_to_memory()
     
     def on_slider_changed(self, key, value, label):
         """Handle slider changes"""
@@ -1355,22 +1437,26 @@ class QuickActuationWidget(QWidget):
     def sync_simple_to_advanced(self):
         """Sync values from simple controls to advanced tab controls"""
         # Sync channel
-        channel_idx = self.simple_channel_combo.currentIndex()
-        self.midi_channel_combo.setCurrentIndex(channel_idx)
+        channel_val = self.simple_channel_slider.value()
+        self.midi_channel_slider.setValue(channel_val)
+        self.midi_channel_label.setText(str(channel_val + 1))
 
         # Sync transpose
-        transpose_idx = self.simple_transpose_combo.currentIndex()
-        self.midi_transpose_combo.setCurrentIndex(transpose_idx)
+        transpose_val = self.simple_transpose_slider.value()
+        self.midi_transpose_slider.setValue(transpose_val)
+        self.midi_transpose_label.setText(f"{'+' if transpose_val >= 0 else ''}{transpose_val}")
 
     def sync_advanced_to_simple(self):
         """Sync values from advanced tab controls to simple controls"""
         # Sync channel
-        channel_idx = self.midi_channel_combo.currentIndex()
-        self.simple_channel_combo.setCurrentIndex(channel_idx)
+        channel_val = self.midi_channel_slider.value()
+        self.simple_channel_slider.setValue(channel_val)
+        self.simple_channel_label.setText(str(channel_val + 1))
 
         # Sync transpose
-        transpose_idx = self.midi_transpose_combo.currentIndex()
-        self.simple_transpose_combo.setCurrentIndex(transpose_idx)
+        transpose_val = self.midi_transpose_slider.value()
+        self.simple_transpose_slider.setValue(transpose_val)
+        self.simple_transpose_label.setText(f"{'+' if transpose_val >= 0 else ''}{transpose_val}")
 
     def on_midi_velocity_slider_changed(self, slider_type, value):
         """Handle velocity slider changes"""
