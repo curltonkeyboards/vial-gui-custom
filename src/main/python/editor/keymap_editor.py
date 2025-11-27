@@ -2379,6 +2379,12 @@ class KeymapEditor(BasicEditor):
         self.device = None
         KeycodeDisplay.notify_keymap_override(self)
 
+    def set_matrix_test_reference(self, matrix_test):
+        """Set reference to MatrixTest widget for status value adjustments"""
+        self.matrix_test = matrix_test
+        # Also set the reference in the quick_actuation widget
+        self.quick_actuation.set_matrix_test_reference(matrix_test)
+
     def on_empty_space_clicked(self):
         self.container.deselect()
         self.encoder_assign.deselect()
