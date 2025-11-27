@@ -92,6 +92,17 @@ bool macro_modifier_held[4] = {false, false, false, false};  // The actual defin
 uint8_t modified_note;
 uint8_t original_note;
 
+// MIDI velocity and sustain settings (defined here, declared extern in process_dynamic_macro.h)
+uint8_t keysplit_he_velocity_curve = 2;    // Default to MEDIUM
+uint8_t keysplit_he_velocity_min = 1;
+uint8_t keysplit_he_velocity_max = 127;
+uint8_t triplesplit_he_velocity_curve = 2; // Default to MEDIUM
+uint8_t triplesplit_he_velocity_min = 1;
+uint8_t triplesplit_he_velocity_max = 127;
+uint8_t base_sustain = 0;
+uint8_t keysplit_sustain = 0;
+uint8_t triplesplit_sustain = 0;
+
 /* KEYLOGREND */
 #include <stdio.h>
 #include <string.h>
