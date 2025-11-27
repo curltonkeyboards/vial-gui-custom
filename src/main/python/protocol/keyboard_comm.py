@@ -131,6 +131,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         self.via_protocol = self.vial_protocol = self.keyboard_id = -1
 
+        # ThruLoop, MIDI, Actuation, and Gaming settings
+        self.thruloop_config = None
+        self.midi_config = None
+        self.layer_actuations = None
+        self.gaming_settings = None
+
     def reload(self, sideload_json=None):
         """ Load information about the keyboard: number of layers, physical key layout """
 
@@ -159,6 +165,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_tap_dance()
         self.reload_combo()
         self.reload_key_override()
+
+        # Load custom tab settings
+        self.reload_thruloop_config()
+        self.reload_midi_config()
+        self.reload_layer_actuations()
+        self.reload_gaming_settings()
 
     def reload_layers(self):
         """ Get how many layers the keyboard has """

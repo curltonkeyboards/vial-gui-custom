@@ -664,11 +664,15 @@ class ThruLoopConfigurator(BasicEditor):
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
-    
+
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
+
+        # Load ThruLoop configuration from keyboard
+        if hasattr(self.device.keyboard, 'thruloop_config') and self.device.keyboard.thruloop_config:
+            self.apply_config(self.device.keyboard.thruloop_config)
 
 class MIDIswitchSettingsConfigurator(BasicEditor):
     
@@ -1802,11 +1806,15 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
-    
+
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
+
+        # Load MIDI configuration from keyboard
+        if hasattr(self.device.keyboard, 'midi_config') and self.device.keyboard.midi_config:
+            self.apply_settings(self.device.keyboard.midi_config)
 
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -3299,12 +3307,15 @@ class LayerActuationConfigurator(BasicEditor):
     
     def valid(self):
         return isinstance(self.device, VialKeyboard)
-    
+
     def rebuild(self, device):
         super().rebuild(device)
         if not self.valid():
             return
-    
+
+        # Load actuation settings from keyboard
+        self.on_load_from_keyboard_silent()
+
     def on_load_from_keyboard_silent(self):
         """Load settings without showing success message"""
         if not self.device or not isinstance(self.device, VialKeyboard):
@@ -3817,7 +3828,8 @@ class GamingConfigurator(BasicEditor):
             self.tabbed_keycodes.recreate_keycode_buttons()
             # Try to load settings silently without showing message boxes
             try:
-                settings = self.keyboard.get_gaming_settings()
+                # Use cached gaming settings if available, otherwise fetch them
+                settings = getattr(self.keyboard, 'gaming_settings', None) or self.keyboard.get_gaming_settings()
                 if settings:
                     # Block signals while updating
                     self.ls_min_travel_slider.blockSignals(True)
