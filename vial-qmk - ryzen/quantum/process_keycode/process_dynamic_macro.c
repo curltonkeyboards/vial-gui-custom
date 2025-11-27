@@ -1380,12 +1380,11 @@ static midi_event_t* get_overdub_read_start(uint8_t macro_num) {
 static void snapshot_recording_settings(uint8_t macro_num) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t macro_idx = macro_num - 1;
-        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
-        // Snapshot curve and range from current layer settings
-        macro_recording_curve[macro_idx] = layer_actuations[current_layer].he_velocity_curve;
-        macro_recording_min[macro_idx] = layer_actuations[current_layer].he_velocity_min;
-        macro_recording_max[macro_idx] = layer_actuations[current_layer].he_velocity_max;
+        // Snapshot curve and range from global settings
+        macro_recording_curve[macro_idx] = he_velocity_curve;
+        macro_recording_min[macro_idx] = he_velocity_min;
+        macro_recording_max[macro_idx] = he_velocity_max;
 
         dprintf("dynamic macro: snapshotted recording settings for macro %d - curve:%d min:%d max:%d\n",
                 macro_num, macro_recording_curve[macro_idx],
@@ -1400,11 +1399,10 @@ static void snapshot_overdub_recording_settings(uint8_t macro_num) {
 
         // Only snapshot if not already set (for continuous overdubs)
         if (!overdub_recording_set[macro_idx]) {
-            uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-
-            overdub_recording_curve[macro_idx] = layer_actuations[current_layer].he_velocity_curve;
-            overdub_recording_min[macro_idx] = layer_actuations[current_layer].he_velocity_min;
-            overdub_recording_max[macro_idx] = layer_actuations[current_layer].he_velocity_max;
+            // Snapshot curve and range from global settings
+            overdub_recording_curve[macro_idx] = he_velocity_curve;
+            overdub_recording_min[macro_idx] = he_velocity_min;
+            overdub_recording_max[macro_idx] = he_velocity_max;
             overdub_recording_set[macro_idx] = true;
 
             dprintf("dynamic macro: snapshotted overdub recording settings for macro %d - curve:%d min:%d max:%d\n",
@@ -13083,9 +13081,6 @@ __attribute__((weak)) void load_layer_actuations(void) {
         if (layer_actuations[layer].midi_actuation > 100) {
             layer_actuations[layer].midi_actuation = 80;
         }
-        if (layer_actuations[layer].aftertouch_mode > 4) {
-            layer_actuations[layer].aftertouch_mode = 0;
-        }
         if (layer_actuations[layer].velocity_mode > 3) {
             layer_actuations[layer].velocity_mode = 2;
         }
@@ -13101,9 +13096,6 @@ __attribute__((weak)) void load_layer_actuations(void) {
         if (layer_actuations[layer].velocity_speed_scale < 1 || layer_actuations[layer].velocity_speed_scale > 20) {
             layer_actuations[layer].velocity_speed_scale = 10;
         }
-        if (layer_actuations[layer].aftertouch_cc > 127) {
-            layer_actuations[layer].aftertouch_cc = 74;
-        }
     }
     
     dprintf("Loaded all layer actuations from EEPROM\n");
@@ -13114,13 +13106,11 @@ __attribute__((weak)) void reset_layer_actuations(void) {
     for (uint8_t layer = 0; layer < 12; layer++) {
         layer_actuations[layer].normal_actuation = 80;
         layer_actuations[layer].midi_actuation = 80;
-        layer_actuations[layer].aftertouch_mode = 0;
         layer_actuations[layer].velocity_mode = 2;
         layer_actuations[layer].rapidfire_sensitivity = 4;
         layer_actuations[layer].midi_rapidfire_sensitivity = 10;
         layer_actuations[layer].midi_rapidfire_velocity = 10;
         layer_actuations[layer].velocity_speed_scale = 10;
-        layer_actuations[layer].aftertouch_cc = 74;
         layer_actuations[layer].flags = 0;
     }
     save_layer_actuations();
@@ -13128,19 +13118,14 @@ __attribute__((weak)) void reset_layer_actuations(void) {
 }
 
 // Set actuation for a specific layer
-__attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t aftertouch,
-                         uint8_t velocity, uint8_t rapid, uint8_t midi_rapid_sens,
-                         uint8_t midi_rapid_vel, uint8_t vel_speed,
-                         uint8_t aftertouch_cc, uint8_t flags,
-                         uint8_t he_curve, uint8_t he_min, uint8_t he_max,
-                         uint8_t ks_curve, uint8_t ks_min, uint8_t ks_max,
-                         uint8_t ts_curve, uint8_t ts_min, uint8_t ts_max) {
+__attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
+                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
+                         uint8_t vel_speed, uint8_t flags) {
     if (layer >= 12) return;
 
     // Clamp values to valid ranges
     if (normal > 100) normal = 100;
     if (midi > 100) midi = 100;
-    if (aftertouch > 4) aftertouch = 4;
     if (velocity > 3) velocity = 3;
     if (rapid < 1) rapid = 1;
     if (rapid > 100) rapid = 100;
@@ -13149,101 +13134,48 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     if (midi_rapid_vel > 20) midi_rapid_vel = 20;
     if (vel_speed < 1) vel_speed = 1;
     if (vel_speed > 20) vel_speed = 20;
-    if (aftertouch_cc > 127) aftertouch_cc = 127;
-    if (he_curve > 4) he_curve = 4;
-    if (he_min < 1) he_min = 1;
-    if (he_min > 127) he_min = 127;
-    if (he_max < 1) he_max = 1;
-    if (he_max > 127) he_max = 127;
-    if (ks_curve > 4) ks_curve = 4;
-    if (ks_min < 1) ks_min = 1;
-    if (ks_min > 127) ks_min = 127;
-    if (ks_max < 1) ks_max = 1;
-    if (ks_max > 127) ks_max = 127;
-    if (ts_curve > 4) ts_curve = 4;
-    if (ts_min < 1) ts_min = 1;
-    if (ts_min > 127) ts_min = 127;
-    if (ts_max < 1) ts_max = 1;
-    if (ts_max > 127) ts_max = 127;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
-    layer_actuations[layer].aftertouch_mode = aftertouch;
     layer_actuations[layer].velocity_mode = velocity;
     layer_actuations[layer].rapidfire_sensitivity = rapid;
     layer_actuations[layer].midi_rapidfire_sensitivity = midi_rapid_sens;
     layer_actuations[layer].midi_rapidfire_velocity = midi_rapid_vel;
     layer_actuations[layer].velocity_speed_scale = vel_speed;
-    layer_actuations[layer].aftertouch_cc = aftertouch_cc;
     layer_actuations[layer].flags = flags;
-    layer_actuations[layer].he_velocity_curve = he_curve;
-    layer_actuations[layer].he_velocity_min = he_min;
-    layer_actuations[layer].he_velocity_max = he_max;
-    layer_actuations[layer].keysplit_he_velocity_curve = ks_curve;
-    layer_actuations[layer].keysplit_he_velocity_min = ks_min;
-    layer_actuations[layer].keysplit_he_velocity_max = ks_max;
-    layer_actuations[layer].triplesplit_he_velocity_curve = ts_curve;
-    layer_actuations[layer].triplesplit_he_velocity_min = ts_min;
-    layer_actuations[layer].triplesplit_he_velocity_max = ts_max;
 
-    dprintf("Set layer %d: n=%d m=%d at=%d vel=%d rf=%d(%s) mrfs=%d mrfv=%d(%s) vs=%d atcc=%d\n",
-            layer, normal, midi, aftertouch, velocity, rapid,
+    dprintf("Set layer %d: n=%d m=%d vel=%d rf=%d(%s) mrfs=%d mrfv=%d(%s) vs=%d\n",
+            layer, normal, midi, velocity, rapid,
             (flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) ? "ON" : "OFF",
             midi_rapid_sens, midi_rapid_vel,
             (flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) ? "ON" : "OFF",
-            vel_speed, aftertouch_cc);
+            vel_speed);
 }
 
 // Get actuation for a specific layer
-__attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *aftertouch,
-                         uint8_t *velocity, uint8_t *rapid, uint8_t *midi_rapid_sens,
-                         uint8_t *midi_rapid_vel, uint8_t *vel_speed,
-                         uint8_t *aftertouch_cc, uint8_t *flags,
-                         uint8_t *he_curve, uint8_t *he_min, uint8_t *he_max,
-                         uint8_t *ks_curve, uint8_t *ks_min, uint8_t *ks_max,
-                         uint8_t *ts_curve, uint8_t *ts_min, uint8_t *ts_max) {
+__attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
+                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
+                         uint8_t *vel_speed, uint8_t *flags) {
     if (layer >= 12) {
         *normal = 80;
         *midi = 80;
-        *aftertouch = 0;
         *velocity = 2;
         *rapid = 4;
         *midi_rapid_sens = 10;
         *midi_rapid_vel = 10;
         *vel_speed = 10;
-        *aftertouch_cc = 74;
         *flags = 0;
-        *he_curve = 2;
-        *he_min = 1;
-        *he_max = 127;
-        *ks_curve = 2;
-        *ks_min = 1;
-        *ks_max = 127;
-        *ts_curve = 2;
-        *ts_min = 1;
-        *ts_max = 127;
         return;
     }
 
     *normal = layer_actuations[layer].normal_actuation;
     *midi = layer_actuations[layer].midi_actuation;
-    *aftertouch = layer_actuations[layer].aftertouch_mode;
     *velocity = layer_actuations[layer].velocity_mode;
     *rapid = layer_actuations[layer].rapidfire_sensitivity;
     *midi_rapid_sens = layer_actuations[layer].midi_rapidfire_sensitivity;
     *midi_rapid_vel = layer_actuations[layer].midi_rapidfire_velocity;
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
-    *aftertouch_cc = layer_actuations[layer].aftertouch_cc;
     *flags = layer_actuations[layer].flags;
-    *he_curve = layer_actuations[layer].he_velocity_curve;
-    *he_min = layer_actuations[layer].he_velocity_min;
-    *he_max = layer_actuations[layer].he_velocity_max;
-    *ks_curve = layer_actuations[layer].keysplit_he_velocity_curve;
-    *ks_min = layer_actuations[layer].keysplit_he_velocity_min;
-    *ks_max = layer_actuations[layer].keysplit_he_velocity_max;
-    *ts_curve = layer_actuations[layer].triplesplit_he_velocity_curve;
-    *ts_min = layer_actuations[layer].triplesplit_he_velocity_min;
-    *ts_max = layer_actuations[layer].triplesplit_he_velocity_max;
 }
 
 // Helper functions to check flags
@@ -13265,13 +13197,13 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
     uint8_t normal = data[1];
     uint8_t midi = data[2];
-    uint8_t aftertouch = data[3];
+    // data[3] is aftertouch (now global, not per-layer)
     uint8_t velocity = data[4];
     uint8_t rapid = data[5];
     uint8_t midi_rapid_sens = data[6];
     uint8_t midi_rapid_vel = data[7];
     uint8_t vel_speed = data[8];
-    uint8_t aftertouch_cc = data[9];
+    // data[9] is aftertouch_cc (now global, not per-layer)
     uint8_t flags = data[10];
     // Bytes 11-19 are no longer used (velocity curve/min/max moved to global keyboard_settings)
 
@@ -13280,8 +13212,8 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
         return;
     }
 
-    set_layer_actuation(layer, normal, midi, aftertouch, velocity, rapid,
-                       midi_rapid_sens, midi_rapid_vel, vel_speed, aftertouch_cc, flags);
+    set_layer_actuation(layer, normal, midi, velocity, rapid,
+                       midi_rapid_sens, midi_rapid_vel, vel_speed, flags);
     save_layer_actuations();
 
     dprintf("HID: Set layer %d actuation (velocity settings now global)\n", layer);
@@ -13293,159 +13225,85 @@ __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer) {
         return;
     }
 
-    uint8_t response[10];  // Reduced from 19 to 10 bytes (removed 9 velocity bytes)
+    uint8_t response[8];  // 8 bytes per layer (normal, midi, velocity, rapid, midi_rapid_sens, midi_rapid_vel, vel_speed, flags)
     get_layer_actuation(layer, &response[0], &response[1], &response[2],
                         &response[3], &response[4], &response[5], &response[6],
-                        &response[7], &response[8], &response[9]);
+                        &response[7]);
 
-    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 10);
+    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 8);
 
     dprintf("HID: Sent layer %d actuation (velocity settings now global)\n", layer);
 }
 
 __attribute__((weak)) void handle_get_all_layer_actuations(void) {
     load_layer_actuations();
-    
-    // Send data in chunks (12 layers × 10 bytes = 120 bytes, 5 packets of 26 bytes each)
-    
-    // Packet 0: Layers 0-1 complete (20 bytes) + Layer 2 partial (6 bytes) = 26 bytes
-    uint8_t response0[26];
+
+    // Send data in chunks (12 layers × 8 bytes = 96 bytes, 4 packets of 24 bytes each)
+
+    // Packet 0: Layers 0-2 complete (24 bytes)
+    uint8_t response0[24];
     uint8_t idx = 0;
-    for (uint8_t layer = 0; layer < 2; layer++) {
+    for (uint8_t layer = 0; layer < 3; layer++) {
         response0[idx++] = layer_actuations[layer].normal_actuation;
         response0[idx++] = layer_actuations[layer].midi_actuation;
-        response0[idx++] = layer_actuations[layer].aftertouch_mode;
         response0[idx++] = layer_actuations[layer].velocity_mode;
         response0[idx++] = layer_actuations[layer].rapidfire_sensitivity;
         response0[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
         response0[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
         response0[idx++] = layer_actuations[layer].velocity_speed_scale;
-        response0[idx++] = layer_actuations[layer].aftertouch_cc;
         response0[idx++] = layer_actuations[layer].flags;
     }
-    // Layer 2 partial (first 6 bytes)
-    response0[idx++] = layer_actuations[2].normal_actuation;
-    response0[idx++] = layer_actuations[2].midi_actuation;
-    response0[idx++] = layer_actuations[2].aftertouch_mode;
-    response0[idx++] = layer_actuations[2].velocity_mode;
-    response0[idx++] = layer_actuations[2].rapidfire_sensitivity;
-    response0[idx++] = layer_actuations[2].midi_rapidfire_sensitivity;
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, 0, response0, 26);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, 0, response0, 24);
     wait_ms(10);
     
-    // Packet 1: Layer 2 (4 bytes) + Layers 3-4 complete (20 bytes) + Layer 5 partial (2 bytes) = 26 bytes
-    uint8_t response1[26];
+    // Packet 1: Layers 3-5 complete (24 bytes)
+    uint8_t response1[24];
     idx = 0;
-    response1[idx++] = layer_actuations[2].midi_rapidfire_velocity;
-    response1[idx++] = layer_actuations[2].velocity_speed_scale;
-    response1[idx++] = layer_actuations[2].aftertouch_cc;
-    response1[idx++] = layer_actuations[2].flags;
-    
-    for (uint8_t layer = 3; layer < 5; layer++) {
+    for (uint8_t layer = 3; layer < 6; layer++) {
         response1[idx++] = layer_actuations[layer].normal_actuation;
         response1[idx++] = layer_actuations[layer].midi_actuation;
-        response1[idx++] = layer_actuations[layer].aftertouch_mode;
         response1[idx++] = layer_actuations[layer].velocity_mode;
         response1[idx++] = layer_actuations[layer].rapidfire_sensitivity;
         response1[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
         response1[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
         response1[idx++] = layer_actuations[layer].velocity_speed_scale;
-        response1[idx++] = layer_actuations[layer].aftertouch_cc;
         response1[idx++] = layer_actuations[layer].flags;
     }
-    response1[idx++] = layer_actuations[5].normal_actuation;
-    response1[idx++] = layer_actuations[5].midi_actuation;
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 1, 0, response1, 26);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 1, 0, response1, 24);
     wait_ms(10);
     
-    // Packet 2: Layer 5 (8 bytes) + Layer 6 complete (10 bytes) + Layer 7 partial (8 bytes) = 26 bytes
-    uint8_t response2[26];
+    // Packet 2: Layers 6-8 complete (24 bytes)
+    uint8_t response2[24];
     idx = 0;
-    response2[idx++] = layer_actuations[5].aftertouch_mode;
-    response2[idx++] = layer_actuations[5].velocity_mode;
-    response2[idx++] = layer_actuations[5].rapidfire_sensitivity;
-    response2[idx++] = layer_actuations[5].midi_rapidfire_sensitivity;
-    response2[idx++] = layer_actuations[5].midi_rapidfire_velocity;
-    response2[idx++] = layer_actuations[5].velocity_speed_scale;
-    response2[idx++] = layer_actuations[5].aftertouch_cc;
-    response2[idx++] = layer_actuations[5].flags;
-    
-    // Layer 6 complete
-    response2[idx++] = layer_actuations[6].normal_actuation;
-    response2[idx++] = layer_actuations[6].midi_actuation;
-    response2[idx++] = layer_actuations[6].aftertouch_mode;
-    response2[idx++] = layer_actuations[6].velocity_mode;
-    response2[idx++] = layer_actuations[6].rapidfire_sensitivity;
-    response2[idx++] = layer_actuations[6].midi_rapidfire_sensitivity;
-    response2[idx++] = layer_actuations[6].midi_rapidfire_velocity;
-    response2[idx++] = layer_actuations[6].velocity_speed_scale;
-    response2[idx++] = layer_actuations[6].aftertouch_cc;
-    response2[idx++] = layer_actuations[6].flags;
-    
-    // Layer 7 partial (first 8 bytes)
-    response2[idx++] = layer_actuations[7].normal_actuation;
-    response2[idx++] = layer_actuations[7].midi_actuation;
-    response2[idx++] = layer_actuations[7].aftertouch_mode;
-    response2[idx++] = layer_actuations[7].velocity_mode;
-    response2[idx++] = layer_actuations[7].rapidfire_sensitivity;
-    response2[idx++] = layer_actuations[7].midi_rapidfire_sensitivity;
-    response2[idx++] = layer_actuations[7].midi_rapidfire_velocity;
-    response2[idx++] = layer_actuations[7].velocity_speed_scale;
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 2, 0, response2, 26);
+    for (uint8_t layer = 6; layer < 9; layer++) {
+        response2[idx++] = layer_actuations[layer].normal_actuation;
+        response2[idx++] = layer_actuations[layer].midi_actuation;
+        response2[idx++] = layer_actuations[layer].velocity_mode;
+        response2[idx++] = layer_actuations[layer].rapidfire_sensitivity;
+        response2[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
+        response2[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
+        response2[idx++] = layer_actuations[layer].velocity_speed_scale;
+        response2[idx++] = layer_actuations[layer].flags;
+    }
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 2, 0, response2, 24);
     wait_ms(10);
     
-    // Packet 3: Layer 7 (2 bytes) + Layers 8-9 complete (20 bytes) + Layer 10 partial (4 bytes) = 26 bytes
-    uint8_t response3[26];
+    // Packet 3: Layers 9-11 complete (24 bytes)
+    uint8_t response3[24];
     idx = 0;
-    response3[idx++] = layer_actuations[7].aftertouch_cc;
-    response3[idx++] = layer_actuations[7].flags;
-    
-    for (uint8_t layer = 8; layer < 10; layer++) {
+    for (uint8_t layer = 9; layer < 12; layer++) {
         response3[idx++] = layer_actuations[layer].normal_actuation;
         response3[idx++] = layer_actuations[layer].midi_actuation;
-        response3[idx++] = layer_actuations[layer].aftertouch_mode;
         response3[idx++] = layer_actuations[layer].velocity_mode;
         response3[idx++] = layer_actuations[layer].rapidfire_sensitivity;
         response3[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
         response3[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
         response3[idx++] = layer_actuations[layer].velocity_speed_scale;
-        response3[idx++] = layer_actuations[layer].aftertouch_cc;
         response3[idx++] = layer_actuations[layer].flags;
     }
-    
-    // Layer 10 partial (first 4 bytes)
-    response3[idx++] = layer_actuations[10].normal_actuation;
-    response3[idx++] = layer_actuations[10].midi_actuation;
-    response3[idx++] = layer_actuations[10].aftertouch_mode;
-    response3[idx++] = layer_actuations[10].velocity_mode;
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 3, 0, response3, 26);
-    wait_ms(10);
-    
-    // Packet 4: Layer 10 (6 bytes) + Layer 11 complete (10 bytes) = 16 bytes (pad rest)
-    uint8_t response4[26];
-    memset(response4, 0, 26);
-    idx = 0;
-    response4[idx++] = layer_actuations[10].rapidfire_sensitivity;
-    response4[idx++] = layer_actuations[10].midi_rapidfire_sensitivity;
-    response4[idx++] = layer_actuations[10].midi_rapidfire_velocity;
-    response4[idx++] = layer_actuations[10].velocity_speed_scale;
-    response4[idx++] = layer_actuations[10].aftertouch_cc;
-    response4[idx++] = layer_actuations[10].flags;
-    
-    // Layer 11 complete
-    response4[idx++] = layer_actuations[11].normal_actuation;
-    response4[idx++] = layer_actuations[11].midi_actuation;
-    response4[idx++] = layer_actuations[11].aftertouch_mode;
-    response4[idx++] = layer_actuations[11].velocity_mode;
-    response4[idx++] = layer_actuations[11].rapidfire_sensitivity;
-    response4[idx++] = layer_actuations[11].midi_rapidfire_sensitivity;
-    response4[idx++] = layer_actuations[11].midi_rapidfire_velocity;
-    response4[idx++] = layer_actuations[11].velocity_speed_scale;
-    response4[idx++] = layer_actuations[11].aftertouch_cc;
-    response4[idx++] = layer_actuations[11].flags;
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 4, 0, response4, 26);
-    
-    dprintf("HID: Sent all layer actuations (5 packets)\n");
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 3, 0, response3, 24);
+
+    dprintf("HID: Sent all layer actuations (4 packets)\n");
 }
 __attribute__((weak)) void handle_reset_layer_actuations(void) {
     reset_layer_actuations();
