@@ -101,6 +101,9 @@ class MainWindow(QMainWindow):
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
+
+        # Connect keymap_editor to matrix_tester for status value adjustments
+        self.keymap_editor.set_matrix_test_reference(self.matrix_tester)
         
         # Initialize the new configurators
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()

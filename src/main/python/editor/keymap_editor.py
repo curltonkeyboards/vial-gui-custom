@@ -1523,10 +1523,9 @@ class QuickActuationWidget(QWidget):
 
     def on_keysplit_enabled_toggled(self):
         """Toggle KeySplit settings - switch to tabbed view when enabled"""
-        # If keysplit is being unchecked, also uncheck triplesplit
+        # Adjust status values when disabling keysplit
         if not self.keysplit_enabled_checkbox.isChecked():
-            if self.triplesplit_enabled_checkbox.isChecked():
-                self.triplesplit_enabled_checkbox.setChecked(False)
+            self._adjust_status_values_on_keysplit_close()
 
         self.update_midi_container_view()
         if not self.syncing:
@@ -1538,10 +1537,81 @@ class QuickActuationWidget(QWidget):
             # Auto-tick keysplit when triplesplit is enabled
             if not self.keysplit_enabled_checkbox.isChecked():
                 self.keysplit_enabled_checkbox.setChecked(True)
+        else:
+            # Adjust status values when disabling triplesplit
+            self._adjust_status_values_on_triplesplit_close()
 
         self.update_midi_container_view()
         if not self.syncing:
             self.save_midi_ui_to_memory()
+
+    def set_matrix_test_reference(self, matrix_test):
+        """Set reference to MatrixTest widget for status value adjustments"""
+        self.matrix_test = matrix_test
+
+    def _adjust_status_values_on_keysplit_close(self):
+        """Adjust status values when keysplit window is closed
+        - Status 3 (Both Splits On) -> 2 (TripleSplit On)
+        - Status 1 (KeySplit On) -> 0 (Disable Keysplit)
+        """
+        if not self.matrix_test:
+            return
+
+        try:
+            # Adjust channel split status
+            current_value = self.matrix_test.key_split_status.currentData()
+            if current_value == 3:  # Both Splits On -> TripleSplit On
+                self.matrix_test.key_split_status.setCurrentIndex(2)
+            elif current_value == 1:  # KeySplit On -> Disable Keysplit
+                self.matrix_test.key_split_status.setCurrentIndex(0)
+
+            # Adjust transpose split status
+            current_value = self.matrix_test.key_split_transpose_status.currentData()
+            if current_value == 3:  # Both Splits On -> TripleSplit On
+                self.matrix_test.key_split_transpose_status.setCurrentIndex(2)
+            elif current_value == 1:  # KeySplit On -> Disable Keysplit
+                self.matrix_test.key_split_transpose_status.setCurrentIndex(0)
+
+            # Adjust velocity split status
+            current_value = self.matrix_test.key_split_velocity_status.currentData()
+            if current_value == 3:  # Both Splits On -> TripleSplit On
+                self.matrix_test.key_split_velocity_status.setCurrentIndex(2)
+            elif current_value == 1:  # KeySplit On -> Disable Keysplit
+                self.matrix_test.key_split_velocity_status.setCurrentIndex(0)
+        except Exception as e:
+            pass
+
+    def _adjust_status_values_on_triplesplit_close(self):
+        """Adjust status values when triplesplit window is closed
+        - Status 3 (Both Splits On) -> 1 (KeySplit On)
+        - Status 2 (TripleSplit On) -> 0 (Disable Keysplit)
+        """
+        if not self.matrix_test:
+            return
+
+        try:
+            # Adjust channel split status
+            current_value = self.matrix_test.key_split_status.currentData()
+            if current_value == 3:  # Both Splits On -> KeySplit On
+                self.matrix_test.key_split_status.setCurrentIndex(1)
+            elif current_value == 2:  # TripleSplit On -> Disable Keysplit
+                self.matrix_test.key_split_status.setCurrentIndex(0)
+
+            # Adjust transpose split status
+            current_value = self.matrix_test.key_split_transpose_status.currentData()
+            if current_value == 3:  # Both Splits On -> KeySplit On
+                self.matrix_test.key_split_transpose_status.setCurrentIndex(1)
+            elif current_value == 2:  # TripleSplit On -> Disable Keysplit
+                self.matrix_test.key_split_transpose_status.setCurrentIndex(0)
+
+            # Adjust velocity split status
+            current_value = self.matrix_test.key_split_velocity_status.currentData()
+            if current_value == 3:  # Both Splits On -> KeySplit On
+                self.matrix_test.key_split_velocity_status.setCurrentIndex(1)
+            elif current_value == 2:  # TripleSplit On -> Disable Keysplit
+                self.matrix_test.key_split_velocity_status.setCurrentIndex(0)
+        except Exception as e:
+            pass
 
     def update_midi_container_view(self):
         """Update tabs based on split settings - always show tabs"""
@@ -2238,6 +2308,7 @@ class KeymapEditor(BasicEditor):
         super().__init__()
 
         self.layout_editor = layout_editor
+        self.matrix_test = None  # Reference to MatrixTest widget for status adjustments
 
         self.layout_layers = QHBoxLayout()
         self.layout_size = QVBoxLayout()

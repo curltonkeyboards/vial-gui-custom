@@ -1943,7 +1943,7 @@ static void render_autolight_with_params(uint8_t brightness_pct, int16_t hue_shi
                 }
             }
             
-            if ((keysplitstatus == 2) || (keysplittransposestatus == 2) || (keysplitvelocitystatus == 2)) {
+            if ((keysplitstatus == 2) || (keysplitstatus == 3) || (keysplittransposestatus == 2) || (keysplittransposestatus == 3) || (keysplitvelocitystatus == 2) || (keysplitvelocitystatus == 3)) {
                 if (category == 1) {
                     final_hue = 85;
                     final_sat = 255;
@@ -2242,7 +2242,7 @@ static void render_autolight_background(background_mode_t background_mode, uint8
                 }
             }
             
-            if ((keysplitstatus == 2) || (keysplittransposestatus == 2) || (keysplitvelocitystatus == 2)) {
+            if ((keysplitstatus == 2) || (keysplitstatus == 3) || (keysplittransposestatus == 2) || (keysplittransposestatus == 3) || (keysplitvelocitystatus == 2) || (keysplitvelocitystatus == 3)) {
                 if (category == 1) {
                     final_hue = (85 + time_hue_offset) % 256;   // Apply time offset to split colors too
                     final_sat = 255;

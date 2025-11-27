@@ -7242,20 +7242,24 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
 			if (record->event.pressed) {
 				uint16_t current_time = timer_read();
 				uint16_t time_since_last = timer_elapsed(last_keysplit_press_time);
-				
+
 				if (time_since_last < DOUBLE_TAP_THRESHOLD) {
-					// Double tap detected - cycle keysplitstatus 0→1→0
+					// Double tap detected - toggle keysplit bit (0↔1, 2↔3)
 					if (keysplitstatus == 0) {
-						keysplitstatus = 1;
-					} else {
-						keysplitstatus = 0;
+						keysplitstatus = 1;  // Turn on keysplit
+					} else if (keysplitstatus == 1) {
+						keysplitstatus = 0;  // Turn off keysplit
+					} else if (keysplitstatus == 2) {
+						keysplitstatus = 3;  // Add keysplit to triplesplit
+					} else if (keysplitstatus == 3) {
+						keysplitstatus = 2;  // Remove keysplit, keep triplesplit
 					}
 					snprintf(name, sizeof(name), "KEYSPLIT STATUS %d", keysplitstatus);
 				} else {
 					// Single press
 					snprintf(name, sizeof(name), "KEYSPLIT MODIFIER");
 				}
-				
+
 				keysplitmodifierheld = true;
 				last_keysplit_press_time = current_time;
 			} else {
@@ -7270,22 +7274,24 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
 			if (record->event.pressed) {
 				uint16_t current_time = timer_read();
 				uint16_t time_since_last = timer_elapsed(last_triplesplit_press_time);
-				
+
 				if (time_since_last < DOUBLE_TAP_THRESHOLD) {
-					// Double tap detected - cycle keysplitstatus 0→2→1→0
+					// Double tap detected - toggle triplesplit bit (0↔2, 1↔3)
 					if (keysplitstatus == 0) {
-						keysplitstatus = 2;
-					} else if (keysplitstatus == 2) {
-						keysplitstatus = 1;
+						keysplitstatus = 2;  // Turn on triplesplit
 					} else if (keysplitstatus == 1) {
-						keysplitstatus = 0;
+						keysplitstatus = 3;  // Add triplesplit to keysplit
+					} else if (keysplitstatus == 2) {
+						keysplitstatus = 0;  // Turn off triplesplit
+					} else if (keysplitstatus == 3) {
+						keysplitstatus = 1;  // Remove triplesplit, keep keysplit
 					}
 					snprintf(name, sizeof(name), "KEYSPLIT STATUS %d", keysplitstatus);
 				} else {
 					// Single press
 					snprintf(name, sizeof(name), "TRIPLESPLIT MODIFIER");
 				}
-				
+
 				triplesplitmodifierheld = true;
 				last_triplesplit_press_time = current_time;
 			} else {
@@ -7366,29 +7372,38 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     }
 	
 	} else if (keycode == 0xC662) {
+		// Cycle: 0→1→2→3→0 (OFF → KS only → TS only → Both)
 		if (keysplitstatus == 0) { keysplitstatus = 1;
 		snprintf(name, sizeof(name),"KS CHANNEL ON");
 		}else if (keysplitstatus == 1) { keysplitstatus = 2;
 		snprintf(name, sizeof(name),"TS CHANNEL ON");
-		}else if (keysplitstatus == 2) { keysplitstatus = 0;
-		snprintf(name, sizeof(name),"KS CHANNEL OFF");
+		}else if (keysplitstatus == 2) { keysplitstatus = 3;
+		snprintf(name, sizeof(name),"KS+TS CHANNEL ON");
+		}else if (keysplitstatus == 3) { keysplitstatus = 0;
+		snprintf(name, sizeof(name),"SPLIT CHANNEL OFF");
 		}
 	} else if (keycode == 0xC800) {
+		// Cycle: 0→1→2→3→0 (OFF → KS only → TS only → Both)
 		if (keysplittransposestatus == 0) { keysplittransposestatus = 1;
 		snprintf(name, sizeof(name),"KS TRANSPOSE ON");
 		}else if (keysplittransposestatus == 1) { keysplittransposestatus = 2;
 		snprintf(name, sizeof(name),"TS TRANSPOSE ON");
-		}else if (keysplittransposestatus == 2) { keysplittransposestatus = 0;
-		snprintf(name, sizeof(name),"KS TRANSPOSE OFF");
+		}else if (keysplittransposestatus == 2) { keysplittransposestatus = 3;
+		snprintf(name, sizeof(name),"KS+TS TRANSPOSE ON");
+		}else if (keysplittransposestatus == 3) { keysplittransposestatus = 0;
+		snprintf(name, sizeof(name),"SPLIT TRANSPOSE OFF");
 		}
 		
 	} else if (keycode == 0xC801) {
+		// Cycle: 0→1→2→3→0 (OFF → KS only → TS only → Both)
 		if (keysplitvelocitystatus == 0) { keysplitvelocitystatus = 1;
 		snprintf(name, sizeof(name),"KS VELOCITY ON");
 		}else if (keysplitvelocitystatus == 1) { keysplitvelocitystatus = 2;
 		snprintf(name, sizeof(name),"TS VELOCITY ON");
-		}else if (keysplitvelocitystatus == 2) { keysplitvelocitystatus = 0;
-		snprintf(name, sizeof(name),"KS VELOCITY OFF");
+		}else if (keysplitvelocitystatus == 2) { keysplitvelocitystatus = 3;
+		snprintf(name, sizeof(name),"KS+TS VELOCITY ON");
+		}else if (keysplitvelocitystatus == 3) { keysplitvelocitystatus = 0;
+		snprintf(name, sizeof(name),"SPLIT VELOCITY OFF");
 		}
 
 	} else if (keycode == 0xC650) {
@@ -9193,6 +9208,7 @@ void oled_render_keylog(void) {
 	
 	if (keysplittransposestatus == 1) {snprintf(name, sizeof(name), "\n  TRA%+3d // TRA%+3d", transpose_number + octave_number, transpose_number2 + octave_number2);
 	}else if (keysplittransposestatus == 2) {snprintf(name, sizeof(name), "\n T%+3d / T%+3d  /T%+3d", transpose_number + octave_number,transpose_number2 + octave_number2 ,transpose_number3 + octave_number3);
+	}else if (keysplittransposestatus == 3) {snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
 	}else { snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
 	}
 	
@@ -9209,6 +9225,7 @@ void oled_render_keylog(void) {
 	
 	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
 	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
+	}else if (keysplitstatus == 3) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
 	}else { snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1)); //
 	}
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");

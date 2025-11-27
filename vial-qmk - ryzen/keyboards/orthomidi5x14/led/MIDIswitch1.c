@@ -61,11 +61,11 @@ bool effect_runner_keycode_category(effect_params_t* params) {
     }
     
     if ((keysplitstatus != 0) || (keysplittransposestatus != 0) || (keysplitvelocitystatus != 0)) {
-        modified_hue_offsets[2] = 170;    // Blue offset
+        modified_hue_offsets[2] = 170;    // Blue offset (keysplit enabled)
     }
-    
-    if ((keysplitstatus == 2) || (keysplittransposestatus == 2) || (keysplitvelocitystatus == 2)) {
-        modified_hue_offsets[1] = 85;     // Green offset
+
+    if ((keysplitstatus == 2) || (keysplitstatus == 3) || (keysplittransposestatus == 2) || (keysplittransposestatus == 3) || (keysplitvelocitystatus == 2) || (keysplitvelocitystatus == 3)) {
+        modified_hue_offsets[1] = 85;     // Green offset (triplesplit enabled)
     }
     
     for (uint8_t i = 0; i < led_categories[current_layer].count; i++) {
