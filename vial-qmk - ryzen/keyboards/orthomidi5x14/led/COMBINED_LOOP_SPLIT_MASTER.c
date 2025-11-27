@@ -1547,7 +1547,7 @@ static void render_autolight_background(background_mode_t background_mode, uint8
                 }
             }
             
-            if ((keysplitstatus == 2) || (keysplittransposestatus == 2) || (keysplitvelocitystatus == 2)) {
+            if ((keysplitstatus == 2) || (keysplitstatus == 3) || (keysplittransposestatus == 2) || (keysplittransposestatus == 3) || (keysplitvelocitystatus == 2) || (keysplitvelocitystatus == 3)) {
                 if (category == 1) {
                     final_hue = 85;
                     final_sat = 255;
