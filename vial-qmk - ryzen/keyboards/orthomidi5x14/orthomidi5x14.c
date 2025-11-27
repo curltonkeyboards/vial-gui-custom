@@ -3081,7 +3081,7 @@ void handle_set_layer_actuation(const uint8_t* data) {
 
     // Only 11 bytes now: layer + 10 params (removed 9 velocity bytes)
     set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5],
-                       data[6], data[7], data[8], data[9], data[10]);
+                       data[6], data[7], data[8]);
     save_layer_actuations();
 }
 

@@ -27,6 +27,7 @@ extern uint8_t (*optimized_midi_positions)[72][6];
 extern uint8_t (*optimized_midi_velocities)[72];
 extern uint8_t layer_to_index_map[12];
 extern uint8_t ACTUAL_MIDI_LAYERS;
+extern uint8_t aftertouch_mode;
 extern uint8_t aftertouch_cc;
 extern uint8_t channel_number;
 extern layer_actuation_t layer_actuations[12];
@@ -42,7 +43,6 @@ extern bool aftertouch_pedal_active;
 static struct {
     uint8_t normal_actuation;
     uint8_t midi_actuation;
-    uint8_t aftertouch_mode;
     uint8_t velocity_mode;
     uint8_t rapidfire_sensitivity;
     uint8_t midi_rapidfire_sensitivity;      // Actuation threshold for MIDI rapid
@@ -53,7 +53,6 @@ static struct {
 } active_settings = {
     .normal_actuation = 80,
     .midi_actuation = 80,
-    .aftertouch_mode = 0,
     .velocity_mode = 2,
     .rapidfire_sensitivity = 4,
     .midi_rapidfire_sensitivity = 10,
@@ -74,7 +73,6 @@ static inline void update_active_settings(uint8_t current_layer) {
     if (active_settings.cached_layer != current_layer || active_settings.needs_update) {
         active_settings.normal_actuation = layer_actuations[current_layer].normal_actuation;
         active_settings.midi_actuation = layer_actuations[current_layer].midi_actuation;
-        active_settings.aftertouch_mode = layer_actuations[current_layer].aftertouch_mode;
         active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
         active_settings.rapidfire_sensitivity = layer_actuations[current_layer].rapidfire_sensitivity;
         active_settings.midi_rapidfire_sensitivity = layer_actuations[current_layer].midi_rapidfire_sensitivity;
@@ -478,7 +476,6 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
     uint8_t midi_threshold = active_settings.midi_actuation;
     uint8_t normal_threshold = active_settings.normal_actuation;
     uint8_t analog_mode = active_settings.velocity_mode;
-    uint8_t aftertouch_mode = active_settings.aftertouch_mode;
     
     state->was_pressed = state->pressed;
     state->pressed = pressed;
@@ -647,7 +644,7 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
 		// Get the aftertouch CC for the current layer
 		uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 		if (current_layer >= 12) current_layer = 0;
-		uint8_t at_cc = layer_actuations[current_layer].aftertouch_cc;
+		uint8_t at_cc = aftertouch_cc;
 		
 		switch (aftertouch_mode) {
 			case 1: // Reverse
@@ -871,7 +868,6 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Build matrix using cached thresholds
     uint8_t midi_threshold = active_settings.midi_actuation;
     uint8_t analog_mode = active_settings.velocity_mode;
-    uint8_t aftertouch_mode = active_settings.aftertouch_mode;
     
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         matrix_row_t current_row_value = 0;
