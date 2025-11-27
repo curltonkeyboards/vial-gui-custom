@@ -5,7 +5,7 @@ import struct
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
                               QSizePolicy, QScrollArea, QTabWidget)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 
 from widgets.combo_box import ArrowComboBox
 from any_keycode_dialog import AnyKeycodeDialog
@@ -16,6 +16,39 @@ from widgets.square_button import SquareButton
 from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
+from protocol.keyboard_comm import (
+    PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
+    PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
+    PARAM_KEYSPLIT_HE_VELOCITY_CURVE, PARAM_KEYSPLIT_HE_VELOCITY_MIN, PARAM_KEYSPLIT_HE_VELOCITY_MAX,
+    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, PARAM_TRIPLESPLIT_HE_VELOCITY_MAX,
+    PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC, PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
+    PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS, PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS,
+    PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY
+)
+
+
+class Debouncer:
+    """Debounce utility for delaying function calls until user stops interacting
+
+    Usage:
+        debouncer = Debouncer(200, my_function, arg1, arg2)
+        # Call trigger() each time the event happens
+        debouncer.trigger()  # Function will only execute 200ms after last trigger
+    """
+    def __init__(self, delay_ms, callback, *args, **kwargs):
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(lambda: callback(*args, **kwargs))
+        self.delay_ms = delay_ms
+
+    def trigger(self):
+        """Trigger the debouncer - restarts the timer"""
+        self.timer.stop()
+        self.timer.start(self.delay_ms)
+
+    def cancel(self):
+        """Cancel pending callback"""
+        self.timer.stop()
 
 
 class QuickActuationWidget(QWidget):

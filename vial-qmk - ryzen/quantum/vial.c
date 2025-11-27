@@ -49,13 +49,14 @@
 #define HID_CMD_GET_ALL_CONFIG 0xB4
 #define HID_CMD_RESET_LOOP_CONFIG 0xB5
 
-// MIDIswitch Commands (0xB6-0xBB) - Update these in your firmware  
+// MIDIswitch Commands (0xB6-0xBF) - Update these in your firmware
 #define HID_CMD_SET_KEYBOARD_CONFIG 0xB6
 #define HID_CMD_GET_KEYBOARD_CONFIG 0xB7
 #define HID_CMD_RESET_KEYBOARD_CONFIG 0xB8
 #define HID_CMD_SAVE_KEYBOARD_SLOT 0xB9
 #define HID_CMD_LOAD_KEYBOARD_SLOT 0xBA
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB
+#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xBD
 
 #ifdef VIAL_INSECURE
 #pragma message "Building Vial-enabled firmware in insecure mode."

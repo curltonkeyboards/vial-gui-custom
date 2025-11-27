@@ -44,13 +44,41 @@ HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
 HID_CMD_GET_ALL_CONFIG = 0xB4
 HID_CMD_RESET_LOOP_CONFIG = 0xB5
 
-# MIDIswitch Commands (0xB6-0xBB)
+# MIDIswitch Commands (0xB6-0xBF)
 HID_CMD_SET_KEYBOARD_CONFIG = 0xB6
 HID_CMD_GET_KEYBOARD_CONFIG = 0xB7
 HID_CMD_RESET_KEYBOARD_CONFIG = 0xB8
 HID_CMD_SAVE_KEYBOARD_SLOT = 0xB9
 HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
 HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
+HID_CMD_SET_KEYBOARD_PARAM_SINGLE = 0xBD  # NEW: Set individual parameter
+
+# Parameter IDs for HID_CMD_SET_KEYBOARD_PARAM_SINGLE
+PARAM_CHANNEL_NUMBER = 0
+PARAM_TRANSPOSE_NUMBER = 1
+PARAM_TRANSPOSE_NUMBER2 = 2
+PARAM_TRANSPOSE_NUMBER3 = 3
+PARAM_HE_VELOCITY_CURVE = 4
+PARAM_HE_VELOCITY_MIN = 5
+PARAM_HE_VELOCITY_MAX = 6
+PARAM_KEYSPLIT_HE_VELOCITY_CURVE = 7
+PARAM_KEYSPLIT_HE_VELOCITY_MIN = 8
+PARAM_KEYSPLIT_HE_VELOCITY_MAX = 9
+PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE = 10
+PARAM_TRIPLESPLIT_HE_VELOCITY_MIN = 11
+PARAM_TRIPLESPLIT_HE_VELOCITY_MAX = 12
+PARAM_AFTERTOUCH_MODE = 13
+PARAM_AFTERTOUCH_CC = 14
+PARAM_BASE_SUSTAIN = 15
+PARAM_KEYSPLIT_SUSTAIN = 16
+PARAM_TRIPLESPLIT_SUSTAIN = 17
+PARAM_KEYSPLITCHANNEL = 18
+PARAM_KEYSPLIT2CHANNEL = 19
+PARAM_KEYSPLITSTATUS = 20
+PARAM_KEYSPLITTRANSPOSESTATUS = 21
+PARAM_KEYSPLITVELOCITYSTATUS = 22
+PARAM_VELOCITY_SENSITIVITY = 30  # 4-byte uint32
+PARAM_CC_SENSITIVITY = 31  # 4-byte uint32
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -103,6 +131,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         self.via_protocol = self.vial_protocol = self.keyboard_id = -1
 
+        # ThruLoop, MIDI, Actuation, and Gaming settings
+        self.thruloop_config = None
+        self.midi_config = None
+        self.layer_actuations = None
+        self.gaming_settings = None
+
     def reload(self, sideload_json=None):
         """ Load information about the keyboard: number of layers, physical key layout """
 
@@ -131,6 +165,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_tap_dance()
         self.reload_combo()
         self.reload_key_override()
+
+        # Load custom tab settings
+        self.reload_thruloop_config()
+        self.reload_midi_config()
+        self.reload_layer_actuations()
+        self.reload_gaming_settings()
 
     def reload_layers(self):
         """ Get how many layers the keyboard has """
@@ -952,6 +992,51 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, advanced_data)
             data = self.usb_send(self.dev, packet, retries=20)
             return data and len(data) > 0 and data[5] == 0
+        except Exception as e:
+            return False
+
+    def set_keyboard_param_single(self, param_id, value):
+        """Set individual keyboard parameter (real-time update)
+
+        Args:
+            param_id: Parameter ID (PARAM_* constant)
+            value: Parameter value (int or bytes)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Build data payload: [param_id, value_bytes...]
+            if param_id in [PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY]:
+                # 4-byte parameters
+                data = bytearray([param_id]) + struct.pack('<I', value)
+            elif param_id in [PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3]:
+                # Signed byte parameters
+                data = bytearray([param_id, value & 0xFF])
+            else:
+                # Standard 1-byte parameters
+                data = bytearray([param_id, value])
+
+            packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, data)
+
+            # Retry logic: 4 retries with 100ms delay
+            for attempt in range(5):  # 1 initial + 4 retries = 5 total attempts
+                try:
+                    response = self.usb_send(self.dev, packet, retries=1)
+                    if response and len(response) > 0 and response[5] == 0:
+                        return True
+
+                    # If not last attempt, wait before retry
+                    if attempt < 4:
+                        time.sleep(0.1)  # 100ms delay
+                except Exception:
+                    if attempt < 4:
+                        time.sleep(0.1)
+                    continue
+
+            # All retries failed, return False (silent failure, UI will handle if needed)
+            return False
+
         except Exception as e:
             return False
 

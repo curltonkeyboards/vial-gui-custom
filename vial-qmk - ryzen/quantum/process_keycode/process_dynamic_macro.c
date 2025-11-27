@@ -85,6 +85,35 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_SAVE_KEYBOARD_SLOT          0xB9  // was 0x53
 #define HID_CMD_LOAD_KEYBOARD_SLOT          0xBA  // was 0x54
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB  // was 0x55
+#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE    0xBD  // NEW: Set individual keyboard parameter
+
+// Parameter IDs for HID_CMD_SET_KEYBOARD_PARAM_SINGLE (1-byte parameters)
+#define PARAM_CHANNEL_NUMBER                 0
+#define PARAM_TRANSPOSE_NUMBER               1
+#define PARAM_TRANSPOSE_NUMBER2              2
+#define PARAM_TRANSPOSE_NUMBER3              3
+#define PARAM_HE_VELOCITY_CURVE              4
+#define PARAM_HE_VELOCITY_MIN                5
+#define PARAM_HE_VELOCITY_MAX                6
+#define PARAM_KEYSPLIT_HE_VELOCITY_CURVE     7
+#define PARAM_KEYSPLIT_HE_VELOCITY_MIN       8
+#define PARAM_KEYSPLIT_HE_VELOCITY_MAX       9
+#define PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE  10
+#define PARAM_TRIPLESPLIT_HE_VELOCITY_MIN    11
+#define PARAM_TRIPLESPLIT_HE_VELOCITY_MAX    12
+#define PARAM_AFTERTOUCH_MODE                13
+#define PARAM_AFTERTOUCH_CC                  14
+#define PARAM_BASE_SUSTAIN                   15
+#define PARAM_KEYSPLIT_SUSTAIN               16
+#define PARAM_TRIPLESPLIT_SUSTAIN            17
+#define PARAM_KEYSPLITCHANNEL                18
+#define PARAM_KEYSPLIT2CHANNEL               19
+#define PARAM_KEYSPLITSTATUS                 20
+#define PARAM_KEYSPLITTRANSPOSESTATUS        21
+#define PARAM_KEYSPLITVELOCITYSTATUS         22
+// 4-byte parameters
+#define PARAM_VELOCITY_SENSITIVITY           30
+#define PARAM_CC_SENSITIVITY                 31
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -94,6 +123,7 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 
 static void handle_set_keyboard_config(const uint8_t* data);
 static void handle_set_keyboard_config_advanced(const uint8_t* data);
+static void handle_set_keyboard_param_single(const uint8_t* data);
 static void handle_get_keyboard_config(void);
 static void handle_reset_keyboard_config(void);
 static void handle_save_keyboard_slot(const uint8_t* data);
@@ -11891,6 +11921,15 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
                 send_hid_response(HID_CMD_LOAD_KEYBOARD_SLOT, 0, 1, NULL, 0); // Error
             }
             break;
+
+        case HID_CMD_SET_KEYBOARD_PARAM_SINGLE: // 0xBD - NEW: Set individual parameter
+            if (length >= 7) { // Header + param_id + at least 1 byte value
+                handle_set_keyboard_param_single(&data[6]); // Skip header bytes
+                send_hid_response(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, 0, NULL, 0); // Success
+            } else {
+                send_hid_response(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, 1, NULL, 0); // Error
+            }
+            break;
     }
 }
 
@@ -12677,6 +12716,115 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     }
     
     dprintf("HID: Updated advanced keyboard config\n");
+}
+
+// NEW: Handle individual parameter updates (real-time updates without full batch)
+static void handle_set_keyboard_param_single(const uint8_t* data) {
+    uint8_t param_id = data[0];
+    const uint8_t* value_ptr = &data[1];
+
+    switch (param_id) {
+        // 1-byte parameters
+        case PARAM_CHANNEL_NUMBER:
+            channel_number = *value_ptr;
+            keyboard_settings.channel_number = channel_number;
+            break;
+        case PARAM_TRANSPOSE_NUMBER:
+            transpose_number = (int8_t)(*value_ptr);
+            keyboard_settings.transpose_number = transpose_number;
+            break;
+        case PARAM_TRANSPOSE_NUMBER2:
+            transpose_number2 = (int8_t)(*value_ptr);
+            keyboard_settings.transpose_number2 = transpose_number2;
+            break;
+        case PARAM_TRANSPOSE_NUMBER3:
+            transpose_number3 = (int8_t)(*value_ptr);
+            keyboard_settings.transpose_number3 = transpose_number3;
+            break;
+        case PARAM_HE_VELOCITY_CURVE:
+            keyboard_settings.he_velocity_curve = *value_ptr;
+            break;
+        case PARAM_HE_VELOCITY_MIN:
+            keyboard_settings.he_velocity_min = *value_ptr;
+            break;
+        case PARAM_HE_VELOCITY_MAX:
+            keyboard_settings.he_velocity_max = *value_ptr;
+            break;
+        case PARAM_KEYSPLIT_HE_VELOCITY_CURVE:
+            keyboard_settings.keysplit_he_velocity_curve = *value_ptr;
+            break;
+        case PARAM_KEYSPLIT_HE_VELOCITY_MIN:
+            keyboard_settings.keysplit_he_velocity_min = *value_ptr;
+            break;
+        case PARAM_KEYSPLIT_HE_VELOCITY_MAX:
+            keyboard_settings.keysplit_he_velocity_max = *value_ptr;
+            break;
+        case PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE:
+            keyboard_settings.triplesplit_he_velocity_curve = *value_ptr;
+            break;
+        case PARAM_TRIPLESPLIT_HE_VELOCITY_MIN:
+            keyboard_settings.triplesplit_he_velocity_min = *value_ptr;
+            break;
+        case PARAM_TRIPLESPLIT_HE_VELOCITY_MAX:
+            keyboard_settings.triplesplit_he_velocity_max = *value_ptr;
+            break;
+        case PARAM_AFTERTOUCH_MODE:
+            aftertouch_mode = *value_ptr;
+            keyboard_settings.aftertouch_mode = aftertouch_mode;
+            break;
+        case PARAM_AFTERTOUCH_CC:
+            aftertouch_cc = *value_ptr;
+            keyboard_settings.aftertouch_cc = aftertouch_cc;
+            break;
+        case PARAM_BASE_SUSTAIN:
+            base_sustain = *value_ptr;
+            keyboard_settings.base_sustain = base_sustain;
+            break;
+        case PARAM_KEYSPLIT_SUSTAIN:
+            keysplit_sustain = *value_ptr;
+            keyboard_settings.keysplit_sustain = keysplit_sustain;
+            break;
+        case PARAM_TRIPLESPLIT_SUSTAIN:
+            triplesplit_sustain = *value_ptr;
+            keyboard_settings.triplesplit_sustain = triplesplit_sustain;
+            break;
+        case PARAM_KEYSPLITCHANNEL:
+            keysplitchannel = *value_ptr;
+            keyboard_settings.keysplitchannel = keysplitchannel;
+            break;
+        case PARAM_KEYSPLIT2CHANNEL:
+            keysplit2channel = *value_ptr;
+            keyboard_settings.keysplit2channel = keysplit2channel;
+            break;
+        case PARAM_KEYSPLITSTATUS:
+            keysplitstatus = *value_ptr;
+            keyboard_settings.keysplitstatus = keysplitstatus;
+            break;
+        case PARAM_KEYSPLITTRANSPOSESTATUS:
+            keysplittransposestatus = *value_ptr;
+            keyboard_settings.keysplittransposestatus = keysplittransposestatus;
+            break;
+        case PARAM_KEYSPLITVELOCITYSTATUS:
+            keysplitvelocitystatus = *value_ptr;
+            keyboard_settings.keysplitvelocitystatus = keysplitvelocitystatus;
+            break;
+
+        // 4-byte parameters
+        case PARAM_VELOCITY_SENSITIVITY:
+            velocity_sensitivity = *(int32_t*)value_ptr;
+            keyboard_settings.velocity_sensitivity = velocity_sensitivity;
+            break;
+        case PARAM_CC_SENSITIVITY:
+            cc_sensitivity = *(int32_t*)value_ptr;
+            keyboard_settings.cc_sensitivity = cc_sensitivity;
+            break;
+
+        default:
+            dprintf("HID: Unknown param_id: %d\n", param_id);
+            return;
+    }
+
+    dprintf("HID: Updated single parameter %d\n", param_id);
 }
 
 

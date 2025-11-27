@@ -2572,7 +2572,23 @@ void reset_keyboard_settings(void) {
     colorblindmode = 0;
     cclooprecording = false;
     truesustain = false;
-    
+
+    // Reset Global MIDI Settings (velocity curves, aftertouch, sustain)
+    aftertouch_mode = 0;
+    aftertouch_cc = 74;
+    he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    he_velocity_min = 1;
+    he_velocity_max = 127;
+    keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    keysplit_he_velocity_min = 1;
+    keysplit_he_velocity_max = 127;
+    triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    triplesplit_he_velocity_min = 1;
+    triplesplit_he_velocity_max = 127;
+    base_sustain = 0;
+    keysplit_sustain = 0;
+    triplesplit_sustain = 0;
+
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
     keyboard_settings.cc_sensitivity = cc_sensitivity;
@@ -2602,6 +2618,21 @@ void reset_keyboard_settings(void) {
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
+    // Global MIDI Settings
+    keyboard_settings.aftertouch_mode = aftertouch_mode;
+    keyboard_settings.aftertouch_cc = aftertouch_cc;
+    keyboard_settings.he_velocity_curve = he_velocity_curve;
+    keyboard_settings.he_velocity_min = he_velocity_min;
+    keyboard_settings.he_velocity_max = he_velocity_max;
+    keyboard_settings.keysplit_he_velocity_curve = keysplit_he_velocity_curve;
+    keyboard_settings.keysplit_he_velocity_min = keysplit_he_velocity_min;
+    keyboard_settings.keysplit_he_velocity_max = keysplit_he_velocity_max;
+    keyboard_settings.triplesplit_he_velocity_curve = triplesplit_he_velocity_curve;
+    keyboard_settings.triplesplit_he_velocity_min = triplesplit_he_velocity_min;
+    keyboard_settings.triplesplit_he_velocity_max = triplesplit_he_velocity_max;
+    keyboard_settings.base_sustain = base_sustain;
+    keyboard_settings.keysplit_sustain = keysplit_sustain;
+    keyboard_settings.triplesplit_sustain = triplesplit_sustain;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -2646,7 +2677,23 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     colorblindmode = keyboard_settings.colorblindmode;
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;
-    
+
+    // Load Global MIDI Settings (velocity curves, aftertouch, sustain)
+    aftertouch_mode = keyboard_settings.aftertouch_mode;
+    aftertouch_cc = keyboard_settings.aftertouch_cc;
+    he_velocity_curve = keyboard_settings.he_velocity_curve;
+    he_velocity_min = keyboard_settings.he_velocity_min;
+    he_velocity_max = keyboard_settings.he_velocity_max;
+    keysplit_he_velocity_curve = keyboard_settings.keysplit_he_velocity_curve;
+    keysplit_he_velocity_min = keyboard_settings.keysplit_he_velocity_min;
+    keysplit_he_velocity_max = keyboard_settings.keysplit_he_velocity_max;
+    triplesplit_he_velocity_curve = keyboard_settings.triplesplit_he_velocity_curve;
+    triplesplit_he_velocity_min = keyboard_settings.triplesplit_he_velocity_min;
+    triplesplit_he_velocity_max = keyboard_settings.triplesplit_he_velocity_max;
+    base_sustain = keyboard_settings.base_sustain;
+    keysplit_sustain = keyboard_settings.keysplit_sustain;
+    triplesplit_sustain = keyboard_settings.triplesplit_sustain;
+
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }
 
