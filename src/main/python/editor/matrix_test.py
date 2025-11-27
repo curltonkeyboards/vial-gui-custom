@@ -908,6 +908,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.keysplit_sustain, ks_row, 1)
 
+        # Connect KeySplit parameter changes to auto-enable keysplit mode
+        self.key_split_channel.currentIndexChanged.connect(self._on_keysplit_param_changed)
+        self.transpose_number2.currentIndexChanged.connect(self._on_keysplit_param_changed)
+        self.velocity_curve2.currentIndexChanged.connect(self._on_keysplit_param_changed)
+        self.velocity_min2.valueChanged.connect(self._on_keysplit_param_changed)
+        self.velocity_max2.valueChanged.connect(self._on_keysplit_param_changed)
+        self.keysplit_sustain.currentIndexChanged.connect(self._on_keysplit_param_changed)
+
         # TripleSplit offshoot
         self.triplesplit_offshoot = QGroupBox(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
         self.triplesplit_offshoot.setMaximumWidth(300)
@@ -1003,6 +1011,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.triplesplit_sustain.lineEdit().setReadOnly(True)
         self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         triplesplit_layout.addWidget(self.triplesplit_sustain, ts_row, 1)
+
+        # Connect TripleSplit parameter changes to auto-enable triplesplit mode
+        self.key_split2_channel.currentIndexChanged.connect(self._on_triplesplit_param_changed)
+        self.transpose_number3.currentIndexChanged.connect(self._on_triplesplit_param_changed)
+        self.velocity_curve3.currentIndexChanged.connect(self._on_triplesplit_param_changed)
+        self.velocity_min3.valueChanged.connect(self._on_triplesplit_param_changed)
+        self.velocity_max3.valueChanged.connect(self._on_triplesplit_param_changed)
+        self.triplesplit_sustain.currentIndexChanged.connect(self._on_triplesplit_param_changed)
 
         # Add global MIDI group to main layout
         main_layout.addWidget(global_midi_group)
@@ -1302,7 +1318,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_status.addItem("Disable Keysplit", 0)
         self.key_split_status.addItem("KeySplit On", 1)
         self.key_split_status.addItem("TripleSplit On", 2)
-        self.key_split_status.currentIndexChanged.connect(self.on_split_mode_changed)
+        self.key_split_status.addItem("Both Splits On", 3)
+        self.key_split_status.currentIndexChanged.connect(self.on_channel_split_mode_changed)
         keysplit_modes_layout.addWidget(self.key_split_status, 0, 2)
 
         # Transpose Mode
@@ -1317,6 +1334,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_transpose_status.addItem("Disable Keysplit", 0)
         self.key_split_transpose_status.addItem("KeySplit On", 1)
         self.key_split_transpose_status.addItem("TripleSplit On", 2)
+        self.key_split_transpose_status.addItem("Both Splits On", 3)
+        self.key_split_transpose_status.currentIndexChanged.connect(self.on_transpose_split_mode_changed)
         keysplit_modes_layout.addWidget(self.key_split_transpose_status, 0, 4)
 
         # Velocity Mode
@@ -1331,6 +1350,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_velocity_status.addItem("Disable Keysplit", 0)
         self.key_split_velocity_status.addItem("KeySplit On", 1)
         self.key_split_velocity_status.addItem("TripleSplit On", 2)
+        self.key_split_velocity_status.addItem("Both Splits On", 3)
+        self.key_split_velocity_status.currentIndexChanged.connect(self.on_velocity_split_mode_changed)
         keysplit_modes_layout.addWidget(self.key_split_velocity_status, 0, 6)
 
         # Split Settings - Always visible at bottom
@@ -1480,10 +1501,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             lambda: self.send_param_update(PARAM_TRIPLESPLIT_SUSTAIN, self.triplesplit_sustain.currentData())
         )
 
-        # Split status
+        # Split status - send HID updates for all three status dropdowns
         self.key_split_status.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_KEYSPLITSTATUS, self.key_split_status.currentData())
         )
+        self.key_split_transpose_status.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLITTRANSPOSESTATUS, self.key_split_transpose_status.currentData())
+        )
+        self.key_split_velocity_status.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLITVELOCITYSTATUS, self.key_split_velocity_status.currentData())
+        )
+
+        # Set initial offshoot visibility based on default dropdown values (all 0, so both hidden)
+        self._update_offshoot_visibility()
 
     def send_param_update(self, param_id, value):
         """Send real-time HID parameter update to keyboard"""
@@ -1494,13 +1524,81 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             # Silently fail - firmware may not support this parameter yet
             pass
 
-    def on_split_mode_changed(self):
-        """Handle split mode changes"""
-        split_status = self.key_split_status.currentData()
-        # Sustain is now always visible, no need to show/hide
-        # This function can be used for other split-related logic if needed
+    def on_channel_split_mode_changed(self):
+        """Handle channel split mode changes - show/hide offshoots and update UI"""
+        self._update_offshoot_visibility()
 
-        # Split offshoots are now always visible at the bottom
+    def on_transpose_split_mode_changed(self):
+        """Handle transpose split mode changes - show/hide offshoots and update UI"""
+        self._update_offshoot_visibility()
+
+    def on_velocity_split_mode_changed(self):
+        """Handle velocity split mode changes - show/hide offshoots and update UI"""
+        self._update_offshoot_visibility()
+
+    def _update_offshoot_visibility(self):
+        """Update offshoot visibility based on any of the three status dropdowns"""
+        # Check all three status values
+        channel_status = self.key_split_status.currentData()
+        transpose_status = self.key_split_transpose_status.currentData()
+        velocity_status = self.key_split_velocity_status.currentData()
+
+        # Show KeySplit offshoot if ANY status has keysplit enabled (1 or 3)
+        show_keysplit = any(status in [1, 3] for status in [channel_status, transpose_status, velocity_status])
+
+        # Show TripleSplit offshoot if ANY status has triplesplit enabled (2 or 3)
+        show_triplesplit = any(status in [2, 3] for status in [channel_status, transpose_status, velocity_status])
+
+        self.keysplit_offshoot.setVisible(show_keysplit)
+        self.triplesplit_offshoot.setVisible(show_triplesplit)
+
+    def _on_keysplit_param_changed(self):
+        """Auto-enable keysplit when any KeySplit parameter is changed"""
+        # Enable keysplit bit in all three status dropdowns (0→1 or 2→3)
+        self._enable_keysplit_in_dropdown(self.key_split_status)
+        self._enable_keysplit_in_dropdown(self.key_split_transpose_status)
+        self._enable_keysplit_in_dropdown(self.key_split_velocity_status)
+
+    def _on_triplesplit_param_changed(self):
+        """Auto-enable triplesplit when any TripleSplit parameter is changed"""
+        # Enable triplesplit bit in all three status dropdowns (0→2 or 1→3)
+        self._enable_triplesplit_in_dropdown(self.key_split_status)
+        self._enable_triplesplit_in_dropdown(self.key_split_transpose_status)
+        self._enable_triplesplit_in_dropdown(self.key_split_velocity_status)
+
+    def _enable_keysplit_in_dropdown(self, dropdown):
+        """Enable keysplit bit in a dropdown (0→1 or 2→3)"""
+        current = dropdown.currentData()
+        if current == 0:
+            # Set to KeySplit On
+            for i in range(dropdown.count()):
+                if dropdown.itemData(i) == 1:
+                    dropdown.setCurrentIndex(i)
+                    break
+        elif current == 2:
+            # Set to Both Splits On
+            for i in range(dropdown.count()):
+                if dropdown.itemData(i) == 3:
+                    dropdown.setCurrentIndex(i)
+                    break
+        # If already 1 or 3, do nothing
+
+    def _enable_triplesplit_in_dropdown(self, dropdown):
+        """Enable triplesplit bit in a dropdown (0→2 or 1→3)"""
+        current = dropdown.currentData()
+        if current == 0:
+            # Set to TripleSplit On
+            for i in range(dropdown.count()):
+                if dropdown.itemData(i) == 2:
+                    dropdown.setCurrentIndex(i)
+                    break
+        elif current == 1:
+            # Set to Both Splits On
+            for i in range(dropdown.count()):
+                if dropdown.itemData(i) == 3:
+                    dropdown.setCurrentIndex(i)
+                    break
+        # If already 2 or 3, do nothing
 
     def get_current_settings(self):
         """Get current UI settings as dictionary"""
@@ -2101,6 +2199,7 @@ class LayerActuationConfigurator(BasicEditor):
         self.actuation_split_mode.addItem("Disable Keysplit", 0)
         self.actuation_split_mode.addItem("KeySplit On", 1)
         self.actuation_split_mode.addItem("TripleSplit On", 2)
+        self.actuation_split_mode.addItem("Both Splits On", 3)
         self.actuation_split_mode.setCurrentIndex(0)
         self.actuation_split_mode.setEditable(True)
         self.actuation_split_mode.lineEdit().setReadOnly(True)
@@ -2862,15 +2961,18 @@ class LayerActuationConfigurator(BasicEditor):
         split_status = self.actuation_split_mode.currentData()
 
         # Show/hide offshoot windows based on split mode
-        if split_status == 1:  # KeySplit only
-            self.keysplit_actuation_offshoot.show()
-            self.triplesplit_actuation_offshoot.hide()
-        elif split_status == 2:  # TripleSplit
-            self.keysplit_actuation_offshoot.show()
-            self.triplesplit_actuation_offshoot.show()
-        else:  # No splits
+        if split_status == 0:  # No splits
             self.keysplit_actuation_offshoot.hide()
             self.triplesplit_actuation_offshoot.hide()
+        elif split_status == 1:  # KeySplit only
+            self.keysplit_actuation_offshoot.show()
+            self.triplesplit_actuation_offshoot.hide()
+        elif split_status == 2:  # TripleSplit only
+            self.keysplit_actuation_offshoot.hide()
+            self.triplesplit_actuation_offshoot.show()
+        elif split_status == 3:  # Both splits
+            self.keysplit_actuation_offshoot.show()
+            self.triplesplit_actuation_offshoot.show()
 
     def on_layer_advanced_toggled(self):
         """Show/hide advanced options in layer controls"""
