@@ -14,7 +14,9 @@ from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, CMD
     CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, \
     CMD_VIAL_CUSTOM_ANIM_GET_PARAM, CMD_VIAL_CUSTOM_ANIM_SET_ALL, CMD_VIAL_CUSTOM_ANIM_GET_ALL, \
     CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, \
-    CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS
+    CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS, CMD_VIAL_PER_KEY_GET_PALETTE, \
+    CMD_VIAL_PER_KEY_SET_PALETTE_COLOR, CMD_VIAL_PER_KEY_GET_PRESET_DATA, CMD_VIAL_PER_KEY_SET_LED_COLOR, \
+    CMD_VIAL_PER_KEY_SAVE, CMD_VIAL_PER_KEY_LOAD
 import time
 
 NUM_CUSTOM_SLOTS = 50  # Change this to your desi5red number
@@ -133,64 +135,79 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(54, "L/R Sweep Static"),
     VialRGBEffect(55, "L/R Sweep Rainbow"),
     VialRGBEffect(56, "L/R Sweep Random"),
-    VialRGBEffect(106, "Random 1 - Loop"),
-    VialRGBEffect(107, "Random 2 - Loop"),
-    VialRGBEffect(108, "Random 3 - Loop"),
-    VialRGBEffect(109, "Random 1 - BPM"),
-    VialRGBEffect(110, "Random 2 - BPM"),
-    VialRGBEffect(111, "Random 3 - BPM"),
-    VialRGBEffect(112, "Random 1 - Manual"),
-    VialRGBEffect(113, "Random 2 - Manual"),
-    VialRGBEffect(114, "Random 3 - Manual"),
-    VialRGBEffect(57, "Custom Slot 1"),
-    VialRGBEffect(58, "Custom Slot 2"),
-    VialRGBEffect(59, "Custom Slot 3"),
-    VialRGBEffect(60, "Custom Slot 4"),
-    VialRGBEffect(61, "Custom Slot 5"),
-    VialRGBEffect(62, "Custom Slot 6"),
-    VialRGBEffect(63, "Custom Slot 7"),
-    VialRGBEffect(64, "Custom Slot 8"),
-    VialRGBEffect(65, "Custom Slot 9"),
-    VialRGBEffect(66, "Custom Slot 10"),
-    VialRGBEffect(67, "Custom Slot 11"),
-    VialRGBEffect(68, "Custom Slot 12"),
-    VialRGBEffect(69, "Custom Slot 13"),
-    VialRGBEffect(70, "Custom Slot 14"),
-    VialRGBEffect(71, "Custom Slot 15"),
-    VialRGBEffect(72, "Custom Slot 16"),
-    VialRGBEffect(73, "Custom Slot 17"),
-    VialRGBEffect(74, "Custom Slot 18"),
-    VialRGBEffect(75, "Custom Slot 19"),
-    VialRGBEffect(76, "Custom Slot 20"),
-    VialRGBEffect(77, "Custom Slot 21"),
-    VialRGBEffect(78, "Custom Slot 22"),
-    VialRGBEffect(79, "Custom Slot 23"),
-    VialRGBEffect(80, "Custom Slot 24"),
-    VialRGBEffect(81, "Custom Slot 25"),
-    VialRGBEffect(82, "Custom Slot 26"),
-    VialRGBEffect(83, "Custom Slot 27"),
-    VialRGBEffect(84, "Custom Slot 28"),
-    VialRGBEffect(85, "Custom Slot 29"),
-    VialRGBEffect(86, "Custom Slot 30"),
-    VialRGBEffect(87, "Custom Slot 31"),
-    VialRGBEffect(88, "Custom Slot 32"),
-    VialRGBEffect(89, "Custom Slot 33"),
-    VialRGBEffect(90, "Custom Slot 34"),
-    VialRGBEffect(91, "Custom Slot 35"),
-    VialRGBEffect(92, "Custom Slot 36"),
-    VialRGBEffect(93, "Custom Slot 37"),
-    VialRGBEffect(94, "Custom Slot 38"),
-    VialRGBEffect(95, "Custom Slot 39"),
-    VialRGBEffect(96, "Custom Slot 40"),
-    VialRGBEffect(97, "Custom Slot 41"),
-    VialRGBEffect(98, "Custom Slot 42"),
-    VialRGBEffect(99, "Custom Slot 43"),
-    VialRGBEffect(100, "Custom Slot 44"),
-    VialRGBEffect(101, "Custom Slot 45"),
-    VialRGBEffect(102, "Custom Slot 46"),
-    VialRGBEffect(103, "Custom Slot 47"),
-    VialRGBEffect(104, "Custom Slot 48"),
-    VialRGBEffect(105, "Custom Slot 49"),
+    # Per Key RGB Presets (57-68)
+    VialRGBEffect(57, "Per Key 1"),
+    VialRGBEffect(58, "Per Key 2"),
+    VialRGBEffect(59, "Per Key 3"),
+    VialRGBEffect(60, "Per Key 4"),
+    VialRGBEffect(61, "Per Key 5"),
+    VialRGBEffect(62, "Per Key 6"),
+    VialRGBEffect(63, "Per Key 7"),
+    VialRGBEffect(64, "Per Key 8"),
+    VialRGBEffect(65, "Per Key 9"),
+    VialRGBEffect(66, "Per Key 10"),
+    VialRGBEffect(67, "Per Key 11"),
+    VialRGBEffect(68, "Per Key 12"),
+    # Random Effects (69-77)
+    VialRGBEffect(69, "Random 1 - Loop"),
+    VialRGBEffect(70, "Random 2 - Loop"),
+    VialRGBEffect(71, "Random 3 - Loop"),
+    VialRGBEffect(72, "Random 1 - BPM"),
+    VialRGBEffect(73, "Random 2 - BPM"),
+    VialRGBEffect(74, "Random 3 - BPM"),
+    VialRGBEffect(75, "Random 1 - Manual"),
+    VialRGBEffect(76, "Random 2 - Manual"),
+    VialRGBEffect(77, "Random 3 - Manual"),
+    # Custom Animation Slots (78-126)
+    VialRGBEffect(78, "Custom Slot 0"),
+    VialRGBEffect(79, "Custom Slot 1"),
+    VialRGBEffect(80, "Custom Slot 2"),
+    VialRGBEffect(81, "Custom Slot 3"),
+    VialRGBEffect(82, "Custom Slot 4"),
+    VialRGBEffect(83, "Custom Slot 5"),
+    VialRGBEffect(84, "Custom Slot 6"),
+    VialRGBEffect(85, "Custom Slot 7"),
+    VialRGBEffect(86, "Custom Slot 8"),
+    VialRGBEffect(87, "Custom Slot 9"),
+    VialRGBEffect(88, "Custom Slot 10"),
+    VialRGBEffect(89, "Custom Slot 11"),
+    VialRGBEffect(90, "Custom Slot 12"),
+    VialRGBEffect(91, "Custom Slot 13"),
+    VialRGBEffect(92, "Custom Slot 14"),
+    VialRGBEffect(93, "Custom Slot 15"),
+    VialRGBEffect(94, "Custom Slot 16"),
+    VialRGBEffect(95, "Custom Slot 17"),
+    VialRGBEffect(96, "Custom Slot 18"),
+    VialRGBEffect(97, "Custom Slot 19"),
+    VialRGBEffect(98, "Custom Slot 20"),
+    VialRGBEffect(99, "Custom Slot 21"),
+    VialRGBEffect(100, "Custom Slot 22"),
+    VialRGBEffect(101, "Custom Slot 23"),
+    VialRGBEffect(102, "Custom Slot 24"),
+    VialRGBEffect(103, "Custom Slot 25"),
+    VialRGBEffect(104, "Custom Slot 26"),
+    VialRGBEffect(105, "Custom Slot 27"),
+    VialRGBEffect(106, "Custom Slot 28"),
+    VialRGBEffect(107, "Custom Slot 29"),
+    VialRGBEffect(108, "Custom Slot 30"),
+    VialRGBEffect(109, "Custom Slot 31"),
+    VialRGBEffect(110, "Custom Slot 32"),
+    VialRGBEffect(111, "Custom Slot 33"),
+    VialRGBEffect(112, "Custom Slot 34"),
+    VialRGBEffect(113, "Custom Slot 35"),
+    VialRGBEffect(114, "Custom Slot 36"),
+    VialRGBEffect(115, "Custom Slot 37"),
+    VialRGBEffect(116, "Custom Slot 38"),
+    VialRGBEffect(117, "Custom Slot 39"),
+    VialRGBEffect(118, "Custom Slot 40"),
+    VialRGBEffect(119, "Custom Slot 41"),
+    VialRGBEffect(120, "Custom Slot 42"),
+    VialRGBEffect(121, "Custom Slot 43"),
+    VialRGBEffect(122, "Custom Slot 44"),
+    VialRGBEffect(123, "Custom Slot 45"),
+    VialRGBEffect(124, "Custom Slot 46"),
+    VialRGBEffect(125, "Custom Slot 47"),
+    VialRGBEffect(126, "Custom Slot 48"),
 ]
 
 
@@ -586,6 +603,20 @@ BACKGROUNDS_HIERARCHY = {
         {"name": "BPM All Autolight", "index": 56},
         {"name": "BPM All Autolight 2", "index": 57},
         {"name": "BPM All Autolight Disco", "index": 58},
+    ],
+    "Per Key Layers": [
+        {"name": "Per Key 1", "index": 57},
+        {"name": "Per Key 2", "index": 58},
+        {"name": "Per Key 3", "index": 59},
+        {"name": "Per Key 4", "index": 60},
+        {"name": "Per Key 5", "index": 61},
+        {"name": "Per Key 6", "index": 62},
+        {"name": "Per Key 7", "index": 63},
+        {"name": "Per Key 8", "index": 64},
+        {"name": "Per Key 9", "index": 65},
+        {"name": "Per Key 10", "index": 66},
+        {"name": "Per Key 11", "index": 67},
+        {"name": "Per Key 12", "index": 68},
     ]
 }
 
@@ -1489,6 +1520,365 @@ class LayerRGBHandler(BasicHandler):
         for w in self.widgets:
             w.show()
 
+
+class PerKeyRGBHandler(BasicHandler):
+    """Handler for per-key RGB configuration with 12 presets and 16-color palette"""
+
+    def __init__(self, container):
+        super().__init__(container)
+
+        row = container.rowCount()
+
+        # Title
+        self.lbl_title = QLabel(tr("RGBConfigurator", "Per-Key RGB Configuration"))
+        self.lbl_title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        container.addWidget(self.lbl_title, row, 0, 1, 2)
+        row += 1
+
+        # Preset selector
+        self.lbl_preset = QLabel(tr("RGBConfigurator", "Select Preset:"))
+        container.addWidget(self.lbl_preset, row, 0)
+        self.preset_selector = QComboBox()
+        for i in range(1, 13):
+            self.preset_selector.addItem(f"Per Key {i}")
+        self.preset_selector.currentIndexChanged.connect(self.on_preset_changed)
+        container.addWidget(self.preset_selector, row, 1)
+        row += 1
+
+        # Keyboard layout (5x14 grid)
+        self.lbl_keyboard = QLabel(tr("RGBConfigurator", "Keyboard Layout:"))
+        container.addWidget(self.lbl_keyboard, row, 0, 1, 2)
+        row += 1
+
+        self.keyboard_widget = QWidget()
+        self.keyboard_layout = QGridLayout(self.keyboard_widget)
+        self.keyboard_layout.setContentsMargins(0, 0, 0, 0)
+        self.keyboard_layout.setSpacing(2)
+        container.addWidget(self.keyboard_widget, row, 0, 1, 2)
+        row += 1
+
+        # Create 5x14 keyboard buttons
+        self.key_buttons = []
+        for r in range(5):
+            for c in range(14):
+                led_index = r * 14 + c
+                button = QPushButton(str(led_index))
+                button.setFixedSize(30, 30)
+                button.clicked.connect(lambda checked, idx=led_index: self.on_key_clicked(idx))
+                button.setStyleSheet("background-color: black; color: white;")
+                self.keyboard_layout.addWidget(button, r, c)
+                self.key_buttons.append(button)
+
+        # Color palette (4x4 grid for 16 colors)
+        self.lbl_palette = QLabel(tr("RGBConfigurator", "Color Palette:"))
+        container.addWidget(self.lbl_palette, row, 0, 1, 2)
+        row += 1
+
+        self.palette_widget = QWidget()
+        self.palette_layout = QGridLayout(self.palette_widget)
+        self.palette_layout.setContentsMargins(0, 0, 0, 0)
+        self.palette_layout.setSpacing(2)
+        container.addWidget(self.palette_widget, row, 0, 1, 2)
+        row += 1
+
+        # Create 4x4 palette buttons
+        self.palette_buttons = []
+        for i in range(16):
+            r = i // 4
+            c = i % 4
+            button = QPushButton(str(i))
+            button.setFixedSize(40, 40)
+            button.clicked.connect(lambda checked, idx=i: self.on_palette_clicked(idx))
+            button.setStyleSheet(f"background-color: black; color: white;")
+            self.palette_layout.addWidget(button, r, c)
+            self.palette_buttons.append(button)
+
+        # HSV sliders for editing selected palette color
+        self.lbl_color_editor = QLabel(tr("RGBConfigurator", "Edit Selected Color (HSV):"))
+        container.addWidget(self.lbl_color_editor, row, 0, 1, 2)
+        row += 1
+
+        # Hue slider
+        self.lbl_hue = QLabel(tr("RGBConfigurator", "Hue:"))
+        container.addWidget(self.lbl_hue, row, 0)
+        self.hue_slider = QSlider(Qt.Horizontal)
+        self.hue_slider.setRange(0, 255)
+        self.hue_slider.valueChanged.connect(self.on_hsv_changed)
+        container.addWidget(self.hue_slider, row, 1)
+        row += 1
+
+        # Saturation slider
+        self.lbl_sat = QLabel(tr("RGBConfigurator", "Saturation:"))
+        container.addWidget(self.lbl_sat, row, 0)
+        self.sat_slider = QSlider(Qt.Horizontal)
+        self.sat_slider.setRange(0, 255)
+        self.sat_slider.valueChanged.connect(self.on_hsv_changed)
+        container.addWidget(self.sat_slider, row, 1)
+        row += 1
+
+        # Value slider
+        self.lbl_val = QLabel(tr("RGBConfigurator", "Value:"))
+        container.addWidget(self.lbl_val, row, 0)
+        self.val_slider = QSlider(Qt.Horizontal)
+        self.val_slider.setRange(0, 255)
+        self.val_slider.valueChanged.connect(self.on_hsv_changed)
+        container.addWidget(self.val_slider, row, 1)
+        row += 1
+
+        # Action buttons
+        self.btn_change_all_layers = QPushButton(tr("RGBConfigurator", "Change ALL Layers to Per Key"))
+        self.btn_change_all_layers.clicked.connect(self.on_change_all_layers)
+        container.addWidget(self.btn_change_all_layers, row, 0, 1, 2)
+        row += 1
+
+        self.btn_save = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
+        self.btn_save.clicked.connect(self.on_save)
+        container.addWidget(self.btn_save, row, 0)
+
+        self.btn_load = QPushButton(tr("RGBConfigurator", "Load from EEPROM"))
+        self.btn_load.clicked.connect(self.on_load)
+        container.addWidget(self.btn_load, row, 1)
+        row += 1
+
+        # State variables
+        self.current_preset = 0
+        self.selected_key = 0
+        self.selected_palette_index = 0
+        self.palette = [[0, 0, 0] for _ in range(16)]  # 16 colors as [H, S, V]
+        self.preset_data = [[0 for _ in range(70)] for _ in range(12)]  # 12 presets x 70 LEDs
+
+        self.widgets = [
+            self.lbl_title, self.lbl_preset, self.preset_selector,
+            self.lbl_keyboard, self.keyboard_widget,
+            self.lbl_palette, self.palette_widget,
+            self.lbl_color_editor, self.lbl_hue, self.hue_slider,
+            self.lbl_sat, self.sat_slider, self.lbl_val, self.val_slider,
+            self.btn_change_all_layers, self.btn_save, self.btn_load
+        ]
+
+        # Load initial data
+        self.load_palette_from_firmware()
+        self.load_preset_from_firmware(0)
+
+    def on_preset_changed(self, index):
+        """Handle preset selection change"""
+        self.current_preset = index
+        self.load_preset_from_firmware(index)
+        self.update_keyboard_display()
+
+    def on_key_clicked(self, led_index):
+        """Handle keyboard key click"""
+        self.selected_key = led_index
+        # Update key selection visual (optional: could highlight selected key)
+
+    def on_palette_clicked(self, palette_index):
+        """Handle palette color click - assign to selected key"""
+        self.selected_palette_index = palette_index
+
+        # Assign this palette color to the selected key
+        if hasattr(self.device, 'keyboard'):
+            self.set_led_color(self.current_preset, self.selected_key, palette_index)
+            self.preset_data[self.current_preset][self.selected_key] = palette_index
+            self.update_keyboard_display()
+
+        # Update HSV sliders to show this color
+        h, s, v = self.palette[palette_index]
+        self.hue_slider.blockSignals(True)
+        self.sat_slider.blockSignals(True)
+        self.val_slider.blockSignals(True)
+        self.hue_slider.setValue(h)
+        self.sat_slider.setValue(s)
+        self.val_slider.setValue(v)
+        self.hue_slider.blockSignals(False)
+        self.sat_slider.blockSignals(False)
+        self.val_slider.blockSignals(False)
+
+    def on_hsv_changed(self):
+        """Handle HSV slider change"""
+        h = self.hue_slider.value()
+        s = self.sat_slider.value()
+        v = self.val_slider.value()
+
+        # Update palette
+        self.palette[self.selected_palette_index] = [h, s, v]
+
+        # Send to firmware
+        if hasattr(self.device, 'keyboard'):
+            self.set_palette_color(self.selected_palette_index, h, s, v)
+
+        # Update palette button visual
+        self.update_palette_display()
+        # Update keyboard display (keys using this color will update)
+        self.update_keyboard_display()
+
+    def on_change_all_layers(self):
+        """Set layer 0→Per Key 1, layer 1→Per Key 2, etc."""
+        if hasattr(self.device.keyboard, 'set_layer_rgb_enable'):
+            # Enable per-layer RGB
+            self.device.keyboard.set_layer_rgb_enable(True)
+
+            # Set each layer to its corresponding Per Key preset
+            for layer in range(12):
+                # Set RGB mode to Per Key preset (VIALRGB indices 57-68)
+                per_key_mode = 57 + layer
+                # This would require a method to set the RGB mode for a specific layer
+                # For now, this is a placeholder
+                print(f"Would set layer {layer} to Per Key {layer + 1} (mode {per_key_mode})")
+
+    def on_save(self):
+        """Save per-key data to EEPROM"""
+        if hasattr(self.device, 'keyboard'):
+            import struct
+            data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SAVE)
+            self.device.usb_send(self.device.dev, data, retries=20)
+            print("Saved per-key RGB to EEPROM")
+
+    def on_load(self):
+        """Load per-key data from EEPROM"""
+        if hasattr(self.device, 'keyboard'):
+            import struct
+            data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD)
+            self.device.usb_send(self.device.dev, data, retries=20)
+            # Reload data from firmware
+            self.load_palette_from_firmware()
+            self.load_preset_from_firmware(self.current_preset)
+            self.update_palette_display()
+            self.update_keyboard_display()
+            print("Loaded per-key RGB from EEPROM")
+
+    def load_palette_from_firmware(self):
+        """Load 16-color palette from firmware"""
+        if not hasattr(self.device, 'keyboard'):
+            return
+
+        try:
+            import struct
+            data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PALETTE)
+            response = self.device.usb_send(self.device.dev, data, retries=20)
+
+            if response and len(response) >= 49:  # 1 success byte + 48 bytes palette
+                for i in range(16):
+                    h = response[1 + i * 3]
+                    s = response[1 + i * 3 + 1]
+                    v = response[1 + i * 3 + 2]
+                    self.palette[i] = [h, s, v]
+                self.update_palette_display()
+        except Exception as e:
+            print(f"Error loading palette: {e}")
+
+    def load_preset_from_firmware(self, preset):
+        """Load preset LED data from firmware (paginated)"""
+        if not hasattr(self.device, 'keyboard'):
+            return
+
+        try:
+            import struct
+            # Load in chunks (31 bytes per request due to HID packet size)
+            offset = 0
+            while offset < 70:
+                count = min(31, 70 - offset)
+                data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PRESET_DATA,
+                                   preset, offset, count)
+                response = self.device.usb_send(self.device.dev, data, retries=20)
+
+                if response and len(response) >= count + 1:
+                    for i in range(count):
+                        self.preset_data[preset][offset + i] = response[1 + i]
+
+                offset += count
+
+            self.update_keyboard_display()
+        except Exception as e:
+            print(f"Error loading preset {preset}: {e}")
+
+    def set_palette_color(self, palette_index, h, s, v):
+        """Set a palette color in firmware"""
+        if not hasattr(self.device, 'keyboard'):
+            return
+
+        try:
+            import struct
+            data = struct.pack("BBBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SET_PALETTE_COLOR,
+                               palette_index, h, s, v)
+            self.device.usb_send(self.device.dev, data, retries=20)
+        except Exception as e:
+            print(f"Error setting palette color: {e}")
+
+    def set_led_color(self, preset, led_index, palette_index):
+        """Set an LED's palette index in firmware"""
+        if not hasattr(self.device, 'keyboard'):
+            return
+
+        try:
+            import struct
+            data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SET_LED_COLOR,
+                               preset, led_index, palette_index)
+            self.device.usb_send(self.device.dev, data, retries=20)
+        except Exception as e:
+            print(f"Error setting LED color: {e}")
+
+    def update_palette_display(self):
+        """Update palette button colors"""
+        for i in range(16):
+            h, s, v = self.palette[i]
+            # Convert HSV to RGB for display
+            rgb = self.hsv_to_rgb(h, s, v)
+            color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
+            text_color = "white" if v < 128 else "black"
+            self.palette_buttons[i].setStyleSheet(
+                f"background-color: {color}; color: {text_color};"
+            )
+
+    def update_keyboard_display(self):
+        """Update keyboard button colors based on current preset"""
+        for i in range(70):
+            palette_index = self.preset_data[self.current_preset][i]
+            h, s, v = self.palette[palette_index]
+            rgb = self.hsv_to_rgb(h, s, v)
+            color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
+            text_color = "white" if v < 128 else "black"
+            self.key_buttons[i].setStyleSheet(
+                f"background-color: {color}; color: {text_color};"
+            )
+
+    @staticmethod
+    def hsv_to_rgb(h, s, v):
+        """Convert HSV (0-255) to RGB (0-255)"""
+        h = h / 255.0 * 360.0
+        s = s / 255.0
+        v = v / 255.0
+
+        c = v * s
+        x = c * (1 - abs((h / 60.0) % 2 - 1))
+        m = v - c
+
+        if h < 60:
+            r, g, b = c, x, 0
+        elif h < 120:
+            r, g, b = x, c, 0
+        elif h < 180:
+            r, g, b = 0, c, x
+        elif h < 240:
+            r, g, b = 0, x, c
+        elif h < 300:
+            r, g, b = x, 0, c
+        else:
+            r, g, b = c, 0, x
+
+        return (int((r + m) * 255), int((g + m) * 255), int((b + m) * 255))
+
+    def update_from_keyboard(self):
+        """Update from keyboard"""
+        if not self.valid():
+            return
+
+        self.load_palette_from_firmware()
+        self.load_preset_from_firmware(self.current_preset)
+
+    def valid(self):
+        return isinstance(self.device, VialKeyboard)
+
+
 class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
@@ -2169,14 +2559,18 @@ class RGBConfigurator(BasicEditor):
         # Add the per-layer RGB handler
         self.handler_layer_rgb = LayerRGBHandler(self.container)
         self.handler_layer_rgb.update.connect(self.update_from_keyboard)
-        
+
+        # Add the per-key RGB handler
+        self.handler_per_key_rgb = PerKeyRGBHandler(self.container)
+        # No update connection needed for per-key handler
+
         # Add the custom lights handler
         self.handler_custom_lights = CustomLightsHandler(self.container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
-        
+
         self.handlers = [self.handler_backlight, self.handler_rgblight,
                         self.handler_vialrgb, self.handler_rescan,
-                        self.handler_layer_rgb, self.handler_custom_lights]
+                        self.handler_layer_rgb, self.handler_per_key_rgb, self.handler_custom_lights]
 
         # Add buttons outside of scroll area
         buttons = QHBoxLayout()

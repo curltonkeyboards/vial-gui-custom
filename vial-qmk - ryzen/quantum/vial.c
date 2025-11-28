@@ -17,6 +17,7 @@
 #include "vial.h"
 #include "orthomidi5x14.h"
 #include "process_midi.h"
+#include "../keyboards/orthomidi5x14/per_key_rgb.h"
 
 #include <string.h>
 
@@ -41,6 +42,14 @@
 #define vial_custom_anim_get_status     0xC7
 #define vial_custom_rescan_led     0xC8
 #define vial_custom_anim_get_ram_state    0xC9  // New command
+
+// Per-Key RGB Commands (0xD3-0xD8)
+#define vial_per_key_get_palette        0xD3
+#define vial_per_key_set_palette_color  0xD4
+#define vial_per_key_get_preset_data    0xD5
+#define vial_per_key_set_led_color      0xD6
+#define vial_per_key_save               0xD7
+#define vial_per_key_load               0xD8
 
 #define HID_CMD_SET_LOOP_CONFIG 0xB0
 #define HID_CMD_SET_MAIN_LOOP_CCS 0xB1  
@@ -629,6 +638,127 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			break;
 		}
 #endif
+
+		// Per-Key RGB Commands (0xD3-0xD8)
+		case vial_per_key_get_palette: {  // 0xD3
+			// Initialize per-key RGB if not already done
+			if (!per_key_rgb_initialized) {
+				per_key_rgb_init();
+			}
+
+			// Return entire 48-byte palette (16 colors × 3 bytes HSV)
+			memset(msg, 0, length);
+			msg[0] = 0x01; // Success
+			per_key_get_palette(&msg[1]); // Writes 48 bytes starting at msg[1]
+			break;
+		}
+
+		case vial_per_key_set_palette_color: {  // 0xD4
+			// Format: [cmd, channel, palette_index, h, s, v]
+			if (length >= 6) {
+				// Initialize per-key RGB if not already done
+				if (!per_key_rgb_initialized) {
+					per_key_rgb_init();
+				}
+
+				uint8_t palette_index = msg[2];
+				uint8_t h = msg[3];
+				uint8_t s = msg[4];
+				uint8_t v = msg[5];
+
+				if (palette_index < PER_KEY_PALETTE_SIZE) {
+					per_key_set_palette_color(palette_index, h, s, v);
+					msg[0] = 0x01; // Success
+				} else {
+					msg[0] = 0x00; // Error - invalid palette index
+				}
+			} else {
+				msg[0] = 0x00; // Error - insufficient data
+			}
+			break;
+		}
+
+		case vial_per_key_get_preset_data: {  // 0xD5
+			// Format: [cmd, channel, preset, offset, count]
+			// Returns: [success, data...]
+			if (length >= 5) {
+				// Initialize per-key RGB if not already done
+				if (!per_key_rgb_initialized) {
+					per_key_rgb_init();
+				}
+
+				uint8_t preset = msg[2];
+				uint8_t offset = msg[3];
+				uint8_t count = msg[4];
+
+				if (preset < PER_KEY_NUM_PRESETS && offset < PER_KEY_NUM_LEDS) {
+					// Limit count to fit in message (32 bytes - 1 for success byte = 31 max)
+					if (count > 31) count = 31;
+					if (offset + count > PER_KEY_NUM_LEDS) {
+						count = PER_KEY_NUM_LEDS - offset;
+					}
+
+					memset(msg, 0, length);
+					msg[0] = 0x01; // Success
+					per_key_get_preset_data(preset, offset, count, &msg[1]);
+				} else {
+					msg[0] = 0x00; // Error - invalid preset or offset
+				}
+			} else {
+				msg[0] = 0x00; // Error - insufficient data
+			}
+			break;
+		}
+
+		case vial_per_key_set_led_color: {  // 0xD6
+			// Format: [cmd, channel, preset, led_index, palette_index]
+			if (length >= 5) {
+				// Initialize per-key RGB if not already done
+				if (!per_key_rgb_initialized) {
+					per_key_rgb_init();
+				}
+
+				uint8_t preset = msg[2];
+				uint8_t led_index = msg[3];
+				uint8_t palette_index = msg[4];
+
+				if (preset < PER_KEY_NUM_PRESETS && led_index < PER_KEY_NUM_LEDS &&
+					palette_index < PER_KEY_PALETTE_SIZE) {
+					per_key_set_led_color(preset, led_index, palette_index);
+					msg[0] = 0x01; // Success
+				} else {
+					msg[0] = 0x00; // Error - invalid indices
+				}
+			} else {
+				msg[0] = 0x00; // Error - insufficient data
+			}
+			break;
+		}
+
+		case vial_per_key_save: {  // 0xD7
+			// Save all per-key data to EEPROM
+			// Initialize per-key RGB if not already done
+			if (!per_key_rgb_initialized) {
+				per_key_rgb_init();
+			}
+
+			per_key_rgb_save_to_eeprom();
+			msg[0] = 0x01; // Success
+			break;
+		}
+
+		case vial_per_key_load: {  // 0xD8
+			// Load all per-key data from EEPROM
+			// Initialize per-key RGB if not already done (this will auto-load if magic is valid)
+			if (!per_key_rgb_initialized) {
+				per_key_rgb_init();
+			} else {
+				// Already initialized, force reload from EEPROM
+				per_key_rgb_load_from_eeprom();
+			}
+			msg[0] = 0x01; // Success
+			break;
+		}
 
         // END LAYER RGB CASES
 
