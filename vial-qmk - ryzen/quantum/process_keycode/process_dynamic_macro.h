@@ -286,7 +286,17 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 //              - Analog calibration (min/max mm, deadzone)
 //              - 40 bytes wiggle room for expansion
 //
-// 65800-65535: Gap (available for future use) - 736 bytes
+// 65800-65999: Gap (200 bytes)
+//
+// 66000-66889: Per-Key RGB Settings (890 bytes allocated, 888 used)
+//              - 16-color global HSV palette: 48 bytes (16 colors × 3 bytes HSV)
+//              - 12 per-key presets: 840 bytes (12 presets × 70 LEDs)
+//              - Magic number (0xC0DE): 2 bytes at 66888
+//              - Total: 888 bytes + 2 byte magic = 890 bytes
+//              - Each preset maps 70 LEDs to palette indices (0-15)
+//              - Default: All keys set to palette index 0 (black)
+//
+// 66890-end:   Available for future use
 //
 // =============================================================================
 // EEPROM ADDRESSES SUMMARY:
@@ -296,6 +306,7 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 // Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 65400
 // Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 65600
 // Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 65700
+// Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 66000
 // =============================================================================
 
 // Function declarations for layer settings

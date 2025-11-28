@@ -73,40 +73,14 @@ void per_key_rgb_reset_to_defaults(void) {
 
 // Load from EEPROM
 void per_key_rgb_load_from_eeprom(void) {
-    uint16_t addr = PER_KEY_RGB_EEPROM_ADDR;
-
-    // Load palette
-    for (uint8_t i = 0; i < PER_KEY_PALETTE_SIZE; i++) {
-        per_key_rgb_config.palette[i].h = eeprom_read_byte((uint8_t*)(addr++));
-        per_key_rgb_config.palette[i].s = eeprom_read_byte((uint8_t*)(addr++));
-        per_key_rgb_config.palette[i].v = eeprom_read_byte((uint8_t*)(addr++));
-    }
-
-    // Load all presets
-    for (uint8_t preset = 0; preset < PER_KEY_NUM_PRESETS; preset++) {
-        for (uint8_t led = 0; led < PER_KEY_NUM_LEDS; led++) {
-            per_key_rgb_config.presets[preset][led] = eeprom_read_byte((uint8_t*)(addr++));
-        }
-    }
+    // Load entire structure in one block read (888 bytes)
+    eeprom_read_block(&per_key_rgb_config, (void*)PER_KEY_RGB_EEPROM_ADDR, sizeof(per_key_rgb_config));
 }
 
 // Save to EEPROM
 void per_key_rgb_save_to_eeprom(void) {
-    uint16_t addr = PER_KEY_RGB_EEPROM_ADDR;
-
-    // Save palette
-    for (uint8_t i = 0; i < PER_KEY_PALETTE_SIZE; i++) {
-        eeprom_update_byte((uint8_t*)(addr++), per_key_rgb_config.palette[i].h);
-        eeprom_update_byte((uint8_t*)(addr++), per_key_rgb_config.palette[i].s);
-        eeprom_update_byte((uint8_t*)(addr++), per_key_rgb_config.palette[i].v);
-    }
-
-    // Save all presets
-    for (uint8_t preset = 0; preset < PER_KEY_NUM_PRESETS; preset++) {
-        for (uint8_t led = 0; led < PER_KEY_NUM_LEDS; led++) {
-            eeprom_update_byte((uint8_t*)(addr++), per_key_rgb_config.presets[preset][led]);
-        }
-    }
+    // Save entire structure in one block write (888 bytes)
+    eeprom_update_block(&per_key_rgb_config, (void*)PER_KEY_RGB_EEPROM_ADDR, sizeof(per_key_rgb_config));
 
     // Write magic number
     eeprom_update_word((uint16_t*)PER_KEY_MAGIC_ADDR, PER_KEY_MAGIC_NUMBER);
@@ -169,7 +143,7 @@ void per_key_get_preset_data(uint8_t preset, uint8_t offset, uint8_t count, uint
 // =============================================================================
 
 // Helper function to render a per-key preset
-static bool per_key_effect_runner(uint8_t preset) {
+static bool per_key_effect_runner(effect_params_t* params, uint8_t preset) {
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
 
     for (uint8_t i = led_min; i < led_max; i++) {
@@ -183,60 +157,60 @@ static bool per_key_effect_runner(uint8_t preset) {
 
 // Preset 1
 bool PER_KEY_1(effect_params_t* params) {
-    return per_key_effect_runner(0);
+    return per_key_effect_runner(params, 0);
 }
 
 // Preset 2
 bool PER_KEY_2(effect_params_t* params) {
-    return per_key_effect_runner(1);
+    return per_key_effect_runner(params, 1);
 }
 
 // Preset 3
 bool PER_KEY_3(effect_params_t* params) {
-    return per_key_effect_runner(2);
+    return per_key_effect_runner(params, 2);
 }
 
 // Preset 4
 bool PER_KEY_4(effect_params_t* params) {
-    return per_key_effect_runner(3);
+    return per_key_effect_runner(params, 3);
 }
 
 // Preset 5
 bool PER_KEY_5(effect_params_t* params) {
-    return per_key_effect_runner(4);
+    return per_key_effect_runner(params, 4);
 }
 
 // Preset 6
 bool PER_KEY_6(effect_params_t* params) {
-    return per_key_effect_runner(5);
+    return per_key_effect_runner(params, 5);
 }
 
 // Preset 7
 bool PER_KEY_7(effect_params_t* params) {
-    return per_key_effect_runner(6);
+    return per_key_effect_runner(params, 6);
 }
 
 // Preset 8
 bool PER_KEY_8(effect_params_t* params) {
-    return per_key_effect_runner(7);
+    return per_key_effect_runner(params, 7);
 }
 
 // Preset 9
 bool PER_KEY_9(effect_params_t* params) {
-    return per_key_effect_runner(8);
+    return per_key_effect_runner(params, 8);
 }
 
 // Preset 10
 bool PER_KEY_10(effect_params_t* params) {
-    return per_key_effect_runner(9);
+    return per_key_effect_runner(params, 9);
 }
 
 // Preset 11
 bool PER_KEY_11(effect_params_t* params) {
-    return per_key_effect_runner(10);
+    return per_key_effect_runner(params, 10);
 }
 
 // Preset 12
 bool PER_KEY_12(effect_params_t* params) {
-    return per_key_effect_runner(11);
+    return per_key_effect_runner(params, 11);
 }

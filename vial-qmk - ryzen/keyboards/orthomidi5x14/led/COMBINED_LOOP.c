@@ -1,5 +1,6 @@
 // Combined Zone Effects - Efficient Direct Calculation Architecture - FIXED
 #include "process_midi.h"
+#include "../per_key_rgb.h"
 
 // Define MAX_SUSTAIN_NOTES if not already defined
 #ifndef MAX_SUSTAIN_NOTES
