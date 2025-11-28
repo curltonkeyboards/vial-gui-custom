@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGri
     QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout
 
 from widgets.combo_box import ArrowComboBox
+from widgets.keyboard_widget import KeyboardWidget2
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
@@ -1521,8 +1522,35 @@ class LayerRGBHandler(BasicHandler):
             w.show()
 
 
+class SimpleLayoutEditor:
+    """Simple layout editor stub for KeyboardWidget2"""
+    def get_choice(self, idx):
+        return 0
+
+
 class PerKeyRGBHandler(BasicHandler):
     """Handler for per-key RGB configuration with 12 presets and 16-color palette"""
+
+    # Default palette colors: Red, Green, Blue, Yellow, Cyan, Magenta, White, Orange,
+    # Purple, Pink, Lime, Teal, Navy, Maroon, Olive, Silver
+    DEFAULT_PALETTE = [
+        [0, 255, 255],      # Red
+        [85, 255, 255],     # Green
+        [170, 255, 255],    # Blue
+        [43, 255, 255],     # Yellow
+        [128, 255, 255],    # Cyan
+        [213, 255, 255],    # Magenta
+        [0, 0, 255],        # White
+        [21, 255, 255],     # Orange
+        [192, 255, 255],    # Purple
+        [234, 128, 255],    # Pink
+        [64, 255, 255],     # Lime
+        [149, 255, 200],    # Teal
+        [170, 255, 128],    # Navy
+        [0, 200, 128],      # Maroon
+        [43, 200, 128],     # Olive
+        [0, 0, 192],        # Silver
+    ]
 
     def __init__(self, container):
         super().__init__(container)
@@ -1545,84 +1573,56 @@ class PerKeyRGBHandler(BasicHandler):
         container.addWidget(self.preset_selector, row, 1)
         row += 1
 
-        # Keyboard layout (5x14 grid)
-        self.lbl_keyboard = QLabel(tr("RGBConfigurator", "Keyboard Layout:"))
-        container.addWidget(self.lbl_keyboard, row, 0, 1, 2)
-        row += 1
+        # Main horizontal layout: Palette on left, Keyboard on right
+        main_widget = QWidget()
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.keyboard_widget = QWidget()
-        self.keyboard_layout = QGridLayout(self.keyboard_widget)
-        self.keyboard_layout.setContentsMargins(0, 0, 0, 0)
-        self.keyboard_layout.setSpacing(2)
-        container.addWidget(self.keyboard_widget, row, 0, 1, 2)
-        row += 1
+        # Left side: Color palette (2x8 grid for 16 colors)
+        palette_container = QWidget()
+        palette_container_layout = QVBoxLayout(palette_container)
+        palette_container_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Create 5x14 keyboard buttons
-        self.key_buttons = []
-        for r in range(5):
-            for c in range(14):
-                led_index = r * 14 + c
-                button = QPushButton(str(led_index))
-                button.setFixedSize(30, 30)
-                button.clicked.connect(lambda checked, idx=led_index: self.on_key_clicked(idx))
-                button.setStyleSheet("background-color: black; color: white;")
-                self.keyboard_layout.addWidget(button, r, c)
-                self.key_buttons.append(button)
-
-        # Color palette (4x4 grid for 16 colors)
         self.lbl_palette = QLabel(tr("RGBConfigurator", "Color Palette:"))
-        container.addWidget(self.lbl_palette, row, 0, 1, 2)
-        row += 1
+        palette_container_layout.addWidget(self.lbl_palette)
 
         self.palette_widget = QWidget()
         self.palette_layout = QGridLayout(self.palette_widget)
         self.palette_layout.setContentsMargins(0, 0, 0, 0)
-        self.palette_layout.setSpacing(2)
-        container.addWidget(self.palette_widget, row, 0, 1, 2)
-        row += 1
+        self.palette_layout.setSpacing(4)
+        palette_container_layout.addWidget(self.palette_widget)
+        palette_container_layout.addStretch()
 
-        # Create 4x4 palette buttons
+        # Create 2x8 palette buttons (no numbers)
         self.palette_buttons = []
         for i in range(16):
-            r = i // 4
-            c = i % 4
-            button = QPushButton(str(i))
-            button.setFixedSize(40, 40)
+            r = i // 2  # 8 rows
+            c = i % 2   # 2 columns
+            button = QPushButton("")  # No text/numbers
+            button.setFixedSize(50, 50)
             button.clicked.connect(lambda checked, idx=i: self.on_palette_clicked(idx))
-            button.setStyleSheet(f"background-color: black; color: white;")
+            button.setStyleSheet(f"background-color: black;")
             self.palette_layout.addWidget(button, r, c)
             self.palette_buttons.append(button)
 
-        # HSV sliders for editing selected palette color
-        self.lbl_color_editor = QLabel(tr("RGBConfigurator", "Edit Selected Color (HSV):"))
-        container.addWidget(self.lbl_color_editor, row, 0, 1, 2)
-        row += 1
+        main_layout.addWidget(palette_container)
 
-        # Hue slider
-        self.lbl_hue = QLabel(tr("RGBConfigurator", "Hue:"))
-        container.addWidget(self.lbl_hue, row, 0)
-        self.hue_slider = QSlider(Qt.Horizontal)
-        self.hue_slider.setRange(0, 255)
-        self.hue_slider.valueChanged.connect(self.on_hsv_changed)
-        container.addWidget(self.hue_slider, row, 1)
-        row += 1
+        # Right side: Keyboard widget
+        keyboard_container = QWidget()
+        keyboard_layout = QVBoxLayout(keyboard_container)
+        keyboard_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Saturation slider
-        self.lbl_sat = QLabel(tr("RGBConfigurator", "Saturation:"))
-        container.addWidget(self.lbl_sat, row, 0)
-        self.sat_slider = QSlider(Qt.Horizontal)
-        self.sat_slider.setRange(0, 255)
-        self.sat_slider.valueChanged.connect(self.on_hsv_changed)
-        container.addWidget(self.sat_slider, row, 1)
-        row += 1
+        # Create simple layout editor stub
+        self.layout_editor = SimpleLayoutEditor()
 
-        # Value slider
-        self.lbl_val = QLabel(tr("RGBConfigurator", "Value:"))
-        container.addWidget(self.lbl_val, row, 0)
-        self.val_slider = QSlider(Qt.Horizontal)
-        self.val_slider.setRange(0, 255)
-        self.val_slider.valueChanged.connect(self.on_hsv_changed)
-        container.addWidget(self.val_slider, row, 1)
+        # Create KeyboardWidget2
+        self.keyboard_widget = KeyboardWidget2(self.layout_editor)
+        self.keyboard_widget.clicked.connect(self.on_key_clicked)
+        keyboard_layout.addWidget(self.keyboard_widget)
+
+        main_layout.addWidget(keyboard_container)
+
+        container.addWidget(main_widget, row, 0, 1, 2)
         row += 1
 
         # Action buttons
@@ -1642,23 +1642,19 @@ class PerKeyRGBHandler(BasicHandler):
 
         # State variables
         self.current_preset = 0
-        self.selected_key = 0
         self.selected_palette_index = 0
-        self.palette = [[0, 0, 0] for _ in range(16)]  # 16 colors as [H, S, V]
+        self.palette = [list(color) for color in self.DEFAULT_PALETTE]  # Initialize with default colors
         self.preset_data = [[0 for _ in range(70)] for _ in range(12)]  # 12 presets x 70 LEDs
+        self.device = None
+        self.key_widgets = []  # Will store references to keyboard key widgets
 
         self.widgets = [
             self.lbl_title, self.lbl_preset, self.preset_selector,
-            self.lbl_keyboard, self.keyboard_widget,
-            self.lbl_palette, self.palette_widget,
-            self.lbl_color_editor, self.lbl_hue, self.hue_slider,
-            self.lbl_sat, self.sat_slider, self.lbl_val, self.val_slider,
-            self.btn_change_all_layers, self.btn_save, self.btn_load
+            main_widget, self.btn_change_all_layers, self.btn_save, self.btn_load
         ]
 
-        # Load initial data
-        self.load_palette_from_firmware()
-        self.load_preset_from_firmware(0)
+        # Initialize palette display with default colors
+        self.update_palette_display()
 
     def on_preset_changed(self, index):
         """Handle preset selection change"""
@@ -1666,50 +1662,62 @@ class PerKeyRGBHandler(BasicHandler):
         self.load_preset_from_firmware(index)
         self.update_keyboard_display()
 
-    def on_key_clicked(self, led_index):
-        """Handle keyboard key click"""
-        self.selected_key = led_index
-        # Update key selection visual (optional: could highlight selected key)
+    def on_key_clicked(self):
+        """Handle keyboard key click - assign current palette color to clicked key"""
+        if not self.keyboard_widget.active_key:
+            return
 
-    def on_palette_clicked(self, palette_index):
-        """Handle palette color click - assign to selected key"""
-        self.selected_palette_index = palette_index
+        # Find the LED index for the clicked key
+        key_index = self.get_key_index(self.keyboard_widget.active_key)
+        if key_index is None or key_index >= 70:
+            return
 
-        # Assign this palette color to the selected key
+        # Assign the selected palette color to this key
         if hasattr(self.device, 'keyboard'):
-            self.set_led_color(self.current_preset, self.selected_key, palette_index)
-            self.preset_data[self.current_preset][self.selected_key] = palette_index
+            self.set_led_color(self.current_preset, key_index, self.selected_palette_index)
+            self.preset_data[self.current_preset][key_index] = self.selected_palette_index
             self.update_keyboard_display()
 
-        # Update HSV sliders to show this color
+    def on_palette_clicked(self, palette_index):
+        """Handle palette color click - opens QColorDialog to edit color"""
+        self.selected_palette_index = palette_index
+
+        # Get current color
         h, s, v = self.palette[palette_index]
-        self.hue_slider.blockSignals(True)
-        self.sat_slider.blockSignals(True)
-        self.val_slider.blockSignals(True)
-        self.hue_slider.setValue(h)
-        self.sat_slider.setValue(s)
-        self.val_slider.setValue(v)
-        self.hue_slider.blockSignals(False)
-        self.sat_slider.blockSignals(False)
-        self.val_slider.blockSignals(False)
+        rgb = self.hsv_to_rgb(h, s, v)
+        current_color = QColor(rgb[0], rgb[1], rgb[2])
 
-    def on_hsv_changed(self):
-        """Handle HSV slider change"""
-        h = self.hue_slider.value()
-        s = self.sat_slider.value()
-        v = self.val_slider.value()
+        # Open color dialog
+        color = QColorDialog.getColor(current_color, None, tr("RGBConfigurator", "Select Color"))
 
-        # Update palette
-        self.palette[self.selected_palette_index] = [h, s, v]
+        if color.isValid():
+            # Convert RGB to HSV (0-255 range)
+            h, s, v = self.rgb_to_hsv(color.red(), color.green(), color.blue())
 
-        # Send to firmware
-        if hasattr(self.device, 'keyboard'):
-            self.set_palette_color(self.selected_palette_index, h, s, v)
+            # Update palette
+            self.palette[palette_index] = [h, s, v]
 
-        # Update palette button visual
-        self.update_palette_display()
-        # Update keyboard display (keys using this color will update)
-        self.update_keyboard_display()
+            # Send to firmware
+            if hasattr(self.device, 'keyboard'):
+                self.set_palette_color(palette_index, h, s, v)
+
+            # Update displays
+            self.update_palette_display()
+            self.update_keyboard_display()
+
+    def get_key_index(self, key_widget):
+        """Get the LED index (0-69) for a given key widget based on matrix position"""
+        if not hasattr(key_widget, 'desc') or not hasattr(key_widget.desc, 'row') or not hasattr(key_widget.desc, 'col'):
+            return None
+
+        row = key_widget.desc.row
+        col = key_widget.desc.col
+
+        # Map matrix position to LED index (row-major order: row * 14 + col)
+        if row is not None and col is not None and row < 5 and col < 14:
+            return row * 14 + col
+
+        return None
 
     def on_change_all_layers(self):
         """Set layer 0→Per Key 1, layer 1→Per Key 2, etc."""
@@ -1817,6 +1825,21 @@ class PerKeyRGBHandler(BasicHandler):
         except Exception as e:
             print(f"Error setting LED color: {e}")
 
+    def set_device(self, device):
+        """Set device and initialize keyboard widget"""
+        super().set_device(device)
+
+        # Set keyboard keys if device is available
+        if hasattr(device, 'keyboard') and hasattr(device.keyboard, 'keys'):
+            keys = device.keyboard.keys
+            encoders = device.keyboard.encoders if hasattr(device.keyboard, 'encoders') else []
+            self.keyboard_widget.set_keys(keys, encoders)
+            self.keyboard_widget.update_layout()
+
+            # Load data from firmware
+            self.load_palette_from_firmware()
+            self.load_preset_from_firmware(self.current_preset)
+
     def update_palette_display(self):
         """Update palette button colors"""
         for i in range(16):
@@ -1824,22 +1847,26 @@ class PerKeyRGBHandler(BasicHandler):
             # Convert HSV to RGB for display
             rgb = self.hsv_to_rgb(h, s, v)
             color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
-            text_color = "white" if v < 128 else "black"
             self.palette_buttons[i].setStyleSheet(
-                f"background-color: {color}; color: {text_color};"
+                f"background-color: {color};"
             )
 
     def update_keyboard_display(self):
-        """Update keyboard button colors based on current preset"""
-        for i in range(70):
-            palette_index = self.preset_data[self.current_preset][i]
-            h, s, v = self.palette[palette_index]
-            rgb = self.hsv_to_rgb(h, s, v)
-            color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
-            text_color = "white" if v < 128 else "black"
-            self.key_buttons[i].setStyleSheet(
-                f"background-color: {color}; color: {text_color};"
-            )
+        """Update keyboard key colors based on current preset"""
+        if not self.keyboard_widget.widgets:
+            return
+
+        for widget in self.keyboard_widget.widgets:
+            key_index = self.get_key_index(widget)
+            if key_index is not None and key_index < 70:
+                palette_index = self.preset_data[self.current_preset][key_index]
+                h, s, v = self.palette[palette_index]
+                rgb = self.hsv_to_rgb(h, s, v)
+                # Set the key color
+                widget.setColor(QColor(rgb[0], rgb[1], rgb[2]))
+
+        # Trigger repaint
+        self.keyboard_widget.update()
 
     @staticmethod
     def hsv_to_rgb(h, s, v):
@@ -1866,6 +1893,33 @@ class PerKeyRGBHandler(BasicHandler):
             r, g, b = c, 0, x
 
         return (int((r + m) * 255), int((g + m) * 255), int((b + m) * 255))
+
+    @staticmethod
+    def rgb_to_hsv(r, g, b):
+        """Convert RGB (0-255) to HSV (0-255)"""
+        r, g, b = r / 255.0, g / 255.0, b / 255.0
+        max_val = max(r, g, b)
+        min_val = min(r, g, b)
+        diff = max_val - min_val
+
+        # Hue calculation
+        if diff == 0:
+            h = 0
+        elif max_val == r:
+            h = 60 * (((g - b) / diff) % 6)
+        elif max_val == g:
+            h = 60 * (((b - r) / diff) + 2)
+        else:
+            h = 60 * (((r - g) / diff) + 4)
+
+        # Saturation calculation
+        s = 0 if max_val == 0 else diff / max_val
+
+        # Value calculation
+        v = max_val
+
+        # Convert to 0-255 range
+        return (int(h / 360.0 * 255), int(s * 255), int(v * 255))
 
     def update_from_keyboard(self):
         """Update from keyboard"""
@@ -2521,14 +2575,73 @@ class RGBConfigurator(BasicEditor):
     def __init__(self):
         super().__init__()
 
-        # Create a vertical layout for content
+        # Create tab widget (similar to QMK Settings)
+        self.tabs_widget = QTabWidget()
+        self.addWidget(self.tabs_widget)
+
+        # Create containers for each tab
+        # Tab 1: Basic - for basic RGB controls
+        self.basic_container = QGridLayout()
+        self.basic_tab = self._create_tab_with_scroll(self.basic_container)
+        self.tabs_widget.addTab(self.basic_tab, tr("RGBConfigurator", "Basic"))
+
+        # Tab 2: Lighting Configurator - for per-key RGB
+        self.lighting_container = QGridLayout()
+        self.lighting_tab = self._create_tab_with_scroll(self.lighting_container)
+        self.tabs_widget.addTab(self.lighting_tab, tr("RGBConfigurator", "Lighting Configurator"))
+
+        # Tab 3: Custom Lights
+        self.custom_container = QGridLayout()
+        self.custom_tab = self._create_tab_with_scroll(self.custom_container)
+        self.tabs_widget.addTab(self.custom_tab, tr("RGBConfigurator", "Custom Lights"))
+
+        # Initialize handlers for Basic tab
+        self.handler_backlight = QmkBacklightHandler(self.basic_container)
+        self.handler_backlight.update.connect(self.update_from_keyboard)
+        self.handler_rgblight = QmkRgblightHandler(self.basic_container)
+        self.handler_rgblight.update.connect(self.update_from_keyboard)
+        self.handler_vialrgb = VialRGBHandler(self.basic_container)
+        self.handler_vialrgb.update.connect(self.update_from_keyboard)
+
+        # Add the rescan button handler - NO UPDATE CONNECTION
+        self.handler_rescan = RescanButtonHandler(self.basic_container)
+        # REMOVED: self.handler_rescan.update.connect(self.update_from_keyboard)
+
+        # Add the per-layer RGB handler
+        self.handler_layer_rgb = LayerRGBHandler(self.basic_container)
+        self.handler_layer_rgb.update.connect(self.update_from_keyboard)
+
+        # Initialize handler for Lighting Configurator tab (per-key RGB)
+        self.handler_per_key_rgb = PerKeyRGBHandler(self.lighting_container)
+        # No update connection needed for per-key handler
+
+        # Initialize handler for Custom Lights tab
+        self.handler_custom_lights = CustomLightsHandler(self.custom_container)
+        self.handler_custom_lights.update.connect(self.update_from_keyboard)
+
+        self.handlers = [self.handler_backlight, self.handler_rgblight,
+                        self.handler_vialrgb, self.handler_rescan,
+                        self.handler_layer_rgb, self.handler_per_key_rgb, self.handler_custom_lights]
+
+        # Add buttons outside of tabs
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        save_btn = QPushButton(tr("RGBConfigurator", "Save"))
+        save_btn.setMinimumHeight(30)
+        save_btn.setMaximumHeight(30)
+        save_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+        buttons.addWidget(save_btn)
+        save_btn.clicked.connect(self.on_save)
+        self.addLayout(buttons)
+
+    def _create_tab_with_scroll(self, container):
+        """Helper method to create a tab with scroll area"""
         content_layout = QVBoxLayout()
         content_layout.addStretch()
 
         w = QWidget()
         w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        self.container = QGridLayout()
-        w.setLayout(self.container)
+        w.setLayout(container)
         content_layout.addWidget(w, alignment=QtCore.Qt.AlignHCenter)
         content_layout.addStretch()
 
@@ -2543,45 +2656,7 @@ class RGBConfigurator(BasicEditor):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-        self.addWidget(scroll_area)
-
-        self.handler_backlight = QmkBacklightHandler(self.container)
-        self.handler_backlight.update.connect(self.update_from_keyboard)
-        self.handler_rgblight = QmkRgblightHandler(self.container)
-        self.handler_rgblight.update.connect(self.update_from_keyboard)
-        self.handler_vialrgb = VialRGBHandler(self.container)
-        self.handler_vialrgb.update.connect(self.update_from_keyboard)
-        
-        # Add the rescan button handler - NO UPDATE CONNECTION
-        self.handler_rescan = RescanButtonHandler(self.container)
-        # REMOVED: self.handler_rescan.update.connect(self.update_from_keyboard)
-        
-        # Add the per-layer RGB handler
-        self.handler_layer_rgb = LayerRGBHandler(self.container)
-        self.handler_layer_rgb.update.connect(self.update_from_keyboard)
-
-        # Add the per-key RGB handler
-        self.handler_per_key_rgb = PerKeyRGBHandler(self.container)
-        # No update connection needed for per-key handler
-
-        # Add the custom lights handler
-        self.handler_custom_lights = CustomLightsHandler(self.container)
-        self.handler_custom_lights.update.connect(self.update_from_keyboard)
-
-        self.handlers = [self.handler_backlight, self.handler_rgblight,
-                        self.handler_vialrgb, self.handler_rescan,
-                        self.handler_layer_rgb, self.handler_per_key_rgb, self.handler_custom_lights]
-
-        # Add buttons outside of scroll area
-        buttons = QHBoxLayout()
-        buttons.addStretch()
-        save_btn = QPushButton(tr("RGBConfigurator", "Save"))
-        save_btn.setMinimumHeight(30)
-        save_btn.setMaximumHeight(30)
-        save_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-        buttons.addWidget(save_btn)
-        save_btn.clicked.connect(self.on_save)
-        self.addLayout(buttons)
+        return scroll_area
 
     def on_save(self):
         self.device.keyboard.save_rgb()
