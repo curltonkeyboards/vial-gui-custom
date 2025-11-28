@@ -1196,7 +1196,7 @@ void release_current_chord(void) {
         
         // Send MIDI note-off for the root note
         if (current_root_midi_note != 0) {
-            midi_send_noteoff_with_recording(channel, current_root_midi_note, velocity, travelvelocity);
+            midi_send_noteoff_with_recording(channel, current_root_midi_note, velocity, travelvelocity, 0);
             current_root_midi_note = 0;
         }
     }
