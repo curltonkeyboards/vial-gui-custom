@@ -1590,14 +1590,27 @@ class PerKeyRGBHandler(BasicHandler):
         container.addWidget(self.lbl_title, row, 0, 1, 2)
         row += 1
 
-        # Preset selector
+        # Preset selector with individual buttons
         self.lbl_preset = QLabel(tr("RGBConfigurator", "Select Preset:"))
         container.addWidget(self.lbl_preset, row, 0)
-        self.preset_selector = QComboBox()
-        for i in range(1, 13):
-            self.preset_selector.addItem(f"Per Key {i}")
-        self.preset_selector.currentIndexChanged.connect(self.on_preset_changed)
-        container.addWidget(self.preset_selector, row, 1)
+
+        # Create horizontal layout for preset buttons
+        preset_button_widget = QWidget()
+        preset_button_layout = QHBoxLayout(preset_button_widget)
+        preset_button_layout.setContentsMargins(0, 0, 0, 0)
+        preset_button_layout.setSpacing(4)
+
+        # Create 12 preset buttons (35x35 pixels each)
+        self.preset_buttons = []
+        for i in range(12):
+            btn = QPushButton(str(i + 1))
+            btn.setFixedSize(35, 35)
+            btn.clicked.connect(lambda checked, idx=i: self.on_preset_changed(idx))
+            preset_button_layout.addWidget(btn)
+            self.preset_buttons.append(btn)
+
+        preset_button_layout.addStretch()
+        container.addWidget(preset_button_widget, row, 1)
         row += 1
 
         # Main horizontal layout: Palette on left, Keyboard on right
@@ -1682,18 +1695,21 @@ class PerKeyRGBHandler(BasicHandler):
         self.key_widgets = []  # Will store references to keyboard key widgets
 
         self.widgets = [
-            self.lbl_title, self.lbl_preset, self.preset_selector,
+            self.lbl_title, self.lbl_preset, preset_button_widget,
             main_widget
         ]
 
         # Initialize palette display with default colors
         self.update_palette_display()
         self.update_palette_selection()
+        self.update_preset_button_selection()
 
     def on_preset_changed(self, index):
-        """Handle preset selection change"""
+        """Handle preset selection change - switches to local cached preset data"""
         self.current_preset = index
-        self.load_preset_from_firmware(index)
+        # Update button visual states to show current selection
+        self.update_preset_button_selection()
+        # Update display with cached preset data (no firmware reload)
         self.update_keyboard_display()
 
     def on_key_clicked(self):
@@ -1789,6 +1805,36 @@ class PerKeyRGBHandler(BasicHandler):
 
             button.setStyleSheet(stylesheet)
 
+    def update_preset_button_selection(self):
+        """Update the visual selection state of preset buttons"""
+        for i, button in enumerate(self.preset_buttons):
+            if i == self.current_preset:
+                # Selected preset - highlight with bold and different background
+                button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #4A90E2;
+                        color: white;
+                        font-weight: bold;
+                        border: 2px solid #FFFFFF;
+                    }
+                    QPushButton:hover {
+                        background-color: #5BA3F5;
+                    }
+                """)
+            else:
+                # Unselected preset - default styling
+                button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #2C2C2C;
+                        color: #CCCCCC;
+                        border: 1px solid #555555;
+                    }
+                    QPushButton:hover {
+                        background-color: #3C3C3C;
+                        border: 1px solid #777777;
+                    }
+                """)
+
     def get_key_index(self, key_widget):
         """Get the LED index (0-69) for a given key widget based on matrix position"""
         if not hasattr(key_widget, 'desc') or not hasattr(key_widget.desc, 'row') or not hasattr(key_widget.desc, 'col'):
@@ -1831,9 +1877,15 @@ class PerKeyRGBHandler(BasicHandler):
             import struct
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD)
             self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
-            # Reload data from firmware
+
+            # Reload palette and ALL presets from firmware after EEPROM load
             self.load_palette_from_firmware()
-            self.load_preset_from_firmware(self.current_preset)
+            print("Reloading all presets from EEPROM...")
+            for preset_idx in range(12):
+                self.load_preset_from_firmware(preset_idx)
+            print("All presets reloaded from EEPROM.")
+
+            # Update displays
             self.update_palette_display()
             self.update_keyboard_display()
             print("Loaded per-key RGB from EEPROM")
@@ -1921,9 +1973,18 @@ class PerKeyRGBHandler(BasicHandler):
             self.keyboard_widget.set_keys(keys, encoders)
             self.keyboard_widget.update_layout()
 
-            # Load data from firmware
+            # Load palette from firmware
             self.load_palette_from_firmware()
-            self.load_preset_from_firmware(self.current_preset)
+
+            # Load ALL presets from firmware to cache them locally
+            # This allows switching between presets without losing unsaved changes
+            print("Loading all presets from firmware...")
+            for preset_idx in range(12):
+                self.load_preset_from_firmware(preset_idx)
+            print("All presets loaded.")
+
+            # Update display for current preset
+            self.update_keyboard_display()
 
     def update_palette_display(self):
         """Update palette button colors with gradient effect"""
@@ -2013,12 +2074,20 @@ class PerKeyRGBHandler(BasicHandler):
         return (int(h / 360.0 * 255), int(s * 255), int(v * 255))
 
     def update_from_keyboard(self):
-        """Update from keyboard"""
+        """Update from keyboard - loads all presets to preserve local edits"""
         if not self.valid():
             return
 
         self.load_palette_from_firmware()
-        self.load_preset_from_firmware(self.current_preset)
+
+        # Load ALL presets from firmware to cache them locally
+        print("Refreshing all presets from firmware...")
+        for preset_idx in range(12):
+            self.load_preset_from_firmware(preset_idx)
+        print("All presets refreshed.")
+
+        # Update display for current preset
+        self.update_keyboard_display()
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)
