@@ -1699,18 +1699,24 @@ class PerKeyRGBHandler(BasicHandler):
     def on_key_clicked(self):
         """Handle keyboard key click - assign current palette color to clicked key"""
         if not self.keyboard_widget.active_key:
+            print("No active key")
             return
 
         # Find the LED index for the clicked key
         key_index = self.get_key_index(self.keyboard_widget.active_key)
+        print(f"Clicked key index: {key_index}")
         if key_index is None or key_index >= 70:
+            print(f"Invalid key index: {key_index}")
             return
 
         # Assign the selected palette color to this key
-        if hasattr(self.device, 'keyboard'):
+        print(f"Assigning palette {self.selected_palette_index} to key {key_index}")
+        if hasattr(self, 'keyboard') and self.keyboard:
             self.set_led_color(self.current_preset, key_index, self.selected_palette_index)
             self.preset_data[self.current_preset][key_index] = self.selected_palette_index
             self.update_keyboard_display()
+        else:
+            print("No keyboard device available")
 
     def on_palette_selected(self, palette_index):
         """Handle palette button single-click - select this color for painting"""
@@ -1813,18 +1819,18 @@ class PerKeyRGBHandler(BasicHandler):
 
     def on_save(self):
         """Save per-key data to EEPROM"""
-        if hasattr(self.device, 'keyboard'):
+        if hasattr(self, 'keyboard') and self.keyboard:
             import struct
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SAVE)
-            self.device.usb_send(self.device.dev, data, retries=20)
+            self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
             print("Saved per-key RGB to EEPROM")
 
     def on_load(self):
         """Load per-key data from EEPROM"""
-        if hasattr(self.device, 'keyboard'):
+        if hasattr(self, 'keyboard') and self.keyboard:
             import struct
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD)
-            self.device.usb_send(self.device.dev, data, retries=20)
+            self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
             # Reload data from firmware
             self.load_palette_from_firmware()
             self.load_preset_from_firmware(self.current_preset)
@@ -1834,13 +1840,13 @@ class PerKeyRGBHandler(BasicHandler):
 
     def load_palette_from_firmware(self):
         """Load 16-color palette from firmware"""
-        if not hasattr(self.device, 'keyboard'):
+        if not hasattr(self, 'keyboard') or not self.keyboard:
             return
 
         try:
             import struct
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PALETTE)
-            response = self.device.usb_send(self.device.dev, data, retries=20)
+            response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
 
             if response and len(response) >= 49:  # 1 success byte + 48 bytes palette
                 for i in range(16):
@@ -1854,7 +1860,7 @@ class PerKeyRGBHandler(BasicHandler):
 
     def load_preset_from_firmware(self, preset):
         """Load preset LED data from firmware (paginated)"""
-        if not hasattr(self.device, 'keyboard'):
+        if not hasattr(self, 'keyboard') or not self.keyboard:
             return
 
         try:
@@ -1865,7 +1871,7 @@ class PerKeyRGBHandler(BasicHandler):
                 count = min(31, 70 - offset)
                 data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PRESET_DATA,
                                    preset, offset, count)
-                response = self.device.usb_send(self.device.dev, data, retries=20)
+                response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
 
                 if response and len(response) >= count + 1:
                     for i in range(count):
@@ -1879,27 +1885,28 @@ class PerKeyRGBHandler(BasicHandler):
 
     def set_palette_color(self, palette_index, h, s, v):
         """Set a palette color in firmware"""
-        if not hasattr(self.device, 'keyboard'):
+        if not hasattr(self, 'keyboard') or not self.keyboard:
             return
 
         try:
             import struct
             data = struct.pack("BBBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SET_PALETTE_COLOR,
                                palette_index, h, s, v)
-            self.device.usb_send(self.device.dev, data, retries=20)
+            self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
         except Exception as e:
             print(f"Error setting palette color: {e}")
 
     def set_led_color(self, preset, led_index, palette_index):
         """Set an LED's palette index in firmware"""
-        if not hasattr(self.device, 'keyboard'):
+        if not hasattr(self, 'keyboard') or not self.keyboard:
             return
 
         try:
             import struct
             data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SET_LED_COLOR,
                                preset, led_index, palette_index)
-            self.device.usb_send(self.device.dev, data, retries=20)
+            self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+            print(f"Set LED {led_index} to palette color {palette_index}")  # Debug
         except Exception as e:
             print(f"Error setting LED color: {e}")
 
@@ -1926,8 +1933,10 @@ class PerKeyRGBHandler(BasicHandler):
     def update_keyboard_display(self):
         """Update keyboard key colors based on current preset"""
         if not self.keyboard_widget.widgets:
+            print("No keyboard widgets available")
             return
 
+        print(f"Updating keyboard display, {len(self.keyboard_widget.widgets)} widgets")
         for widget in self.keyboard_widget.widgets:
             key_index = self.get_key_index(widget)
             if key_index is not None and key_index < 70:
@@ -1935,10 +1944,13 @@ class PerKeyRGBHandler(BasicHandler):
                 h, s, v = self.palette[palette_index]
                 rgb = self.hsv_to_rgb(h, s, v)
                 # Set the key color
-                widget.setColor(QColor(rgb[0], rgb[1], rgb[2]))
+                color = QColor(rgb[0], rgb[1], rgb[2])
+                widget.setColor(color)
+                print(f"Key {key_index}: palette {palette_index} -> RGB{rgb} -> {color.name()}")
 
         # Trigger repaint
         self.keyboard_widget.update()
+        print("Keyboard display updated")
 
     @staticmethod
     def hsv_to_rgb(h, s, v):
