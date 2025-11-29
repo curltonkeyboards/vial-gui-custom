@@ -1635,33 +1635,38 @@ class PerKeyRGBHandler(BasicHandler):
         self.palette_layout.setSpacing(4)
         palette_container_layout.addWidget(self.palette_widget)
 
-        # Create 4x4 palette buttons (no numbers)
+        # Create 4x4 palette buttons (25x25, or 35x35 when selected)
         self.palette_buttons = []
         for i in range(16):
             r = i // 4  # 4 rows
             c = i % 4   # 4 columns
             button = PaletteButton(i)
+            button.setFixedSize(25, 25)  # Default size
             button.single_clicked.connect(self.on_palette_selected)
             button.edit_requested.connect(self.on_palette_edit)
-            self.palette_layout.addWidget(button, r, c)
+            self.palette_layout.addWidget(button, r, c, Qt.AlignCenter)
             self.palette_buttons.append(button)
 
-        # Change Color button (below palette)
+        # Change Color button (below palette) - with rounded edges
         self.btn_change_color = QPushButton(tr("RGBConfigurator", "Change Color"))
         self.btn_change_color.clicked.connect(self.on_change_color_clicked)
+        self.btn_change_color.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_change_color)
 
-        # Action buttons (below Change Color button, same width as palette)
+        # Action buttons (below Change Color button) - with rounded edges
         self.btn_change_all_layers = QPushButton(tr("RGBConfigurator", "Change ALL Layers to Per Key"))
         self.btn_change_all_layers.clicked.connect(self.on_change_all_layers)
+        self.btn_change_all_layers.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_change_all_layers)
 
         self.btn_save = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
         self.btn_save.clicked.connect(self.on_save)
+        self.btn_save.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_save)
 
         self.btn_load = QPushButton(tr("RGBConfigurator", "Load from EEPROM"))
         self.btn_load.clicked.connect(self.on_load)
+        self.btn_load.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_load)
 
         palette_container_layout.addStretch()
@@ -1775,31 +1780,34 @@ class PerKeyRGBHandler(BasicHandler):
             self.update_keyboard_display()
 
     def update_palette_selection(self):
-        """Update the visual selection state of palette buttons"""
+        """Update the visual selection state of palette buttons using size"""
         for i, button in enumerate(self.palette_buttons):
             # Get the base color
             h, s, v = self.palette[i]
             rgb = self.hsv_to_rgb(h, s, v)
 
-            # Add selection border if this is the selected palette
+            # Change size based on selection (bigger = selected)
             if i == self.selected_palette_index:
-                border = "border: 3px solid #FFFFFF"
+                button.setFixedSize(35, 35)
             else:
-                border = "border: 1px solid #444444"
+                button.setFixedSize(25, 25)
 
-            # Create gradient effect (darker on edges)
+            # Create radial gradient effect (brighter center, darker edges)
             r, g, b = rgb[0], rgb[1], rgb[2]
-            r_dark, g_dark, b_dark = max(0, r - 30), max(0, g - 30), max(0, b - 30)
+            # Stronger darkening for better visibility
+            r_dark = max(0, r - 60)
+            g_dark = max(0, g - 60)
+            b_dark = max(0, b - 60)
 
-            # Use solid color background with gradient overlay
+            # Use radial gradient for centered effect (no border)
             stylesheet = f"""
                 QPushButton {{
                     background-color: rgb({r}, {g}, {b});
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 rgba({r_dark}, {g_dark}, {b_dark}, 255),
-                        stop:0.5 rgba({r}, {g}, {b}, 255),
+                    background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
+                        fx:0.5, fy:0.5,
+                        stop:0 rgba({r}, {g}, {b}, 255),
                         stop:1 rgba({r_dark}, {g_dark}, {b_dark}, 255));
-                    {border};
+                    border: none;
                 }}
             """
 
