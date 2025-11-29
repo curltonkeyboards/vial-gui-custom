@@ -1528,6 +1528,33 @@ class SimpleLayoutEditor:
         return 0
 
 
+class PaletteButton(QPushButton):
+    """Custom palette button that handles single-click, double-click, and right-click"""
+    single_clicked = pyqtSignal(int)
+    edit_requested = pyqtSignal(int)
+
+    def __init__(self, index, parent=None):
+        super().__init__("", parent)
+        self.index = index
+        self.setFixedSize(50, 50)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(lambda: self.edit_requested.emit(self.index))
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle double-click to edit color"""
+        self.edit_requested.emit(self.index)
+        event.accept()
+
+    def mousePressEvent(self, event):
+        """Handle single-click to select color"""
+        if event.button() == Qt.LeftButton:
+            super().mousePressEvent(event)
+            self.single_clicked.emit(self.index)
+        elif event.button() == Qt.RightButton:
+            self.edit_requested.emit(self.index)
+            event.accept()
+
+
 class PerKeyRGBHandler(BasicHandler):
     """Handler for per-key RGB configuration with 12 presets and 16-color palette"""
 
@@ -1578,32 +1605,53 @@ class PerKeyRGBHandler(BasicHandler):
         main_layout = QHBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Left side: Color palette (2x8 grid for 16 colors)
+        # Left side: Color palette and buttons
         palette_container = QWidget()
+        palette_container.setFixedWidth(220)  # Fixed width to match 4x4 grid
         palette_container_layout = QVBoxLayout(palette_container)
         palette_container_layout.setContentsMargins(0, 0, 0, 0)
+        palette_container_layout.setSpacing(8)
 
         self.lbl_palette = QLabel(tr("RGBConfigurator", "Color Palette:"))
         palette_container_layout.addWidget(self.lbl_palette)
 
+        # 4x4 palette grid
         self.palette_widget = QWidget()
         self.palette_layout = QGridLayout(self.palette_widget)
         self.palette_layout.setContentsMargins(0, 0, 0, 0)
         self.palette_layout.setSpacing(4)
         palette_container_layout.addWidget(self.palette_widget)
-        palette_container_layout.addStretch()
 
-        # Create 2x8 palette buttons (no numbers)
+        # Create 4x4 palette buttons (no numbers)
         self.palette_buttons = []
         for i in range(16):
-            r = i // 2  # 8 rows
-            c = i % 2   # 2 columns
-            button = QPushButton("")  # No text/numbers
-            button.setFixedSize(50, 50)
-            button.clicked.connect(lambda checked, idx=i: self.on_palette_clicked(idx))
-            button.setStyleSheet(f"background-color: black;")
+            r = i // 4  # 4 rows
+            c = i % 4   # 4 columns
+            button = PaletteButton(i)
+            button.single_clicked.connect(self.on_palette_selected)
+            button.edit_requested.connect(self.on_palette_edit)
             self.palette_layout.addWidget(button, r, c)
             self.palette_buttons.append(button)
+
+        # Change Color button (below palette)
+        self.btn_change_color = QPushButton(tr("RGBConfigurator", "Change Color"))
+        self.btn_change_color.clicked.connect(self.on_change_color_clicked)
+        palette_container_layout.addWidget(self.btn_change_color)
+
+        # Action buttons (below Change Color button, same width as palette)
+        self.btn_change_all_layers = QPushButton(tr("RGBConfigurator", "Change ALL Layers to Per Key"))
+        self.btn_change_all_layers.clicked.connect(self.on_change_all_layers)
+        palette_container_layout.addWidget(self.btn_change_all_layers)
+
+        self.btn_save = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
+        self.btn_save.clicked.connect(self.on_save)
+        palette_container_layout.addWidget(self.btn_save)
+
+        self.btn_load = QPushButton(tr("RGBConfigurator", "Load from EEPROM"))
+        self.btn_load.clicked.connect(self.on_load)
+        palette_container_layout.addWidget(self.btn_load)
+
+        palette_container_layout.addStretch()
 
         main_layout.addWidget(palette_container)
 
@@ -1625,21 +1673,6 @@ class PerKeyRGBHandler(BasicHandler):
         container.addWidget(main_widget, row, 0, 1, 2)
         row += 1
 
-        # Action buttons
-        self.btn_change_all_layers = QPushButton(tr("RGBConfigurator", "Change ALL Layers to Per Key"))
-        self.btn_change_all_layers.clicked.connect(self.on_change_all_layers)
-        container.addWidget(self.btn_change_all_layers, row, 0, 1, 2)
-        row += 1
-
-        self.btn_save = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
-        self.btn_save.clicked.connect(self.on_save)
-        container.addWidget(self.btn_save, row, 0)
-
-        self.btn_load = QPushButton(tr("RGBConfigurator", "Load from EEPROM"))
-        self.btn_load.clicked.connect(self.on_load)
-        container.addWidget(self.btn_load, row, 1)
-        row += 1
-
         # State variables
         self.current_preset = 0
         self.selected_palette_index = 0
@@ -1650,11 +1683,12 @@ class PerKeyRGBHandler(BasicHandler):
 
         self.widgets = [
             self.lbl_title, self.lbl_preset, self.preset_selector,
-            main_widget, self.btn_change_all_layers, self.btn_save, self.btn_load
+            main_widget
         ]
 
         # Initialize palette display with default colors
         self.update_palette_display()
+        self.update_palette_selection()
 
     def on_preset_changed(self, index):
         """Handle preset selection change"""
@@ -1678,10 +1712,23 @@ class PerKeyRGBHandler(BasicHandler):
             self.preset_data[self.current_preset][key_index] = self.selected_palette_index
             self.update_keyboard_display()
 
-    def on_palette_clicked(self, palette_index):
-        """Handle palette color click - opens QColorDialog to edit color"""
+    def on_palette_selected(self, palette_index):
+        """Handle palette button single-click - select this color for painting"""
         self.selected_palette_index = palette_index
+        self.update_palette_selection()
 
+    def on_palette_edit(self, palette_index):
+        """Handle palette button double-click or right-click - edit this color"""
+        self.selected_palette_index = palette_index
+        self.update_palette_selection()
+        self.open_color_dialog(palette_index)
+
+    def on_change_color_clicked(self):
+        """Handle Change Color button - edit the currently selected palette color"""
+        self.open_color_dialog(self.selected_palette_index)
+
+    def open_color_dialog(self, palette_index):
+        """Open QColorDialog to edit a palette color"""
         # Get current color
         h, s, v = self.palette[palette_index]
         rgb = self.hsv_to_rgb(h, s, v)
@@ -1704,6 +1751,31 @@ class PerKeyRGBHandler(BasicHandler):
             # Update displays
             self.update_palette_display()
             self.update_keyboard_display()
+
+    def update_palette_selection(self):
+        """Update the visual selection state of palette buttons"""
+        for i, button in enumerate(self.palette_buttons):
+            # Get the base color
+            h, s, v = self.palette[i]
+            rgb = self.hsv_to_rgb(h, s, v)
+
+            # Add selection border if this is the selected palette
+            if i == self.selected_palette_index:
+                border = "border: 3px solid #FFFFFF;"
+            else:
+                border = "border: 1px solid #444444;"
+
+            # Create gradient effect (darker on edges)
+            gradient = f"""
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:1,
+                    stop:0 rgba({max(0, rgb[0]-30)}, {max(0, rgb[1]-30)}, {max(0, rgb[2]-30)}, 255),
+                    stop:0.5 rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, 255),
+                    stop:1 rgba({max(0, rgb[0]-30)}, {max(0, rgb[1]-30)}, {max(0, rgb[2]-30)}, 255)
+                );
+            """
+
+            button.setStyleSheet(f"{gradient} {border}")
 
     def get_key_index(self, key_widget):
         """Get the LED index (0-69) for a given key widget based on matrix position"""
@@ -1841,15 +1913,9 @@ class PerKeyRGBHandler(BasicHandler):
             self.load_preset_from_firmware(self.current_preset)
 
     def update_palette_display(self):
-        """Update palette button colors"""
-        for i in range(16):
-            h, s, v = self.palette[i]
-            # Convert HSV to RGB for display
-            rgb = self.hsv_to_rgb(h, s, v)
-            color = f"rgb({rgb[0]}, {rgb[1]}, {rgb[2]})"
-            self.palette_buttons[i].setStyleSheet(
-                f"background-color: {color};"
-            )
+        """Update palette button colors with gradient effect"""
+        # Use update_palette_selection which handles both colors and selection
+        self.update_palette_selection()
 
     def update_keyboard_display(self):
         """Update keyboard key colors based on current preset"""
