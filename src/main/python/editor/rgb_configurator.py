@@ -1761,21 +1761,27 @@ class PerKeyRGBHandler(BasicHandler):
 
             # Add selection border if this is the selected palette
             if i == self.selected_palette_index:
-                border = "border: 3px solid #FFFFFF;"
+                border = "border: 3px solid #FFFFFF"
             else:
-                border = "border: 1px solid #444444;"
+                border = "border: 1px solid #444444"
 
             # Create gradient effect (darker on edges)
-            gradient = f"""
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba({max(0, rgb[0]-30)}, {max(0, rgb[1]-30)}, {max(0, rgb[2]-30)}, 255),
-                    stop:0.5 rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, 255),
-                    stop:1 rgba({max(0, rgb[0]-30)}, {max(0, rgb[1]-30)}, {max(0, rgb[2]-30)}, 255)
-                );
+            r, g, b = rgb[0], rgb[1], rgb[2]
+            r_dark, g_dark, b_dark = max(0, r - 30), max(0, g - 30), max(0, b - 30)
+
+            # Use solid color background with gradient overlay
+            stylesheet = f"""
+                QPushButton {{
+                    background-color: rgb({r}, {g}, {b});
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 rgba({r_dark}, {g_dark}, {b_dark}, 255),
+                        stop:0.5 rgba({r}, {g}, {b}, 255),
+                        stop:1 rgba({r_dark}, {g_dark}, {b_dark}, 255));
+                    {border};
+                }}
             """
 
-            button.setStyleSheet(f"{gradient} {border}")
+            button.setStyleSheet(stylesheet)
 
     def get_key_index(self, key_widget):
         """Get the LED index (0-69) for a given key widget based on matrix position"""
