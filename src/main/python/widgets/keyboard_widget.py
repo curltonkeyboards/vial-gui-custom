@@ -454,11 +454,20 @@ class KeyboardWidget(QWidget):
 
             # draw keycap foreground
             qp.setPen(Qt.NoPen)
-            brush = foreground_brush
-            if key.pressed:
-                brush = foreground_pressed_brush
-            elif key.on:
-                brush = foreground_on_brush
+
+            # If this key has a custom color set (from per-key RGB painting), use it
+            if key.color:
+                brush = QBrush()
+                brush.setColor(key.color)
+                brush.setStyle(Qt.SolidPattern)
+            else:
+                # Use default theme-based colors
+                brush = foreground_brush
+                if key.pressed:
+                    brush = foreground_pressed_brush
+                elif key.on:
+                    brush = foreground_on_brush
+
             qp.setBrush(brush)
             qp.drawPath(key.foreground_draw_path)
 
@@ -1059,11 +1068,20 @@ class KeyboardWidget2(QWidget):
 
             # draw keycap foreground
             qp.setPen(Qt.NoPen)
-            brush = foreground_brush
-            if key.pressed:
-                brush = foreground_pressed_brush
-            elif key.on:
-                brush = foreground_on_brush
+
+            # If this key has a custom color set (from per-key RGB painting), use it
+            if key.color:
+                brush = QBrush()
+                brush.setColor(key.color)
+                brush.setStyle(Qt.SolidPattern)
+            else:
+                # Use default theme-based colors
+                brush = foreground_brush
+                if key.pressed:
+                    brush = foreground_pressed_brush
+                elif key.on:
+                    brush = foreground_on_brush
+
             qp.setBrush(brush)
             qp.drawPath(key.foreground_draw_path)
 
