@@ -1941,6 +1941,13 @@ class PerKeyRGBHandler(BasicHandler):
             key_index = self.get_key_index(widget)
             if key_index is not None and key_index < 70:
                 palette_index = self.preset_data[self.current_preset][key_index]
+
+                # Bounds check - ensure palette index is valid (0-15)
+                if palette_index < 0 or palette_index >= 16:
+                    print(f"Warning: Invalid palette index {palette_index} for key {key_index}, defaulting to 0")
+                    palette_index = 0
+                    self.preset_data[self.current_preset][key_index] = 0
+
                 h, s, v = self.palette[palette_index]
                 rgb = self.hsv_to_rgb(h, s, v)
                 # Set the key color
