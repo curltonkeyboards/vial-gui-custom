@@ -1635,16 +1635,16 @@ class PerKeyRGBHandler(BasicHandler):
         self.palette_layout.setSpacing(4)
         palette_container_layout.addWidget(self.palette_widget)
 
-        # Create 4x4 palette buttons (25x25, or 35x35 when selected)
+        # Create 4x4 palette buttons (same size, border selection)
         self.palette_buttons = []
         for i in range(16):
             r = i // 4  # 4 rows
             c = i % 4   # 4 columns
             button = PaletteButton(i)
-            button.setFixedSize(25, 25)  # Default size
+            button.setFixedSize(35, 35)  # Fixed size for all
             button.single_clicked.connect(self.on_palette_selected)
             button.edit_requested.connect(self.on_palette_edit)
-            self.palette_layout.addWidget(button, r, c, Qt.AlignCenter)
+            self.palette_layout.addWidget(button, r, c)
             self.palette_buttons.append(button)
 
         # Change Color button (below palette) - with rounded edges
@@ -1780,17 +1780,19 @@ class PerKeyRGBHandler(BasicHandler):
             self.update_keyboard_display()
 
     def update_palette_selection(self):
-        """Update the visual selection state of palette buttons using size"""
+        """Update the visual selection state of palette buttons with borders and opacity"""
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+
+        # Detect if dark or light theme
+        bg_color = QApplication.palette().color(QPalette.Window)
+        is_dark_theme = bg_color.lightness() < 128
+        border_color = "#FFFFFF" if is_dark_theme else "#000000"
+
         for i, button in enumerate(self.palette_buttons):
             # Get the base color
             h, s, v = self.palette[i]
             rgb = self.hsv_to_rgb(h, s, v)
-
-            # Change size based on selection (bigger = selected)
-            if i == self.selected_palette_index:
-                button.setFixedSize(35, 35)
-            else:
-                button.setFixedSize(25, 25)
 
             # Create radial gradient effect (brighter center, darker edges)
             r, g, b = rgb[0], rgb[1], rgb[2]
@@ -1799,48 +1801,66 @@ class PerKeyRGBHandler(BasicHandler):
             g_dark = max(0, g - 60)
             b_dark = max(0, b - 60)
 
-            # Use radial gradient for centered effect (no border)
+            # Selected palette: 100% opacity with white/black border
+            # Unselected palette: 70% opacity with thin border
+            if i == self.selected_palette_index:
+                opacity = 255
+                border = f"border: 3px solid {border_color};"
+            else:
+                opacity = int(255 * 0.7)  # 70% opacity
+                border = "border: 1px solid #444444;"
+
+            # Use radial gradient for centered effect with opacity
             stylesheet = f"""
                 QPushButton {{
-                    background-color: rgb({r}, {g}, {b});
+                    background-color: rgba({r}, {g}, {b}, {opacity});
                     background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
                         fx:0.5, fy:0.5,
-                        stop:0 rgba({r}, {g}, {b}, 255),
-                        stop:1 rgba({r_dark}, {g_dark}, {b_dark}, 255));
-                    border: none;
+                        stop:0 rgba({r}, {g}, {b}, {opacity}),
+                        stop:1 rgba({r_dark}, {g_dark}, {b_dark}, {opacity}));
+                    {border}
                 }}
             """
 
             button.setStyleSheet(stylesheet)
 
     def update_preset_button_selection(self):
-        """Update the visual selection state of preset buttons"""
+        """Update the visual selection state of preset buttons using theme colors"""
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+
+        # Get theme colors
+        highlight_color = QApplication.palette().color(QPalette.Highlight)
+        highlight_text = QApplication.palette().color(QPalette.HighlightedText)
+        button_color = QApplication.palette().color(QPalette.Button)
+        text_color = QApplication.palette().color(QPalette.ButtonText)
+
         for i, button in enumerate(self.preset_buttons):
             if i == self.current_preset:
-                # Selected preset - highlight with bold and different background
-                button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #4A90E2;
-                        color: white;
+                # Selected preset - use theme highlight colors
+                button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {highlight_color.name()};
+                        color: {highlight_text.name()};
                         font-weight: bold;
-                        border: 2px solid #FFFFFF;
-                    }
-                    QPushButton:hover {
-                        background-color: #5BA3F5;
-                    }
+                        border: 2px solid {highlight_color.lighter(120).name()};
+                    }}
+                    QPushButton:hover {{
+                        background-color: {highlight_color.lighter(110).name()};
+                    }}
                 """)
             else:
-                # Unselected preset - default styling
-                button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #2C2C2C;
-                        color: #CCCCCC;
-                        border: 1px solid #555555;
-                    }
-                    QPushButton:hover {
-                        background-color: #3C3C3C;
-                        border: 1px solid #777777;
-                    }
+                # Unselected preset - use theme button colors
+                button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {button_color.name()};
+                        color: {text_color.name()};
+                        border: 1px solid {button_color.darker(120).name()};
+                    }}
+                    QPushButton:hover {{
+                        background-color: {button_color.lighter(110).name()};
+                        border: 1px solid {button_color.darker(110).name()};
+                    }}
                 """)
 
     def get_key_index(self, key_widget):
