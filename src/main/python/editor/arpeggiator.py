@@ -364,6 +364,11 @@ class Arpeggiator(BasicEditor):
 
         main_layout.addWidget(sequencer_group, 1)
 
+        # === Status ===
+        # Create status label before rebuild_steps() since it uses update_status()
+        self.lbl_status = QLabel("Ready. Select a preset to begin.")
+        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
+
         # Build initial steps
         self.rebuild_steps()
 
@@ -389,9 +394,7 @@ class Arpeggiator(BasicEditor):
 
         main_layout.addLayout(actions_layout)
 
-        # === Status ===
-        self.lbl_status = QLabel("Ready. Select a preset to begin.")
-        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
+        # Add status label to layout
         main_layout.addWidget(self.lbl_status)
 
         self.addLayout(main_layout)
