@@ -35,3 +35,7 @@ RGB_MATRIX_CUSTOM_USER = yes
 
 #CUSTOM_MATRIX = lite
 #SRC += matrix.c
+
+# Arpeggiator system
+SRC += arpeggiator.c
+SRC += arpeggiator_hid.c
