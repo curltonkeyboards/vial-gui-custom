@@ -71,6 +71,24 @@ extern MidiDevice midi_device;
 #define HE_MACRO_CURVE_3    0xEC99  // Set to HARD (curve 3)
 #define HE_MACRO_CURVE_4    0xEC9A  // Set to HARDEST (curve 4)
 
+// Arpeggiator Keycodes (0xED00-0xED1F range)
+#define ARP_NEXT            0xED00  // Next arp preset
+#define ARP_PREV            0xED01  // Previous arp preset
+#define ARP_PLAY            0xED02  // Play current arp (hold/double-tap for latch)
+#define ARP_SYNC_TOGGLE     0xED03  // Toggle sync mode
+#define ARP_GATE_UP         0xED04  // Increase master gate length
+#define ARP_GATE_DOWN       0xED05  // Decrease master gate length
+#define ARP_MODE_SINGLE     0xED06  // Set to single note mode
+#define ARP_MODE_CHORD      0xED07  // Set to chord basic mode
+#define ARP_MODE_ADVANCED   0xED08  // Set to chord advanced mode
+
+// Individual arp preset buttons (0xED10-0xED1F) - 16 direct preset selectors
+#define ARP_PRESET_0        0xED10  // Direct select preset 0
+#define ARP_PRESET_1        0xED11  // Direct select preset 1
+#define ARP_PRESET_2        0xED12  // Direct select preset 2
+#define ARP_PRESET_3        0xED13  // Direct select preset 3
+// Add more as needed...
+
 #define DOUBLE_TAP_THRESHOLD 300  // 300ms threshold for double-tap detection
 
 
@@ -3506,6 +3524,9 @@ void keyboard_post_init_user(void) {
 #ifdef JOYSTICK_ENABLE
 	gaming_init();  // Load gaming/joystick settings from EEPROM
 #endif
+
+	// Initialize arpeggiator system
+	arp_init();
 
 	// Initialize encoder click buttons and sustain pedal pins
 	setPinInputHigh(B12);  // Encoder 0 click
@@ -10843,6 +10864,118 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;  // Skip further processing
     }
 
+    // =============================================================================
+    // ARPEGGIATOR KEYCODES
+    // =============================================================================
+
+    // Arp Next Preset
+    if (keycode == ARP_NEXT) {
+        if (record->event.pressed) {
+            arp_next_preset();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Previous Preset
+    if (keycode == ARP_PREV) {
+        if (record->event.pressed) {
+            arp_prev_preset();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Play (hold to play, double-tap for latch)
+    if (keycode == ARP_PLAY) {
+        if (record->event.pressed) {
+            arp_handle_button_press();
+            set_keylog(keycode, record);
+        } else {
+            arp_handle_button_release();
+        }
+        return false;
+    }
+
+    // Arp Sync Mode Toggle
+    if (keycode == ARP_SYNC_TOGGLE) {
+        if (record->event.pressed) {
+            arp_toggle_sync_mode();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Gate Length Up
+    if (keycode == ARP_GATE_UP) {
+        if (record->event.pressed) {
+            uint8_t current_gate = (arp_state.master_gate_override > 0) ?
+                                   arp_state.master_gate_override : 80;
+            if (current_gate < 100) current_gate += 5;
+            arp_set_master_gate(current_gate);
+            dprintf("arp: master gate: %d%%\n", current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Gate Length Down
+    if (keycode == ARP_GATE_DOWN) {
+        if (record->event.pressed) {
+            uint8_t current_gate = (arp_state.master_gate_override > 0) ?
+                                   arp_state.master_gate_override : 80;
+            if (current_gate > 10) current_gate -= 5;
+            arp_set_master_gate(current_gate);
+            dprintf("arp: master gate: %d%%\n", current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Mode: Single Note
+    if (keycode == ARP_MODE_SINGLE) {
+        if (record->event.pressed) {
+            arp_set_mode(ARP_MODE_SINGLE_NOTE);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Mode: Chord Basic
+    if (keycode == ARP_MODE_CHORD) {
+        if (record->event.pressed) {
+            arp_set_mode(ARP_MODE_CHORD_BASIC);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Arp Mode: Chord Advanced
+    if (keycode == ARP_MODE_ADVANCED) {
+        if (record->event.pressed) {
+            arp_set_mode(ARP_MODE_CHORD_ADVANCED);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Individual Arp Preset Buttons (0xED10-0xED1F)
+    if (keycode >= ARP_PRESET_0 && keycode <= (ARP_PRESET_0 + 15)) {
+        if (record->event.pressed) {
+            uint8_t preset_id = keycode - ARP_PRESET_0;
+            if (preset_id < arp_preset_count) {
+                arp_start(preset_id);
+                set_keylog(keycode, record);
+            }
+        } else {
+            // Release: stop arp if not in latch mode
+            if (!arp_state.latch_mode) {
+                arp_stop();
+            }
+        }
+        return false;
+    }
+
     // HE Velocity Curve Controls (global settings)
     if (keycode == HE_VEL_CURVE_UP) {
         if (record->event.pressed) {
@@ -13018,6 +13151,9 @@ void matrix_scan_user(void) {
     // Update chord progression timing
     update_chord_progression();
     matrix_scan_user_macro();
+
+    // Update arpeggiator timing and gate-offs
+    arp_update();
 
 #ifdef JOYSTICK_ENABLE
     // Update joystick/gaming controller state

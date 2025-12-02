@@ -774,6 +774,76 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
     }
 }
 
+// =============================================================================
+// ARPEGGIATOR MIDI FUNCTIONS
+// =============================================================================
+// These functions are similar to midi_send_noteon/off_with_recording, but:
+// - Do NOT add to live_notes[] (would pollute master note tracking)
+// - Instead add to arp_notes[] for gate timing management
+// - Still record to macros
+// - Still trigger LED lighting
+
+void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
+    // Apply velocity mode conversion (reuses existing velocity curve logic)
+    uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
+
+    // Send MIDI note-on
+    midi_send_noteon(&midi_device, channel, note, final_velocity);
+
+    // Display updates
+    noteondisplayupdates(note);
+
+    // Add to arp_notes[] for gate tracking (not live_notes[]!)
+    // This is handled by add_arp_note() in orthomidi5x14.c
+
+    // Add LED lighting (existing code handles the rest)
+    add_lighting_live_note(channel, note);
+
+    // Use raw_travel if available, otherwise use final_velocity as fallback
+    uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : final_velocity;
+
+    // Collect for preroll if active (for slave recordings)
+    if (collecting_preroll) {
+        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
+    }
+
+    // Record to macro if we're recording
+    if (current_macro_id > 0) {
+        dynamic_macro_intercept_noteon(channel, note, travel_for_recording, current_macro_id,
+                                     current_macro_buffer1, current_macro_buffer2,
+                                     current_macro_pointer, current_recording_start_time);
+    }
+
+    dprintf("arp: note-on ch:%d note:%d vel:%d raw:%d\n", channel, note, final_velocity, raw_travel);
+}
+
+void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
+    // Send MIDI note-off
+    midi_send_noteoff(&midi_device, channel, note, velocity);
+
+    // Display updates
+    noteoffdisplayupdates(note);
+
+    // Remove LED lighting
+    remove_lighting_live_note(channel, note);
+
+    // Collect for preroll if active (for slave recordings)
+    if (collecting_preroll) {
+        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
+    }
+
+    // Record to macro if we're recording
+    if (current_macro_id > 0) {
+        dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id,
+                                       current_macro_buffer1, current_macro_buffer2,
+                                       current_macro_pointer, current_recording_start_time);
+    }
+
+    dprintf("arp: note-off ch:%d note:%d vel:%d\n", channel, note, velocity);
+}
+
 // Modified process_midi main switch cases
 bool process_midi(uint16_t keycode, keyrecord_t *record) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);

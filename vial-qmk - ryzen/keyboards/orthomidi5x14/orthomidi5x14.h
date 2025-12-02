@@ -196,5 +196,98 @@ void gaming_update_joystick(void);
 //int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert);
 bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
+// =============================================================================
+// ARPEGGIATOR SYSTEM
+// =============================================================================
+
+// Maximum limits
+#define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated
+#define MAX_PRESET_NOTES 128       // Maximum notes per preset (smart EEPROM)
+#define MAX_ARP_PRESETS 32         // Maximum user-definable presets
+#define ARP_PRESET_NAME_LENGTH 16  // Max length for preset names
+
+// Arpeggiator mode types
+typedef enum {
+    ARP_MODE_SINGLE_NOTE = 0,     // One note at a time (classic arp)
+    ARP_MODE_CHORD_BASIC,         // All notes at once per step
+    ARP_MODE_CHORD_ADVANCED,      // Staggers notes evenly across step time
+    ARP_MODE_COUNT
+} arp_mode_t;
+
+// Arpeggiator note in the tracking array (for gate timing)
+typedef struct {
+    uint8_t channel;
+    uint8_t note;
+    uint8_t velocity;
+    uint32_t note_off_time;  // When to send note-off based on gate length
+    bool active;
+} arp_note_t;
+
+// Individual note definition within a preset
+typedef struct {
+    uint16_t timing_64ths;     // When to trigger this note (0-255+ for multi-bar patterns)
+    uint8_t note_index;        // Which note from live_notes[] to play (0-based)
+    int8_t octave_offset;      // Octave shift: 0, +12, -12, +24, etc.
+    uint8_t raw_travel;        // Velocity as raw travel (0-255)
+} arp_preset_note_t;
+
+// Complete arpeggiator preset definition
+typedef struct {
+    char name[ARP_PRESET_NAME_LENGTH];  // Preset name for display
+    uint8_t note_count;                 // Number of notes in this preset
+    uint16_t pattern_length_64ths;      // Total pattern length in 64th notes (16=1 beat, 64=1 bar)
+    uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
+    arp_preset_note_t notes[MAX_PRESET_NOTES];  // Note definitions
+    uint16_t magic;                     // 0xA89F for validation
+} arp_preset_t;
+
+// Arpeggiator runtime state
+typedef struct {
+    bool active;                        // Is arp currently running
+    bool sync_mode;                     // Sync to BPM beat boundaries
+    bool latch_mode;                    // Continue after keys released (double-tap)
+    arp_mode_t mode;                    // Single note / Chord basic / Chord advanced
+    uint8_t current_preset_id;          // Which preset is active
+    uint32_t next_note_time;            // When to play next note
+    uint16_t current_position_64ths;    // Current position in pattern (0-pattern_length)
+    uint8_t current_note_in_chord;      // For chord advanced mode: which note of chord
+    uint8_t subdivision_override;       // 0=use preset timing, else override subdivision
+    uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
+    uint32_t pattern_start_time;        // When current pattern loop started
+    uint32_t last_tap_time;             // For double-tap detection
+    bool key_held;                      // Is arp button physically held
+} arp_state_t;
+
+// EEPROM storage structure (for user presets - Phase 3)
+#define ARP_EEPROM_ADDR 65800  // Starting address for arp presets
+#define ARP_PRESET_MAGIC 0xA89F
+
+// Global arpeggiator state
+extern arp_note_t arp_notes[MAX_ARP_NOTES];
+extern uint8_t arp_note_count;
+extern arp_state_t arp_state;
+extern arp_preset_t arp_presets[MAX_ARP_PRESETS];
+extern uint8_t arp_preset_count;
+
+// Arpeggiator functions
+void arp_init(void);
+void arp_update(void);
+void arp_start(uint8_t preset_id);
+void arp_stop(void);
+void arp_toggle_sync_mode(void);
+void arp_next_preset(void);
+void arp_prev_preset(void);
+void arp_handle_button_press(void);
+void arp_handle_button_release(void);
+void arp_set_master_gate(uint8_t gate_percent);
+void arp_set_mode(arp_mode_t mode);
+
+// Internal helper functions
+void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);
+void remove_arp_note(uint8_t channel, uint8_t note);
+void process_arp_note_offs(void);
+void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity);
+
 #endif // ORTHOMIDI5X14_H
 

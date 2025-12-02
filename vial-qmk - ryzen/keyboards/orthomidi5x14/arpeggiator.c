@@ -1,0 +1,543 @@
+// arpeggiator.c - Arpeggiator implementation for orthomidi5x14
+// BPM-synced programmable arpeggiator with preset system
+
+#include QMK_KEYBOARD_H
+#include "orthomidi5x14.h"
+#include "process_midi.h"
+#include "timer.h"
+#include <string.h>
+#include <stdlib.h>
+
+// =============================================================================
+// GLOBAL STATE
+// =============================================================================
+
+// Arpeggiator note tracking array (for gate timing)
+arp_note_t arp_notes[MAX_ARP_NOTES];
+uint8_t arp_note_count = 0;
+
+// Arpeggiator runtime state
+arp_state_t arp_state = {
+    .active = false,
+    .sync_mode = true,  // Start with sync enabled
+    .latch_mode = false,
+    .mode = ARP_MODE_SINGLE_NOTE,
+    .current_preset_id = 0,
+    .next_note_time = 0,
+    .current_position_64ths = 0,
+    .current_note_in_chord = 0,
+    .subdivision_override = 0,
+    .master_gate_override = 0,
+    .pattern_start_time = 0,
+    .last_tap_time = 0,
+    .key_held = false
+};
+
+// Preset storage
+arp_preset_t arp_presets[MAX_ARP_PRESETS];
+uint8_t arp_preset_count = 0;
+
+// External references
+extern uint8_t live_notes[MAX_LIVE_NOTES][3];  // [channel, note, velocity]
+extern uint8_t live_note_count;
+extern uint32_t current_bpm;  // BPM in format: actual_bpm * 100000
+extern uint8_t channel_number;  // Current MIDI channel
+
+// =============================================================================
+// ARP NOTES TRACKING (for gate timing)
+// =============================================================================
+
+void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time) {
+    if (arp_note_count >= MAX_ARP_NOTES) {
+        dprintf("arp: note buffer full, cannot add note\n");
+        return;
+    }
+
+    // Find an empty slot
+    for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+        if (!arp_notes[i].active) {
+            arp_notes[i].channel = channel;
+            arp_notes[i].note = note;
+            arp_notes[i].velocity = velocity;
+            arp_notes[i].note_off_time = note_off_time;
+            arp_notes[i].active = true;
+            arp_note_count++;
+            dprintf("arp: added note ch:%d note:%d vel:%d off_time:%lu (count:%d)\n",
+                    channel, note, velocity, note_off_time, arp_note_count);
+            return;
+        }
+    }
+}
+
+void remove_arp_note(uint8_t channel, uint8_t note) {
+    for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+        if (arp_notes[i].active &&
+            arp_notes[i].channel == channel &&
+            arp_notes[i].note == note) {
+            arp_notes[i].active = false;
+            arp_note_count--;
+            dprintf("arp: removed note ch:%d note:%d (remaining:%d)\n",
+                    channel, note, arp_note_count);
+            return;
+        }
+    }
+}
+
+// Check for notes that need gate-off and send note-offs
+void process_arp_note_offs(void) {
+    if (arp_note_count == 0) return;
+
+    uint32_t current_time = timer_read32();
+
+    for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+        if (arp_notes[i].active && current_time >= arp_notes[i].note_off_time) {
+            // Time to send note-off
+            midi_send_noteoff_arp(arp_notes[i].channel,
+                                 arp_notes[i].note,
+                                 arp_notes[i].velocity);
+
+            // Mark as inactive
+            arp_notes[i].active = false;
+            arp_note_count--;
+
+            dprintf("arp: gated off note ch:%d note:%d\n",
+                    arp_notes[i].channel, arp_notes[i].note);
+        }
+    }
+}
+
+// =============================================================================
+// PRESET DEFINITIONS
+// =============================================================================
+
+void arp_init_presets(void) {
+    // Clear all presets
+    memset(arp_presets, 0, sizeof(arp_presets));
+    arp_preset_count = 0;
+
+    // =========================================================================
+    // PRESET 0: Up 16ths - Classic ascending 16th notes
+    // =========================================================================
+    arp_presets[0].note_count = 4;
+    arp_presets[0].pattern_length_64ths = 64;  // 1 bar
+    arp_presets[0].gate_length_percent = 80;   // 80% gate
+    strncpy(arp_presets[0].name, "Up 16ths", ARP_PRESET_NAME_LENGTH);
+    arp_presets[0].magic = ARP_PRESET_MAGIC;
+
+    // Step 1: Note 0 at beat 0
+    arp_presets[0].notes[0].timing_64ths = 0;
+    arp_presets[0].notes[0].note_index = 0;
+    arp_presets[0].notes[0].octave_offset = 0;
+    arp_presets[0].notes[0].raw_travel = 200;
+
+    // Step 2: Note 1 at beat 1 (16th note = 16/64ths)
+    arp_presets[0].notes[1].timing_64ths = 16;
+    arp_presets[0].notes[1].note_index = 1;
+    arp_presets[0].notes[1].octave_offset = 0;
+    arp_presets[0].notes[1].raw_travel = 200;
+
+    // Step 3: Note 2 at beat 2
+    arp_presets[0].notes[2].timing_64ths = 32;
+    arp_presets[0].notes[2].note_index = 2;
+    arp_presets[0].notes[2].octave_offset = 0;
+    arp_presets[0].notes[2].raw_travel = 200;
+
+    // Step 4: Note 3 at beat 3
+    arp_presets[0].notes[3].timing_64ths = 48;
+    arp_presets[0].notes[3].note_index = 3;
+    arp_presets[0].notes[3].octave_offset = 0;
+    arp_presets[0].notes[3].raw_travel = 200;
+
+    // =========================================================================
+    // PRESET 1: Down 16ths - Classic descending 16th notes
+    // =========================================================================
+    arp_presets[1].note_count = 4;
+    arp_presets[1].pattern_length_64ths = 64;
+    arp_presets[1].gate_length_percent = 80;
+    strncpy(arp_presets[1].name, "Down 16ths", ARP_PRESET_NAME_LENGTH);
+    arp_presets[1].magic = ARP_PRESET_MAGIC;
+
+    // Descending: 3, 2, 1, 0
+    arp_presets[1].notes[0].timing_64ths = 0;
+    arp_presets[1].notes[0].note_index = 3;
+    arp_presets[1].notes[0].octave_offset = 0;
+    arp_presets[1].notes[0].raw_travel = 200;
+
+    arp_presets[1].notes[1].timing_64ths = 16;
+    arp_presets[1].notes[1].note_index = 2;
+    arp_presets[1].notes[1].octave_offset = 0;
+    arp_presets[1].notes[1].raw_travel = 200;
+
+    arp_presets[1].notes[2].timing_64ths = 32;
+    arp_presets[1].notes[2].note_index = 1;
+    arp_presets[1].notes[2].octave_offset = 0;
+    arp_presets[1].notes[2].raw_travel = 200;
+
+    arp_presets[1].notes[3].timing_64ths = 48;
+    arp_presets[1].notes[3].note_index = 0;
+    arp_presets[1].notes[3].octave_offset = 0;
+    arp_presets[1].notes[3].raw_travel = 200;
+
+    // =========================================================================
+    // PRESET 2: Up-Down 16ths (Exclusive) - Up then down, no repeat
+    // =========================================================================
+    arp_presets[2].note_count = 6;
+    arp_presets[2].pattern_length_64ths = 96;  // 1.5 bars for up-down pattern
+    arp_presets[2].gate_length_percent = 80;
+    strncpy(arp_presets[2].name, "Up-Down 16ths", ARP_PRESET_NAME_LENGTH);
+    arp_presets[2].magic = ARP_PRESET_MAGIC;
+
+    // Up: 0, 1, 2, 3
+    arp_presets[2].notes[0].timing_64ths = 0;
+    arp_presets[2].notes[0].note_index = 0;
+    arp_presets[2].notes[0].octave_offset = 0;
+    arp_presets[2].notes[0].raw_travel = 200;
+
+    arp_presets[2].notes[1].timing_64ths = 16;
+    arp_presets[2].notes[1].note_index = 1;
+    arp_presets[2].notes[1].octave_offset = 0;
+    arp_presets[2].notes[1].raw_travel = 200;
+
+    arp_presets[2].notes[2].timing_64ths = 32;
+    arp_presets[2].notes[2].note_index = 2;
+    arp_presets[2].notes[2].octave_offset = 0;
+    arp_presets[2].notes[2].raw_travel = 200;
+
+    arp_presets[2].notes[3].timing_64ths = 48;
+    arp_presets[2].notes[3].note_index = 3;
+    arp_presets[2].notes[3].octave_offset = 0;
+    arp_presets[2].notes[3].raw_travel = 200;
+
+    // Down: 2, 1 (exclusive - don't repeat 3 and 0)
+    arp_presets[2].notes[4].timing_64ths = 64;
+    arp_presets[2].notes[4].note_index = 2;
+    arp_presets[2].notes[4].octave_offset = 0;
+    arp_presets[2].notes[4].raw_travel = 200;
+
+    arp_presets[2].notes[5].timing_64ths = 80;
+    arp_presets[2].notes[5].note_index = 1;
+    arp_presets[2].notes[5].octave_offset = 0;
+    arp_presets[2].notes[5].raw_travel = 200;
+
+    // =========================================================================
+    // PRESET 3: Random 8ths - Random note selection with 8th note timing
+    // =========================================================================
+    arp_presets[3].note_count = 4;
+    arp_presets[3].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[3].gate_length_percent = 75;
+    strncpy(arp_presets[3].name, "Random 8ths", ARP_PRESET_NAME_LENGTH);
+    arp_presets[3].magic = ARP_PRESET_MAGIC;
+
+    // Random pattern (will be randomized at runtime, but set defaults)
+    // 8th notes = 32/64ths apart
+    for (uint8_t i = 0; i < 4; i++) {
+        arp_presets[3].notes[i].timing_64ths = i * 32;
+        arp_presets[3].notes[i].note_index = 0;  // Will be randomized
+        arp_presets[3].notes[i].octave_offset = 0;
+        arp_presets[3].notes[i].raw_travel = 180;
+    }
+
+    arp_preset_count = 4;
+
+    dprintf("arp: initialized %d presets\n", arp_preset_count);
+}
+
+// =============================================================================
+// CORE ARPEGGIATOR LOGIC
+// =============================================================================
+
+// Get effective BPM (with fallback to 120 if BPM is 0)
+static uint32_t get_effective_bpm(void) {
+    return (current_bpm == 0) ? 12000000 : current_bpm;  // 120.00000 BPM default
+}
+
+// Calculate milliseconds per 64th note based on current BPM
+static uint32_t get_ms_per_64th(void) {
+    uint32_t actual_bpm = get_effective_bpm() / 100000;
+    if (actual_bpm == 0) actual_bpm = 120;
+
+    // ms per beat = 60000 / bpm
+    // ms per 64th = (60000 / bpm) / 16  (16 64th notes per beat)
+    return (60000 / actual_bpm) / 16;
+}
+
+// Sort live notes by pitch (for consistent ordering)
+static void sort_live_notes_by_pitch(uint8_t sorted_indices[], uint8_t count) {
+    // Create array of indices
+    for (uint8_t i = 0; i < count; i++) {
+        sorted_indices[i] = i;
+    }
+
+    // Simple bubble sort by note pitch
+    for (uint8_t i = 0; i < count - 1; i++) {
+        for (uint8_t j = 0; j < count - i - 1; j++) {
+            if (live_notes[sorted_indices[j]][1] > live_notes[sorted_indices[j+1]][1]) {
+                uint8_t temp = sorted_indices[j];
+                sorted_indices[j] = sorted_indices[j+1];
+                sorted_indices[j+1] = temp;
+            }
+        }
+    }
+}
+
+void arp_init(void) {
+    // Initialize presets
+    arp_init_presets();
+
+    // Clear arp notes
+    memset(arp_notes, 0, sizeof(arp_notes));
+    arp_note_count = 0;
+
+    // Reset state
+    arp_state.active = false;
+    arp_state.latch_mode = false;
+    arp_state.current_preset_id = 0;
+    arp_state.sync_mode = true;
+    arp_state.mode = ARP_MODE_SINGLE_NOTE;
+
+    dprintf("arp: initialized\n");
+}
+
+void arp_start(uint8_t preset_id) {
+    if (preset_id >= arp_preset_count) {
+        dprintf("arp: invalid preset id %d\n", preset_id);
+        return;
+    }
+
+    // If already active and switching presets
+    if (arp_state.active && preset_id != arp_state.current_preset_id) {
+        // Handle preset switching based on sync mode
+        if (arp_state.sync_mode) {
+            // Calculate relative position in old pattern
+            arp_preset_t *old_preset = &arp_presets[arp_state.current_preset_id];
+            uint16_t old_length = old_preset->pattern_length_64ths;
+            float progress = (float)arp_state.current_position_64ths / old_length;
+
+            // Apply to new pattern
+            arp_preset_t *new_preset = &arp_presets[preset_id];
+            arp_state.current_position_64ths = (uint16_t)(progress * new_preset->pattern_length_64ths);
+
+            dprintf("arp: switching preset with sync, progress: %d%%\n", (int)(progress * 100));
+        } else {
+            // Unsynced: restart from beginning
+            arp_state.current_position_64ths = 0;
+            arp_state.pattern_start_time = timer_read32();
+        }
+    } else {
+        // Starting fresh
+        arp_state.current_position_64ths = 0;
+        arp_state.pattern_start_time = timer_read32();
+
+        // If sync mode, wait for next beat to start
+        if (arp_state.sync_mode) {
+            // TODO: Sync to BPM beat boundary
+            // For now, start immediately
+        }
+    }
+
+    arp_state.current_preset_id = preset_id;
+    arp_state.active = true;
+    arp_state.current_note_in_chord = 0;
+    arp_state.next_note_time = timer_read32();  // Start immediately
+
+    dprintf("arp: started preset %d (%s)\n", preset_id, arp_presets[preset_id].name);
+}
+
+void arp_stop(void) {
+    if (!arp_state.active) return;
+
+    // Behavior depends on sync mode
+    if (arp_state.sync_mode) {
+        // Finish gates: let current notes complete their gate length
+        // process_arp_note_offs() will handle this naturally
+        dprintf("arp: stopping (sync mode - finishing gates)\n");
+    } else {
+        // Next step: immediately stop on next step boundary
+        // For now, stop immediately (can refine later)
+        dprintf("arp: stopping (unsync mode - immediate)\n");
+    }
+
+    arp_state.active = false;
+    arp_state.latch_mode = false;
+    arp_state.key_held = false;
+
+    // Note: We don't immediately send note-offs here
+    // Let the gate timing system handle it naturally
+}
+
+void arp_update(void) {
+    // Process any notes that need to be gated off
+    process_arp_note_offs();
+
+    // If not active, nothing to do
+    if (!arp_state.active) return;
+
+    // Check if we have notes to arpeggiate
+    if (live_note_count == 0) {
+        // No notes held - stop if not in latch mode
+        if (!arp_state.latch_mode) {
+            arp_stop();
+        }
+        return;
+    }
+
+    // Check if it's time to play next note
+    uint32_t current_time = timer_read32();
+    if (current_time < arp_state.next_note_time) {
+        return;  // Not yet time
+    }
+
+    // Get current preset
+    arp_preset_t *preset = &arp_presets[arp_state.current_preset_id];
+
+    // Special case: Random preset - randomize note indices
+    if (arp_state.current_preset_id == 3) {  // Random 8ths preset
+        for (uint8_t i = 0; i < preset->note_count; i++) {
+            preset->notes[i].note_index = rand() % live_note_count;
+        }
+    }
+
+    // Find notes to play at current position
+    uint8_t notes_to_play[MAX_PRESET_NOTES];
+    uint8_t note_count_to_play = 0;
+
+    for (uint8_t i = 0; i < preset->note_count; i++) {
+        if (preset->notes[i].timing_64ths == arp_state.current_position_64ths) {
+            notes_to_play[note_count_to_play++] = i;
+        }
+    }
+
+    // Play notes based on mode
+    if (note_count_to_play > 0) {
+        // Sort live notes for consistent ordering
+        uint8_t sorted_indices[MAX_LIVE_NOTES];
+        sort_live_notes_by_pitch(sorted_indices, live_note_count);
+
+        // Calculate gate length
+        uint8_t gate_percent = (arp_state.master_gate_override > 0) ?
+                               arp_state.master_gate_override :
+                               preset->gate_length_percent;
+
+        uint32_t ms_per_64th = get_ms_per_64th();
+        uint32_t note_duration_ms = ms_per_64th;  // Default: one 64th note
+        uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
+
+        for (uint8_t i = 0; i < note_count_to_play; i++) {
+            uint8_t preset_note_idx = notes_to_play[i];
+            arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
+
+            // Get note from live_notes
+            if (preset_note->note_index >= live_note_count) continue;
+
+            uint8_t live_idx = sorted_indices[preset_note->note_index];
+            uint8_t channel = live_notes[live_idx][0];
+            uint8_t note = live_notes[live_idx][1] + preset_note->octave_offset;
+            uint8_t raw_travel = preset_note->raw_travel;
+
+            // Send note-on
+            midi_send_noteon_arp(channel, note, raw_travel, raw_travel);
+
+            // Add to arp_notes for gate tracking
+            uint32_t note_off_time = current_time + gate_duration_ms;
+            add_arp_note(channel, note, raw_travel, note_off_time);
+        }
+    }
+
+    // Advance position
+    arp_state.current_position_64ths++;
+
+    // Check for loop
+    if (arp_state.current_position_64ths >= preset->pattern_length_64ths) {
+        arp_state.current_position_64ths = 0;
+        arp_state.pattern_start_time = current_time;
+        dprintf("arp: pattern loop\n");
+    }
+
+    // Calculate next note time
+    uint32_t ms_per_64th = get_ms_per_64th();
+    arp_state.next_note_time = current_time + ms_per_64th;
+}
+
+// =============================================================================
+// USER INTERFACE FUNCTIONS
+// =============================================================================
+
+void arp_next_preset(void) {
+    if (arp_preset_count == 0) return;
+
+    arp_state.current_preset_id = (arp_state.current_preset_id + 1) % arp_preset_count;
+    dprintf("arp: next preset -> %d (%s)\n",
+            arp_state.current_preset_id,
+            arp_presets[arp_state.current_preset_id].name);
+
+    // TODO: Update OLED display
+}
+
+void arp_prev_preset(void) {
+    if (arp_preset_count == 0) return;
+
+    if (arp_state.current_preset_id == 0) {
+        arp_state.current_preset_id = arp_preset_count - 1;
+    } else {
+        arp_state.current_preset_id--;
+    }
+
+    dprintf("arp: prev preset -> %d (%s)\n",
+            arp_state.current_preset_id,
+            arp_presets[arp_state.current_preset_id].name);
+
+    // TODO: Update OLED display
+}
+
+#define ARP_DOUBLE_TAP_WINDOW 300  // ms for double-tap detection
+
+void arp_handle_button_press(void) {
+    uint32_t current_time = timer_read32();
+    uint32_t time_since_last = current_time - arp_state.last_tap_time;
+
+    // Check for double-tap (latch mode)
+    if (time_since_last < ARP_DOUBLE_TAP_WINDOW) {
+        // Double-tap detected - toggle latch mode
+        arp_state.latch_mode = !arp_state.latch_mode;
+        dprintf("arp: double-tap detected, latch mode: %d\n", arp_state.latch_mode);
+
+        if (arp_state.latch_mode) {
+            // Start arp in latch mode (acts as if button is held)
+            arp_start(arp_state.current_preset_id);
+        }
+    } else {
+        // Single press - start arp normally
+        arp_state.key_held = true;
+        arp_start(arp_state.current_preset_id);
+    }
+
+    arp_state.last_tap_time = current_time;
+}
+
+void arp_handle_button_release(void) {
+    arp_state.key_held = false;
+
+    // Only stop if not in latch mode
+    if (!arp_state.latch_mode) {
+        arp_stop();
+    }
+}
+
+void arp_toggle_sync_mode(void) {
+    arp_state.sync_mode = !arp_state.sync_mode;
+    dprintf("arp: sync mode: %d\n", arp_state.sync_mode);
+
+    // TODO: Update OLED display
+}
+
+void arp_set_master_gate(uint8_t gate_percent) {
+    if (gate_percent > 100) gate_percent = 100;
+    arp_state.master_gate_override = gate_percent;
+    dprintf("arp: master gate override: %d%%\n", gate_percent);
+}
+
+void arp_set_mode(arp_mode_t mode) {
+    if (mode >= ARP_MODE_COUNT) return;
+    arp_state.mode = mode;
+    dprintf("arp: mode set to %d\n", mode);
+}
