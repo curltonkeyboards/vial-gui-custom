@@ -1008,6 +1008,7 @@ class QmkRgblightHandler(BasicHandler):
         self.lbl_underglow_effect = QLabel(tr("RGBConfigurator", "Underglow Effect"))
         container.addWidget(self.lbl_underglow_effect, row, 0)
         self.underglow_effect = ArrowComboBox()
+        self.underglow_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         for ef in QMK_RGBLIGHT_EFFECTS:
             self.underglow_effect.addItem(ef.name)
         container.addWidget(self.underglow_effect, row, 1)
@@ -1127,6 +1128,7 @@ class VialRGBHandler(BasicHandler):
         self.lbl_rgb_effect = QLabel(tr("RGBConfigurator", "RGB Effect"))
         container.addWidget(self.lbl_rgb_effect, row, 0)
         self.rgb_effect = ArrowComboBox()
+        self.rgb_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         self.rgb_effect.addItem("0")
         self.rgb_effect.addItem("1")
         self.rgb_effect.addItem("2")
@@ -1222,30 +1224,44 @@ class VialRGBHandler(BasicHandler):
 
 
 class RescanButtonHandler(BasicHandler):
-    """Handler for the Rescan LED Positions button - ONLY sends HID command"""
+    """Handler for Save Settings and Rescan LED Positions buttons"""
 
     def __init__(self, container):
         super().__init__(container)
 
         row = container.rowCount()
 
-        # Centered rescan button
+        # Create horizontal layout for both buttons
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        # Save Settings button (90px wide, same height as rescan button)
+        self.save_button = QPushButton(tr("RGBConfigurator", "Save Settings"))
+        self.save_button.clicked.connect(self.on_save_settings)
+        self.save_button.setFixedWidth(90)
+        self.save_button.setMinimumHeight(30)
+        self.save_button.setStyleSheet("QPushButton { border-radius: 5px; padding: 8px; }")
+        button_layout.addWidget(self.save_button)
+
+        # Rescan LED Positions button (same height as save button)
         self.rescan_button = QPushButton(tr("RGBConfigurator", "Rescan LED Positions"))
         self.rescan_button.clicked.connect(self.on_rescan_led_positions)
-        self.rescan_button.setStyleSheet("QPushButton { padding: 8px; }")
         self.rescan_button.setMinimumHeight(30)
-        
-        # Center the button using a horizontal layout
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
+        self.rescan_button.setStyleSheet("QPushButton { border-radius: 5px; padding: 8px; }")
         button_layout.addWidget(self.rescan_button)
+
         button_layout.addStretch()
-        
+
         button_widget = QWidget()
         button_widget.setLayout(button_layout)
         container.addWidget(button_widget, row, 0, 1, 2)
 
         self.widgets = [button_widget]
+
+    def on_save_settings(self):
+        """Save RGB settings"""
+        if hasattr(self.device, 'keyboard') and hasattr(self.device.keyboard, 'save_rgb'):
+            self.device.keyboard.save_rgb()
 
     def update_from_keyboard(self):
         # No updates needed for this button
@@ -1403,11 +1419,13 @@ class LayerRGBHandler(BasicHandler):
             button.setEnabled(self.per_layer_enabled)
             button.setMaximumWidth(80)  # Set a reasonable button width
             button.setMinimumWidth(60)  # Minimum width for readability
-            
+            button.setFixedHeight(35)  # 35px tall
+            button.setStyleSheet("QPushButton { border-radius: 5px; }")  # Rounded edges
+
             # Calculate row and column for 3x4 grid
             row = layer // 4  # 4 buttons per row
             col = layer % 4   # Column position within row
-            
+
             self.layer_buttons_layout.addWidget(button, row, col)
             self.layer_buttons.append(button)
 
@@ -1647,26 +1665,30 @@ class PerKeyRGBHandler(BasicHandler):
             self.palette_layout.addWidget(button, r, c)
             self.palette_buttons.append(button)
 
-        # Change Color button (below palette) - with rounded edges
+        # Change Color button (below palette) - with rounded edges, 35px tall
         self.btn_change_color = QPushButton(tr("RGBConfigurator", "Change Color"))
         self.btn_change_color.clicked.connect(self.on_change_color_clicked)
-        self.btn_change_color.setStyleSheet("border-radius: 5px;")
+        self.btn_change_color.setFixedHeight(35)
+        self.btn_change_color.setStyleSheet("QPushButton { border-radius: 5px; }")
         palette_container_layout.addWidget(self.btn_change_color)
 
-        # Action buttons (below Change Color button) - with rounded edges
+        # Action buttons (below Change Color button) - with rounded edges, 35px tall
         self.btn_change_all_layers = QPushButton(tr("RGBConfigurator", "Change ALL Layers to Per Key"))
         self.btn_change_all_layers.clicked.connect(self.on_change_all_layers)
-        self.btn_change_all_layers.setStyleSheet("border-radius: 5px;")
+        self.btn_change_all_layers.setFixedHeight(35)
+        self.btn_change_all_layers.setStyleSheet("QPushButton { border-radius: 5px; }")
         palette_container_layout.addWidget(self.btn_change_all_layers)
 
         self.btn_save = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
         self.btn_save.clicked.connect(self.on_save)
-        self.btn_save.setStyleSheet("border-radius: 5px;")
+        self.btn_save.setFixedHeight(35)
+        self.btn_save.setStyleSheet("QPushButton { border-radius: 5px; }")
         palette_container_layout.addWidget(self.btn_save)
 
         self.btn_load = QPushButton(tr("RGBConfigurator", "Load from EEPROM"))
         self.btn_load.clicked.connect(self.on_load)
-        self.btn_load.setStyleSheet("border-radius: 5px;")
+        self.btn_load.setFixedHeight(35)
+        self.btn_load.setStyleSheet("QPushButton { border-radius: 5px; }")
         palette_container_layout.addWidget(self.btn_load)
 
         palette_container_layout.addStretch()
@@ -2203,15 +2225,17 @@ class CustomLightsHandler(BasicHandler):
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(live_label, 0, 0, 1, 3)
 
-        # Live Effect - hierarchical dropdown
+        # Live Effect - hierarchical dropdown with rounded edges
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
         live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
+        live_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
         layout.addWidget(live_effect, 1, 1, 1, 2)
 
-        # Live Style - hierarchical dropdown
+        # Live Style - hierarchical dropdown with rounded edges
         layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
         live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
+        live_style.setStyleSheet("QComboBox { border-radius: 5px; }")
         live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
         layout.addWidget(live_style, 2, 1, 1, 2)
 
@@ -2229,15 +2253,17 @@ class CustomLightsHandler(BasicHandler):
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(macro_label, 4, 0, 1, 3)
 
-        # Macro Effect - hierarchical dropdown (same as live effects)
+        # Macro Effect - hierarchical dropdown with rounded edges (same as live effects)
         layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
         macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
+        macro_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
         layout.addWidget(macro_effect, 5, 1, 1, 2)
 
-        # Macro Style - hierarchical dropdown
+        # Macro Style - hierarchical dropdown with rounded edges
         layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
         macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
+        macro_style.setStyleSheet("QComboBox { border-radius: 5px; }")
         macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
         layout.addWidget(macro_style, 6, 1, 1, 2)
         
@@ -2255,9 +2281,10 @@ class CustomLightsHandler(BasicHandler):
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(effects_label, 8, 0, 1, 3)
 
-        # Background - hierarchical dropdown
+        # Background - hierarchical dropdown with rounded edges
         layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
         background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
+        background.setStyleSheet("QComboBox { border-radius: 5px; }")
         background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
         layout.addWidget(background, 9, 1, 1, 2)
 
@@ -2275,35 +2302,43 @@ class CustomLightsHandler(BasicHandler):
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addWidget(effects_label, 11, 0, 1, 3)
 
-        # Colour Scheme - moved to row 12
+        # Colour Scheme - moved to row 12, with rounded edges
         layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
         color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
+        color_type.setStyleSheet("QComboBox { border-radius: 5px; }")
         color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
         layout.addWidget(color_type, 12, 1, 1, 2)
 
-        # Sustain Mode - moved to row 13
+        # Sustain Mode - moved to row 13, with rounded edges
         layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
         sustain_mode = ArrowComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
+        sustain_mode.setStyleSheet("QComboBox { border-radius: 5px; }")
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
         layout.addWidget(sustain_mode, 13, 1, 1, 2)
 
-        # Buttons - moved to row 14
+        # Buttons - moved to row 14, same height as dropdown with rounded edges
         buttons_layout = QHBoxLayout()
-        
+
         save_button = QPushButton(tr("RGBConfigurator", "Save"))
         save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
+        save_button.setMinimumHeight(30)
+        save_button.setStyleSheet("QPushButton { border-radius: 5px; }")
         buttons_layout.addWidget(save_button)
-        
+
         load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
         load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
+        load_button.setMinimumHeight(30)
+        load_button.setStyleSheet("QPushButton { border-radius: 5px; }")
         buttons_layout.addWidget(load_button)
-        
+
         preset_combo = ArrowComboBox()
         preset_combo.addItem("Load Preset...")
         for preset in CUSTOM_LIGHT_PRESETS:
             preset_combo.addItem(preset)
+        preset_combo.setMinimumHeight(30)
+        preset_combo.setStyleSheet("QComboBox { border-radius: 5px; }")
         preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
         buttons_layout.addWidget(preset_combo)
         
@@ -2811,16 +2846,7 @@ class RGBConfigurator(BasicEditor):
                         self.handler_vialrgb, self.handler_rescan,
                         self.handler_layer_rgb, self.handler_per_key_rgb, self.handler_custom_lights]
 
-        # Add buttons outside of tabs
-        buttons = QHBoxLayout()
-        buttons.addStretch()
-        save_btn = QPushButton(tr("RGBConfigurator", "Save"))
-        save_btn.setMinimumHeight(30)
-        save_btn.setMaximumHeight(30)
-        save_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-        buttons.addWidget(save_btn)
-        save_btn.clicked.connect(self.on_save)
-        self.addLayout(buttons)
+        # Save button is now inside the Basic tab, after LayerRGBHandler
 
     def _create_tab_with_scroll(self, container):
         """Helper method to create a tab with scroll area"""
