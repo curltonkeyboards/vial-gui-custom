@@ -431,36 +431,69 @@ class KeyboardWidget(QWidget):
 
             active = key.active or (self.active_key == key and not self.active_mask)
 
-            # draw keycap background/drop-shadow
-            # For encoder widgets and push buttons, draw 2px border with QPalette.Window color when not active
-            if (isinstance(key, EncoderWidget2) or isinstance(key, EncoderWidget) or
-                (hasattr(key.desc, 'row') and key.desc.row == 5 and key.desc.col in [0, 1, 2])):
-                if active:
-                    qp.setPen(active_pen)
-                else:
-                    border_pen = QPen(QApplication.palette().color(QPalette.Window))
-                    border_pen.setWidth(2)
-                    qp.setPen(border_pen)
+            # If this key has a custom color set (from per-key RGB painting), use it for entire key
+            if key.color:
+                # No border - just paint the key with radial gradient at 70% opacity
+                qp.setPen(Qt.NoPen)
+
+                # Create radial gradient brush for modern look (brighter center, darker edges)
+                # Apply 70% opacity to all colors
+                color = key.color
+                r, g, b = color.red(), color.green(), color.blue()
+                opacity = int(255 * 0.7)  # 70% opacity
+
+                # Stronger darkening for better visibility
+                r_dark = max(0, r - 60)
+                g_dark = max(0, g - 60)
+                b_dark = max(0, b - 60)
+
+                from PyQt5.QtGui import QRadialGradient
+                # Center the gradient on the key
+                center_x = key.x + key.w / 2
+                center_y = key.y + key.h / 2
+                radius = max(key.w, key.h) * 0.7
+
+                gradient = QRadialGradient(center_x, center_y, radius, center_x, center_y)
+                gradient.setColorAt(0, QColor(r, g, b, opacity))  # Bright center with opacity
+                gradient.setColorAt(1, QColor(r_dark, g_dark, b_dark, opacity))  # Dark edges with opacity
+
+                gradient_brush = QBrush(gradient)
+                qp.setBrush(gradient_brush)
+                qp.drawPath(key.background_draw_path)
+                qp.drawPath(key.foreground_draw_path)
             else:
-                qp.setPen(active_pen if active else Qt.NoPen)
+                # Default theme-based rendering for unpainted keys
+                # draw keycap background/drop-shadow
+                # For encoder widgets and push buttons, draw 2px border with QPalette.Window color when not active
+                if (isinstance(key, EncoderWidget2) or isinstance(key, EncoderWidget) or
+                    (hasattr(key.desc, 'row') and key.desc.row == 5 and key.desc.col in [0, 1, 2])):
+                    if active:
+                        qp.setPen(active_pen)
+                    else:
+                        border_pen = QPen(QApplication.palette().color(QPalette.Window))
+                        border_pen.setWidth(2)
+                        qp.setPen(border_pen)
+                else:
+                    qp.setPen(active_pen if active else Qt.NoPen)
 
-            brush = background_brush
-            if key.pressed:
-                brush = background_pressed_brush
-            elif key.on:
-                brush = background_on_brush
-            qp.setBrush(brush)
-            qp.drawPath(key.background_draw_path)
+                brush = background_brush
+                if key.pressed:
+                    brush = background_pressed_brush
+                elif key.on:
+                    brush = background_on_brush
+                qp.setBrush(brush)
+                qp.drawPath(key.background_draw_path)
 
-            # draw keycap foreground
-            qp.setPen(Qt.NoPen)
-            brush = foreground_brush
-            if key.pressed:
-                brush = foreground_pressed_brush
-            elif key.on:
-                brush = foreground_on_brush
-            qp.setBrush(brush)
-            qp.drawPath(key.foreground_draw_path)
+                # draw keycap foreground
+                qp.setPen(Qt.NoPen)
+                brush = foreground_brush
+                if key.pressed:
+                    brush = foreground_pressed_brush
+                elif key.on:
+                    brush = foreground_on_brush
+
+                qp.setBrush(brush)
+                qp.drawPath(key.foreground_draw_path)
 
             # draw key text
             if key.masked:
@@ -1046,26 +1079,59 @@ class KeyboardWidget2(QWidget):
 
             active = key.active or (self.active_key == key and not self.active_mask)
 
-            # draw keycap background/drop-shadow
-            qp.setPen(active_pen if active else Qt.NoPen)
+            # If this key has a custom color set (from per-key RGB painting), use it for entire key
+            if key.color:
+                # No border - just paint the key with radial gradient at 70% opacity
+                qp.setPen(Qt.NoPen)
 
-            brush = background_brush
-            if key.pressed:
-                brush = background_pressed_brush
-            elif key.on:
-                brush = background_on_brush
-            qp.setBrush(brush)
-            qp.drawPath(key.background_draw_path)
+                # Create radial gradient brush for modern look (brighter center, darker edges)
+                # Apply 70% opacity to all colors
+                color = key.color
+                r, g, b = color.red(), color.green(), color.blue()
+                opacity = int(255 * 0.7)  # 70% opacity
 
-            # draw keycap foreground
-            qp.setPen(Qt.NoPen)
-            brush = foreground_brush
-            if key.pressed:
-                brush = foreground_pressed_brush
-            elif key.on:
-                brush = foreground_on_brush
-            qp.setBrush(brush)
-            qp.drawPath(key.foreground_draw_path)
+                # Stronger darkening for better visibility
+                r_dark = max(0, r - 60)
+                g_dark = max(0, g - 60)
+                b_dark = max(0, b - 60)
+
+                from PyQt5.QtGui import QRadialGradient
+                # Center the gradient on the key
+                center_x = key.x + key.w / 2
+                center_y = key.y + key.h / 2
+                radius = max(key.w, key.h) * 0.7
+
+                gradient = QRadialGradient(center_x, center_y, radius, center_x, center_y)
+                gradient.setColorAt(0, QColor(r, g, b, opacity))  # Bright center with opacity
+                gradient.setColorAt(1, QColor(r_dark, g_dark, b_dark, opacity))  # Dark edges with opacity
+
+                gradient_brush = QBrush(gradient)
+                qp.setBrush(gradient_brush)
+                qp.drawPath(key.background_draw_path)
+                qp.drawPath(key.foreground_draw_path)
+            else:
+                # Default theme-based rendering for unpainted keys
+                # draw keycap background/drop-shadow
+                qp.setPen(active_pen if active else Qt.NoPen)
+
+                brush = background_brush
+                if key.pressed:
+                    brush = background_pressed_brush
+                elif key.on:
+                    brush = background_on_brush
+                qp.setBrush(brush)
+                qp.drawPath(key.background_draw_path)
+
+                # draw keycap foreground
+                qp.setPen(Qt.NoPen)
+                brush = foreground_brush
+                if key.pressed:
+                    brush = foreground_pressed_brush
+                elif key.on:
+                    brush = foreground_on_brush
+
+                qp.setBrush(brush)
+                qp.drawPath(key.foreground_draw_path)
 
             # draw key text
             if key.masked:

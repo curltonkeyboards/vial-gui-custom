@@ -1590,14 +1590,27 @@ class PerKeyRGBHandler(BasicHandler):
         container.addWidget(self.lbl_title, row, 0, 1, 2)
         row += 1
 
-        # Preset selector
+        # Preset selector with individual buttons
         self.lbl_preset = QLabel(tr("RGBConfigurator", "Select Preset:"))
         container.addWidget(self.lbl_preset, row, 0)
-        self.preset_selector = QComboBox()
-        for i in range(1, 13):
-            self.preset_selector.addItem(f"Per Key {i}")
-        self.preset_selector.currentIndexChanged.connect(self.on_preset_changed)
-        container.addWidget(self.preset_selector, row, 1)
+
+        # Create horizontal layout for preset buttons
+        preset_button_widget = QWidget()
+        preset_button_layout = QHBoxLayout(preset_button_widget)
+        preset_button_layout.setContentsMargins(0, 0, 0, 0)
+        preset_button_layout.setSpacing(4)
+
+        # Create 12 preset buttons (35x35 pixels each)
+        self.preset_buttons = []
+        for i in range(12):
+            btn = QPushButton(str(i + 1))
+            btn.setFixedSize(35, 35)
+            btn.clicked.connect(lambda checked, idx=i: self.on_preset_changed(idx))
+            preset_button_layout.addWidget(btn)
+            self.preset_buttons.append(btn)
+
+        preset_button_layout.addStretch()
+        container.addWidget(preset_button_widget, row, 1)
         row += 1
 
         # Main horizontal layout: Palette on left, Keyboard on right
@@ -1622,33 +1635,38 @@ class PerKeyRGBHandler(BasicHandler):
         self.palette_layout.setSpacing(4)
         palette_container_layout.addWidget(self.palette_widget)
 
-        # Create 4x4 palette buttons (no numbers)
+        # Create 4x4 palette buttons (same size, border selection)
         self.palette_buttons = []
         for i in range(16):
             r = i // 4  # 4 rows
             c = i % 4   # 4 columns
             button = PaletteButton(i)
+            button.setFixedSize(35, 35)  # Fixed size for all
             button.single_clicked.connect(self.on_palette_selected)
             button.edit_requested.connect(self.on_palette_edit)
             self.palette_layout.addWidget(button, r, c)
             self.palette_buttons.append(button)
 
-        # Change Color button (below palette)
+        # Change Color button (below palette) - with rounded edges
         self.btn_change_color = QPushButton(tr("RGBConfigurator", "Change Color"))
         self.btn_change_color.clicked.connect(self.on_change_color_clicked)
+        self.btn_change_color.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_change_color)
 
-        # Action buttons (below Change Color button, same width as palette)
+        # Action buttons (below Change Color button) - with rounded edges
         self.btn_change_all_layers = QPushButton(tr("RGBConfigurator", "Change ALL Layers to Per Key"))
         self.btn_change_all_layers.clicked.connect(self.on_change_all_layers)
+        self.btn_change_all_layers.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_change_all_layers)
 
         self.btn_save = QPushButton(tr("RGBConfigurator", "Save to EEPROM"))
         self.btn_save.clicked.connect(self.on_save)
+        self.btn_save.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_save)
 
         self.btn_load = QPushButton(tr("RGBConfigurator", "Load from EEPROM"))
         self.btn_load.clicked.connect(self.on_load)
+        self.btn_load.setStyleSheet("border-radius: 5px;")
         palette_container_layout.addWidget(self.btn_load)
 
         palette_container_layout.addStretch()
@@ -1682,18 +1700,21 @@ class PerKeyRGBHandler(BasicHandler):
         self.key_widgets = []  # Will store references to keyboard key widgets
 
         self.widgets = [
-            self.lbl_title, self.lbl_preset, self.preset_selector,
+            self.lbl_title, self.lbl_preset, preset_button_widget,
             main_widget
         ]
 
         # Initialize palette display with default colors
         self.update_palette_display()
         self.update_palette_selection()
+        self.update_preset_button_selection()
 
     def on_preset_changed(self, index):
-        """Handle preset selection change"""
+        """Handle preset selection change - switches to local cached preset data"""
         self.current_preset = index
-        self.load_preset_from_firmware(index)
+        # Update button visual states to show current selection
+        self.update_preset_button_selection()
+        # Update display with cached preset data (no firmware reload)
         self.update_keyboard_display()
 
     def on_key_clicked(self):
@@ -1759,35 +1780,88 @@ class PerKeyRGBHandler(BasicHandler):
             self.update_keyboard_display()
 
     def update_palette_selection(self):
-        """Update the visual selection state of palette buttons"""
+        """Update the visual selection state of palette buttons with borders and opacity"""
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+
+        # Detect if dark or light theme
+        bg_color = QApplication.palette().color(QPalette.Window)
+        is_dark_theme = bg_color.lightness() < 128
+        border_color = "#FFFFFF" if is_dark_theme else "#000000"
+
         for i, button in enumerate(self.palette_buttons):
             # Get the base color
             h, s, v = self.palette[i]
             rgb = self.hsv_to_rgb(h, s, v)
 
-            # Add selection border if this is the selected palette
-            if i == self.selected_palette_index:
-                border = "border: 3px solid #FFFFFF"
-            else:
-                border = "border: 1px solid #444444"
-
-            # Create gradient effect (darker on edges)
+            # Create radial gradient effect (brighter center, darker edges)
             r, g, b = rgb[0], rgb[1], rgb[2]
-            r_dark, g_dark, b_dark = max(0, r - 30), max(0, g - 30), max(0, b - 30)
+            # Stronger darkening for better visibility
+            r_dark = max(0, r - 60)
+            g_dark = max(0, g - 60)
+            b_dark = max(0, b - 60)
 
-            # Use solid color background with gradient overlay
+            # Selected palette: 100% opacity with white/black border
+            # Unselected palette: 70% opacity with thin border
+            if i == self.selected_palette_index:
+                opacity = 255
+                border = f"border: 3px solid {border_color};"
+            else:
+                opacity = int(255 * 0.7)  # 70% opacity
+                border = "border: 1px solid #444444;"
+
+            # Use radial gradient for centered effect with opacity
             stylesheet = f"""
                 QPushButton {{
-                    background-color: rgb({r}, {g}, {b});
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 rgba({r_dark}, {g_dark}, {b_dark}, 255),
-                        stop:0.5 rgba({r}, {g}, {b}, 255),
-                        stop:1 rgba({r_dark}, {g_dark}, {b_dark}, 255));
-                    {border};
+                    background-color: rgba({r}, {g}, {b}, {opacity});
+                    background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
+                        fx:0.5, fy:0.5,
+                        stop:0 rgba({r}, {g}, {b}, {opacity}),
+                        stop:1 rgba({r_dark}, {g_dark}, {b_dark}, {opacity}));
+                    {border}
                 }}
             """
 
             button.setStyleSheet(stylesheet)
+
+    def update_preset_button_selection(self):
+        """Update the visual selection state of preset buttons using theme colors"""
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+
+        # Get theme colors
+        highlight_color = QApplication.palette().color(QPalette.Highlight)
+        highlight_text = QApplication.palette().color(QPalette.HighlightedText)
+        button_color = QApplication.palette().color(QPalette.Button)
+        text_color = QApplication.palette().color(QPalette.ButtonText)
+
+        for i, button in enumerate(self.preset_buttons):
+            if i == self.current_preset:
+                # Selected preset - use theme highlight colors
+                button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {highlight_color.name()};
+                        color: {highlight_text.name()};
+                        font-weight: bold;
+                        border: 2px solid {highlight_color.lighter(120).name()};
+                    }}
+                    QPushButton:hover {{
+                        background-color: {highlight_color.lighter(110).name()};
+                    }}
+                """)
+            else:
+                # Unselected preset - use theme button colors
+                button.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {button_color.name()};
+                        color: {text_color.name()};
+                        border: 1px solid {button_color.darker(120).name()};
+                    }}
+                    QPushButton:hover {{
+                        background-color: {button_color.lighter(110).name()};
+                        border: 1px solid {button_color.darker(110).name()};
+                    }}
+                """)
 
     def get_key_index(self, key_widget):
         """Get the LED index (0-69) for a given key widget based on matrix position"""
@@ -1831,9 +1905,15 @@ class PerKeyRGBHandler(BasicHandler):
             import struct
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD)
             self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
-            # Reload data from firmware
+
+            # Reload palette and ALL presets from firmware after EEPROM load
             self.load_palette_from_firmware()
-            self.load_preset_from_firmware(self.current_preset)
+            print("Reloading all presets from EEPROM...")
+            for preset_idx in range(12):
+                self.load_preset_from_firmware(preset_idx)
+            print("All presets reloaded from EEPROM.")
+
+            # Update displays
             self.update_palette_display()
             self.update_keyboard_display()
             print("Loaded per-key RGB from EEPROM")
@@ -1921,9 +2001,18 @@ class PerKeyRGBHandler(BasicHandler):
             self.keyboard_widget.set_keys(keys, encoders)
             self.keyboard_widget.update_layout()
 
-            # Load data from firmware
+            # Load palette from firmware
             self.load_palette_from_firmware()
-            self.load_preset_from_firmware(self.current_preset)
+
+            # Load ALL presets from firmware to cache them locally
+            # This allows switching between presets without losing unsaved changes
+            print("Loading all presets from firmware...")
+            for preset_idx in range(12):
+                self.load_preset_from_firmware(preset_idx)
+            print("All presets loaded.")
+
+            # Update display for current preset
+            self.update_keyboard_display()
 
     def update_palette_display(self):
         """Update palette button colors with gradient effect"""
@@ -2013,12 +2102,20 @@ class PerKeyRGBHandler(BasicHandler):
         return (int(h / 360.0 * 255), int(s * 255), int(v * 255))
 
     def update_from_keyboard(self):
-        """Update from keyboard"""
+        """Update from keyboard - loads all presets to preserve local edits"""
         if not self.valid():
             return
 
         self.load_palette_from_firmware()
-        self.load_preset_from_firmware(self.current_preset)
+
+        # Load ALL presets from firmware to cache them locally
+        print("Refreshing all presets from firmware...")
+        for preset_idx in range(12):
+            self.load_preset_from_firmware(preset_idx)
+        print("All presets refreshed.")
+
+        # Update display for current preset
+        self.update_keyboard_display()
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)
