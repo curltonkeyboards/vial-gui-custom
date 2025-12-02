@@ -51,28 +51,35 @@ arp_notes[] (arpeggiator.c)
    - Calculates `ms_per_64th = (60000 / bpm) / 16`
    - Patterns defined in 64th note divisions
 
-## Features Implemented (Phase 1)
+## Features Implemented
 
-### ✅ Core Functionality
+### ✅ Phase 1 - Core Functionality
 - [x] BPM-synced timing (uses existing tap tempo system)
 - [x] Gate length control (per-preset + master override)
-- [x] 4 hardcoded presets (Up 16ths, Down 16ths, Up-Down, Random)
+- [x] 4 basic presets (Up 16ths, Down 16ths, Up-Down, Random)
 - [x] Preset selection (Next/Prev/Play buttons)
 - [x] Double-tap for latch mode
 - [x] Sync mode (continue at relative position vs restart)
 - [x] Single note mode (one note at a time)
 - [x] Integration with macro recording
 - [x] Integration with LED lighting
-
-### ✅ User Interface
 - [x] 9 control keycodes + 16 direct preset selectors
 - [x] All keycodes integrated into `process_record_user()`
 - [x] Double-tap detection for latch mode (300ms window)
-
-### Data Structures
 - [x] Smart EEPROM-ready preset structure (up to 256/64th notes, 4 bars)
 - [x] 32 arp note slots for gate tracking
 - [x] 32 preset slots (expandable)
+
+### ✅ Phase 2 - Advanced Features (COMPLETED!)
+- [x] **Chord Basic Mode** - Play all live notes simultaneously at each step
+- [x] **Chord Advanced Mode** - Rotate through live notes (note1-step1, note2-step1, note1-step2...)
+- [x] **Octave Range Support** - Presets can now span multiple octaves
+- [x] **4 New Presets with Octaves:**
+  - Preset 4: "Up 2 Oct" - Ascending across 2 octaves
+  - Preset 5: "Down 2 Oct" - Descending across 2 octaves
+  - Preset 6: "Oct Jump" - Alternates between base and +1 octave
+  - Preset 7: "Rapid 32nds" - Fast 32nd note pattern
+- [x] **Total: 8 Presets** (4 basic + 4 advanced)
 
 ## Keycode Definitions
 
@@ -98,6 +105,33 @@ ARP_PRESET_3      0xED13  // Play preset 3 (Random 8ths)
 // ... up to ARP_PRESET_15 (0xED1F)
 ```
 
+## Playback Modes
+
+### Single Note Mode (Default)
+**Usage:** Press `ARP_MODE_SINGLE` or default
+**Behavior:** Classic arpeggiator - one note plays at a time
+- Each step in the preset triggers ONE note from live_notes[]
+- Notes are selected based on preset's note_index
+- Example: Hold C-E-G chord, preset plays C, E, G in sequence
+
+### Chord Basic Mode
+**Usage:** Press `ARP_MODE_CHORD`
+**Behavior:** Play ALL held notes at once per step
+- Each step triggers ALL notes from live_notes[] simultaneously
+- Timing doesn't change - just more notes per step
+- Example: Hold C-E-G chord, each step plays full C-E-G chord
+- Great for rhythmic chord stabs synced to BPM
+
+### Chord Advanced Mode
+**Usage:** Press `ARP_MODE_ADVANCED`
+**Behavior:** Rotate through held notes, one per step
+- Pattern: note1-step1, note2-step1, note3-step1, note1-step2, note2-step2...
+- Cycles through all held notes before moving to next preset step
+- Example: Hold C-E-G chord with 4-step preset:
+  - Step 1 plays C, Step 1 plays E, Step 1 plays G
+  - Step 2 plays C, Step 2 plays E, Step 2 plays G, etc.
+- Creates intricate patterns that interleave chord notes with preset timing
+
 ## Built-in Presets
 
 ### Preset 0: "Up 16ths"
@@ -105,6 +139,7 @@ ARP_PRESET_3      0xED13  // Play preset 3 (Random 8ths)
 - 4 notes, 16th note timing
 - 1 bar length (64/64ths)
 - 80% gate length
+- Octave range: 1 (no repeat)
 - Notes: 0, 1, 2, 3 (sorted ascending by pitch)
 
 ### Preset 1: "Down 16ths"
@@ -112,6 +147,7 @@ ARP_PRESET_3      0xED13  // Play preset 3 (Random 8ths)
 - 4 notes, 16th note timing
 - 1 bar length
 - 80% gate length
+- Octave range: 1 (no repeat)
 - Notes: 3, 2, 1, 0 (sorted descending)
 
 ### Preset 2: "Up-Down 16ths"
@@ -119,6 +155,7 @@ ARP_PRESET_3      0xED13  // Play preset 3 (Random 8ths)
 - 6 notes total
 - 1.5 bar length (96/64ths)
 - 80% gate length
+- Octave range: 1 (no repeat)
 - Pattern: 0, 1, 2, 3, 2, 1
 
 ### Preset 3: "Random 8ths"
@@ -126,7 +163,44 @@ ARP_PRESET_3      0xED13  // Play preset 3 (Random 8ths)
 - 4 notes, 8th note timing
 - 2 bar length (128/64ths)
 - 75% gate length
+- Octave range: 1 (no repeat)
 - Note indices randomized each loop
+
+### Preset 4: "Up 2 Oct" ⭐ NEW!
+- Ascending across 2 octaves
+- 8 notes, 16th note timing
+- 2 bar length (128/64ths)
+- 80% gate length
+- Octave range: 2
+- Pattern: notes 0-3 in base octave, then 0-3 in +12 semitones
+- Example: Hold C-E-G → plays C, E, G, (high C), (high E), (high G)...
+
+### Preset 5: "Down 2 Oct" ⭐ NEW!
+- Descending across 2 octaves
+- 8 notes, 16th note timing
+- 2 bar length (128/64ths)
+- 80% gate length
+- Octave range: 2
+- Pattern: notes 3-0 in high octave, then 3-0 in base octave
+- Creates dramatic descending sweeps
+
+### Preset 6: "Oct Jump" ⭐ NEW!
+- Alternates between base and +1 octave
+- 8 notes, varies timing
+- 2 bar length (128/64ths)
+- 75% gate length
+- Octave range: 2
+- Pattern: note0, note0+12, note1, note1+12, note2, note2+12...
+- Creates bouncing octave effect
+
+### Preset 7: "Rapid 32nds" ⭐ NEW!
+- Fast 32nd note ascending
+- 8 notes, 32nd note timing
+- 1 bar length (64/64ths)
+- 60% gate length (shorter for clarity)
+- Octave range: 1
+- Cycles through notes rapidly for intense patterns
+- Great for high-energy sections
 
 ## Usage
 

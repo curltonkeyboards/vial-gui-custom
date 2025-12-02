@@ -237,6 +237,7 @@ typedef struct {
     uint8_t note_count;                 // Number of notes in this preset
     uint16_t pattern_length_64ths;      // Total pattern length in 64th notes (16=1 beat, 64=1 bar)
     uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
+    uint8_t octave_range;               // How many octaves to repeat (1-4, 1=no repeat)
     arp_preset_note_t notes[MAX_PRESET_NOTES];  // Note definitions
     uint16_t magic;                     // 0xA89F for validation
 } arp_preset_t;
