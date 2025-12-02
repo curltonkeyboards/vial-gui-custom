@@ -283,6 +283,15 @@ void arp_handle_button_release(void);
 void arp_set_master_gate(uint8_t gate_percent);
 void arp_set_mode(arp_mode_t mode);
 
+// Phase 3: EEPROM and preset management functions
+bool arp_validate_preset(const arp_preset_t *preset);
+bool arp_save_preset_to_eeprom(uint8_t preset_id);
+bool arp_load_preset_from_eeprom(uint8_t preset_id);
+void arp_load_all_user_presets(void);
+bool arp_clear_preset(uint8_t preset_id);
+bool arp_copy_preset(uint8_t source_id, uint8_t dest_id);
+void arp_reset_all_user_presets(void);
+
 // Internal helper functions
 void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);
 void remove_arp_note(uint8_t channel, uint8_t note);

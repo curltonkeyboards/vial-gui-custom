@@ -5,6 +5,7 @@
 #include "orthomidi5x14.h"
 #include "process_midi.h"
 #include "timer.h"
+#include "eeprom.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -378,8 +379,11 @@ static void sort_live_notes_by_pitch(uint8_t sorted_indices[], uint8_t count) {
 }
 
 void arp_init(void) {
-    // Initialize presets
+    // Initialize factory presets (0-7)
     arp_init_presets();
+
+    // Load user presets from EEPROM (8-31)
+    arp_load_all_user_presets();
 
     // Clear arp notes
     memset(arp_notes, 0, sizeof(arp_notes));
@@ -392,7 +396,7 @@ void arp_init(void) {
     arp_state.sync_mode = true;
     arp_state.mode = ARP_MODE_SINGLE_NOTE;
 
-    dprintf("arp: initialized\n");
+    dprintf("arp: initialized with %d total presets\n", MAX_ARP_PRESETS);
 }
 
 void arp_start(uint8_t preset_id) {
@@ -702,4 +706,230 @@ void arp_set_mode(arp_mode_t mode) {
     if (mode >= ARP_MODE_COUNT) return;
     arp_state.mode = mode;
     dprintf("arp: mode set to %d\n", mode);
+}
+
+// =============================================================================
+// PHASE 3: EEPROM STORAGE & PRESET MANAGEMENT
+// =============================================================================
+
+// Calculate EEPROM address for a given preset slot
+// Slots 0-7: Factory presets (not stored in EEPROM)
+// Slots 8-31: User presets (stored in EEPROM)
+#define USER_PRESET_START_SLOT 8
+#define USER_PRESET_COUNT 24  // 24 user presets (slots 8-31)
+
+static uint32_t arp_get_preset_eeprom_addr(uint8_t preset_id) {
+    if (preset_id < USER_PRESET_START_SLOT) {
+        return 0;  // Factory presets not stored in EEPROM
+    }
+    uint8_t user_slot = preset_id - USER_PRESET_START_SLOT;
+    return ARP_EEPROM_ADDR + (user_slot * sizeof(arp_preset_t));
+}
+
+// Validate preset structure
+bool arp_validate_preset(const arp_preset_t *preset) {
+    if (preset == NULL) {
+        dprintf("arp: validate failed - NULL pointer\n");
+        return false;
+    }
+
+    // Check magic number
+    if (preset->magic != ARP_PRESET_MAGIC) {
+        dprintf("arp: validate failed - bad magic: 0x%04X (expected 0x%04X)\n",
+                preset->magic, ARP_PRESET_MAGIC);
+        return false;
+    }
+
+    // Check note count bounds
+    if (preset->note_count > MAX_PRESET_NOTES) {
+        dprintf("arp: validate failed - note_count %d exceeds max %d\n",
+                preset->note_count, MAX_PRESET_NOTES);
+        return false;
+    }
+
+    // Check gate length bounds
+    if (preset->gate_length_percent > 100) {
+        dprintf("arp: validate failed - gate_length_percent %d > 100\n",
+                preset->gate_length_percent);
+        return false;
+    }
+
+    // Check octave range bounds
+    if (preset->octave_range < 1 || preset->octave_range > 4) {
+        dprintf("arp: validate failed - octave_range %d not in [1,4]\n",
+                preset->octave_range);
+        return false;
+    }
+
+    // Check pattern length bounds (at least 1/64th, max 16 bars = 1024 64ths)
+    if (preset->pattern_length_64ths < 1 || preset->pattern_length_64ths > 1024) {
+        dprintf("arp: validate failed - pattern_length %d not in [1,1024]\n",
+                preset->pattern_length_64ths);
+        return false;
+    }
+
+    // Validate individual notes
+    for (uint8_t i = 0; i < preset->note_count; i++) {
+        const arp_preset_note_t *note = &preset->notes[i];
+
+        // Check timing is within pattern length
+        if (note->timing_64ths >= preset->pattern_length_64ths) {
+            dprintf("arp: validate failed - note[%d] timing %d >= pattern_length %d\n",
+                    i, note->timing_64ths, preset->pattern_length_64ths);
+            return false;
+        }
+
+        // Check octave offset is reasonable (-24 to +24 semitones = ±2 octaves)
+        if (note->octave_offset < -24 || note->octave_offset > 24) {
+            dprintf("arp: validate failed - note[%d] octave_offset %d not in [-24,24]\n",
+                    i, note->octave_offset);
+            return false;
+        }
+
+        // Raw travel is 0-255, always valid for uint8_t
+    }
+
+    dprintf("arp: preset validation passed\n");
+    return true;
+}
+
+// Save a preset to EEPROM (only for user slots 8-31)
+bool arp_save_preset_to_eeprom(uint8_t preset_id) {
+    if (preset_id < USER_PRESET_START_SLOT || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: save failed - preset_id %d not in user range [%d,%d)\n",
+                preset_id, USER_PRESET_START_SLOT, MAX_ARP_PRESETS);
+        return false;
+    }
+
+    // Validate preset before saving
+    if (!arp_validate_preset(&arp_presets[preset_id])) {
+        dprintf("arp: save failed - preset %d validation failed\n", preset_id);
+        return false;
+    }
+
+    uint32_t addr = arp_get_preset_eeprom_addr(preset_id);
+
+    dprintf("arp: saving preset %d to EEPROM addr 0x%08lX (size=%u bytes)\n",
+            preset_id, addr, sizeof(arp_preset_t));
+
+    eeprom_update_block(&arp_presets[preset_id], (void*)addr, sizeof(arp_preset_t));
+
+    dprintf("arp: preset %d saved successfully\n", preset_id);
+    return true;
+}
+
+// Load a preset from EEPROM (only for user slots 8-31)
+bool arp_load_preset_from_eeprom(uint8_t preset_id) {
+    if (preset_id < USER_PRESET_START_SLOT || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: load failed - preset_id %d not in user range [%d,%d)\n",
+                preset_id, USER_PRESET_START_SLOT, MAX_ARP_PRESETS);
+        return false;
+    }
+
+    uint32_t addr = arp_get_preset_eeprom_addr(preset_id);
+    arp_preset_t temp_preset;
+
+    dprintf("arp: loading preset %d from EEPROM addr 0x%08lX\n", preset_id, addr);
+
+    // Read into temporary buffer first
+    eeprom_read_block(&temp_preset, (void*)addr, sizeof(arp_preset_t));
+
+    // Validate before copying to active preset
+    if (!arp_validate_preset(&temp_preset)) {
+        dprintf("arp: load failed - preset %d failed validation (corrupted or uninitialized)\n",
+                preset_id);
+        return false;
+    }
+
+    // Copy to active preset array
+    memcpy(&arp_presets[preset_id], &temp_preset, sizeof(arp_preset_t));
+
+    dprintf("arp: preset %d loaded successfully: \"%s\"\n",
+            preset_id, arp_presets[preset_id].name);
+    return true;
+}
+
+// Load all user presets from EEPROM (called at init)
+void arp_load_all_user_presets(void) {
+    uint8_t loaded_count = 0;
+
+    dprintf("arp: loading all user presets from EEPROM...\n");
+
+    for (uint8_t i = USER_PRESET_START_SLOT; i < MAX_ARP_PRESETS; i++) {
+        if (arp_load_preset_from_eeprom(i)) {
+            loaded_count++;
+        } else {
+            // If load fails, initialize as empty preset
+            dprintf("arp: preset %d not found or invalid, initializing as empty\n", i);
+            memset(&arp_presets[i], 0, sizeof(arp_preset_t));
+            snprintf(arp_presets[i].name, ARP_PRESET_NAME_LENGTH, "User %d", i);
+            arp_presets[i].note_count = 0;
+            arp_presets[i].pattern_length_64ths = 64;  // 1 bar default
+            arp_presets[i].gate_length_percent = 80;
+            arp_presets[i].octave_range = 1;
+            arp_presets[i].magic = ARP_PRESET_MAGIC;
+        }
+    }
+
+    dprintf("arp: loaded %d user presets from EEPROM\n", loaded_count);
+}
+
+// Clear a user preset (fill with empty/default values)
+bool arp_clear_preset(uint8_t preset_id) {
+    if (preset_id < USER_PRESET_START_SLOT || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: clear failed - preset_id %d not in user range\n", preset_id);
+        return false;
+    }
+
+    dprintf("arp: clearing preset %d\n", preset_id);
+
+    // Initialize as empty preset
+    memset(&arp_presets[preset_id], 0, sizeof(arp_preset_t));
+    snprintf(arp_presets[preset_id].name, ARP_PRESET_NAME_LENGTH, "User %d", preset_id);
+    arp_presets[preset_id].note_count = 0;
+    arp_presets[preset_id].pattern_length_64ths = 64;
+    arp_presets[preset_id].gate_length_percent = 80;
+    arp_presets[preset_id].octave_range = 1;
+    arp_presets[preset_id].magic = ARP_PRESET_MAGIC;
+
+    // Save to EEPROM
+    return arp_save_preset_to_eeprom(preset_id);
+}
+
+// Copy a preset to another slot
+bool arp_copy_preset(uint8_t source_id, uint8_t dest_id) {
+    if (source_id >= MAX_ARP_PRESETS || dest_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: copy failed - invalid source %d or dest %d\n", source_id, dest_id);
+        return false;
+    }
+
+    if (dest_id < USER_PRESET_START_SLOT) {
+        dprintf("arp: copy failed - cannot overwrite factory preset %d\n", dest_id);
+        return false;
+    }
+
+    // Validate source
+    if (!arp_validate_preset(&arp_presets[source_id])) {
+        dprintf("arp: copy failed - source preset %d invalid\n", source_id);
+        return false;
+    }
+
+    dprintf("arp: copying preset %d to %d\n", source_id, dest_id);
+
+    // Copy preset data
+    memcpy(&arp_presets[dest_id], &arp_presets[source_id], sizeof(arp_preset_t));
+
+    // Save to EEPROM
+    return arp_save_preset_to_eeprom(dest_id);
+}
+
+// Reset all user presets to empty state and clear EEPROM
+void arp_reset_all_user_presets(void) {
+    dprintf("arp: resetting all user presets...\n");
+
+    for (uint8_t i = USER_PRESET_START_SLOT; i < MAX_ARP_PRESETS; i++) {
+        arp_clear_preset(i);
+    }
+
+    dprintf("arp: all user presets reset\n");
 }
