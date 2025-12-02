@@ -433,14 +433,14 @@ class KeyboardWidget(QWidget):
 
             # If this key has a custom color set (from per-key RGB painting), use it for entire key
             if key.color:
-                # No border - just paint the key with radial gradient at 70% opacity
+                # No border - just paint the key with radial gradient at 40% opacity
                 qp.setPen(Qt.NoPen)
 
                 # Create radial gradient brush for modern look (brighter center, darker edges)
-                # Apply 70% opacity to all colors
+                # Apply 40% opacity to all colors
                 color = key.color
                 r, g, b = color.red(), color.green(), color.blue()
-                opacity = int(255 * 0.7)  # 70% opacity
+                opacity = int(255 * 0.4)  # 40% opacity
 
                 # Stronger darkening for better visibility
                 r_dark = max(0, r - 60)
@@ -460,7 +460,7 @@ class KeyboardWidget(QWidget):
                 gradient_brush = QBrush(gradient)
                 qp.setBrush(gradient_brush)
                 qp.drawPath(key.background_draw_path)
-                qp.drawPath(key.foreground_draw_path)
+                # Don't draw foreground path to avoid overlap - single uniform 40% opacity layer
             else:
                 # Default theme-based rendering for unpainted keys
                 # draw keycap background/drop-shadow
@@ -1081,14 +1081,14 @@ class KeyboardWidget2(QWidget):
 
             # If this key has a custom color set (from per-key RGB painting), use it for entire key
             if key.color:
-                # No border - just paint the key with radial gradient at 70% opacity
+                # No border - just paint the key with radial gradient at 40% opacity
                 qp.setPen(Qt.NoPen)
 
                 # Create radial gradient brush for modern look (brighter center, darker edges)
-                # Apply 70% opacity to all colors
+                # Apply 40% opacity to all colors
                 color = key.color
                 r, g, b = color.red(), color.green(), color.blue()
-                opacity = int(255 * 0.7)  # 70% opacity
+                opacity = int(255 * 0.4)  # 40% opacity
 
                 # Stronger darkening for better visibility
                 r_dark = max(0, r - 60)
@@ -1108,7 +1108,7 @@ class KeyboardWidget2(QWidget):
                 gradient_brush = QBrush(gradient)
                 qp.setBrush(gradient_brush)
                 qp.drawPath(key.background_draw_path)
-                qp.drawPath(key.foreground_draw_path)
+                # Don't draw foreground path to avoid overlap - single uniform 40% opacity layer
             else:
                 # Default theme-based rendering for unpainted keys
                 # draw keycap background/drop-shadow

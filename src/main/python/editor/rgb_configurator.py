@@ -1536,7 +1536,7 @@ class PaletteButton(QPushButton):
     def __init__(self, index, parent=None):
         super().__init__("", parent)
         self.index = index
-        self.setFixedSize(50, 50)
+        self.setFixedSize(55, 55)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(lambda: self.edit_requested.emit(self.index))
 
@@ -1620,7 +1620,7 @@ class PerKeyRGBHandler(BasicHandler):
 
         # Left side: Color palette and buttons
         palette_container = QWidget()
-        palette_container.setFixedWidth(220)  # Fixed width to match 4x4 grid
+        palette_container.setFixedWidth(240)  # Fixed width to match 4x4 grid
         palette_container_layout = QVBoxLayout(palette_container)
         palette_container_layout.setContentsMargins(0, 0, 0, 0)
         palette_container_layout.setSpacing(8)
@@ -1641,7 +1641,7 @@ class PerKeyRGBHandler(BasicHandler):
             r = i // 4  # 4 rows
             c = i % 4   # 4 columns
             button = PaletteButton(i)
-            button.setFixedSize(35, 35)  # Fixed size for all
+            button.setFixedSize(55, 55)  # Fixed size for all
             button.single_clicked.connect(self.on_palette_selected)
             button.edit_requested.connect(self.on_palette_edit)
             self.palette_layout.addWidget(button, r, c)
