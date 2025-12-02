@@ -37,6 +37,7 @@ from editor.matrix_test import ThruLoopConfigurator
 from editor.matrix_test import GamingConfigurator
 from editor.midi_patch import MIDIPatchBay
 from editor.loop_manager import LoopManager
+from editor.arpeggiator import Arpeggiator
 
 import themes
 
@@ -113,12 +114,14 @@ class MainWindow(QMainWindow):
         # Initialize MIDI Patch and Loop Manager tabs
         self.midi_patchbay = MIDIPatchBay()
         self.loop_manager = LoopManager()
+        self.arpeggiator = Arpeggiator()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
                         (self.midi_patchbay, "MIDI Patch"), (self.loop_manager, "Loop Manager"),
+                        (self.arpeggiator, "Arpeggiator"),
                         (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
                         (self.matrix_tester, "Matrix tester"), (self.firmware_flasher, "Firmware updater")]
@@ -337,7 +340,7 @@ class MainWindow(QMainWindow):
         for e in [self.layout_editor, self.keymap_editor, self.firmware_flasher, self.macro_recorder,
                   self.tap_dance, self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
                   self.rgb_configurator, self.MIDIswitchSettingsConfigurator, self.thruloop_configurator,
-                  self.gaming_configurator, self.midi_patchbay, self.loop_manager]:
+                  self.gaming_configurator, self.midi_patchbay, self.loop_manager, self.arpeggiator]:
             e.rebuild(self.autorefresh.current_device)
 
     def refresh_tabs(self):
