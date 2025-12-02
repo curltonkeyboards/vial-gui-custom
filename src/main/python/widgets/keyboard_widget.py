@@ -874,6 +874,7 @@ class KeyboardWidget2(QWidget):
         self.width = self.height = 0
         self.active_key = None
         self.active_mask = False
+        self.is_dragging = False  # Track if we're drag-painting
 
     def set_keys(self, keys, encoders):
         self.common_widgets = []
@@ -1194,10 +1195,32 @@ class KeyboardWidget2(QWidget):
 
         self.active_key, self.active_mask = self.hit_test(ev.pos())
         if self.active_key is not None:
+            self.is_dragging = True  # Start drag painting
             self.clicked.emit()
         else:
             self.deselected.emit()
         self.update()
+
+    def mouseMoveEvent(self, ev):
+        """Handle mouse move for drag painting"""
+        if not self.enabled or not self.is_dragging:
+            return
+
+        # Check if we're over a key
+        key, mask = self.hit_test(ev.pos())
+        if key is not None and key != self.active_key:
+            # We've dragged onto a new key, paint it
+            self.active_key = key
+            self.active_mask = mask
+            self.clicked.emit()
+            self.update()
+
+    def mouseReleaseEvent(self, ev):
+        """Handle mouse release to stop drag painting"""
+        if not self.enabled:
+            return
+
+        self.is_dragging = False
 
     def resizeEvent(self, ev):
         if self.isEnabled():
