@@ -22,9 +22,12 @@ class IntervalSelector(QWidget):
 
     valueChanged = pyqtSignal(int)
 
+    # Sentinel value for empty/skip step
+    EMPTY_VALUE = -100
+
     # Interval names mapping (extended range)
     INTERVAL_NAMES = {
-        -1: "Empty",
+        -100: "Empty",  # Sentinel value for empty step
         0: "Root Note",
         1: "Minor Second",
         2: "Major Second",
@@ -53,6 +56,7 @@ class IntervalSelector(QWidget):
 
     # Generate negative interval names (mirror positive ones)
     NEGATIVE_INTERVAL_NAMES = {
+        -1: "-Minor Second",
         -2: "-Major Second",
         -3: "-Minor Third",
         -4: "-Major Third",
@@ -82,7 +86,7 @@ class IntervalSelector(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.value = -1  # Default to None
+        self.value = self.EMPTY_VALUE  # Default to Empty
 
         layout = QVBoxLayout()
         layout.setSpacing(2)
@@ -146,12 +150,27 @@ class IntervalSelector(QWidget):
 
     def increment(self):
         """Increment interval value"""
-        if self.value < 23:
+        if self.value == self.EMPTY_VALUE:
+            # From Empty, go to Root Note (0)
+            self.set_value(0)
+        elif self.value == -1:
+            # From -Minor Second, go to Empty
+            self.set_value(self.EMPTY_VALUE)
+        elif self.value < 23:
             self.set_value(self.value + 1)
 
     def decrement(self):
         """Decrement interval value"""
-        if self.value > -23:
+        if self.value == self.EMPTY_VALUE:
+            # From Empty, go to -Minor Second (-1)
+            self.set_value(-1)
+        elif self.value == 0:
+            # From Root Note, go to Empty
+            self.set_value(self.EMPTY_VALUE)
+        elif self.value == -1:
+            # From -Minor Second, go to -Major Second
+            self.set_value(-2)
+        elif self.value > -23:
             self.set_value(self.value - 1)
 
     def update_display(self):
@@ -160,7 +179,7 @@ class IntervalSelector(QWidget):
         self.name_label.setText(self.INTERVAL_NAMES.get(self.value, "Unknown"))
 
         # Update value box
-        if self.value == -1:
+        if self.value == self.EMPTY_VALUE:
             self.value_box.setText("Empty")
         elif self.value >= 0:
             self.value_box.setText(f"+{self.value}")
@@ -342,7 +361,7 @@ class StepWidget(QFrame):
     def __init__(self, step_num, parent=None):
         super().__init__(parent)
         self.step_num = step_num
-        self.semitone_offset = -1  # -1 = None (skip step)
+        self.semitone_offset = IntervalSelector.EMPTY_VALUE  # Empty (skip step)
         self.octave_offset = 0
 
         layout = QVBoxLayout()
@@ -384,6 +403,9 @@ class StepWidget(QFrame):
 
         layout.addWidget(self.velocity_container, 1)
 
+        # Add spacer between velocity and note to push them apart
+        layout.addStretch(1)
+
         # Note section: label in own row, then container
         self.note_title = QLabel("Note")
         self.note_title.setAlignment(Qt.AlignCenter)
@@ -398,6 +420,9 @@ class StepWidget(QFrame):
         note_layout.addWidget(self.interval_selector)
         note_group.setLayout(note_layout)
         layout.addWidget(note_group)
+
+        # Add spacer above octave to push it down
+        layout.addStretch(1)
 
         # Octave section: label in own row, then container
         self.octave_title = QLabel("Octave")
@@ -435,28 +460,54 @@ class StepWidget(QFrame):
 
     def update_empty_styling(self):
         """Update styling based on whether step is empty"""
-        is_empty = self.interval_selector.get_value() == -1
+        is_empty = self.interval_selector.get_value() == IntervalSelector.EMPTY_VALUE
 
         if is_empty:
-            # Set dark grey for entire step container
-            self.setStyleSheet("QFrame { background-color: #3a3a3a; }")
-            # Set dark grey for velocity bar
-            self.velocity_bar.setStyleSheet("background-color: #2a2a2a;")
-            # Set dark grey for octave container and buttons
-            self.octave_group.setStyleSheet("""
-                QGroupBox { background-color: #3a3a3a; }
-                QPushButton { background-color: #2a2a2a; color: #666; }
-            """)
-            # Style octave buttons directly
-            self.octave_selector.btn_minus.setStyleSheet("background-color: #2a2a2a; color: #666;")
-            self.octave_selector.btn_plus.setStyleSheet("background-color: #2a2a2a; color: #666;")
+            # Dim and grey out everything
+            self.setStyleSheet("QFrame { background-color: #2a2a2a; }")
+
+            # Hide velocity bar and change label to "Empty"
+            self.velocity_bar.hide()
+            self.velocity_label.setText("Empty")
+            self.velocity_label.setStyleSheet("color: #666;")
+
+            # Grey out note section
+            self.note_title.setStyleSheet("color: #666;")
+            self.interval_selector.setStyleSheet("QWidget { background-color: #2a2a2a; color: #666; }")
+            self.interval_selector.btn_minus.setStyleSheet("background-color: #1a1a1a; color: #666;")
+            self.interval_selector.btn_plus.setStyleSheet("background-color: #1a1a1a; color: #666;")
+            self.interval_selector.name_label.setStyleSheet("color: #666;")
+            self.interval_selector.value_box.setStyleSheet("color: #666;")
+
+            # Grey out octave section
+            self.octave_title.setStyleSheet("color: #666;")
+            self.octave_group.setStyleSheet("QGroupBox { background-color: #2a2a2a; }")
+            self.octave_selector.btn_minus.setStyleSheet("background-color: #1a1a1a; color: #666;")
+            self.octave_selector.btn_plus.setStyleSheet("background-color: #1a1a1a; color: #666;")
+            self.octave_selector.value_box.setStyleSheet("color: #666;")
         else:
             # Reset to normal
             self.setStyleSheet("")
-            self.velocity_bar.setStyleSheet("")
+
+            # Show velocity bar and restore label to "Velocity"
+            self.velocity_bar.show()
+            self.velocity_label.setText("Velocity")
+            self.velocity_label.setStyleSheet("")
+
+            # Reset note section
+            self.note_title.setStyleSheet("")
+            self.interval_selector.setStyleSheet("")
+            self.interval_selector.btn_minus.setStyleSheet("")
+            self.interval_selector.btn_plus.setStyleSheet("")
+            self.interval_selector.name_label.setStyleSheet("")
+            self.interval_selector.value_box.setStyleSheet("")
+
+            # Reset octave section
+            self.octave_title.setStyleSheet("")
             self.octave_group.setStyleSheet("")
             self.octave_selector.btn_minus.setStyleSheet("")
             self.octave_selector.btn_plus.setStyleSheet("")
+            self.octave_selector.value_box.setStyleSheet("")
 
     def get_step_data(self):
         """Return step data as dict"""
@@ -516,7 +567,7 @@ class Arpeggiator(BasicEditor):
         for i in range(4):
             self.preset_data['steps'].append({
                 'velocity': 200,
-                'semitone_offset': -1,  # None by default
+                'semitone_offset': IntervalSelector.EMPTY_VALUE,  # Empty by default
                 'octave_offset': 0
             })
 
@@ -759,39 +810,65 @@ class Arpeggiator(BasicEditor):
         self.rebuild_steps()
 
     def update_pattern_length_display(self):
-        """Update the pattern length display in x/y format with halving logic"""
-        # Get rate_64ths from combo box value
-        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
-        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        """Update the pattern length display as a proper time signature"""
+        from fractions import Fraction
 
+        # Map combo box indices to note values (as fractions of a whole note)
+        # 1/4 note = 1/4, 1/8 note = 1/8, etc.
+        rate_values = {
+            0: Fraction(1, 4),   # Quarter note
+            1: Fraction(1, 8),   # Eighth note
+            2: Fraction(1, 16),  # Sixteenth note
+            3: Fraction(1, 32),  # Thirty-second note
+            4: Fraction(1, 64)   # Sixty-fourth note
+        }
+
+        rate_index = self.combo_pattern_rate.currentData()
+        note_value = rate_values.get(rate_index, Fraction(1, 16))
         num_steps = self.spin_num_steps.value()
 
-        # Calculate pattern length in 64ths
-        pattern_length_64ths = rate_64ths * num_steps
+        # Calculate total pattern length as a fraction of whole notes
+        # e.g., 4 steps of 1/16 notes = 4 * 1/16 = 1/4 whole note
+        total_length = note_value * num_steps
 
-        # Calculate denominator from rate (y value)
-        # rate_64ths = 64 means /4, 32 means /8, 16 means /16, etc.
-        # Denominator: 64ths -> /4, 32 -> /8, 16 -> /16, 8 -> /32, 4 -> /64
-        denominator_map = {64: 4, 32: 8, 16: 16, 8: 32, 4: 64}
-        y = denominator_map.get(rate_64ths, 16)
+        # Time signature format: numerator/denominator
+        # where numerator = number of beats, denominator = note value per beat
+        #
+        # For musical notation, we typically express this as:
+        # - numerator: count of note values
+        # - denominator: the note value itself (4=quarter, 8=eighth, 16=sixteenth)
+        #
+        # So if we have 5 quarter notes: 5/4
+        # If we have 10 eighth notes: 10/8 which simplifies to 5/4
 
-        # x is the number of steps
-        x = num_steps
+        numerator = num_steps
+        # Denominator is the note type: 1/4 note -> 4, 1/8 note -> 8, etc.
+        denominator = note_value.denominator
 
-        # Apply halving logic: keep halving both x and y if possible, stop at y=4
-        import math
-        while x % 2 == 0 and y % 2 == 0 and y > 4:
-            x = x // 2
-            y = y // 2
+        # Simplify the fraction using GCD
+        from math import gcd
+        common_divisor = gcd(numerator, denominator)
+        numerator //= common_divisor
+        denominator //= common_divisor
 
-        self.lbl_pattern_length.setText(f"{x}/{y}")
+        # However, in standard musical notation, we keep certain forms:
+        # - Don't simplify beyond denominator of 4 (quarter notes)
+        # - Keep common compound meters (6/8, 9/8, 12/8)
+        #
+        # If denominator would go below 4, scale back up to 4
+        if denominator < 4:
+            scale = 4 // denominator
+            numerator *= scale
+            denominator *= scale
+
+        self.lbl_pattern_length.setText(f"{numerator}/{denominator}")
 
     def reset_all_steps(self):
-        """Reset all steps to None with max velocity (with confirmation)"""
+        """Reset all steps to Empty with max velocity (with confirmation)"""
         reply = QMessageBox.question(
             None,
             "Reset All Steps",
-            "Are you sure you want to reset all steps to None with max velocity?",
+            "Are you sure you want to reset all steps to Empty with max velocity?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -800,10 +877,10 @@ class Arpeggiator(BasicEditor):
             for widget in self.step_widgets:
                 widget.set_step_data({
                     'velocity': 255,  # Max velocity
-                    'semitone_offset': -1,  # None
+                    'semitone_offset': IntervalSelector.EMPTY_VALUE,  # Empty
                     'octave_offset': 0
                 })
-            self.update_status("All steps reset to None with max velocity")
+            self.update_status("All steps reset to Empty with max velocity")
 
     def copy_preset_to_clipboard(self):
         """Copy current preset data to internal clipboard"""
@@ -832,12 +909,12 @@ class Arpeggiator(BasicEditor):
         self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
 
-        # Gather step data, filtering out "None" steps and calculating timing
+        # Gather step data, filtering out "Empty" steps and calculating timing
         self.preset_data['steps'] = []
         for i, widget in enumerate(self.step_widgets):
             step_data = widget.get_step_data()
-            # Skip steps with semitone_offset = -1 (None)
-            if step_data['semitone_offset'] != -1:
+            # Skip steps with semitone_offset = EMPTY_VALUE
+            if step_data['semitone_offset'] != IntervalSelector.EMPTY_VALUE:
                 # Calculate timing based on pattern rate and step position
                 step_data['timing_64ths'] = i * rate_64ths
                 # Convert semitone_offset to note_index for firmware compatibility
