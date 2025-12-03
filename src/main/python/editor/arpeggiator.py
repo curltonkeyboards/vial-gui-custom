@@ -245,9 +245,15 @@ class Arpeggiator(BasicEditor):
         main_layout = QVBoxLayout()
         main_layout.setSpacing(10)
 
-        # === Step Sequencer ===
-        sequencer_group = QGroupBox("Step Sequencer")
-        sequencer_group.setToolTip("Click on velocity bars to set note velocity (higher = louder)")
+        # === Status ===
+        self.lbl_status = QLabel("Ready. Select a preset to begin.")
+        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
+        # === Header Section ===
+        header_layout = QHBoxLayout()
+
+        # Preset selector
+        preset_group = QGroupBox("Preset")
+        preset_layout = QGridLayout()
 
         # Create scrollable area for steps
         self.step_scroll = QScrollArea()
@@ -379,9 +385,28 @@ class Arpeggiator(BasicEditor):
         # Build initial steps
         self.rebuild_steps()
 
-        # === Status ===
-        self.lbl_status = QLabel("Ready. Select a preset to begin.")
-        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
+        # === Quick Actions ===
+        actions_layout = QHBoxLayout()
+
+        self.btn_clear_all = QPushButton("Clear All Steps")
+        self.btn_clear_all.clicked.connect(self.clear_all_steps)
+
+        self.btn_reset_velocity = QPushButton("Reset All Velocity (200)")
+        self.btn_reset_velocity.clicked.connect(self.reset_all_velocity)
+
+        self.btn_ascending = QPushButton("Quick: Ascending")
+        self.btn_ascending.clicked.connect(self.quick_ascending)
+
+        self.btn_descending = QPushButton("Quick: Descending")
+        self.btn_descending.clicked.connect(self.quick_descending)
+
+        actions_layout.addWidget(self.btn_clear_all)
+        actions_layout.addWidget(self.btn_reset_velocity)
+        actions_layout.addWidget(self.btn_ascending)
+        actions_layout.addWidget(self.btn_descending)
+
+        main_layout.addLayout(actions_layout)
+
         main_layout.addWidget(self.lbl_status)
 
         self.addLayout(main_layout)
