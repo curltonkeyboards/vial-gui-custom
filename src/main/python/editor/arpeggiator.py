@@ -137,11 +137,12 @@ class IntervalSelector(QWidget):
 
     def set_value(self, value):
         """Set interval value"""
-        # Clamp to valid range (-23 to +23)
-        if value < -23:
-            value = -23
-        elif value > 23:
-            value = 23
+        # Allow EMPTY_VALUE, otherwise clamp to valid range (-23 to +23)
+        if value != self.EMPTY_VALUE:
+            if value < -23:
+                value = -23
+            elif value > 23:
+                value = 23
 
         if self.value != value:
             self.value = value
@@ -365,7 +366,7 @@ class StepWidget(QFrame):
         self.octave_offset = 0
 
         layout = QVBoxLayout()
-        layout.setSpacing(4)
+        layout.setSpacing(2)
         layout.setContentsMargins(4, 4, 4, 4)
 
         # Step number label
@@ -410,34 +411,33 @@ class StepWidget(QFrame):
         self.note_title = QLabel("Note")
         self.note_title.setAlignment(Qt.AlignCenter)
         self.note_title.setFont(QFont("Arial", 9, QFont.Bold))
-        layout.addWidget(self.note_title)
+        layout.addWidget(self.note_title, 0)
 
         note_group = QGroupBox()
         note_layout = QVBoxLayout()
-        note_layout.setContentsMargins(4, 4, 4, 4)
+        note_layout.setSpacing(0)
+        note_layout.setContentsMargins(2, 2, 2, 2)
         self.interval_selector = IntervalSelector()
         self.interval_selector.valueChanged.connect(self.on_interval_changed)
         note_layout.addWidget(self.interval_selector)
         note_group.setLayout(note_layout)
-        layout.addWidget(note_group)
+        layout.addWidget(note_group, 0)
 
-        # Add spacer above octave to push it down
-        layout.addStretch(1)
-
-        # Octave section: label in own row, then container
+        # Octave section: label in own row, then container (compact, no spacer)
         self.octave_title = QLabel("Octave")
         self.octave_title.setAlignment(Qt.AlignCenter)
         self.octave_title.setFont(QFont("Arial", 9, QFont.Bold))
-        layout.addWidget(self.octave_title)
+        layout.addWidget(self.octave_title, 0)
 
         self.octave_group = QGroupBox()
         octave_layout = QVBoxLayout()
-        octave_layout.setContentsMargins(4, 4, 4, 4)
+        octave_layout.setSpacing(0)
+        octave_layout.setContentsMargins(2, 2, 2, 2)
         self.octave_selector = OctaveSelector()
         self.octave_selector.valueChanged.connect(self.on_octave_changed)
         octave_layout.addWidget(self.octave_selector)
         self.octave_group.setLayout(octave_layout)
-        layout.addWidget(self.octave_group)
+        layout.addWidget(self.octave_group, 0)
 
         self.setLayout(layout)
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
