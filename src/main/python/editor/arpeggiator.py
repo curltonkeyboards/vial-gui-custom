@@ -12,8 +12,117 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
 from editor.basic_editor import BasicEditor
 from util import tr
 from vial_device import VialKeyboard
+from widgets.combo_box import ArrowComboBox
 
 logger = logging.getLogger(__name__)
+
+
+class IntervalSelector(QWidget):
+    """Custom interval selector with +/- buttons and editable value box"""
+
+    valueChanged = pyqtSignal(int)
+
+    # Interval names mapping
+    INTERVAL_NAMES = {
+        -1: "None",
+        0: "Root Note",
+        1: "Minor Second",
+        2: "Major Second",
+        3: "Minor Third",
+        4: "Major Third",
+        5: "Perfect Fourth",
+        6: "Tritone",
+        7: "Perfect Fifth",
+        8: "Minor Sixth",
+        9: "Major Sixth",
+        10: "Minor Seventh",
+        11: "Major Seventh"
+    }
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.value = -1  # Default to None
+
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Interval name label (above the box)
+        self.name_label = QLabel("None")
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setFont(QFont("Arial", 9, QFont.Bold))
+        layout.addWidget(self.name_label)
+
+        # Box with +/- buttons
+        box_layout = QHBoxLayout()
+        box_layout.setSpacing(2)
+        box_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Minus button
+        self.btn_minus = QPushButton("-")
+        self.btn_minus.setMaximumWidth(30)
+        self.btn_minus.clicked.connect(self.decrement)
+        box_layout.addWidget(self.btn_minus)
+
+        # Value box (editable)
+        self.value_box = QLineEdit("None")
+        self.value_box.setAlignment(Qt.AlignCenter)
+        self.value_box.setReadOnly(True)  # Make read-only for now, can enable editing later
+        self.value_box.setMaximumWidth(80)
+        box_layout.addWidget(self.value_box)
+
+        # Plus button
+        self.btn_plus = QPushButton("+")
+        self.btn_plus.setMaximumWidth(30)
+        self.btn_plus.clicked.connect(self.increment)
+        box_layout.addWidget(self.btn_plus)
+
+        layout.addLayout(box_layout)
+        self.setLayout(layout)
+
+        self.update_display()
+
+    def get_value(self):
+        """Get current interval value"""
+        return self.value
+
+    def set_value(self, value):
+        """Set interval value"""
+        # Clamp to valid range
+        if value < -1:
+            value = -1
+        elif value > 11:
+            value = 11
+
+        if self.value != value:
+            self.value = value
+            self.update_display()
+            self.valueChanged.emit(self.value)
+
+    def increment(self):
+        """Increment interval value"""
+        if self.value < 11:
+            self.set_value(self.value + 1)
+
+    def decrement(self):
+        """Decrement interval value"""
+        if self.value > -1:
+            self.set_value(self.value - 1)
+
+    def update_display(self):
+        """Update the display text"""
+        # Update interval name
+        self.name_label.setText(self.INTERVAL_NAMES.get(self.value, "Unknown"))
+
+        # Update value box
+        if self.value == -1:
+            self.value_box.setText("None")
+        elif self.value >= 0:
+            self.value_box.setText(f"+{self.value}")
+
+        # Enable/disable buttons
+        self.btn_minus.setEnabled(self.value > -1)
+        self.btn_plus.setEnabled(self.value < 11)
 
 
 class VelocityBar(QWidget):
@@ -53,13 +162,14 @@ class VelocityBar(QWidget):
             bar_height = int((self.velocity / 255.0) * self.height())
             bar_y = self.height() - bar_height
 
-            # Color gradient based on velocity
-            if self.velocity < 85:
-                color = QColor(100, 200, 100)  # Green - soft
-            elif self.velocity < 170:
-                color = QColor(200, 200, 100)  # Yellow - medium
-            else:
-                color = QColor(200, 100, 100)  # Red - hard
+            # Use theme-related color (blue/cyan gradient)
+            intensity = self.velocity / 255.0
+            base_color = QColor(0, 170, 255)  # Theme blue color
+            color = QColor(
+                int(base_color.red() * intensity),
+                int(base_color.green() * intensity),
+                int(base_color.blue() * intensity)
+            )
 
             painter.fillRect(1, bar_y, self.width() - 2, bar_height, color)
 
@@ -102,30 +212,23 @@ class StepWidget(QFrame):
         self.velocity_bar.clicked.connect(self.on_velocity_changed)
         layout.addWidget(self.velocity_bar, 1)
 
-        # Interval/Semitone selector
-        interval_group = QGroupBox("Interval")
-        interval_layout = QVBoxLayout()
-        interval_layout.setSpacing(2)
+        # Interval/Semitone selector - centered
+        interval_container = QWidget()
+        interval_container_layout = QHBoxLayout()
+        interval_container_layout.setContentsMargins(0, 0, 0, 0)
+        interval_container.setLayout(interval_container_layout)
+
+        # Add stretch before and after to center the interval selector
+        interval_container_layout.addStretch()
 
         # Interval selector (semitone offset from master note)
-        self.interval_selector = QComboBox()
-        self.interval_selector.addItem("None", -1)
-        self.interval_selector.addItem("Root Note - 0 Semitones", 0)
-        self.interval_selector.addItem("Minor Second - 1 Semitone", 1)
-        self.interval_selector.addItem("Major Second - 2 Semitones", 2)
-        self.interval_selector.addItem("Minor Third - 3 Semitones", 3)
-        self.interval_selector.addItem("Major Third - 4 Semitones", 4)
-        self.interval_selector.addItem("Perfect Fourth - 5 Semitones", 5)
-        self.interval_selector.addItem("Tritone - 6 Semitones", 6)
-        self.interval_selector.addItem("Perfect Fifth - 7 Semitones", 7)
-        self.interval_selector.addItem("Minor Sixth - 8 Semitones", 8)
-        self.interval_selector.addItem("Major Sixth - 9 Semitones", 9)
-        self.interval_selector.addItem("Minor Seventh - 10 Semitones", 10)
-        self.interval_selector.addItem("Major Seventh - 11 Semitones", 11)
-        self.interval_selector.setCurrentIndex(0)  # Default to "None"
-        self.interval_selector.setToolTip("Interval offset from master note")
-        self.interval_selector.currentIndexChanged.connect(self.on_interval_changed)
-        interval_layout.addWidget(self.interval_selector)
+        self.interval_selector = IntervalSelector()
+        self.interval_selector.valueChanged.connect(self.on_interval_changed)
+        interval_container_layout.addWidget(self.interval_selector)
+
+        interval_container_layout.addStretch()
+
+        layout.addWidget(interval_container)
 
         # Octave offset selector
         self.octave_selector = QSpinBox()
@@ -134,10 +237,7 @@ class StepWidget(QFrame):
         self.octave_selector.setPrefix("Octave: ")
         self.octave_selector.setButtonSymbols(QSpinBox.UpDownArrows)
         self.octave_selector.setToolTip("Octave offset (+/- 12 semitones)")
-        interval_layout.addWidget(self.octave_selector)
-
-        interval_group.setLayout(interval_layout)
-        layout.addWidget(interval_group)
+        layout.addWidget(self.octave_selector)
 
         self.setLayout(layout)
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
@@ -150,25 +250,27 @@ class StepWidget(QFrame):
         """Velocity bar was clicked"""
         pass  # Parent will handle this
 
-    def on_interval_changed(self, index):
+    def on_interval_changed(self, value):
         """Interval selector changed - update visual state"""
         self.update_visual_state()
 
     def update_visual_state(self):
         """Update visual state based on whether step is active (not None)"""
-        is_none = self.interval_selector.currentData() == -1
+        is_none = self.interval_selector.get_value() == -1
         if is_none:
-            # Grey out / darken the container
+            # Grey out / darken the container and disable interval selector
             self.setStyleSheet("StepWidget { background-color: #2a2a2a; }")
+            self.interval_selector.setEnabled(False)
         else:
             # Normal state
             self.setStyleSheet("StepWidget { background-color: palette(window); }")
+            self.interval_selector.setEnabled(True)
 
     def get_step_data(self):
         """Return step data as dict"""
         return {
             'velocity': self.velocity_bar.get_velocity(),
-            'semitone_offset': self.interval_selector.currentData(),
+            'semitone_offset': self.interval_selector.get_value(),
             'octave_offset': self.octave_selector.value()
         }
 
@@ -177,12 +279,7 @@ class StepWidget(QFrame):
         if 'velocity' in data:
             self.velocity_bar.set_velocity(data['velocity'])
         if 'semitone_offset' in data:
-            # Find the index for this semitone offset
-            semitone = data['semitone_offset']
-            for i in range(self.interval_selector.count()):
-                if self.interval_selector.itemData(i) == semitone:
-                    self.interval_selector.setCurrentIndex(i)
-                    break
+            self.interval_selector.set_value(data['semitone_offset'])
         if 'octave_offset' in data:
             self.octave_selector.setValue(data['octave_offset'])
 
@@ -281,13 +378,19 @@ class Arpeggiator(BasicEditor):
         # === Bottom Section: Two containers side by side ===
         bottom_layout = QHBoxLayout()
 
-        # Left Container: Preset Parameters
-        params_group = QGroupBox("Preset Parameters")
+        # Left Container: Preset Parameters (no title)
+        params_group = QGroupBox()
+        params_group.setMaximumWidth(500)
         params_layout = QGridLayout()
 
         # Arpeggiator Mode (moved from separate section)
         lbl_mode = QLabel("Arpeggiator Mode:")
-        self.combo_mode = QComboBox()
+        self.combo_mode = ArrowComboBox()
+        self.combo_mode.setMinimumWidth(150)
+        self.combo_mode.setMaximumHeight(30)
+        self.combo_mode.setEditable(True)
+        self.combo_mode.lineEdit().setReadOnly(True)
+        self.combo_mode.lineEdit().setAlignment(Qt.AlignCenter)
         self.combo_mode.addItem("Single Note (Classic Arp)", 0)
         self.combo_mode.addItem("Chord Basic (All Notes)", 1)
         self.combo_mode.addItem("Chord Advanced (Rotation)", 2)
@@ -295,19 +398,24 @@ class Arpeggiator(BasicEditor):
         params_layout.addWidget(lbl_mode, 0, 0)
         params_layout.addWidget(self.combo_mode, 0, 1)
 
-        # Pattern Rate (now a slider)
+        # Pattern Rate (now a dropdown)
         lbl_pattern_rate = QLabel("Pattern Rate:")
-        self.slider_pattern_rate = QSlider(Qt.Horizontal)
-        self.slider_pattern_rate.setRange(0, 4)  # 5 positions: /4, /8, /16, /32, /64
-        self.slider_pattern_rate.setValue(2)  # Default to /16
-        self.slider_pattern_rate.setTickPosition(QSlider.TicksBelow)
-        self.slider_pattern_rate.setTickInterval(1)
-        self.slider_pattern_rate.setToolTip("Note subdivision for steps")
-        self.slider_pattern_rate.valueChanged.connect(self.on_pattern_rate_changed)
-        self.lbl_pattern_rate_value = QLabel("1/16")
+        self.combo_pattern_rate = ArrowComboBox()
+        self.combo_pattern_rate.setMinimumWidth(150)
+        self.combo_pattern_rate.setMaximumHeight(30)
+        self.combo_pattern_rate.setEditable(True)
+        self.combo_pattern_rate.lineEdit().setReadOnly(True)
+        self.combo_pattern_rate.lineEdit().setAlignment(Qt.AlignCenter)
+        self.combo_pattern_rate.addItem("1/4", 0)
+        self.combo_pattern_rate.addItem("1/8", 1)
+        self.combo_pattern_rate.addItem("1/16", 2)
+        self.combo_pattern_rate.addItem("1/32", 3)
+        self.combo_pattern_rate.addItem("1/64", 4)
+        self.combo_pattern_rate.setCurrentIndex(2)  # Default to 1/16
+        self.combo_pattern_rate.setToolTip("Note subdivision for steps")
+        self.combo_pattern_rate.currentIndexChanged.connect(self.on_pattern_rate_changed)
         params_layout.addWidget(lbl_pattern_rate, 1, 0)
-        params_layout.addWidget(self.slider_pattern_rate, 1, 1)
-        params_layout.addWidget(self.lbl_pattern_rate_value, 1, 2)
+        params_layout.addWidget(self.combo_pattern_rate, 1, 1)
 
         # Number of steps
         lbl_num_steps = QLabel("Number of Steps:")
@@ -318,14 +426,14 @@ class Arpeggiator(BasicEditor):
         self.spin_num_steps.setToolTip("Number of steps in the pattern")
         self.spin_num_steps.valueChanged.connect(self.on_num_steps_changed)
         params_layout.addWidget(lbl_num_steps, 2, 0)
-        params_layout.addWidget(self.spin_num_steps, 2, 1, 1, 2)
+        params_layout.addWidget(self.spin_num_steps, 2, 1)
 
         # Pattern length (auto-calculated, read-only display)
         lbl_length = QLabel("Pattern Length:")
         self.lbl_pattern_length = QLabel("4/16")
         self.lbl_pattern_length.setToolTip("Total pattern length (auto-calculated from steps/rate)")
         params_layout.addWidget(lbl_length, 3, 0)
-        params_layout.addWidget(self.lbl_pattern_length, 3, 1, 1, 2)
+        params_layout.addWidget(self.lbl_pattern_length, 3, 1)
 
         # Gate length
         lbl_gate = QLabel("Gate Length:")
@@ -336,17 +444,23 @@ class Arpeggiator(BasicEditor):
         self.spin_gate.setButtonSymbols(QSpinBox.UpDownArrows)
         self.spin_gate.setToolTip("Note gate length percentage")
         params_layout.addWidget(lbl_gate, 4, 0)
-        params_layout.addWidget(self.spin_gate, 4, 1, 1, 2)
+        params_layout.addWidget(self.spin_gate, 4, 1)
 
         params_group.setLayout(params_layout)
         bottom_layout.addWidget(params_group)
 
-        # Right Container: Preset Selection
-        preset_group = QGroupBox("Preset")
+        # Right Container: Preset Selection (no title)
+        preset_group = QGroupBox()
+        preset_group.setMaximumWidth(500)
         preset_layout = QGridLayout()
 
         lbl_preset = QLabel("Select Preset:")
-        self.combo_preset = QComboBox()
+        self.combo_preset = ArrowComboBox()
+        self.combo_preset.setMinimumWidth(150)
+        self.combo_preset.setMaximumHeight(30)
+        self.combo_preset.setEditable(True)
+        self.combo_preset.lineEdit().setReadOnly(True)
+        self.combo_preset.lineEdit().setAlignment(Qt.AlignCenter)
         for i in range(32):
             if i < 8:
                 self.combo_preset.addItem(f"Factory {i}")
@@ -357,26 +471,38 @@ class Arpeggiator(BasicEditor):
         preset_layout.addWidget(lbl_preset, 0, 0)
         preset_layout.addWidget(self.combo_preset, 0, 1, 1, 2)
 
-        # Preset buttons
+        # Preset buttons - make them vertically 10px bigger
+        button_style = "QPushButton { padding: 13px 16px; }"
+
         self.btn_load = QPushButton("Load from Device")
+        self.btn_load.setStyleSheet(button_style)
         self.btn_load.clicked.connect(self.load_preset)
         self.btn_save = QPushButton("Save to Device")
+        self.btn_save.setStyleSheet(button_style)
         self.btn_save.clicked.connect(self.save_preset)
 
         preset_layout.addWidget(self.btn_load, 1, 0, 1, 3)
         preset_layout.addWidget(self.btn_save, 2, 0, 1, 3)
 
-        # Copy and Paste buttons (replacing single Copy button)
+        # Copy and Paste buttons - same size
+        copy_paste_layout = QHBoxLayout()
+        copy_paste_layout.setSpacing(5)
+
         self.btn_copy = QPushButton("Copy Preset")
+        self.btn_copy.setStyleSheet(button_style)
         self.btn_copy.clicked.connect(self.copy_preset_to_clipboard)
         self.btn_paste = QPushButton("Paste Preset")
+        self.btn_paste.setStyleSheet(button_style)
         self.btn_paste.clicked.connect(self.paste_preset_from_clipboard)
 
-        preset_layout.addWidget(self.btn_copy, 3, 0, 1, 1)
-        preset_layout.addWidget(self.btn_paste, 3, 1, 1, 2)
+        copy_paste_layout.addWidget(self.btn_copy)
+        copy_paste_layout.addWidget(self.btn_paste)
+
+        preset_layout.addLayout(copy_paste_layout, 3, 0, 1, 3)
 
         # Reset All Steps button (replacing Clear All Steps)
         self.btn_reset_all = QPushButton("Reset All Steps")
+        self.btn_reset_all.setStyleSheet(button_style)
         self.btn_reset_all.clicked.connect(self.reset_all_steps)
         preset_layout.addWidget(self.btn_reset_all, 4, 0, 1, 3)
 
@@ -427,12 +553,9 @@ class Arpeggiator(BasicEditor):
         self.update_pattern_length_display()
         self.update_status(f"Rebuilt sequencer with {step_count} steps")
 
-    def on_pattern_rate_changed(self, value):
-        """Pattern rate changed - update pattern length display and label"""
-        # Map slider value to rate
-        rate_map = {0: "1/4", 1: "1/8", 2: "1/16", 3: "1/32", 4: "1/64"}
-        rate_text = rate_map.get(value, "1/16")
-        self.lbl_pattern_rate_value.setText(rate_text)
+    def on_pattern_rate_changed(self, index):
+        """Pattern rate changed - update pattern length display"""
+        rate_text = self.combo_pattern_rate.currentText()
         self.update_pattern_length_display()
         self.update_status(f"Pattern rate changed to {rate_text}")
 
@@ -442,9 +565,9 @@ class Arpeggiator(BasicEditor):
 
     def update_pattern_length_display(self):
         """Update the pattern length display in x/y format with halving logic"""
-        # Get rate_64ths from slider value
+        # Get rate_64ths from combo box value
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
-        rate_64ths = rate_map.get(self.slider_pattern_rate.value(), 16)
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
 
         num_steps = self.spin_num_steps.value()
 
@@ -509,7 +632,7 @@ class Arpeggiator(BasicEditor):
         """Gather current UI state into preset_data dict"""
         # Calculate pattern length from rate × steps
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
-        rate_64ths = rate_map.get(self.slider_pattern_rate.value(), 16)
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
         num_steps = self.spin_num_steps.value()
         self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
