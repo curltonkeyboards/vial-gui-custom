@@ -221,6 +221,9 @@ class Arpeggiator(BasicEditor):
         main_layout = QVBoxLayout()
         main_layout.setSpacing(10)
 
+        # === Status ===
+        self.lbl_status = QLabel("Ready. Select a preset to begin.")
+        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
         # === Header Section ===
         header_layout = QHBoxLayout()
 
@@ -375,9 +378,6 @@ class Arpeggiator(BasicEditor):
 
         main_layout.addLayout(actions_layout)
 
-        # === Status ===
-        self.lbl_status = QLabel("Ready. Select a preset to begin.")
-        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
 
         self.addLayout(main_layout)
