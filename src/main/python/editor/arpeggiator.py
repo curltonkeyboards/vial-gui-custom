@@ -83,10 +83,8 @@ class StepWidget(QFrame):
     def __init__(self, step_num, parent=None):
         super().__init__(parent)
         self.step_num = step_num
-        self.note_index = 0
+        self.semitone_offset = -1  # -1 = None (skip step)
         self.octave_offset = 0
-        self.timing_64ths = step_num * 16  # Default 16th notes
-        self.use_semitones = False
 
         layout = QVBoxLayout()
         layout.setSpacing(4)
@@ -108,31 +106,32 @@ class StepWidget(QFrame):
         interval_layout = QVBoxLayout()
         interval_layout.setSpacing(2)
 
-        # Note index selector (which note from held notes)
-        self.note_selector = QSpinBox()
-        self.note_selector.setRange(0, 15)
-        self.note_selector.setValue(0)
-        self.note_selector.setPrefix("Note: ")
-        self.note_selector.setToolTip("Which held note to play (0=lowest)")
-        interval_layout.addWidget(self.note_selector)
+        # Interval selector (semitone offset from master note)
+        self.interval_selector = QComboBox()
+        self.interval_selector.addItem("None", -1)
+        self.interval_selector.addItem("Unison (0)", 0)
+        self.interval_selector.addItem("Minor 2nd (1)", 1)
+        self.interval_selector.addItem("Major 2nd (2)", 2)
+        self.interval_selector.addItem("Minor 3rd (3)", 3)
+        self.interval_selector.addItem("Major 3rd (4)", 4)
+        self.interval_selector.addItem("Perfect 4th (5)", 5)
+        self.interval_selector.addItem("Tritone (6)", 6)
+        self.interval_selector.addItem("Perfect 5th (7)", 7)
+        self.interval_selector.addItem("Minor 6th (8)", 8)
+        self.interval_selector.addItem("Major 6th (9)", 9)
+        self.interval_selector.addItem("Minor 7th (10)", 10)
+        self.interval_selector.addItem("Major 7th (11)", 11)
+        self.interval_selector.setCurrentIndex(0)  # Default to "None"
+        self.interval_selector.setToolTip("Interval offset from master note")
+        interval_layout.addWidget(self.interval_selector)
 
         # Octave offset selector
         self.octave_selector = QSpinBox()
-        self.octave_selector.setRange(-24, 24)
+        self.octave_selector.setRange(-2, 2)
         self.octave_selector.setValue(0)
         self.octave_selector.setPrefix("Oct: ")
-        self.octave_selector.setSuffix(" semi")
-        self.octave_selector.setToolTip("Octave offset in semitones")
+        self.octave_selector.setToolTip("Octave offset (+/- 12 semitones)")
         interval_layout.addWidget(self.octave_selector)
-
-        # Timing offset
-        self.timing_selector = QSpinBox()
-        self.timing_selector.setRange(0, 1024)
-        self.timing_selector.setValue(self.timing_64ths)
-        self.timing_selector.setPrefix("T: ")
-        self.timing_selector.setSuffix("/64")
-        self.timing_selector.setToolTip("Timing in 64th notes")
-        interval_layout.addWidget(self.timing_selector)
 
         interval_group.setLayout(interval_layout)
         layout.addWidget(interval_group)
@@ -149,21 +148,23 @@ class StepWidget(QFrame):
         """Return step data as dict"""
         return {
             'velocity': self.velocity_bar.get_velocity(),
-            'note_index': self.note_selector.value(),
-            'octave_offset': self.octave_selector.value(),
-            'timing_64ths': self.timing_selector.value()
+            'semitone_offset': self.interval_selector.currentData(),
+            'octave_offset': self.octave_selector.value()
         }
 
     def set_step_data(self, data):
         """Load step data from dict"""
         if 'velocity' in data:
             self.velocity_bar.set_velocity(data['velocity'])
-        if 'note_index' in data:
-            self.note_selector.setValue(data['note_index'])
+        if 'semitone_offset' in data:
+            # Find the index for this semitone offset
+            semitone = data['semitone_offset']
+            for i in range(self.interval_selector.count()):
+                if self.interval_selector.itemData(i) == semitone:
+                    self.interval_selector.setCurrentIndex(i)
+                    break
         if 'octave_offset' in data:
             self.octave_selector.setValue(data['octave_offset'])
-        if 'timing_64ths' in data:
-            self.timing_selector.setValue(data['timing_64ths'])
 
 
 class Arpeggiator(BasicEditor):
@@ -199,7 +200,6 @@ class Arpeggiator(BasicEditor):
             'note_count': 4,
             'pattern_length_64ths': 64,
             'gate_length_percent': 80,
-            'octave_range': 1,
             'steps': []
         }
 
@@ -207,9 +207,8 @@ class Arpeggiator(BasicEditor):
         for i in range(4):
             self.preset_data['steps'].append({
                 'velocity': 200,
-                'note_index': i % 4,
-                'octave_offset': 0,
-                'timing_64ths': i * 16
+                'semitone_offset': -1,  # None by default
+                'octave_offset': 0
             })
 
         self.step_widgets = []
@@ -260,23 +259,36 @@ class Arpeggiator(BasicEditor):
         params_group = QGroupBox("Preset Parameters")
         params_layout = QGridLayout()
 
-        # Name
-        lbl_name = QLabel("Name:")
-        self.edit_name = QLineEdit()
-        self.edit_name.setMaxLength(15)
-        self.edit_name.setText(self.preset_data['name'])
-        params_layout.addWidget(lbl_name, 0, 0)
-        params_layout.addWidget(self.edit_name, 0, 1)
+        # Pattern Rate
+        lbl_pattern_rate = QLabel("Pattern Rate:")
+        self.combo_pattern_rate = QComboBox()
+        self.combo_pattern_rate.addItem("1/4", 64)   # 64 64ths per quarter note
+        self.combo_pattern_rate.addItem("1/8", 32)   # 32 64ths per 8th note
+        self.combo_pattern_rate.addItem("1/16", 16)  # 16 64ths per 16th note
+        self.combo_pattern_rate.addItem("1/32", 8)   # 8 64ths per 32nd note
+        self.combo_pattern_rate.addItem("1/64", 4)   # 4 64ths per 64th note
+        self.combo_pattern_rate.setCurrentIndex(2)   # Default to 1/16
+        self.combo_pattern_rate.setToolTip("Note subdivision for steps")
+        self.combo_pattern_rate.currentIndexChanged.connect(self.on_pattern_rate_changed)
+        params_layout.addWidget(lbl_pattern_rate, 0, 0)
+        params_layout.addWidget(self.combo_pattern_rate, 0, 1)
 
-        # Pattern length
+        # Number of steps
+        lbl_num_steps = QLabel("Number of Steps:")
+        self.spin_num_steps = QSpinBox()
+        self.spin_num_steps.setRange(1, 16)
+        self.spin_num_steps.setValue(4)
+        self.spin_num_steps.setToolTip("Number of steps in the pattern")
+        self.spin_num_steps.valueChanged.connect(self.on_num_steps_changed)
+        params_layout.addWidget(lbl_num_steps, 1, 0)
+        params_layout.addWidget(self.spin_num_steps, 1, 1)
+
+        # Pattern length (auto-calculated, read-only display)
         lbl_length = QLabel("Pattern Length:")
-        self.spin_length = QSpinBox()
-        self.spin_length.setRange(1, 1024)
-        self.spin_length.setValue(64)
-        self.spin_length.setSuffix(" /64ths")
-        self.spin_length.setToolTip("Pattern length in 64th notes (64 = 1 bar)")
-        params_layout.addWidget(lbl_length, 1, 0)
-        params_layout.addWidget(self.spin_length, 1, 1)
+        self.lbl_pattern_length = QLabel("64 /64ths")
+        self.lbl_pattern_length.setToolTip("Total pattern length (auto-calculated from rate × steps)")
+        params_layout.addWidget(lbl_length, 2, 0)
+        params_layout.addWidget(self.lbl_pattern_length, 2, 1)
 
         # Gate length
         lbl_gate = QLabel("Gate Length:")
@@ -285,17 +297,8 @@ class Arpeggiator(BasicEditor):
         self.spin_gate.setValue(80)
         self.spin_gate.setSuffix("%")
         self.spin_gate.setToolTip("Note gate length percentage")
-        params_layout.addWidget(lbl_gate, 2, 0)
-        params_layout.addWidget(self.spin_gate, 2, 1)
-
-        # Octave range
-        lbl_octave = QLabel("Octave Range:")
-        self.spin_octave = QSpinBox()
-        self.spin_octave.setRange(1, 4)
-        self.spin_octave.setValue(1)
-        self.spin_octave.setToolTip("Octave range for preset")
-        params_layout.addWidget(lbl_octave, 3, 0)
-        params_layout.addWidget(self.spin_octave, 3, 1)
+        params_layout.addWidget(lbl_gate, 3, 0)
+        params_layout.addWidget(self.spin_gate, 3, 1)
 
         params_group.setLayout(params_layout)
         header_layout.addWidget(params_group, 1)
@@ -323,23 +326,6 @@ class Arpeggiator(BasicEditor):
 
         mode_group.setLayout(mode_layout)
         main_layout.addWidget(mode_group)
-
-        # === Step Count Control ===
-        step_control_layout = QHBoxLayout()
-        lbl_steps = QLabel("Number of Steps:")
-        self.spin_step_count = QSpinBox()
-        self.spin_step_count.setRange(1, 16)
-        self.spin_step_count.setValue(4)
-        self.spin_step_count.valueChanged.connect(self.on_step_count_changed)
-        self.btn_apply_steps = QPushButton("Apply Step Count")
-        self.btn_apply_steps.clicked.connect(self.rebuild_steps)
-
-        step_control_layout.addWidget(lbl_steps)
-        step_control_layout.addWidget(self.spin_step_count)
-        step_control_layout.addWidget(self.btn_apply_steps)
-        step_control_layout.addStretch()
-
-        main_layout.addLayout(step_control_layout)
 
         # === Step Sequencer ===
         sequencer_group = QGroupBox("Step Sequencer")
@@ -405,7 +391,7 @@ class Arpeggiator(BasicEditor):
         self.step_widgets.clear()
 
         # Create new steps
-        step_count = self.spin_step_count.value()
+        step_count = self.spin_num_steps.value()
         for i in range(step_count):
             step_widget = StepWidget(i)
 
@@ -417,20 +403,32 @@ class Arpeggiator(BasicEditor):
             self.step_layout.addWidget(step_widget)
 
         self.step_layout.addStretch()
+        self.update_pattern_length_display()
         self.update_status(f"Rebuilt sequencer with {step_count} steps")
 
-    def on_step_count_changed(self, value):
-        """Step count spinbox changed"""
-        self.update_status(f"Step count set to {value}. Click 'Apply Step Count' to rebuild.")
+    def on_pattern_rate_changed(self, index):
+        """Pattern rate changed - update pattern length display"""
+        self.update_pattern_length_display()
+        self.update_status(f"Pattern rate changed to {self.combo_pattern_rate.currentText()}")
+
+    def on_num_steps_changed(self, value):
+        """Number of steps changed - rebuild and update pattern length"""
+        self.rebuild_steps()
+
+    def update_pattern_length_display(self):
+        """Update the pattern length display based on rate × steps"""
+        rate_64ths = self.combo_pattern_rate.currentData()
+        num_steps = self.spin_num_steps.value()
+        pattern_length = rate_64ths * num_steps
+        self.lbl_pattern_length.setText(f"{pattern_length} /64ths")
 
     def clear_all_steps(self):
         """Clear all step data"""
         for widget in self.step_widgets:
             widget.set_step_data({
                 'velocity': 0,
-                'note_index': 0,
-                'octave_offset': 0,
-                'timing_64ths': widget.step_num * 16
+                'semitone_offset': -1,  # None
+                'octave_offset': 0
             })
         self.update_status("All steps cleared")
 
@@ -441,47 +439,68 @@ class Arpeggiator(BasicEditor):
         self.update_status("All velocities reset to 200")
 
     def quick_ascending(self):
-        """Quick pattern: ascending notes"""
+        """Quick pattern: ascending intervals (0, 2, 4, 7 semitones - C, D, E, G)"""
+        intervals = [0, 2, 4, 7]  # Major scale intervals
         for i, widget in enumerate(self.step_widgets):
-            widget.note_selector.setValue(i % 4)
+            # Set interval based on position
+            interval = intervals[i % len(intervals)]
+            # Find the combo box index for this interval
+            for idx in range(widget.interval_selector.count()):
+                if widget.interval_selector.itemData(idx) == interval:
+                    widget.interval_selector.setCurrentIndex(idx)
+                    break
             widget.octave_selector.setValue(0)
-            widget.timing_selector.setValue(i * 16)
             widget.velocity_bar.set_velocity(200)
         self.update_status("Applied ascending pattern")
 
     def quick_descending(self):
-        """Quick pattern: descending notes"""
+        """Quick pattern: descending intervals"""
+        intervals = [7, 4, 2, 0]  # Descending major scale intervals
         for i, widget in enumerate(self.step_widgets):
-            widget.note_selector.setValue(3 - (i % 4))
+            # Set interval based on position
+            interval = intervals[i % len(intervals)]
+            # Find the combo box index for this interval
+            for idx in range(widget.interval_selector.count()):
+                if widget.interval_selector.itemData(idx) == interval:
+                    widget.interval_selector.setCurrentIndex(idx)
+                    break
             widget.octave_selector.setValue(0)
-            widget.timing_selector.setValue(i * 16)
             widget.velocity_bar.set_velocity(200)
         self.update_status("Applied descending pattern")
 
     def gather_preset_data(self):
         """Gather current UI state into preset_data dict"""
-        self.preset_data['name'] = self.edit_name.text()[:15]
-        self.preset_data['pattern_length_64ths'] = self.spin_length.value()
+        # Calculate pattern length from rate × steps
+        rate_64ths = self.combo_pattern_rate.currentData()
+        num_steps = self.spin_num_steps.value()
+        self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
-        self.preset_data['octave_range'] = self.spin_octave.value()
 
-        # Gather step data
+        # Gather step data, filtering out "None" steps and calculating timing
         self.preset_data['steps'] = []
-        for widget in self.step_widgets:
-            self.preset_data['steps'].append(widget.get_step_data())
+        for i, widget in enumerate(self.step_widgets):
+            step_data = widget.get_step_data()
+            # Skip steps with semitone_offset = -1 (None)
+            if step_data['semitone_offset'] != -1:
+                # Calculate timing based on pattern rate and step position
+                step_data['timing_64ths'] = i * rate_64ths
+                # Convert semitone_offset to note_index for firmware compatibility
+                # (we'll map semitone_offset as the note_index field in firmware)
+                step_data['note_index'] = step_data['semitone_offset']
+                self.preset_data['steps'].append(step_data)
 
-        self.preset_data['note_count'] = len(self.step_widgets)
+        self.preset_data['note_count'] = len(self.preset_data['steps'])
+        # Keep name in data structure for firmware compatibility
+        if 'name' not in self.preset_data:
+            self.preset_data['name'] = 'User Preset'
 
     def apply_preset_data(self):
         """Apply preset_data to UI"""
-        self.edit_name.setText(self.preset_data.get('name', 'User Preset'))
-        self.spin_length.setValue(self.preset_data.get('pattern_length_64ths', 64))
         self.spin_gate.setValue(self.preset_data.get('gate_length_percent', 80))
-        self.spin_octave.setValue(self.preset_data.get('octave_range', 1))
 
         # Apply step data
         steps = self.preset_data.get('steps', [])
-        self.spin_step_count.setValue(len(steps))
+        self.spin_num_steps.setValue(len(steps) if len(steps) > 0 else 4)
         self.rebuild_steps()
 
     def on_preset_changed(self, index):
@@ -549,13 +568,11 @@ class Arpeggiator(BasicEditor):
                 note_count = data[21] if len(data) > 21 else 0
                 pattern_length = ((data[22] << 8) | data[23]) if len(data) > 23 else 64
                 gate_length = data[24] if len(data) > 24 else 80
-                octave_range = data[25] if len(data) > 25 else 1
 
                 self.preset_data['name'] = name
                 self.preset_data['note_count'] = note_count
                 self.preset_data['pattern_length_64ths'] = pattern_length
                 self.preset_data['gate_length_percent'] = gate_length
-                self.preset_data['octave_range'] = octave_range
 
                 self.apply_preset_data()
                 self.update_status(f"Loaded preset: {name}")
@@ -590,7 +607,6 @@ class Arpeggiator(BasicEditor):
         params.append((self.preset_data['pattern_length_64ths'] >> 8) & 0xFF)
         params.append(self.preset_data['pattern_length_64ths'] & 0xFF)
         params.append(self.preset_data['gate_length_percent'])
-        params.append(self.preset_data['octave_range'])
 
         if self.send_hid_command(self.ARP_CMD_SET_PRESET, params):
             # Also save to EEPROM
