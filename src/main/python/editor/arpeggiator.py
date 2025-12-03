@@ -382,34 +382,15 @@ class Arpeggiator(BasicEditor):
 
         main_layout.addLayout(bottom_layout)
 
-        # Build initial steps
-        self.rebuild_steps()
-
-        # === Quick Actions ===
-        actions_layout = QHBoxLayout()
-
-        self.btn_clear_all = QPushButton("Clear All Steps")
-        self.btn_clear_all.clicked.connect(self.clear_all_steps)
-
-        self.btn_reset_velocity = QPushButton("Reset All Velocity (200)")
-        self.btn_reset_velocity.clicked.connect(self.reset_all_velocity)
-
-        self.btn_ascending = QPushButton("Quick: Ascending")
-        self.btn_ascending.clicked.connect(self.quick_ascending)
-
-        self.btn_descending = QPushButton("Quick: Descending")
-        self.btn_descending.clicked.connect(self.quick_descending)
-
-        actions_layout.addWidget(self.btn_clear_all)
-        actions_layout.addWidget(self.btn_reset_velocity)
-        actions_layout.addWidget(self.btn_ascending)
-        actions_layout.addWidget(self.btn_descending)
-
-        main_layout.addLayout(actions_layout)
-
+        # === Status ===
+        self.lbl_status = QLabel("Ready. Select a preset to begin.")
+        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
 
         self.addLayout(main_layout)
+
+        # Build initial steps (after status label is created)
+        self.rebuild_steps()
 
     def rebuild_steps(self):
         """Rebuild step widgets based on step count"""
