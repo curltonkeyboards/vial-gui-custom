@@ -156,7 +156,6 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             params[18] = (preset->pattern_length_64ths >> 8) & 0xFF;
             params[19] = preset->pattern_length_64ths & 0xFF;
             params[20] = preset->gate_length_percent;
-            params[21] = preset->octave_range;
 
             params[0] = 0;  // Success
             dprintf("ARP HID: GET_PRESET id=%d name=%s notes=%d\n",
@@ -171,7 +170,6 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // params[17] = note_count
             // params[18-19] = pattern_length_64ths
             // params[20] = gate_length_percent
-            // params[21] = octave_range
             uint8_t preset_id = params[0];
 
             if (preset_id < 8) {
@@ -192,7 +190,6 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             preset->note_count = params[17];
             preset->pattern_length_64ths = (params[18] << 8) | params[19];
             preset->gate_length_percent = params[20];
-            preset->octave_range = params[21];
             preset->magic = ARP_PRESET_MAGIC;
 
             // Validate

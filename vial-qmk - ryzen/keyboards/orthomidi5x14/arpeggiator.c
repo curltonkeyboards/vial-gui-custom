@@ -122,7 +122,6 @@ void arp_init_presets(void) {
     arp_presets[0].note_count = 4;
     arp_presets[0].pattern_length_64ths = 64;  // 1 bar
     arp_presets[0].gate_length_percent = 80;   // 80% gate
-    arp_presets[0].octave_range = 1;           // No octave repeat
     strncpy(arp_presets[0].name, "Up 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[0].magic = ARP_PRESET_MAGIC;
 
@@ -156,7 +155,6 @@ void arp_init_presets(void) {
     arp_presets[1].note_count = 4;
     arp_presets[1].pattern_length_64ths = 64;
     arp_presets[1].gate_length_percent = 80;
-    arp_presets[1].octave_range = 1;           // No octave repeat
     strncpy(arp_presets[1].name, "Down 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[1].magic = ARP_PRESET_MAGIC;
 
@@ -187,7 +185,6 @@ void arp_init_presets(void) {
     arp_presets[2].note_count = 6;
     arp_presets[2].pattern_length_64ths = 96;  // 1.5 bars for up-down pattern
     arp_presets[2].gate_length_percent = 80;
-    arp_presets[2].octave_range = 1;           // No octave repeat
     strncpy(arp_presets[2].name, "Up-Down 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[2].magic = ARP_PRESET_MAGIC;
 
@@ -229,7 +226,6 @@ void arp_init_presets(void) {
     arp_presets[3].note_count = 4;
     arp_presets[3].pattern_length_64ths = 128;  // 2 bars
     arp_presets[3].gate_length_percent = 75;
-    arp_presets[3].octave_range = 1;           // No octave repeat
     strncpy(arp_presets[3].name, "Random 8ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[3].magic = ARP_PRESET_MAGIC;
 
@@ -248,7 +244,6 @@ void arp_init_presets(void) {
     arp_presets[4].note_count = 8;
     arp_presets[4].pattern_length_64ths = 128;  // 2 bars
     arp_presets[4].gate_length_percent = 80;
-    arp_presets[4].octave_range = 2;            // 2 octave range
     strncpy(arp_presets[4].name, "Up 2 Oct", ARP_PRESET_NAME_LENGTH);
     arp_presets[4].magic = ARP_PRESET_MAGIC;
 
@@ -273,7 +268,6 @@ void arp_init_presets(void) {
     arp_presets[5].note_count = 8;
     arp_presets[5].pattern_length_64ths = 128;  // 2 bars
     arp_presets[5].gate_length_percent = 80;
-    arp_presets[5].octave_range = 2;            // 2 octave range
     strncpy(arp_presets[5].name, "Down 2 Oct", ARP_PRESET_NAME_LENGTH);
     arp_presets[5].magic = ARP_PRESET_MAGIC;
 
@@ -298,7 +292,6 @@ void arp_init_presets(void) {
     arp_presets[6].note_count = 8;
     arp_presets[6].pattern_length_64ths = 128;  // 2 bars
     arp_presets[6].gate_length_percent = 75;
-    arp_presets[6].octave_range = 2;            // 2 octave range
     strncpy(arp_presets[6].name, "Oct Jump", ARP_PRESET_NAME_LENGTH);
     arp_presets[6].magic = ARP_PRESET_MAGIC;
 
@@ -323,7 +316,6 @@ void arp_init_presets(void) {
     arp_presets[7].note_count = 8;
     arp_presets[7].pattern_length_64ths = 64;   // 1 bar
     arp_presets[7].gate_length_percent = 60;    // Shorter gate for clarity
-    arp_presets[7].octave_range = 1;            // No octave repeat
     strncpy(arp_presets[7].name, "Rapid 32nds", ARP_PRESET_NAME_LENGTH);
     arp_presets[7].magic = ARP_PRESET_MAGIC;
 
@@ -526,58 +518,78 @@ void arp_update(void) {
         // Handle different playback modes
         switch (arp_state.mode) {
             case ARP_MODE_SINGLE_NOTE: {
-                // Single Note Mode: One note at a time (classic arp)
+                // Single Note Mode: Play master note + semitone offset
+                // Master note = lowest/first held note
+                if (live_note_count == 0) break;
+
+                uint8_t master_idx = sorted_indices[0];  // Lowest held note
+                uint8_t master_note = live_notes[master_idx][1];
+                uint8_t channel = live_notes[master_idx][0];
+
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
                     arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
 
-                    // Get note from live_notes
-                    if (preset_note->note_index >= live_note_count) continue;
+                    // Calculate note: master + semitone_offset + octave_offset
+                    // note_index field now contains semitone offset (0-11)
+                    int16_t semitone_offset = preset_note->note_index;
+                    int16_t octave_semitones = preset_note->octave_offset * 12;
+                    int16_t final_note = master_note + semitone_offset + octave_semitones;
 
-                    uint8_t live_idx = sorted_indices[preset_note->note_index];
-                    uint8_t channel = live_notes[live_idx][0];
-                    uint8_t note = live_notes[live_idx][1] + preset_note->octave_offset;
+                    // Clamp to MIDI range
+                    if (final_note < 0) final_note = 0;
+                    if (final_note > 127) final_note = 127;
+
                     uint8_t raw_travel = preset_note->raw_travel;
 
                     // Send note-on
-                    midi_send_noteon_arp(channel, note, raw_travel, raw_travel);
+                    midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
 
                     // Add to arp_notes for gate tracking
                     uint32_t note_off_time = current_time + gate_duration_ms;
-                    add_arp_note(channel, note, raw_travel, note_off_time);
+                    add_arp_note(channel, (uint8_t)final_note, raw_travel, note_off_time);
                 }
                 break;
             }
 
             case ARP_MODE_CHORD_BASIC: {
-                // Chord Basic Mode: Play ALL live notes at once per step
-                // Timing doesn't change - just plays more notes simultaneously
+                // Chord Basic Mode: Apply semitone offset to ALL held notes
+                // Each step plays all held notes + the semitone offset
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
                     arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
 
-                    // Play ALL live notes, not just the indexed one
+                    int16_t semitone_offset = preset_note->note_index;
+                    int16_t octave_semitones = preset_note->octave_offset * 12;
+
+                    // Apply offset to ALL held notes
                     for (uint8_t n = 0; n < live_note_count; n++) {
                         uint8_t live_idx = sorted_indices[n];
                         uint8_t channel = live_notes[live_idx][0];
-                        uint8_t note = live_notes[live_idx][1] + preset_note->octave_offset;
+                        uint8_t master_note = live_notes[live_idx][1];
+
+                        int16_t final_note = master_note + semitone_offset + octave_semitones;
+
+                        // Clamp to MIDI range
+                        if (final_note < 0) final_note = 0;
+                        if (final_note > 127) final_note = 127;
+
                         uint8_t raw_travel = preset_note->raw_travel;
 
                         // Send note-on
-                        midi_send_noteon_arp(channel, note, raw_travel, raw_travel);
+                        midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
 
                         // Add to arp_notes for gate tracking
                         uint32_t note_off_time = current_time + gate_duration_ms;
-                        add_arp_note(channel, note, raw_travel, note_off_time);
+                        add_arp_note(channel, (uint8_t)final_note, raw_travel, note_off_time);
                     }
                 }
                 break;
             }
 
             case ARP_MODE_CHORD_ADVANCED: {
-                // Chord Advanced Mode: Stagger notes evenly across step time
-                // Divides step time by number of live notes
-                // Pattern: note1-step1, note2-step1, note3-step1, note1-step2, note2-step2...
+                // Chord Advanced Mode: Rotate through held notes, applying semitone offset to each
+                // Each step plays one held note + offset, rotating through all held notes
 
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
@@ -585,18 +597,26 @@ void arp_update(void) {
 
                     // Play the next note in rotation
                     uint8_t note_to_play = arp_state.current_note_in_chord % live_note_count;
-
                     uint8_t live_idx = sorted_indices[note_to_play];
                     uint8_t channel = live_notes[live_idx][0];
-                    uint8_t note = live_notes[live_idx][1] + preset_note->octave_offset;
+                    uint8_t master_note = live_notes[live_idx][1];
+
+                    int16_t semitone_offset = preset_note->note_index;
+                    int16_t octave_semitones = preset_note->octave_offset * 12;
+                    int16_t final_note = master_note + semitone_offset + octave_semitones;
+
+                    // Clamp to MIDI range
+                    if (final_note < 0) final_note = 0;
+                    if (final_note > 127) final_note = 127;
+
                     uint8_t raw_travel = preset_note->raw_travel;
 
                     // Send note-on
-                    midi_send_noteon_arp(channel, note, raw_travel, raw_travel);
+                    midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
 
                     // Add to arp_notes for gate tracking
                     uint32_t note_off_time = current_time + gate_duration_ms;
-                    add_arp_note(channel, note, raw_travel, note_off_time);
+                    add_arp_note(channel, (uint8_t)final_note, raw_travel, note_off_time);
 
                     // Advance to next note in chord for next trigger
                     arp_state.current_note_in_chord = (arp_state.current_note_in_chord + 1) % live_note_count;
@@ -754,13 +774,6 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Check octave range bounds
-    if (preset->octave_range < 1 || preset->octave_range > 4) {
-        dprintf("arp: validate failed - octave_range %d not in [1,4]\n",
-                preset->octave_range);
-        return false;
-    }
-
     // Check pattern length bounds (at least 1/64th, max 16 bars = 1024 64ths)
     if (preset->pattern_length_64ths < 1 || preset->pattern_length_64ths > 1024) {
         dprintf("arp: validate failed - pattern_length %d not in [1,1024]\n",
@@ -866,7 +879,6 @@ void arp_load_all_user_presets(void) {
             arp_presets[i].note_count = 0;
             arp_presets[i].pattern_length_64ths = 64;  // 1 bar default
             arp_presets[i].gate_length_percent = 80;
-            arp_presets[i].octave_range = 1;
             arp_presets[i].magic = ARP_PRESET_MAGIC;
         }
     }
@@ -889,7 +901,6 @@ bool arp_clear_preset(uint8_t preset_id) {
     arp_presets[preset_id].note_count = 0;
     arp_presets[preset_id].pattern_length_64ths = 64;
     arp_presets[preset_id].gate_length_percent = 80;
-    arp_presets[preset_id].octave_range = 1;
     arp_presets[preset_id].magic = ARP_PRESET_MAGIC;
 
     // Save to EEPROM
