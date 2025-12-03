@@ -22,7 +22,7 @@ class IntervalSelector(QWidget):
 
     valueChanged = pyqtSignal(int)
 
-    # Interval names mapping
+    # Interval names mapping (extended range)
     INTERVAL_NAMES = {
         -1: "Empty",
         0: "Root Note",
@@ -36,8 +36,49 @@ class IntervalSelector(QWidget):
         8: "Minor Sixth",
         9: "Major Sixth",
         10: "Minor Seventh",
-        11: "Major Seventh"
+        11: "Major Seventh",
+        12: "Octave",
+        13: "Octave + m2",
+        14: "Octave + M2",
+        15: "Octave + m3",
+        16: "Octave + M3",
+        17: "Octave + P4",
+        18: "Octave + Tritone",
+        19: "Octave + P5",
+        20: "Octave + m6",
+        21: "Octave + M6",
+        22: "Octave + m7",
+        23: "Octave + M7"
     }
+
+    # Generate negative interval names
+    NEGATIVE_INTERVAL_NAMES = {
+        -2: "-Major Seventh",
+        -3: "-Minor Seventh",
+        -4: "-Major Sixth",
+        -5: "-Minor Sixth",
+        -6: "-Perfect Fifth",
+        -7: "-Tritone",
+        -8: "-Perfect Fourth",
+        -9: "-Major Third",
+        -10: "-Minor Third",
+        -11: "-Major Second",
+        -12: "-Minor Second",
+        -13: "-Octave",
+        -14: "-Octave - m2",
+        -15: "-Octave - M2",
+        -16: "-Octave - m3",
+        -17: "-Octave - M3",
+        -18: "-Octave - P4",
+        -19: "-Octave - Tritone",
+        -20: "-Octave - P5",
+        -21: "-Octave - m6",
+        -22: "-Octave - M6",
+        -23: "-Octave - m7"
+    }
+
+    # Combine mappings
+    INTERVAL_NAMES.update(NEGATIVE_INTERVAL_NAMES)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -92,11 +133,11 @@ class IntervalSelector(QWidget):
 
     def set_value(self, value):
         """Set interval value"""
-        # Clamp to valid range
-        if value < -1:
-            value = -1
-        elif value > 11:
-            value = 11
+        # Clamp to valid range (-23 to +23)
+        if value < -23:
+            value = -23
+        elif value > 23:
+            value = 23
 
         if self.value != value:
             self.value = value
@@ -105,12 +146,12 @@ class IntervalSelector(QWidget):
 
     def increment(self):
         """Increment interval value"""
-        if self.value < 11:
+        if self.value < 23:
             self.set_value(self.value + 1)
 
     def decrement(self):
         """Decrement interval value"""
-        if self.value > -1:
+        if self.value > -23:
             self.set_value(self.value - 1)
 
     def update_display(self):
@@ -123,10 +164,12 @@ class IntervalSelector(QWidget):
             self.value_box.setText("Empty")
         elif self.value >= 0:
             self.value_box.setText(f"+{self.value}")
+        else:
+            self.value_box.setText(str(self.value))
 
         # Enable/disable buttons
-        self.btn_minus.setEnabled(self.value > -1)
-        self.btn_plus.setEnabled(self.value < 11)
+        self.btn_minus.setEnabled(self.value > -23)
+        self.btn_plus.setEnabled(self.value < 23)
 
 
 class OctaveSelector(QWidget):
@@ -141,12 +184,6 @@ class OctaveSelector(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(2)
         layout.setContentsMargins(0, 0, 0, 0)
-
-        # Octave label (above the box)
-        self.name_label = QLabel("Octave")
-        self.name_label.setAlignment(Qt.AlignCenter)
-        self.name_label.setFont(QFont("Arial", 9, QFont.Bold))
-        layout.addWidget(self.name_label)
 
         # Container for the value box with integrated +/- buttons
         container = QFrame()
@@ -289,6 +326,15 @@ class VelocityBar(QWidget):
             self.set_velocity(velocity)
             self.clicked.emit(self.velocity)
 
+    def mouseMoveEvent(self, event):
+        """Drag to set velocity based on Y position"""
+        if event.buttons() & Qt.LeftButton:
+            # Invert Y (top = high velocity, bottom = low)
+            relative_y = max(0, min(1, event.pos().y() / self.height()))
+            velocity = int((1.0 - relative_y) * 255)
+            self.set_velocity(velocity)
+            self.clicked.emit(self.velocity)
+
 
 class StepWidget(QFrame):
     """Single step in the sequencer with velocity bar and interval selector"""
@@ -310,10 +356,10 @@ class StepWidget(QFrame):
         layout.addWidget(lbl_step)
 
         # Velocity bar - centered
-        velocity_container = QWidget()
+        self.velocity_container = QWidget()
         velocity_container_layout = QHBoxLayout()
         velocity_container_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_container.setLayout(velocity_container_layout)
+        self.velocity_container.setLayout(velocity_container_layout)
 
         velocity_container_layout.addStretch()
         self.velocity_bar = VelocityBar()
@@ -321,21 +367,34 @@ class StepWidget(QFrame):
         velocity_container_layout.addWidget(self.velocity_bar)
         velocity_container_layout.addStretch()
 
-        layout.addWidget(velocity_container, 1)
+        layout.addWidget(self.velocity_container, 1)
 
-        # Interval/Semitone selector - centered
+        # Note container with title
+        note_group = QGroupBox("Note")
+        note_layout = QVBoxLayout()
+        note_layout.setContentsMargins(4, 4, 4, 4)
         self.interval_selector = IntervalSelector()
         self.interval_selector.valueChanged.connect(self.on_interval_changed)
-        layout.addWidget(self.interval_selector)
+        note_layout.addWidget(self.interval_selector)
+        note_group.setLayout(note_layout)
+        layout.addWidget(note_group)
 
-        # Octave offset selector - centered
+        # Octave container with title (removing internal label)
+        self.octave_group = QGroupBox("Octave")
+        octave_layout = QVBoxLayout()
+        octave_layout.setContentsMargins(4, 4, 4, 4)
         self.octave_selector = OctaveSelector()
         self.octave_selector.valueChanged.connect(self.on_octave_changed)
-        layout.addWidget(self.octave_selector)
+        octave_layout.addWidget(self.octave_selector)
+        self.octave_group.setLayout(octave_layout)
+        layout.addWidget(self.octave_group)
 
         self.setLayout(layout)
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
         self.setLineWidth(1)
+
+        # Update transparency based on initial state
+        self.update_transparency()
 
     def on_velocity_changed(self, velocity):
         """Velocity bar was clicked"""
@@ -343,11 +402,28 @@ class StepWidget(QFrame):
 
     def on_interval_changed(self, value):
         """Interval selector changed"""
-        pass  # No visual state changes needed
+        self.update_transparency()
 
     def on_octave_changed(self, value):
         """Octave selector changed"""
         pass  # No visual state changes needed
+
+    def update_transparency(self):
+        """Update transparency based on whether step is empty"""
+        is_empty = self.interval_selector.get_value() == -1
+
+        if is_empty:
+            # Set 50% transparency for velocity and octave containers
+            self.velocity_container.setStyleSheet("opacity: 0.5;")
+            self.octave_group.setStyleSheet("QGroupBox { opacity: 0.5; }")
+            # Hide velocity bar
+            self.velocity_bar.setVisible(False)
+        else:
+            # Reset to normal
+            self.velocity_container.setStyleSheet("")
+            self.octave_group.setStyleSheet("")
+            # Show velocity bar
+            self.velocity_bar.setVisible(True)
 
     def get_step_data(self):
         """Return step data as dict"""
@@ -511,11 +587,11 @@ class Arpeggiator(BasicEditor):
         params_layout.addWidget(lbl_num_steps, 2, 0)
         params_layout.addWidget(self.spin_num_steps, 2, 1)
 
-        # Pattern length (auto-calculated, read-only display)
-        lbl_length = QLabel("Pattern Length:")
+        # Pattern rhythm (auto-calculated, read-only display)
+        lbl_rhythm = QLabel("Pattern Rhythm:")
         self.lbl_pattern_length = QLabel("4/16")
-        self.lbl_pattern_length.setToolTip("Total pattern length (auto-calculated from steps/rate)")
-        params_layout.addWidget(lbl_length, 3, 0)
+        self.lbl_pattern_length.setToolTip("Total pattern rhythm (auto-calculated from steps/rate)")
+        params_layout.addWidget(lbl_rhythm, 3, 0)
         params_layout.addWidget(self.lbl_pattern_length, 3, 1)
 
         # Gate length
@@ -554,8 +630,8 @@ class Arpeggiator(BasicEditor):
         preset_layout.addWidget(lbl_preset, 0, 0)
         preset_layout.addWidget(self.combo_preset, 0, 1, 1, 2)
 
-        # Preset buttons - 35px tall
-        button_style = "QPushButton { min-height: 35px; max-height: 35px; }"
+        # Preset buttons - 30px tall
+        button_style = "QPushButton { min-height: 30px; max-height: 30px; }"
 
         self.btn_load = QPushButton("Load from Device")
         self.btn_load.setStyleSheet(button_style)
