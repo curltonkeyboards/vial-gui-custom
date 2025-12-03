@@ -38,43 +38,43 @@ class IntervalSelector(QWidget):
         10: "Minor Seventh",
         11: "Major Seventh",
         12: "Octave",
-        13: "Octave + m2",
-        14: "Octave + M2",
-        15: "Octave + m3",
-        16: "Octave + M3",
-        17: "Octave + P4",
-        18: "Octave + Tritone",
-        19: "Octave + P5",
-        20: "Octave + m6",
-        21: "Octave + M6",
-        22: "Octave + m7",
-        23: "Octave + M7"
+        13: "Minor 9th",
+        14: "Major 9th",
+        15: "Minor 10th",
+        16: "Major 10th",
+        17: "Perfect 11th",
+        18: "Augmented 11th",
+        19: "Perfect 12th",
+        20: "Minor 13th",
+        21: "Major 13th",
+        22: "Minor 14th",
+        23: "Major 14th"
     }
 
-    # Generate negative interval names
+    # Generate negative interval names (mirror positive ones)
     NEGATIVE_INTERVAL_NAMES = {
-        -2: "-Major Seventh",
-        -3: "-Minor Seventh",
-        -4: "-Major Sixth",
-        -5: "-Minor Sixth",
-        -6: "-Perfect Fifth",
-        -7: "-Tritone",
-        -8: "-Perfect Fourth",
-        -9: "-Major Third",
-        -10: "-Minor Third",
-        -11: "-Major Second",
-        -12: "-Minor Second",
-        -13: "-Octave",
-        -14: "-Octave - m2",
-        -15: "-Octave - M2",
-        -16: "-Octave - m3",
-        -17: "-Octave - M3",
-        -18: "-Octave - P4",
-        -19: "-Octave - Tritone",
-        -20: "-Octave - P5",
-        -21: "-Octave - m6",
-        -22: "-Octave - M6",
-        -23: "-Octave - m7"
+        -2: "-Major Second",
+        -3: "-Minor Third",
+        -4: "-Major Third",
+        -5: "-Perfect Fourth",
+        -6: "-Tritone",
+        -7: "-Perfect Fifth",
+        -8: "-Minor Sixth",
+        -9: "-Major Sixth",
+        -10: "-Minor Seventh",
+        -11: "-Major Seventh",
+        -12: "-Octave",
+        -13: "-Minor 9th",
+        -14: "-Major 9th",
+        -15: "-Minor 10th",
+        -16: "-Major 10th",
+        -17: "-Perfect 11th",
+        -18: "-Augmented 11th",
+        -19: "-Perfect 12th",
+        -20: "-Minor 13th",
+        -21: "-Major 13th",
+        -22: "-Minor 14th",
+        -23: "-Major 14th"
     }
 
     # Combine mappings
@@ -312,10 +312,10 @@ class VelocityBar(QWidget):
 
             painter.fillRect(1, bar_y, self.width() - 2, bar_height, color)
 
-        # Velocity text
+        # Velocity text (display half the value, rounded down)
         painter.setPen(palette.color(QPalette.Text))
         painter.setFont(QFont("Arial", 8))
-        painter.drawText(self.rect(), Qt.AlignCenter, str(self.velocity))
+        painter.drawText(self.rect(), Qt.AlignCenter, str(self.velocity // 2))
 
     def mousePressEvent(self, event):
         """Click to set velocity based on Y position"""
@@ -355,22 +355,42 @@ class StepWidget(QFrame):
         lbl_step.setFont(QFont("Arial", 9, QFont.Bold))
         layout.addWidget(lbl_step)
 
-        # Velocity bar - centered
+        # Velocity bar with label below
         self.velocity_container = QWidget()
-        velocity_container_layout = QHBoxLayout()
-        velocity_container_layout.setContentsMargins(0, 0, 0, 0)
-        self.velocity_container.setLayout(velocity_container_layout)
+        velocity_full_layout = QVBoxLayout()
+        velocity_full_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_full_layout.setSpacing(2)
+        self.velocity_container.setLayout(velocity_full_layout)
 
-        velocity_container_layout.addStretch()
+        # Velocity bar centered
+        velocity_bar_container = QWidget()
+        velocity_bar_layout = QHBoxLayout()
+        velocity_bar_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_bar_container.setLayout(velocity_bar_layout)
+
+        velocity_bar_layout.addStretch()
         self.velocity_bar = VelocityBar()
         self.velocity_bar.clicked.connect(self.on_velocity_changed)
-        velocity_container_layout.addWidget(self.velocity_bar)
-        velocity_container_layout.addStretch()
+        velocity_bar_layout.addWidget(self.velocity_bar)
+        velocity_bar_layout.addStretch()
+
+        velocity_full_layout.addWidget(velocity_bar_container, 1)
+
+        # Velocity label below slider
+        self.velocity_label = QLabel("Velocity")
+        self.velocity_label.setAlignment(Qt.AlignCenter)
+        self.velocity_label.setFont(QFont("Arial", 8))
+        velocity_full_layout.addWidget(self.velocity_label)
 
         layout.addWidget(self.velocity_container, 1)
 
-        # Note container with title
-        note_group = QGroupBox("Note")
+        # Note section: label in own row, then container
+        self.note_title = QLabel("Note")
+        self.note_title.setAlignment(Qt.AlignCenter)
+        self.note_title.setFont(QFont("Arial", 9, QFont.Bold))
+        layout.addWidget(self.note_title)
+
+        note_group = QGroupBox()
         note_layout = QVBoxLayout()
         note_layout.setContentsMargins(4, 4, 4, 4)
         self.interval_selector = IntervalSelector()
@@ -379,8 +399,13 @@ class StepWidget(QFrame):
         note_group.setLayout(note_layout)
         layout.addWidget(note_group)
 
-        # Octave container with title (removing internal label)
-        self.octave_group = QGroupBox("Octave")
+        # Octave section: label in own row, then container
+        self.octave_title = QLabel("Octave")
+        self.octave_title.setAlignment(Qt.AlignCenter)
+        self.octave_title.setFont(QFont("Arial", 9, QFont.Bold))
+        layout.addWidget(self.octave_title)
+
+        self.octave_group = QGroupBox()
         octave_layout = QVBoxLayout()
         octave_layout.setContentsMargins(4, 4, 4, 4)
         self.octave_selector = OctaveSelector()
@@ -393,8 +418,8 @@ class StepWidget(QFrame):
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
         self.setLineWidth(1)
 
-        # Update transparency based on initial state
-        self.update_transparency()
+        # Update styling based on initial state
+        self.update_empty_styling()
 
     def on_velocity_changed(self, velocity):
         """Velocity bar was clicked"""
@@ -402,28 +427,36 @@ class StepWidget(QFrame):
 
     def on_interval_changed(self, value):
         """Interval selector changed"""
-        self.update_transparency()
+        self.update_empty_styling()
 
     def on_octave_changed(self, value):
         """Octave selector changed"""
         pass  # No visual state changes needed
 
-    def update_transparency(self):
-        """Update transparency based on whether step is empty"""
+    def update_empty_styling(self):
+        """Update styling based on whether step is empty"""
         is_empty = self.interval_selector.get_value() == -1
 
         if is_empty:
-            # Set 50% transparency for velocity and octave containers
-            self.velocity_container.setStyleSheet("opacity: 0.5;")
-            self.octave_group.setStyleSheet("QGroupBox { opacity: 0.5; }")
-            # Hide velocity bar
-            self.velocity_bar.setVisible(False)
+            # Set dark grey for entire step container
+            self.setStyleSheet("QFrame { background-color: #3a3a3a; }")
+            # Set dark grey for velocity bar
+            self.velocity_bar.setStyleSheet("background-color: #2a2a2a;")
+            # Set dark grey for octave container and buttons
+            self.octave_group.setStyleSheet("""
+                QGroupBox { background-color: #3a3a3a; }
+                QPushButton { background-color: #2a2a2a; color: #666; }
+            """)
+            # Style octave buttons directly
+            self.octave_selector.btn_minus.setStyleSheet("background-color: #2a2a2a; color: #666;")
+            self.octave_selector.btn_plus.setStyleSheet("background-color: #2a2a2a; color: #666;")
         else:
             # Reset to normal
-            self.velocity_container.setStyleSheet("")
+            self.setStyleSheet("")
+            self.velocity_bar.setStyleSheet("")
             self.octave_group.setStyleSheet("")
-            # Show velocity bar
-            self.velocity_bar.setVisible(True)
+            self.octave_selector.btn_minus.setStyleSheet("")
+            self.octave_selector.btn_plus.setStyleSheet("")
 
     def get_step_data(self):
         """Return step data as dict"""
@@ -496,7 +529,7 @@ class Arpeggiator(BasicEditor):
     def setup_ui(self):
         """Build the UI"""
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
+        main_layout.setSpacing(0)
 
         # === Status ===
         self.lbl_status = QLabel("Ready. Select a preset to begin.")
