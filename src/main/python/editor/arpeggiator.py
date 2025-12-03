@@ -693,6 +693,46 @@ class Arpeggiator(BasicEditor):
         else:
             self.update_status("Connect a Vial device to use arpeggiator")
 
+    def clear_all_steps(self):
+        """Clear all steps to None (skip all steps)"""
+        for widget in self.step_widgets:
+            widget.set_step_data({
+                'velocity': widget.velocity_bar.get_velocity(),  # Keep current velocity
+                'semitone_offset': -1,  # None
+                'octave_offset': 0
+            })
+        self.update_status("All steps cleared to None")
+
+    def reset_all_velocity(self):
+        """Reset all step velocities to 200 (default)"""
+        for widget in self.step_widgets:
+            widget.velocity_bar.set_velocity(200)
+        self.update_status("All velocities reset to 200")
+
+    def quick_ascending(self):
+        """Quick pattern: Ascending scale from root note"""
+        for i, widget in enumerate(self.step_widgets):
+            widget.set_step_data({
+                'velocity': 200,
+                'semitone_offset': i % 12,  # 0, 1, 2, 3, ... wrapping at 12
+                'octave_offset': i // 12 if i // 12 <= 2 else 0
+            })
+        self.update_status("Applied ascending pattern")
+
+    def quick_descending(self):
+        """Quick pattern: Descending scale from root note"""
+        num_steps = len(self.step_widgets)
+        for i, widget in enumerate(self.step_widgets):
+            # Start from higher semitones and go down
+            semitone = (num_steps - i - 1) % 12
+            octave = max(-2, min(2, (num_steps - i - 1) // 12))
+            widget.set_step_data({
+                'velocity': 200,
+                'semitone_offset': semitone,
+                'octave_offset': octave
+            })
+        self.update_status("Applied descending pattern")
+
     def activate(self):
         """Tab activated"""
         logger.info("Arpeggiator tab activated")
