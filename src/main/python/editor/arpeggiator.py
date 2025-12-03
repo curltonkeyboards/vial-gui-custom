@@ -24,7 +24,7 @@ class IntervalSelector(QWidget):
 
     # Interval names mapping
     INTERVAL_NAMES = {
-        -1: "None",
+        -1: "Empty",
         0: "Root Note",
         1: "Minor Second",
         2: "Major Second",
@@ -48,36 +48,40 @@ class IntervalSelector(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # Interval name label (above the box)
-        self.name_label = QLabel("None")
+        self.name_label = QLabel("Empty")
         self.name_label.setAlignment(Qt.AlignCenter)
         self.name_label.setFont(QFont("Arial", 9, QFont.Bold))
         layout.addWidget(self.name_label)
 
-        # Box with +/- buttons
-        box_layout = QHBoxLayout()
-        box_layout.setSpacing(2)
-        box_layout.setContentsMargins(0, 0, 0, 0)
+        # Container for the value box with integrated +/- buttons
+        container = QFrame()
+        container.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
+        container.setMaximumWidth(120)
 
-        # Minus button
+        box_layout = QHBoxLayout()
+        box_layout.setSpacing(0)
+        box_layout.setContentsMargins(2, 2, 2, 2)
+
+        # Minus button (inside container, on left)
         self.btn_minus = QPushButton("-")
-        self.btn_minus.setMaximumWidth(30)
+        self.btn_minus.setFixedSize(25, 25)
         self.btn_minus.clicked.connect(self.decrement)
         box_layout.addWidget(self.btn_minus)
 
-        # Value box (editable)
-        self.value_box = QLineEdit("None")
+        # Value box (center)
+        self.value_box = QLabel("Empty")
         self.value_box.setAlignment(Qt.AlignCenter)
-        self.value_box.setReadOnly(True)  # Make read-only for now, can enable editing later
-        self.value_box.setMaximumWidth(80)
-        box_layout.addWidget(self.value_box)
+        self.value_box.setMinimumWidth(50)
+        box_layout.addWidget(self.value_box, 1)
 
-        # Plus button
+        # Plus button (inside container, on right)
         self.btn_plus = QPushButton("+")
-        self.btn_plus.setMaximumWidth(30)
+        self.btn_plus.setFixedSize(25, 25)
         self.btn_plus.clicked.connect(self.increment)
         box_layout.addWidget(self.btn_plus)
 
-        layout.addLayout(box_layout)
+        container.setLayout(box_layout)
+        layout.addWidget(container, 0, Qt.AlignCenter)
         self.setLayout(layout)
 
         self.update_display()
@@ -116,13 +120,105 @@ class IntervalSelector(QWidget):
 
         # Update value box
         if self.value == -1:
-            self.value_box.setText("None")
+            self.value_box.setText("Empty")
         elif self.value >= 0:
             self.value_box.setText(f"+{self.value}")
 
         # Enable/disable buttons
         self.btn_minus.setEnabled(self.value > -1)
         self.btn_plus.setEnabled(self.value < 11)
+
+
+class OctaveSelector(QWidget):
+    """Custom octave selector with +/- buttons"""
+
+    valueChanged = pyqtSignal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.value = 0  # Default to 0
+
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Octave label (above the box)
+        self.name_label = QLabel("Octave")
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setFont(QFont("Arial", 9, QFont.Bold))
+        layout.addWidget(self.name_label)
+
+        # Container for the value box with integrated +/- buttons
+        container = QFrame()
+        container.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
+        container.setMaximumWidth(120)
+
+        box_layout = QHBoxLayout()
+        box_layout.setSpacing(0)
+        box_layout.setContentsMargins(2, 2, 2, 2)
+
+        # Minus button (inside container, on left)
+        self.btn_minus = QPushButton("-")
+        self.btn_minus.setFixedSize(25, 25)
+        self.btn_minus.clicked.connect(self.decrement)
+        box_layout.addWidget(self.btn_minus)
+
+        # Value box (center)
+        self.value_box = QLabel("0")
+        self.value_box.setAlignment(Qt.AlignCenter)
+        self.value_box.setMinimumWidth(50)
+        box_layout.addWidget(self.value_box, 1)
+
+        # Plus button (inside container, on right)
+        self.btn_plus = QPushButton("+")
+        self.btn_plus.setFixedSize(25, 25)
+        self.btn_plus.clicked.connect(self.increment)
+        box_layout.addWidget(self.btn_plus)
+
+        container.setLayout(box_layout)
+        layout.addWidget(container, 0, Qt.AlignCenter)
+        self.setLayout(layout)
+
+        self.update_display()
+
+    def get_value(self):
+        """Get current octave value"""
+        return self.value
+
+    def set_value(self, value):
+        """Set octave value"""
+        # Clamp to valid range
+        if value < -2:
+            value = -2
+        elif value > 2:
+            value = 2
+
+        if self.value != value:
+            self.value = value
+            self.update_display()
+            self.valueChanged.emit(self.value)
+
+    def increment(self):
+        """Increment octave value"""
+        if self.value < 2:
+            self.set_value(self.value + 1)
+
+    def decrement(self):
+        """Decrement octave value"""
+        if self.value > -2:
+            self.set_value(self.value - 1)
+
+    def update_display(self):
+        """Update the display text"""
+        # Update value box with + or - prefix
+        if self.value > 0:
+            self.value_box.setText(f"+{self.value}")
+        else:
+            self.value_box.setText(str(self.value))
+
+        # Enable/disable buttons
+        self.btn_minus.setEnabled(self.value > -2)
+        self.btn_plus.setEnabled(self.value < 2)
 
 
 class VelocityBar(QWidget):
@@ -147,34 +243,40 @@ class VelocityBar(QWidget):
         return self.velocity
 
     def paintEvent(self, event):
+        from PyQt5.QtGui import QPalette
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Get theme colors from palette
+        palette = self.palette()
+        bg_color = palette.color(QPalette.Window)
+        highlight_color = palette.color(QPalette.Highlight)
+
         # Background
-        painter.fillRect(self.rect(), QColor(40, 40, 40))
+        painter.fillRect(self.rect(), bg_color.darker(120))
 
         # Border
-        painter.setPen(QPen(QColor(100, 100, 100), 1))
+        painter.setPen(QPen(palette.color(QPalette.Mid), 1))
         painter.drawRect(0, 0, self.width() - 1, self.height() - 1)
 
-        # Velocity bar
+        # Velocity bar with theme highlight color
         if self.velocity > 0:
             bar_height = int((self.velocity / 255.0) * self.height())
             bar_y = self.height() - bar_height
 
-            # Use theme-related color (blue/cyan gradient)
+            # Use theme highlight color with intensity based on velocity
             intensity = self.velocity / 255.0
-            base_color = QColor(0, 170, 255)  # Theme blue color
             color = QColor(
-                int(base_color.red() * intensity),
-                int(base_color.green() * intensity),
-                int(base_color.blue() * intensity)
+                int(highlight_color.red() * (0.5 + 0.5 * intensity)),
+                int(highlight_color.green() * (0.5 + 0.5 * intensity)),
+                int(highlight_color.blue() * (0.5 + 0.5 * intensity))
             )
 
             painter.fillRect(1, bar_y, self.width() - 2, bar_height, color)
 
         # Velocity text
-        painter.setPen(QColor(255, 255, 255))
+        painter.setPen(palette.color(QPalette.Text))
         painter.setFont(QFont("Arial", 8))
         painter.drawText(self.rect(), Qt.AlignCenter, str(self.velocity))
 
@@ -207,71 +309,52 @@ class StepWidget(QFrame):
         lbl_step.setFont(QFont("Arial", 9, QFont.Bold))
         layout.addWidget(lbl_step)
 
-        # Velocity bar
+        # Velocity bar - centered
+        velocity_container = QWidget()
+        velocity_container_layout = QHBoxLayout()
+        velocity_container_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_container.setLayout(velocity_container_layout)
+
+        velocity_container_layout.addStretch()
         self.velocity_bar = VelocityBar()
         self.velocity_bar.clicked.connect(self.on_velocity_changed)
-        layout.addWidget(self.velocity_bar, 1)
+        velocity_container_layout.addWidget(self.velocity_bar)
+        velocity_container_layout.addStretch()
+
+        layout.addWidget(velocity_container, 1)
 
         # Interval/Semitone selector - centered
-        interval_container = QWidget()
-        interval_container_layout = QHBoxLayout()
-        interval_container_layout.setContentsMargins(0, 0, 0, 0)
-        interval_container.setLayout(interval_container_layout)
-
-        # Add stretch before and after to center the interval selector
-        interval_container_layout.addStretch()
-
-        # Interval selector (semitone offset from master note)
         self.interval_selector = IntervalSelector()
         self.interval_selector.valueChanged.connect(self.on_interval_changed)
-        interval_container_layout.addWidget(self.interval_selector)
+        layout.addWidget(self.interval_selector)
 
-        interval_container_layout.addStretch()
-
-        layout.addWidget(interval_container)
-
-        # Octave offset selector
-        self.octave_selector = QSpinBox()
-        self.octave_selector.setRange(-2, 2)
-        self.octave_selector.setValue(0)
-        self.octave_selector.setPrefix("Octave: ")
-        self.octave_selector.setButtonSymbols(QSpinBox.UpDownArrows)
-        self.octave_selector.setToolTip("Octave offset (+/- 12 semitones)")
+        # Octave offset selector - centered
+        self.octave_selector = OctaveSelector()
+        self.octave_selector.valueChanged.connect(self.on_octave_changed)
         layout.addWidget(self.octave_selector)
 
         self.setLayout(layout)
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
         self.setLineWidth(1)
 
-        # Update initial visual state
-        self.update_visual_state()
-
     def on_velocity_changed(self, velocity):
         """Velocity bar was clicked"""
         pass  # Parent will handle this
 
     def on_interval_changed(self, value):
-        """Interval selector changed - update visual state"""
-        self.update_visual_state()
+        """Interval selector changed"""
+        pass  # No visual state changes needed
 
-    def update_visual_state(self):
-        """Update visual state based on whether step is active (not None)"""
-        is_none = self.interval_selector.get_value() == -1
-        if is_none:
-            # Grey out / darken the container and disable interval selector
-            self.setStyleSheet("StepWidget { background-color: #2a2a2a; }")
-            self.interval_selector.setEnabled(False)
-        else:
-            # Normal state
-            self.setStyleSheet("StepWidget { background-color: palette(window); }")
-            self.interval_selector.setEnabled(True)
+    def on_octave_changed(self, value):
+        """Octave selector changed"""
+        pass  # No visual state changes needed
 
     def get_step_data(self):
         """Return step data as dict"""
         return {
             'velocity': self.velocity_bar.get_velocity(),
             'semitone_offset': self.interval_selector.get_value(),
-            'octave_offset': self.octave_selector.value()
+            'octave_offset': self.octave_selector.get_value()
         }
 
     def set_step_data(self, data):
@@ -281,10 +364,7 @@ class StepWidget(QFrame):
         if 'semitone_offset' in data:
             self.interval_selector.set_value(data['semitone_offset'])
         if 'octave_offset' in data:
-            self.octave_selector.setValue(data['octave_offset'])
-
-        # Update visual state after loading data
-        self.update_visual_state()
+            self.octave_selector.set_value(data['octave_offset'])
 
 
 class Arpeggiator(BasicEditor):
@@ -377,6 +457,9 @@ class Arpeggiator(BasicEditor):
 
         # === Bottom Section: Two containers side by side ===
         bottom_layout = QHBoxLayout()
+
+        # Add left spacer to push containers closer together
+        bottom_layout.addStretch(1)
 
         # Left Container: Preset Parameters (no title)
         params_group = QGroupBox()
@@ -471,8 +554,8 @@ class Arpeggiator(BasicEditor):
         preset_layout.addWidget(lbl_preset, 0, 0)
         preset_layout.addWidget(self.combo_preset, 0, 1, 1, 2)
 
-        # Preset buttons - make them vertically 10px bigger
-        button_style = "QPushButton { padding: 13px 16px; }"
+        # Preset buttons - 35px tall
+        button_style = "QPushButton { min-height: 35px; max-height: 35px; }"
 
         self.btn_load = QPushButton("Load from Device")
         self.btn_load.setStyleSheet(button_style)
@@ -508,6 +591,9 @@ class Arpeggiator(BasicEditor):
 
         preset_group.setLayout(preset_layout)
         bottom_layout.addWidget(preset_group)
+
+        # Add right spacer to push containers closer together
+        bottom_layout.addStretch(1)
 
         main_layout.addLayout(bottom_layout)
 
