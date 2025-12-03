@@ -255,6 +255,9 @@ class Arpeggiator(BasicEditor):
         preset_group = QGroupBox("Preset")
         preset_layout = QGridLayout()
 
+        # === Sequencer Section ===
+        sequencer_group = QGroupBox("Step Sequencer")
+
         # Create scrollable area for steps
         self.step_scroll = QScrollArea()
         self.step_scroll.setWidgetResizable(True)
