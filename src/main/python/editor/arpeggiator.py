@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import struct
 import logging
+import math
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QPainter, QColor, QPen, QFont
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
@@ -92,11 +93,8 @@ class IntervalSelector(QWidget):
 
     def set_value(self, value):
         """Set interval value"""
-        # Clamp to valid range
-        if value < -1:
-            value = -1
-        elif value > 11:
-            value = 11
+        # Clamp to valid range (-1 to 11)
+        value = max(-1, min(11, value))
 
         if self.value != value:
             self.value = value
@@ -106,12 +104,15 @@ class IntervalSelector(QWidget):
     def increment(self):
         """Increment interval value"""
         if self.value < 11:
-            self.set_value(self.value + 1)
+            new_value = self.value + 1
+            self.set_value(new_value)
 
     def decrement(self):
         """Decrement interval value"""
+        # Cannot go below -1 (Empty)
         if self.value > -1:
-            self.set_value(self.value - 1)
+            new_value = self.value - 1
+            self.set_value(new_value)
 
     def update_display(self):
         """Update the display text"""
@@ -309,6 +310,12 @@ class StepWidget(QFrame):
         lbl_step.setFont(QFont("Arial", 9, QFont.Bold))
         layout.addWidget(lbl_step)
 
+        # Velocity label
+        self.velocity_label = QLabel("Velocity")
+        self.velocity_label.setAlignment(Qt.AlignCenter)
+        self.velocity_label.setFont(QFont("Arial", 9, QFont.Bold))
+        layout.addWidget(self.velocity_label)
+
         # Velocity bar - centered
         velocity_container = QWidget()
         velocity_container_layout = QHBoxLayout()
@@ -321,12 +328,19 @@ class StepWidget(QFrame):
         velocity_container_layout.addWidget(self.velocity_bar)
         velocity_container_layout.addStretch()
 
+        self.velocity_container = velocity_container
         layout.addWidget(velocity_container, 1)
+
+        # Add stretch between velocity and note to push them apart
+        layout.addStretch(1)
 
         # Interval/Semitone selector - centered
         self.interval_selector = IntervalSelector()
         self.interval_selector.valueChanged.connect(self.on_interval_changed)
         layout.addWidget(self.interval_selector)
+
+        # Add stretch above octave to push it down
+        layout.addStretch(1)
 
         # Octave offset selector - centered
         self.octave_selector = OctaveSelector()
@@ -337,17 +351,46 @@ class StepWidget(QFrame):
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
         self.setLineWidth(1)
 
+        # Initialize empty state
+        self.update_empty_state()
+
     def on_velocity_changed(self, velocity):
         """Velocity bar was clicked"""
         pass  # Parent will handle this
 
     def on_interval_changed(self, value):
         """Interval selector changed"""
-        pass  # No visual state changes needed
+        self.update_empty_state()
 
     def on_octave_changed(self, value):
         """Octave selector changed"""
         pass  # No visual state changes needed
+
+    def update_empty_state(self):
+        """Update visual state based on whether note is empty"""
+        is_empty = self.interval_selector.get_value() == -1
+
+        if is_empty:
+            # When empty, dim everything and hide velocity bar
+            self.velocity_label.setText("Empty")
+            self.velocity_container.setVisible(False)
+
+            # Dim the octave selector
+            self.octave_selector.setEnabled(False)
+
+            # Don't change background color, just dim the controls
+            opacity_effect = "QWidget { opacity: 0.5; }"
+            self.interval_selector.setStyleSheet("")  # Keep interval selector normal
+        else:
+            # When not empty, show everything normally
+            self.velocity_label.setText("Velocity")
+            self.velocity_container.setVisible(True)
+
+            # Enable octave selector
+            self.octave_selector.setEnabled(True)
+
+            # Clear any dimming
+            self.interval_selector.setStyleSheet("")
 
     def get_step_data(self):
         """Return step data as dict"""
@@ -365,6 +408,7 @@ class StepWidget(QFrame):
             self.interval_selector.set_value(data['semitone_offset'])
         if 'octave_offset' in data:
             self.octave_selector.set_value(data['octave_offset'])
+        self.update_empty_state()
 
 
 class Arpeggiator(BasicEditor):
@@ -650,32 +694,33 @@ class Arpeggiator(BasicEditor):
         self.rebuild_steps()
 
     def update_pattern_length_display(self):
-        """Update the pattern length display in x/y format with halving logic"""
-        # Get rate_64ths from combo box value
-        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
-        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        """Update the pattern length display using proper music notation with GCD simplification"""
+        # Map combo box index to note value denominator (4 = quarter note, 8 = eighth, etc.)
+        rate_to_denominator = {0: 4, 1: 8, 2: 16, 3: 32, 4: 64}
+        denominator = rate_to_denominator.get(self.combo_pattern_rate.currentData(), 16)
 
         num_steps = self.spin_num_steps.value()
 
-        # Calculate pattern length in 64ths
-        pattern_length_64ths = rate_64ths * num_steps
+        # Pattern rhythm is: num_steps / denominator
+        # For example: 4 steps of 1/16 notes = 4/16
+        #             5 steps of 1/4 notes = 5/4
+        #             10 steps of 1/8 notes = 10/8 = 5/4 (after simplification)
+        numerator = num_steps
 
-        # Calculate denominator from rate (y value)
-        # rate_64ths = 64 means /4, 32 means /8, 16 means /16, etc.
-        # Denominator: 64ths -> /4, 32 -> /8, 16 -> /16, 8 -> /32, 4 -> /64
-        denominator_map = {64: 4, 32: 8, 16: 16, 8: 32, 4: 64}
-        y = denominator_map.get(rate_64ths, 16)
+        # Simplify the fraction using GCD (Greatest Common Divisor)
+        gcd = math.gcd(numerator, denominator)
+        simplified_numerator = numerator // gcd
+        simplified_denominator = denominator // gcd
 
-        # x is the number of steps
-        x = num_steps
+        # Update pattern_length_64ths for internal use (still needed for firmware)
+        # Calculate how many 64th notes this pattern is:
+        # If we have n/d notes, that's (n/d) * 64 sixty-fourth notes for a whole note pattern
+        # But we need to convert based on the actual note value
+        # 1/4 note = 16 sixty-fourths, 1/8 = 8 sixty-fourths, 1/16 = 4 sixty-fourths, etc.
+        sixty_fourths_per_note = {4: 16, 8: 8, 16: 4, 32: 2, 64: 1}
+        pattern_length_64ths = num_steps * sixty_fourths_per_note.get(denominator, 4)
 
-        # Apply halving logic: keep halving both x and y if possible, stop at y=4
-        import math
-        while x % 2 == 0 and y % 2 == 0 and y > 4:
-            x = x // 2
-            y = y // 2
-
-        self.lbl_pattern_length.setText(f"{x}/{y}")
+        self.lbl_pattern_length.setText(f"{simplified_numerator}/{simplified_denominator}")
 
     def reset_all_steps(self):
         """Reset all steps to None with max velocity (with confirmation)"""
@@ -716,10 +761,16 @@ class Arpeggiator(BasicEditor):
 
     def gather_preset_data(self):
         """Gather current UI state into preset_data dict"""
-        # Calculate pattern length from rate × steps
-        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
-        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        # Calculate pattern length using proper note value conversion
+        rate_to_denominator = {0: 4, 1: 8, 2: 16, 3: 32, 4: 64}
+        denominator = rate_to_denominator.get(self.combo_pattern_rate.currentData(), 16)
         num_steps = self.spin_num_steps.value()
+
+        # Convert to sixty-fourth notes for firmware
+        # 1/4 note = 16 sixty-fourths, 1/8 = 8, 1/16 = 4, 1/32 = 2, 1/64 = 1
+        sixty_fourths_per_note = {4: 16, 8: 8, 16: 4, 32: 2, 64: 1}
+        rate_64ths = sixty_fourths_per_note.get(denominator, 4)
+
         self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
 
