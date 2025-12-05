@@ -172,14 +172,68 @@ class IntervalSelector(QWidget):
         self.btn_plus.setEnabled(self.value < 23)
 
 
+class NoteSelector(QWidget):
+    """Note selector for step sequencer (C-B dropdown)"""
+
+    valueChanged = pyqtSignal(int)
+
+    # Note names
+    NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.value = 0  # Default to C
+
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Note dropdown
+        self.combo_note = ArrowComboBox()
+        self.combo_note.setEditable(True)
+        self.combo_note.lineEdit().setReadOnly(True)
+        self.combo_note.lineEdit().setAlignment(Qt.AlignCenter)
+        self.combo_note.setMinimumWidth(60)
+        for i, note_name in enumerate(self.NOTE_NAMES):
+            self.combo_note.addItem(note_name, i)
+        self.combo_note.currentIndexChanged.connect(self.on_value_changed)
+        layout.addWidget(self.combo_note)
+
+        self.setLayout(layout)
+
+    def get_value(self):
+        """Get current note value (0-11)"""
+        return self.value
+
+    def set_value(self, value):
+        """Set note value (0-11)"""
+        if value < 0:
+            value = 0
+        elif value > 11:
+            value = 11
+
+        if self.value != value:
+            self.value = value
+            self.combo_note.setCurrentIndex(value)
+            self.valueChanged.emit(self.value)
+
+    def on_value_changed(self, index):
+        """Combo box selection changed"""
+        if index >= 0:
+            self.value = index
+            self.valueChanged.emit(self.value)
+
+
 class OctaveSelector(QWidget):
     """Custom octave selector with +/- buttons"""
 
     valueChanged = pyqtSignal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, min_octave=-2, max_octave=2, default_octave=0, parent=None):
         super().__init__(parent)
-        self.value = 0  # Default to 0
+        self.min_octave = min_octave
+        self.max_octave = max_octave
+        self.value = default_octave  # Default
 
         layout = QVBoxLayout()
         layout.setSpacing(2)
@@ -225,10 +279,10 @@ class OctaveSelector(QWidget):
     def set_value(self, value):
         """Set octave value"""
         # Clamp to valid range
-        if value < -2:
-            value = -2
-        elif value > 2:
-            value = 2
+        if value < self.min_octave:
+            value = self.min_octave
+        elif value > self.max_octave:
+            value = self.max_octave
 
         if self.value != value:
             self.value = value
@@ -237,25 +291,30 @@ class OctaveSelector(QWidget):
 
     def increment(self):
         """Increment octave value"""
-        if self.value < 2:
+        if self.value < self.max_octave:
             self.set_value(self.value + 1)
 
     def decrement(self):
         """Decrement octave value"""
-        if self.value > -2:
+        if self.value > self.min_octave:
             self.set_value(self.value - 1)
 
     def update_display(self):
         """Update the display text"""
-        # Update value box with + or - prefix
-        if self.value > 0:
-            self.value_box.setText(f"+{self.value}")
+        # Update value box with + or - prefix (for arpeggiator) or absolute (for step seq)
+        if self.min_octave < 0:
+            # Arpeggiator mode (relative octaves)
+            if self.value > 0:
+                self.value_box.setText(f"+{self.value}")
+            else:
+                self.value_box.setText(str(self.value))
         else:
+            # Step sequencer mode (absolute octaves)
             self.value_box.setText(str(self.value))
 
         # Enable/disable buttons
-        self.btn_minus.setEnabled(self.value > -2)
-        self.btn_plus.setEnabled(self.value < 2)
+        self.btn_minus.setEnabled(self.value > self.min_octave)
+        self.btn_plus.setEnabled(self.value < self.max_octave)
 
 
 class VelocityBar(QWidget):
@@ -336,31 +395,25 @@ class VelocityBar(QWidget):
             self.clicked.emit(self.velocity)
 
 
-class StepWidget(QFrame):
-    """Single step in the sequencer with velocity bar and interval selector"""
+class NoteContainer(QFrame):
+    """Single note within a step - contains velocity bar, note/interval selector, and octave selector"""
 
-    def __init__(self, step_num, parent=None):
+    removed = pyqtSignal()  # Signal when this note should be removed
+
+    def __init__(self, is_step_sequencer=False, parent=None):
         super().__init__(parent)
-        self.step_num = step_num
-        self.semitone_offset = -1  # -1 = None (skip step)
-        self.octave_offset = 0
+        self.is_step_sequencer = is_step_sequencer
 
         layout = QVBoxLayout()
         layout.setSpacing(4)
-        layout.setContentsMargins(4, 4, 4, 4)
-
-        # Step number label
-        lbl_step = QLabel(f"Step {step_num + 1}")
-        lbl_step.setAlignment(Qt.AlignCenter)
-        lbl_step.setFont(QFont("Arial", 9, QFont.Bold))
-        layout.addWidget(lbl_step)
+        layout.setContentsMargins(2, 2, 2, 2)
 
         # Velocity bar with label below
-        self.velocity_container = QWidget()
+        velocity_container = QWidget()
         velocity_full_layout = QVBoxLayout()
         velocity_full_layout.setContentsMargins(0, 0, 0, 0)
         velocity_full_layout.setSpacing(2)
-        self.velocity_container.setLayout(velocity_full_layout)
+        velocity_container.setLayout(velocity_full_layout)
 
         # Velocity bar centered
         velocity_bar_container = QWidget()
@@ -370,110 +423,204 @@ class StepWidget(QFrame):
 
         velocity_bar_layout.addStretch()
         self.velocity_bar = VelocityBar()
-        self.velocity_bar.clicked.connect(self.on_velocity_changed)
         velocity_bar_layout.addWidget(self.velocity_bar)
         velocity_bar_layout.addStretch()
 
         velocity_full_layout.addWidget(velocity_bar_container, 1)
 
-        # Velocity label below slider
-        self.velocity_label = QLabel("Velocity")
-        self.velocity_label.setAlignment(Qt.AlignCenter)
-        self.velocity_label.setFont(QFont("Arial", 8))
-        velocity_full_layout.addWidget(self.velocity_label)
+        # Velocity label
+        velocity_label = QLabel("Velocity")
+        velocity_label.setAlignment(Qt.AlignCenter)
+        velocity_label.setFont(QFont("Arial", 8))
+        velocity_full_layout.addWidget(velocity_label)
 
-        layout.addWidget(self.velocity_container, 1)
+        layout.addWidget(velocity_container, 1)
 
-        # Note section: label in own row, then container
-        self.note_title = QLabel("Note")
-        self.note_title.setAlignment(Qt.AlignCenter)
-        self.note_title.setFont(QFont("Arial", 9, QFont.Bold))
-        layout.addWidget(self.note_title)
+        # Note/Interval selector
+        if self.is_step_sequencer:
+            # Step sequencer: absolute note selector (C-B)
+            note_label = QLabel("Note")
+            note_label.setAlignment(Qt.AlignCenter)
+            note_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(note_label)
 
-        note_group = QGroupBox()
-        note_layout = QVBoxLayout()
-        note_layout.setContentsMargins(4, 4, 4, 4)
-        self.interval_selector = IntervalSelector()
-        self.interval_selector.valueChanged.connect(self.on_interval_changed)
-        note_layout.addWidget(self.interval_selector)
-        note_group.setLayout(note_layout)
-        layout.addWidget(note_group)
+            note_group = QGroupBox()
+            note_layout = QVBoxLayout()
+            note_layout.setContentsMargins(4, 4, 4, 4)
+            self.note_selector = NoteSelector()
+            note_layout.addWidget(self.note_selector)
+            note_group.setLayout(note_layout)
+            layout.addWidget(note_group)
 
-        # Octave section: label in own row, then container
-        self.octave_title = QLabel("Octave")
-        self.octave_title.setAlignment(Qt.AlignCenter)
-        self.octave_title.setFont(QFont("Arial", 9, QFont.Bold))
-        layout.addWidget(self.octave_title)
+            # Octave selector (0-7 for step sequencer)
+            octave_label = QLabel("Octave")
+            octave_label.setAlignment(Qt.AlignCenter)
+            octave_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(octave_label)
 
-        self.octave_group = QGroupBox()
-        octave_layout = QVBoxLayout()
-        octave_layout.setContentsMargins(4, 4, 4, 4)
-        self.octave_selector = OctaveSelector()
-        self.octave_selector.valueChanged.connect(self.on_octave_changed)
-        octave_layout.addWidget(self.octave_selector)
-        self.octave_group.setLayout(octave_layout)
-        layout.addWidget(self.octave_group)
+            octave_group = QGroupBox()
+            octave_layout = QVBoxLayout()
+            octave_layout.setContentsMargins(4, 4, 4, 4)
+            self.octave_selector = OctaveSelector(min_octave=0, max_octave=7, default_octave=4)
+            octave_layout.addWidget(self.octave_selector)
+            octave_group.setLayout(octave_layout)
+            layout.addWidget(octave_group)
+        else:
+            # Arpeggiator: interval selector (-24 to +24)
+            interval_label = QLabel("Interval")
+            interval_label.setAlignment(Qt.AlignCenter)
+            interval_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(interval_label)
+
+            interval_group = QGroupBox()
+            interval_layout = QVBoxLayout()
+            interval_layout.setContentsMargins(4, 4, 4, 4)
+            self.interval_selector = IntervalSelector()
+            interval_layout.addWidget(self.interval_selector)
+            interval_group.setLayout(interval_layout)
+            layout.addWidget(interval_group)
+
+            # Octave selector (-2 to +2 for arpeggiator)
+            octave_label = QLabel("Octave")
+            octave_label.setAlignment(Qt.AlignCenter)
+            octave_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(octave_label)
+
+            octave_group = QGroupBox()
+            octave_layout = QVBoxLayout()
+            octave_layout.setContentsMargins(4, 4, 4, 4)
+            self.octave_selector = OctaveSelector(min_octave=-2, max_octave=2, default_octave=0)
+            octave_layout.addWidget(self.octave_selector)
+            octave_group.setLayout(octave_layout)
+            layout.addWidget(octave_group)
+
+        # Remove button
+        self.btn_remove = QPushButton("Remove")
+        self.btn_remove.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
+        self.btn_remove.clicked.connect(self.removed.emit)
+        layout.addWidget(self.btn_remove)
 
         self.setLayout(layout)
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
         self.setLineWidth(1)
 
-        # Update styling based on initial state
-        self.update_empty_styling()
-
-    def on_velocity_changed(self, velocity):
-        """Velocity bar was clicked"""
-        pass  # Parent will handle this
-
-    def on_interval_changed(self, value):
-        """Interval selector changed"""
-        self.update_empty_styling()
-
-    def on_octave_changed(self, value):
-        """Octave selector changed"""
-        pass  # No visual state changes needed
-
-    def update_empty_styling(self):
-        """Update styling based on whether step is empty"""
-        is_empty = self.interval_selector.get_value() == -1
-
-        if is_empty:
-            # Set dark grey for entire step container
-            self.setStyleSheet("QFrame { background-color: #3a3a3a; }")
-            # Set dark grey for velocity bar
-            self.velocity_bar.setStyleSheet("background-color: #2a2a2a;")
-            # Set dark grey for octave container and buttons
-            self.octave_group.setStyleSheet("""
-                QGroupBox { background-color: #3a3a3a; }
-                QPushButton { background-color: #2a2a2a; color: #666; }
-            """)
-            # Style octave buttons directly
-            self.octave_selector.btn_minus.setStyleSheet("background-color: #2a2a2a; color: #666;")
-            self.octave_selector.btn_plus.setStyleSheet("background-color: #2a2a2a; color: #666;")
-        else:
-            # Reset to normal
-            self.setStyleSheet("")
-            self.velocity_bar.setStyleSheet("")
-            self.octave_group.setStyleSheet("")
-            self.octave_selector.btn_minus.setStyleSheet("")
-            self.octave_selector.btn_plus.setStyleSheet("")
-
-    def get_step_data(self):
-        """Return step data as dict"""
-        return {
+    def get_note_data(self):
+        """Return note data as dict"""
+        data = {
             'velocity': self.velocity_bar.get_velocity(),
-            'semitone_offset': self.interval_selector.get_value(),
             'octave_offset': self.octave_selector.get_value()
         }
 
-    def set_step_data(self, data):
-        """Load step data from dict"""
+        if self.is_step_sequencer:
+            data['note_index'] = self.note_selector.get_value()
+        else:
+            data['semitone_offset'] = self.interval_selector.get_value()
+
+        return data
+
+    def set_note_data(self, data):
+        """Load note data from dict"""
         if 'velocity' in data:
             self.velocity_bar.set_velocity(data['velocity'])
-        if 'semitone_offset' in data:
-            self.interval_selector.set_value(data['semitone_offset'])
         if 'octave_offset' in data:
             self.octave_selector.set_value(data['octave_offset'])
+
+        if self.is_step_sequencer:
+            if 'note_index' in data:
+                self.note_selector.set_value(data['note_index'])
+        else:
+            if 'semitone_offset' in data:
+                self.interval_selector.set_value(data['semitone_offset'])
+
+
+class StepWidget(QFrame):
+    """Single step in the sequencer - can contain multiple notes (up to 8)"""
+
+    def __init__(self, step_num, is_step_sequencer=False, parent=None):
+        super().__init__(parent)
+        self.step_num = step_num
+        self.is_step_sequencer = is_step_sequencer
+        self.note_containers = []
+
+        layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.setContentsMargins(4, 4, 4, 4)
+
+        # Step number label
+        lbl_step = QLabel(f"Step {step_num + 1}")
+        lbl_step.setAlignment(Qt.AlignCenter)
+        lbl_step.setFont(QFont("Arial", 10, QFont.Bold))
+        layout.addWidget(lbl_step)
+
+        # "Add Note" button
+        self.btn_add_note = QPushButton("Add Note")
+        self.btn_add_note.setStyleSheet("QPushButton { min-height: 30px; max-height: 30px; }")
+        self.btn_add_note.clicked.connect(self.add_note)
+        layout.addWidget(self.btn_add_note)
+
+        # Scroll area for note containers
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setMinimumHeight(150)
+
+        # Container for notes
+        self.notes_container = QWidget()
+        self.notes_layout = QVBoxLayout()
+        self.notes_layout.setSpacing(4)
+        self.notes_layout.setContentsMargins(0, 0, 0, 0)
+        self.notes_container.setLayout(self.notes_layout)
+        scroll_area.setWidget(self.notes_container)
+
+        layout.addWidget(scroll_area, 1)
+
+        self.setLayout(layout)
+        self.setFrameStyle(QFrame.Box | QFrame.Raised)
+        self.setLineWidth(2)
+
+    def add_note(self):
+        """Add a new note container to this step"""
+        if len(self.note_containers) >= 8:
+            QMessageBox.warning(None, "Maximum Notes", "Maximum 8 notes per step reached")
+            return
+
+        note_container = NoteContainer(is_step_sequencer=self.is_step_sequencer)
+        note_container.removed.connect(lambda: self.remove_note(note_container))
+        self.note_containers.append(note_container)
+        self.notes_layout.addWidget(note_container)
+
+        # Update button state
+        self.btn_add_note.setEnabled(len(self.note_containers) < 8)
+
+    def remove_note(self, note_container):
+        """Remove a note container from this step"""
+        if note_container in self.note_containers:
+            self.note_containers.remove(note_container)
+            self.notes_layout.removeWidget(note_container)
+            note_container.deleteLater()
+
+        # Update button state
+        self.btn_add_note.setEnabled(len(self.note_containers) < 8)
+
+    def get_step_data(self):
+        """Return step data as list of note dicts"""
+        notes = []
+        for container in self.note_containers:
+            notes.append(container.get_note_data())
+        return notes
+
+    def set_step_data(self, notes_data):
+        """Load step data from list of note dicts"""
+        # Clear existing notes
+        for container in self.note_containers[:]:
+            self.remove_note(container)
+
+        # Add notes from data
+        for note_data in notes_data:
+            self.add_note()
+            if self.note_containers:
+                self.note_containers[-1].set_note_data(note_data)
 
 
 class Arpeggiator(BasicEditor):
@@ -503,22 +650,20 @@ class Arpeggiator(BasicEditor):
 
         logger.info("Arpeggiator tab initialized")
 
-        self.current_preset_id = 0
+        self.current_preset_id = 0  # Presets 0-31 for arpeggiator
+        self.is_step_sequencer = False  # This is the arpeggiator tab
         self.preset_data = {
             'name': 'User Preset',
-            'note_count': 4,
+            'preset_type': 0,  # PRESET_TYPE_ARPEGGIATOR
+            'note_count': 0,
             'pattern_length_64ths': 64,
             'gate_length_percent': 80,
             'steps': []
         }
 
-        # Initialize with 4 default steps
+        # Initialize with 4 default empty steps
         for i in range(4):
-            self.preset_data['steps'].append({
-                'velocity': 200,
-                'semitone_offset': -1,  # None by default
-                'octave_offset': 0
-            })
+            self.preset_data['steps'].append([])  # Empty list of notes per step
 
         self.step_widgets = []
         self.clipboard_preset = None  # Internal clipboard for copy/paste
@@ -653,11 +798,12 @@ class Arpeggiator(BasicEditor):
         self.combo_preset.setEditable(True)
         self.combo_preset.lineEdit().setReadOnly(True)
         self.combo_preset.lineEdit().setAlignment(Qt.AlignCenter)
+        # Arpeggiator presets: 0-31
         for i in range(32):
             if i < 8:
-                self.combo_preset.addItem(f"Factory {i}")
+                self.combo_preset.addItem(f"Factory Arp {i}", i)
             else:
-                self.combo_preset.addItem(f"User {i}")
+                self.combo_preset.addItem(f"User Arp {i - 7}", i)
         self.combo_preset.currentIndexChanged.connect(self.on_preset_changed)
 
         preset_layout.addWidget(lbl_preset, 0, 0)
@@ -735,7 +881,7 @@ class Arpeggiator(BasicEditor):
         # Create new steps (they will be added from left to right)
         step_count = self.spin_num_steps.value()
         for i in range(step_count):
-            step_widget = StepWidget(i)
+            step_widget = StepWidget(i, is_step_sequencer=self.is_step_sequencer)
 
             # Load existing step data if available
             if i < len(self.preset_data['steps']):
@@ -787,23 +933,19 @@ class Arpeggiator(BasicEditor):
         self.lbl_pattern_length.setText(f"{x}/{y}")
 
     def reset_all_steps(self):
-        """Reset all steps to None with max velocity (with confirmation)"""
+        """Reset all steps to empty (with confirmation)"""
         reply = QMessageBox.question(
             None,
             "Reset All Steps",
-            "Are you sure you want to reset all steps to None with max velocity?",
+            "Are you sure you want to clear all notes from all steps?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
             for widget in self.step_widgets:
-                widget.set_step_data({
-                    'velocity': 255,  # Max velocity
-                    'semitone_offset': -1,  # None
-                    'octave_offset': 0
-                })
-            self.update_status("All steps reset to None with max velocity")
+                widget.set_step_data([])  # Empty list of notes
+            self.update_status("All steps reset to empty")
 
     def copy_preset_to_clipboard(self):
         """Copy current preset data to internal clipboard"""
@@ -831,33 +973,82 @@ class Arpeggiator(BasicEditor):
         num_steps = self.spin_num_steps.value()
         self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
+        self.preset_data['preset_type'] = 0  # PRESET_TYPE_ARPEGGIATOR
 
-        # Gather step data, filtering out "None" steps and calculating timing
-        self.preset_data['steps'] = []
+        # Gather notes from all steps
+        # Each step can have multiple notes, all at the same timing
+        all_notes = []
         for i, widget in enumerate(self.step_widgets):
-            step_data = widget.get_step_data()
-            # Skip steps with semitone_offset = -1 (None)
-            if step_data['semitone_offset'] != -1:
-                # Calculate timing based on pattern rate and step position
-                step_data['timing_64ths'] = i * rate_64ths
-                # Convert semitone_offset to note_index for firmware compatibility
-                # (we'll map semitone_offset as the note_index field in firmware)
-                step_data['note_index'] = step_data['semitone_offset']
-                self.preset_data['steps'].append(step_data)
+            step_notes = widget.get_step_data()  # Returns list of note dicts
+            timing_64ths = i * rate_64ths
 
-        self.preset_data['note_count'] = len(self.preset_data['steps'])
+            for note_data in step_notes:
+                # For arpeggiator: skip notes with semitone_offset = -1 (Empty)
+                if not self.is_step_sequencer and note_data.get('semitone_offset', -1) == -1:
+                    continue
+
+                # Add timing to note
+                note_data['timing_64ths'] = timing_64ths
+
+                # Convert to firmware format
+                if self.is_step_sequencer:
+                    # Step sequencer: note_index already contains absolute note (0-11)
+                    # octave_offset contains absolute octave (0-7)
+                    pass  # Data is already in the right format
+                else:
+                    # Arpeggiator: semitone_offset -> note_index for firmware
+                    note_data['note_index'] = note_data.get('semitone_offset', 0)
+
+                # Raw travel is velocity
+                note_data['raw_travel'] = note_data.get('velocity', 200)
+
+                all_notes.append(note_data)
+
+        self.preset_data['steps'] = all_notes
+        self.preset_data['note_count'] = len(all_notes)
+
         # Keep name in data structure for firmware compatibility
         if 'name' not in self.preset_data:
             self.preset_data['name'] = 'User Preset'
 
     def apply_preset_data(self):
-        """Apply preset_data to UI"""
+        """Apply preset_data to UI - convert flat note list to step-based structure"""
         self.spin_gate.setValue(self.preset_data.get('gate_length_percent', 80))
 
-        # Apply step data
-        steps = self.preset_data.get('steps', [])
-        self.spin_num_steps.setValue(len(steps) if len(steps) > 0 else 4)
+        # Convert flat note list back to step-based structure
+        # Group notes by timing
+        notes_by_timing = {}
+        for note in self.preset_data.get('steps', []):
+            timing = note.get('timing_64ths', 0)
+            if timing not in notes_by_timing:
+                notes_by_timing[timing] = []
+            notes_by_timing[timing].append(note)
+
+        # Determine number of steps from pattern length and rate
+        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
+        pattern_length = self.preset_data.get('pattern_length_64ths', 64)
+
+        # Find rate that matches the pattern
+        for rate_index, rate_64ths in rate_map.items():
+            num_steps = pattern_length // rate_64ths
+            if pattern_length % rate_64ths == 0 and 1 <= num_steps <= 128:
+                self.combo_pattern_rate.setCurrentIndex(rate_index)
+                self.spin_num_steps.setValue(num_steps)
+                break
+        else:
+            # Fallback: use 1/16 notes
+            self.combo_pattern_rate.setCurrentIndex(2)
+            self.spin_num_steps.setValue(max(1, min(128, pattern_length // 16)))
+
+        # Rebuild steps and populate with notes
         self.rebuild_steps()
+
+        # Populate steps with notes
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        for i, widget in enumerate(self.step_widgets):
+            step_timing = i * rate_64ths
+            step_notes = notes_by_timing.get(step_timing, [])
+            widget.set_step_data(step_notes)
 
     def on_preset_changed(self, index):
         """Preset selection changed"""
@@ -1001,3 +1192,63 @@ class Arpeggiator(BasicEditor):
     def deactivate(self):
         """Tab deactivated"""
         logger.info("Arpeggiator tab deactivated")
+
+
+class StepSequencer(Arpeggiator):
+    """Step Sequencer tab - plays absolute MIDI notes independently"""
+
+    def __init__(self):
+        # Call parent but override key attributes
+        BasicEditor.__init__(self)
+
+        logger.info("Step Sequencer tab initialized")
+
+        self.current_preset_id = 32  # Presets 32-63 for step sequencer
+        self.is_step_sequencer = True  # This is the step sequencer tab
+        self.preset_data = {
+            'name': 'User Seq',
+            'preset_type': 1,  # PRESET_TYPE_STEP_SEQUENCER
+            'note_count': 0,
+            'pattern_length_64ths': 64,
+            'gate_length_percent': 80,
+            'steps': []
+        }
+
+        # Initialize with 4 default empty steps
+        for i in range(4):
+            self.preset_data['steps'].append([])  # Empty list of notes per step
+
+        self.step_widgets = []
+        self.clipboard_preset = None  # Internal clipboard for copy/paste
+        self.hid_data_received.connect(self.handle_hid_response)
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Build the UI - override to customize preset selector"""
+        # Call parent setup_ui first
+        super().setup_ui()
+
+        # Update preset selector for step sequencer range (32-63)
+        self.combo_preset.clear()
+        for i in range(32, 64):
+            if i < 40:
+                self.combo_preset.addItem(f"Factory Seq {i - 31}", i)
+            else:
+                self.combo_preset.addItem(f"User Seq {i - 39}", i)
+
+        # Set default to first step sequencer preset
+        self.combo_preset.setCurrentIndex(0)
+
+    def gather_preset_data(self):
+        """Override to set preset_type to step sequencer"""
+        super().gather_preset_data()
+        self.preset_data['preset_type'] = 1  # PRESET_TYPE_STEP_SEQUENCER
+
+    def activate(self):
+        """Tab activated"""
+        logger.info("Step Sequencer tab activated")
+
+    def deactivate(self):
+        """Tab deactivated"""
+        logger.info("Step Sequencer tab deactivated")

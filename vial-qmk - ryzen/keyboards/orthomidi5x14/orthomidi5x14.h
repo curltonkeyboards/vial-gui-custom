@@ -203,8 +203,15 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 // Maximum limits
 #define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated
 #define MAX_PRESET_NOTES 128       // Maximum notes per preset (smart EEPROM)
-#define MAX_ARP_PRESETS 32         // Maximum user-definable presets
+#define MAX_ARP_PRESETS 64         // Maximum presets (0-31: Arpeggiator, 32-63: Step Sequencer)
 #define ARP_PRESET_NAME_LENGTH 16  // Max length for preset names
+
+// Preset type enumeration
+typedef enum {
+    PRESET_TYPE_ARPEGGIATOR = 0,  // Arpeggiator: intervals relative to master note
+    PRESET_TYPE_STEP_SEQUENCER,   // Step Sequencer: absolute MIDI notes
+    PRESET_TYPE_COUNT
+} preset_type_t;
 
 // Arpeggiator mode types
 typedef enum {
@@ -234,6 +241,7 @@ typedef struct {
 // Complete arpeggiator preset definition
 typedef struct {
     char name[ARP_PRESET_NAME_LENGTH];  // Preset name for display
+    uint8_t preset_type;                // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
     uint8_t note_count;                 // Number of notes in this preset
     uint16_t pattern_length_64ths;      // Total pattern length in 64th notes (16=1 beat, 64=1 bar)
     uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
@@ -258,9 +266,19 @@ typedef struct {
     bool key_held;                      // Is arp button physically held
 } arp_state_t;
 
-// EEPROM storage structure (for user presets - Phase 3)
-#define ARP_EEPROM_ADDR 65800  // Starting address for arp presets
+// EEPROM storage structure (for user presets)
+#define ARP_EEPROM_ADDR 65800  // Starting address for arpeggiator/sequencer presets
 #define ARP_PRESET_MAGIC 0xA89F
+
+// Preset slot definitions
+#define ARP_FACTORY_START 0         // Factory arpeggiator presets: 0-7
+#define ARP_FACTORY_END 7
+#define ARP_USER_START 8            // User arpeggiator presets: 8-31
+#define ARP_USER_END 31
+#define SEQ_FACTORY_START 32        // Factory step sequencer presets: 32-39
+#define SEQ_FACTORY_END 39
+#define SEQ_USER_START 40           // User step sequencer presets: 40-63
+#define SEQ_USER_END 63
 
 // Global arpeggiator state
 extern arp_note_t arp_notes[MAX_ARP_NOTES];
