@@ -2102,7 +2102,7 @@ class Arpeggiator(BasicEditor):
         self.update_status("Preset pasted from clipboard")
 
     def gather_preset_data(self):
-        """Gather current UI state into preset_data dict"""
+        """Gather current UI state into preset_data dict - preserves ALL notes including empty ones"""
         # Calculate pattern length from rate × steps
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
         rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
@@ -2113,16 +2113,13 @@ class Arpeggiator(BasicEditor):
 
         # Gather notes from all steps
         # Each step can have multiple notes, all at the same timing
+        # IMPORTANT: Preserve ALL notes including empty ones (semitone_offset = -1) for tab switching
         all_notes = []
         for i, widget in enumerate(self.step_widgets):
             step_notes = widget.get_step_data()  # Returns list of note dicts
             timing_64ths = i * rate_64ths
 
             for note_data in step_notes:
-                # For arpeggiator: skip notes with semitone_offset = -1 (Empty)
-                if not self.is_step_sequencer and note_data.get('semitone_offset', -1) == -1:
-                    continue
-
                 # Add timing to note
                 note_data['timing_64ths'] = timing_64ths
 
@@ -2141,11 +2138,24 @@ class Arpeggiator(BasicEditor):
                 all_notes.append(note_data)
 
         self.preset_data['steps'] = all_notes
+        # Note count includes ALL notes for internal tracking - firmware will filter empty ones
         self.preset_data['note_count'] = len(all_notes)
 
         # Keep name in data structure for firmware compatibility
         if 'name' not in self.preset_data:
             self.preset_data['name'] = 'User Preset'
+
+    def get_firmware_notes(self):
+        """Get notes filtered for firmware - excludes empty arpeggiator notes"""
+        if self.is_step_sequencer:
+            # Step sequencer: send all notes
+            return self.preset_data.get('steps', [])
+        else:
+            # Arpeggiator: filter out empty notes (semitone_offset = -1)
+            return [
+                note for note in self.preset_data.get('steps', [])
+                if note.get('semitone_offset', 0) != -1
+            ]
 
     def apply_preset_data(self):
         """Apply preset_data to UI - convert flat note list to step-based structure"""
@@ -2282,11 +2292,15 @@ class Arpeggiator(BasicEditor):
 
         self.gather_preset_data()
 
+        # Get filtered notes for firmware (excludes empty arpeggiator notes)
+        firmware_notes = self.get_firmware_notes()
+        firmware_note_count = len(firmware_notes)
+
         # Build parameter list
         params = [self.current_preset_id]
         params.append(self.preset_data['name'])  # String will be encoded in send_hid_command
         params.extend([0] * (16 - len(self.preset_data['name'])))  # Padding
-        params.append(self.preset_data['note_count'])
+        params.append(firmware_note_count)  # Use filtered count for firmware
         params.append((self.preset_data['pattern_length_64ths'] >> 8) & 0xFF)
         params.append(self.preset_data['pattern_length_64ths'] & 0xFF)
         params.append(self.preset_data['gate_length_percent'])
