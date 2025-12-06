@@ -668,7 +668,7 @@ void arp_update(void) {
                     arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
 
                     // Calculate note: master + semitone_offset + octave_offset
-                    // note_index field now contains semitone offset (0-11)
+                    // note_index field contains semitone offset (-23 to +23)
                     int16_t semitone_offset = preset_note->note_index;
                     int16_t octave_semitones = preset_note->octave_offset * 12;
                     int16_t final_note = master_note + semitone_offset + octave_semitones;

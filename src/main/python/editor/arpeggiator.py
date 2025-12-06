@@ -16,6 +16,14 @@ from widgets.combo_box import ArrowComboBox
 
 logger = logging.getLogger(__name__)
 
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# Empty note sentinel value - must not conflict with any valid semitone interval
+# Valid intervals range from approximately -23 to +23 (extended range)
+# -128 is chosen as it's the minimum int8_t value and musically impossible
+EMPTY_NOTE_SENTINEL = -128
 
 # =============================================================================
 # GRID-BASED INTERFACE WIDGETS (for Basic Tab)
@@ -424,6 +432,18 @@ class BasicStepSequencerGrid(QWidget):
 
     def rebuild_grid(self):
         """Rebuild entire grid after deletion"""
+        # Save cell data before clearing
+        saved_cell_data = []
+        for row_idx, row_data in enumerate(self.rows):
+            row_cell_data = []
+            for cell in row_data['cells']:
+                row_cell_data.append({
+                    'active': cell.active,
+                    'velocity': cell.velocity,
+                    'octave': cell.octave
+                })
+            saved_cell_data.append(row_cell_data)
+
         # Clear grid
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
@@ -435,7 +455,7 @@ class BasicStepSequencerGrid(QWidget):
         # Rebuild header
         self.rebuild_header()
 
-        # Rebuild rows
+        # Rebuild rows with new cells
         for row_idx, row_data in enumerate(self.rows):
             # Recreate note label
             note_widget = QWidget()
@@ -459,10 +479,24 @@ class BasicStepSequencerGrid(QWidget):
             note_widget.setLayout(note_layout)
             self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
 
-            # Recreate cells (update row indices)
-            for step, cell in enumerate(row_data['cells']):
-                cell.row = row_idx  # Update row index
+            # Create NEW cells with saved data
+            new_cells = []
+            for step in range(len(row_data['cells'])):
+                cell = GridCell(row_idx, step, self)
+                cell.leftClicked.connect(self.on_cell_left_click)
+                cell.rightClicked.connect(self.on_cell_right_click)
+
+                # Restore saved data
+                if row_idx < len(saved_cell_data) and step < len(saved_cell_data[row_idx]):
+                    cell_data = saved_cell_data[row_idx][step]
+                    if cell_data['active']:
+                        cell.set_active(True, cell_data['velocity'], cell_data['octave'])
+
+                new_cells.append(cell)
                 self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+
+            # Replace old cells with new ones
+            row_data['cells'] = new_cells
 
     def on_cell_left_click(self, row, col):
         """Handle left click - toggle cell"""
@@ -858,9 +892,9 @@ class BasicArpeggiatorGrid(QWidget):
         for note in notes_data:
             interval = note.get('semitone_offset', note.get('note_index', 0))
 
-            # Skip "Empty" placeholder notes (interval=-1) - these preserve step info
+            # Skip "Empty" placeholder notes (interval=EMPTY_NOTE_SENTINEL) - these preserve step info
             # but shouldn't be displayed in the basic grid
-            if interval == -1:
+            if interval == EMPTY_NOTE_SENTINEL:
                 continue
 
             octave = note.get('octave_offset', 0)
@@ -933,7 +967,8 @@ class IntervalSelector(QWidget):
 
     # Interval names mapping (extended range)
     INTERVAL_NAMES = {
-        -1: "Empty",
+        EMPTY_NOTE_SENTINEL: "Empty",
+        -1: "-Minor Second",
         0: "Root Note",
         1: "Minor Second",
         2: "Major Second",
@@ -991,7 +1026,7 @@ class IntervalSelector(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.value = -1  # Default to None
+        self.value = EMPTY_NOTE_SENTINEL  # Default to Empty
 
         layout = QVBoxLayout()
         layout.setSpacing(2)
@@ -1069,7 +1104,7 @@ class IntervalSelector(QWidget):
         self.name_label.setText(self.INTERVAL_NAMES.get(self.value, "Unknown"))
 
         # Update value box
-        if self.value == -1:
+        if self.value == EMPTY_NOTE_SENTINEL:
             self.value_box.setText("Empty")
         elif self.value >= 0:
             self.value_box.setText(f"+{self.value}")
@@ -2038,8 +2073,8 @@ class Arpeggiator(BasicEditor):
                     # Add "Empty" note to preserve the step
                     complete_steps.append({
                         'timing_64ths': step_timing,
-                        'note_index': -1,
-                        'semitone_offset': -1,
+                        'note_index': EMPTY_NOTE_SENTINEL,
+                        'semitone_offset': EMPTY_NOTE_SENTINEL,
                         'octave_offset': 0,
                         'velocity': 127,
                         'raw_travel': 127
@@ -2161,7 +2196,7 @@ class Arpeggiator(BasicEditor):
 
         # Gather notes from all steps
         # Each step can have multiple notes, all at the same timing
-        # IMPORTANT: Preserve ALL notes including empty ones (semitone_offset = -1) for tab switching
+        # IMPORTANT: Preserve ALL notes including empty ones (semitone_offset = EMPTY_NOTE_SENTINEL) for tab switching
         all_notes = []
         for i, widget in enumerate(self.step_widgets):
             step_notes = widget.get_step_data()  # Returns list of note dicts
@@ -2199,10 +2234,10 @@ class Arpeggiator(BasicEditor):
             # Step sequencer: send all notes
             return self.preset_data.get('steps', [])
         else:
-            # Arpeggiator: filter out empty notes (semitone_offset = -1)
+            # Arpeggiator: filter out empty notes (semitone_offset = EMPTY_NOTE_SENTINEL)
             return [
                 note for note in self.preset_data.get('steps', [])
-                if note.get('semitone_offset', 0) != -1
+                if note.get('semitone_offset', 0) != EMPTY_NOTE_SENTINEL
             ]
 
     def apply_preset_data(self):
