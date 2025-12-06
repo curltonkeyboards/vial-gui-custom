@@ -49,25 +49,34 @@ class GridCell(QFrame):
         self.update_style()
 
     def get_octave_color(self):
-        """Get color based on octave for arpeggiator"""
-        # Get theme highlight color for hue-shifting
+        """Get color based on octave for arpeggiator - uses theme-relative hue shifts"""
+        # Get theme highlight color as base
         palette = self.palette()
         highlight = palette.color(QPalette.Highlight)
 
-        # Base hue shift colors (theme-relative)
-        # We'll create a gradient from blue (negative) through neutral to red (positive)
-        octave_colors = {
-            -4: QColor(60, 60, 200),    # Deep blue for -4 octaves
-            -3: QColor(80, 80, 220),    # Blue for -3 octaves
-            -2: QColor(100, 100, 255),  # Light blue for -2 octaves
-            -1: QColor(150, 150, 255),  # Pale blue for -1 octave
-            0:  QColor(200, 200, 200),  # Gray for root octave
-            1:  QColor(255, 200, 100),  # Pale orange for +1 octave
-            2:  QColor(255, 150, 100),  # Orange for +2 octaves
-            3:  QColor(255, 100, 80),   # Red-orange for +3 octaves
-            4:  QColor(220, 60, 60),    # Deep red for +4 octaves
-        }
-        return octave_colors.get(self.octave, QColor(200, 200, 200))
+        # Convert to HSV for hue shifting
+        h = highlight.hsvHue()
+        s = highlight.hsvSaturation()
+        v = highlight.value()
+
+        # Root octave (0) uses the theme color
+        if self.octave == 0:
+            return QColor(200, 200, 200)  # Neutral gray for root
+
+        # Apply hue shift based on octave
+        # Negative octaves shift hue one direction, positive the other
+        # Each octave shifts hue by 30 degrees (360/12 for chromatic scale feel)
+        hue_shift = self.octave * 30
+        new_hue = (h + hue_shift) % 360
+
+        # Adjust saturation and value based on octave distance from root
+        # Further octaves = more saturated and slightly darker
+        octave_distance = abs(self.octave)
+        saturation_boost = min(255, s + (octave_distance * 30))
+        value_adjust = max(128, v - (octave_distance * 10))
+
+        color = QColor.fromHsv(new_hue, saturation_boost, value_adjust)
+        return color if color.isValid() else QColor(200, 200, 200)
 
     def update_style(self):
         """Update visual appearance based on state"""
@@ -206,35 +215,16 @@ class BasicStepSequencerGrid(QWidget):
         scroll.setWidget(self.grid_container)
         self.main_layout.addWidget(scroll, 1)
 
-        # Controls at bottom
-        controls_layout = QHBoxLayout()
-
-        # Number of steps spinner
-        controls_layout.addWidget(QLabel("Number of Steps:"))
-        self.steps_spinner = QSpinBox()
-        self.steps_spinner.setRange(1, 128)
-        self.steps_spinner.setValue(self.num_steps)
-        self.steps_spinner.valueChanged.connect(self.on_steps_changed)
-        controls_layout.addWidget(self.steps_spinner)
-
-        controls_layout.addSpacing(20)
-
-        # Default velocity spinner
-        controls_layout.addWidget(QLabel("Default Velocity:"))
-        self.velocity_spinner = QSpinBox()
-        self.velocity_spinner.setRange(1, 127)
-        self.velocity_spinner.setValue(self.default_velocity // 2)  # Display as 127
-        self.velocity_spinner.valueChanged.connect(self.on_default_velocity_changed)
-        controls_layout.addWidget(self.velocity_spinner)
-
-        controls_layout.addStretch()
-
-        # Add Note button
+        # Add Note button - positioned below the grid
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
         self.btn_add_note = QPushButton("Add Note")
+        self.btn_add_note.setMaximumWidth(100)
         self.btn_add_note.clicked.connect(self.add_note_row)
-        controls_layout.addWidget(self.btn_add_note)
+        btn_layout.addWidget(self.btn_add_note)
+        btn_layout.addStretch()
+        self.main_layout.addLayout(btn_layout)
 
-        self.main_layout.addLayout(controls_layout)
         self.setLayout(self.main_layout)
 
         # Create header row (step numbers)
@@ -543,7 +533,6 @@ class BasicStepSequencerGrid(QWidget):
 
         # Set number of steps
         self.num_steps = num_steps
-        self.steps_spinner.setValue(num_steps)
         self.rebuild_header()
 
         # Group notes by (note_index, octave) to create rows
@@ -652,55 +641,11 @@ class BasicArpeggiatorGrid(QWidget):
         scroll.setWidget(self.grid_container)
         self.main_layout.addWidget(scroll, 1)
 
-        # Controls at bottom
-        controls_layout = QHBoxLayout()
-
-        # Number of steps spinner
-        controls_layout.addWidget(QLabel("Number of Steps:"))
-        self.steps_spinner = QSpinBox()
-        self.steps_spinner.setRange(1, 128)
-        self.steps_spinner.setValue(self.num_steps)
-        self.steps_spinner.valueChanged.connect(self.on_steps_changed)
-        controls_layout.addWidget(self.steps_spinner)
-
-        controls_layout.addSpacing(20)
-
-        # Default velocity spinner
-        controls_layout.addWidget(QLabel("Default Velocity:"))
-        self.velocity_spinner = QSpinBox()
-        self.velocity_spinner.setRange(1, 127)
-        self.velocity_spinner.setValue(self.default_velocity // 2)  # Display as 127
-        self.velocity_spinner.valueChanged.connect(self.on_default_velocity_changed)
-        controls_layout.addWidget(self.velocity_spinner)
-
-        controls_layout.addStretch()
-
-        self.main_layout.addLayout(controls_layout)
-
-        # Add octave color legend
+        # Add octave color legend note
         legend_layout = QHBoxLayout()
-        legend_layout.addWidget(QLabel("Octave Colors:"))
-
-        octave_colors = {
-            -4: (QColor(60, 60, 200), "-4"),
-            -3: (QColor(80, 80, 220), "-3"),
-            -2: (QColor(100, 100, 255), "-2"),
-            -1: (QColor(150, 150, 255), "-1"),
-            0: (QColor(200, 200, 200), "0"),
-            1: (QColor(255, 200, 100), "+1"),
-            2: (QColor(255, 150, 100), "+2"),
-            3: (QColor(255, 100, 80), "+3"),
-            4: (QColor(220, 60, 60), "+4"),
-        }
-
-        for octave in [-4, -3, -2, -1, 0, 1, 2, 3, 4]:
-            color, label = octave_colors[octave]
-            color_box = QLabel(label)
-            color_box.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: 1px solid #666; padding: 2px 6px; font-size: 10px; font-weight: bold;")
-            color_box.setAlignment(Qt.AlignCenter)
-            color_box.setFixedSize(30, 20)
-            legend_layout.addWidget(color_box)
-
+        legend_label = QLabel("Octave colors use theme-relative hue shifts (0 = root, ±1-4 = shifted hues)")
+        legend_label.setStyleSheet("color: #aaa; font-size: 10px; font-style: italic;")
+        legend_layout.addWidget(legend_label)
         legend_layout.addStretch()
         self.main_layout.addLayout(legend_layout)
 
@@ -864,7 +809,6 @@ class BasicArpeggiatorGrid(QWidget):
         """Set grid data from notes list"""
         # Set number of steps
         self.num_steps = num_steps
-        self.steps_spinner.setValue(num_steps)
         self.build_grid()
 
         # Populate cells
@@ -883,6 +827,25 @@ class BasicArpeggiatorGrid(QWidget):
             if 0 <= row < 25 and 0 <= step < self.num_steps:
                 cell = self.cells[row][step]
                 cell.set_active(True, velocity, octave)
+
+    def filter_rows_by_scale(self, allowed_intervals):
+        """Show/hide rows based on allowed intervals in the selected scale"""
+        # allowed_intervals is a set of semitone offsets (-12 to +12)
+        for row in range(25):
+            interval = 12 - row  # Row 0 = +12, row 12 = 0, row 24 = -12
+
+            # Get the row widget (interval label + cells)
+            should_show = interval in allowed_intervals
+
+            # Show/hide the interval label
+            label_item = self.grid_layout.itemAtPosition(row + 1, 0)
+            if label_item and label_item.widget():
+                label_item.widget().setVisible(should_show)
+
+            # Show/hide all cells in this row
+            if row < len(self.cells):
+                for cell in self.cells[row]:
+                    cell.setVisible(should_show)
 
 
 class IntervalSelector(QWidget):
@@ -1790,6 +1753,53 @@ class Arpeggiator(BasicEditor):
         params_layout.addWidget(lbl_gate, 4, 0)
         params_layout.addWidget(self.spin_gate, 4, 1)
 
+        # Default velocity
+        lbl_default_velocity = QLabel("Default Velocity:")
+        self.spin_default_velocity = QSpinBox()
+        self.spin_default_velocity.setRange(1, 127)
+        self.spin_default_velocity.setValue(127)
+        self.spin_default_velocity.setButtonSymbols(QSpinBox.UpDownArrows)
+        self.spin_default_velocity.setToolTip("Default velocity for new notes in basic grid")
+        self.spin_default_velocity.valueChanged.connect(self.on_default_velocity_changed)
+        params_layout.addWidget(lbl_default_velocity, 5, 0)
+        params_layout.addWidget(self.spin_default_velocity, 5, 1)
+
+        # Scale dropdown (for arpeggiator only)
+        lbl_scale = QLabel("Scale:")
+        self.combo_scale = ArrowComboBox()
+        self.combo_scale.setMinimumWidth(150)
+        self.combo_scale.setMaximumHeight(30)
+        self.combo_scale.setEditable(True)
+        self.combo_scale.lineEdit().setReadOnly(True)
+        self.combo_scale.lineEdit().setAlignment(Qt.AlignCenter)
+
+        # Define all scales and modes
+        self.scale_definitions = {
+            'Chromatic': list(range(-12, 13)),  # All 25 semitones
+            'Major': [0, 2, 4, 5, 7, 9, 11],
+            'Minor': [0, 2, 3, 5, 7, 8, 10],
+            'Pentatonic Major': [0, 2, 4, 7, 9],
+            'Pentatonic Minor': [0, 3, 5, 7, 10],
+            'Blues': [0, 3, 5, 6, 7, 10],
+            'Dorian': [0, 2, 3, 5, 7, 9, 10],
+            'Phrygian': [0, 1, 3, 5, 7, 8, 10],
+            'Lydian': [0, 2, 4, 6, 7, 9, 11],
+            'Mixolydian': [0, 2, 4, 5, 7, 9, 10],
+            'Locrian': [0, 1, 3, 5, 6, 8, 10],
+            'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
+            'Melodic Minor': [0, 2, 3, 5, 7, 9, 11],
+            'Whole Tone': [0, 2, 4, 6, 8, 10],
+            'Diminished': [0, 2, 3, 5, 6, 8, 9, 11],
+        }
+
+        for scale_name in self.scale_definitions.keys():
+            self.combo_scale.addItem(scale_name)
+        self.combo_scale.setCurrentText('Chromatic')
+        self.combo_scale.setToolTip("Select scale to filter visible intervals in arpeggiator")
+        self.combo_scale.currentTextChanged.connect(self.on_scale_changed)
+        params_layout.addWidget(lbl_scale, 6, 0)
+        params_layout.addWidget(self.combo_scale, 6, 1)
+
         params_group.setLayout(params_layout)
         bottom_layout.addWidget(params_group)
 
@@ -1871,6 +1881,10 @@ class Arpeggiator(BasicEditor):
 
         self.addLayout(main_layout)
 
+        # Initialize default velocity in basic grid from preset container
+        if hasattr(self, 'basic_grid') and hasattr(self, 'spin_default_velocity'):
+            self.basic_grid.default_velocity = self.spin_default_velocity.value() * 2
+
         # Set default tab to Basic (index 0)
         self.tabs.setCurrentIndex(0)
 
@@ -1918,6 +1932,44 @@ class Arpeggiator(BasicEditor):
     def on_num_steps_changed(self, value):
         """Number of steps changed - rebuild and update pattern length"""
         self.rebuild_steps()
+        # Also update basic grid's num_steps when changed from preset container
+        if hasattr(self, 'basic_grid') and self.basic_grid.num_steps != value:
+            self.basic_grid.on_steps_changed(value)
+
+    def on_default_velocity_changed(self, value):
+        """Default velocity changed - update basic grid"""
+        if hasattr(self, 'basic_grid'):
+            # Convert display value (1-127) to internal value (2-254)
+            internal_value = value * 2
+            self.basic_grid.default_velocity = internal_value
+            self.update_status(f"Default velocity changed to {value}")
+
+    def on_scale_changed(self, scale_name):
+        """Scale changed - filter visible rows in arpeggiator basic grid"""
+        if not hasattr(self, 'basic_grid') or not hasattr(self.basic_grid, 'is_arpeggiator'):
+            return
+
+        if not self.basic_grid.is_arpeggiator:
+            # Only applies to arpeggiator, not step sequencer
+            return
+
+        # Get the intervals for this scale
+        scale_intervals = self.scale_definitions.get(scale_name, list(range(-12, 13)))
+
+        # Expand scale to cover all octaves
+        expanded_intervals = set()
+        for interval in scale_intervals:
+            # Add interval in all octaves (-12 to +12)
+            for octave in range(-1, 2):  # -1, 0, +1 octaves
+                semitone = interval + (octave * 12)
+                if -12 <= semitone <= 12:
+                    expanded_intervals.add(semitone)
+
+        # Update grid to show/hide rows based on scale
+        if hasattr(self.basic_grid, 'filter_rows_by_scale'):
+            self.basic_grid.filter_rows_by_scale(expanded_intervals)
+
+        self.update_status(f"Scale changed to {scale_name}")
 
     def update_pattern_length_display(self):
         """Update the pattern length display in x/y format with halving logic"""
@@ -1984,14 +2036,7 @@ class Arpeggiator(BasicEditor):
         flat_notes = self.preset_data.get('steps', [])
         num_steps = self.spin_num_steps.value()
 
-        # Sync number of steps to basic grid
-        if self.basic_grid.num_steps != num_steps:
-            self.basic_grid.steps_spinner.blockSignals(True)
-            self.basic_grid.steps_spinner.setValue(num_steps)
-            self.basic_grid.num_steps = num_steps
-            self.basic_grid.steps_spinner.blockSignals(False)
-
-        # Set grid data
+        # Set grid data (includes num_steps sync)
         self.basic_grid.set_grid_data(flat_notes, num_steps)
 
     def sync_basic_to_advanced(self):
@@ -2337,6 +2382,16 @@ class StepSequencer(Arpeggiator):
 
         # Set default to first step sequencer preset
         self.combo_preset.setCurrentIndex(0)
+
+        # Hide scale dropdown (only for arpeggiator, not step sequencer)
+        if hasattr(self, 'combo_scale'):
+            # Find the scale label and combo in the params layout
+            for i in range(self.combo_scale.parent().layout().count()):
+                item = self.combo_scale.parent().layout().itemAt(i)
+                if item and item.widget():
+                    widget = item.widget()
+                    if widget == self.combo_scale or (hasattr(widget, 'text') and widget.text() == "Scale:"):
+                        widget.setVisible(False)
 
         # Set default tab to Basic (index 0)
         self.tabs.setCurrentIndex(0)
