@@ -857,12 +857,6 @@ class BasicArpeggiatorGrid(QWidget):
         # Populate cells
         for note in notes_data:
             interval = note.get('semitone_offset', note.get('note_index', 0))
-
-            # Skip "Empty" placeholder notes (interval=-1) - these preserve step info
-            # but shouldn't be displayed in the basic grid
-            if interval == -1:
-                continue
-
             octave = note.get('octave_offset', 0)
             velocity = note.get('velocity', 127)
             timing_64ths = note.get('timing_64ths', 0)
@@ -2014,56 +2008,30 @@ class Arpeggiator(BasicEditor):
 
         self.lbl_pattern_length.setText(f"{x}/{y}")
 
-    def _get_complete_steps_from_grid(self, grid_data, num_steps, rate_64ths):
-        """Helper: Convert basic grid data to complete steps array with Empty placeholders"""
-        # Group grid data by timing to see which steps have notes
-        notes_by_timing = {}
-        for note in grid_data:
-            timing = note['timing_64ths']
-            if timing not in notes_by_timing:
-                notes_by_timing[timing] = []
-            notes_by_timing[timing].append(note)
+   def _convert_grid_to_notes(self, grid_data):
+        """Helper: Convert basic grid data to notes array
 
-        # Build COMPLETE steps array including empty steps
-        complete_steps = []
-        for step_idx in range(num_steps):
-            step_timing = step_idx * rate_64ths
-
-            if step_timing in notes_by_timing:
-                # This step has notes from the grid - use them
-                complete_steps.extend(notes_by_timing[step_timing])
-            else:
-                # This step is empty - create placeholder for arpeggiator only
-                if not self.is_step_sequencer:
-                    # Add "Empty" note to preserve the step
-                    complete_steps.append({
-                        'timing_64ths': step_timing,
-                        'note_index': -1,
-                        'semitone_offset': -1,
-                        'octave_offset': 0,
-                        'velocity': 127,
-                        'raw_travel': 127
-                    })
-
-        return complete_steps
+        Empty steps are NOT represented - firmware doesn't need them.
+        The GUI tracks number of steps separately.
+        """
+        # Simply return the grid data - it already has correct format
+        # Empty steps naturally have no entries
+        return grid_data
 
     def on_basic_grid_changed(self):
         """Handle changes in basic grid - live update preset data"""
-        # Get grid data (flat list with timing) - ONLY returns active cells
+        # Get grid data (flat list with timing) - contains only active cells (actual notes)
         grid_data = self.basic_grid.get_grid_data()
 
-        # Get complete steps including Empty placeholders for empty steps
+        # Store notes directly - empty steps naturally have no entries
+        # The firmware will simply not play anything at timings with no notes
+        self.preset_data['steps'] = self._convert_grid_to_notes(grid_data)
+        self.preset_data['note_count'] = len(grid_data)
+
+        # Calculate pattern length from num_steps (NOT from grid data)
         num_steps = self.spin_num_steps.value()
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
         rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
-
-        complete_steps = self._get_complete_steps_from_grid(grid_data, num_steps, rate_64ths)
-
-        # Update preset_data with COMPLETE steps (including empty ones)
-        self.preset_data['steps'] = complete_steps
-        self.preset_data['note_count'] = len(complete_steps)
-
-        # Calculate pattern length
         self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
 
         # Note: Don't rebuild advanced view here - only sync when switching tabs
@@ -2092,7 +2060,7 @@ class Arpeggiator(BasicEditor):
 
     def sync_basic_to_advanced(self):
         """Sync data from Basic grid to Advanced view"""
-        # Get grid data (flat list with timing) - ONLY returns active cells
+        # Get grid data (flat list with timing) - contains only active cells (actual notes)
         grid_data = self.basic_grid.get_grid_data()
 
         # Number of steps comes from preset container (spin_num_steps)
@@ -2102,16 +2070,14 @@ class Arpeggiator(BasicEditor):
         if self.basic_grid.num_steps != num_steps:
             self.basic_grid.on_steps_changed(num_steps)
 
-        # Calculate rate to determine timing for each step
+        # Store notes directly - empty steps naturally have no entries
+        self.preset_data['steps'] = self._convert_grid_to_notes(grid_data)
+        self.preset_data['note_count'] = len(grid_data)
+
+        # Update pattern length based on num_steps
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
         rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
-
-        # Get complete steps including Empty placeholders for empty steps
-        complete_steps = self._get_complete_steps_from_grid(grid_data, num_steps, rate_64ths)
-
-        # Update preset_data with COMPLETE steps (including empty ones)
-        self.preset_data['steps'] = complete_steps
-        self.preset_data['note_count'] = len(complete_steps)
+        self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
 
         # Rebuild advanced view using apply_preset_data (which handles conversion)
         self.apply_preset_data()
@@ -2150,7 +2116,7 @@ class Arpeggiator(BasicEditor):
         self.update_status("Preset pasted from clipboard")
 
     def gather_preset_data(self):
-        """Gather current UI state into preset_data dict - preserves ALL notes including empty ones"""
+        """Gather current UI state into preset_data dict"""
         # Calculate pattern length from rate × steps
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}  # /4, /8, /16, /32, /64
         rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
@@ -2161,7 +2127,7 @@ class Arpeggiator(BasicEditor):
 
         # Gather notes from all steps
         # Each step can have multiple notes, all at the same timing
-        # IMPORTANT: Preserve ALL notes including empty ones (semitone_offset = -1) for tab switching
+        # Empty steps will have no notes in the array - this is correct for firmware
         all_notes = []
         for i, widget in enumerate(self.step_widgets):
             step_notes = widget.get_step_data()  # Returns list of note dicts
@@ -2186,24 +2152,11 @@ class Arpeggiator(BasicEditor):
                 all_notes.append(note_data)
 
         self.preset_data['steps'] = all_notes
-        # Note count includes ALL notes for internal tracking - firmware will filter empty ones
         self.preset_data['note_count'] = len(all_notes)
 
         # Keep name in data structure for firmware compatibility
         if 'name' not in self.preset_data:
             self.preset_data['name'] = 'User Preset'
-
-    def get_firmware_notes(self):
-        """Get notes filtered for firmware - excludes empty arpeggiator notes"""
-        if self.is_step_sequencer:
-            # Step sequencer: send all notes
-            return self.preset_data.get('steps', [])
-        else:
-            # Arpeggiator: filter out empty notes (semitone_offset = -1)
-            return [
-                note for note in self.preset_data.get('steps', [])
-                if note.get('semitone_offset', 0) != -1
-            ]
 
     def apply_preset_data(self):
         """Apply preset_data to UI - convert flat note list to step-based structure"""
@@ -2340,15 +2293,11 @@ class Arpeggiator(BasicEditor):
 
         self.gather_preset_data()
 
-        # Get filtered notes for firmware (excludes empty arpeggiator notes)
-        firmware_notes = self.get_firmware_notes()
-        firmware_note_count = len(firmware_notes)
-
         # Build parameter list
         params = [self.current_preset_id]
         params.append(self.preset_data['name'])  # String will be encoded in send_hid_command
         params.extend([0] * (16 - len(self.preset_data['name'])))  # Padding
-        params.append(firmware_note_count)  # Use filtered count for firmware
+        params.append(self.preset_data['note_count'])  # Number of actual notes
         params.append((self.preset_data['pattern_length_64ths'] >> 8) & 0xFF)
         params.append(self.preset_data['pattern_length_64ths'] & 0xFF)
         params.append(self.preset_data['gate_length_percent'])
