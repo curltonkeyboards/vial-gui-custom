@@ -754,9 +754,42 @@ class BasicArpeggiatorGrid(QWidget):
             self.cells.append(row_cells)
 
     def on_steps_changed(self, new_steps):
-        """Handle number of steps changed"""
+        """Handle number of steps changed - preserve existing data"""
+        old_steps = self.num_steps
         self.num_steps = new_steps
-        self.build_grid()
+
+        if new_steps > old_steps:
+            # Add columns - append new cells to each row
+            for row_idx, row_cells in enumerate(self.cells):
+                for step in range(old_steps, new_steps):
+                    cell = GridCell(row_idx, step, self)
+                    cell.leftClicked.connect(self.on_cell_left_click)
+                    cell.rightClicked.connect(self.on_cell_right_click)
+                    row_cells.append(cell)
+                    self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+        elif new_steps < old_steps:
+            # Remove columns - remove cells from end of each row
+            for row_cells in self.cells:
+                for step in range(new_steps, old_steps):
+                    cell = row_cells.pop()
+                    self.grid_layout.removeWidget(cell)
+                    cell.deleteLater()
+
+        # Update header row
+        # Clear header first (row 0)
+        for col in range(self.grid_layout.columnCount()):
+            item = self.grid_layout.itemAtPosition(0, col)
+            if item and item.widget():
+                item.widget().deleteLater()
+
+        # Rebuild header
+        self.grid_layout.addWidget(QLabel("Interval"), 0, 0)
+        for step in range(self.num_steps):
+            lbl = QLabel(f"{step + 1}")
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setStyleSheet("font-weight: bold;")
+            self.grid_layout.addWidget(lbl, 0, step + 1)
+
         self.dataChanged.emit()
 
     def on_default_velocity_changed(self, value):
@@ -1616,12 +1649,8 @@ class Arpeggiator(BasicEditor):
             'note_count': 0,
             'pattern_length_64ths': 64,
             'gate_length_percent': 80,
-            'steps': []
+            'steps': []  # Flat list of notes with timing
         }
-
-        # Initialize with 4 default empty steps
-        for i in range(4):
-            self.preset_data['steps'].append([])  # Empty list of notes per step
 
         self.step_widgets = []
         self.clipboard_preset = None  # Internal clipboard for copy/paste
@@ -1846,7 +1875,12 @@ class Arpeggiator(BasicEditor):
         self.tabs.setCurrentIndex(0)
 
     def rebuild_steps(self):
-        """Rebuild step widgets based on step count"""
+        """Rebuild step widgets based on step count - preserve existing data"""
+        # Save existing step data before clearing
+        old_step_data = []
+        for widget in self.step_widgets:
+            old_step_data.append(widget.get_step_data())
+
         # Clear existing steps
         for widget in self.step_widgets:
             self.step_layout.removeWidget(widget)
@@ -1864,9 +1898,9 @@ class Arpeggiator(BasicEditor):
         for i in range(step_count):
             step_widget = StepWidget(i, is_step_sequencer=self.is_step_sequencer)
 
-            # Load existing step data if available
-            if i < len(self.preset_data['steps']):
-                step_widget.set_step_data(self.preset_data['steps'][i])
+            # Restore existing step data if available from old widgets
+            if i < len(old_step_data):
+                step_widget.set_step_data(old_step_data[i])
 
             self.step_widgets.append(step_widget)
             self.step_layout.addWidget(step_widget, 0, Qt.AlignLeft)  # Explicitly align left
@@ -1950,6 +1984,13 @@ class Arpeggiator(BasicEditor):
         flat_notes = self.preset_data.get('steps', [])
         num_steps = self.spin_num_steps.value()
 
+        # Sync number of steps to basic grid
+        if self.basic_grid.num_steps != num_steps:
+            self.basic_grid.steps_spinner.blockSignals(True)
+            self.basic_grid.steps_spinner.setValue(num_steps)
+            self.basic_grid.num_steps = num_steps
+            self.basic_grid.steps_spinner.blockSignals(False)
+
         # Set grid data
         self.basic_grid.set_grid_data(flat_notes, num_steps)
 
@@ -1962,10 +2003,12 @@ class Arpeggiator(BasicEditor):
         self.preset_data['steps'] = grid_data
         self.preset_data['note_count'] = len(grid_data)
 
-        # Update number of steps
+        # Update number of steps from basic grid
         num_steps = self.basic_grid.num_steps
         if self.spin_num_steps.value() != num_steps:
+            self.spin_num_steps.blockSignals(True)
             self.spin_num_steps.setValue(num_steps)
+            self.spin_num_steps.blockSignals(False)
 
         # Rebuild advanced view using apply_preset_data (which handles conversion)
         self.apply_preset_data()
@@ -2249,12 +2292,8 @@ class StepSequencer(Arpeggiator):
             'note_count': 0,
             'pattern_length_64ths': 64,
             'gate_length_percent': 80,
-            'steps': []
+            'steps': []  # Flat list of notes with timing
         }
-
-        # Initialize with 4 default empty steps
-        for i in range(4):
-            self.preset_data['steps'].append([])  # Empty list of notes per step
 
         self.step_widgets = []
         self.clipboard_preset = None  # Internal clipboard for copy/paste
