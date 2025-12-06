@@ -50,13 +50,22 @@ class GridCell(QFrame):
 
     def get_octave_color(self):
         """Get color based on octave for arpeggiator"""
-        # Different colors for different octaves
+        # Get theme highlight color for hue-shifting
+        palette = self.palette()
+        highlight = palette.color(QPalette.Highlight)
+
+        # Base hue shift colors (theme-relative)
+        # We'll create a gradient from blue (negative) through neutral to red (positive)
         octave_colors = {
-            -2: QColor(100, 100, 255),  # Blue for -2 octaves
-            -1: QColor(150, 150, 255),  # Light blue for -1 octave
+            -4: QColor(60, 60, 200),    # Deep blue for -4 octaves
+            -3: QColor(80, 80, 220),    # Blue for -3 octaves
+            -2: QColor(100, 100, 255),  # Light blue for -2 octaves
+            -1: QColor(150, 150, 255),  # Pale blue for -1 octave
             0:  QColor(200, 200, 200),  # Gray for root octave
-            1:  QColor(255, 200, 100),  # Orange for +1 octave
-            2:  QColor(255, 100, 100),  # Red for +2 octaves
+            1:  QColor(255, 200, 100),  # Pale orange for +1 octave
+            2:  QColor(255, 150, 100),  # Orange for +2 octaves
+            3:  QColor(255, 100, 80),   # Red-orange for +3 octaves
+            4:  QColor(220, 60, 60),    # Deep red for +4 octaves
         }
         return octave_colors.get(self.octave, QColor(200, 200, 200))
 
@@ -139,8 +148,8 @@ class VelocityOctavePopup(QDialog):
             self.octave_spinner = QSpinBox()
 
             # Determine min/max based on constraints
-            min_octave = -2 if allow_negative_octave else 0
-            max_octave = 2 if allow_positive_octave else 0
+            min_octave = -4 if allow_negative_octave else 0
+            max_octave = 4 if allow_positive_octave else 0
 
             self.octave_spinner.setRange(min_octave, max_octave)
             self.octave_spinner.setValue(octave)
@@ -473,8 +482,13 @@ class BasicStepSequencerGrid(QWidget):
         row_data = self.rows[row]
         cell = row_data['cells'][col]
 
-        # Toggle active state
-        cell.set_active(not cell.active, cell.velocity, cell.octave)
+        # Toggle active state - reset to defaults when activating
+        if cell.active:
+            # Deactivate - clear data
+            cell.set_active(False, self.default_velocity, 0)
+        else:
+            # Activate - use default values
+            cell.set_active(True, self.default_velocity, 0)
         self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
@@ -539,6 +553,20 @@ class BasicStepSequencerGrid(QWidget):
             if key not in note_groups:
                 note_groups[key] = []
             note_groups[key].append(note)
+
+        # If no data, create default rows (C1, D1, E1, F1)
+        if not note_groups:
+            note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+            default_notes = [
+                ('C', 1),
+                ('D', 1),
+                ('E', 1),
+                ('F', 1)
+            ]
+            for note_name, octave in default_notes:
+                note_index = note_names.index(note_name)
+                self._create_row(note_index, octave)
+            return
 
         # Create rows
         note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -648,6 +676,34 @@ class BasicArpeggiatorGrid(QWidget):
         controls_layout.addStretch()
 
         self.main_layout.addLayout(controls_layout)
+
+        # Add octave color legend
+        legend_layout = QHBoxLayout()
+        legend_layout.addWidget(QLabel("Octave Colors:"))
+
+        octave_colors = {
+            -4: (QColor(60, 60, 200), "-4"),
+            -3: (QColor(80, 80, 220), "-3"),
+            -2: (QColor(100, 100, 255), "-2"),
+            -1: (QColor(150, 150, 255), "-1"),
+            0: (QColor(200, 200, 200), "0"),
+            1: (QColor(255, 200, 100), "+1"),
+            2: (QColor(255, 150, 100), "+2"),
+            3: (QColor(255, 100, 80), "+3"),
+            4: (QColor(220, 60, 60), "+4"),
+        }
+
+        for octave in [-4, -3, -2, -1, 0, 1, 2, 3, 4]:
+            color, label = octave_colors[octave]
+            color_box = QLabel(label)
+            color_box.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: 1px solid #666; padding: 2px 6px; font-size: 10px; font-weight: bold;")
+            color_box.setAlignment(Qt.AlignCenter)
+            color_box.setFixedSize(30, 20)
+            legend_layout.addWidget(color_box)
+
+        legend_layout.addStretch()
+        self.main_layout.addLayout(legend_layout)
+
         self.setLayout(self.main_layout)
 
         # Build grid
@@ -698,9 +754,42 @@ class BasicArpeggiatorGrid(QWidget):
             self.cells.append(row_cells)
 
     def on_steps_changed(self, new_steps):
-        """Handle number of steps changed"""
+        """Handle number of steps changed - preserve existing data"""
+        old_steps = self.num_steps
         self.num_steps = new_steps
-        self.build_grid()
+
+        if new_steps > old_steps:
+            # Add columns - append new cells to each row
+            for row_idx, row_cells in enumerate(self.cells):
+                for step in range(old_steps, new_steps):
+                    cell = GridCell(row_idx, step, self)
+                    cell.leftClicked.connect(self.on_cell_left_click)
+                    cell.rightClicked.connect(self.on_cell_right_click)
+                    row_cells.append(cell)
+                    self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+        elif new_steps < old_steps:
+            # Remove columns - remove cells from end of each row
+            for row_cells in self.cells:
+                for step in range(new_steps, old_steps):
+                    cell = row_cells.pop()
+                    self.grid_layout.removeWidget(cell)
+                    cell.deleteLater()
+
+        # Update header row
+        # Clear header first (row 0)
+        for col in range(self.grid_layout.columnCount()):
+            item = self.grid_layout.itemAtPosition(0, col)
+            if item and item.widget():
+                item.widget().deleteLater()
+
+        # Rebuild header
+        self.grid_layout.addWidget(QLabel("Interval"), 0, 0)
+        for step in range(self.num_steps):
+            lbl = QLabel(f"{step + 1}")
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setStyleSheet("font-weight: bold;")
+            self.grid_layout.addWidget(lbl, 0, step + 1)
+
         self.dataChanged.emit()
 
     def on_default_velocity_changed(self, value):
@@ -714,8 +803,13 @@ class BasicArpeggiatorGrid(QWidget):
 
         cell = self.cells[row][col]
 
-        # Toggle active state
-        cell.set_active(not cell.active, cell.velocity, cell.octave)
+        # Toggle active state - reset to defaults when activating
+        if cell.active:
+            # Deactivate - clear data
+            cell.set_active(False, self.default_velocity, 0)
+        else:
+            # Activate - use default values
+            cell.set_active(True, self.default_velocity, 0)
         self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
@@ -1317,7 +1411,7 @@ class StepWidget(QFrame):
         if self.is_step_sequencer:
             self.octave_selector = OctaveSelector(min_octave=0, max_octave=7, default_octave=4)
         else:
-            self.octave_selector = OctaveSelector(min_octave=-2, max_octave=2, default_octave=0)
+            self.octave_selector = OctaveSelector(min_octave=-4, max_octave=4, default_octave=0)
         self.octave_selector.valueChanged.connect(self.on_octave_changed)
         filled_layout.addWidget(self.octave_selector)
 
@@ -1555,12 +1649,8 @@ class Arpeggiator(BasicEditor):
             'note_count': 0,
             'pattern_length_64ths': 64,
             'gate_length_percent': 80,
-            'steps': []
+            'steps': []  # Flat list of notes with timing
         }
-
-        # Initialize with 4 default empty steps
-        for i in range(4):
-            self.preset_data['steps'].append([])  # Empty list of notes per step
 
         self.step_widgets = []
         self.clipboard_preset = None  # Internal clipboard for copy/paste
@@ -1785,7 +1875,12 @@ class Arpeggiator(BasicEditor):
         self.tabs.setCurrentIndex(0)
 
     def rebuild_steps(self):
-        """Rebuild step widgets based on step count"""
+        """Rebuild step widgets based on step count - preserve existing data"""
+        # Save existing step data before clearing
+        old_step_data = []
+        for widget in self.step_widgets:
+            old_step_data.append(widget.get_step_data())
+
         # Clear existing steps
         for widget in self.step_widgets:
             self.step_layout.removeWidget(widget)
@@ -1803,9 +1898,9 @@ class Arpeggiator(BasicEditor):
         for i in range(step_count):
             step_widget = StepWidget(i, is_step_sequencer=self.is_step_sequencer)
 
-            # Load existing step data if available
-            if i < len(self.preset_data['steps']):
-                step_widget.set_step_data(self.preset_data['steps'][i])
+            # Restore existing step data if available from old widgets
+            if i < len(old_step_data):
+                step_widget.set_step_data(old_step_data[i])
 
             self.step_widgets.append(step_widget)
             self.step_layout.addWidget(step_widget, 0, Qt.AlignLeft)  # Explicitly align left
@@ -1884,22 +1979,17 @@ class Arpeggiator(BasicEditor):
         # Gather current data from advanced view
         self.gather_preset_data()
 
-        # Convert from Advanced format (list of step lists) to Basic format (flat list)
-        flat_notes = []
-        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
-        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
-
-        steps = self.preset_data.get('steps', [])
-        for step_idx, step_notes in enumerate(steps):
-            if isinstance(step_notes, list):
-                for note in step_notes:
-                    if isinstance(note, dict):
-                        # Add timing information
-                        note_copy = note.copy()
-                        note_copy['timing_64ths'] = step_idx * rate_64ths
-                        flat_notes.append(note_copy)
-
+        # preset_data['steps'] is already a flat list with timing_64ths
+        # Just pass it directly to the basic grid
+        flat_notes = self.preset_data.get('steps', [])
         num_steps = self.spin_num_steps.value()
+
+        # Sync number of steps to basic grid
+        if self.basic_grid.num_steps != num_steps:
+            self.basic_grid.steps_spinner.blockSignals(True)
+            self.basic_grid.steps_spinner.setValue(num_steps)
+            self.basic_grid.num_steps = num_steps
+            self.basic_grid.steps_spinner.blockSignals(False)
 
         # Set grid data
         self.basic_grid.set_grid_data(flat_notes, num_steps)
@@ -1913,10 +2003,12 @@ class Arpeggiator(BasicEditor):
         self.preset_data['steps'] = grid_data
         self.preset_data['note_count'] = len(grid_data)
 
-        # Update number of steps
+        # Update number of steps from basic grid
         num_steps = self.basic_grid.num_steps
         if self.spin_num_steps.value() != num_steps:
+            self.spin_num_steps.blockSignals(True)
             self.spin_num_steps.setValue(num_steps)
+            self.spin_num_steps.blockSignals(False)
 
         # Rebuild advanced view using apply_preset_data (which handles conversion)
         self.apply_preset_data()
@@ -2200,12 +2292,8 @@ class StepSequencer(Arpeggiator):
             'note_count': 0,
             'pattern_length_64ths': 64,
             'gate_length_percent': 80,
-            'steps': []
+            'steps': []  # Flat list of notes with timing
         }
-
-        # Initialize with 4 default empty steps
-        for i in range(4):
-            self.preset_data['steps'].append([])  # Empty list of notes per step
 
         self.step_widgets = []
         self.clipboard_preset = None  # Internal clipboard for copy/paste
@@ -2225,6 +2313,12 @@ class StepSequencer(Arpeggiator):
         self.basic_grid = BasicStepSequencerGrid()
         self.basic_grid.dataChanged.connect(self.on_basic_grid_changed)
         self.tabs.insertTab(0, self.basic_grid, "Basic")
+
+        # Sync the default rows from Basic grid to preset_data
+        # This prevents them from being cleared when setCurrentIndex triggers on_tab_changed
+        grid_data = self.basic_grid.get_grid_data()
+        self.preset_data['steps'] = grid_data
+        self.preset_data['note_count'] = len(grid_data)
 
         # Update group box title
         sequencer_group = self.findChild(QGroupBox, "")
