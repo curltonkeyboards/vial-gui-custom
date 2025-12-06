@@ -42,6 +42,7 @@ class GridCell(QFrame):
         self.active = False
         self.velocity = 255  # Default velocity (max)
         self.octave = 0  # For arpeggiator only
+        self.in_scale = True  # For scale filtering in arpeggiator
 
         self.setFixedSize(20, 20)
         self.setFrameStyle(QFrame.Box)
@@ -88,12 +89,26 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
-        # Check if this is a root note cell in arpeggiator (row 12)
-        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.row == 12
+        is_arpeggiator = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator
 
-        # Root note always gets white 2px border
-        border_color = "white" if is_root_note else ("#666" if self.active else "#555")
-        border_width = 2 if is_root_note else 1
+        # Determine border style
+        if is_arpeggiator and not self.in_scale:
+            # Out of scale: no border, greyed out
+            border_style = "border: none;"
+            opacity_factor = 0.3  # Grey out
+        elif is_arpeggiator:
+            # In scale: white border on dark theme, black border on light theme
+            # Use palette to detect theme
+            palette = self.palette()
+            bg_color = palette.color(QPalette.Window)
+            is_dark_theme = bg_color.value() < 128
+            border_color = "white" if is_dark_theme else "black"
+            border_style = f"border: 1px solid {border_color};"
+            opacity_factor = 1.0
+        else:
+            # Step sequencer: simple border
+            border_style = "border: 1px solid #666;"
+            opacity_factor = 1.0
 
         if self.active:
             # Get theme highlight color
@@ -104,24 +119,25 @@ class GridCell(QFrame):
             intensity = self.velocity / 255.0
 
             # For arpeggiator, blend with octave color
-            if hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator:
+            if is_arpeggiator:
                 octave_color = self.get_octave_color()
-                # Blend octave color with intensity
-                r = int(octave_color.red() * (0.3 + 0.7 * intensity))
-                g = int(octave_color.green() * (0.3 + 0.7 * intensity))
-                b = int(octave_color.blue() * (0.3 + 0.7 * intensity))
+                # Blend octave color with intensity and opacity
+                r = int(octave_color.red() * (0.3 + 0.7 * intensity) * opacity_factor)
+                g = int(octave_color.green() * (0.3 + 0.7 * intensity) * opacity_factor)
+                b = int(octave_color.blue() * (0.3 + 0.7 * intensity) * opacity_factor)
                 color = QColor(r, g, b)
             else:
                 # For step sequencer, use theme color with intensity
-                r = int(highlight.red() * (0.3 + 0.7 * intensity))
-                g = int(highlight.green() * (0.3 + 0.7 * intensity))
-                b = int(highlight.blue() * (0.3 + 0.7 * intensity))
+                r = int(highlight.red() * (0.3 + 0.7 * intensity) * opacity_factor)
+                g = int(highlight.green() * (0.3 + 0.7 * intensity) * opacity_factor)
+                b = int(highlight.blue() * (0.3 + 0.7 * intensity) * opacity_factor)
                 color = QColor(r, g, b)
 
-            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: {border_width}px solid {border_color};")
+            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); {border_style}")
         else:
-            # Inactive state - dark gray
-            self.setStyleSheet(f"background-color: #2a2a2a; border: {border_width}px solid {border_color};")
+            # Inactive state - dark gray (with opacity for out-of-scale)
+            bg_value = int(42 * opacity_factor)  # #2a2a2a = rgb(42, 42, 42)
+            self.setStyleSheet(f"background-color: rgb({bg_value}, {bg_value}, {bg_value}); {border_style}")
 
     def mousePressEvent(self, event):
         """Handle mouse clicks"""
@@ -553,33 +569,28 @@ class BasicStepSequencerGrid(QWidget):
 
         return notes
 
-    def set_grid_data(self, notes_data, num_steps=8):
-        """Set grid data from notes list"""
-        # Clear existing rows
+    def get_row_definitions(self):
+        """Get list of row definitions (note, octave) for persistence"""
+        return [{'note': row['note'], 'octave': row['octave']} for row in self.rows]
+
+    def set_row_definitions(self, row_defs):
+        """Set row definitions from list of (note, octave) dicts"""
+        # This will be called before set_grid_data to ensure rows exist
+        # Clear existing rows first
         for row_data in self.rows[:]:
             for cell in row_data['cells']:
                 self.grid_layout.removeWidget(cell)
                 cell.deleteLater()
-            item = self.grid_layout.itemAtPosition(self.rows.index(row_data) + 1, 0)
+            idx = self.rows.index(row_data) + 1
+            item = self.grid_layout.itemAtPosition(idx, 0)
             if item and item.widget():
                 item.widget().deleteLater()
 
         self.rows.clear()
 
-        # Set number of steps
-        self.num_steps = num_steps
-        self.rebuild_header()
-
-        # Group notes by (note_index, octave) to create rows
-        note_groups = {}
-        for note in notes_data:
-            key = (note.get('note_index', 0), note.get('octave_offset', 4))
-            if key not in note_groups:
-                note_groups[key] = []
-            note_groups[key].append(note)
-
-        # If no data, create default rows (C1, D1, E1, F1)
-        if not note_groups:
+        # Create rows from definitions
+        if not row_defs:
+            # Default rows
             note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
             default_notes = [
                 ('C', 1),
@@ -590,58 +601,36 @@ class BasicStepSequencerGrid(QWidget):
             for note_name, octave in default_notes:
                 note_index = note_names.index(note_name)
                 self._create_row(note_index, octave)
-            return
+        else:
+            for row_def in row_defs:
+                self._create_row(row_def['note'], row_def['octave'])
 
-        # Create rows
-        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    def set_grid_data(self, notes_data, num_steps=8):
+        """Set grid data from notes list - assumes rows already exist from set_row_definitions"""
+        # Set number of steps (may need to add/remove columns)
+        if self.num_steps != num_steps:
+            self.on_steps_changed(num_steps)
 
-        for (note_idx, octave), notes in note_groups.items():
-            row_idx = len(self.rows)
-            row_data = {
-                'note': note_idx,
-                'octave': octave,
-                'cells': []
-            }
+        # Clear all cells first
+        for row_data in self.rows:
+            for cell in row_data['cells']:
+                cell.set_active(False, self.default_velocity, 0)
 
-            # Create note label
-            note_widget = QWidget()
-            note_layout = QHBoxLayout()
-            note_layout.setContentsMargins(0, 0, 0, 0)
-            note_layout.setSpacing(2)
+        # Populate cells with note data
+        for note in notes_data:
+            note_idx = note.get('note_index', 0)
+            octave = note.get('octave_offset', 4)
+            timing_64ths = note.get('timing_64ths', 0)
+            step = timing_64ths // 16
 
-            # Note label - clickable
-            note_label = QPushButton(f"{note_names[note_idx]}{octave}")
-            note_label.setStyleSheet("font-weight: bold; min-width: 50px; text-align: center; border: none; background: transparent;")
-            note_label.setCursor(Qt.PointingHandCursor)
-            note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
-            note_layout.addWidget(note_label)
-
-            delete_btn = QPushButton("X")
-            delete_btn.setFixedSize(20, 20)
-            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold;")
-            delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
-            note_layout.addWidget(delete_btn)
-
-            note_widget.setLayout(note_layout)
-            self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
-
-            # Create cells
-            for step in range(num_steps):
-                cell = GridCell(row_idx, step, self)
-                cell.leftClicked.connect(self.on_cell_left_click)
-                cell.rightClicked.connect(self.on_cell_right_click)
-
-                # Check if this step has a note
-                timing_64ths = step * 16
-                matching_note = next((n for n in notes if abs(n['timing_64ths'] - timing_64ths) < 8), None)
-
-                if matching_note:
-                    cell.set_active(True, matching_note.get('velocity', 127), 0)
-
-                row_data['cells'].append(cell)
-                self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
-
-            self.rows.append(row_data)
+            # Find the row matching this note and octave
+            for row_idx, row_data in enumerate(self.rows):
+                if row_data['note'] == note_idx and row_data['octave'] == octave:
+                    # Activate the cell at this step
+                    if 0 <= step < len(row_data['cells']):
+                        cell = row_data['cells'][step]
+                        cell.set_active(True, note.get('velocity', 127), 0)
+                    break
 
 
 class BasicArpeggiatorGrid(QWidget):
@@ -929,18 +918,11 @@ class BasicArpeggiatorGrid(QWidget):
                 else:
                     label.setStyleSheet("min-width: 30px; padding-right: 5px; color: #555;")
 
-            # Darken all cells in this row if not in scale
+            # Update in_scale property for all cells in this row
             if row < len(self.cells):
                 for cell in self.cells[row]:
-                    if in_scale:
-                        cell.setEnabled(True)
-                        cell.setStyleSheet(cell.styleSheet().replace("opacity: 0.3;", ""))
-                    else:
-                        cell.setEnabled(False)
-                        # Apply darkening effect
-                        current_style = cell.styleSheet()
-                        if "opacity:" not in current_style:
-                            cell.setStyleSheet(current_style + " opacity: 0.3;")
+                    cell.in_scale = in_scale
+                    cell.update_style()  # Refresh appearance
 
     def on_scale_changed(self, scale_name):
         """Handle scale selection change"""
@@ -2122,6 +2104,12 @@ class Arpeggiator(BasicEditor):
         flat_notes = self.preset_data.get('steps', [])
         num_steps = self.spin_num_steps.value()
 
+        # For step sequencer, restore row definitions first (if stored)
+        if self.is_step_sequencer and hasattr(self.basic_grid, 'set_row_definitions'):
+            row_defs = self.preset_data.get('row_definitions', [])
+            if row_defs:  # Only restore if we have saved definitions
+                self.basic_grid.set_row_definitions(row_defs)
+
         # Set grid data (includes num_steps sync)
         self.basic_grid.set_grid_data(flat_notes, num_steps)
 
@@ -2136,6 +2124,10 @@ class Arpeggiator(BasicEditor):
         # Ensure basic grid is in sync with preset container
         if self.basic_grid.num_steps != num_steps:
             self.basic_grid.on_steps_changed(num_steps)
+
+        # For step sequencer, save row definitions for later restoration
+        if self.is_step_sequencer and hasattr(self.basic_grid, 'get_row_definitions'):
+            self.preset_data['row_definitions'] = self.basic_grid.get_row_definitions()
 
         # Calculate rate to determine timing for each step
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
@@ -2272,11 +2264,17 @@ class Arpeggiator(BasicEditor):
         # Rebuild steps and populate with notes
         self.rebuild_steps()
 
-        # Populate steps with notes
+        # Populate steps with notes (filter out empty placeholder notes for display)
         rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
         for i, widget in enumerate(self.step_widgets):
             step_timing = i * rate_64ths
             step_notes = notes_by_timing.get(step_timing, [])
+
+            # Filter out empty notes (EMPTY_NOTE_SENTINEL) - they're for internal tracking only
+            if not self.is_step_sequencer:
+                step_notes = [note for note in step_notes
+                             if note.get('semitone_offset', 0) != EMPTY_NOTE_SENTINEL]
+
             widget.set_step_data(step_notes)
 
     def on_preset_changed(self, index):
