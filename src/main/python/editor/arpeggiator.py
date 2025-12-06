@@ -482,15 +482,16 @@ class BasicStepSequencerGrid(QWidget):
         self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
-        """Handle right click - activate and configure (always reset to defaults)"""
+        """Handle right click - activate and configure with current or default values"""
         if row >= len(self.rows):
             return
 
         row_data = self.rows[row]
         cell = row_data['cells'][col]
 
-        # Show velocity popup (no octave for step sequencer) - always start with default
-        popup = VelocityOctavePopup(self.default_velocity, octave=None, parent=self)
+        # Show velocity popup (no octave for step sequencer) - use current value if active
+        current_velocity = cell.velocity if cell.active else self.default_velocity
+        popup = VelocityOctavePopup(current_velocity, octave=None, parent=self)
         if popup.exec_() == QDialog.Accepted:
             velocity, _ = popup.get_values()
             cell.set_active(True, velocity, 0)
@@ -610,7 +611,7 @@ class BasicStepSequencerGrid(QWidget):
 
 
 class BasicArpeggiatorGrid(QWidget):
-    """Grid widget for arpeggiator basic tab with fixed 25 rows (intervals -12 to +12)"""
+    """Grid widget for arpeggiator basic tab with fixed 23 rows (intervals -11 to +11)"""
 
     dataChanged = pyqtSignal()  # Emitted when grid data changes
 
@@ -641,6 +642,45 @@ class BasicArpeggiatorGrid(QWidget):
         scroll.setWidget(self.grid_container)
         self.main_layout.addWidget(scroll, 1)
 
+        # Scale selector
+        scale_layout = QHBoxLayout()
+        scale_layout.addWidget(QLabel("Scale:"))
+
+        self.combo_scale = ArrowComboBox()
+        self.combo_scale.setMinimumWidth(150)
+        self.combo_scale.setMaximumHeight(30)
+        self.combo_scale.setEditable(True)
+        self.combo_scale.lineEdit().setReadOnly(True)
+        self.combo_scale.lineEdit().setAlignment(Qt.AlignCenter)
+
+        # Define all scales and modes
+        self.scale_definitions = {
+            'Chromatic': list(range(-11, 12)),  # All 23 semitones
+            'Major': [0, 2, 4, 5, 7, 9, 11],
+            'Minor': [0, 2, 3, 5, 7, 8, 10],
+            'Pentatonic Major': [0, 2, 4, 7, 9],
+            'Pentatonic Minor': [0, 3, 5, 7, 10],
+            'Blues': [0, 3, 5, 6, 7, 10],
+            'Dorian': [0, 2, 3, 5, 7, 9, 10],
+            'Phrygian': [0, 1, 3, 5, 7, 8, 10],
+            'Lydian': [0, 2, 4, 6, 7, 9, 11],
+            'Mixolydian': [0, 2, 4, 5, 7, 9, 10],
+            'Locrian': [0, 1, 3, 5, 6, 8, 10],
+            'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
+            'Melodic Minor': [0, 2, 3, 5, 7, 9, 11],
+            'Whole Tone': [0, 2, 4, 6, 8, 10],
+            'Diminished': [0, 2, 3, 5, 6, 8, 9, 11],
+        }
+
+        for scale_name in self.scale_definitions.keys():
+            self.combo_scale.addItem(scale_name)
+        self.combo_scale.setCurrentText('Chromatic')
+        self.combo_scale.setToolTip("Select scale to highlight intervals")
+        self.combo_scale.currentTextChanged.connect(self.on_scale_changed)
+        scale_layout.addWidget(self.combo_scale)
+        scale_layout.addStretch()
+        self.main_layout.addLayout(scale_layout)
+
         # Add octave color legend note
         legend_layout = QHBoxLayout()
         legend_label = QLabel("Octave colors use theme-relative hue shifts (0 = root, ±1-4 = shifted hues)")
@@ -655,7 +695,7 @@ class BasicArpeggiatorGrid(QWidget):
         self.build_grid()
 
     def build_grid(self):
-        """Build the complete grid with 25 rows"""
+        """Build the complete grid with 23 rows"""
         # Clear existing
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
@@ -672,9 +712,9 @@ class BasicArpeggiatorGrid(QWidget):
             lbl.setStyleSheet("font-weight: bold;")
             self.grid_layout.addWidget(lbl, 0, step + 1)
 
-        # Create 25 rows (intervals -12 to +12)
-        for row in range(25):
-            interval = 12 - row  # Row 0 = +12, row 12 = 0, row 24 = -12
+        # Create 23 rows (intervals -11 to +11)
+        for row in range(23):
+            interval = 11 - row  # Row 0 = +11, row 11 = 0, row 22 = -11
 
             # Interval label
             if interval > 0:
@@ -763,17 +803,20 @@ class BasicArpeggiatorGrid(QWidget):
             return
 
         cell = self.cells[row][col]
-        interval = 12 - row  # Calculate interval from row
+        interval = 11 - row  # Calculate interval from row
 
         # Determine octave constraints based on row position
-        # Row 13 (interval 0) allows both negative and positive
-        # Rows above 13 (positive intervals) only allow positive octaves
-        # Rows below 13 (negative intervals) only allow negative octaves
+        # Row 11 (interval 0) allows both negative and positive
+        # Rows above 11 (positive intervals) only allow positive octaves
+        # Rows below 11 (negative intervals) only allow negative octaves
         allow_negative = (interval <= 0)
         allow_positive = (interval >= 0)
 
-        # Show velocity + octave popup - always start with defaults
-        popup = VelocityOctavePopup(self.default_velocity, octave=0,
+        # Show velocity + octave popup - use current cell values if active
+        current_velocity = cell.velocity if cell.active else self.default_velocity
+        current_octave = cell.octave if cell.active else 0
+
+        popup = VelocityOctavePopup(current_velocity, octave=current_octave,
                                     allow_negative_octave=allow_negative,
                                     allow_positive_octave=allow_positive,
                                     parent=self)
@@ -787,7 +830,7 @@ class BasicArpeggiatorGrid(QWidget):
         notes = []
 
         for row_idx, row_cells in enumerate(self.cells):
-            interval = 12 - row_idx  # Calculate interval
+            interval = 11 - row_idx  # Calculate interval
 
             for step, cell in enumerate(row_cells):
                 if cell.active:
@@ -821,31 +864,60 @@ class BasicArpeggiatorGrid(QWidget):
             # Calculate step from timing
             step = timing_64ths // 16
 
-            # Calculate row from interval (row 0 = +12, row 12 = 0, row 24 = -12)
-            row = 12 - interval
+            # Calculate row from interval (row 0 = +11, row 11 = 0, row 22 = -11)
+            row = 11 - interval
 
-            if 0 <= row < 25 and 0 <= step < self.num_steps:
+            if 0 <= row < 23 and 0 <= step < self.num_steps:
                 cell = self.cells[row][step]
                 cell.set_active(True, velocity, octave)
 
     def filter_rows_by_scale(self, allowed_intervals):
-        """Show/hide rows based on allowed intervals in the selected scale"""
-        # allowed_intervals is a set of semitone offsets (-12 to +12)
-        for row in range(25):
-            interval = 12 - row  # Row 0 = +12, row 12 = 0, row 24 = -12
+        """Darken rows that aren't in the selected scale"""
+        # allowed_intervals is a set of semitone offsets (-11 to +11)
+        for row in range(23):
+            interval = 11 - row  # Row 0 = +11, row 11 = 0, row 22 = -11
 
-            # Get the row widget (interval label + cells)
-            should_show = interval in allowed_intervals
+            # Determine if this interval is in the scale
+            in_scale = interval in allowed_intervals
 
-            # Show/hide the interval label
+            # Darken the interval label if not in scale
             label_item = self.grid_layout.itemAtPosition(row + 1, 0)
             if label_item and label_item.widget():
-                label_item.widget().setVisible(should_show)
+                label = label_item.widget()
+                if in_scale:
+                    label.setStyleSheet("min-width: 30px; padding-right: 5px;")
+                else:
+                    label.setStyleSheet("min-width: 30px; padding-right: 5px; color: #555;")
 
-            # Show/hide all cells in this row
+            # Darken all cells in this row if not in scale
             if row < len(self.cells):
                 for cell in self.cells[row]:
-                    cell.setVisible(should_show)
+                    if in_scale:
+                        cell.setEnabled(True)
+                        cell.setStyleSheet(cell.styleSheet().replace("opacity: 0.3;", ""))
+                    else:
+                        cell.setEnabled(False)
+                        # Apply darkening effect
+                        current_style = cell.styleSheet()
+                        if "opacity:" not in current_style:
+                            cell.setStyleSheet(current_style + " opacity: 0.3;")
+
+    def on_scale_changed(self, scale_name):
+        """Handle scale selection change"""
+        # Get the intervals for this scale
+        scale_intervals = self.scale_definitions.get(scale_name, list(range(-11, 12)))
+
+        # Expand scale to cover all octaves
+        expanded_intervals = set()
+        for interval in scale_intervals:
+            # Add interval in all octaves (-11 to +11)
+            for octave in range(-1, 2):  # -1, 0, +1 octaves
+                semitone = interval + (octave * 12)
+                if -11 <= semitone <= 11:
+                    expanded_intervals.add(semitone)
+
+        # Filter rows based on scale
+        self.filter_rows_by_scale(expanded_intervals)
 
 
 class IntervalSelector(QWidget):
@@ -1764,42 +1836,6 @@ class Arpeggiator(BasicEditor):
         params_layout.addWidget(lbl_default_velocity, 5, 0)
         params_layout.addWidget(self.spin_default_velocity, 5, 1)
 
-        # Scale dropdown (for arpeggiator only)
-        lbl_scale = QLabel("Scale:")
-        self.combo_scale = ArrowComboBox()
-        self.combo_scale.setMinimumWidth(150)
-        self.combo_scale.setMaximumHeight(30)
-        self.combo_scale.setEditable(True)
-        self.combo_scale.lineEdit().setReadOnly(True)
-        self.combo_scale.lineEdit().setAlignment(Qt.AlignCenter)
-
-        # Define all scales and modes
-        self.scale_definitions = {
-            'Chromatic': list(range(-12, 13)),  # All 25 semitones
-            'Major': [0, 2, 4, 5, 7, 9, 11],
-            'Minor': [0, 2, 3, 5, 7, 8, 10],
-            'Pentatonic Major': [0, 2, 4, 7, 9],
-            'Pentatonic Minor': [0, 3, 5, 7, 10],
-            'Blues': [0, 3, 5, 6, 7, 10],
-            'Dorian': [0, 2, 3, 5, 7, 9, 10],
-            'Phrygian': [0, 1, 3, 5, 7, 8, 10],
-            'Lydian': [0, 2, 4, 6, 7, 9, 11],
-            'Mixolydian': [0, 2, 4, 5, 7, 9, 10],
-            'Locrian': [0, 1, 3, 5, 6, 8, 10],
-            'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11],
-            'Melodic Minor': [0, 2, 3, 5, 7, 9, 11],
-            'Whole Tone': [0, 2, 4, 6, 8, 10],
-            'Diminished': [0, 2, 3, 5, 6, 8, 9, 11],
-        }
-
-        for scale_name in self.scale_definitions.keys():
-            self.combo_scale.addItem(scale_name)
-        self.combo_scale.setCurrentText('Chromatic')
-        self.combo_scale.setToolTip("Select scale to filter visible intervals in arpeggiator")
-        self.combo_scale.currentTextChanged.connect(self.on_scale_changed)
-        params_layout.addWidget(lbl_scale, 6, 0)
-        params_layout.addWidget(self.combo_scale, 6, 1)
-
         params_group.setLayout(params_layout)
         bottom_layout.addWidget(params_group)
 
@@ -1944,33 +1980,6 @@ class Arpeggiator(BasicEditor):
             self.basic_grid.default_velocity = internal_value
             self.update_status(f"Default velocity changed to {value}")
 
-    def on_scale_changed(self, scale_name):
-        """Scale changed - filter visible rows in arpeggiator basic grid"""
-        if not hasattr(self, 'basic_grid') or not hasattr(self.basic_grid, 'is_arpeggiator'):
-            return
-
-        if not self.basic_grid.is_arpeggiator:
-            # Only applies to arpeggiator, not step sequencer
-            return
-
-        # Get the intervals for this scale
-        scale_intervals = self.scale_definitions.get(scale_name, list(range(-12, 13)))
-
-        # Expand scale to cover all octaves
-        expanded_intervals = set()
-        for interval in scale_intervals:
-            # Add interval in all octaves (-12 to +12)
-            for octave in range(-1, 2):  # -1, 0, +1 octaves
-                semitone = interval + (octave * 12)
-                if -12 <= semitone <= 12:
-                    expanded_intervals.add(semitone)
-
-        # Update grid to show/hide rows based on scale
-        if hasattr(self.basic_grid, 'filter_rows_by_scale'):
-            self.basic_grid.filter_rows_by_scale(expanded_intervals)
-
-        self.update_status(f"Scale changed to {scale_name}")
-
     def update_pattern_length_display(self):
         """Update the pattern length display in x/y format with halving logic"""
         # Get rate_64ths from combo box value
@@ -2048,12 +2057,13 @@ class Arpeggiator(BasicEditor):
         self.preset_data['steps'] = grid_data
         self.preset_data['note_count'] = len(grid_data)
 
-        # Update number of steps from basic grid
-        num_steps = self.basic_grid.num_steps
-        if self.spin_num_steps.value() != num_steps:
-            self.spin_num_steps.blockSignals(True)
-            self.spin_num_steps.setValue(num_steps)
-            self.spin_num_steps.blockSignals(False)
+        # Number of steps comes from preset container (spin_num_steps), not basic grid
+        # This ensures the preset container is the single source of truth
+        num_steps = self.spin_num_steps.value()
+
+        # Ensure basic grid is in sync with preset container
+        if self.basic_grid.num_steps != num_steps:
+            self.basic_grid.on_steps_changed(num_steps)
 
         # Rebuild advanced view using apply_preset_data (which handles conversion)
         self.apply_preset_data()
@@ -2382,16 +2392,6 @@ class StepSequencer(Arpeggiator):
 
         # Set default to first step sequencer preset
         self.combo_preset.setCurrentIndex(0)
-
-        # Hide scale dropdown (only for arpeggiator, not step sequencer)
-        if hasattr(self, 'combo_scale'):
-            # Find the scale label and combo in the params layout
-            for i in range(self.combo_scale.parent().layout().count()):
-                item = self.combo_scale.parent().layout().itemAt(i)
-                if item and item.widget():
-                    widget = item.widget()
-                    if widget == self.combo_scale or (hasattr(widget, 'text') and widget.text() == "Scale:"):
-                        widget.setVisible(False)
 
         # Set default tab to Basic (index 0)
         self.tabs.setCurrentIndex(0)
