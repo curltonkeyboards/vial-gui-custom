@@ -18,6 +18,45 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def flat_semitones_to_interval_octave(flat_semitones):
+    """
+    Convert flat semitones to (interval, octave) pair for firmware.
+    Examples:
+        +29 → (interval=+5, octave=+2)
+        -1 → (interval=-1, octave=0)
+        -13 → (interval=-1, octave=-1)
+        +12 → (interval=0, octave=+1)
+    """
+    # Calculate octave (how many complete 12-semitone octaves)
+    octave = flat_semitones // 12
+    # Calculate interval within octave (-11 to +11)
+    interval = flat_semitones % 12
+
+    # Handle negative intervals properly
+    # If we have a negative remainder, adjust
+    if flat_semitones < 0 and interval != 0:
+        octave -= 1
+        interval = 12 + interval
+
+    return interval, octave
+
+
+def interval_octave_to_flat_semitones(interval, octave):
+    """
+    Convert (interval, octave) pair to flat semitones.
+    Examples:
+        (interval=+5, octave=+2) → +29
+        (interval=-1, octave=0) → -1
+        (interval=-1, octave=-1) → -13
+        (interval=0, octave=+1) → +12
+    """
+    return interval + (octave * 12)
+
+
+# =============================================================================
 # GRID-BASED INTERFACE WIDGETS (for Basic Tab)
 # =============================================================================
 
@@ -424,7 +463,19 @@ class BasicStepSequencerGrid(QWidget):
 
     def rebuild_grid(self):
         """Rebuild entire grid after deletion"""
-        # Clear grid
+        # Save cell states before clearing
+        cell_states = []
+        for row_data in self.rows:
+            row_states = []
+            for cell in row_data['cells']:
+                row_states.append({
+                    'active': cell.active,
+                    'velocity': cell.velocity,
+                    'octave': cell.octave
+                })
+            cell_states.append(row_states)
+
+        # Clear grid widgets
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
             if item and item.widget():
@@ -435,7 +486,7 @@ class BasicStepSequencerGrid(QWidget):
         # Rebuild header
         self.rebuild_header()
 
-        # Rebuild rows
+        # Rebuild rows with NEW cells
         for row_idx, row_data in enumerate(self.rows):
             # Recreate note label
             note_widget = QWidget()
@@ -459,10 +510,23 @@ class BasicStepSequencerGrid(QWidget):
             note_widget.setLayout(note_layout)
             self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
 
-            # Recreate cells (update row indices)
-            for step, cell in enumerate(row_data['cells']):
-                cell.row = row_idx  # Update row index
+            # Create NEW cells and restore their states
+            new_cells = []
+            for step in range(len(row_data['cells'])):
+                cell = GridCell(row_idx, step, self)
+                cell.leftClicked.connect(self.on_cell_left_click)
+                cell.rightClicked.connect(self.on_cell_right_click)
+
+                # Restore state if available
+                if row_idx < len(cell_states) and step < len(cell_states[row_idx]):
+                    state = cell_states[row_idx][step]
+                    cell.set_active(state['active'], state['velocity'], state['octave'])
+
+                new_cells.append(cell)
                 self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+
+            # Replace old cells list with new cells
+            row_data['cells'] = new_cells
 
     def on_cell_left_click(self, row, col):
         """Handle left click - toggle cell"""
@@ -521,12 +585,15 @@ class BasicStepSequencerGrid(QWidget):
 
     def set_grid_data(self, notes_data, num_steps=8):
         """Set grid data from notes list"""
-        # Clear existing rows
-        for row_data in self.rows[:]:
+        # Clear existing rows - iterate with index to avoid lookup issues
+        for i in range(len(self.rows) - 1, -1, -1):
+            row_data = self.rows[i]
+            # Remove and delete cells
             for cell in row_data['cells']:
                 self.grid_layout.removeWidget(cell)
                 cell.deleteLater()
-            item = self.grid_layout.itemAtPosition(self.rows.index(row_data) + 1, 0)
+            # Remove and delete note label widget
+            item = self.grid_layout.itemAtPosition(i + 1, 0)
             if item and item.widget():
                 item.widget().deleteLater()
 
@@ -857,12 +924,6 @@ class BasicArpeggiatorGrid(QWidget):
         # Populate cells
         for note in notes_data:
             interval = note.get('semitone_offset', note.get('note_index', 0))
-
-            # Skip "Empty" placeholder notes (interval=-1) - these preserve step info
-            # but shouldn't be displayed in the basic grid
-            if interval == -1:
-                continue
-
             octave = note.get('octave_offset', 0)
             velocity = note.get('velocity', 127)
             timing_64ths = note.get('timing_64ths', 0)
@@ -932,8 +993,8 @@ class IntervalSelector(QWidget):
     valueChanged = pyqtSignal(int)
 
     # Interval names mapping (extended range)
+    # Note: -1 is now a valid interval (minor second down), not "Empty"
     INTERVAL_NAMES = {
-        -1: "Empty",
         0: "Root Note",
         1: "Minor Second",
         2: "Major Second",
@@ -962,6 +1023,7 @@ class IntervalSelector(QWidget):
 
     # Generate negative interval names (mirror positive ones)
     NEGATIVE_INTERVAL_NAMES = {
+        -1: "-Minor Second",
         -2: "-Major Second",
         -3: "-Minor Third",
         -4: "-Major Third",
@@ -991,14 +1053,14 @@ class IntervalSelector(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.value = -1  # Default to None
+        self.value = 0  # Default to Root Note
 
         layout = QVBoxLayout()
         layout.setSpacing(2)
         layout.setContentsMargins(0, 0, 0, 0)
 
         # Interval name label (above the box)
-        self.name_label = QLabel("Empty")
+        self.name_label = QLabel("Root Note")
         self.name_label.setAlignment(Qt.AlignCenter)
         self.name_label.setFont(QFont("Arial", 9, QFont.Bold))
         layout.addWidget(self.name_label)
@@ -1019,7 +1081,7 @@ class IntervalSelector(QWidget):
         box_layout.addWidget(self.btn_minus)
 
         # Value box (center)
-        self.value_box = QLabel("Empty")
+        self.value_box = QLabel("+0")
         self.value_box.setAlignment(Qt.AlignCenter)
         self.value_box.setMinimumWidth(50)
         box_layout.addWidget(self.value_box, 1)
@@ -1069,9 +1131,7 @@ class IntervalSelector(QWidget):
         self.name_label.setText(self.INTERVAL_NAMES.get(self.value, "Unknown"))
 
         # Update value box
-        if self.value == -1:
-            self.value_box.setText("Empty")
-        elif self.value >= 0:
+        if self.value >= 0:
             self.value_box.setText(f"+{self.value}")
         else:
             self.value_box.setText(str(self.value))
@@ -1806,7 +1866,7 @@ class Arpeggiator(BasicEditor):
         lbl_num_steps = QLabel("Number of Steps:")
         self.spin_num_steps = QSpinBox()
         self.spin_num_steps.setRange(1, 128)
-        self.spin_num_steps.setValue(4)
+        self.spin_num_steps.setValue(8)  # Default 8 for arpeggiator
         self.spin_num_steps.setButtonSymbols(QSpinBox.UpDownArrows)
         self.spin_num_steps.setToolTip("Number of steps in the pattern")
         self.spin_num_steps.valueChanged.connect(self.on_num_steps_changed)
@@ -2015,7 +2075,7 @@ class Arpeggiator(BasicEditor):
         self.lbl_pattern_length.setText(f"{x}/{y}")
 
     def _get_complete_steps_from_grid(self, grid_data, num_steps, rate_64ths):
-        """Helper: Convert basic grid data to complete steps array with Empty placeholders"""
+        """Helper: Convert basic grid data to steps array (no empty placeholders needed)"""
         # Group grid data by timing to see which steps have notes
         notes_by_timing = {}
         for note in grid_data:
@@ -2024,7 +2084,8 @@ class Arpeggiator(BasicEditor):
                 notes_by_timing[timing] = []
             notes_by_timing[timing].append(note)
 
-        # Build COMPLETE steps array including empty steps
+        # Build steps array - only include steps that have notes
+        # Empty steps are simply absent from the data
         complete_steps = []
         for step_idx in range(num_steps):
             step_timing = step_idx * rate_64ths
@@ -2032,18 +2093,7 @@ class Arpeggiator(BasicEditor):
             if step_timing in notes_by_timing:
                 # This step has notes from the grid - use them
                 complete_steps.extend(notes_by_timing[step_timing])
-            else:
-                # This step is empty - create placeholder for arpeggiator only
-                if not self.is_step_sequencer:
-                    # Add "Empty" note to preserve the step
-                    complete_steps.append({
-                        'timing_64ths': step_timing,
-                        'note_index': -1,
-                        'semitone_offset': -1,
-                        'octave_offset': 0,
-                        'velocity': 127,
-                        'raw_travel': 127
-                    })
+            # No else - empty steps are not represented
 
         return complete_steps
 
@@ -2177,8 +2227,21 @@ class Arpeggiator(BasicEditor):
                     # octave_offset contains absolute octave (0-7)
                     pass  # Data is already in the right format
                 else:
-                    # Arpeggiator: semitone_offset -> note_index for firmware
-                    note_data['note_index'] = note_data.get('semitone_offset', 0)
+                    # Arpeggiator: Convert flat semitones to (interval, octave) for firmware
+                    # GUI stores semitone_offset and octave_offset separately
+                    # Firmware needs them combined as flat semitones, then split into note_index and octave_offset
+                    semitone = note_data.get('semitone_offset', 0)
+                    octave = note_data.get('octave_offset', 0)
+
+                    # Convert to flat semitones
+                    flat_semitones = interval_octave_to_flat_semitones(semitone, octave)
+
+                    # Convert back to firmware format (interval within octave + octave offset)
+                    interval, octave_offset = flat_semitones_to_interval_octave(flat_semitones)
+
+                    # Store in firmware format
+                    note_data['note_index'] = interval
+                    note_data['octave_offset'] = octave_offset
 
                 # Raw travel is velocity
                 note_data['raw_travel'] = note_data.get('velocity', 200)
@@ -2194,16 +2257,9 @@ class Arpeggiator(BasicEditor):
             self.preset_data['name'] = 'User Preset'
 
     def get_firmware_notes(self):
-        """Get notes filtered for firmware - excludes empty arpeggiator notes"""
-        if self.is_step_sequencer:
-            # Step sequencer: send all notes
-            return self.preset_data.get('steps', [])
-        else:
-            # Arpeggiator: filter out empty notes (semitone_offset = -1)
-            return [
-                note for note in self.preset_data.get('steps', [])
-                if note.get('semitone_offset', 0) != -1
-            ]
+        """Get notes for firmware - all notes are valid (no empty placeholders exist)"""
+        # Return all notes - there are no empty placeholders to filter
+        return self.preset_data.get('steps', [])
 
     def apply_preset_data(self):
         """Apply preset_data to UI - convert flat note list to step-based structure"""
@@ -2422,6 +2478,9 @@ class StepSequencer(Arpeggiator):
         """Build the UI - override to use step sequencer grid and customize preset selector"""
         # Call parent setup_ui first
         super().setup_ui()
+
+        # Set default steps to 16 for step sequencer
+        self.spin_num_steps.setValue(16)
 
         # Replace the arpeggiator grid with step sequencer grid
         self.tabs.removeTab(0)  # Remove the Basic tab (arpeggiator grid)

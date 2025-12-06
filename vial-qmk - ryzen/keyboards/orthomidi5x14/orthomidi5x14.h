@@ -233,8 +233,8 @@ typedef struct {
 // Individual note definition within a preset
 typedef struct {
     uint16_t timing_64ths;     // When to trigger this note (0-255+ for multi-bar patterns)
-    uint8_t note_index;        // Which note from live_notes[] to play (0-based)
-    int8_t octave_offset;      // Octave shift: 0, +12, -12, +24, etc.
+    int8_t note_index;         // Semitone offset for arpeggiator (-11 to +11), or note index for step seq (0-11)
+    int8_t octave_offset;      // Octave shift: can be negative for down octaves
     uint8_t raw_travel;        // Velocity as raw travel (0-255)
 } arp_preset_note_t;
 
