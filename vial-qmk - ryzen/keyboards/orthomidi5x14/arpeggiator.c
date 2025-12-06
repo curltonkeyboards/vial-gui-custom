@@ -428,7 +428,7 @@ void arp_init_presets(void) {
         arp_presets[p].note_count = 0;
         arp_presets[p].pattern_length_64ths = 64;
         arp_presets[p].gate_length_percent = 80;
-        snprintf(arp_presets[p].name, ARP_PRESET_NAME_LENGTH, "Seq %d", p - 31);
+        strncpy(arp_presets[p].name, "Empty Seq", ARP_PRESET_NAME_LENGTH);
         arp_presets[p].magic = ARP_PRESET_MAGIC;
     }
 
@@ -1034,7 +1034,7 @@ void arp_load_all_user_presets(void) {
             // If load fails, initialize as empty arpeggiator preset
             dprintf("arp: preset %d not found or invalid, initializing as empty\n", i);
             memset(&arp_presets[i], 0, sizeof(arp_preset_t));
-            snprintf(arp_presets[i].name, ARP_PRESET_NAME_LENGTH, "User Arp %d", i - ARP_USER_START + 1);
+            strncpy(arp_presets[i].name, "User Arp", ARP_PRESET_NAME_LENGTH);
             arp_presets[i].preset_type = PRESET_TYPE_ARPEGGIATOR;
             arp_presets[i].note_count = 0;
             arp_presets[i].pattern_length_64ths = 64;  // 1 bar default
@@ -1051,7 +1051,7 @@ void arp_load_all_user_presets(void) {
             // If load fails, initialize as empty step sequencer preset
             dprintf("arp: preset %d not found or invalid, initializing as empty\n", i);
             memset(&arp_presets[i], 0, sizeof(arp_preset_t));
-            snprintf(arp_presets[i].name, ARP_PRESET_NAME_LENGTH, "User Seq %d", i - SEQ_USER_START + 1);
+            strncpy(arp_presets[i].name, "User Seq", ARP_PRESET_NAME_LENGTH);
             arp_presets[i].preset_type = PRESET_TYPE_STEP_SEQUENCER;
             arp_presets[i].note_count = 0;
             arp_presets[i].pattern_length_64ths = 64;  // 1 bar default
@@ -1080,10 +1080,10 @@ bool arp_clear_preset(uint8_t preset_id) {
     memset(&arp_presets[preset_id], 0, sizeof(arp_preset_t));
 
     if (is_user_arp) {
-        snprintf(arp_presets[preset_id].name, ARP_PRESET_NAME_LENGTH, "User Arp %d", preset_id - ARP_USER_START + 1);
+        strncpy(arp_presets[preset_id].name, "User Arp", ARP_PRESET_NAME_LENGTH);
         arp_presets[preset_id].preset_type = PRESET_TYPE_ARPEGGIATOR;
     } else {
-        snprintf(arp_presets[preset_id].name, ARP_PRESET_NAME_LENGTH, "User Seq %d", preset_id - SEQ_USER_START + 1);
+        strncpy(arp_presets[preset_id].name, "User Seq", ARP_PRESET_NAME_LENGTH);
         arp_presets[preset_id].preset_type = PRESET_TYPE_STEP_SEQUENCER;
     }
 

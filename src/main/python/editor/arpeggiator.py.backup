@@ -395,305 +395,232 @@ class VelocityBar(QWidget):
             self.clicked.emit(self.velocity)
 
 
-class CompactNoteLabel(QPushButton):
-    """Compact clickable label for a note in the list"""
+class NoteContainer(QFrame):
+    """Single note within a step - contains velocity bar, note/interval selector, and octave selector"""
 
-    removed = pyqtSignal()  # Signal to remove this note
-    selected = pyqtSignal()  # Signal when clicked to select
+    removed = pyqtSignal()  # Signal when this note should be removed
 
-    def __init__(self, note_num, is_step_sequencer=False, parent=None):
+    def __init__(self, is_step_sequencer=False, parent=None):
         super().__init__(parent)
-        self.note_num = note_num
         self.is_step_sequencer = is_step_sequencer
-        self.note_data = {
-            'velocity': 200,
-            'octave_offset': 4 if is_step_sequencer else 0,
-            'note_index': 0 if is_step_sequencer else None,
-            'semitone_offset': 0 if not is_step_sequencer else None
-        }
-        self.is_selected = False
 
-        # Setup as checkable button
-        self.setCheckable(True)
-        self.clicked.connect(self.on_clicked)
-        self.setMinimumHeight(25)
-        self.setMaximumHeight(25)
+        layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.setContentsMargins(2, 2, 2, 2)
 
-        self.update_label()
+        # Velocity bar with label below
+        velocity_container = QWidget()
+        velocity_full_layout = QVBoxLayout()
+        velocity_full_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_full_layout.setSpacing(2)
+        velocity_container.setLayout(velocity_full_layout)
 
-    def on_clicked(self):
-        """Button clicked - emit selected signal"""
-        self.selected.emit()
+        # Velocity bar centered
+        velocity_bar_container = QWidget()
+        velocity_bar_layout = QHBoxLayout()
+        velocity_bar_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_bar_container.setLayout(velocity_bar_layout)
 
-    def set_selected(self, selected):
-        """Set selection state"""
-        self.is_selected = selected
-        self.setChecked(selected)
+        velocity_bar_layout.addStretch()
+        self.velocity_bar = VelocityBar()
+        velocity_bar_layout.addWidget(self.velocity_bar)
+        velocity_bar_layout.addStretch()
 
-    def update_label(self):
-        """Update label text based on note data"""
-        note_str = ""
+        velocity_full_layout.addWidget(velocity_bar_container, 1)
+
+        # Velocity label
+        velocity_label = QLabel("Velocity")
+        velocity_label.setAlignment(Qt.AlignCenter)
+        velocity_label.setFont(QFont("Arial", 8))
+        velocity_full_layout.addWidget(velocity_label)
+
+        layout.addWidget(velocity_container, 1)
+
+        # Note/Interval selector
         if self.is_step_sequencer:
-            # Step sequencer: show "Note 1: C#, Oct 4"
-            note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-            note_idx = self.note_data.get('note_index', 0)
-            octave = self.note_data.get('octave_offset', 4)
-            note_str = f"Note {self.note_num + 1}: {note_names[note_idx]}, Oct {octave}"
-        else:
-            # Arpeggiator: show "Note 1: Int +5, Oct +1"
-            interval = self.note_data.get('semitone_offset', 0)
-            octave = self.note_data.get('octave_offset', 0)
-            int_str = f"+{interval}" if interval > 0 else str(interval)
-            oct_str = f"+{octave}" if octave > 0 else str(octave)
-            note_str = f"Note {self.note_num + 1}: Int {int_str}, Oct {oct_str}"
+            # Step sequencer: absolute note selector (C-B)
+            note_label = QLabel("Note")
+            note_label.setAlignment(Qt.AlignCenter)
+            note_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(note_label)
 
-        self.setText(note_str)
+            note_group = QGroupBox()
+            note_layout = QVBoxLayout()
+            note_layout.setContentsMargins(4, 4, 4, 4)
+            self.note_selector = NoteSelector()
+            note_layout.addWidget(self.note_selector)
+            note_group.setLayout(note_layout)
+            layout.addWidget(note_group)
+
+            # Octave selector (0-7 for step sequencer)
+            octave_label = QLabel("Octave")
+            octave_label.setAlignment(Qt.AlignCenter)
+            octave_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(octave_label)
+
+            octave_group = QGroupBox()
+            octave_layout = QVBoxLayout()
+            octave_layout.setContentsMargins(4, 4, 4, 4)
+            self.octave_selector = OctaveSelector(min_octave=0, max_octave=7, default_octave=4)
+            octave_layout.addWidget(self.octave_selector)
+            octave_group.setLayout(octave_layout)
+            layout.addWidget(octave_group)
+        else:
+            # Arpeggiator: interval selector (-24 to +24)
+            interval_label = QLabel("Interval")
+            interval_label.setAlignment(Qt.AlignCenter)
+            interval_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(interval_label)
+
+            interval_group = QGroupBox()
+            interval_layout = QVBoxLayout()
+            interval_layout.setContentsMargins(4, 4, 4, 4)
+            self.interval_selector = IntervalSelector()
+            interval_layout.addWidget(self.interval_selector)
+            interval_group.setLayout(interval_layout)
+            layout.addWidget(interval_group)
+
+            # Octave selector (-2 to +2 for arpeggiator)
+            octave_label = QLabel("Octave")
+            octave_label.setAlignment(Qt.AlignCenter)
+            octave_label.setFont(QFont("Arial", 9, QFont.Bold))
+            layout.addWidget(octave_label)
+
+            octave_group = QGroupBox()
+            octave_layout = QVBoxLayout()
+            octave_layout.setContentsMargins(4, 4, 4, 4)
+            self.octave_selector = OctaveSelector(min_octave=-2, max_octave=2, default_octave=0)
+            octave_layout.addWidget(self.octave_selector)
+            octave_group.setLayout(octave_layout)
+            layout.addWidget(octave_group)
+
+        # Remove button
+        self.btn_remove = QPushButton("Remove")
+        self.btn_remove.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
+        self.btn_remove.clicked.connect(self.removed.emit)
+        layout.addWidget(self.btn_remove)
+
+        self.setLayout(layout)
+        self.setFrameStyle(QFrame.Box | QFrame.Raised)
+        self.setLineWidth(1)
 
     def get_note_data(self):
-        """Get note data dict"""
-        return self.note_data.copy()
+        """Return note data as dict"""
+        data = {
+            'velocity': self.velocity_bar.get_velocity(),
+            'octave_offset': self.octave_selector.get_value()
+        }
+
+        if self.is_step_sequencer:
+            data['note_index'] = self.note_selector.get_value()
+        else:
+            data['semitone_offset'] = self.interval_selector.get_value()
+
+        return data
 
     def set_note_data(self, data):
-        """Set note data and update label"""
-        self.note_data.update(data)
-        self.update_label()
+        """Load note data from dict"""
+        if 'velocity' in data:
+            self.velocity_bar.set_velocity(data['velocity'])
+        if 'octave_offset' in data:
+            self.octave_selector.set_value(data['octave_offset'])
+
+        if self.is_step_sequencer:
+            if 'note_index' in data:
+                self.note_selector.set_value(data['note_index'])
+        else:
+            if 'semitone_offset' in data:
+                self.interval_selector.set_value(data['semitone_offset'])
 
 
 class StepWidget(QFrame):
-    """Single step in the sequencer - compact note list with shared editor panel"""
+    """Single step in the sequencer - can contain multiple notes (up to 8)"""
 
     def __init__(self, step_num, is_step_sequencer=False, parent=None):
         super().__init__(parent)
         self.step_num = step_num
         self.is_step_sequencer = is_step_sequencer
-        self.note_labels = []
-        self.selected_note_index = None
+        self.note_containers = []
 
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(4)
-        main_layout.setContentsMargins(4, 4, 4, 4)
+        layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.setContentsMargins(4, 4, 4, 4)
 
         # Step number label
         lbl_step = QLabel(f"Step {step_num + 1}")
         lbl_step.setAlignment(Qt.AlignCenter)
         lbl_step.setFont(QFont("Arial", 10, QFont.Bold))
-        main_layout.addWidget(lbl_step)
+        layout.addWidget(lbl_step)
 
-        # Horizontal layout: Left=note list, Right=editor panel
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(6)
+        # "Add Note" button
+        self.btn_add_note = QPushButton("Add Note")
+        self.btn_add_note.setStyleSheet("QPushButton { min-height: 30px; max-height: 30px; }")
+        self.btn_add_note.clicked.connect(self.add_note)
+        layout.addWidget(self.btn_add_note)
 
-        # LEFT SIDE: Note list + Add Note button
-        left_panel = QWidget()
-        left_layout = QVBoxLayout()
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(2)
-
-        # Scroll area for note labels
+        # Scroll area for note containers
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_area.setMinimumHeight(100)
-        scroll_area.setMinimumWidth(180)
+        scroll_area.setMinimumHeight(150)
 
-        # Container for note labels
+        # Container for notes
         self.notes_container = QWidget()
         self.notes_layout = QVBoxLayout()
-        self.notes_layout.setSpacing(2)
+        self.notes_layout.setSpacing(4)
         self.notes_layout.setContentsMargins(0, 0, 0, 0)
         self.notes_container.setLayout(self.notes_layout)
         scroll_area.setWidget(self.notes_container)
 
-        left_layout.addWidget(scroll_area, 1)
+        layout.addWidget(scroll_area, 1)
 
-        # "Add Note" button
-        self.btn_add_note = QPushButton("Add Note")
-        self.btn_add_note.setStyleSheet("QPushButton { min-height: 28px; max-height: 28px; }")
-        self.btn_add_note.clicked.connect(self.add_note)
-        left_layout.addWidget(self.btn_add_note)
-
-        left_panel.setLayout(left_layout)
-        content_layout.addWidget(left_panel)
-
-        # RIGHT SIDE: Editor panel (velocity, interval/note, octave)
-        self.editor_panel = QFrame()
-        self.editor_panel.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)
-        self.editor_panel.setMinimumWidth(120)
-        editor_layout = QVBoxLayout()
-        editor_layout.setContentsMargins(4, 4, 4, 4)
-        editor_layout.setSpacing(2)
-
-        # Velocity bar
-        velocity_bar_container = QWidget()
-        velocity_bar_layout = QHBoxLayout()
-        velocity_bar_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_bar_layout.addStretch()
-        self.velocity_bar = VelocityBar()
-        self.velocity_bar.clicked.connect(self.on_velocity_changed)
-        velocity_bar_layout.addWidget(self.velocity_bar)
-        velocity_bar_layout.addStretch()
-        velocity_bar_container.setLayout(velocity_bar_layout)
-        editor_layout.addWidget(velocity_bar_container, 1)
-
-        lbl_vel = QLabel("Velocity")
-        lbl_vel.setAlignment(Qt.AlignCenter)
-        lbl_vel.setFont(QFont("Arial", 8))
-        editor_layout.addWidget(lbl_vel)
-
-        # Interval/Note selector
-        if self.is_step_sequencer:
-            self.note_selector = NoteSelector()
-            self.note_selector.valueChanged.connect(self.on_note_changed)
-            editor_layout.addWidget(self.note_selector)
-        else:
-            self.interval_selector = IntervalSelector()
-            self.interval_selector.valueChanged.connect(self.on_interval_changed)
-            editor_layout.addWidget(self.interval_selector)
-
-        # Octave selector
-        if self.is_step_sequencer:
-            self.octave_selector = OctaveSelector(min_octave=0, max_octave=7, default_octave=4)
-        else:
-            self.octave_selector = OctaveSelector(min_octave=-2, max_octave=2, default_octave=0)
-        self.octave_selector.valueChanged.connect(self.on_octave_changed)
-        editor_layout.addWidget(self.octave_selector)
-
-        # Remove button
-        self.btn_remove = QPushButton("Remove Note")
-        self.btn_remove.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
-        self.btn_remove.clicked.connect(self.remove_selected_note)
-        editor_layout.addWidget(self.btn_remove)
-
-        self.editor_panel.setLayout(editor_layout)
-        content_layout.addWidget(self.editor_panel)
-
-        main_layout.addLayout(content_layout, 1)
-
-        self.setLayout(main_layout)
+        self.setLayout(layout)
         self.setFrameStyle(QFrame.Box | QFrame.Raised)
         self.setLineWidth(2)
-        self.setMinimumWidth(350)
-
-        # Initially hide editor panel
-        self.editor_panel.setVisible(False)
 
     def add_note(self):
-        """Add a new note to this step"""
-        if len(self.note_labels) >= 8:
+        """Add a new note container to this step"""
+        if len(self.note_containers) >= 8:
             QMessageBox.warning(None, "Maximum Notes", "Maximum 8 notes per step reached")
             return
 
-        note_label = CompactNoteLabel(len(self.note_labels), self.is_step_sequencer)
-        note_label.selected.connect(lambda: self.select_note(note_label))
-        self.note_labels.append(note_label)
-        self.notes_layout.addWidget(note_label)
-
-        # Auto-select the new note
-        self.select_note(note_label)
+        note_container = NoteContainer(is_step_sequencer=self.is_step_sequencer)
+        note_container.removed.connect(lambda: self.remove_note(note_container))
+        self.note_containers.append(note_container)
+        self.notes_layout.addWidget(note_container)
 
         # Update button state
-        self.btn_add_note.setEnabled(len(self.note_labels) < 8)
+        self.btn_add_note.setEnabled(len(self.note_containers) < 8)
 
-    def select_note(self, note_label):
-        """Select a note and show its data in the editor panel"""
-        # Deselect all notes
-        for label in self.note_labels:
-            label.set_selected(False)
+    def remove_note(self, note_container):
+        """Remove a note container from this step"""
+        if note_container in self.note_containers:
+            self.note_containers.remove(note_container)
+            self.notes_layout.removeWidget(note_container)
+            note_container.deleteLater()
 
-        # Select this note
-        note_label.set_selected(True)
-        self.selected_note_index = self.note_labels.index(note_label)
-
-        # Load note data into editor
-        data = note_label.get_note_data()
-        self.velocity_bar.set_velocity(data.get('velocity', 200))
-
-        if self.is_step_sequencer:
-            self.note_selector.set_value(data.get('note_index', 0))
-            self.octave_selector.set_value(data.get('octave_offset', 4))
-        else:
-            self.interval_selector.set_value(data.get('semitone_offset', 0))
-            self.octave_selector.set_value(data.get('octave_offset', 0))
-
-        # Show editor panel
-        self.editor_panel.setVisible(True)
-
-    def on_velocity_changed(self, velocity):
-        """Velocity changed - update selected note"""
-        if self.selected_note_index is not None:
-            note_label = self.note_labels[self.selected_note_index]
-            data = note_label.get_note_data()
-            data['velocity'] = velocity
-            note_label.set_note_data(data)
-
-    def on_interval_changed(self, value):
-        """Interval changed - update selected note"""
-        if self.selected_note_index is not None:
-            note_label = self.note_labels[self.selected_note_index]
-            data = note_label.get_note_data()
-            data['semitone_offset'] = value
-            note_label.set_note_data(data)
-
-    def on_note_changed(self, value):
-        """Note changed - update selected note"""
-        if self.selected_note_index is not None:
-            note_label = self.note_labels[self.selected_note_index]
-            data = note_label.get_note_data()
-            data['note_index'] = value
-            note_label.set_note_data(data)
-
-    def on_octave_changed(self, value):
-        """Octave changed - update selected note"""
-        if self.selected_note_index is not None:
-            note_label = self.note_labels[self.selected_note_index]
-            data = note_label.get_note_data()
-            data['octave_offset'] = value
-            note_label.set_note_data(data)
-
-    def remove_selected_note(self):
-        """Remove the currently selected note"""
-        if self.selected_note_index is not None and self.selected_note_index < len(self.note_labels):
-            note_label = self.note_labels[self.selected_note_index]
-            self.note_labels.remove(note_label)
-            self.notes_layout.removeWidget(note_label)
-            note_label.deleteLater()
-
-            # Renumber remaining notes
-            for i, label in enumerate(self.note_labels):
-                label.note_num = i
-                label.update_label()
-
-            # Clear selection
-            self.selected_note_index = None
-            self.editor_panel.setVisible(False)
-
-            # Update button state
-            self.btn_add_note.setEnabled(len(self.note_labels) < 8)
+        # Update button state
+        self.btn_add_note.setEnabled(len(self.note_containers) < 8)
 
     def get_step_data(self):
         """Return step data as list of note dicts"""
         notes = []
-        for label in self.note_labels:
-            notes.append(label.get_note_data())
+        for container in self.note_containers:
+            notes.append(container.get_note_data())
         return notes
 
     def set_step_data(self, notes_data):
         """Load step data from list of note dicts"""
         # Clear existing notes
-        for label in self.note_labels[:]:
-            self.notes_layout.removeWidget(label)
-            label.deleteLater()
-        self.note_labels.clear()
-        self.selected_note_index = None
-        self.editor_panel.setVisible(False)
+        for container in self.note_containers[:]:
+            self.remove_note(container)
 
         # Add notes from data
         for note_data in notes_data:
             self.add_note()
-            if self.note_labels:
-                self.note_labels[-1].set_note_data(note_data)
-                self.note_labels[-1].set_selected(False)  # Deselect after loading
+            if self.note_containers:
+                self.note_containers[-1].set_note_data(note_data)
 
 
 class Arpeggiator(BasicEditor):
