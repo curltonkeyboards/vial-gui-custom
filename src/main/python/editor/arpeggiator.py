@@ -35,7 +35,7 @@ class GridCell(QFrame):
         self.velocity = 127  # Default velocity (displayed as 127)
         self.octave = 0  # For arpeggiator only
 
-        self.setFixedSize(40, 40)
+        self.setFixedSize(20, 20)
         self.setFrameStyle(QFrame.Box)
         self.setLineWidth(1)
 
@@ -62,6 +62,9 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
+        # Check if this is a root note cell in arpeggiator (row 12)
+        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.row == 12
+
         if self.active:
             # Get theme highlight color
             palette = self.palette()
@@ -85,10 +88,15 @@ class GridCell(QFrame):
                 b = int(highlight.blue() * (0.3 + 0.7 * intensity))
                 color = QColor(r, g, b)
 
-            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: 1px solid #666;")
+            # Add white border for root note
+            border_color = "white" if is_root_note else "#666"
+            border_width = 2 if is_root_note else 1
+            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: {border_width}px solid {border_color};")
         else:
-            # Inactive state - dark gray
-            self.setStyleSheet("background-color: #2a2a2a; border: 1px solid #555;")
+            # Inactive state - dark gray, with white border for root note
+            border_color = "white" if is_root_note else "#555"
+            border_width = 2 if is_root_note else 1
+            self.setStyleSheet(f"background-color: #2a2a2a; border: {border_width}px solid {border_color};")
 
     def mousePressEvent(self, event):
         """Handle mouse clicks"""
@@ -183,6 +191,7 @@ class BasicStepSequencerGrid(QWidget):
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.grid_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.grid_container.setLayout(self.grid_layout)
 
         scroll.setWidget(self.grid_container)
@@ -212,6 +221,18 @@ class BasicStepSequencerGrid(QWidget):
         # Create header row (step numbers)
         self.rebuild_header()
 
+        # Add 4 default rows
+        default_notes = [
+            ('C', 4),
+            ('D', 4),
+            ('E', 4),
+            ('F', 4)
+        ]
+        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        for note_name, octave in default_notes:
+            note_index = note_names.index(note_name)
+            self._create_row(note_index, octave)
+
     def rebuild_header(self):
         """Rebuild the header row with step numbers"""
         # Clear first row
@@ -220,8 +241,10 @@ class BasicStepSequencerGrid(QWidget):
             if item and item.widget():
                 item.widget().deleteLater()
 
-        # Add empty space for note column
-        self.grid_layout.addWidget(QLabel(""), 0, 0)
+        # Add label for note column
+        note_header = QLabel("Note")
+        note_header.setStyleSheet("font-weight: bold; padding-right: 5px;")
+        self.grid_layout.addWidget(note_header, 0, 0)
 
         # Add step numbers
         for step in range(self.num_steps):
@@ -255,23 +278,9 @@ class BasicStepSequencerGrid(QWidget):
         self.rebuild_header()
         self.dataChanged.emit()
 
-    def add_note_row(self):
-        """Add a new note row"""
-        if len(self.rows) >= 128:  # MAX_PRESET_NOTES
-            QMessageBox.warning(self, "Maximum Rows", "Maximum 128 note rows reached")
-            return
-
-        # Ask user to select note and octave
+    def _create_row(self, note_index, octave):
+        """Internal method to create a row with given note and octave"""
         note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        note, ok1 = QInputDialog.getItem(self, "Select Note", "Choose note:", note_names, 0, False)
-        if not ok1:
-            return
-
-        octave, ok2 = QInputDialog.getInt(self, "Select Octave", "Choose octave:", 4, 0, 7, 1)
-        if not ok2:
-            return
-
-        note_index = note_names.index(note)
 
         # Create row
         row_idx = len(self.rows)
@@ -287,10 +296,11 @@ class BasicStepSequencerGrid(QWidget):
         note_layout.setContentsMargins(0, 0, 0, 0)
         note_layout.setSpacing(2)
 
-        # Note label
-        note_label = QLabel(f"{note_names[note_index]}{octave}")
-        note_label.setStyleSheet("font-weight: bold; min-width: 40px;")
-        note_label.setAlignment(Qt.AlignCenter)
+        # Note label - clickable
+        note_label = QPushButton(f"{note_names[note_index]}{octave}")
+        note_label.setStyleSheet("font-weight: bold; min-width: 50px; text-align: center; border: none; background: transparent;")
+        note_label.setCursor(Qt.PointingHandCursor)
+        note_label.clicked.connect(lambda: self.edit_note_row(row_idx))
         note_layout.addWidget(note_label)
 
         # Delete button
@@ -312,6 +322,58 @@ class BasicStepSequencerGrid(QWidget):
             self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
 
         self.rows.append(row_data)
+
+    def add_note_row(self):
+        """Add a new note row"""
+        if len(self.rows) >= 128:  # MAX_PRESET_NOTES
+            QMessageBox.warning(self, "Maximum Rows", "Maximum 128 note rows reached")
+            return
+
+        # Ask user to select note and octave
+        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        note, ok1 = QInputDialog.getItem(self, "Select Note", "Choose note:", note_names, 0, False)
+        if not ok1:
+            return
+
+        octave, ok2 = QInputDialog.getInt(self, "Select Octave", "Choose octave:", 4, 0, 7, 1)
+        if not ok2:
+            return
+
+        note_index = note_names.index(note)
+        self._create_row(note_index, octave)
+        self.dataChanged.emit()
+
+    def edit_note_row(self, row_idx):
+        """Edit an existing note row"""
+        if row_idx >= len(self.rows):
+            return
+
+        row_data = self.rows[row_idx]
+        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+        # Ask user to select new note and octave
+        current_note = note_names[row_data['note']]
+        note, ok1 = QInputDialog.getItem(self, "Edit Note", "Choose note:", note_names, note_names.index(current_note), False)
+        if not ok1:
+            return
+
+        octave, ok2 = QInputDialog.getInt(self, "Edit Octave", "Choose octave:", row_data['octave'], 0, 7, 1)
+        if not ok2:
+            return
+
+        # Update row data
+        row_data['note'] = note_names.index(note)
+        row_data['octave'] = octave
+
+        # Update label
+        item = self.grid_layout.itemAtPosition(row_idx + 1, 0)
+        if item and item.widget():
+            widget = item.widget()
+            # Find the button (first child)
+            note_button = widget.findChild(QPushButton)
+            if note_button and note_button.text() != "X":  # Make sure it's not the delete button
+                note_button.setText(f"{note}{octave}")
+
         self.dataChanged.emit()
 
     def delete_note_row(self, row_idx):
@@ -368,9 +430,11 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.setContentsMargins(0, 0, 0, 0)
             note_layout.setSpacing(2)
 
-            note_label = QLabel(f"{note_names[row_data['note']]}{row_data['octave']}")
-            note_label.setStyleSheet("font-weight: bold; min-width: 40px;")
-            note_label.setAlignment(Qt.AlignCenter)
+            # Note label - clickable
+            note_label = QPushButton(f"{note_names[row_data['note']]}{row_data['octave']}")
+            note_label.setStyleSheet("font-weight: bold; min-width: 50px; text-align: center; border: none; background: transparent;")
+            note_label.setCursor(Qt.PointingHandCursor)
+            note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
             note_layout.addWidget(note_label)
 
             delete_btn = QPushButton("X")
@@ -479,9 +543,11 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.setContentsMargins(0, 0, 0, 0)
             note_layout.setSpacing(2)
 
-            note_label = QLabel(f"{note_names[note_idx]}{octave}")
-            note_label.setStyleSheet("font-weight: bold; min-width: 40px;")
-            note_label.setAlignment(Qt.AlignCenter)
+            # Note label - clickable
+            note_label = QPushButton(f"{note_names[note_idx]}{octave}")
+            note_label.setStyleSheet("font-weight: bold; min-width: 50px; text-align: center; border: none; background: transparent;")
+            note_label.setCursor(Qt.PointingHandCursor)
+            note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
             note_layout.addWidget(note_label)
 
             delete_btn = QPushButton("X")
@@ -537,6 +603,7 @@ class BasicArpeggiatorGrid(QWidget):
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.grid_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.grid_container.setLayout(self.grid_layout)
 
         scroll.setWidget(self.grid_container)
@@ -584,19 +651,14 @@ class BasicArpeggiatorGrid(QWidget):
             interval = 12 - row  # Row 0 = +12, row 12 = 0, row 24 = -12
 
             # Interval label
-            if interval == 0:
-                lbl_text = "0 (Root)"
-                lbl_style = "font-weight: bold; color: #00ff00; min-width: 60px;"
-            elif interval > 0:
+            if interval > 0:
                 lbl_text = f"+{interval}"
-                lbl_style = "min-width: 60px;"
             else:
                 lbl_text = str(interval)
-                lbl_style = "min-width: 60px;"
 
             lbl = QLabel(lbl_text)
-            lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet(lbl_style)
+            lbl.setAlignment(Qt.AlignRight)
+            lbl.setStyleSheet("min-width: 30px; padding-right: 5px;")
             self.grid_layout.addWidget(lbl, row + 1, 0)
 
             # Create cells for this row
@@ -1795,25 +1857,54 @@ class Arpeggiator(BasicEditor):
         # Gather current data from advanced view
         self.gather_preset_data()
 
-        # Calculate number of steps from pattern rate
+        # Convert from Advanced format (list of step lists) to Basic format (flat list)
+        flat_notes = []
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
         rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+
+        steps = self.preset_data.get('steps', [])
+        for step_idx, step_notes in enumerate(steps):
+            if isinstance(step_notes, list):
+                for note in step_notes:
+                    if isinstance(note, dict):
+                        # Add timing information
+                        note_copy = note.copy()
+                        note_copy['timing_64ths'] = step_idx * rate_64ths
+                        flat_notes.append(note_copy)
+
         num_steps = self.spin_num_steps.value()
 
         # Set grid data
-        self.basic_grid.set_grid_data(self.preset_data.get('steps', []), num_steps)
+        self.basic_grid.set_grid_data(flat_notes, num_steps)
 
     def sync_basic_to_advanced(self):
         """Sync data from Basic grid to Advanced view"""
-        # Get grid data
+        # Get grid data (flat list with timing)
         grid_data = self.basic_grid.get_grid_data()
 
+        # Convert from Basic format (flat list) to Advanced format (list of step lists)
+        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        num_steps = self.basic_grid.num_steps
+
+        # Create empty steps
+        step_lists = [[] for _ in range(num_steps)]
+
+        # Distribute notes into steps based on timing
+        for note in grid_data:
+            timing = note.get('timing_64ths', 0)
+            step_idx = timing // rate_64ths
+
+            if step_idx < num_steps:
+                # Remove timing info for Advanced format
+                note_copy = {k: v for k, v in note.items() if k != 'timing_64ths'}
+                step_lists[step_idx].append(note_copy)
+
         # Update preset_data
-        self.preset_data['steps'] = grid_data
+        self.preset_data['steps'] = step_lists
         self.preset_data['note_count'] = len(grid_data)
 
         # Update number of steps
-        num_steps = self.basic_grid.num_steps
         if self.spin_num_steps.value() != num_steps:
             self.spin_num_steps.setValue(num_steps)
 
