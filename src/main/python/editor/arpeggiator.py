@@ -2211,9 +2211,16 @@ class Arpeggiator(BasicEditor):
         self.update_status(f"Rebuilt sequencer with {step_count} steps")
 
     def on_pattern_rate_changed(self, index):
-        """Pattern rate changed - update pattern length display"""
+        """Pattern rate changed - update pattern length display and preset data"""
         rate_text = self.combo_pattern_rate.currentText()
         self.update_pattern_length_display()
+
+        # Update preset_data to keep pattern_length_64ths in sync
+        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        num_steps = self.spin_num_steps.value()
+        self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
+
         self.update_status(f"Pattern rate changed to {rate_text}")
 
     def on_num_steps_changed(self, value):
@@ -2222,6 +2229,11 @@ class Arpeggiator(BasicEditor):
         # Also update basic grid's num_steps when changed from preset container
         if hasattr(self, 'basic_grid') and self.basic_grid.num_steps != value:
             self.basic_grid.on_steps_changed(value)
+
+        # Update preset_data to keep pattern_length_64ths in sync
+        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        self.preset_data['pattern_length_64ths'] = rate_64ths * value
 
     def on_default_velocity_changed(self, value):
         """Default velocity changed - update basic grid"""
@@ -2349,9 +2361,10 @@ class Arpeggiator(BasicEditor):
         # Convert step positions to timing for storage
         notes_with_timing = self._convert_steps_to_timing(grid_data, rate_64ths)
 
-        # Update preset_data with notes (now with timing)
+        # Update preset_data with notes (now with timing) AND pattern_length_64ths
         self.preset_data['steps'] = notes_with_timing
         self.preset_data['note_count'] = len(notes_with_timing)
+        self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
 
         # Rebuild advanced view using apply_preset_data (which handles conversion)
         self.apply_preset_data()
