@@ -2366,6 +2366,11 @@ class Arpeggiator(BasicEditor):
         self.preset_data['steps'] = complete_steps
         self.preset_data['note_count'] = len(complete_steps)
 
+        # CRITICAL: Update pattern_length and gate from preset container before applying
+        # These are the authoritative source and must be synced to preset_data
+        self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
+        self.preset_data['gate_length_percent'] = self.spin_gate.value()
+
         # Rebuild advanced view using apply_preset_data (which handles conversion)
         self.apply_preset_data()
 
