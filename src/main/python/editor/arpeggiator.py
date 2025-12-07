@@ -2371,8 +2371,10 @@ class Arpeggiator(BasicEditor):
         self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
 
-        # Rebuild advanced view using apply_preset_data (which handles conversion)
-        self.apply_preset_data()
+        # Rebuild advanced view using apply_preset_data
+        # Use recalculate_from_pattern_length=False to preserve existing num_steps and rate
+        # (we already have the correct values from the UI controls)
+        self.apply_preset_data(recalculate_from_pattern_length=False)
 
     def reset_all_steps(self):
         """Reset all steps to empty (with confirmation)"""
@@ -2469,8 +2471,14 @@ class Arpeggiator(BasicEditor):
         # Return all notes - there are no empty placeholders to filter
         return self.preset_data.get('steps', [])
 
-    def apply_preset_data(self):
-        """Apply preset_data to UI - convert flat note list to step-based structure"""
+    def apply_preset_data(self, recalculate_from_pattern_length=True):
+        """Apply preset_data to UI - convert flat note list to step-based structure
+
+        Args:
+            recalculate_from_pattern_length: If True, recalculate num_steps and rate from
+                pattern_length_64ths (used when loading from device/clipboard).
+                If False, use existing UI values (used when syncing from Basic to Advanced).
+        """
         self.spin_gate.setValue(self.preset_data.get('gate_length_percent', 80))
 
         # Convert flat note list back to step-based structure
@@ -2484,19 +2492,23 @@ class Arpeggiator(BasicEditor):
 
         # Determine number of steps from pattern length and rate
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
-        pattern_length = self.preset_data.get('pattern_length_64ths', 64)
 
-        # Find rate that matches the pattern
-        for rate_index, rate_64ths in rate_map.items():
-            num_steps = pattern_length // rate_64ths
-            if pattern_length % rate_64ths == 0 and 1 <= num_steps <= 128:
-                self.combo_pattern_rate.setCurrentIndex(rate_index)
-                self.spin_num_steps.setValue(num_steps)
-                break
-        else:
-            # Fallback: use 1/16 notes
-            self.combo_pattern_rate.setCurrentIndex(2)
-            self.spin_num_steps.setValue(max(1, min(128, pattern_length // 16)))
+        if recalculate_from_pattern_length:
+            # Recalculate num_steps and rate from pattern_length_64ths
+            # (used when loading preset from device or clipboard)
+            pattern_length = self.preset_data.get('pattern_length_64ths', 64)
+
+            # Find rate that matches the pattern
+            for rate_index, rate_64ths in rate_map.items():
+                num_steps = pattern_length // rate_64ths
+                if pattern_length % rate_64ths == 0 and 1 <= num_steps <= 128:
+                    self.combo_pattern_rate.setCurrentIndex(rate_index)
+                    self.spin_num_steps.setValue(num_steps)
+                    break
+            else:
+                # Fallback: use 1/16 notes
+                self.combo_pattern_rate.setCurrentIndex(2)
+                self.spin_num_steps.setValue(max(1, min(128, pattern_length // 16)))
 
         # Rebuild steps and populate with notes
         self.rebuild_steps()
