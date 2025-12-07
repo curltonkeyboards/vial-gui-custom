@@ -2009,6 +2009,13 @@ class Arpeggiator(BasicEditor):
         # Set default tab to Basic (index 0)
         self.tabs.setCurrentIndex(0)
 
+        # Initialize step count from spin box to ensure basic grid is in sync
+        initial_steps = self.spin_num_steps.value()
+        self.basic_grid.on_steps_changed(initial_steps)
+
+        # Initialize preset_data with current grid state (empty but with correct step count)
+        self.on_basic_grid_changed()
+
     def rebuild_steps(self):
         """Rebuild step widgets based on step count - preserve existing data"""
         # Save existing step data before clearing
