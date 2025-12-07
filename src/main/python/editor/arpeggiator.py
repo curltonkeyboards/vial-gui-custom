@@ -901,8 +901,12 @@ class BasicArpeggiatorGrid(QWidget):
             cell.set_active(True, velocity, octave)
             self.dataChanged.emit()
 
-    def get_grid_data(self):
-        """Get grid data as list of notes with timing"""
+    def get_grid_data(self, rate_64ths=16):
+        """Get grid data as list of notes with timing
+
+        Args:
+            rate_64ths: Timing in 64th notes per step (default 16 = 1/16 notes)
+        """
         notes = []
 
         for row_idx, row_cells in enumerate(self.cells):
@@ -910,8 +914,8 @@ class BasicArpeggiatorGrid(QWidget):
 
             for step, cell in enumerate(row_cells):
                 if cell.active:
-                    # Calculate timing (in 64ths based on step size)
-                    timing_64ths = step * 16
+                    # Calculate timing based on actual rate
+                    timing_64ths = step * rate_64ths
 
                     notes.append({
                         'timing_64ths': timing_64ths,
