@@ -2187,6 +2187,13 @@ class Arpeggiator(BasicEditor):
         # Initialize preset_data with current grid state (empty but with correct step count)
         self.on_basic_grid_changed()
 
+        # Ensure preset_data pattern_length and gate are synced from preset container
+        # This is critical for correct first tab switch
+        rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
+        rate_64ths = rate_map.get(self.combo_pattern_rate.currentData(), 16)
+        self.preset_data['pattern_length_64ths'] = rate_64ths * self.spin_num_steps.value()
+        self.preset_data['gate_length_percent'] = self.spin_gate.value()
+
     def rebuild_steps(self):
         """Rebuild step widgets based on step count - preserve existing data"""
         # Save existing step data before clearing
@@ -2698,6 +2705,10 @@ class StepSequencer(Arpeggiator):
         self.basic_grid.dataChanged.connect(self.on_basic_grid_changed)
         self.tabs.insertTab(0, self.basic_grid, "Basic")
 
+        # Sync basic grid with the preset container's num_steps (which was set to 16 above)
+        num_steps = self.spin_num_steps.value()
+        self.basic_grid.on_steps_changed(num_steps)
+
         # Sync the default rows from Basic grid to preset_data
         # This prevents them from being cleared when setCurrentIndex triggers on_tab_changed
         rate_map = {0: 64, 1: 32, 2: 16, 3: 8, 4: 4}
@@ -2705,6 +2716,11 @@ class StepSequencer(Arpeggiator):
         grid_data = self.basic_grid.get_grid_data(rate_64ths)
         self.preset_data['steps'] = grid_data
         self.preset_data['note_count'] = len(grid_data)
+
+        # CRITICAL: Sync pattern_length and gate from preset container
+        # The parent setup_ui() set these for 8 steps, but we changed to 16 steps above
+        self.preset_data['pattern_length_64ths'] = rate_64ths * num_steps
+        self.preset_data['gate_length_percent'] = self.spin_gate.value()
 
         # Update group box title
         sequencer_group = self.findChild(QGroupBox, "")
