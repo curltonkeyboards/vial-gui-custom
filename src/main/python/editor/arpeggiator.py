@@ -73,8 +73,14 @@ class GridCell(QFrame):
         self.active = False
         self.velocity = 255  # Default velocity (max)
         self.octave = 0  # For arpeggiator only
+        self.in_scale = True  # Default to in-scale, updated by filter_rows_by_scale
 
-        self.setFixedSize(20, 20)
+        # Set size based on parent type (arpeggiator vs step sequencer)
+        if hasattr(parent, 'is_arpeggiator') and parent.is_arpeggiator:
+            self.setFixedSize(40, 15)  # Arpeggiator: 40w x 15h
+        else:
+            self.setFixedSize(20, 20)  # Step sequencer: default size
+
         self.setFrameStyle(QFrame.Box)
         self.setLineWidth(1)
 
@@ -119,8 +125,11 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
-        # Check if this is a root note cell in arpeggiator (row 12)
-        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.row == 12
+        # Check if this is a root note cell in arpeggiator (row 11 = interval 0)
+        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.row == 11  # Row 11 = interval 0
+
+        # Check if this cell is out of scale (for darkening)
+        out_of_scale = hasattr(self, 'in_scale') and not self.in_scale
 
         # Root note always gets white 2px border
         border_color = "white" if is_root_note else ("#666" if self.active else "#555")
@@ -149,10 +158,15 @@ class GridCell(QFrame):
                 b = int(highlight.blue() * (0.3 + 0.7 * intensity))
                 color = QColor(r, g, b)
 
+            # Darken if out of scale
+            if out_of_scale:
+                color = color.darker(300)  # Much darker
+
             self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: {border_width}px solid {border_color};")
         else:
             # Inactive state - dark gray
-            self.setStyleSheet(f"background-color: #2a2a2a; border: {border_width}px solid {border_color};")
+            bg_color = "#1a1a1a" if out_of_scale else "#2a2a2a"  # Much darker if out of scale
+            self.setStyleSheet(f"background-color: {bg_color}; border: {border_width}px solid {border_color};")
 
     def mousePressEvent(self, event):
         """Handle mouse clicks"""
@@ -254,17 +268,10 @@ class BasicStepSequencerGrid(QWidget):
         scroll.setWidget(self.grid_container)
         self.main_layout.addWidget(scroll, 1)
 
-        # Add Note button - positioned below the grid
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        self.btn_add_note = QPushButton("Add Note")
-        self.btn_add_note.setMaximumWidth(100)
-        self.btn_add_note.clicked.connect(self.add_note_row)
-        btn_layout.addWidget(self.btn_add_note)
-        btn_layout.addStretch()
-        self.main_layout.addLayout(btn_layout)
-
         self.setLayout(self.main_layout)
+
+        # Add Note button will be added as a row in the grid after default notes
+        self.add_note_button_row = None
 
         # Create header row (step numbers)
         self.rebuild_header()
@@ -280,6 +287,9 @@ class BasicStepSequencerGrid(QWidget):
         for note_name, octave in default_notes:
             note_index = note_names.index(note_name)
             self._create_row(note_index, octave)
+
+        # Add the "+ button" row at the end
+        self._create_add_note_button_row()
 
     def rebuild_header(self):
         """Rebuild the header row with step numbers"""
@@ -348,9 +358,12 @@ class BasicStepSequencerGrid(QWidget):
         note_layout.setContentsMargins(0, 0, 0, 0)
         note_layout.setSpacing(2)
 
-        # Note label - clickable
+        # Note label - clickable with theme highlight border
         note_label = QPushButton(f"{note_names[note_index]}{octave}")
-        note_label.setStyleSheet("font-weight: bold; min-width: 50px; text-align: center; border: none; background: transparent;")
+        palette = note_label.palette()
+        highlight = palette.color(QPalette.Highlight)
+        note_label.setStyleSheet(f"font-weight: bold; border: 2px solid {highlight.name()}; background: transparent;")
+        note_label.setFixedSize(50, 50)
         note_label.setCursor(Qt.PointingHandCursor)
         note_label.clicked.connect(lambda: self.edit_note_row(row_idx))
         note_layout.addWidget(note_label)
@@ -375,6 +388,36 @@ class BasicStepSequencerGrid(QWidget):
 
         self.rows.append(row_data)
 
+    def _create_add_note_button_row(self):
+        """Create the '+ button' row at the bottom of the note list"""
+        # Remove existing add note button row if it exists
+        if self.add_note_button_row is not None:
+            self.grid_layout.removeWidget(self.add_note_button_row)
+            self.add_note_button_row.deleteLater()
+            self.add_note_button_row = None
+
+        # Create add note button styled like a note button
+        row_idx = len(self.rows)  # Position after all current rows
+
+        add_note_widget = QWidget()
+        add_note_layout = QHBoxLayout()
+        add_note_layout.setContentsMargins(0, 0, 0, 0)
+        add_note_layout.setSpacing(2)
+
+        # Add note button with "+" and theme highlight border
+        add_note_btn = QPushButton("+")
+        palette = add_note_btn.palette()
+        highlight = palette.color(QPalette.Highlight)
+        add_note_btn.setStyleSheet(f"font-weight: bold; font-size: 20px; border: 2px solid {highlight.name()}; background: transparent;")
+        add_note_btn.setFixedSize(50, 50)
+        add_note_btn.setCursor(Qt.PointingHandCursor)
+        add_note_btn.clicked.connect(self.add_note_row)
+        add_note_layout.addWidget(add_note_btn)
+
+        add_note_widget.setLayout(add_note_layout)
+        self.grid_layout.addWidget(add_note_widget, row_idx + 1, 0)
+        self.add_note_button_row = add_note_widget
+
     def add_note_row(self):
         """Add a new note row"""
         if len(self.rows) >= 128:  # MAX_PRESET_NOTES
@@ -393,6 +436,7 @@ class BasicStepSequencerGrid(QWidget):
 
         note_index = note_names.index(note)
         self._create_row(note_index, octave)
+        self._create_add_note_button_row()  # Recreate add note button at new position
         self.dataChanged.emit()
 
     def edit_note_row(self, row_idx):
@@ -494,9 +538,12 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.setContentsMargins(0, 0, 0, 0)
             note_layout.setSpacing(2)
 
-            # Note label - clickable
+            # Note label - clickable with theme highlight border
             note_label = QPushButton(f"{note_names[row_data['note']]}{row_data['octave']}")
-            note_label.setStyleSheet("font-weight: bold; min-width: 50px; text-align: center; border: none; background: transparent;")
+            palette = note_label.palette()
+            highlight = palette.color(QPalette.Highlight)
+            note_label.setStyleSheet(f"font-weight: bold; border: 2px solid {highlight.name()}; background: transparent;")
+            note_label.setFixedSize(50, 50)
             note_label.setCursor(Qt.PointingHandCursor)
             note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
             note_layout.addWidget(note_label)
@@ -527,6 +574,9 @@ class BasicStepSequencerGrid(QWidget):
 
             # Replace old cells list with new cells
             row_data['cells'] = new_cells
+
+        # Recreate add note button row at the end
+        self._create_add_note_button_row()
 
     def on_cell_left_click(self, row, col):
         """Handle left click - toggle cell"""
@@ -793,7 +843,9 @@ class BasicArpeggiatorGrid(QWidget):
             interval = 11 - row  # Row 0 = +11, row 11 = 0, row 22 = -11
 
             # Interval label
-            if interval > 0:
+            if interval == 0:
+                lbl_text = "Base Note"
+            elif interval > 0:
                 lbl_text = f"+{interval}"
             else:
                 lbl_text = str(interval)
@@ -958,7 +1010,7 @@ class BasicArpeggiatorGrid(QWidget):
                 cell.set_active(True, velocity, octave)
 
     def filter_rows_by_scale(self, allowed_intervals):
-        """Darken rows that aren't in the selected scale"""
+        """Darken rows that aren't in the selected scale (but keep them selectable)"""
         # allowed_intervals is a set of semitone offsets (-11 to +11)
         for row in range(23):
             interval = 11 - row  # Row 0 = +11, row 11 = 0, row 22 = -11
@@ -973,20 +1025,16 @@ class BasicArpeggiatorGrid(QWidget):
                 if in_scale:
                     label.setStyleSheet("min-width: 30px; padding-right: 5px;")
                 else:
-                    label.setStyleSheet("min-width: 30px; padding-right: 5px; color: #555;")
+                    # Much darker for out-of-scale intervals
+                    label.setStyleSheet("min-width: 30px; padding-right: 5px; color: #333;")
 
-            # Darken all cells in this row if not in scale
+            # Darken all cells in this row if not in scale (but keep them selectable)
             if row < len(self.cells):
                 for cell in self.cells[row]:
-                    if in_scale:
-                        cell.setEnabled(True)
-                        cell.setStyleSheet(cell.styleSheet().replace("opacity: 0.3;", ""))
-                    else:
-                        cell.setEnabled(False)
-                        # Apply darkening effect
-                        current_style = cell.styleSheet()
-                        if "opacity:" not in current_style:
-                            cell.setStyleSheet(current_style + " opacity: 0.3;")
+                    # Store the in_scale state on the cell
+                    cell.in_scale = in_scale
+                    # Force update the cell style to apply darkening
+                    cell.update_style()
 
     def on_scale_changed(self, scale_name):
         """Handle scale selection change"""
@@ -1414,9 +1462,17 @@ class CompactNoteLabel(QPushButton):
         self.selected.emit()
 
     def set_selected(self, selected):
-        """Set selection state"""
+        """Set selection state with visual border highlight"""
         self.is_selected = selected
         self.setChecked(selected)
+
+        # Apply theme highlight border when selected
+        if selected:
+            palette = self.palette()
+            highlight = palette.color(QPalette.Highlight)
+            self.setStyleSheet(f"QPushButton {{ border: 2px solid {highlight.name()}; }}")
+        else:
+            self.setStyleSheet("")
 
     def update_label(self):
         """Update label text based on note data"""
@@ -1504,8 +1560,13 @@ class StepWidget(QFrame):
         velocity_bar_container.setLayout(velocity_bar_layout)
         filled_layout.addWidget(velocity_bar_container)
 
-        # Note identifier (Arpeggiator only) 
-        if not self.is_step_sequencer:
+        # Note/Interval identifier label
+        if self.is_step_sequencer:
+            lbl_note = QLabel("Note")
+            lbl_note.setAlignment(Qt.AlignCenter)
+            lbl_note.setFont(QFont("Arial", 9, QFont.Bold))
+            filled_layout.addWidget(lbl_note)
+        else:
             lbl_interval = QLabel("Interval")
             lbl_interval.setAlignment(Qt.AlignCenter)
             lbl_interval.setFont(QFont("Arial", 9, QFont.Bold))
@@ -1535,16 +1596,7 @@ class StepWidget(QFrame):
         self.octave_selector.valueChanged.connect(self.on_octave_changed)
         filled_layout.addWidget(self.octave_selector)
 
-        # Add Note button
-        self.btn_add_note = QPushButton("Add Note")
-        self.btn_add_note.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
-        self.btn_add_note.clicked.connect(self.add_note)
-        filled_layout.addWidget(self.btn_add_note)
-
-        # Small spacer
-        filled_layout.addSpacing(8)
-
-        # Scroll area for note labels
+        # Scroll area for note labels (moved above Add Note button)
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1561,10 +1613,13 @@ class StepWidget(QFrame):
 
         filled_layout.addWidget(scroll_area, 1)
 
-        # Spacer to push Remove button to bottom
-        filled_layout.addStretch()
+        # Add Note button (below note list)
+        self.btn_add_note = QPushButton("Add Note")
+        self.btn_add_note.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
+        self.btn_add_note.clicked.connect(self.add_note)
+        filled_layout.addWidget(self.btn_add_note)
 
-        # Remove Note button at bottom
+        # Remove Note button (below Add Note, no spacer between)
         self.btn_remove = QPushButton("Remove Note")
         self.btn_remove.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
         self.btn_remove.clicked.connect(self.remove_selected_note)
