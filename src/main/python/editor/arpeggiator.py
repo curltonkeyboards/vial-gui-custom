@@ -2033,7 +2033,7 @@ class Arpeggiator(BasicEditor):
         params_layout.addWidget(lbl_mode, 0, 0)
         params_layout.addWidget(self.combo_mode, 0, 1)
 
-        # Pattern Rate (now a dropdown)
+        # Pattern Rate (now a dropdown with timing modes)
         lbl_pattern_rate = QLabel("Pattern Rate:")
         self.combo_pattern_rate = ArrowComboBox()
         self.combo_pattern_rate.setMinimumWidth(150)
@@ -2041,11 +2041,20 @@ class Arpeggiator(BasicEditor):
         self.combo_pattern_rate.setEditable(True)
         self.combo_pattern_rate.lineEdit().setReadOnly(True)
         self.combo_pattern_rate.lineEdit().setAlignment(Qt.AlignCenter)
-        self.combo_pattern_rate.addItem("1/4", 0)
-        self.combo_pattern_rate.addItem("1/8", 1)
-        self.combo_pattern_rate.addItem("1/16", 2)
-        self.combo_pattern_rate.setCurrentIndex(2)  # Default to 1/16
-        self.combo_pattern_rate.setToolTip("Note subdivision for steps")
+        # Data format: (note_value * 3) + timing_mode
+        # note_value: 0=quarter, 1=eighth, 2=sixteenth
+        # timing_mode: 0=straight, 1=triplet, 2=dotted
+        self.combo_pattern_rate.addItem("1/4", 0)       # Quarter Straight
+        self.combo_pattern_rate.addItem("1/4T", 1)      # Quarter Triplet
+        self.combo_pattern_rate.addItem("1/4.", 2)      # Quarter Dotted
+        self.combo_pattern_rate.addItem("1/8", 3)       # Eighth Straight
+        self.combo_pattern_rate.addItem("1/8T", 4)      # Eighth Triplet
+        self.combo_pattern_rate.addItem("1/8.", 5)      # Eighth Dotted
+        self.combo_pattern_rate.addItem("1/16", 6)      # Sixteenth Straight
+        self.combo_pattern_rate.addItem("1/16T", 7)     # Sixteenth Triplet
+        self.combo_pattern_rate.addItem("1/16.", 8)     # Sixteenth Dotted
+        self.combo_pattern_rate.setCurrentIndex(6)  # Default to 1/16 straight
+        self.combo_pattern_rate.setToolTip("Note subdivision and timing mode (T=triplet, .=dotted)")
         self.combo_pattern_rate.currentIndexChanged.connect(self.on_pattern_rate_changed)
         params_layout.addWidget(lbl_pattern_rate, 1, 0)
         params_layout.addWidget(self.combo_pattern_rate, 1, 1)
@@ -2241,11 +2250,25 @@ class Arpeggiator(BasicEditor):
             self.basic_grid.default_velocity = internal_value
             self.update_status(f"Default velocity changed to {value}")
 
+    def get_rate_and_timing_from_combo(self):
+        """Helper to extract rate_16ths, note_value, and timing_mode from combo box data.
+
+        Returns:
+            tuple: (rate_16ths, note_value, timing_mode)
+        """
+        data = self.combo_pattern_rate.currentData()
+        if data is None:
+            data = 6  # Default to 1/16 straight
+        note_value = data // 3  # 0=quarter, 1=eighth, 2=sixteenth
+        timing_mode = data % 3  # 0=straight, 1=triplet, 2=dotted
+        # Base rate: quarter=4, eighth=2, sixteenth=1
+        base_rate_map = {0: 4, 1: 2, 2: 1}
+        rate_16ths = base_rate_map.get(note_value, 1)
+        return (rate_16ths, note_value, timing_mode)
+
     def update_pattern_length_display(self):
         """Update the pattern length display in x/y format with halving logic"""
-        # Get rate_16ths from combo box value
-        rate_map = {0: 4, 1: 2, 2: 1}  # /4, /8, /16
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
 
         num_steps = self.spin_num_steps.value()
 
@@ -2294,9 +2317,8 @@ class Arpeggiator(BasicEditor):
 
     def on_basic_grid_changed(self):
         """Handle changes in basic grid - live update preset data"""
-        # Get current rate
-        rate_map = {0: 4, 1: 2, 2: 1}
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        # Get current rate and timing
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
 
         # Get grid data (flat list with timing) - ONLY returns active cells
         grid_data = self.basic_grid.get_grid_data(rate_16ths)
@@ -2329,9 +2351,8 @@ class Arpeggiator(BasicEditor):
         # Gather current data from advanced view
         self.gather_preset_data()
 
-        # Get current rate
-        rate_map = {0: 4, 1: 2, 2: 1}
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        # Get current rate and timing
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
 
         # preset_data['steps'] is already a flat list with timing_16ths
         # Just pass it directly to the basic grid
@@ -2343,9 +2364,8 @@ class Arpeggiator(BasicEditor):
 
     def sync_basic_to_advanced(self):
         """Sync data from Basic grid to Advanced view"""
-        # Calculate rate to determine timing for each step
-        rate_map = {0: 4, 1: 2, 2: 1}
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        # Calculate rate and timing to determine timing for each step
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
 
         # Get grid data (flat list with timing) - ONLY returns active cells
         grid_data = self.basic_grid.get_grid_data(rate_16ths)
@@ -2410,12 +2430,13 @@ class Arpeggiator(BasicEditor):
     def gather_preset_data(self):
         """Gather current UI state into preset_data dict - preserves ALL notes including empty ones"""
         # Calculate pattern length from rate × steps
-        rate_map = {0: 4, 1: 2, 2: 1}  # /4, /8, /16
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
         num_steps = self.spin_num_steps.value()
         self.preset_data['pattern_length_16ths'] = rate_16ths * num_steps
         self.preset_data['gate_length_percent'] = self.spin_gate.value()
         self.preset_data['preset_type'] = 0  # PRESET_TYPE_ARPEGGIATOR
+        self.preset_data['timing_mode'] = timing_mode  # 0=straight, 1=triplet, 2=dotted
+        self.preset_data['note_value'] = note_value    # 0=quarter, 1=eighth, 2=sixteenth
 
         # Gather notes from all steps
         # Each step can have multiple notes, all at the same timing
@@ -2488,31 +2509,36 @@ class Arpeggiator(BasicEditor):
                 notes_by_timing[timing] = []
             notes_by_timing[timing].append(note)
 
-        # Determine number of steps from pattern length and rate
-        rate_map = {0: 4, 1: 2, 2: 1}
-
+        # Determine number of steps from pattern length, rate, timing mode, and note value
         if recalculate_from_pattern_length:
             # Recalculate num_steps and rate from pattern_length_16ths
             # (used when loading preset from device or clipboard)
             pattern_length = self.preset_data.get('pattern_length_16ths', 16)
+            timing_mode = self.preset_data.get('timing_mode', 0)  # 0=straight
+            note_value = self.preset_data.get('note_value', 2)    # 2=sixteenth
 
-            # Find rate that matches the pattern
-            for rate_index, rate_16ths in rate_map.items():
-                num_steps = pattern_length // rate_16ths
-                if pattern_length % rate_16ths == 0 and 1 <= num_steps <= 128:
-                    self.combo_pattern_rate.setCurrentIndex(rate_index)
-                    self.spin_num_steps.setValue(num_steps)
-                    break
+            # Calculate combo data: (note_value * 3) + timing_mode
+            combo_data = (note_value * 3) + timing_mode
+
+            # Base rate: quarter=4, eighth=2, sixteenth=1
+            base_rate_map = {0: 4, 1: 2, 2: 1}
+            rate_16ths = base_rate_map.get(note_value, 1)
+
+            # Calculate num_steps
+            num_steps = pattern_length // rate_16ths
+            if pattern_length % rate_16ths == 0 and 1 <= num_steps <= 128:
+                self.combo_pattern_rate.setCurrentIndex(combo_data)
+                self.spin_num_steps.setValue(num_steps)
             else:
-                # Fallback: use 1/16 notes
-                self.combo_pattern_rate.setCurrentIndex(2)
-                self.spin_num_steps.setValue(max(1, min(128, pattern_length // 16)))
+                # Fallback: use 1/16 notes straight
+                self.combo_pattern_rate.setCurrentIndex(6)  # 1/16 straight
+                self.spin_num_steps.setValue(max(1, min(128, pattern_length)))
 
         # Rebuild steps and populate with notes
         self.rebuild_steps()
 
         # Populate steps with notes
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
         for i, widget in enumerate(self.step_widgets):
             step_timing = i * rate_16ths
             step_notes = notes_by_timing.get(step_timing, [])
@@ -2710,8 +2736,7 @@ class StepSequencer(Arpeggiator):
 
         # Sync the default rows from Basic grid to preset_data
         # This prevents them from being cleared when setCurrentIndex triggers on_tab_changed
-        rate_map = {0: 4, 1: 2, 2: 1}
-        rate_16ths = rate_map.get(self.combo_pattern_rate.currentData(), 1)
+        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
         grid_data = self.basic_grid.get_grid_data(rate_16ths)
         self.preset_data['steps'] = grid_data
         self.preset_data['note_count'] = len(grid_data)
