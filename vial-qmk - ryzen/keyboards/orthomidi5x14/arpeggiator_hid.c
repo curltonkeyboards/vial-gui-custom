@@ -153,8 +153,8 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // Copy preset name (16 bytes)
             memcpy(&params[1], preset->name, ARP_PRESET_NAME_LENGTH);
             params[17] = preset->note_count;
-            params[18] = (preset->pattern_length_64ths >> 8) & 0xFF;
-            params[19] = preset->pattern_length_64ths & 0xFF;
+            params[18] = (preset->pattern_length_16ths >> 8) & 0xFF;
+            params[19] = preset->pattern_length_16ths & 0xFF;
             params[20] = preset->gate_length_percent;
 
             params[0] = 0;  // Success
@@ -168,7 +168,7 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // params[0] = preset_id
             // params[1-16] = name
             // params[17] = note_count
-            // params[18-19] = pattern_length_64ths
+            // params[18-19] = pattern_length_16ths
             // params[20] = gate_length_percent
             uint8_t preset_id = params[0];
 
@@ -188,7 +188,7 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // Set basic preset info
             memcpy(preset->name, &params[1], ARP_PRESET_NAME_LENGTH);
             preset->note_count = params[17];
-            preset->pattern_length_64ths = (params[18] << 8) | params[19];
+            preset->pattern_length_16ths = (params[18] << 8) | params[19];
             preset->gate_length_percent = params[20];
             preset->magic = ARP_PRESET_MAGIC;
 

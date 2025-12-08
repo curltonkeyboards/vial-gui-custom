@@ -25,7 +25,7 @@ arp_state_t arp_state = {
     .mode = ARP_MODE_SINGLE_NOTE,
     .current_preset_id = 0,
     .next_note_time = 0,
-    .current_position_64ths = 0,
+    .current_position_16ths = 0,
     .current_note_in_chord = 0,
     .subdivision_override = 0,
     .master_gate_override = 0,
@@ -125,31 +125,31 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[0].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[0].note_count = 4;
-    arp_presets[0].pattern_length_64ths = 64;  // 1 bar
+    arp_presets[0].pattern_length_16ths = 16;  // 1 bar
     arp_presets[0].gate_length_percent = 80;   // 80% gate
     strncpy(arp_presets[0].name, "Up 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[0].magic = ARP_PRESET_MAGIC;
 
     // Step 1: Note 0 at beat 0
-    arp_presets[0].notes[0].timing_64ths = 0;
+    arp_presets[0].notes[0].timing_16ths = 0;
     arp_presets[0].notes[0].note_index = 0;
     arp_presets[0].notes[0].octave_offset = 0;
     arp_presets[0].notes[0].raw_travel = 200;
 
-    // Step 2: Note 1 at beat 1 (16th note = 16/64ths)
-    arp_presets[0].notes[1].timing_64ths = 16;
+    // Step 2: Note 1 at beat 1 (4 16ths per beat)
+    arp_presets[0].notes[1].timing_16ths = 4;
     arp_presets[0].notes[1].note_index = 1;
     arp_presets[0].notes[1].octave_offset = 0;
     arp_presets[0].notes[1].raw_travel = 200;
 
     // Step 3: Note 2 at beat 2
-    arp_presets[0].notes[2].timing_64ths = 32;
+    arp_presets[0].notes[2].timing_16ths = 8;
     arp_presets[0].notes[2].note_index = 2;
     arp_presets[0].notes[2].octave_offset = 0;
     arp_presets[0].notes[2].raw_travel = 200;
 
     // Step 4: Note 3 at beat 3
-    arp_presets[0].notes[3].timing_64ths = 48;
+    arp_presets[0].notes[3].timing_16ths = 12;
     arp_presets[0].notes[3].note_index = 3;
     arp_presets[0].notes[3].octave_offset = 0;
     arp_presets[0].notes[3].raw_travel = 200;
@@ -159,28 +159,28 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[1].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[1].note_count = 4;
-    arp_presets[1].pattern_length_64ths = 64;
+    arp_presets[1].pattern_length_16ths = 16;
     arp_presets[1].gate_length_percent = 80;
     strncpy(arp_presets[1].name, "Down 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[1].magic = ARP_PRESET_MAGIC;
 
     // Descending: 3, 2, 1, 0
-    arp_presets[1].notes[0].timing_64ths = 0;
+    arp_presets[1].notes[0].timing_16ths = 0;
     arp_presets[1].notes[0].note_index = 3;
     arp_presets[1].notes[0].octave_offset = 0;
     arp_presets[1].notes[0].raw_travel = 200;
 
-    arp_presets[1].notes[1].timing_64ths = 16;
+    arp_presets[1].notes[1].timing_16ths = 4;
     arp_presets[1].notes[1].note_index = 2;
     arp_presets[1].notes[1].octave_offset = 0;
     arp_presets[1].notes[1].raw_travel = 200;
 
-    arp_presets[1].notes[2].timing_64ths = 32;
+    arp_presets[1].notes[2].timing_16ths = 8;
     arp_presets[1].notes[2].note_index = 1;
     arp_presets[1].notes[2].octave_offset = 0;
     arp_presets[1].notes[2].raw_travel = 200;
 
-    arp_presets[1].notes[3].timing_64ths = 48;
+    arp_presets[1].notes[3].timing_16ths = 12;
     arp_presets[1].notes[3].note_index = 0;
     arp_presets[1].notes[3].octave_offset = 0;
     arp_presets[1].notes[3].raw_travel = 200;
@@ -190,39 +190,39 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[2].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[2].note_count = 6;
-    arp_presets[2].pattern_length_64ths = 96;  // 1.5 bars for up-down pattern
+    arp_presets[2].pattern_length_16ths = 24;  // 1.5 bars for up-down pattern
     arp_presets[2].gate_length_percent = 80;
     strncpy(arp_presets[2].name, "Up-Down 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[2].magic = ARP_PRESET_MAGIC;
 
     // Up: 0, 1, 2, 3
-    arp_presets[2].notes[0].timing_64ths = 0;
+    arp_presets[2].notes[0].timing_16ths = 0;
     arp_presets[2].notes[0].note_index = 0;
     arp_presets[2].notes[0].octave_offset = 0;
     arp_presets[2].notes[0].raw_travel = 200;
 
-    arp_presets[2].notes[1].timing_64ths = 16;
+    arp_presets[2].notes[1].timing_16ths = 4;
     arp_presets[2].notes[1].note_index = 1;
     arp_presets[2].notes[1].octave_offset = 0;
     arp_presets[2].notes[1].raw_travel = 200;
 
-    arp_presets[2].notes[2].timing_64ths = 32;
+    arp_presets[2].notes[2].timing_16ths = 8;
     arp_presets[2].notes[2].note_index = 2;
     arp_presets[2].notes[2].octave_offset = 0;
     arp_presets[2].notes[2].raw_travel = 200;
 
-    arp_presets[2].notes[3].timing_64ths = 48;
+    arp_presets[2].notes[3].timing_16ths = 12;
     arp_presets[2].notes[3].note_index = 3;
     arp_presets[2].notes[3].octave_offset = 0;
     arp_presets[2].notes[3].raw_travel = 200;
 
     // Down: 2, 1 (exclusive - don't repeat 3 and 0)
-    arp_presets[2].notes[4].timing_64ths = 64;
+    arp_presets[2].notes[4].timing_16ths = 16;
     arp_presets[2].notes[4].note_index = 2;
     arp_presets[2].notes[4].octave_offset = 0;
     arp_presets[2].notes[4].raw_travel = 200;
 
-    arp_presets[2].notes[5].timing_64ths = 80;
+    arp_presets[2].notes[5].timing_16ths = 20;
     arp_presets[2].notes[5].note_index = 1;
     arp_presets[2].notes[5].octave_offset = 0;
     arp_presets[2].notes[5].raw_travel = 200;
@@ -232,15 +232,15 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[3].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[3].note_count = 4;
-    arp_presets[3].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[3].pattern_length_16ths = 32;  // 2 bars
     arp_presets[3].gate_length_percent = 75;
     strncpy(arp_presets[3].name, "Random 8ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[3].magic = ARP_PRESET_MAGIC;
 
     // Random pattern (will be randomized at runtime, but set defaults)
-    // 8th notes = 32/64ths apart
+    // 8th notes = 2 16ths apart
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[3].notes[i].timing_64ths = i * 32;
+        arp_presets[3].notes[i].timing_16ths = i * 8;
         arp_presets[3].notes[i].note_index = 0;  // Will be randomized
         arp_presets[3].notes[i].octave_offset = 0;
         arp_presets[3].notes[i].raw_travel = 180;
@@ -251,21 +251,21 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[4].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[4].note_count = 8;
-    arp_presets[4].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[4].pattern_length_16ths = 32;  // 2 bars
     arp_presets[4].gate_length_percent = 80;
     strncpy(arp_presets[4].name, "Up 2 Oct", ARP_PRESET_NAME_LENGTH);
     arp_presets[4].magic = ARP_PRESET_MAGIC;
 
     // First octave
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[4].notes[i].timing_64ths = i * 16;
+        arp_presets[4].notes[i].timing_16ths = i * 4;
         arp_presets[4].notes[i].note_index = i;
         arp_presets[4].notes[i].octave_offset = 0;
         arp_presets[4].notes[i].raw_travel = 200;
     }
     // Second octave (+12 semitones)
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[4].notes[i + 4].timing_64ths = (i + 4) * 16;
+        arp_presets[4].notes[i + 4].timing_16ths = (i + 4) * 4;
         arp_presets[4].notes[i + 4].note_index = i;
         arp_presets[4].notes[i + 4].octave_offset = 12;
         arp_presets[4].notes[i + 4].raw_travel = 200;
@@ -276,21 +276,21 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[5].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[5].note_count = 8;
-    arp_presets[5].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[5].pattern_length_16ths = 32;  // 2 bars
     arp_presets[5].gate_length_percent = 80;
     strncpy(arp_presets[5].name, "Down 2 Oct", ARP_PRESET_NAME_LENGTH);
     arp_presets[5].magic = ARP_PRESET_MAGIC;
 
     // Start from high octave
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[5].notes[i].timing_64ths = i * 16;
+        arp_presets[5].notes[i].timing_16ths = i * 4;
         arp_presets[5].notes[i].note_index = 3 - i;
         arp_presets[5].notes[i].octave_offset = 12;
         arp_presets[5].notes[i].raw_travel = 200;
     }
     // Then base octave
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[5].notes[i + 4].timing_64ths = (i + 4) * 16;
+        arp_presets[5].notes[i + 4].timing_16ths = (i + 4) * 4;
         arp_presets[5].notes[i + 4].note_index = 3 - i;
         arp_presets[5].notes[i + 4].octave_offset = 0;
         arp_presets[5].notes[i + 4].raw_travel = 200;
@@ -301,7 +301,7 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[6].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[6].note_count = 8;
-    arp_presets[6].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[6].pattern_length_16ths = 32;  // 2 bars
     arp_presets[6].gate_length_percent = 75;
     strncpy(arp_presets[6].name, "Oct Jump", ARP_PRESET_NAME_LENGTH);
     arp_presets[6].magic = ARP_PRESET_MAGIC;
@@ -309,31 +309,31 @@ void arp_init_presets(void) {
     // Alternate between octaves: 0, 0+12, 1, 1+12, 2, 2+12, 3, 3+12
     for (uint8_t i = 0; i < 4; i++) {
         // Base note
-        arp_presets[6].notes[i * 2].timing_64ths = i * 32;
+        arp_presets[6].notes[i * 2].timing_16ths = i * 8;
         arp_presets[6].notes[i * 2].note_index = i;
         arp_presets[6].notes[i * 2].octave_offset = 0;
         arp_presets[6].notes[i * 2].raw_travel = 200;
 
         // Same note +1 octave
-        arp_presets[6].notes[i * 2 + 1].timing_64ths = i * 32 + 16;
+        arp_presets[6].notes[i * 2 + 1].timing_16ths = i * 8 + 4;
         arp_presets[6].notes[i * 2 + 1].note_index = i;
         arp_presets[6].notes[i * 2 + 1].octave_offset = 12;
         arp_presets[6].notes[i * 2 + 1].raw_travel = 200;
     }
 
     // =========================================================================
-    // PRESET 7: Rapid 32nds - Fast 32nd note ascending
+    // PRESET 7: Rapid 16ths - Fast 16th note ascending
     // =========================================================================
     arp_presets[7].preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_presets[7].note_count = 8;
-    arp_presets[7].pattern_length_64ths = 64;   // 1 bar
+    arp_presets[7].pattern_length_16ths = 16;   // 1 bar
     arp_presets[7].gate_length_percent = 60;    // Shorter gate for clarity
-    strncpy(arp_presets[7].name, "Rapid 32nds", ARP_PRESET_NAME_LENGTH);
+    strncpy(arp_presets[7].name, "Rapid 16ths", ARP_PRESET_NAME_LENGTH);
     arp_presets[7].magic = ARP_PRESET_MAGIC;
 
-    // 32nd notes = 8/64ths apart
+    // 16th notes = 1 16th apart
     for (uint8_t i = 0; i < 8; i++) {
-        arp_presets[7].notes[i].timing_64ths = i * 8;
+        arp_presets[7].notes[i].timing_16ths = i * 2;
         arp_presets[7].notes[i].note_index = i % 4;  // Cycle through 4 notes
         arp_presets[7].notes[i].octave_offset = 0;
         arp_presets[7].notes[i].raw_travel = 180;
@@ -348,7 +348,7 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[32].preset_type = PRESET_TYPE_STEP_SEQUENCER;
     arp_presets[32].note_count = 8;
-    arp_presets[32].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[32].pattern_length_16ths = 32;  // 2 bars
     arp_presets[32].gate_length_percent = 80;
     strncpy(arp_presets[32].name, "C Maj Scale", ARP_PRESET_NAME_LENGTH);
     arp_presets[32].magic = ARP_PRESET_MAGIC;
@@ -357,7 +357,7 @@ void arp_init_presets(void) {
     const uint8_t c_major_notes[] = {0, 2, 4, 5, 7, 9, 11, 0};  // C, D, E, F, G, A, B, C
     const uint8_t c_major_octaves[] = {4, 4, 4, 4, 4, 4, 4, 5};  // Last C is in octave 5
     for (uint8_t i = 0; i < 8; i++) {
-        arp_presets[32].notes[i].timing_64ths = i * 16;  // 16th notes
+        arp_presets[32].notes[i].timing_16ths = i * 4;  // Every beat (4 16ths per beat)
         arp_presets[32].notes[i].note_index = c_major_notes[i];
         arp_presets[32].notes[i].octave_offset = c_major_octaves[i];
         arp_presets[32].notes[i].raw_travel = 200;
@@ -368,7 +368,7 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[33].preset_type = PRESET_TYPE_STEP_SEQUENCER;
     arp_presets[33].note_count = 4;
-    arp_presets[33].pattern_length_64ths = 64;  // 1 bar
+    arp_presets[33].pattern_length_16ths = 16;  // 1 bar
     arp_presets[33].gate_length_percent = 70;
     strncpy(arp_presets[33].name, "Bass Line", ARP_PRESET_NAME_LENGTH);
     arp_presets[33].magic = ARP_PRESET_MAGIC;
@@ -377,7 +377,7 @@ void arp_init_presets(void) {
     const uint8_t bass_notes[] = {0, 0, 7, 0};  // C, C, G, C
     const uint8_t bass_octaves[] = {2, 2, 2, 3};  // Low octaves
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[33].notes[i].timing_64ths = i * 16;
+        arp_presets[33].notes[i].timing_16ths = i * 4;
         arp_presets[33].notes[i].note_index = bass_notes[i];
         arp_presets[33].notes[i].octave_offset = bass_octaves[i];
         arp_presets[33].notes[i].raw_travel = 220;
@@ -388,14 +388,14 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[34].preset_type = PRESET_TYPE_STEP_SEQUENCER;
     arp_presets[34].note_count = 4;
-    arp_presets[34].pattern_length_64ths = 64;  // 1 bar
+    arp_presets[34].pattern_length_16ths = 16;  // 1 bar
     arp_presets[34].gate_length_percent = 50;
     strncpy(arp_presets[34].name, "Techno Kick", ARP_PRESET_NAME_LENGTH);
     arp_presets[34].magic = ARP_PRESET_MAGIC;
 
     // Four-on-the-floor: C1 on each beat
     for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[34].notes[i].timing_64ths = i * 16;
+        arp_presets[34].notes[i].timing_16ths = i * 4;
         arp_presets[34].notes[i].note_index = 0;  // C
         arp_presets[34].notes[i].octave_offset = 1;  // Octave 1
         arp_presets[34].notes[i].raw_travel = 255;  // Max velocity
@@ -406,7 +406,7 @@ void arp_init_presets(void) {
     // =========================================================================
     arp_presets[35].preset_type = PRESET_TYPE_STEP_SEQUENCER;
     arp_presets[35].note_count = 8;
-    arp_presets[35].pattern_length_64ths = 128;  // 2 bars
+    arp_presets[35].pattern_length_16ths = 32;  // 2 bars
     arp_presets[35].gate_length_percent = 75;
     strncpy(arp_presets[35].name, "Melody 1", ARP_PRESET_NAME_LENGTH);
     arp_presets[35].magic = ARP_PRESET_MAGIC;
@@ -414,7 +414,7 @@ void arp_init_presets(void) {
     // Melodic pattern: E, G, A, G, E, D, C, D
     const uint8_t melody_notes[] = {4, 7, 9, 7, 4, 2, 0, 2};  // E, G, A, G, E, D, C, D
     for (uint8_t i = 0; i < 8; i++) {
-        arp_presets[35].notes[i].timing_64ths = i * 16;
+        arp_presets[35].notes[i].timing_16ths = i * 4;
         arp_presets[35].notes[i].note_index = melody_notes[i];
         arp_presets[35].notes[i].octave_offset = 4;  // Octave 4
         arp_presets[35].notes[i].raw_travel = 180;
@@ -426,7 +426,7 @@ void arp_init_presets(void) {
     for (uint8_t p = 36; p <= 39; p++) {
         arp_presets[p].preset_type = PRESET_TYPE_STEP_SEQUENCER;
         arp_presets[p].note_count = 0;
-        arp_presets[p].pattern_length_64ths = 64;
+        arp_presets[p].pattern_length_16ths = 16;
         arp_presets[p].gate_length_percent = 80;
         strncpy(arp_presets[p].name, "Empty Seq", ARP_PRESET_NAME_LENGTH);
         arp_presets[p].magic = ARP_PRESET_MAGIC;
@@ -446,14 +446,14 @@ static uint32_t get_effective_bpm(void) {
     return (current_bpm == 0) ? 12000000 : current_bpm;  // 120.00000 BPM default
 }
 
-// Calculate milliseconds per 64th note based on current BPM
-static uint32_t get_ms_per_64th(void) {
+// Calculate milliseconds per 16th note based on current BPM
+static uint32_t get_ms_per_16th(void) {
     uint32_t actual_bpm = get_effective_bpm() / 100000;
     if (actual_bpm == 0) actual_bpm = 120;
 
     // ms per beat = 60000 / bpm
-    // ms per 64th = (60000 / bpm) / 16  (16 64th notes per beat)
-    return (60000 / actual_bpm) / 16;
+    // ms per 16th = (60000 / bpm) / 4  (4 16th notes per beat)
+    return (60000 / actual_bpm) / 4;
 }
 
 // Sort live notes by pitch (for consistent ordering)
@@ -508,22 +508,22 @@ void arp_start(uint8_t preset_id) {
         if (arp_state.sync_mode) {
             // Calculate relative position in old pattern
             arp_preset_t *old_preset = &arp_presets[arp_state.current_preset_id];
-            uint16_t old_length = old_preset->pattern_length_64ths;
-            float progress = (float)arp_state.current_position_64ths / old_length;
+            uint16_t old_length = old_preset->pattern_length_16ths;
+            float progress = (float)arp_state.current_position_16ths / old_length;
 
             // Apply to new pattern
             arp_preset_t *new_preset = &arp_presets[preset_id];
-            arp_state.current_position_64ths = (uint16_t)(progress * new_preset->pattern_length_64ths);
+            arp_state.current_position_16ths = (uint16_t)(progress * new_preset->pattern_length_16ths);
 
             dprintf("arp: switching preset with sync, progress: %d%%\n", (int)(progress * 100));
         } else {
             // Unsynced: restart from beginning
-            arp_state.current_position_64ths = 0;
+            arp_state.current_position_16ths = 0;
             arp_state.pattern_start_time = timer_read32();
         }
     } else {
         // Starting fresh
-        arp_state.current_position_64ths = 0;
+        arp_state.current_position_16ths = 0;
         arp_state.pattern_start_time = timer_read32();
 
         // If sync mode, wait for next beat to start
@@ -604,7 +604,7 @@ void arp_update(void) {
     uint8_t note_count_to_play = 0;
 
     for (uint8_t i = 0; i < preset->note_count; i++) {
-        if (preset->notes[i].timing_64ths == arp_state.current_position_64ths) {
+        if (preset->notes[i].timing_16ths == arp_state.current_position_16ths) {
             notes_to_play[note_count_to_play++] = i;
         }
     }
@@ -616,8 +616,8 @@ void arp_update(void) {
                                arp_state.master_gate_override :
                                preset->gate_length_percent;
 
-        uint32_t ms_per_64th = get_ms_per_64th();
-        uint32_t note_duration_ms = ms_per_64th;  // Default: one 64th note
+        uint32_t ms_per_16th = get_ms_per_16th();
+        uint32_t note_duration_ms = ms_per_16th;  // Default: one 16th note
         uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
         // Handle Step Sequencer (absolute notes)
@@ -768,18 +768,18 @@ void arp_update(void) {
     }
 
     // Advance position
-    arp_state.current_position_64ths++;
+    arp_state.current_position_16ths++;
 
     // Check for loop
-    if (arp_state.current_position_64ths >= preset->pattern_length_64ths) {
-        arp_state.current_position_64ths = 0;
+    if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+        arp_state.current_position_16ths = 0;
         arp_state.pattern_start_time = current_time;
         dprintf("arp: pattern loop\n");
     }
 
     // Calculate next note time
-    uint32_t ms_per_64th = get_ms_per_64th();
-    arp_state.next_note_time = current_time + ms_per_64th;
+    uint32_t ms_per_16th = get_ms_per_16th();
+    arp_state.next_note_time = current_time + ms_per_16th;
 }
 
 // =============================================================================
@@ -926,10 +926,10 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Check pattern length bounds (at least 1/64th, max 16 bars = 1024 64ths)
-    if (preset->pattern_length_64ths < 1 || preset->pattern_length_64ths > 1024) {
-        dprintf("arp: validate failed - pattern_length %d not in [1,1024]\n",
-                preset->pattern_length_64ths);
+    // Check pattern length bounds (at least 1 16th, max 16 bars = 256 16ths)
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 512) {
+        dprintf("arp: validate failed - pattern_length %d not in [1,512]\n",
+                preset->pattern_length_16ths);
         return false;
     }
 
@@ -938,9 +938,9 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         const arp_preset_note_t *note = &preset->notes[i];
 
         // Check timing is within pattern length
-        if (note->timing_64ths >= preset->pattern_length_64ths) {
+        if (note->timing_16ths >= preset->pattern_length_16ths) {
             dprintf("arp: validate failed - note[%d] timing %d >= pattern_length %d\n",
-                    i, note->timing_64ths, preset->pattern_length_64ths);
+                    i, note->timing_16ths, preset->pattern_length_16ths);
             return false;
         }
 
@@ -1037,7 +1037,7 @@ void arp_load_all_user_presets(void) {
             strncpy(arp_presets[i].name, "User Arp", ARP_PRESET_NAME_LENGTH);
             arp_presets[i].preset_type = PRESET_TYPE_ARPEGGIATOR;
             arp_presets[i].note_count = 0;
-            arp_presets[i].pattern_length_64ths = 64;  // 1 bar default
+            arp_presets[i].pattern_length_16ths = 16;  // 1 bar default
             arp_presets[i].gate_length_percent = 80;
             arp_presets[i].magic = ARP_PRESET_MAGIC;
         }
@@ -1054,7 +1054,7 @@ void arp_load_all_user_presets(void) {
             strncpy(arp_presets[i].name, "User Seq", ARP_PRESET_NAME_LENGTH);
             arp_presets[i].preset_type = PRESET_TYPE_STEP_SEQUENCER;
             arp_presets[i].note_count = 0;
-            arp_presets[i].pattern_length_64ths = 64;  // 1 bar default
+            arp_presets[i].pattern_length_16ths = 16;  // 1 bar default
             arp_presets[i].gate_length_percent = 80;
             arp_presets[i].magic = ARP_PRESET_MAGIC;
         }
@@ -1088,7 +1088,7 @@ bool arp_clear_preset(uint8_t preset_id) {
     }
 
     arp_presets[preset_id].note_count = 0;
-    arp_presets[preset_id].pattern_length_64ths = 64;
+    arp_presets[preset_id].pattern_length_16ths = 16;
     arp_presets[preset_id].gate_length_percent = 80;
     arp_presets[preset_id].magic = ARP_PRESET_MAGIC;
 
