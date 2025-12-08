@@ -1919,6 +1919,8 @@ class Arpeggiator(BasicEditor):
     ARP_CMD_GET_STATE = 0xC7
     ARP_CMD_SET_STATE = 0xC8
     ARP_CMD_GET_INFO = 0xC9
+    ARP_CMD_SET_NOTE = 0xCA
+    ARP_CMD_SET_NOTES_CHUNK = 0xCB
 
     MANUFACTURER_ID = 0x7D
     SUB_ID = 0x00
@@ -2589,6 +2591,102 @@ class Arpeggiator(BasicEditor):
             self.update_status(f"HID error: {e}", error=True)
             return False
 
+    def pack_note_data(self, note):
+        """
+        Pack a note into 3 bytes for transmission to firmware.
+        Returns bytes: [packed_timing_vel_low, packed_timing_vel_high, note_octave]
+
+        Note structure:
+        - timing: 0-127 (7 bits)
+        - velocity: 0-127 (7 bits)
+        - sign: 0 or 1 (1 bit) - for arpeggiator intervals only
+        - note_index: 0-11 (4 bits)
+        - octave_offset: -8 to +7 (4 bits signed)
+        """
+        timing = note.get('timing', 0) & 0x7F
+        velocity = note.get('velocity', 200) // 2  # Convert 0-255 to 0-127
+        velocity = max(0, min(127, velocity))
+
+        # For arpeggiator: note_index can be negative (interval with sign)
+        # For step sequencer: note_index is always positive (0-11)
+        note_index = note.get('note_index', 0)
+        sign_bit = 0
+
+        if note_index < 0:
+            # Arpeggiator interval: extract sign and magnitude
+            sign_bit = 1
+            note_index = abs(note_index)
+
+        note_index = note_index & 0x0F  # 4 bits
+        octave_offset = note.get('octave_offset', 0)
+
+        # Clamp octave to -8..+7 range
+        octave_offset = max(-8, min(7, octave_offset))
+
+        # Pack timing_vel: bits 0-6=timing, 7-13=velocity, 14=sign, 15=reserved
+        packed_timing_vel = timing | (velocity << 7) | (sign_bit << 14)
+
+        # Pack note_octave: bits 0-3=note, 4-7=octave (as 4-bit signed)
+        # Convert signed octave to 4-bit two's complement
+        octave_4bit = octave_offset & 0x0F
+        note_octave = note_index | (octave_4bit << 4)
+
+        # Return as little-endian bytes
+        return bytes([
+            packed_timing_vel & 0xFF,        # Low byte
+            (packed_timing_vel >> 8) & 0xFF, # High byte
+            note_octave                       # Note/octave byte
+        ])
+
+    def send_notes_chunked(self, preset_id, notes):
+        """
+        Send note data to firmware in chunks.
+        Each chunk can contain up to 9 notes (9 × 3 = 27 bytes).
+        Returns True if all chunks sent successfully.
+        """
+        if not notes:
+            logger.info("No notes to send")
+            return True
+
+        chunk_size = 9  # Maximum 9 notes per packet (27 bytes + 3 byte header = 30 bytes)
+        total_notes = len(notes)
+        chunks_sent = 0
+
+        logger.info(f"Sending {total_notes} notes in chunks of {chunk_size}")
+
+        for start_idx in range(0, total_notes, chunk_size):
+            end_idx = min(start_idx + chunk_size, total_notes)
+            chunk = notes[start_idx:end_idx]
+            chunk_count = len(chunk)
+
+            # Build parameter list for this chunk
+            params = [
+                preset_id,     # params[0]
+                start_idx,     # params[1]
+                chunk_count    # params[2]
+            ]
+
+            # Pack and append note data (3 bytes per note)
+            for note in chunk:
+                packed_bytes = self.pack_note_data(note)
+                params.extend(packed_bytes)
+
+            # Send chunk
+            logger.info(f"Sending chunk {chunks_sent + 1}: notes {start_idx}-{end_idx - 1} ({chunk_count} notes)")
+
+            if not self.send_hid_command(self.ARP_CMD_SET_NOTES_CHUNK, params):
+                logger.error(f"Failed to send chunk {chunks_sent + 1}")
+                self.update_status(f"Error: Failed to send notes (chunk {chunks_sent + 1})", error=True)
+                return False
+
+            chunks_sent += 1
+
+            # Small delay between chunks to avoid overwhelming the device
+            QTimer.singleShot(10, lambda: None)
+
+        logger.info(f"Successfully sent {chunks_sent} chunks ({total_notes} notes)")
+        return True
+
     def handle_hid_response(self, data):
         """Handle HID response from device"""
         if len(data) < 4:
@@ -2672,11 +2770,39 @@ class Arpeggiator(BasicEditor):
             self.preset_data.get('note_value', 2)
         ]
 
+        # Step 1: Send preset metadata
         if self.send_hid_command(self.ARP_CMD_SET_PRESET, params):
-            # Also save to EEPROM
-            QTimer.singleShot(100, lambda: self.send_hid_command(
-                self.ARP_CMD_SAVE_PRESET, [self.current_preset_id]))
-            self.update_status(f"Saving preset {self.current_preset_id}...")
+            self.update_status(f"Saving preset {self.current_preset_id} (metadata sent)...")
+
+            # Step 2: Send note data in chunks (after a short delay)
+            if firmware_note_count > 0:
+                QTimer.singleShot(50, lambda: self._save_preset_send_notes(
+                    self.current_preset_id, firmware_notes))
+            else:
+                # No notes to send, go straight to EEPROM save
+                QTimer.singleShot(50, lambda: self._save_preset_finalize(
+                    self.current_preset_id))
+        else:
+            self.update_status(f"Error: Failed to save preset {self.current_preset_id}", error=True)
+
+    def _save_preset_send_notes(self, preset_id, notes):
+        """Helper: Send note data after metadata (step 2 of save)"""
+        self.update_status(f"Saving preset {preset_id} (sending {len(notes)} notes)...")
+
+        if self.send_notes_chunked(preset_id, notes):
+            # Step 3: Save to EEPROM (after notes are sent)
+            QTimer.singleShot(100, lambda: self._save_preset_finalize(preset_id))
+        else:
+            self.update_status(f"Error: Failed to send notes for preset {preset_id}", error=True)
+
+    def _save_preset_finalize(self, preset_id):
+        """Helper: Finalize preset save to EEPROM (step 3 of save)"""
+        self.update_status(f"Saving preset {preset_id} (writing to EEPROM)...")
+
+        if self.send_hid_command(self.ARP_CMD_SAVE_PRESET, [preset_id]):
+            self.update_status(f"Preset {preset_id} saved successfully!")
+        else:
+            self.update_status(f"Error: Failed to save preset {preset_id} to EEPROM", error=True)
 
     def update_status(self, message, error=False):
         """Update status label"""

@@ -20,6 +20,8 @@
 #define ARP_CMD_GET_STATE        0xC7  // Get arpeggiator state
 #define ARP_CMD_SET_STATE        0xC8  // Set arpeggiator state
 #define ARP_CMD_GET_INFO         0xC9  // Get arp system info
+#define ARP_CMD_SET_NOTE         0xCA  // Set single note data
+#define ARP_CMD_SET_NOTES_CHUNK  0xCB  // Set multiple notes (chunked)
 
 // HID Protocol IDs (matching dynamic macro protocol)
 #define HID_MANUFACTURER_ID 0x7D
@@ -224,6 +226,107 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             break;
         }
 
+        case ARP_CMD_SET_NOTE: {
+            // Set a single note in a preset
+            // params[0] = preset_id
+            // params[1] = note_index (0-127)
+            // params[2-3] = packed_timing_vel (uint16_t, little-endian)
+            // params[4] = note_octave (uint8_t)
+            uint8_t preset_id = params[0];
+            uint8_t note_index = params[1];
+
+            if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+                params[0] = 1;  // Error: invalid preset ID
+                dprintf("ARP HID: SET_NOTE failed - invalid preset id %d\n", preset_id);
+                break;
+            }
+
+            if (note_index >= MAX_PRESET_NOTES) {
+                params[0] = 1;  // Error: invalid note index
+                dprintf("ARP HID: SET_NOTE failed - invalid note index %d\n", note_index);
+                break;
+            }
+
+            arp_preset_t *preset = &arp_presets[preset_id];
+
+            // Unpack note data from params
+            uint16_t packed_timing_vel = params[2] | (params[3] << 8);
+            uint8_t note_octave = params[4];
+
+            // Set note data
+            preset->notes[note_index].packed_timing_vel = packed_timing_vel;
+            preset->notes[note_index].note_octave = note_octave;
+
+            params[0] = 0;  // Success
+            dprintf("ARP HID: SET_NOTE preset=%d idx=%d timing=%d vel=%d\n",
+                    preset_id, note_index,
+                    NOTE_GET_TIMING(packed_timing_vel),
+                    NOTE_GET_VELOCITY(packed_timing_vel));
+            break;
+        }
+
+        case ARP_CMD_SET_NOTES_CHUNK: {
+            // Set multiple notes in one packet (chunked transfer)
+            // params[0] = preset_id
+            // params[1] = start_note_index
+            // params[2] = note_count (how many notes in this chunk, max 9)
+            // params[3+] = note data (3 bytes per note)
+            //   Each note:
+            //     [0-1] = packed_timing_vel (uint16_t, little-endian)
+            //     [2]   = note_octave (uint8_t)
+            uint8_t preset_id = params[0];
+            uint8_t start_index = params[1];
+            uint8_t chunk_count = params[2];
+
+            if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+                params[0] = 1;  // Error: invalid preset ID
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid preset id %d\n", preset_id);
+                break;
+            }
+
+            if (start_index >= MAX_PRESET_NOTES) {
+                params[0] = 1;  // Error: invalid start index
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid start index %d\n", start_index);
+                break;
+            }
+
+            if (chunk_count == 0 || chunk_count > 9) {
+                params[0] = 1;  // Error: invalid chunk count (max 9 notes per packet)
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid chunk count %d\n", chunk_count);
+                break;
+            }
+
+            if (start_index + chunk_count > MAX_PRESET_NOTES) {
+                params[0] = 1;  // Error: would exceed preset note array
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - would exceed array (start=%d count=%d)\n",
+                        start_index, chunk_count);
+                break;
+            }
+
+            arp_preset_t *preset = &arp_presets[preset_id];
+
+            // Parse and set notes
+            uint8_t *note_data = &params[3];  // Note data starts at params[3]
+            for (uint8_t i = 0; i < chunk_count; i++) {
+                uint8_t note_idx = start_index + i;
+                uint8_t offset = i * 3;  // 3 bytes per note
+
+                // Extract note data (little-endian for packed_timing_vel)
+                uint16_t packed_timing_vel = note_data[offset] | (note_data[offset + 1] << 8);
+                uint8_t note_octave = note_data[offset + 2];
+
+                // Set note data
+                preset->notes[note_idx].packed_timing_vel = packed_timing_vel;
+                preset->notes[note_idx].note_octave = note_octave;
+            }
+
+            params[0] = 0;  // Success
+            params[1] = chunk_count;  // Echo back how many notes were written
+            dprintf("ARP HID: SET_NOTES_CHUNK preset=%d start=%d count=%d\n",
+                    preset_id, start_index, chunk_count);
+            break;
+        }
+
         default:
             params[0] = 0xFF;  // Unknown command
             dprintf("ARP HID: Unknown command 0x%02X\n", cmd);
@@ -234,12 +337,12 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
 }
 
 void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
-    // Check if this is an arpeggiator command
+    // Check if this is an arpeggiator command (0xC0-0xCB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xC0 && data[3] <= 0xC9) {
+        data[3] >= 0xC0 && data[3] <= 0xCB) {
 
         dprintf("raw_hid_receive_kb: Arpeggiator packet detected, forwarding\n");
         arp_hid_receive(data, length);
