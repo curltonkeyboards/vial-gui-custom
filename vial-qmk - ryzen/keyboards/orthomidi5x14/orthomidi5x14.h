@@ -232,7 +232,7 @@ typedef struct {
 
 // Individual note definition within a preset
 typedef struct {
-    uint16_t timing_64ths;     // When to trigger this note (0-255+ for multi-bar patterns)
+    uint16_t timing_16ths;     // When to trigger this note in 16th notes (0-511 for 128-bar patterns)
     int8_t note_index;         // Semitone offset for arpeggiator (-11 to +11), or note index for step seq (0-11)
     int8_t octave_offset;      // Octave shift: can be negative for down octaves
     uint8_t raw_travel;        // Velocity as raw travel (0-255)
@@ -243,7 +243,7 @@ typedef struct {
     char name[ARP_PRESET_NAME_LENGTH];  // Preset name for display
     uint8_t preset_type;                // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
     uint8_t note_count;                 // Number of notes in this preset
-    uint16_t pattern_length_64ths;      // Total pattern length in 64th notes (16=1 beat, 64=1 bar)
+    uint16_t pattern_length_16ths;      // Total pattern length in 16th notes (4=1 beat, 16=1 bar)
     uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
     arp_preset_note_t notes[MAX_PRESET_NOTES];  // Note definitions
     uint16_t magic;                     // 0xA89F for validation
@@ -257,7 +257,7 @@ typedef struct {
     arp_mode_t mode;                    // Single note / Chord basic / Chord advanced
     uint8_t current_preset_id;          // Which preset is active
     uint32_t next_note_time;            // When to play next note
-    uint16_t current_position_64ths;    // Current position in pattern (0-pattern_length)
+    uint16_t current_position_16ths;    // Current position in pattern (0-pattern_length)
     uint8_t current_note_in_chord;      // For chord advanced mode: which note of chord
     uint8_t subdivision_override;       // 0=use preset timing, else override subdivision
     uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
