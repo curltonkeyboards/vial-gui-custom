@@ -202,9 +202,11 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
 // Maximum limits
 #define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated
-#define MAX_PRESET_NOTES 128       // Maximum notes per preset (smart EEPROM)
-#define MAX_ARP_PRESETS 64         // Maximum presets (0-31: Arpeggiator, 32-63: Step Sequencer)
-#define ARP_PRESET_NAME_LENGTH 16  // Max length for preset names
+#define MAX_PRESET_NOTES 128       // Maximum notes per preset in RAM
+#define MAX_ARP_PRESETS 64         // Total preset slots (0-47: Factory PROGMEM, 48-63: User EEPROM)
+#define NUM_FACTORY_PRESETS 48     // Factory presets (0-47) stored in PROGMEM
+#define NUM_USER_PRESETS 16        // User presets (48-63) stored in EEPROM
+#define USER_PRESET_START 48       // First user preset slot
 
 // Preset type enumeration
 typedef enum {
@@ -212,6 +214,20 @@ typedef enum {
     PRESET_TYPE_STEP_SEQUENCER,   // Step Sequencer: absolute MIDI notes
     PRESET_TYPE_COUNT
 } preset_type_t;
+
+// Timing mode flags (for triplet/dotted note support)
+#define TIMING_MODE_STRAIGHT 0x00  // Normal timing
+#define TIMING_MODE_TRIPLET  0x01  // Triplet timing (×2/3)
+#define TIMING_MODE_DOTTED   0x02  // Dotted timing (×3/2)
+#define TIMING_MODE_MASK     0x03  // Mask for timing mode bits
+
+// Note value for timing modes (sets base subdivision)
+typedef enum {
+    NOTE_VALUE_QUARTER = 0,        // Quarter notes (4 16ths)
+    NOTE_VALUE_EIGHTH,             // Eighth notes (2 16ths)
+    NOTE_VALUE_SIXTEENTH,          // Sixteenth notes (1 16th)
+    NOTE_VALUE_COUNT
+} note_value_t;
 
 // Arpeggiator mode types
 typedef enum {
@@ -230,24 +246,32 @@ typedef struct {
     bool active;
 } arp_note_t;
 
-// Individual note definition within a preset
+// Individual note definition within a preset (OPTIMIZED: 3 bytes per note, was 5)
 typedef struct {
-    uint16_t timing_16ths;     // When to trigger this note in 16th notes (0-511 for 128-bar patterns)
-    int8_t note_index;         // Semitone offset for arpeggiator (-11 to +11), or note index for step seq (0-11)
-    int8_t octave_offset;      // Octave shift: can be negative for down octaves
-    uint8_t raw_travel;        // Velocity as raw travel (0-255)
-} arp_preset_note_t;
+    // Byte 0-1: Packed timing and velocity
+    uint16_t packed_timing_vel;
+      // bits 0-6:   timing_16ths (0-127 = max 8 bars)
+      // bits 7-13:  velocity (0-127)
+      // bit 14:     interval_sign (arpeggiator only: 0=positive, 1=negative)
+      // bit 15:     reserved
 
-// Complete arpeggiator preset definition
+    // Byte 2: Packed note/interval and octave
+    uint8_t note_octave;
+      // bits 0-3:   note_index (0-11) or interval magnitude (0-11 for arp)
+      // bits 4-7:   octave_offset (signed -8 to +7)
+} arp_preset_note_t;  // 3 bytes total (was 5 bytes)
+
+// Complete arpeggiator preset definition (OPTIMIZED: 392 bytes, was 663)
 typedef struct {
-    char name[ARP_PRESET_NAME_LENGTH];  // Preset name for display
     uint8_t preset_type;                // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
-    uint8_t note_count;                 // Number of notes in this preset
-    uint16_t pattern_length_16ths;      // Total pattern length in 16th notes (4=1 beat, 16=1 bar)
+    uint8_t note_count;                 // Number of notes in this preset (1-128)
+    uint8_t pattern_length_16ths;       // Total pattern length in 16th notes (1-127 = max 8 bars)
     uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
-    arp_preset_note_t notes[MAX_PRESET_NOTES];  // Note definitions
+    uint8_t timing_mode;                // Timing mode flags (TIMING_MODE_STRAIGHT/TRIPLET/DOTTED)
+    uint8_t note_value;                 // Base note value (NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH)
+    arp_preset_note_t notes[MAX_PRESET_NOTES];  // Note definitions (3 bytes each)
     uint16_t magic;                     // 0xA89F for validation
-} arp_preset_t;
+} arp_preset_t;  // Total: 8 + (128 × 3) = 392 bytes (was 663 bytes)
 
 // Arpeggiator runtime state
 typedef struct {
@@ -266,19 +290,22 @@ typedef struct {
     bool key_held;                      // Is arp button physically held
 } arp_state_t;
 
-// EEPROM storage structure (for user presets)
-#define ARP_EEPROM_ADDR 65800  // Starting address for arpeggiator/sequencer presets
-#define ARP_PRESET_MAGIC 0xA89F
+// EEPROM storage structure (for user presets only)
+#define ARP_EEPROM_ADDR 65800       // Starting address for user presets in EEPROM
+#define ARP_PRESET_MAGIC 0xA89F     // Magic number for preset validation
+#define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
+#define ARP_MAX_PRESET_EEPROM_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_PRESET_NOTES * 3))  // 8 + 384 = 392 bytes
 
-// Preset slot definitions
-#define ARP_FACTORY_START 0         // Factory arpeggiator presets: 0-7
-#define ARP_FACTORY_END 7
-#define ARP_USER_START 8            // User arpeggiator presets: 8-31
-#define ARP_USER_END 31
-#define SEQ_FACTORY_START 32        // Factory step sequencer presets: 32-39
-#define SEQ_FACTORY_END 39
-#define SEQ_USER_START 40           // User step sequencer presets: 40-63
-#define SEQ_USER_END 63
+// Helper macros for unpacking note data
+#define NOTE_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
+#define NOTE_GET_VELOCITY(packed)    (((packed) >> 7) & 0x7F)                 // bits 7-13
+#define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp only)
+#define NOTE_GET_NOTE(octave_byte)   ((octave_byte) & 0x0F)                   // bits 0-3
+#define NOTE_GET_OCTAVE(octave_byte) ((int8_t)((octave_byte) << 4) >> 4)      // bits 4-7 (signed)
+
+// Helper macros for packing note data
+#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14))
+#define NOTE_PACK_NOTE_OCTAVE(note, octave)     (((note) & 0x0F) | (((octave) & 0x0F) << 4))
 
 // Global arpeggiator state
 extern arp_note_t arp_notes[MAX_ARP_NOTES];

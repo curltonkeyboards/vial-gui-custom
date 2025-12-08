@@ -446,14 +446,65 @@ static uint32_t get_effective_bpm(void) {
     return (current_bpm == 0) ? 12000000 : current_bpm;  // 120.00000 BPM default
 }
 
-// Calculate milliseconds per 16th note based on current BPM
-static uint32_t get_ms_per_16th(void) {
+// Unpack a note structure to extract individual fields
+typedef struct {
+    uint8_t timing;
+    uint8_t velocity;
+    int8_t note_index;      // For arp: interval with sign; For seq: note 0-11
+    int8_t octave_offset;
+} unpacked_note_t;
+
+static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpacked, bool is_arpeggiator) {
+    unpacked->timing = NOTE_GET_TIMING(packed->packed_timing_vel);
+    unpacked->velocity = NOTE_GET_VELOCITY(packed->packed_timing_vel);
+
+    uint8_t note_val = NOTE_GET_NOTE(packed->note_octave);
+    unpacked->octave_offset = NOTE_GET_OCTAVE(packed->note_octave);
+
+    if (is_arpeggiator) {
+        // For arpeggiator: apply sign bit to interval
+        uint8_t sign = NOTE_GET_SIGN(packed->packed_timing_vel);
+        unpacked->note_index = sign ? -(int8_t)note_val : (int8_t)note_val;
+    } else {
+        // For step sequencer: note is unsigned 0-11
+        unpacked->note_index = note_val;
+    }
+}
+
+// Calculate milliseconds per 16th note based on current BPM and timing mode
+static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
     uint32_t actual_bpm = get_effective_bpm() / 100000;
     if (actual_bpm == 0) actual_bpm = 120;
 
-    // ms per beat = 60000 / bpm
-    // ms per 16th = (60000 / bpm) / 4  (4 16th notes per beat)
-    return (60000 / actual_bpm) / 4;
+    // Base calculation: quarter note duration / 4 = 16th note duration
+    uint32_t base_ms = (60000 / actual_bpm) / 4;
+
+    // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
+    uint8_t multiplier = 1;
+    switch (preset->note_value) {
+        case NOTE_VALUE_QUARTER:
+            multiplier = 4;  // Quarter notes are 4× 16ths
+            break;
+        case NOTE_VALUE_EIGHTH:
+            multiplier = 2;  // Eighth notes are 2× 16ths
+            break;
+        case NOTE_VALUE_SIXTEENTH:
+        default:
+            multiplier = 1;  // Sixteenth notes are 1× 16ths
+            break;
+    }
+    base_ms *= multiplier;
+
+    // Apply timing mode (triplet or dotted)
+    if (preset->timing_mode & TIMING_MODE_TRIPLET) {
+        // Triplet timing: compress to 2/3 of normal duration
+        base_ms = (base_ms * 2) / 3;
+    } else if (preset->timing_mode & TIMING_MODE_DOTTED) {
+        // Dotted timing: extend to 3/2 of normal duration
+        base_ms = (base_ms * 3) / 2;
+    }
+
+    return base_ms;
 }
 
 // Sort live notes by pitch (for consistent ordering)
@@ -602,9 +653,15 @@ void arp_update(void) {
     // Find notes to play at current position
     uint8_t notes_to_play[MAX_PRESET_NOTES];
     uint8_t note_count_to_play = 0;
+    unpacked_note_t unpacked_notes[MAX_PRESET_NOTES];
+
+    bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
 
     for (uint8_t i = 0; i < preset->note_count; i++) {
-        if (preset->notes[i].timing_16ths == arp_state.current_position_16ths) {
+        // Unpack the note to check its timing
+        unpack_note(&preset->notes[i], &unpacked_notes[i], is_arpeggiator);
+
+        if (unpacked_notes[i].timing == arp_state.current_position_16ths) {
             notes_to_play[note_count_to_play++] = i;
         }
     }
@@ -616,7 +673,7 @@ void arp_update(void) {
                                arp_state.master_gate_override :
                                preset->gate_length_percent;
 
-        uint32_t ms_per_16th = get_ms_per_16th();
+        uint32_t ms_per_16th = get_ms_per_16th(preset);
         uint32_t note_duration_ms = ms_per_16th;  // Default: one 16th note
         uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
@@ -625,17 +682,18 @@ void arp_update(void) {
             // Step sequencer: play absolute MIDI notes
             for (uint8_t i = 0; i < note_count_to_play; i++) {
                 uint8_t preset_note_idx = notes_to_play[i];
-                arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
+                unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                 // Calculate absolute MIDI note: (octave × 12) + note_index
-                // note_index = 0-11 (C-B), octave_offset = 0-7
-                int16_t midi_note = (preset_note->octave_offset * 12) + preset_note->note_index;
+                // note_index = 0-11 (C-B), octave_offset = -8 to +7
+                int16_t midi_note = (note->octave_offset * 12) + note->note_index;
 
                 // Clamp to MIDI range (0-127)
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                uint8_t raw_travel = preset_note->raw_travel;
+                // Scale velocity from 0-127 to raw_travel (0-255)
+                uint8_t raw_travel = (note->velocity * 2);  // Simple 2x scaling
                 uint8_t channel = channel_number;  // Use current MIDI channel
 
                 // Send note-on
@@ -665,19 +723,20 @@ void arp_update(void) {
 
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
-                    arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
+                    unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                     // Calculate note: master + semitone_offset + octave_offset
-                    // note_index field now contains semitone offset (0-11)
-                    int16_t semitone_offset = preset_note->note_index;
-                    int16_t octave_semitones = preset_note->octave_offset * 12;
+                    // note_index field contains semitone offset (-11 to +11 with sign)
+                    int16_t semitone_offset = note->note_index;
+                    int16_t octave_semitones = note->octave_offset * 12;
                     int16_t final_note = master_note + semitone_offset + octave_semitones;
 
                     // Clamp to MIDI range
                     if (final_note < 0) final_note = 0;
                     if (final_note > 127) final_note = 127;
 
-                    uint8_t raw_travel = preset_note->raw_travel;
+                    // Scale velocity from 0-127 to raw_travel (0-255)
+                    uint8_t raw_travel = (note->velocity * 2);
 
                     // Send note-on
                     midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -694,10 +753,10 @@ void arp_update(void) {
                 // Each step plays all held notes + the semitone offset
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
-                    arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
+                    unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
-                    int16_t semitone_offset = preset_note->note_index;
-                    int16_t octave_semitones = preset_note->octave_offset * 12;
+                    int16_t semitone_offset = note->note_index;
+                    int16_t octave_semitones = note->octave_offset * 12;
 
                     // Apply offset to ALL held notes
                     for (uint8_t n = 0; n < live_note_count; n++) {
@@ -711,7 +770,7 @@ void arp_update(void) {
                         if (final_note < 0) final_note = 0;
                         if (final_note > 127) final_note = 127;
 
-                        uint8_t raw_travel = preset_note->raw_travel;
+                        uint8_t raw_travel = (note->velocity * 2);
 
                         // Send note-on
                         midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -730,7 +789,7 @@ void arp_update(void) {
 
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
-                    arp_preset_note_t *preset_note = &preset->notes[preset_note_idx];
+                    unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                     // Play the next note in rotation
                     uint8_t note_to_play = arp_state.current_note_in_chord % live_note_count;
@@ -738,15 +797,15 @@ void arp_update(void) {
                     uint8_t channel = live_notes[live_idx][0];
                     uint8_t master_note = live_notes[live_idx][1];
 
-                    int16_t semitone_offset = preset_note->note_index;
-                    int16_t octave_semitones = preset_note->octave_offset * 12;
+                    int16_t semitone_offset = note->note_index;
+                    int16_t octave_semitones = note->octave_offset * 12;
                     int16_t final_note = master_note + semitone_offset + octave_semitones;
 
                     // Clamp to MIDI range
                     if (final_note < 0) final_note = 0;
                     if (final_note > 127) final_note = 127;
 
-                    uint8_t raw_travel = preset_note->raw_travel;
+                    uint8_t raw_travel = (note->velocity * 2);
 
                     // Send note-on
                     midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -778,7 +837,7 @@ void arp_update(void) {
     }
 
     // Calculate next note time
-    uint32_t ms_per_16th = get_ms_per_16th();
+    uint32_t ms_per_16th = get_ms_per_16th(preset);
     arp_state.next_note_time = current_time + ms_per_16th;
 }
 
@@ -790,9 +849,7 @@ void arp_next_preset(void) {
     if (arp_preset_count == 0) return;
 
     arp_state.current_preset_id = (arp_state.current_preset_id + 1) % arp_preset_count;
-    dprintf("arp: next preset -> %d (%s)\n",
-            arp_state.current_preset_id,
-            arp_presets[arp_state.current_preset_id].name);
+    dprintf("arp: next preset -> %d\n", arp_state.current_preset_id);
 
     // TODO: Update OLED display
 }
@@ -806,9 +863,7 @@ void arp_prev_preset(void) {
         arp_state.current_preset_id--;
     }
 
-    dprintf("arp: prev preset -> %d (%s)\n",
-            arp_state.current_preset_id,
-            arp_presets[arp_state.current_preset_id].name);
+    dprintf("arp: prev preset -> %d\n", arp_state.current_preset_id);
 
     // TODO: Update OLED display
 }
