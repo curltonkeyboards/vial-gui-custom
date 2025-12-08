@@ -127,32 +127,25 @@ void arp_init_presets(void) {
     arp_presets[0].note_count = 4;
     arp_presets[0].pattern_length_16ths = 16;  // 1 bar
     arp_presets[0].gate_length_percent = 80;   // 80% gate
-    strncpy(arp_presets[0].name, "Up 16ths", ARP_PRESET_NAME_LENGTH);
+    arp_presets[0].timing_mode = TIMING_MODE_STRAIGHT;
+    arp_presets[0].note_value = NOTE_VALUE_QUARTER;
     arp_presets[0].magic = ARP_PRESET_MAGIC;
 
-    // Step 1: Note 0 at beat 0
-    arp_presets[0].notes[0].timing_16ths = 0;
-    arp_presets[0].notes[0].note_index = 0;
-    arp_presets[0].notes[0].octave_offset = 0;
-    arp_presets[0].notes[0].raw_travel = 200;
+    // Step 1: Note 0 at beat 0 (velocity 200/2 = 100)
+    arp_presets[0].notes[0].packed_timing_vel = NOTE_PACK_TIMING_VEL(0, 100, 0);
+    arp_presets[0].notes[0].note_octave = NOTE_PACK_NOTE_OCTAVE(0, 0);
 
     // Step 2: Note 1 at beat 1 (4 16ths per beat)
-    arp_presets[0].notes[1].timing_16ths = 4;
-    arp_presets[0].notes[1].note_index = 1;
-    arp_presets[0].notes[1].octave_offset = 0;
-    arp_presets[0].notes[1].raw_travel = 200;
+    arp_presets[0].notes[1].packed_timing_vel = NOTE_PACK_TIMING_VEL(4, 100, 0);
+    arp_presets[0].notes[1].note_octave = NOTE_PACK_NOTE_OCTAVE(1, 0);
 
     // Step 3: Note 2 at beat 2
-    arp_presets[0].notes[2].timing_16ths = 8;
-    arp_presets[0].notes[2].note_index = 2;
-    arp_presets[0].notes[2].octave_offset = 0;
-    arp_presets[0].notes[2].raw_travel = 200;
+    arp_presets[0].notes[2].packed_timing_vel = NOTE_PACK_TIMING_VEL(8, 100, 0);
+    arp_presets[0].notes[2].note_octave = NOTE_PACK_NOTE_OCTAVE(2, 0);
 
     // Step 4: Note 3 at beat 3
-    arp_presets[0].notes[3].timing_16ths = 12;
-    arp_presets[0].notes[3].note_index = 3;
-    arp_presets[0].notes[3].octave_offset = 0;
-    arp_presets[0].notes[3].raw_travel = 200;
+    arp_presets[0].notes[3].packed_timing_vel = NOTE_PACK_TIMING_VEL(12, 100, 0);
+    arp_presets[0].notes[3].note_octave = NOTE_PACK_NOTE_OCTAVE(3, 0);
 
     // =========================================================================
     // PRESET 1: Down 16ths - Classic descending 16th notes
@@ -932,25 +925,22 @@ void arp_set_mode(arp_mode_t mode) {
 // Slots 40-63: User step sequencer presets (stored in EEPROM)
 
 static uint32_t arp_get_preset_eeprom_addr(uint8_t preset_id) {
-    // Factory presets are not stored in EEPROM
-    if ((preset_id >= ARP_FACTORY_START && preset_id <= ARP_FACTORY_END) ||
-        (preset_id >= SEQ_FACTORY_START && preset_id <= SEQ_FACTORY_END)) {
+    // Factory presets (0-47) are not stored in EEPROM (in PROGMEM instead)
+    if (preset_id < USER_PRESET_START) {
         return 0;
     }
 
-    // Calculate user slot index for EEPROM
-    uint8_t eeprom_slot;
-    if (preset_id >= ARP_USER_START && preset_id <= ARP_USER_END) {
-        // Arpeggiator user presets (8-31) -> slots 0-23
-        eeprom_slot = preset_id - ARP_USER_START;
-    } else if (preset_id >= SEQ_USER_START && preset_id <= SEQ_USER_END) {
-        // Step sequencer user presets (40-63) -> slots 24-47
-        eeprom_slot = 24 + (preset_id - SEQ_USER_START);
-    } else {
+    // User presets are 48-63 (16 total slots)
+    if (preset_id >= MAX_ARP_PRESETS) {
         return 0;  // Invalid preset ID
     }
 
-    return ARP_EEPROM_ADDR + (eeprom_slot * sizeof(arp_preset_t));
+    // Calculate EEPROM slot (0-15 for presets 48-63)
+    uint8_t eeprom_slot = preset_id - USER_PRESET_START;
+
+    // Fixed allocation: each preset gets max size regardless of note_count
+    // This simplifies addressing at the cost of some wasted space
+    return ARP_EEPROM_ADDR + (eeprom_slot * ARP_MAX_PRESET_EEPROM_SIZE);
 }
 
 // Validate preset structure
@@ -981,46 +971,47 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Check pattern length bounds (at least 1 16th, max 16 bars = 256 16ths)
-    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 512) {
-        dprintf("arp: validate failed - pattern_length %d not in [1,512]\n",
+    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
+        dprintf("arp: validate failed - pattern_length %d not in [1,127]\n",
                 preset->pattern_length_16ths);
         return false;
     }
 
     // Validate individual notes
+    bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
     for (uint8_t i = 0; i < preset->note_count; i++) {
-        const arp_preset_note_t *note = &preset->notes[i];
+        const arp_preset_note_t *packed_note = &preset->notes[i];
+        unpacked_note_t note;
+        unpack_note(packed_note, &note, is_arpeggiator);
 
         // Check timing is within pattern length
-        if (note->timing_16ths >= preset->pattern_length_16ths) {
+        if (note.timing >= preset->pattern_length_16ths) {
             dprintf("arp: validate failed - note[%d] timing %d >= pattern_length %d\n",
-                    i, note->timing_16ths, preset->pattern_length_16ths);
+                    i, note.timing, preset->pattern_length_16ths);
             return false;
         }
 
-        // Check octave offset is reasonable (-24 to +24 semitones = ±2 octaves)
-        if (note->octave_offset < -24 || note->octave_offset > 24) {
-            dprintf("arp: validate failed - note[%d] octave_offset %d not in [-24,24]\n",
-                    i, note->octave_offset);
+        // Check octave offset is within new packed range (-8 to +7)
+        if (note.octave_offset < -8 || note.octave_offset > 7) {
+            dprintf("arp: validate failed - note[%d] octave_offset %d not in [-8,7]\n",
+                    i, note.octave_offset);
             return false;
         }
 
-        // Raw travel is 0-255, always valid for uint8_t
+        // Velocity is 0-127, always valid for unpacked value
+        // Note index for arp is -11 to +11, for seq is 0-11, both within int8_t range
     }
 
     dprintf("arp: preset validation passed\n");
     return true;
 }
 
-// Save a preset to EEPROM (only for user slots 8-31 and 40-63)
+// Save a preset to EEPROM (only for user slots 48-63)
 bool arp_save_preset_to_eeprom(uint8_t preset_id) {
-    // Check if this is a user preset slot
-    bool is_user_arp = (preset_id >= ARP_USER_START && preset_id <= ARP_USER_END);
-    bool is_user_seq = (preset_id >= SEQ_USER_START && preset_id <= SEQ_USER_END);
-
-    if (!is_user_arp && !is_user_seq) {
-        dprintf("arp: save failed - preset_id %d is not a user preset slot\n", preset_id);
+    // Check if this is a user preset slot (48-63)
+    if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: save failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
         return false;
     }
 
@@ -1041,14 +1032,11 @@ bool arp_save_preset_to_eeprom(uint8_t preset_id) {
     return true;
 }
 
-// Load a preset from EEPROM (only for user slots 8-31 and 40-63)
+// Load a preset from EEPROM (only for user slots 48-63)
 bool arp_load_preset_from_eeprom(uint8_t preset_id) {
-    // Check if this is a user preset slot
-    bool is_user_arp = (preset_id >= ARP_USER_START && preset_id <= ARP_USER_END);
-    bool is_user_seq = (preset_id >= SEQ_USER_START && preset_id <= SEQ_USER_END);
-
-    if (!is_user_arp && !is_user_seq) {
-        dprintf("arp: load failed - preset_id %d is not a user preset slot\n", preset_id);
+    // Check if this is a user preset slot (48-63)
+    if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: load failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
         return false;
     }
 
@@ -1070,8 +1058,7 @@ bool arp_load_preset_from_eeprom(uint8_t preset_id) {
     // Copy to active preset array
     memcpy(&arp_presets[preset_id], &temp_preset, sizeof(arp_preset_t));
 
-    dprintf("arp: preset %d loaded successfully: \"%s\"\n",
-            preset_id, arp_presets[preset_id].name);
+    dprintf("arp: preset %d loaded successfully\n", preset_id);
     return true;
 }
 
@@ -1081,36 +1068,20 @@ void arp_load_all_user_presets(void) {
 
     dprintf("arp: loading all user presets from EEPROM...\n");
 
-    // Load user arpeggiator presets (8-31)
-    for (uint8_t i = ARP_USER_START; i <= ARP_USER_END; i++) {
+    // Load user presets (48-63) - can be either arpeggiator or sequencer
+    for (uint8_t i = USER_PRESET_START; i < MAX_ARP_PRESETS; i++) {
         if (arp_load_preset_from_eeprom(i)) {
             loaded_count++;
         } else {
             // If load fails, initialize as empty arpeggiator preset
             dprintf("arp: preset %d not found or invalid, initializing as empty\n", i);
             memset(&arp_presets[i], 0, sizeof(arp_preset_t));
-            strncpy(arp_presets[i].name, "User Arp", ARP_PRESET_NAME_LENGTH);
             arp_presets[i].preset_type = PRESET_TYPE_ARPEGGIATOR;
             arp_presets[i].note_count = 0;
             arp_presets[i].pattern_length_16ths = 16;  // 1 bar default
             arp_presets[i].gate_length_percent = 80;
-            arp_presets[i].magic = ARP_PRESET_MAGIC;
-        }
-    }
-
-    // Load user step sequencer presets (40-63)
-    for (uint8_t i = SEQ_USER_START; i <= SEQ_USER_END; i++) {
-        if (arp_load_preset_from_eeprom(i)) {
-            loaded_count++;
-        } else {
-            // If load fails, initialize as empty step sequencer preset
-            dprintf("arp: preset %d not found or invalid, initializing as empty\n", i);
-            memset(&arp_presets[i], 0, sizeof(arp_preset_t));
-            strncpy(arp_presets[i].name, "User Seq", ARP_PRESET_NAME_LENGTH);
-            arp_presets[i].preset_type = PRESET_TYPE_STEP_SEQUENCER;
-            arp_presets[i].note_count = 0;
-            arp_presets[i].pattern_length_16ths = 16;  // 1 bar default
-            arp_presets[i].gate_length_percent = 80;
+            arp_presets[i].timing_mode = TIMING_MODE_STRAIGHT;
+            arp_presets[i].note_value = NOTE_VALUE_QUARTER;
             arp_presets[i].magic = ARP_PRESET_MAGIC;
         }
     }
