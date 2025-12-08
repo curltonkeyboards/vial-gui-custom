@@ -40,10 +40,11 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // params[2] = factory preset count
             // params[3] = user preset start slot
             params[0] = 0;  // Success
-            params[1] = MAX_ARP_PRESETS;
-            params[2] = 8;  // Factory presets 0-7
-            params[3] = 8;  // User presets start at slot 8
-            dprintf("ARP HID: GET_INFO - %d presets total\n", MAX_ARP_PRESETS);
+            params[1] = MAX_ARP_PRESETS;      // 64 total presets
+            params[2] = NUM_FACTORY_PRESETS;  // 48 factory presets (0-47)
+            params[3] = USER_PRESET_START;    // User presets start at slot 48
+            dprintf("ARP HID: GET_INFO - %d presets total, %d factory, %d user start\n",
+                    MAX_ARP_PRESETS, NUM_FACTORY_PRESETS, USER_PRESET_START);
             break;
         }
 
@@ -139,69 +140,87 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
         }
 
         case ARP_CMD_GET_PRESET: {
-            // Get preset data (simplified - send basic info)
-            // params[0] = preset_id
-            // Returns: params[1-16] = name, params[17] = note_count, etc.
+            // Get preset data (basic info)
+            // params[0] = preset_id (input)
+            // Returns:
+            //   params[0] = status (0=success, 1=error)
+            //   params[1] = preset_type
+            //   params[2] = note_count
+            //   params[3] = pattern_length_16ths (high byte)
+            //   params[4] = pattern_length_16ths (low byte)
+            //   params[5] = gate_length_percent
+            //   params[6] = timing_mode (0=straight, 1=triplet, 2=dotted)
+            //   params[7] = note_value (0=quarter, 1=eighth, 2=sixteenth)
             uint8_t preset_id = params[0];
             if (preset_id >= MAX_ARP_PRESETS) {
                 params[0] = 1;  // Error
+                dprintf("ARP HID: GET_PRESET failed - invalid id %d\n", preset_id);
                 break;
             }
 
             arp_preset_t *preset = &arp_presets[preset_id];
 
-            // Copy preset name (16 bytes)
-            memcpy(&params[1], preset->name, ARP_PRESET_NAME_LENGTH);
-            params[17] = preset->note_count;
-            params[18] = (preset->pattern_length_16ths >> 8) & 0xFF;
-            params[19] = preset->pattern_length_16ths & 0xFF;
-            params[20] = preset->gate_length_percent;
-
             params[0] = 0;  // Success
-            dprintf("ARP HID: GET_PRESET id=%d name=%s notes=%d\n",
-                    preset_id, preset->name, preset->note_count);
+            params[1] = preset->preset_type;
+            params[2] = preset->note_count;
+            params[3] = (preset->pattern_length_16ths >> 8) & 0xFF;
+            params[4] = preset->pattern_length_16ths & 0xFF;
+            params[5] = preset->gate_length_percent;
+            params[6] = preset->timing_mode;
+            params[7] = preset->note_value;
+
+            dprintf("ARP HID: GET_PRESET id=%d type=%d notes=%d timing=%d/%d\n",
+                    preset_id, preset->preset_type, preset->note_count,
+                    preset->note_value, preset->timing_mode);
             break;
         }
 
         case ARP_CMD_SET_PRESET: {
-            // Set preset data (simplified - basic info only)
+            // Set preset data (basic info only)
             // params[0] = preset_id
-            // params[1-16] = name
-            // params[17] = note_count
-            // params[18-19] = pattern_length_16ths
-            // params[20] = gate_length_percent
+            // params[1] = preset_type
+            // params[2] = note_count
+            // params[3] = pattern_length_16ths (high byte)
+            // params[4] = pattern_length_16ths (low byte)
+            // params[5] = gate_length_percent
+            // params[6] = timing_mode (0=straight, 1=triplet, 2=dotted)
+            // params[7] = note_value (0=quarter, 1=eighth, 2=sixteenth)
             uint8_t preset_id = params[0];
 
-            if (preset_id < 8) {
-                params[0] = 1;  // Error: cannot modify factory presets
+            if (preset_id < USER_PRESET_START) {
+                params[0] = 1;  // Error: cannot modify factory presets (0-47)
                 dprintf("ARP HID: SET_PRESET failed - cannot modify factory preset %d\n", preset_id);
                 break;
             }
 
             if (preset_id >= MAX_ARP_PRESETS) {
                 params[0] = 1;  // Error: invalid preset ID
+                dprintf("ARP HID: SET_PRESET failed - invalid id %d\n", preset_id);
                 break;
             }
 
             arp_preset_t *preset = &arp_presets[preset_id];
 
             // Set basic preset info
-            memcpy(preset->name, &params[1], ARP_PRESET_NAME_LENGTH);
-            preset->note_count = params[17];
-            preset->pattern_length_16ths = (params[18] << 8) | params[19];
-            preset->gate_length_percent = params[20];
+            preset->preset_type = params[1];
+            preset->note_count = params[2];
+            preset->pattern_length_16ths = (params[3] << 8) | params[4];
+            preset->gate_length_percent = params[5];
+            preset->timing_mode = params[6];
+            preset->note_value = params[7];
             preset->magic = ARP_PRESET_MAGIC;
 
             // Validate
             if (!arp_validate_preset(preset)) {
                 params[0] = 1;  // Error: validation failed
-                dprintf("ARP HID: SET_PRESET validation failed\n");
+                dprintf("ARP HID: SET_PRESET validation failed for preset %d\n", preset_id);
                 break;
             }
 
             params[0] = 0;  // Success
-            dprintf("ARP HID: SET_PRESET id=%d name=%s notes=%d\n",
-                    preset_id, preset->name, preset->note_count);
+            dprintf("ARP HID: SET_PRESET id=%d type=%d notes=%d timing=%d/%d\n",
+                    preset_id, preset->preset_type, preset->note_count,
+                    preset->note_value, preset->timing_mode);
             break;
         }
 

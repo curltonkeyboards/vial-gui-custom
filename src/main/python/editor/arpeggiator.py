@@ -1932,14 +1932,15 @@ class Arpeggiator(BasicEditor):
 
         logger.info("Arpeggiator tab initialized")
 
-        self.current_preset_id = 0  # Presets 0-31 for arpeggiator
+        self.current_preset_id = 0  # Presets 0-47 for arpeggiator factory, 48-63 user
         self.is_step_sequencer = False  # This is the arpeggiator tab
         self.preset_data = {
-            'name': 'User Preset',
             'preset_type': 0,  # PRESET_TYPE_ARPEGGIATOR
             'note_count': 0,
             'pattern_length_16ths': 16,
             'gate_length_percent': 80,
+            'timing_mode': 0,  # 0=straight, 1=triplet, 2=dotted
+            'note_value': 2,   # 0=quarter, 1=eighth, 2=sixteenth
             'steps': []  # Flat list of notes with timing
         }
 
@@ -2481,10 +2482,6 @@ class Arpeggiator(BasicEditor):
         # Note count includes ALL notes for internal tracking - firmware will filter empty ones
         self.preset_data['note_count'] = len(all_notes)
 
-        # Keep name in data structure for firmware compatibility
-        if 'name' not in self.preset_data:
-            self.preset_data['name'] = 'User Preset'
-
     def get_firmware_notes(self):
         """Get notes for firmware - all notes are valid (no empty placeholders exist)"""
         # Return all notes - there are no empty placeholders to filter
@@ -2549,7 +2546,7 @@ class Arpeggiator(BasicEditor):
         self.current_preset_id = index
 
         # Update UI state
-        is_factory = (index < 8)
+        is_factory = (index < 48)  # Factory presets are 0-47, user presets are 48-63
         self.btn_save.setEnabled(not is_factory)
 
         if is_factory:
@@ -2604,19 +2601,30 @@ class Arpeggiator(BasicEditor):
             self.update_status("Command successful")
 
             if cmd == self.ARP_CMD_GET_PRESET:
-                # Parse preset data
-                name = data[5:21].decode('ascii', errors='ignore').rstrip('\x00')
-                note_count = data[21] if len(data) > 21 else 0
-                pattern_length = ((data[22] << 8) | data[23]) if len(data) > 23 else 16
-                gate_length = data[24] if len(data) > 24 else 80
+                # Parse preset data (new protocol without name field)
+                # data[4] = status
+                # data[5] = preset_type
+                # data[6] = note_count
+                # data[7-8] = pattern_length_16ths
+                # data[9] = gate_length_percent
+                # data[10] = timing_mode (0=straight, 1=triplet, 2=dotted)
+                # data[11] = note_value (0=quarter, 1=eighth, 2=sixteenth)
+                preset_type = data[5] if len(data) > 5 else 0
+                note_count = data[6] if len(data) > 6 else 0
+                pattern_length = ((data[7] << 8) | data[8]) if len(data) > 8 else 16
+                gate_length = data[9] if len(data) > 9 else 80
+                timing_mode = data[10] if len(data) > 10 else 0
+                note_value = data[11] if len(data) > 11 else 2  # Default to sixteenth
 
-                self.preset_data['name'] = name
+                self.preset_data['preset_type'] = preset_type
                 self.preset_data['note_count'] = note_count
                 self.preset_data['pattern_length_16ths'] = pattern_length
                 self.preset_data['gate_length_percent'] = gate_length
+                self.preset_data['timing_mode'] = timing_mode
+                self.preset_data['note_value'] = note_value
 
                 self.apply_preset_data()
-                self.update_status(f"Loaded preset: {name}")
+                self.update_status(f"Loaded preset {self.current_preset_id}")
         else:
             error_msg = {
                 1: "Error: Invalid preset or operation failed",
@@ -2634,8 +2642,8 @@ class Arpeggiator(BasicEditor):
 
     def save_preset(self):
         """Save preset to device via HID"""
-        if self.current_preset_id < 8:
-            self.update_status("Cannot save to factory preset!", error=True)
+        if self.current_preset_id < 48:  # User presets are 48-63
+            self.update_status("Cannot save to factory preset (0-47)!", error=True)
             return
 
         self.gather_preset_data()
@@ -2644,14 +2652,25 @@ class Arpeggiator(BasicEditor):
         firmware_notes = self.get_firmware_notes()
         firmware_note_count = len(firmware_notes)
 
-        # Build parameter list
-        params = [self.current_preset_id]
-        params.append(self.preset_data['name'])  # String will be encoded in send_hid_command
-        params.extend([0] * (16 - len(self.preset_data['name'])))  # Padding
-        params.append(firmware_note_count)  # Use filtered count for firmware
-        params.append((self.preset_data['pattern_length_16ths'] >> 8) & 0xFF)
-        params.append(self.preset_data['pattern_length_16ths'] & 0xFF)
-        params.append(self.preset_data['gate_length_percent'])
+        # Build parameter list (new protocol without name field)
+        # params[0] = preset_id
+        # params[1] = preset_type
+        # params[2] = note_count
+        # params[3] = pattern_length_16ths (high byte)
+        # params[4] = pattern_length_16ths (low byte)
+        # params[5] = gate_length_percent
+        # params[6] = timing_mode (0=straight, 1=triplet, 2=dotted)
+        # params[7] = note_value (0=quarter, 1=eighth, 2=sixteenth)
+        params = [
+            self.current_preset_id,
+            self.preset_data.get('preset_type', 0),
+            firmware_note_count,  # Use filtered count for firmware
+            (self.preset_data['pattern_length_16ths'] >> 8) & 0xFF,
+            self.preset_data['pattern_length_16ths'] & 0xFF,
+            self.preset_data['gate_length_percent'],
+            self.preset_data.get('timing_mode', 0),
+            self.preset_data.get('note_value', 2)
+        ]
 
         if self.send_hid_command(self.ARP_CMD_SET_PRESET, params):
             # Also save to EEPROM
@@ -2701,14 +2720,15 @@ class StepSequencer(Arpeggiator):
 
         logger.info("Step Sequencer tab initialized")
 
-        self.current_preset_id = 32  # Presets 32-63 for step sequencer
+        self.current_preset_id = 32  # Presets 32-47 for factory seq, 48-63 user
         self.is_step_sequencer = True  # This is the step sequencer tab
         self.preset_data = {
-            'name': 'User Seq',
             'preset_type': 1,  # PRESET_TYPE_STEP_SEQUENCER
             'note_count': 0,
             'pattern_length_16ths': 16,
             'gate_length_percent': 80,
+            'timing_mode': 0,  # 0=straight, 1=triplet, 2=dotted
+            'note_value': 2,   # 0=quarter, 1=eighth, 2=sixteenth
             'steps': []  # Flat list of notes with timing
         }
 
