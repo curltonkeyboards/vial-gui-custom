@@ -28,6 +28,10 @@
 #define HID_SUB_ID          0x00
 #define HID_DEVICE_ID       0x4D
 
+// Temporary buffer for HID preset editing (since presets are lazy-loaded)
+static arp_preset_t hid_edit_preset;
+static uint8_t hid_edit_preset_id = 255;  // Which preset is being edited (255 = none)
+
 void arp_hid_receive(uint8_t *data, uint8_t length) {
     uint8_t cmd = data[3];
     uint8_t *params = &data[4];  // Parameters start at byte 4
@@ -91,10 +95,19 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
         }
 
         case ARP_CMD_SAVE_PRESET: {
-            // Save preset to EEPROM
+            // Save preset to EEPROM from HID edit buffer
             // params[0] = preset_id
             uint8_t preset_id = params[0];
-            bool success = arp_save_preset_to_eeprom(preset_id);
+
+            // Check if this preset is currently in the edit buffer
+            if (hid_edit_preset_id != preset_id) {
+                params[0] = 1;  // Error: preset not loaded in edit buffer
+                dprintf("ARP HID: SAVE_PRESET failed - preset %d not in edit buffer (have %d)\n",
+                        preset_id, hid_edit_preset_id);
+                break;
+            }
+
+            bool success = arp_save_preset_to_eeprom(preset_id, &hid_edit_preset);
             params[0] = success ? 0 : 1;  // 0=success, 1=error
             dprintf("ARP HID: SAVE_PRESET id=%d result=%d\n", preset_id, success);
             break;
@@ -142,7 +155,7 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
         }
 
         case ARP_CMD_GET_PRESET: {
-            // Get preset data (basic info)
+            // Get preset data (basic info) and load into HID edit buffer
             // params[0] = preset_id (input)
             // Returns:
             //   params[0] = status (0=success, 1=error)
@@ -160,25 +173,40 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            arp_preset_t *preset = &arp_presets[preset_id];
+            // Lazy-load preset into HID edit buffer
+            bool loaded = false;
+            if (preset_id >= USER_PRESET_START) {
+                loaded = arp_load_preset_from_eeprom(preset_id, &hid_edit_preset);
+            } else {
+                arp_load_factory_preset(preset_id, &hid_edit_preset);
+                loaded = true;
+            }
+
+            if (!loaded) {
+                params[0] = 1;  // Error
+                dprintf("ARP HID: GET_PRESET failed - could not load preset %d\n", preset_id);
+                break;
+            }
+
+            hid_edit_preset_id = preset_id;
 
             params[0] = 0;  // Success
-            params[1] = preset->preset_type;
-            params[2] = preset->note_count;
-            params[3] = (preset->pattern_length_16ths >> 8) & 0xFF;
-            params[4] = preset->pattern_length_16ths & 0xFF;
-            params[5] = preset->gate_length_percent;
-            params[6] = preset->timing_mode;
-            params[7] = preset->note_value;
+            params[1] = hid_edit_preset.preset_type;
+            params[2] = hid_edit_preset.note_count;
+            params[3] = (hid_edit_preset.pattern_length_16ths >> 8) & 0xFF;
+            params[4] = hid_edit_preset.pattern_length_16ths & 0xFF;
+            params[5] = hid_edit_preset.gate_length_percent;
+            params[6] = hid_edit_preset.timing_mode;
+            params[7] = hid_edit_preset.note_value;
 
             dprintf("ARP HID: GET_PRESET id=%d type=%d notes=%d timing=%d/%d\n",
-                    preset_id, preset->preset_type, preset->note_count,
-                    preset->note_value, preset->timing_mode);
+                    preset_id, hid_edit_preset.preset_type, hid_edit_preset.note_count,
+                    hid_edit_preset.note_value, hid_edit_preset.timing_mode);
             break;
         }
 
         case ARP_CMD_SET_PRESET: {
-            // Set preset data (basic info only)
+            // Set preset data (basic info only) in HID edit buffer
             // params[0] = preset_id
             // params[1] = preset_type
             // params[2] = note_count
@@ -201,19 +229,30 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            arp_preset_t *preset = &arp_presets[preset_id];
+            // Load preset into edit buffer if not already there
+            if (hid_edit_preset_id != preset_id) {
+                if (preset_id >= USER_PRESET_START) {
+                    if (!arp_load_preset_from_eeprom(preset_id, &hid_edit_preset)) {
+                        // If load fails, initialize as empty
+                        memset(&hid_edit_preset, 0, sizeof(arp_preset_t));
+                    }
+                } else {
+                    arp_load_factory_preset(preset_id, &hid_edit_preset);
+                }
+                hid_edit_preset_id = preset_id;
+            }
 
-            // Set basic preset info
-            preset->preset_type = params[1];
-            preset->note_count = params[2];
-            preset->pattern_length_16ths = (params[3] << 8) | params[4];
-            preset->gate_length_percent = params[5];
-            preset->timing_mode = params[6];
-            preset->note_value = params[7];
-            preset->magic = ARP_PRESET_MAGIC;
+            // Set basic preset info in edit buffer
+            hid_edit_preset.preset_type = params[1];
+            hid_edit_preset.note_count = params[2];
+            hid_edit_preset.pattern_length_16ths = (params[3] << 8) | params[4];
+            hid_edit_preset.gate_length_percent = params[5];
+            hid_edit_preset.timing_mode = params[6];
+            hid_edit_preset.note_value = params[7];
+            hid_edit_preset.magic = ARP_PRESET_MAGIC;
 
             // Validate
-            if (!arp_validate_preset(preset)) {
+            if (!arp_validate_preset(&hid_edit_preset)) {
                 params[0] = 1;  // Error: validation failed
                 dprintf("ARP HID: SET_PRESET validation failed for preset %d\n", preset_id);
                 break;
@@ -221,13 +260,13 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
 
             params[0] = 0;  // Success
             dprintf("ARP HID: SET_PRESET id=%d type=%d notes=%d timing=%d/%d\n",
-                    preset_id, preset->preset_type, preset->note_count,
-                    preset->note_value, preset->timing_mode);
+                    preset_id, hid_edit_preset.preset_type, hid_edit_preset.note_count,
+                    hid_edit_preset.note_value, hid_edit_preset.timing_mode);
             break;
         }
 
         case ARP_CMD_SET_NOTE: {
-            // Set a single note in a preset
+            // Set a single note in the HID edit buffer
             // params[0] = preset_id
             // params[1] = note_index (0-127)
             // params[2-3] = packed_timing_vel (uint16_t, little-endian)
@@ -247,15 +286,20 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            arp_preset_t *preset = &arp_presets[preset_id];
+            // Check if this preset is in the edit buffer
+            if (hid_edit_preset_id != preset_id) {
+                params[0] = 1;  // Error: preset not loaded in edit buffer
+                dprintf("ARP HID: SET_NOTE failed - preset %d not in edit buffer\n", preset_id);
+                break;
+            }
 
             // Unpack note data from params
             uint16_t packed_timing_vel = params[2] | (params[3] << 8);
             uint8_t note_octave = params[4];
 
-            // Set note data
-            preset->notes[note_index].packed_timing_vel = packed_timing_vel;
-            preset->notes[note_index].note_octave = note_octave;
+            // Set note data in edit buffer
+            hid_edit_preset.notes[note_index].packed_timing_vel = packed_timing_vel;
+            hid_edit_preset.notes[note_index].note_octave = note_octave;
 
             params[0] = 0;  // Success
             dprintf("ARP HID: SET_NOTE preset=%d idx=%d timing=%d vel=%d\n",
@@ -303,9 +347,14 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            arp_preset_t *preset = &arp_presets[preset_id];
+            // Check if this preset is in the edit buffer
+            if (hid_edit_preset_id != preset_id) {
+                params[0] = 1;  // Error: preset not loaded in edit buffer
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - preset %d not in edit buffer\n", preset_id);
+                break;
+            }
 
-            // Parse and set notes
+            // Parse and set notes in edit buffer
             uint8_t *note_data = &params[3];  // Note data starts at params[3]
             for (uint8_t i = 0; i < chunk_count; i++) {
                 uint8_t note_idx = start_index + i;
@@ -315,9 +364,9 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 uint16_t packed_timing_vel = note_data[offset] | (note_data[offset + 1] << 8);
                 uint8_t note_octave = note_data[offset + 2];
 
-                // Set note data
-                preset->notes[note_idx].packed_timing_vel = packed_timing_vel;
-                preset->notes[note_idx].note_octave = note_octave;
+                // Set note data in edit buffer
+                hid_edit_preset.notes[note_idx].packed_timing_vel = packed_timing_vel;
+                hid_edit_preset.notes[note_idx].note_octave = note_octave;
             }
 
             params[0] = 0;  // Success

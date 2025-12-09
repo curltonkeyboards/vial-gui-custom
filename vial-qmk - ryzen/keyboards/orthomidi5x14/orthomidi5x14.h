@@ -132,6 +132,70 @@ void set_he_velocity_range(uint8_t min, uint8_t max);
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 
 // =============================================================================
+// ARPEGGIATOR & STEP SEQUENCER KEYCODES (0xCD00-0xCDFF)
+// =============================================================================
+
+// ARPEGGIATOR SECTION (0xCD00-0xCD7F)
+
+// Arpeggiator Control/Transport (0xCD00-0xCD0F)
+#define ARP_PLAY            0xCD00  // Play current selected arp (hold/double-tap for latch)
+#define ARP_NEXT_PRESET     0xCD01  // Navigate to next arp preset
+#define ARP_PREV_PRESET     0xCD02  // Navigate to previous arp preset
+#define ARP_SYNC_TOGGLE     0xCD03  // Toggle sync mode (BPM-locked vs free-running)
+#define ARP_GATE_UP         0xCD04  // Increase master gate length (+10%)
+#define ARP_GATE_DOWN       0xCD05  // Decrease master gate length (-10%)
+#define ARP_GATE_RESET      0xCD06  // Reset gate to preset default
+#define ARP_RESET_TO_DEFAULT 0xCD07 // Reset all overrides to preset defaults
+
+// Arpeggiator Pattern Rate Overrides (0xCD10-0xCD1B)
+#define ARP_RATE_QUARTER        0xCD10  // Quarter note straight
+#define ARP_RATE_QUARTER_DOT    0xCD11  // Quarter note dotted
+#define ARP_RATE_QUARTER_TRIP   0xCD12  // Quarter note triplet
+#define ARP_RATE_EIGHTH         0xCD13  // Eighth note straight
+#define ARP_RATE_EIGHTH_DOT     0xCD14  // Eighth note dotted
+#define ARP_RATE_EIGHTH_TRIP    0xCD15  // Eighth note triplet
+#define ARP_RATE_SIXTEENTH      0xCD16  // Sixteenth note straight
+#define ARP_RATE_SIXTEENTH_DOT  0xCD17  // Sixteenth note dotted
+#define ARP_RATE_SIXTEENTH_TRIP 0xCD18  // Sixteenth note triplet
+#define ARP_RATE_RESET          0xCD19  // Reset to preset's default rate
+
+// Arpeggiator Modes (0xCD20-0xCD2F)
+#define ARP_MODE_SINGLE         0xCD20  // Single note mode (classic arp)
+#define ARP_MODE_CHORD_BASIC    0xCD21  // Chord basic mode (all notes per step)
+#define ARP_MODE_CHORD_ADVANCED 0xCD22  // Chord advanced mode (staggered notes)
+
+// Direct Arpeggiator Preset Selection (0xCD30-0xCD6F) - 64 presets
+#define ARP_PRESET_BASE         0xCD30  // Base address for arp presets (0xCD30 + preset_id)
+
+// STEP SEQUENCER SECTION (0xCD80-0xCDFF)
+
+// Step Sequencer Control/Transport (0xCD80-0xCD8F)
+#define SEQ_PLAY            0xCD80  // Play current selected sequencer (toggle on/off)
+#define SEQ_STOP_ALL        0xCD81  // Stop all playing sequencers
+#define SEQ_NEXT_PRESET     0xCD82  // Navigate to next seq preset
+#define SEQ_PREV_PRESET     0xCD83  // Navigate to previous seq preset
+#define SEQ_SYNC_TOGGLE     0xCD84  // Toggle sync mode (BPM-locked vs free-running)
+#define SEQ_GATE_UP         0xCD85  // Increase master gate length (+10%)
+#define SEQ_GATE_DOWN       0xCD86  // Decrease master gate length (-10%)
+#define SEQ_GATE_RESET      0xCD87  // Reset gate to preset default
+#define SEQ_RESET_TO_DEFAULT 0xCD88 // Reset all overrides to preset defaults
+
+// Step Sequencer Pattern Rate Overrides (0xCD90-0xCD9B)
+#define SEQ_RATE_QUARTER        0xCD90  // Quarter note straight
+#define SEQ_RATE_QUARTER_DOT    0xCD91  // Quarter note dotted
+#define SEQ_RATE_QUARTER_TRIP   0xCD92  // Quarter note triplet
+#define SEQ_RATE_EIGHTH         0xCD93  // Eighth note straight
+#define SEQ_RATE_EIGHTH_DOT     0xCD94  // Eighth note dotted
+#define SEQ_RATE_EIGHTH_TRIP    0xCD95  // Eighth note triplet
+#define SEQ_RATE_SIXTEENTH      0xCD96  // Sixteenth note straight
+#define SEQ_RATE_SIXTEENTH_DOT  0xCD97  // Sixteenth note dotted
+#define SEQ_RATE_SIXTEENTH_TRIP 0xCD98  // Sixteenth note triplet
+#define SEQ_RATE_RESET          0xCD99  // Reset to preset's default rate
+
+// Direct Step Sequencer Preset Selection (0xCDA0-0xCDDF) - 64 presets
+#define SEQ_PRESET_BASE         0xCDA0  // Base address for seq presets (0xCDA0 + preset_id)
+
+// =============================================================================
 // GAMING / JOYSTICK SYSTEM
 // =============================================================================
 
@@ -229,12 +293,12 @@ typedef enum {
     NOTE_VALUE_COUNT
 } note_value_t;
 
-// Arpeggiator mode types
+// Arpeggiator mode types (internal enum values)
 typedef enum {
-    ARP_MODE_SINGLE_NOTE = 0,     // One note at a time (classic arp)
-    ARP_MODE_CHORD_BASIC,         // All notes at once per step
-    ARP_MODE_CHORD_ADVANCED,      // Staggers notes evenly across step time
-    ARP_MODE_COUNT
+    ARPMODE_SINGLE_NOTE = 0,      // One note at a time (classic arp)
+    ARPMODE_CHORD_BASIC,          // All notes at once per step
+    ARPMODE_CHORD_ADVANCED,       // Staggers notes evenly across step time
+    ARPMODE_COUNT
 } arp_mode_t;
 
 // Arpeggiator note in the tracking array (for gate timing)
@@ -279,16 +343,31 @@ typedef struct {
     bool sync_mode;                     // Sync to BPM beat boundaries
     bool latch_mode;                    // Continue after keys released (double-tap)
     arp_mode_t mode;                    // Single note / Chord basic / Chord advanced
-    uint8_t current_preset_id;          // Which preset is active
+    uint8_t current_preset_id;          // Which preset is selected (for NEXT/PREV)
+    uint8_t loaded_preset_id;           // Which preset is currently loaded in RAM
     uint32_t next_note_time;            // When to play next note
     uint16_t current_position_16ths;    // Current position in pattern (0-pattern_length)
     uint8_t current_note_in_chord;      // For chord advanced mode: which note of chord
-    uint8_t subdivision_override;       // 0=use preset timing, else override subdivision
+    uint8_t rate_override;              // 0=use preset, else override (NOTE_VALUE_* | TIMING_MODE_*)
     uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
     uint32_t pattern_start_time;        // When current pattern loop started
     uint32_t last_tap_time;             // For double-tap detection
     bool key_held;                      // Is arp button physically held
 } arp_state_t;
+
+// Step Sequencer runtime state (per slot)
+#define MAX_SEQ_SLOTS 4
+typedef struct {
+    bool active;                        // Is this seq slot currently running
+    bool sync_mode;                     // Sync to BPM beat boundaries
+    uint8_t current_preset_id;          // Which preset is selected (for NEXT/PREV)
+    uint8_t loaded_preset_id;           // Which preset is currently loaded in RAM
+    uint32_t next_note_time;            // When to play next note
+    uint16_t current_position_16ths;    // Current position in pattern (0-pattern_length)
+    uint8_t rate_override;              // 0=use preset, else override (NOTE_VALUE_* | TIMING_MODE_*)
+    uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
+    uint32_t pattern_start_time;        // When current pattern loop started
+} seq_state_t;
 
 // EEPROM storage structure (for user presets only)
 #define ARP_EEPROM_ADDR 65800       // Starting address for user presets in EEPROM
@@ -311,27 +390,48 @@ typedef struct {
 extern arp_note_t arp_notes[MAX_ARP_NOTES];
 extern uint8_t arp_note_count;
 extern arp_state_t arp_state;
-extern arp_preset_t arp_presets[MAX_ARP_PRESETS];
-extern uint8_t arp_preset_count;
+extern seq_state_t seq_state[MAX_SEQ_SLOTS];
+
+// Efficient RAM storage: Only active presets loaded (was 64 × 392 = 25KB, now ~2KB)
+extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (~392 bytes)
+extern arp_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (~1.5KB)
+extern uint8_t arp_preset_count;  // Still track total count for NEXT/PREV navigation
 
 // Arpeggiator functions
 void arp_init(void);
 void arp_update(void);
+void seq_update(void);  // Update all active sequencer slots
 void arp_start(uint8_t preset_id);
 void arp_stop(void);
+void seq_start(uint8_t preset_id);  // Start sequencer in available slot
+void seq_stop(uint8_t slot);        // Stop specific sequencer slot
+void seq_stop_all(void);            // Stop all sequencers
 void arp_toggle_sync_mode(void);
+void seq_toggle_sync_mode(void);
 void arp_next_preset(void);
 void arp_prev_preset(void);
+void seq_next_preset(void);
+void seq_prev_preset(void);
 void arp_handle_button_press(void);
 void arp_handle_button_release(void);
 void arp_set_master_gate(uint8_t gate_percent);
+void seq_set_master_gate(uint8_t gate_percent);
 void arp_set_mode(arp_mode_t mode);
+void arp_set_rate_override(uint8_t note_value, uint8_t timing_mode);
+void seq_set_rate_override(uint8_t note_value, uint8_t timing_mode);
+void arp_reset_overrides(void);
+void seq_reset_overrides(void);
 
-// Phase 3: EEPROM and preset management functions
+// Lazy-loading preset management
+bool arp_load_preset_into_slot(uint8_t preset_id);  // Load preset into arp RAM slot
+bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot);  // Load preset into seq RAM slot
+int8_t seq_find_available_slot(void);  // Find available seq slot (-1 if none)
+
+// EEPROM and preset management functions
 bool arp_validate_preset(const arp_preset_t *preset);
-bool arp_save_preset_to_eeprom(uint8_t preset_id);
-bool arp_load_preset_from_eeprom(uint8_t preset_id);
-void arp_load_all_user_presets(void);
+bool arp_save_preset_to_eeprom(uint8_t preset_id, const arp_preset_t *source);
+bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest);
+void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest);
 bool arp_clear_preset(uint8_t preset_id);
 bool arp_copy_preset(uint8_t source_id, uint8_t dest_id);
 void arp_reset_all_user_presets(void);

@@ -39,3 +39,4 @@ RGB_MATRIX_CUSTOM_USER = yes
 # Arpeggiator system
 SRC += arpeggiator.c
 SRC += arpeggiator_hid.c
+SRC += arp_factory_presets.c
