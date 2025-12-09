@@ -2366,12 +2366,16 @@ class keycodes_v5:
         "ARP_SYNC_MODE": 0xCD03,  # Toggle sync mode
         "ARP_LATCH_MODE": 0xCD04,  # Toggle latch mode
         "ARP_RESET_OVERRIDES": 0xCD05,  # Reset all overrides
-        "ARP_SET_GATE_100": 0xCD06,  # Set gate 100%
-        "ARP_SET_GATE_90": 0xCD07,  # Set gate 90%
-        "ARP_SET_GATE_80": 0xCD08,  # Set gate 80%
-        "ARP_SET_GATE_70": 0xCD09,  # Set gate 70%
-        "ARP_SET_GATE_60": 0xCD0A,  # Set gate 60%
-        "ARP_SET_GATE_50": 0xCD0B,  # Set gate 50%
+        "ARP_SET_GATE_100": 0xCD08,  # Set gate 100%
+        "ARP_SET_GATE_90": 0xCD09,  # Set gate 90%
+        "ARP_SET_GATE_80": 0xCD0A,  # Set gate 80%
+        "ARP_SET_GATE_70": 0xCD0B,  # Set gate 70%
+        "ARP_SET_GATE_60": 0xCD0C,  # Set gate 60%
+        "ARP_SET_GATE_50": 0xCD0D,  # Set gate 50%
+        "ARP_SET_GATE_40": 0xCD0E,  # Set gate 40%
+        "ARP_SET_GATE_30": 0xCD0F,  # Set gate 30%
+        "ARP_SET_GATE_20": 0xCD1A,  # Set gate 20%
+        "ARP_SET_GATE_10": 0xCD1B,  # Set gate 10%
 
         # Arpeggiator Rate Overrides (0xCD10-0xCD1F)
         "ARP_RATE_QUARTER": 0xCD10,  # Quarter notes
@@ -2389,6 +2393,29 @@ class keycodes_v5:
         "ARP_MODE_CHORD_BASIC": 0xCD21,  # Chord basic mode
         "ARP_MODE_CHORD_ADVANCED": 0xCD22,  # Chord advanced mode
 
+        # Arpeggiator Gate Up/Down Variants (0xCD23-0xCD2C, 0xCD70-0xCD79)
+        "ARP_GATE_UP_1": 0xCD23,  # Increase gate by 1%
+        "ARP_GATE_UP_2": 0xCD24,  # Increase gate by 2%
+        "ARP_GATE_UP_3": 0xCD25,  # Increase gate by 3%
+        "ARP_GATE_UP_4": 0xCD26,  # Increase gate by 4%
+        "ARP_GATE_UP_5": 0xCD27,  # Increase gate by 5%
+        "ARP_GATE_UP_6": 0xCD28,  # Increase gate by 6%
+        "ARP_GATE_UP_7": 0xCD29,  # Increase gate by 7%
+        "ARP_GATE_UP_8": 0xCD2A,  # Increase gate by 8%
+        "ARP_GATE_UP_9": 0xCD2B,  # Increase gate by 9%
+        "ARP_GATE_UP_10": 0xCD2C,  # Increase gate by 10%
+
+        "ARP_GATE_DOWN_1": 0xCD70,  # Decrease gate by 1%
+        "ARP_GATE_DOWN_2": 0xCD71,  # Decrease gate by 2%
+        "ARP_GATE_DOWN_3": 0xCD72,  # Decrease gate by 3%
+        "ARP_GATE_DOWN_4": 0xCD73,  # Decrease gate by 4%
+        "ARP_GATE_DOWN_5": 0xCD74,  # Decrease gate by 5%
+        "ARP_GATE_DOWN_6": 0xCD75,  # Decrease gate by 6%
+        "ARP_GATE_DOWN_7": 0xCD76,  # Decrease gate by 7%
+        "ARP_GATE_DOWN_8": 0xCD77,  # Decrease gate by 8%
+        "ARP_GATE_DOWN_9": 0xCD78,  # Decrease gate by 9%
+        "ARP_GATE_DOWN_10": 0xCD79,  # Decrease gate by 10%
+
         # Arpeggiator Preset Base (0xCD30-0xCD6F) - 64 presets
         "ARP_PRESET_BASE": 0xCD30,  # Base for arp preset selection
 
@@ -2399,12 +2426,16 @@ class keycodes_v5:
         "SEQ_PREV_PRESET": 0xCD83,  # Previous seq preset
         "SEQ_SYNC_MODE": 0xCD84,  # Toggle sync mode
         "SEQ_RESET_OVERRIDES": 0xCD85,  # Reset all overrides
-        "SEQ_SET_GATE_100": 0xCD86,  # Set gate 100%
-        "SEQ_SET_GATE_90": 0xCD87,  # Set gate 90%
-        "SEQ_SET_GATE_80": 0xCD88,  # Set gate 80%
-        "SEQ_SET_GATE_70": 0xCD89,  # Set gate 70%
-        "SEQ_SET_GATE_60": 0xCD8A,  # Set gate 60%
-        "SEQ_SET_GATE_50": 0xCD8B,  # Set gate 50%
+        "SEQ_SET_GATE_100": 0xCD89,  # Set gate 100%
+        "SEQ_SET_GATE_90": 0xCD8A,  # Set gate 90%
+        "SEQ_SET_GATE_80": 0xCD8B,  # Set gate 80%
+        "SEQ_SET_GATE_70": 0xCD8C,  # Set gate 70%
+        "SEQ_SET_GATE_60": 0xCD8D,  # Set gate 60%
+        "SEQ_SET_GATE_50": 0xCD8E,  # Set gate 50%
+        "SEQ_SET_GATE_40": 0xCD8F,  # Set gate 40%
+        "SEQ_SET_GATE_30": 0xCDE0,  # Set gate 30%
+        "SEQ_SET_GATE_20": 0xCDE1,  # Set gate 20%
+        "SEQ_SET_GATE_10": 0xCDE2,  # Set gate 10%
 
         # Step Sequencer Rate Overrides (0xCD90-0xCD9F)
         "SEQ_RATE_QUARTER": 0xCD90,  # Quarter notes
@@ -2419,6 +2450,29 @@ class keycodes_v5:
 
         # Step Sequencer Preset Base (0xCDA0-0xCDDF) - 64 presets
         "SEQ_PRESET_BASE": 0xCDA0,  # Base for seq preset selection
+
+        # Step Sequencer Gate Up/Down Variants (0xCDE3-0xCDF6)
+        "SEQ_GATE_UP_1": 0xCDE3,  # Increase gate by 1%
+        "SEQ_GATE_UP_2": 0xCDE4,  # Increase gate by 2%
+        "SEQ_GATE_UP_3": 0xCDE5,  # Increase gate by 3%
+        "SEQ_GATE_UP_4": 0xCDE6,  # Increase gate by 4%
+        "SEQ_GATE_UP_5": 0xCDE7,  # Increase gate by 5%
+        "SEQ_GATE_UP_6": 0xCDE8,  # Increase gate by 6%
+        "SEQ_GATE_UP_7": 0xCDE9,  # Increase gate by 7%
+        "SEQ_GATE_UP_8": 0xCDEA,  # Increase gate by 8%
+        "SEQ_GATE_UP_9": 0xCDEB,  # Increase gate by 9%
+        "SEQ_GATE_UP_10": 0xCDEC,  # Increase gate by 10%
+
+        "SEQ_GATE_DOWN_1": 0xCDED,  # Decrease gate by 1%
+        "SEQ_GATE_DOWN_2": 0xCDEE,  # Decrease gate by 2%
+        "SEQ_GATE_DOWN_3": 0xCDEF,  # Decrease gate by 3%
+        "SEQ_GATE_DOWN_4": 0xCDF0,  # Decrease gate by 4%
+        "SEQ_GATE_DOWN_5": 0xCDF1,  # Decrease gate by 5%
+        "SEQ_GATE_DOWN_6": 0xCDF2,  # Decrease gate by 6%
+        "SEQ_GATE_DOWN_7": 0xCDF3,  # Decrease gate by 7%
+        "SEQ_GATE_DOWN_8": 0xCDF4,  # Decrease gate by 8%
+        "SEQ_GATE_DOWN_9": 0xCDF5,  # Decrease gate by 9%
+        "SEQ_GATE_DOWN_10": 0xCDF6,  # Decrease gate by 10%
 
         "QK_KB": 0xCC57, #custom keycodes safe range
 

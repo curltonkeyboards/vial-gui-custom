@@ -10923,6 +10923,63 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // ARPEGGIATOR FIXED GATE PERCENTAGES (0xCD08-0xCD0F, 0xCD1A-0xCD1B)
+    if (keycode >= ARP_SET_GATE_100 && keycode <= ARP_SET_GATE_30) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 0;
+            switch (keycode) {
+                case ARP_SET_GATE_100: gate_value = 100; break;
+                case ARP_SET_GATE_90:  gate_value = 90;  break;
+                case ARP_SET_GATE_80:  gate_value = 80;  break;
+                case ARP_SET_GATE_70:  gate_value = 70;  break;
+                case ARP_SET_GATE_60:  gate_value = 60;  break;
+                case ARP_SET_GATE_50:  gate_value = 50;  break;
+                case ARP_SET_GATE_40:  gate_value = 40;  break;
+                case ARP_SET_GATE_30:  gate_value = 30;  break;
+                default: gate_value = 80; break;
+            }
+            arp_set_master_gate(gate_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_SET_GATE_20 || keycode == ARP_SET_GATE_10) {
+        if (record->event.pressed) {
+            uint8_t gate_value = (keycode == ARP_SET_GATE_20) ? 20 : 10;
+            arp_set_master_gate(gate_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // ARPEGGIATOR GATE UP/DOWN VARIANTS (0xCD23-0xCD2C, 0xCD70-0xCD79)
+    if (keycode >= ARP_GATE_UP_1 && keycode <= ARP_GATE_UP_10) {
+        if (record->event.pressed) {
+            uint8_t increment = (keycode - ARP_GATE_UP_1) + 1;
+            uint8_t current_gate = (arp_state.master_gate_override > 0) ?
+                                   arp_state.master_gate_override : 80;
+            if (current_gate <= (100 - increment)) current_gate += increment;
+            else current_gate = 100;
+            arp_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode >= ARP_GATE_DOWN_1 && keycode <= ARP_GATE_DOWN_10) {
+        if (record->event.pressed) {
+            uint8_t decrement = (keycode - ARP_GATE_DOWN_1) + 1;
+            uint8_t current_gate = (arp_state.master_gate_override > 0) ?
+                                   arp_state.master_gate_override : 80;
+            if (current_gate >= decrement) current_gate -= decrement;
+            else current_gate = 0;
+            arp_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
     // ARPEGGIATOR RATE OVERRIDES (0xCD10-0xCD1B)
     if (keycode >= ARP_RATE_QUARTER && keycode <= ARP_RATE_SIXTEENTH_TRIP) {
         if (record->event.pressed) {
@@ -11075,7 +11132,81 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // STEP SEQUENCER RATE OVERRIDES (0xCD90-0xCD9B)
+    // STEP SEQUENCER FIXED GATE PERCENTAGES (0xCD89-0xCD8F, 0xCDE0-0xCDE2)
+    if (keycode >= SEQ_SET_GATE_100 && keycode <= SEQ_SET_GATE_40) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 0;
+            switch (keycode) {
+                case SEQ_SET_GATE_100: gate_value = 100; break;
+                case SEQ_SET_GATE_90:  gate_value = 90;  break;
+                case SEQ_SET_GATE_80:  gate_value = 80;  break;
+                case SEQ_SET_GATE_70:  gate_value = 70;  break;
+                case SEQ_SET_GATE_60:  gate_value = 60;  break;
+                case SEQ_SET_GATE_50:  gate_value = 50;  break;
+                case SEQ_SET_GATE_40:  gate_value = 40;  break;
+                default: gate_value = 80; break;
+            }
+            seq_set_master_gate(gate_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode >= SEQ_SET_GATE_30 && keycode <= SEQ_SET_GATE_10) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 0;
+            switch (keycode) {
+                case SEQ_SET_GATE_30: gate_value = 30; break;
+                case SEQ_SET_GATE_20: gate_value = 20; break;
+                case SEQ_SET_GATE_10: gate_value = 10; break;
+                default: gate_value = 80; break;
+            }
+            seq_set_master_gate(gate_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // STEP SEQUENCER GATE UP/DOWN VARIANTS (0xCDE3-0xCDF6)
+    if (keycode >= SEQ_GATE_UP_1 && keycode <= SEQ_GATE_UP_10) {
+        if (record->event.pressed) {
+            uint8_t increment = (keycode - SEQ_GATE_UP_1) + 1;
+            // Get current gate from first active slot, or default to 80
+            uint8_t current_gate = 80;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_state[i].active && seq_state[i].master_gate_override > 0) {
+                    current_gate = seq_state[i].master_gate_override;
+                    break;
+                }
+            }
+            if (current_gate <= (100 - increment)) current_gate += increment;
+            else current_gate = 100;
+            seq_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode >= SEQ_GATE_DOWN_1 && keycode <= SEQ_GATE_DOWN_10) {
+        if (record->event.pressed) {
+            uint8_t decrement = (keycode - SEQ_GATE_DOWN_1) + 1;
+            // Get current gate from first active slot, or default to 80
+            uint8_t current_gate = 80;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_state[i].active && seq_state[i].master_gate_override > 0) {
+                    current_gate = seq_state[i].master_gate_override;
+                    break;
+                }
+            }
+            if (current_gate >= decrement) current_gate -= decrement;
+            else current_gate = 0;
+            seq_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // STEP SEQUENCER RATE OVERRIDES (0xCD90-0xCD99)
     if (keycode >= SEQ_RATE_QUARTER && keycode <= SEQ_RATE_SIXTEENTH_TRIP) {
         if (record->event.pressed) {
             uint8_t note_value, timing_mode;

@@ -3275,6 +3275,10 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_SET_GATE_70", "Gate\n70%", "Set arpeggiator gate to 70%"),
     K("ARP_SET_GATE_60", "Gate\n60%", "Set arpeggiator gate to 60%"),
     K("ARP_SET_GATE_50", "Gate\n50%", "Set arpeggiator gate to 50%"),
+    K("ARP_SET_GATE_40", "Gate\n40%", "Set arpeggiator gate to 40%"),
+    K("ARP_SET_GATE_30", "Gate\n30%", "Set arpeggiator gate to 30%"),
+    K("ARP_SET_GATE_20", "Gate\n20%", "Set arpeggiator gate to 20%"),
+    K("ARP_SET_GATE_10", "Gate\n10%", "Set arpeggiator gate to 10%"),
     
     # Rate overrides
     K("ARP_RATE_QUARTER", "Quarter\nNotes", "Arpeggiator rate: quarter notes"),
@@ -3316,6 +3320,10 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_SET_GATE_70", "Gate\n70%", "Set sequencer gate to 70%"),
     K("SEQ_SET_GATE_60", "Gate\n60%", "Set sequencer gate to 60%"),
     K("SEQ_SET_GATE_50", "Gate\n50%", "Set sequencer gate to 50%"),
+    K("SEQ_SET_GATE_40", "Gate\n40%", "Set sequencer gate to 40%"),
+    K("SEQ_SET_GATE_30", "Gate\n30%", "Set sequencer gate to 30%"),
+    K("SEQ_SET_GATE_20", "Gate\n20%", "Set sequencer gate to 20%"),
+    K("SEQ_SET_GATE_10", "Gate\n10%", "Set sequencer gate to 10%"),
     
     # Rate overrides
     K("SEQ_RATE_QUARTER", "Quarter\nNotes", "Sequencer rate: quarter notes"),

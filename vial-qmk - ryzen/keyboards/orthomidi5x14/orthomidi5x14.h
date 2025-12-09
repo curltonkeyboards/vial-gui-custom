@@ -147,7 +147,19 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define ARP_GATE_RESET      0xCD06  // Reset gate to preset default
 #define ARP_RESET_TO_DEFAULT 0xCD07 // Reset all overrides to preset defaults
 
-// Arpeggiator Pattern Rate Overrides (0xCD10-0xCD1B)
+// Arpeggiator Fixed Gate Percentages (0xCD08-0xCD0F, 0xCD1A-0xCD1B)
+#define ARP_SET_GATE_100    0xCD08  // Set gate to 100%
+#define ARP_SET_GATE_90     0xCD09  // Set gate to 90%
+#define ARP_SET_GATE_80     0xCD0A  // Set gate to 80%
+#define ARP_SET_GATE_70     0xCD0B  // Set gate to 70%
+#define ARP_SET_GATE_60     0xCD0C  // Set gate to 60%
+#define ARP_SET_GATE_50     0xCD0D  // Set gate to 50%
+#define ARP_SET_GATE_40     0xCD0E  // Set gate to 40%
+#define ARP_SET_GATE_30     0xCD0F  // Set gate to 30%
+#define ARP_SET_GATE_20     0xCD1A  // Set gate to 20%
+#define ARP_SET_GATE_10     0xCD1B  // Set gate to 10%
+
+// Arpeggiator Pattern Rate Overrides (0xCD10-0xCD19)
 #define ARP_RATE_QUARTER        0xCD10  // Quarter note straight
 #define ARP_RATE_QUARTER_DOT    0xCD11  // Quarter note dotted
 #define ARP_RATE_QUARTER_TRIP   0xCD12  // Quarter note triplet
@@ -163,6 +175,29 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define ARP_MODE_SINGLE         0xCD20  // Single note mode (classic arp)
 #define ARP_MODE_CHORD_BASIC    0xCD21  // Chord basic mode (all notes per step)
 #define ARP_MODE_CHORD_ADVANCED 0xCD22  // Chord advanced mode (staggered notes)
+
+// Arpeggiator Gate Up/Down Variants (0xCD23-0xCD2C, 0xCD70-0xCD79)
+#define ARP_GATE_UP_1       0xCD23  // Increase gate by 1%
+#define ARP_GATE_UP_2       0xCD24  // Increase gate by 2%
+#define ARP_GATE_UP_3       0xCD25  // Increase gate by 3%
+#define ARP_GATE_UP_4       0xCD26  // Increase gate by 4%
+#define ARP_GATE_UP_5       0xCD27  // Increase gate by 5%
+#define ARP_GATE_UP_6       0xCD28  // Increase gate by 6%
+#define ARP_GATE_UP_7       0xCD29  // Increase gate by 7%
+#define ARP_GATE_UP_8       0xCD2A  // Increase gate by 8%
+#define ARP_GATE_UP_9       0xCD2B  // Increase gate by 9%
+#define ARP_GATE_UP_10      0xCD2C  // Increase gate by 10%
+
+#define ARP_GATE_DOWN_1     0xCD70  // Decrease gate by 1%
+#define ARP_GATE_DOWN_2     0xCD71  // Decrease gate by 2%
+#define ARP_GATE_DOWN_3     0xCD72  // Decrease gate by 3%
+#define ARP_GATE_DOWN_4     0xCD73  // Decrease gate by 4%
+#define ARP_GATE_DOWN_5     0xCD74  // Decrease gate by 5%
+#define ARP_GATE_DOWN_6     0xCD75  // Decrease gate by 6%
+#define ARP_GATE_DOWN_7     0xCD76  // Decrease gate by 7%
+#define ARP_GATE_DOWN_8     0xCD77  // Decrease gate by 8%
+#define ARP_GATE_DOWN_9     0xCD78  // Decrease gate by 9%
+#define ARP_GATE_DOWN_10    0xCD79  // Decrease gate by 10%
 
 // Direct Arpeggiator Preset Selection (0xCD30-0xCD6F) - 64 presets
 #define ARP_PRESET_BASE         0xCD30  // Base address for arp presets (0xCD30 + preset_id)
@@ -180,7 +215,19 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_GATE_RESET      0xCD87  // Reset gate to preset default
 #define SEQ_RESET_TO_DEFAULT 0xCD88 // Reset all overrides to preset defaults
 
-// Step Sequencer Pattern Rate Overrides (0xCD90-0xCD9B)
+// Step Sequencer Fixed Gate Percentages (0xCD89-0xCD8F, 0xCDE0-0xCDE2)
+#define SEQ_SET_GATE_100    0xCD89  // Set gate to 100%
+#define SEQ_SET_GATE_90     0xCD8A  // Set gate to 90%
+#define SEQ_SET_GATE_80     0xCD8B  // Set gate to 80%
+#define SEQ_SET_GATE_70     0xCD8C  // Set gate to 70%
+#define SEQ_SET_GATE_60     0xCD8D  // Set gate to 60%
+#define SEQ_SET_GATE_50     0xCD8E  // Set gate to 50%
+#define SEQ_SET_GATE_40     0xCD8F  // Set gate to 40%
+#define SEQ_SET_GATE_30     0xCDE0  // Set gate to 30%
+#define SEQ_SET_GATE_20     0xCDE1  // Set gate to 20%
+#define SEQ_SET_GATE_10     0xCDE2  // Set gate to 10%
+
+// Step Sequencer Pattern Rate Overrides (0xCD90-0xCD99)
 #define SEQ_RATE_QUARTER        0xCD90  // Quarter note straight
 #define SEQ_RATE_QUARTER_DOT    0xCD91  // Quarter note dotted
 #define SEQ_RATE_QUARTER_TRIP   0xCD92  // Quarter note triplet
@@ -194,6 +241,29 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 
 // Direct Step Sequencer Preset Selection (0xCDA0-0xCDDF) - 64 presets
 #define SEQ_PRESET_BASE         0xCDA0  // Base address for seq presets (0xCDA0 + preset_id)
+
+// Step Sequencer Gate Up/Down Variants (0xCDE3-0xCDF6)
+#define SEQ_GATE_UP_1       0xCDE3  // Increase gate by 1%
+#define SEQ_GATE_UP_2       0xCDE4  // Increase gate by 2%
+#define SEQ_GATE_UP_3       0xCDE5  // Increase gate by 3%
+#define SEQ_GATE_UP_4       0xCDE6  // Increase gate by 4%
+#define SEQ_GATE_UP_5       0xCDE7  // Increase gate by 5%
+#define SEQ_GATE_UP_6       0xCDE8  // Increase gate by 6%
+#define SEQ_GATE_UP_7       0xCDE9  // Increase gate by 7%
+#define SEQ_GATE_UP_8       0xCDEA  // Increase gate by 8%
+#define SEQ_GATE_UP_9       0xCDEB  // Increase gate by 9%
+#define SEQ_GATE_UP_10      0xCDEC  // Increase gate by 10%
+
+#define SEQ_GATE_DOWN_1     0xCDED  // Decrease gate by 1%
+#define SEQ_GATE_DOWN_2     0xCDEE  // Decrease gate by 2%
+#define SEQ_GATE_DOWN_3     0xCDEF  // Decrease gate by 3%
+#define SEQ_GATE_DOWN_4     0xCDF0  // Decrease gate by 4%
+#define SEQ_GATE_DOWN_5     0xCDF1  // Decrease gate by 5%
+#define SEQ_GATE_DOWN_6     0xCDF2  // Decrease gate by 6%
+#define SEQ_GATE_DOWN_7     0xCDF3  // Decrease gate by 7%
+#define SEQ_GATE_DOWN_8     0xCDF4  // Decrease gate by 8%
+#define SEQ_GATE_DOWN_9     0xCDF5  // Decrease gate by 9%
+#define SEQ_GATE_DOWN_10    0xCDF6  // Decrease gate by 10%
 
 // =============================================================================
 // GAMING / JOYSTICK SYSTEM

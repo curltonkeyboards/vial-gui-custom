@@ -5184,10 +5184,10 @@ class ArpeggiatorTab(QScrollArea):
         mode_group.setLayout(mode_layout)
         self.main_layout.addWidget(mode_group)
         
-        # Preset section
-        preset_group = QGroupBox("Preset Selection (0-63)")
-        preset_layout = FlowLayout()
-        for keycode in self.arp_preset_keycodes[:32]:  # Show first 32 presets initially
+        # Factory Arpeggiator Preset section (0-47)
+        factory_preset_group = QGroupBox("Factory Arpeggiator Presets (0-47)")
+        factory_preset_layout = FlowLayout()
+        for keycode in self.arp_preset_keycodes[:48]:  # Factory presets 0-47
             if keycode_filter(keycode):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
@@ -5195,9 +5195,24 @@ class ArpeggiatorTab(QScrollArea):
                 btn.keycode = keycode
                 btn.setText(keycode.label)
                 btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                preset_layout.addWidget(btn)
-        preset_group.setLayout(preset_layout)
-        self.main_layout.addWidget(preset_group)
+                factory_preset_layout.addWidget(btn)
+        factory_preset_group.setLayout(factory_preset_layout)
+        self.main_layout.addWidget(factory_preset_group)
+
+        # User Arpeggiator Preset section (48-63)
+        user_preset_group = QGroupBox("User Arpeggiator Presets (48-63)")
+        user_preset_layout = FlowLayout()
+        for keycode in self.arp_preset_keycodes[48:64]:  # User presets 48-63
+            if keycode_filter(keycode):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                user_preset_layout.addWidget(btn)
+        user_preset_group.setLayout(user_preset_layout)
+        self.main_layout.addWidget(user_preset_group)
         
         self.main_layout.addStretch(1)
     
@@ -5288,10 +5303,10 @@ class StepSequencerTab(QScrollArea):
         rate_group.setLayout(rate_layout)
         self.main_layout.addWidget(rate_group)
         
-        # Preset section
-        preset_group = QGroupBox("Preset Selection (0-63)")
-        preset_layout = FlowLayout()
-        for keycode in self.seq_preset_keycodes[:32]:  # Show first 32 presets initially
+        # Factory Step Sequencer Preset section (0-47)
+        factory_preset_group = QGroupBox("Factory Step Sequencer Presets (0-47)")
+        factory_preset_layout = FlowLayout()
+        for keycode in self.seq_preset_keycodes[:48]:  # Factory presets 0-47
             if keycode_filter(keycode):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
@@ -5299,9 +5314,24 @@ class StepSequencerTab(QScrollArea):
                 btn.keycode = keycode
                 btn.setText(keycode.label)
                 btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                preset_layout.addWidget(btn)
-        preset_group.setLayout(preset_layout)
-        self.main_layout.addWidget(preset_group)
+                factory_preset_layout.addWidget(btn)
+        factory_preset_group.setLayout(factory_preset_layout)
+        self.main_layout.addWidget(factory_preset_group)
+
+        # User Step Sequencer Preset section (48-63)
+        user_preset_group = QGroupBox("User Step Sequencer Presets (48-63)")
+        user_preset_layout = FlowLayout()
+        for keycode in self.seq_preset_keycodes[48:64]:  # User presets 48-63
+            if keycode_filter(keycode):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                user_preset_layout.addWidget(btn)
+        user_preset_group.setLayout(user_preset_layout)
+        self.main_layout.addWidget(user_preset_group)
         
         self.main_layout.addStretch(1)
     
