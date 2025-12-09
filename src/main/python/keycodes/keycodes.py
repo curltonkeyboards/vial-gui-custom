@@ -3258,6 +3258,133 @@ KEYCODES_GAMING = [
     K("DPAD_RIGHT", "D-pad →", "D-pad Right (Button 15)"),
 ]
 
+KEYCODES_ARPEGGIATOR = [
+    # Control keycodes
+    K("ARP_PLAY", "Play
+Arp", "Arpeggiator play/stop toggle"),
+    K("ARP_NEXT_PRESET", "Next
+Preset", "Load next arpeggiator preset"),
+    K("ARP_PREV_PRESET", "Prev
+Preset", "Load previous arpeggiator preset"),
+    K("ARP_SYNC_MODE", "Sync
+Mode", "Toggle arpeggiator sync mode"),
+    K("ARP_LATCH_MODE", "Latch
+Mode", "Toggle arpeggiator latch mode"),
+    K("ARP_RESET_OVERRIDES", "Reset
+Overrides", "Reset all arpeggiator overrides"),
+    
+    # Gate length presets
+    K("ARP_SET_GATE_100", "Gate
+100%", "Set arpeggiator gate to 100%"),
+    K("ARP_SET_GATE_90", "Gate
+90%", "Set arpeggiator gate to 90%"),
+    K("ARP_SET_GATE_80", "Gate
+80%", "Set arpeggiator gate to 80%"),
+    K("ARP_SET_GATE_70", "Gate
+70%", "Set arpeggiator gate to 70%"),
+    K("ARP_SET_GATE_60", "Gate
+60%", "Set arpeggiator gate to 60%"),
+    K("ARP_SET_GATE_50", "Gate
+50%", "Set arpeggiator gate to 50%"),
+    
+    # Rate overrides
+    K("ARP_RATE_QUARTER", "Quarter
+Notes", "Arpeggiator rate: quarter notes"),
+    K("ARP_RATE_QUARTER_DOT", "Quarter
+Dotted", "Arpeggiator rate: dotted quarter"),
+    K("ARP_RATE_QUARTER_TRIP", "Quarter
+Triplet", "Arpeggiator rate: triplet quarter"),
+    K("ARP_RATE_EIGHTH", "Eighth
+Notes", "Arpeggiator rate: eighth notes"),
+    K("ARP_RATE_EIGHTH_DOT", "Eighth
+Dotted", "Arpeggiator rate: dotted eighth"),
+    K("ARP_RATE_EIGHTH_TRIP", "Eighth
+Triplet", "Arpeggiator rate: triplet eighth"),
+    K("ARP_RATE_SIXTEENTH", "16th
+Notes", "Arpeggiator rate: sixteenth notes"),
+    K("ARP_RATE_SIXTEENTH_DOT", "16th
+Dotted", "Arpeggiator rate: dotted sixteenth"),
+    K("ARP_RATE_SIXTEENTH_TRIP", "16th
+Triplet", "Arpeggiator rate: triplet sixteenth"),
+    
+    # Modes
+    K("ARP_MODE_SINGLE", "Single
+Note", "Arpeggiator mode: single note"),
+    K("ARP_MODE_CHORD_BASIC", "Chord
+Basic", "Arpeggiator mode: chord basic"),
+    K("ARP_MODE_CHORD_ADVANCED", "Chord
+Advanced", "Arpeggiator mode: chord advanced"),
+]
+
+# Generate preset selection keycodes
+KEYCODES_ARPEGGIATOR_PRESETS = []
+for x in range(64):
+    KEYCODES_ARPEGGIATOR_PRESETS.append(
+        K(f"ARP_PRESET_{x}", f"Arp
+Preset
+{x}", f"Load arpeggiator preset {x}")
+    )
+
+KEYCODES_STEP_SEQUENCER = [
+    # Control keycodes
+    K("SEQ_PLAY", "Play
+Seq", "Step sequencer play"),
+    K("SEQ_STOP_ALL", "Stop
+All Seq", "Stop all step sequencers"),
+    K("SEQ_NEXT_PRESET", "Next
+Preset", "Load next sequencer preset"),
+    K("SEQ_PREV_PRESET", "Prev
+Preset", "Load previous sequencer preset"),
+    K("SEQ_SYNC_MODE", "Sync
+Mode", "Toggle sequencer sync mode"),
+    K("SEQ_RESET_OVERRIDES", "Reset
+Overrides", "Reset all sequencer overrides"),
+    
+    # Gate length presets
+    K("SEQ_SET_GATE_100", "Gate
+100%", "Set sequencer gate to 100%"),
+    K("SEQ_SET_GATE_90", "Gate
+90%", "Set sequencer gate to 90%"),
+    K("SEQ_SET_GATE_80", "Gate
+80%", "Set sequencer gate to 80%"),
+    K("SEQ_SET_GATE_70", "Gate
+70%", "Set sequencer gate to 70%"),
+    K("SEQ_SET_GATE_60", "Gate
+60%", "Set sequencer gate to 60%"),
+    K("SEQ_SET_GATE_50", "Gate
+50%", "Set sequencer gate to 50%"),
+    
+    # Rate overrides
+    K("SEQ_RATE_QUARTER", "Quarter
+Notes", "Sequencer rate: quarter notes"),
+    K("SEQ_RATE_QUARTER_DOT", "Quarter
+Dotted", "Sequencer rate: dotted quarter"),
+    K("SEQ_RATE_QUARTER_TRIP", "Quarter
+Triplet", "Sequencer rate: triplet quarter"),
+    K("SEQ_RATE_EIGHTH", "Eighth
+Notes", "Sequencer rate: eighth notes"),
+    K("SEQ_RATE_EIGHTH_DOT", "Eighth
+Dotted", "Sequencer rate: dotted eighth"),
+    K("SEQ_RATE_EIGHTH_TRIP", "Eighth
+Triplet", "Sequencer rate: triplet eighth"),
+    K("SEQ_RATE_SIXTEENTH", "16th
+Notes", "Sequencer rate: sixteenth notes"),
+    K("SEQ_RATE_SIXTEENTH_DOT", "16th
+Dotted", "Sequencer rate: dotted sixteenth"),
+    K("SEQ_RATE_SIXTEENTH_TRIP", "16th
+Triplet", "Sequencer rate: triplet sixteenth"),
+]
+
+# Generate preset selection keycodes
+KEYCODES_STEP_SEQUENCER_PRESETS = []
+for x in range(64):
+    KEYCODES_STEP_SEQUENCER_PRESETS.append(
+        K(f"SEQ_PRESET_{x}", f"Seq
+Preset
+{x}", f"Load step sequencer preset {x}")
+    )
+
+
 
 KEYCODES_HIDDEN = []
 for x in range(256):
