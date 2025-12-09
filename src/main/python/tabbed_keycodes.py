@@ -5087,6 +5087,230 @@ class KeyboardTab(QWidget):
             tab_widget.relabel_buttons()
 
 
+
+class ArpeggiatorTab(QScrollArea):
+    """Arpeggiator control tab"""
+    keycode_changed = pyqtSignal(str)
+    
+    def __init__(self, parent, label, arp_keycodes, arp_preset_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.arp_keycodes = arp_keycodes
+        self.arp_preset_keycodes = arp_preset_keycodes
+        self.current_keycode_filter = None
+        
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(20, 15, 20, 15)
+        self.main_layout.setAlignment(Qt.AlignTop)
+        
+        # Create initial buttons
+        self.recreate_buttons(keycode_filter_any)
+        
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+        
+        # Clear existing layout
+        while self.main_layout.count():
+            child = self.main_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        # Control section
+        control_group = QGroupBox("Arpeggiator Controls")
+        control_layout = FlowLayout()
+        for keycode in self.arp_keycodes:
+            if keycode_filter(keycode):
+                if "GATE" not in keycode.qmk_id and "RATE" not in keycode.qmk_id and "MODE" not in keycode.qmk_id:
+                    btn = SquareButton()
+                    btn.setRelSize(KEYCODE_BTN_RATIO)
+                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    btn.keycode = keycode
+                    btn.setText(keycode.label)
+                    btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                    control_layout.addWidget(btn)
+        control_group.setLayout(control_layout)
+        self.main_layout.addWidget(control_group)
+        
+        # Gate section
+        gate_group = QGroupBox("Gate Length")
+        gate_layout = FlowLayout()
+        for keycode in self.arp_keycodes:
+            if keycode_filter(keycode) and "GATE" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                gate_layout.addWidget(btn)
+        gate_group.setLayout(gate_layout)
+        self.main_layout.addWidget(gate_group)
+        
+        # Rate section
+        rate_group = QGroupBox("Rate Overrides")
+        rate_layout = FlowLayout()
+        for keycode in self.arp_keycodes:
+            if keycode_filter(keycode) and "RATE" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                rate_layout.addWidget(btn)
+        rate_group.setLayout(rate_layout)
+        self.main_layout.addWidget(rate_group)
+        
+        # Mode section
+        mode_group = QGroupBox("Playback Modes")
+        mode_layout = FlowLayout()
+        for keycode in self.arp_keycodes:
+            if keycode_filter(keycode) and "MODE" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                mode_layout.addWidget(btn)
+        mode_group.setLayout(mode_layout)
+        self.main_layout.addWidget(mode_group)
+        
+        # Preset section
+        preset_group = QGroupBox("Preset Selection (0-63)")
+        preset_layout = FlowLayout()
+        for keycode in self.arp_preset_keycodes[:32]:  # Show first 32 presets initially
+            if keycode_filter(keycode):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                preset_layout.addWidget(btn)
+        preset_group.setLayout(preset_layout)
+        self.main_layout.addWidget(preset_group)
+        
+        self.main_layout.addStretch(1)
+    
+    def has_buttons(self):
+        return len(self.arp_keycodes) > 0
+    
+    def relabel_buttons(self):
+        pass  # Implement if needed
+
+
+class StepSequencerTab(QScrollArea):
+    """Step Sequencer control tab"""
+    keycode_changed = pyqtSignal(str)
+    
+    def __init__(self, parent, label, seq_keycodes, seq_preset_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.seq_keycodes = seq_keycodes
+        self.seq_preset_keycodes = seq_preset_keycodes
+        self.current_keycode_filter = None
+        
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(20, 15, 20, 15)
+        self.main_layout.setAlignment(Qt.AlignTop)
+        
+        # Create initial buttons
+        self.recreate_buttons(keycode_filter_any)
+        
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+        
+        # Clear existing layout
+        while self.main_layout.count():
+            child = self.main_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        # Control section
+        control_group = QGroupBox("Sequencer Controls")
+        control_layout = FlowLayout()
+        for keycode in self.seq_keycodes:
+            if keycode_filter(keycode):
+                if "GATE" not in keycode.qmk_id and "RATE" not in keycode.qmk_id:
+                    btn = SquareButton()
+                    btn.setRelSize(KEYCODE_BTN_RATIO)
+                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    btn.keycode = keycode
+                    btn.setText(keycode.label)
+                    btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                    control_layout.addWidget(btn)
+        control_group.setLayout(control_layout)
+        self.main_layout.addWidget(control_group)
+        
+        # Gate section
+        gate_group = QGroupBox("Gate Length")
+        gate_layout = FlowLayout()
+        for keycode in self.seq_keycodes:
+            if keycode_filter(keycode) and "GATE" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                gate_layout.addWidget(btn)
+        gate_group.setLayout(gate_layout)
+        self.main_layout.addWidget(gate_group)
+        
+        # Rate section
+        rate_group = QGroupBox("Rate Overrides")
+        rate_layout = FlowLayout()
+        for keycode in self.seq_keycodes:
+            if keycode_filter(keycode) and "RATE" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                rate_layout.addWidget(btn)
+        rate_group.setLayout(rate_layout)
+        self.main_layout.addWidget(rate_group)
+        
+        # Preset section
+        preset_group = QGroupBox("Preset Selection (0-63)")
+        preset_layout = FlowLayout()
+        for keycode in self.seq_preset_keycodes[:32]:  # Show first 32 presets initially
+            if keycode_filter(keycode):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                preset_layout.addWidget(btn)
+        preset_group.setLayout(preset_layout)
+        self.main_layout.addWidget(preset_group)
+        
+        self.main_layout.addStretch(1)
+    
+    def has_buttons(self):
+        return len(self.seq_keycodes) > 0
+    
+    def relabel_buttons(self):
+        pass  # Implement if needed
+
+
 class MusicTab(QWidget):
     """Nested tab container for Music-related tabs with side-tab style"""
 
@@ -5105,6 +5329,8 @@ class MusicTab(QWidget):
                                            KEYCODES_MIDI_CHORD_2, KEYCODES_MIDI_CHORD_3, KEYCODES_MIDI_CHORD_4,
                                            KEYCODES_MIDI_CHORD_5, KEYCODES_MIDI_SCALES,
                                            KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
+        self.arpeggiator_tab = ArpeggiatorTab(parent, "Arpeggiator", KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS)
+        self.step_sequencer_tab = StepSequencerTab(parent, "Step Sequencer", KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS)
         self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
         self.key_split_tab = KeySplitOnlyTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
         self.triple_split_tab = TripleSplitTab(parent, "TripleSplit", KEYCODES_KEYSPLIT_BUTTONS)
@@ -5118,6 +5344,8 @@ class MusicTab(QWidget):
         self.key_split_tab.keycode_changed.connect(self.on_keycode_changed)
         self.triple_split_tab.keycode_changed.connect(self.on_keycode_changed)
         self.chord_progressions_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.arpeggiator_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.step_sequencer_tab.keycode_changed.connect(self.on_keycode_changed)
 
         # Define sections (tab_widget, display_name)
         self.sections = [
@@ -5127,7 +5355,9 @@ class MusicTab(QWidget):
             (self.ear_training_tab, "Ear Training"),
             (self.key_split_tab, "KeySplit"),
             (self.triple_split_tab, "TripleSplit"),
-            (self.chord_progressions_tab, "Chord Progressions")
+            (self.chord_progressions_tab, "Chord Progressions"),
+            (self.arpeggiator_tab, "Arpeggiator"),
+            (self.step_sequencer_tab, "Step Sequencer")
         ]
 
         # Create horizontal layout: side tabs on left, content on right
@@ -5405,4 +5635,5 @@ class TabbedKeycodes(QWidget):
     def set_keyboard(self, keyboard):
         """Set keyboard reference for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
-            opt.set_keyboard(keyboard)
+            opt.set_keyboard(keyboard), KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS
+

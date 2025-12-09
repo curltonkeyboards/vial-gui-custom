@@ -2359,10 +2359,71 @@ class keycodes_v5:
         "USB_MIDI_MODE_TOG": 0xC398,  # USB MIDI routing mode toggle
         "MIDI_CLOCK_SRC_TOG": 0xC399,  # MIDI clock source toggle
 
+        # Arpeggiator Control (0xCD00-0xCD0F)
+        "ARP_PLAY": 0xCD00,  # Arpeggiator play/stop
+        "ARP_NEXT_PRESET": 0xCD01,  # Next arp preset
+        "ARP_PREV_PRESET": 0xCD02,  # Previous arp preset
+        "ARP_SYNC_MODE": 0xCD03,  # Toggle sync mode
+        "ARP_LATCH_MODE": 0xCD04,  # Toggle latch mode
+        "ARP_RESET_OVERRIDES": 0xCD05,  # Reset all overrides
+        "ARP_SET_GATE_100": 0xCD06,  # Set gate 100%
+        "ARP_SET_GATE_90": 0xCD07,  # Set gate 90%
+        "ARP_SET_GATE_80": 0xCD08,  # Set gate 80%
+        "ARP_SET_GATE_70": 0xCD09,  # Set gate 70%
+        "ARP_SET_GATE_60": 0xCD0A,  # Set gate 60%
+        "ARP_SET_GATE_50": 0xCD0B,  # Set gate 50%
+
+        # Arpeggiator Rate Overrides (0xCD10-0xCD1F)
+        "ARP_RATE_QUARTER": 0xCD10,  # Quarter notes
+        "ARP_RATE_QUARTER_DOT": 0xCD11,  # Dotted quarter
+        "ARP_RATE_QUARTER_TRIP": 0xCD12,  # Triplet quarter
+        "ARP_RATE_EIGHTH": 0xCD13,  # Eighth notes
+        "ARP_RATE_EIGHTH_DOT": 0xCD14,  # Dotted eighth
+        "ARP_RATE_EIGHTH_TRIP": 0xCD15,  # Triplet eighth
+        "ARP_RATE_SIXTEENTH": 0xCD16,  # Sixteenth notes
+        "ARP_RATE_SIXTEENTH_DOT": 0xCD17,  # Dotted sixteenth
+        "ARP_RATE_SIXTEENTH_TRIP": 0xCD18,  # Triplet sixteenth
+
+        # Arpeggiator Modes (0xCD20-0xCD2F)
+        "ARP_MODE_SINGLE": 0xCD20,  # Single note mode
+        "ARP_MODE_CHORD_BASIC": 0xCD21,  # Chord basic mode
+        "ARP_MODE_CHORD_ADVANCED": 0xCD22,  # Chord advanced mode
+
+        # Arpeggiator Preset Base (0xCD30-0xCD6F) - 64 presets
+        "ARP_PRESET_BASE": 0xCD30,  # Base for arp preset selection
+
+        # Step Sequencer Control (0xCD80-0xCD8F)
+        "SEQ_PLAY": 0xCD80,  # Sequencer play
+        "SEQ_STOP_ALL": 0xCD81,  # Stop all sequencers
+        "SEQ_NEXT_PRESET": 0xCD82,  # Next seq preset
+        "SEQ_PREV_PRESET": 0xCD83,  # Previous seq preset
+        "SEQ_SYNC_MODE": 0xCD84,  # Toggle sync mode
+        "SEQ_RESET_OVERRIDES": 0xCD85,  # Reset all overrides
+        "SEQ_SET_GATE_100": 0xCD86,  # Set gate 100%
+        "SEQ_SET_GATE_90": 0xCD87,  # Set gate 90%
+        "SEQ_SET_GATE_80": 0xCD88,  # Set gate 80%
+        "SEQ_SET_GATE_70": 0xCD89,  # Set gate 70%
+        "SEQ_SET_GATE_60": 0xCD8A,  # Set gate 60%
+        "SEQ_SET_GATE_50": 0xCD8B,  # Set gate 50%
+
+        # Step Sequencer Rate Overrides (0xCD90-0xCD9F)
+        "SEQ_RATE_QUARTER": 0xCD90,  # Quarter notes
+        "SEQ_RATE_QUARTER_DOT": 0xCD91,  # Dotted quarter
+        "SEQ_RATE_QUARTER_TRIP": 0xCD92,  # Triplet quarter
+        "SEQ_RATE_EIGHTH": 0xCD93,  # Eighth notes
+        "SEQ_RATE_EIGHTH_DOT": 0xCD94,  # Dotted eighth
+        "SEQ_RATE_EIGHTH_TRIP": 0xCD95,  # Triplet eighth
+        "SEQ_RATE_SIXTEENTH": 0xCD96,  # Sixteenth notes
+        "SEQ_RATE_SIXTEENTH_DOT": 0xCD97,  # Dotted sixteenth
+        "SEQ_RATE_SIXTEENTH_TRIP": 0xCD98,  # Triplet sixteenth
+
+        # Step Sequencer Preset Base (0xCDA0-0xCDDF) - 64 presets
+        "SEQ_PRESET_BASE": 0xCDA0,  # Base for seq preset selection
+
         "QK_KB": 0xCC57, #custom keycodes safe range
-        
-        
-       
+
+
+
 
     }
 
@@ -2410,6 +2471,14 @@ for x in range(16):
 
 for x in range(32):
    keycodes_v5.kc["USER{:02}".format(x)] = keycodes_v5.kc["QK_KB"] + x
+
+# Generate Arpeggiator preset selection keycodes (0xCD30-0xCD6F) - 64 presets
+for x in range(64):
+    keycodes_v5.kc["ARP_PRESET_{}".format(x)] = keycodes_v5.kc["ARP_PRESET_BASE"] + x
+
+# Generate Step Sequencer preset selection keycodes (0xCDA0-0xCDDF) - 64 presets
+for x in range(64):
+    keycodes_v5.kc["SEQ_PRESET_{}".format(x)] = keycodes_v5.kc["SEQ_PRESET_BASE"] + x
 
 for name, val in keycodes_v5.kc.items():
     if name.endswith("(kc)"):
