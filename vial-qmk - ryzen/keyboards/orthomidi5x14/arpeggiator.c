@@ -607,7 +607,14 @@ void arp_update(void) {
     // Special case: Random preset - randomize note indices
     if (arp_state.current_preset_id == 3) {  // Random 8ths preset
         for (uint8_t i = 0; i < preset->note_count; i++) {
-            preset->notes[i].note_index = rand() % live_note_count;
+            // Extract current octave_offset from packed field
+            int8_t current_octave = NOTE_GET_OCTAVE(preset->notes[i].note_octave);
+
+            // Generate random semitone offset (0-11 for notes within an octave)
+            uint8_t random_note_index = rand() % 12;
+
+            // Repack note_octave with new random note_index, preserving octave_offset
+            preset->notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(random_note_index, current_octave);
         }
     }
 
