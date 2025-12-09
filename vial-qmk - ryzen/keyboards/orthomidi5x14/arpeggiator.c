@@ -22,7 +22,7 @@ arp_state_t arp_state = {
     .active = false,
     .sync_mode = true,  // Start with sync enabled
     .latch_mode = false,
-    .mode = ARP_MODE_SINGLE_NOTE,
+    .mode = ARPMODE_SINGLE_NOTE,
     .current_preset_id = 0,
     .loaded_preset_id = 255,  // 255 = no preset loaded
     .next_note_time = 0,
@@ -317,7 +317,7 @@ void arp_init(void) {
     arp_state.current_preset_id = 0;
     arp_state.loaded_preset_id = 255;  // No preset loaded
     arp_state.sync_mode = true;
-    arp_state.mode = ARP_MODE_SINGLE_NOTE;
+    arp_state.mode = ARPMODE_SINGLE_NOTE;
     arp_state.rate_override = 0;
     arp_state.master_gate_override = 0;
 
@@ -342,17 +342,20 @@ void arp_start(uint8_t preset_id) {
 
     // If already active and switching presets
     if (arp_state.active && preset_id != arp_state.current_preset_id) {
+        // Calculate relative position in old pattern BEFORE loading new preset
+        uint16_t old_length = arp_active_preset.pattern_length_16ths;
+        float progress = (float)arp_state.current_position_16ths / old_length;
+
+        // Lazy-load the new preset into active slot
+        if (!arp_load_preset_into_slot(preset_id)) {
+            dprintf("arp: failed to load preset %d\n", preset_id);
+            return;
+        }
+
         // Handle preset switching based on sync mode
         if (arp_state.sync_mode) {
-            // Calculate relative position in old pattern
-            arp_preset_t *old_preset = &arp_presets[arp_state.current_preset_id];
-            uint16_t old_length = old_preset->pattern_length_16ths;
-            float progress = (float)arp_state.current_position_16ths / old_length;
-
-            // Apply to new pattern
-            arp_preset_t *new_preset = &arp_presets[preset_id];
-            arp_state.current_position_16ths = (uint16_t)(progress * new_preset->pattern_length_16ths);
-
+            // Apply progress to new pattern
+            arp_state.current_position_16ths = (uint16_t)(progress * arp_active_preset.pattern_length_16ths);
             dprintf("arp: switching preset with sync, progress: %d%%\n", (int)(progress * 100));
         } else {
             // Unsynced: restart from beginning
@@ -360,6 +363,12 @@ void arp_start(uint8_t preset_id) {
             arp_state.pattern_start_time = timer_read32();
         }
     } else {
+        // Lazy-load the preset into active slot
+        if (!arp_load_preset_into_slot(preset_id)) {
+            dprintf("arp: failed to load preset %d\n", preset_id);
+            return;
+        }
+
         // Starting fresh
         arp_state.current_position_16ths = 0;
         arp_state.pattern_start_time = timer_read32();
@@ -408,8 +417,8 @@ void arp_update(void) {
     // If not active, nothing to do
     if (!arp_state.active) return;
 
-    // Get current preset
-    arp_preset_t *preset = &arp_presets[arp_state.current_preset_id];
+    // Use the active preset slot (already loaded by arp_start)
+    arp_preset_t *preset = &arp_active_preset;
 
     // Check requirements based on preset type
     if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR) {
@@ -506,7 +515,7 @@ void arp_update(void) {
 
             // Handle different playback modes
             switch (arp_state.mode) {
-                case ARP_MODE_SINGLE_NOTE: {
+                case ARPMODE_SINGLE_NOTE: {
                 // Single Note Mode: Play master note + semitone offset
                 // Master note = lowest/first held note
                 if (live_note_count == 0) break;
@@ -542,7 +551,7 @@ void arp_update(void) {
                 break;
             }
 
-            case ARP_MODE_CHORD_BASIC: {
+            case ARPMODE_CHORD_BASIC: {
                 // Chord Basic Mode: Apply semitone offset to ALL held notes
                 // Each step plays all held notes + the semitone offset
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
@@ -577,7 +586,7 @@ void arp_update(void) {
                 break;
             }
 
-            case ARP_MODE_CHORD_ADVANCED: {
+            case ARPMODE_CHORD_ADVANCED: {
                 // Chord Advanced Mode: Rotate through held notes, applying semitone offset to each
                 // Each step plays one held note + offset, rotating through all held notes
 
@@ -633,6 +642,218 @@ void arp_update(void) {
     // Calculate next note time
     uint32_t ms_per_16th = get_ms_per_16th(preset);
     arp_state.next_note_time = current_time + ms_per_16th;
+}
+
+// =============================================================================
+// STEP SEQUENCER FUNCTIONS
+// =============================================================================
+
+void seq_start(uint8_t preset_id) {
+    if (preset_id >= arp_preset_count) {
+        dprintf("seq: invalid preset id %d\n", preset_id);
+        return;
+    }
+
+    // Find available slot
+    int8_t slot = seq_find_available_slot();
+    if (slot < 0) {
+        dprintf("seq: no available slots (all 4 occupied)\n");
+        return;
+    }
+
+    // Lazy-load preset into the available slot
+    if (!seq_load_preset_into_slot(preset_id, slot)) {
+        dprintf("seq: failed to load preset %d into slot %d\n", preset_id, slot);
+        return;
+    }
+
+    // Initialize sequencer state for this slot
+    seq_state[slot].current_preset_id = preset_id;
+    seq_state[slot].active = true;
+    seq_state[slot].current_position_16ths = 0;
+    seq_state[slot].pattern_start_time = timer_read32();
+    seq_state[slot].next_note_time = timer_read32();  // Start immediately
+
+    dprintf("seq: started preset %d in slot %d\n", preset_id, slot);
+}
+
+void seq_stop(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+
+    if (seq_state[slot].active) {
+        seq_state[slot].active = false;
+        dprintf("seq: stopped slot %d\n", slot);
+    }
+}
+
+void seq_stop_all(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_state[i].active = false;
+            dprintf("seq: stopped slot %d\n", i);
+        }
+    }
+    dprintf("seq: stopped all sequencers\n");
+}
+
+void seq_update(void) {
+    // Update all active sequencer slots
+    for (uint8_t slot = 0; slot < MAX_SEQ_SLOTS; slot++) {
+        if (!seq_state[slot].active) continue;
+
+        // Get preset for this slot
+        arp_preset_t *preset = &seq_active_presets[slot];
+
+        // Check if it's time to play next note
+        uint32_t current_time = timer_read32();
+        if (current_time < seq_state[slot].next_note_time) {
+            continue;  // Not yet time
+        }
+
+        // Find notes to play at current position
+        uint8_t notes_to_play[MAX_PRESET_NOTES];
+        uint8_t note_count_to_play = 0;
+        unpacked_note_t unpacked_notes[MAX_PRESET_NOTES];
+
+        for (uint8_t i = 0; i < preset->note_count; i++) {
+            unpack_note(&preset->notes[i], &unpacked_notes[i], false);  // false = step sequencer
+
+            if (unpacked_notes[i].timing == seq_state[slot].current_position_16ths) {
+                notes_to_play[note_count_to_play++] = i;
+            }
+        }
+
+        // Play notes (step sequencer uses absolute MIDI notes)
+        if (note_count_to_play > 0) {
+            // Calculate gate length
+            uint8_t gate_percent = (seq_state[slot].master_gate_override > 0) ?
+                                   seq_state[slot].master_gate_override :
+                                   preset->gate_length_percent;
+
+            uint32_t ms_per_16th = get_ms_per_16th(preset);
+            uint32_t note_duration_ms = ms_per_16th;
+            uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
+
+            for (uint8_t i = 0; i < note_count_to_play; i++) {
+                uint8_t preset_note_idx = notes_to_play[i];
+                unpacked_note_t *note = &unpacked_notes[preset_note_idx];
+
+                // Calculate absolute MIDI note: (octave × 12) + note_index
+                int16_t midi_note = (note->octave_offset * 12) + note->note_index;
+
+                // Clamp to MIDI range (0-127)
+                if (midi_note < 0) midi_note = 0;
+                if (midi_note > 127) midi_note = 127;
+
+                // Scale velocity from 0-127 to raw_travel (0-255)
+                uint8_t raw_travel = (note->velocity * 2);
+                uint8_t channel = channel_number;  // Use current MIDI channel
+
+                // Send note-on
+                midi_send_noteon_arp(channel, (uint8_t)midi_note, raw_travel, raw_travel);
+
+                // Add to arp_notes for gate tracking
+                uint32_t note_off_time = current_time + gate_duration_ms;
+                add_arp_note(channel, (uint8_t)midi_note, raw_travel, note_off_time);
+            }
+        }
+
+        // Advance position
+        seq_state[slot].current_position_16ths++;
+
+        // Check for loop
+        if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
+            seq_state[slot].current_position_16ths = 0;
+            seq_state[slot].pattern_start_time = current_time;
+        }
+
+        // Calculate next note time
+        uint32_t ms_per_16th = get_ms_per_16th(preset);
+        seq_state[slot].next_note_time = current_time + ms_per_16th;
+    }
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+void arp_set_rate_override(uint8_t note_value, uint8_t timing_mode) {
+    arp_state.rate_override = note_value | timing_mode;
+    dprintf("arp: rate override set to note_value=%d timing_mode=%d\n", note_value, timing_mode);
+}
+
+void seq_set_rate_override(uint8_t note_value, uint8_t timing_mode) {
+    // Apply to all active sequencer slots
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_state[i].rate_override = note_value | timing_mode;
+        }
+    }
+    dprintf("seq: rate override set for all active slots\n");
+}
+
+void arp_reset_overrides(void) {
+    arp_state.rate_override = 0;
+    arp_state.master_gate_override = 0;
+    dprintf("arp: all overrides reset\n");
+}
+
+void seq_reset_overrides(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_state[i].rate_override = 0;
+        seq_state[i].master_gate_override = 0;
+    }
+    dprintf("seq: all overrides reset for all slots\n");
+}
+
+void seq_toggle_sync_mode(void) {
+    // Toggle sync mode for all sequencer slots
+    bool new_mode = !seq_state[0].sync_mode;  // Use slot 0 as reference
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_state[i].sync_mode = new_mode;
+    }
+    dprintf("seq: sync mode: %d\n", new_mode);
+}
+
+void seq_set_master_gate(uint8_t gate_percent) {
+    if (gate_percent > 100) gate_percent = 100;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_state[i].master_gate_override = gate_percent;
+        }
+    }
+    dprintf("seq: master gate override: %d%% for all active slots\n", gate_percent);
+}
+
+void seq_next_preset(void) {
+    if (arp_preset_count == 0) return;
+
+    // Navigate through ALL presets (0-63), but prefer sequencer presets (32-63)
+    uint8_t current = seq_state[0].current_preset_id;  // Use slot 0 as reference
+    current = (current + 1) % arp_preset_count;
+
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_state[i].current_preset_id = current;
+    }
+
+    dprintf("seq: next preset -> %d\n", current);
+}
+
+void seq_prev_preset(void) {
+    if (arp_preset_count == 0) return;
+
+    uint8_t current = seq_state[0].current_preset_id;  // Use slot 0 as reference
+    if (current == 0) {
+        current = arp_preset_count - 1;
+    } else {
+        current--;
+    }
+
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_state[i].current_preset_id = current;
+    }
+
+    dprintf("seq: prev preset -> %d\n", current);
 }
 
 // =============================================================================
@@ -809,15 +1030,20 @@ bool arp_validate_preset(const arp_preset_t *preset) {
 }
 
 // Save a preset to EEPROM (only for user slots 48-63)
-bool arp_save_preset_to_eeprom(uint8_t preset_id) {
+bool arp_save_preset_to_eeprom(uint8_t preset_id, const arp_preset_t *source) {
     // Check if this is a user preset slot (48-63)
     if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
         dprintf("arp: save failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
         return false;
     }
 
+    if (source == NULL) {
+        dprintf("arp: save failed - NULL source pointer\n");
+        return false;
+    }
+
     // Validate preset before saving
-    if (!arp_validate_preset(&arp_presets[preset_id])) {
+    if (!arp_validate_preset(source)) {
         dprintf("arp: save failed - preset %d validation failed\n", preset_id);
         return false;
     }
@@ -827,7 +1053,7 @@ bool arp_save_preset_to_eeprom(uint8_t preset_id) {
     dprintf("arp: saving preset %d to EEPROM addr 0x%08lX (size=%u bytes)\n",
             preset_id, addr, sizeof(arp_preset_t));
 
-    eeprom_update_block(&arp_presets[preset_id], (void*)addr, sizeof(arp_preset_t));
+    eeprom_update_block(source, (void*)addr, sizeof(arp_preset_t));
 
     dprintf("arp: preset %d saved successfully\n", preset_id);
     return true;
@@ -864,31 +1090,12 @@ bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest) {
     return true;
 }
 
-// Load all user presets from EEPROM (called at init)
+// OBSOLETE: No longer needed with lazy-loading system
+// User presets are loaded on-demand when selected
+// This function is kept for potential future EEPROM validation/migration
 void arp_load_all_user_presets(void) {
-    uint8_t loaded_count = 0;
-
-    dprintf("arp: loading all user presets from EEPROM...\n");
-
-    // Load user presets (48-63) - can be either arpeggiator or sequencer
-    for (uint8_t i = USER_PRESET_START; i < MAX_ARP_PRESETS; i++) {
-        if (arp_load_preset_from_eeprom(i)) {
-            loaded_count++;
-        } else {
-            // If load fails, initialize as empty arpeggiator preset
-            dprintf("arp: preset %d not found or invalid, initializing as empty\n", i);
-            memset(&arp_presets[i], 0, sizeof(arp_preset_t));
-            arp_presets[i].preset_type = PRESET_TYPE_ARPEGGIATOR;
-            arp_presets[i].note_count = 0;
-            arp_presets[i].pattern_length_16ths = 16;  // 1 bar default
-            arp_presets[i].gate_length_percent = 80;
-            arp_presets[i].timing_mode = TIMING_MODE_STRAIGHT;
-            arp_presets[i].note_value = NOTE_VALUE_QUARTER;
-            arp_presets[i].magic = ARP_PRESET_MAGIC;
-        }
-    }
-
-    dprintf("arp: loaded %d user presets from EEPROM\n", loaded_count);
+    dprintf("arp: arp_load_all_user_presets() is obsolete with lazy-loading\n");
+    dprintf("arp: User presets (48-63) will be loaded on-demand from EEPROM\n");
 }
 
 // Clear a user preset (fill with empty/default values)
@@ -901,19 +1108,20 @@ bool arp_clear_preset(uint8_t preset_id) {
 
     dprintf("arp: clearing preset %d\n", preset_id);
 
-    // Initialize as empty arpeggiator preset (user can change type later)
-    memset(&arp_presets[preset_id], 0, sizeof(arp_preset_t));
+    // Create temporary empty preset
+    arp_preset_t empty_preset;
+    memset(&empty_preset, 0, sizeof(arp_preset_t));
 
-    arp_presets[preset_id].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[preset_id].note_count = 0;
-    arp_presets[preset_id].pattern_length_16ths = 16;
-    arp_presets[preset_id].gate_length_percent = 80;
-    arp_presets[preset_id].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[preset_id].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[preset_id].magic = ARP_PRESET_MAGIC;
+    empty_preset.preset_type = PRESET_TYPE_ARPEGGIATOR;
+    empty_preset.note_count = 0;
+    empty_preset.pattern_length_16ths = 16;
+    empty_preset.gate_length_percent = 80;
+    empty_preset.timing_mode = TIMING_MODE_STRAIGHT;
+    empty_preset.note_value = NOTE_VALUE_QUARTER;
+    empty_preset.magic = ARP_PRESET_MAGIC;
 
     // Save to EEPROM
-    return arp_save_preset_to_eeprom(preset_id);
+    return arp_save_preset_to_eeprom(preset_id, &empty_preset);
 }
 
 // Copy a preset to another slot
@@ -929,19 +1137,29 @@ bool arp_copy_preset(uint8_t source_id, uint8_t dest_id) {
         return false;
     }
 
+    dprintf("arp: copying preset %d to %d\n", source_id, dest_id);
+
+    // Create temporary preset for copying
+    arp_preset_t temp_preset;
+
+    // Load source preset (from EEPROM or factory data)
+    if (source_id >= USER_PRESET_START) {
+        if (!arp_load_preset_from_eeprom(source_id, &temp_preset)) {
+            dprintf("arp: copy failed - could not load source preset %d from EEPROM\n", source_id);
+            return false;
+        }
+    } else {
+        arp_load_factory_preset(source_id, &temp_preset);
+    }
+
     // Validate source
-    if (!arp_validate_preset(&arp_presets[source_id])) {
+    if (!arp_validate_preset(&temp_preset)) {
         dprintf("arp: copy failed - source preset %d invalid\n", source_id);
         return false;
     }
 
-    dprintf("arp: copying preset %d to %d\n", source_id, dest_id);
-
-    // Copy preset data
-    memcpy(&arp_presets[dest_id], &arp_presets[source_id], sizeof(arp_preset_t));
-
-    // Save to EEPROM
-    return arp_save_preset_to_eeprom(dest_id);
+    // Save to destination in EEPROM
+    return arp_save_preset_to_eeprom(dest_id, &temp_preset);
 }
 
 // Reset all user presets to empty state and clear EEPROM

@@ -1,0 +1,272 @@
+    // =============================================================================
+    // ARPEGGIATOR & STEP SEQUENCER KEYCODES (0xCD00-0xCDFF)
+    // =============================================================================
+
+    // ARPEGGIATOR CONTROL KEYCODES (0xCD00-0xCD0F)
+    if (keycode == ARP_PLAY) {
+        if (record->event.pressed) {
+            arp_handle_button_press();
+            set_keylog(keycode, record);
+        } else {
+            arp_handle_button_release();
+        }
+        return false;
+    }
+
+    if (keycode == ARP_NEXT_PRESET) {
+        if (record->event.pressed) {
+            arp_next_preset();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_PREV_PRESET) {
+        if (record->event.pressed) {
+            arp_prev_preset();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_SYNC_TOGGLE) {
+        if (record->event.pressed) {
+            arp_toggle_sync_mode();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_GATE_UP) {
+        if (record->event.pressed) {
+            uint8_t current_gate = (arp_state.master_gate_override > 0) ?
+                                   arp_state.master_gate_override : 80;
+            if (current_gate <= 90) current_gate += 10;
+            arp_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_GATE_DOWN) {
+        if (record->event.pressed) {
+            uint8_t current_gate = (arp_state.master_gate_override > 0) ?
+                                   arp_state.master_gate_override : 80;
+            if (current_gate >= 10) current_gate -= 10;
+            arp_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_GATE_RESET) {
+        if (record->event.pressed) {
+            arp_state.master_gate_override = 0;
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_RESET_TO_DEFAULT) {
+        if (record->event.pressed) {
+            arp_reset_overrides();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // ARPEGGIATOR RATE OVERRIDES (0xCD10-0xCD1B)
+    if (keycode >= ARP_RATE_QUARTER && keycode <= ARP_RATE_SIXTEENTH_TRIP) {
+        if (record->event.pressed) {
+            uint8_t note_value, timing_mode;
+            switch (keycode) {
+                case ARP_RATE_QUARTER: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_STRAIGHT; break;
+                case ARP_RATE_QUARTER_DOT: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_DOTTED; break;
+                case ARP_RATE_QUARTER_TRIP: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_TRIPLET; break;
+                case ARP_RATE_EIGHTH: note_value = NOTE_VALUE_EIGHTH; timing_mode = TIMING_MODE_STRAIGHT; break;
+                case ARP_RATE_EIGHTH_DOT: note_value = NOTE_VALUE_EIGHTH; timing_mode = TIMING_MODE_DOTTED; break;
+                case ARP_RATE_EIGHTH_TRIP: note_value = NOTE_VALUE_EIGHTH; timing_mode = TIMING_MODE_TRIPLET; break;
+                case ARP_RATE_SIXTEENTH: note_value = NOTE_VALUE_SIXTEENTH; timing_mode = TIMING_MODE_STRAIGHT; break;
+                case ARP_RATE_SIXTEENTH_DOT: note_value = NOTE_VALUE_SIXTEENTH; timing_mode = TIMING_MODE_DOTTED; break;
+                case ARP_RATE_SIXTEENTH_TRIP: note_value = NOTE_VALUE_SIXTEENTH; timing_mode = TIMING_MODE_TRIPLET; break;
+                default: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_STRAIGHT; break;
+            }
+            arp_set_rate_override(note_value, timing_mode);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_RATE_RESET) {
+        if (record->event.pressed) {
+            arp_state.rate_override = 0;
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // ARPEGGIATOR MODES (0xCD20-0xCD2F)
+    if (keycode == ARP_MODE_SINGLE) {
+        if (record->event.pressed) {
+            arp_set_mode(ARPMODE_SINGLE_NOTE);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_MODE_CHORD_BASIC) {
+        if (record->event.pressed) {
+            arp_set_mode(ARPMODE_CHORD_BASIC);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_MODE_CHORD_ADVANCED) {
+        if (record->event.pressed) {
+            arp_set_mode(ARPMODE_CHORD_ADVANCED);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // DIRECT ARPEGGIATOR PRESET SELECTION (0xCD30 + preset_id)
+    if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 64) {
+        uint8_t preset_id = keycode - ARP_PRESET_BASE;
+        if (record->event.pressed) {
+            if (preset_id < arp_preset_count) {
+                arp_start(preset_id);
+                set_keylog(keycode, record);
+            }
+        } else {
+            // Release: stop arp if not in latch mode
+            if (!arp_state.latch_mode) {
+                arp_stop();
+            }
+        }
+        return false;
+    }
+
+    // STEP SEQUENCER CONTROL KEYCODES (0xCD80-0xCD8F)
+    if (keycode == SEQ_PLAY) {
+        if (record->event.pressed) {
+            uint8_t current = seq_state[0].current_preset_id;
+            seq_start(current);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_STOP_ALL) {
+        if (record->event.pressed) {
+            seq_stop_all();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_NEXT_PRESET) {
+        if (record->event.pressed) {
+            seq_next_preset();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_PREV_PRESET) {
+        if (record->event.pressed) {
+            seq_prev_preset();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_SYNC_TOGGLE) {
+        if (record->event.pressed) {
+            seq_toggle_sync_mode();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_GATE_UP) {
+        if (record->event.pressed) {
+            uint8_t current_gate = 80;  // Default
+            if (current_gate <= 90) current_gate += 10;
+            seq_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_GATE_DOWN) {
+        if (record->event.pressed) {
+            uint8_t current_gate = 80;  // Default
+            if (current_gate >= 10) current_gate -= 10;
+            seq_set_master_gate(current_gate);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_GATE_RESET) {
+        if (record->event.pressed) {
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                seq_state[i].master_gate_override = 0;
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_RESET_TO_DEFAULT) {
+        if (record->event.pressed) {
+            seq_reset_overrides();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // STEP SEQUENCER RATE OVERRIDES (0xCD90-0xCD9B)
+    if (keycode >= SEQ_RATE_QUARTER && keycode <= SEQ_RATE_SIXTEENTH_TRIP) {
+        if (record->event.pressed) {
+            uint8_t note_value, timing_mode;
+            switch (keycode) {
+                case SEQ_RATE_QUARTER: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_STRAIGHT; break;
+                case SEQ_RATE_QUARTER_DOT: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_DOTTED; break;
+                case SEQ_RATE_QUARTER_TRIP: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_TRIPLET; break;
+                case SEQ_RATE_EIGHTH: note_value = NOTE_VALUE_EIGHTH; timing_mode = TIMING_MODE_STRAIGHT; break;
+                case SEQ_RATE_EIGHTH_DOT: note_value = NOTE_VALUE_EIGHTH; timing_mode = TIMING_MODE_DOTTED; break;
+                case SEQ_RATE_EIGHTH_TRIP: note_value = NOTE_VALUE_EIGHTH; timing_mode = TIMING_MODE_TRIPLET; break;
+                case SEQ_RATE_SIXTEENTH: note_value = NOTE_VALUE_SIXTEENTH; timing_mode = TIMING_MODE_STRAIGHT; break;
+                case SEQ_RATE_SIXTEENTH_DOT: note_value = NOTE_VALUE_SIXTEENTH; timing_mode = TIMING_MODE_DOTTED; break;
+                case SEQ_RATE_SIXTEENTH_TRIP: note_value = NOTE_VALUE_SIXTEENTH; timing_mode = TIMING_MODE_TRIPLET; break;
+                default: note_value = NOTE_VALUE_QUARTER; timing_mode = TIMING_MODE_STRAIGHT; break;
+            }
+            seq_set_rate_override(note_value, timing_mode);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_RATE_RESET) {
+        if (record->event.pressed) {
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                seq_state[i].rate_override = 0;
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // DIRECT STEP SEQUENCER PRESET SELECTION (0xCDA0 + preset_id)
+    if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 64) {
+        uint8_t preset_id = keycode - SEQ_PRESET_BASE;
+        if (record->event.pressed) {
+            if (preset_id < arp_preset_count) {
+                seq_start(preset_id);
+                set_keylog(keycode, record);
+            }
+        }
+        return false;
+    }

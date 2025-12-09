@@ -293,12 +293,12 @@ typedef enum {
     NOTE_VALUE_COUNT
 } note_value_t;
 
-// Arpeggiator mode types
+// Arpeggiator mode types (internal enum values)
 typedef enum {
-    ARP_MODE_SINGLE_NOTE = 0,     // One note at a time (classic arp)
-    ARP_MODE_CHORD_BASIC,         // All notes at once per step
-    ARP_MODE_CHORD_ADVANCED,      // Staggers notes evenly across step time
-    ARP_MODE_COUNT
+    ARPMODE_SINGLE_NOTE = 0,      // One note at a time (classic arp)
+    ARPMODE_CHORD_BASIC,          // All notes at once per step
+    ARPMODE_CHORD_ADVANCED,       // Staggers notes evenly across step time
+    ARPMODE_COUNT
 } arp_mode_t;
 
 // Arpeggiator note in the tracking array (for gate timing)
@@ -429,7 +429,7 @@ int8_t seq_find_available_slot(void);  // Find available seq slot (-1 if none)
 
 // EEPROM and preset management functions
 bool arp_validate_preset(const arp_preset_t *preset);
-bool arp_save_preset_to_eeprom(uint8_t preset_id);
+bool arp_save_preset_to_eeprom(uint8_t preset_id, const arp_preset_t *source);
 bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest);
 void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest);
 bool arp_clear_preset(uint8_t preset_id);
