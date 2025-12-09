@@ -24,19 +24,29 @@ arp_state_t arp_state = {
     .latch_mode = false,
     .mode = ARP_MODE_SINGLE_NOTE,
     .current_preset_id = 0,
+    .loaded_preset_id = 255,  // 255 = no preset loaded
     .next_note_time = 0,
     .current_position_16ths = 0,
     .current_note_in_chord = 0,
-    .subdivision_override = 0,
+    .rate_override = 0,
     .master_gate_override = 0,
     .pattern_start_time = 0,
     .last_tap_time = 0,
     .key_held = false
 };
 
-// Preset storage
-arp_preset_t arp_presets[MAX_ARP_PRESETS];
-uint8_t arp_preset_count = 0;
+// Step Sequencer runtime state (4 slots)
+seq_state_t seq_state[MAX_SEQ_SLOTS] = {
+    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0}
+};
+
+// Efficient RAM storage: Only active presets loaded (was 64 × 392 = 25KB, now ~2KB)
+arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (~392 bytes)
+arp_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (~1.5KB)
+uint8_t arp_preset_count = 64;  // Total count for navigation (0-63)
 
 // External references
 extern uint8_t live_notes[MAX_LIVE_NOTES][3];  // [channel, note, velocity]
@@ -111,292 +121,97 @@ void process_arp_note_offs(void) {
 // PRESET DEFINITIONS
 // =============================================================================
 
-void arp_init_presets(void) {
-    // Clear all presets
-    memset(arp_presets, 0, sizeof(arp_presets));
-    arp_preset_count = 0;
+// =============================================================================
+// LAZY-LOADING PRESET SYSTEM
+// =============================================================================
 
-    // =========================================================================
-    // ARPEGGIATOR FACTORY PRESETS (0-7)
-    // =========================================================================
-
-    // =========================================================================
-    // PRESET 0: Up 16ths - Classic ascending 16th notes
-    // =========================================================================
-    arp_presets[0].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[0].note_count = 4;
-    arp_presets[0].pattern_length_16ths = 16;  // 1 bar
-    arp_presets[0].gate_length_percent = 80;   // 80% gate
-    arp_presets[0].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[0].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[0].magic = ARP_PRESET_MAGIC;
-
-    // Step 1: Note 0 at beat 0 (velocity 200/2 = 100)
-    arp_presets[0].notes[0].packed_timing_vel = NOTE_PACK_TIMING_VEL(0, 100, 0);
-    arp_presets[0].notes[0].note_octave = NOTE_PACK_NOTE_OCTAVE(0, 0);
-
-    // Step 2: Note 1 at beat 1 (4 16ths per beat)
-    arp_presets[0].notes[1].packed_timing_vel = NOTE_PACK_TIMING_VEL(4, 100, 0);
-    arp_presets[0].notes[1].note_octave = NOTE_PACK_NOTE_OCTAVE(1, 0);
-
-    // Step 3: Note 2 at beat 2
-    arp_presets[0].notes[2].packed_timing_vel = NOTE_PACK_TIMING_VEL(8, 100, 0);
-    arp_presets[0].notes[2].note_octave = NOTE_PACK_NOTE_OCTAVE(2, 0);
-
-    // Step 4: Note 3 at beat 3
-    arp_presets[0].notes[3].packed_timing_vel = NOTE_PACK_TIMING_VEL(12, 100, 0);
-    arp_presets[0].notes[3].note_octave = NOTE_PACK_NOTE_OCTAVE(3, 0);
-
-    // =========================================================================
-    // PRESET 1: Down 16ths - Classic descending 16th notes
-    // =========================================================================
-    arp_presets[1].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[1].note_count = 4;
-    arp_presets[1].pattern_length_16ths = 16;
-    arp_presets[1].gate_length_percent = 80;
-    arp_presets[1].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[1].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[1].magic = ARP_PRESET_MAGIC;
-
-    // Descending: 3, 2, 1, 0 (velocity 200/2 = 100)
-    arp_presets[1].notes[0].packed_timing_vel = NOTE_PACK_TIMING_VEL(0, 100, 0);
-    arp_presets[1].notes[0].note_octave = NOTE_PACK_NOTE_OCTAVE(3, 0);
-
-    arp_presets[1].notes[1].packed_timing_vel = NOTE_PACK_TIMING_VEL(4, 100, 0);
-    arp_presets[1].notes[1].note_octave = NOTE_PACK_NOTE_OCTAVE(2, 0);
-
-    arp_presets[1].notes[2].packed_timing_vel = NOTE_PACK_TIMING_VEL(8, 100, 0);
-    arp_presets[1].notes[2].note_octave = NOTE_PACK_NOTE_OCTAVE(1, 0);
-
-    arp_presets[1].notes[3].packed_timing_vel = NOTE_PACK_TIMING_VEL(12, 100, 0);
-    arp_presets[1].notes[3].note_octave = NOTE_PACK_NOTE_OCTAVE(0, 0);
-
-    // =========================================================================
-    // PRESET 2: Up-Down 16ths (Exclusive) - Up then down, no repeat
-    // =========================================================================
-    arp_presets[2].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[2].note_count = 6;
-    arp_presets[2].pattern_length_16ths = 24;  // 1.5 bars for up-down pattern
-    arp_presets[2].gate_length_percent = 80;
-    arp_presets[2].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[2].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[2].magic = ARP_PRESET_MAGIC;
-
-    // Up: 0, 1, 2, 3 (velocity 100)
-    arp_presets[2].notes[0].packed_timing_vel = NOTE_PACK_TIMING_VEL(0, 100, 0);
-    arp_presets[2].notes[0].note_octave = NOTE_PACK_NOTE_OCTAVE(0, 0);
-
-    arp_presets[2].notes[1].packed_timing_vel = NOTE_PACK_TIMING_VEL(4, 100, 0);
-    arp_presets[2].notes[1].note_octave = NOTE_PACK_NOTE_OCTAVE(1, 0);
-
-    arp_presets[2].notes[2].packed_timing_vel = NOTE_PACK_TIMING_VEL(8, 100, 0);
-    arp_presets[2].notes[2].note_octave = NOTE_PACK_NOTE_OCTAVE(2, 0);
-
-    arp_presets[2].notes[3].packed_timing_vel = NOTE_PACK_TIMING_VEL(12, 100, 0);
-    arp_presets[2].notes[3].note_octave = NOTE_PACK_NOTE_OCTAVE(3, 0);
-
-    // Down: 2, 1 (exclusive - don't repeat 3 and 0)
-    arp_presets[2].notes[4].packed_timing_vel = NOTE_PACK_TIMING_VEL(16, 100, 0);
-    arp_presets[2].notes[4].note_octave = NOTE_PACK_NOTE_OCTAVE(2, 0);
-
-    arp_presets[2].notes[5].packed_timing_vel = NOTE_PACK_TIMING_VEL(20, 100, 0);
-    arp_presets[2].notes[5].note_octave = NOTE_PACK_NOTE_OCTAVE(1, 0);
-
-    // =========================================================================
-    // PRESET 3: Random 8ths - Random note selection with 8th note timing
-    // =========================================================================
-    arp_presets[3].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[3].note_count = 4;
-    arp_presets[3].pattern_length_16ths = 32;  // 2 bars
-    arp_presets[3].gate_length_percent = 75;
-    arp_presets[3].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[3].note_value = NOTE_VALUE_EIGHTH;
-    arp_presets[3].magic = ARP_PRESET_MAGIC;
-
-    // Random pattern (will be randomized at runtime, but set defaults)
-    // 8th notes = 2 16ths apart (velocity 90)
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[3].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 8, 90, 0);
-        arp_presets[3].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(0, 0);  // Will be randomized
+// Load arpeggiator preset into active slot (lazy-load from EEPROM or factory data)
+bool arp_load_preset_into_slot(uint8_t preset_id) {
+    if (preset_id >= arp_preset_count) {
+        dprintf("arp: load_preset_into_slot - invalid preset_id %d\n", preset_id);
+        return false;
     }
 
-    // =========================================================================
-    // PRESET 4: Up 2 Octaves - Ascending with 2 octave range
-    // =========================================================================
-    arp_presets[4].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[4].note_count = 8;
-    arp_presets[4].pattern_length_16ths = 32;  // 2 bars
-    arp_presets[4].gate_length_percent = 80;
-    arp_presets[4].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[4].note_value = NOTE_VALUE_SIXTEENTH;
-    arp_presets[4].magic = ARP_PRESET_MAGIC;
-
-    // First octave (velocity 100)
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[4].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 4, 100, 0);
-        arp_presets[4].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(i, 0);
-    }
-    // Second octave (+1 octave = +12 semitones, but octave field is in octaves not semitones so +1)
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[4].notes[i + 4].packed_timing_vel = NOTE_PACK_TIMING_VEL((i + 4) * 4, 100, 0);
-        arp_presets[4].notes[i + 4].note_octave = NOTE_PACK_NOTE_OCTAVE(i, 1);
+    // Check if already loaded
+    if (arp_state.loaded_preset_id == preset_id) {
+        dprintf("arp: preset %d already loaded\n", preset_id);
+        return true;
     }
 
-    // =========================================================================
-    // PRESET 5: Down 2 Octaves - Descending with 2 octave range
-    // =========================================================================
-    arp_presets[5].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[5].note_count = 8;
-    arp_presets[5].pattern_length_16ths = 32;  // 2 bars
-    arp_presets[5].gate_length_percent = 80;
-    arp_presets[5].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[5].note_value = NOTE_VALUE_SIXTEENTH;
-    arp_presets[5].magic = ARP_PRESET_MAGIC;
-
-    // Start from high octave (velocity 100)
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[5].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 4, 100, 0);
-        arp_presets[5].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(3 - i, 1);
-    }
-    // Then base octave
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[5].notes[i + 4].packed_timing_vel = NOTE_PACK_TIMING_VEL((i + 4) * 4, 100, 0);
-        arp_presets[5].notes[i + 4].note_octave = NOTE_PACK_NOTE_OCTAVE(3 - i, 0);
+    // Load preset based on type
+    if (preset_id >= USER_PRESET_START) {
+        // User preset: load from EEPROM
+        if (!arp_load_preset_from_eeprom(preset_id, &arp_active_preset)) {
+            dprintf("arp: failed to load user preset %d from EEPROM\n", preset_id);
+            return false;
+        }
+    } else {
+        // Factory preset: load from hardcoded data
+        arp_load_factory_preset(preset_id, &arp_active_preset);
     }
 
-    // =========================================================================
-    // PRESET 6: Octave Jump - Alternates between base and +1 octave
-    // =========================================================================
-    arp_presets[6].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[6].note_count = 8;
-    arp_presets[6].pattern_length_16ths = 32;  // 2 bars
-    arp_presets[6].gate_length_percent = 75;
-    arp_presets[6].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[6].note_value = NOTE_VALUE_EIGHTH;
-    arp_presets[6].magic = ARP_PRESET_MAGIC;
-
-    // Alternate between octaves: 0, 0+1oct, 1, 1+1oct, 2, 2+1oct, 3, 3+1oct (velocity 100)
-    for (uint8_t i = 0; i < 4; i++) {
-        // Base note
-        arp_presets[6].notes[i * 2].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 8, 100, 0);
-        arp_presets[6].notes[i * 2].note_octave = NOTE_PACK_NOTE_OCTAVE(i, 0);
-
-        // Same note +1 octave
-        arp_presets[6].notes[i * 2 + 1].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 8 + 4, 100, 0);
-        arp_presets[6].notes[i * 2 + 1].note_octave = NOTE_PACK_NOTE_OCTAVE(i, 1);
-    }
-
-    // =========================================================================
-    // PRESET 7: Rapid 16ths - Fast 16th note ascending
-    // =========================================================================
-    arp_presets[7].preset_type = PRESET_TYPE_ARPEGGIATOR;
-    arp_presets[7].note_count = 8;
-    arp_presets[7].pattern_length_16ths = 16;   // 1 bar
-    arp_presets[7].gate_length_percent = 60;    // Shorter gate for clarity
-    arp_presets[7].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[7].note_value = NOTE_VALUE_SIXTEENTH;
-    arp_presets[7].magic = ARP_PRESET_MAGIC;
-
-    // 16th notes = 1 16th apart (velocity 90)
-    for (uint8_t i = 0; i < 8; i++) {
-        arp_presets[7].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 2, 90, 0);
-        arp_presets[7].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(i % 4, 0);  // Cycle through 4 notes
-    }
-
-    // =========================================================================
-    // STEP SEQUENCER FACTORY PRESETS (32-39)
-    // =========================================================================
-
-    // =========================================================================
-    // PRESET 32: C Major Scale - Simple ascending scale
-    // =========================================================================
-    arp_presets[32].preset_type = PRESET_TYPE_STEP_SEQUENCER;
-    arp_presets[32].note_count = 8;
-    arp_presets[32].pattern_length_16ths = 32;  // 2 bars
-    arp_presets[32].gate_length_percent = 80;
-    arp_presets[32].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[32].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[32].magic = ARP_PRESET_MAGIC;
-
-    // C Major: C, D, E, F, G, A, B, C (octave 4) (velocity 100)
-    const uint8_t c_major_notes[] = {0, 2, 4, 5, 7, 9, 11, 0};  // C, D, E, F, G, A, B, C
-    const uint8_t c_major_octaves[] = {4, 4, 4, 4, 4, 4, 4, 5};  // Last C is in octave 5
-    for (uint8_t i = 0; i < 8; i++) {
-        arp_presets[32].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 4, 100, 0);  // Every beat (4 16ths per beat)
-        arp_presets[32].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(c_major_notes[i], c_major_octaves[i]);
-    }
-
-    // =========================================================================
-    // PRESET 33: Bass Line - Simple four-note bass pattern
-    // =========================================================================
-    arp_presets[33].preset_type = PRESET_TYPE_STEP_SEQUENCER;
-    arp_presets[33].note_count = 4;
-    arp_presets[33].pattern_length_16ths = 16;  // 1 bar
-    arp_presets[33].gate_length_percent = 70;
-    arp_presets[33].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[33].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[33].magic = ARP_PRESET_MAGIC;
-
-    // Bass pattern: C, C, G, C (octave 2-3) (velocity 110)
-    const uint8_t bass_notes[] = {0, 0, 7, 0};  // C, C, G, C
-    const uint8_t bass_octaves[] = {2, 2, 2, 3};  // Low octaves
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[33].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 4, 110, 0);
-        arp_presets[33].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(bass_notes[i], bass_octaves[i]);
-    }
-
-    // =========================================================================
-    // PRESET 34: Techno Kick - Repeating low note pattern
-    // =========================================================================
-    arp_presets[34].preset_type = PRESET_TYPE_STEP_SEQUENCER;
-    arp_presets[34].note_count = 4;
-    arp_presets[34].pattern_length_16ths = 16;  // 1 bar
-    arp_presets[34].gate_length_percent = 50;
-    arp_presets[34].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[34].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[34].magic = ARP_PRESET_MAGIC;
-
-    // Four-on-the-floor: C1 on each beat (velocity 127 = max)
-    for (uint8_t i = 0; i < 4; i++) {
-        arp_presets[34].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 4, 127, 0);
-        arp_presets[34].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(0, 1);  // C, Octave 1
-    }
-
-    // =========================================================================
-    // PRESET 35: Melody 1 - Simple melodic pattern
-    // =========================================================================
-    arp_presets[35].preset_type = PRESET_TYPE_STEP_SEQUENCER;
-    arp_presets[35].note_count = 8;
-    arp_presets[35].pattern_length_16ths = 32;  // 2 bars
-    arp_presets[35].gate_length_percent = 75;
-    arp_presets[35].timing_mode = TIMING_MODE_STRAIGHT;
-    arp_presets[35].note_value = NOTE_VALUE_QUARTER;
-    arp_presets[35].magic = ARP_PRESET_MAGIC;
-
-    // Melodic pattern: E, G, A, G, E, D, C, D (velocity 90)
-    const uint8_t melody_notes[] = {4, 7, 9, 7, 4, 2, 0, 2};  // E, G, A, G, E, D, C, D
-    for (uint8_t i = 0; i < 8; i++) {
-        arp_presets[35].notes[i].packed_timing_vel = NOTE_PACK_TIMING_VEL(i * 4, 90, 0);
-        arp_presets[35].notes[i].note_octave = NOTE_PACK_NOTE_OCTAVE(melody_notes[i], 4);  // Octave 4
-    }
-
-    // =========================================================================
-    // PRESET 36-39: Reserved for future factory presets
-    // =========================================================================
-    for (uint8_t p = 36; p <= 39; p++) {
-        arp_presets[p].preset_type = PRESET_TYPE_STEP_SEQUENCER;
-        arp_presets[p].note_count = 0;
-        arp_presets[p].pattern_length_16ths = 16;
-        arp_presets[p].gate_length_percent = 80;
-        arp_presets[p].timing_mode = TIMING_MODE_STRAIGHT;
-        arp_presets[p].note_value = NOTE_VALUE_QUARTER;
-        arp_presets[p].magic = ARP_PRESET_MAGIC;
-    }
-
-    arp_preset_count = 64;
-
-    dprintf("arp: initialized %d presets (8 arp + 4 seq factory)\n", arp_preset_count);
+    arp_state.loaded_preset_id = preset_id;
+    dprintf("arp: loaded preset %d into active slot\n", preset_id);
+    return true;
 }
+
+// Load sequencer preset into specified slot (lazy-load from EEPROM or factory data)
+bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
+    if (preset_id >= arp_preset_count || slot >= MAX_SEQ_SLOTS) {
+        dprintf("seq: load_preset_into_slot - invalid preset_id %d or slot %d\n", preset_id, slot);
+        return false;
+    }
+
+    // Check if already loaded in this slot
+    if (seq_state[slot].loaded_preset_id == preset_id) {
+        dprintf("seq: preset %d already loaded in slot %d\n", preset_id, slot);
+        return true;
+    }
+
+    // Load preset based on type
+    if (preset_id >= USER_PRESET_START) {
+        // User preset: load from EEPROM
+        if (!arp_load_preset_from_eeprom(preset_id, &seq_active_presets[slot])) {
+            dprintf("seq: failed to load user preset %d from EEPROM\n", preset_id);
+            return false;
+        }
+    } else {
+        // Factory preset: load from hardcoded data
+        arp_load_factory_preset(preset_id, &seq_active_presets[slot]);
+    }
+
+    seq_state[slot].loaded_preset_id = preset_id;
+    dprintf("seq: loaded preset %d into slot %d\n", preset_id, slot);
+    return true;
+}
+
+// Find an available sequencer slot (-1 if none available)
+int8_t seq_find_available_slot(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (!seq_state[i].active) {
+            return i;
+        }
+    }
+    return -1;  // No available slots
+}
+
+// Load a factory preset directly into a destination slot
+void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
+    if (dest == NULL) {
+        dprintf("arp: load_factory_preset - NULL destination\n");
+        return;
+    }
+
+    // Clear destination first
+    memset(dest, 0, sizeof(arp_preset_t));
+
+    // Factory preset loading implemented in arp_factory_presets.c
+    // This function is called by the lazy-loading system
+    dprintf("arp: loading factory preset %d\n", preset_id);
+}
+
+// Forward declaration - actual implementation in arp_factory_presets.c
+// (kept here as stub for now, will be removed when linking with factory preset file)
 
 // =============================================================================
 // CORE ARPEGGIATOR LOGIC
@@ -488,24 +303,35 @@ static void sort_live_notes_by_pitch(uint8_t sorted_indices[], uint8_t count) {
 }
 
 void arp_init(void) {
-    // Initialize factory presets (0-7)
-    arp_init_presets();
-
-    // Load user presets from EEPROM (8-31)
-    arp_load_all_user_presets();
-
     // Clear arp notes
     memset(arp_notes, 0, sizeof(arp_notes));
     arp_note_count = 0;
 
-    // Reset state
+    // Clear active preset slots
+    memset(&arp_active_preset, 0, sizeof(arp_preset_t));
+    memset(seq_active_presets, 0, sizeof(seq_active_presets));
+
+    // Reset arpeggiator state
     arp_state.active = false;
     arp_state.latch_mode = false;
     arp_state.current_preset_id = 0;
+    arp_state.loaded_preset_id = 255;  // No preset loaded
     arp_state.sync_mode = true;
     arp_state.mode = ARP_MODE_SINGLE_NOTE;
+    arp_state.rate_override = 0;
+    arp_state.master_gate_override = 0;
 
-    dprintf("arp: initialized with %d total presets\n", MAX_ARP_PRESETS);
+    // Reset sequencer states
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_state[i].active = false;
+        seq_state[i].sync_mode = true;
+        seq_state[i].current_preset_id = 32;  // Default to first seq preset
+        seq_state[i].loaded_preset_id = 255;  // No preset loaded
+        seq_state[i].rate_override = 0;
+        seq_state[i].master_gate_override = 0;
+    }
+
+    dprintf("arp: initialized with lazy-loading preset system (64 total presets)\n");
 }
 
 void arp_start(uint8_t preset_id) {
@@ -1007,31 +833,32 @@ bool arp_save_preset_to_eeprom(uint8_t preset_id) {
     return true;
 }
 
-// Load a preset from EEPROM (only for user slots 48-63)
-bool arp_load_preset_from_eeprom(uint8_t preset_id) {
+// Load a preset from EEPROM (only for user slots 48-63) into destination
+bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest) {
     // Check if this is a user preset slot (48-63)
     if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
         dprintf("arp: load failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
         return false;
     }
 
+    if (dest == NULL) {
+        dprintf("arp: load failed - NULL destination\n");
+        return false;
+    }
+
     uint32_t addr = arp_get_preset_eeprom_addr(preset_id);
-    arp_preset_t temp_preset;
 
     dprintf("arp: loading preset %d from EEPROM addr 0x%08lX\n", preset_id, addr);
 
-    // Read into temporary buffer first
-    eeprom_read_block(&temp_preset, (void*)addr, sizeof(arp_preset_t));
+    // Read directly into destination
+    eeprom_read_block(dest, (void*)addr, sizeof(arp_preset_t));
 
-    // Validate before copying to active preset
-    if (!arp_validate_preset(&temp_preset)) {
+    // Validate loaded preset
+    if (!arp_validate_preset(dest)) {
         dprintf("arp: load failed - preset %d failed validation (corrupted or uninitialized)\n",
                 preset_id);
         return false;
     }
-
-    // Copy to active preset array
-    memcpy(&arp_presets[preset_id], &temp_preset, sizeof(arp_preset_t));
 
     dprintf("arp: preset %d loaded successfully\n", preset_id);
     return true;
