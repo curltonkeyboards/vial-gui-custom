@@ -12,7 +12,7 @@
 #define PER_KEY_NUM_LEDS 70            // 70 LEDs (5x14 matrix)
 
 // EEPROM Layout
-#define PER_KEY_RGB_EEPROM_ADDR 66000
+#define PER_KEY_RGB_EEPROM_ADDR 67940
 #define PER_KEY_PALETTE_SIZE_BYTES (PER_KEY_PALETTE_SIZE * 3)  // 16 colors × 3 bytes (HSV) = 48 bytes
 #define PER_KEY_PRESET_SIZE_BYTES PER_KEY_NUM_LEDS             // 70 bytes per preset (palette indices)
 #define PER_KEY_TOTAL_PRESETS_SIZE (PER_KEY_NUM_PRESETS * PER_KEY_PRESET_SIZE_BYTES) // 840 bytes

@@ -43,10 +43,9 @@ seq_state_t seq_state[MAX_SEQ_SLOTS] = {
     {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0}
 };
 
-// Efficient RAM storage: Only active presets loaded (was 64 × 392 = 25KB, now ~2KB)
-arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (~392 bytes)
-arp_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (~1.5KB)
-uint8_t arp_preset_count = 64;  // Total count for navigation (0-63)
+// Efficient RAM storage: Only active presets loaded
+arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
+seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (4 × 392 = 1568 bytes)
 
 // External references
 extern uint8_t live_notes[MAX_LIVE_NOTES][3];  // [channel, note, velocity]
