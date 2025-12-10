@@ -931,7 +931,7 @@ void arp_set_master_gate(uint8_t gate_percent) {
 }
 
 void arp_set_mode(arp_mode_t mode) {
-    if (mode >= ARP_MODE_COUNT) return;
+    if (mode >= ARPMODE_COUNT) return;
     arp_state.mode = mode;
     dprintf("arp: mode set to %d\n", mode);
 }
