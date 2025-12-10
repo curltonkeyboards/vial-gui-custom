@@ -1,6 +1,9 @@
 // orthomidi5x14.h
 #ifndef ORTHOMIDI5X14_H
 #define ORTHOMIDI5X14_H
+
+#include "quantum.h"
+
 extern int smartchordstatus;
 extern int chordkey2;
 extern int chordkey3;
