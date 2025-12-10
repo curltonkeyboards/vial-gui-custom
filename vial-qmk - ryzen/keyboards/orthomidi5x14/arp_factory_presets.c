@@ -155,10 +155,35 @@ void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
         }
         break;
 
+    // Reserved arpeggiator factory presets (8-47) - Initialize as empty
+    default:
+        if (preset_id >= 0 && preset_id < NUM_FACTORY_ARP_PRESETS) {
+            dest->preset_type = PRESET_TYPE_ARPEGGIATOR;
+            dest->note_count = 0;
+            dest->pattern_length_16ths = 16;
+            dest->gate_length_percent = 80;
+            dest->timing_mode = TIMING_MODE_STRAIGHT;
+            dest->note_value = NOTE_VALUE_QUARTER;
+            dest->magic = ARP_PRESET_MAGIC;
+        }
+        break;
+    }
+}
+
+// Load step sequencer factory preset into destination (called by lazy-loading system)
+void seq_load_factory_preset(uint8_t preset_id, seq_preset_t *dest) {
+    if (dest == NULL) {
+        return;
+    }
+
+    // Clear destination
+    memset(dest, 0, sizeof(seq_preset_t));
+
+    switch (preset_id) {
     // =========================================================================
-    // STEP SEQUENCER FACTORY PRESETS (32-39)
+    // STEP SEQUENCER FACTORY PRESETS (0-47)
     // =========================================================================
-    case 32:  // C Major Scale
+    case 0:  // C Major Scale
         dest->preset_type = PRESET_TYPE_STEP_SEQUENCER;
         dest->note_count = 8;
         dest->pattern_length_16ths = 32;
@@ -176,7 +201,7 @@ void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
         }
         break;
 
-    case 33:  // Bass Line
+    case 1:  // Bass Line
         dest->preset_type = PRESET_TYPE_STEP_SEQUENCER;
         dest->note_count = 4;
         dest->pattern_length_16ths = 16;
@@ -194,7 +219,7 @@ void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
         }
         break;
 
-    case 34:  // Techno Kick
+    case 2:  // Techno Kick
         dest->preset_type = PRESET_TYPE_STEP_SEQUENCER;
         dest->note_count = 4;
         dest->pattern_length_16ths = 16;
@@ -208,7 +233,7 @@ void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
         }
         break;
 
-    case 35:  // Melody 1
+    case 3:  // Melody 1
         dest->preset_type = PRESET_TYPE_STEP_SEQUENCER;
         dest->note_count = 8;
         dest->pattern_length_16ths = 32;
@@ -225,9 +250,9 @@ void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
         }
         break;
 
-    // Reserved factory presets (36-47) - Initialize as empty
+    // Reserved sequencer factory presets (4-47) - Initialize as empty
     default:
-        if (preset_id >= 36 && preset_id < USER_PRESET_START) {
+        if (preset_id >= 0 && preset_id < NUM_FACTORY_SEQ_PRESETS) {
             dest->preset_type = PRESET_TYPE_STEP_SEQUENCER;
             dest->note_count = 0;
             dest->pattern_length_16ths = 16;
