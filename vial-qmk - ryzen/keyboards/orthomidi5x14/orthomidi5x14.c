@@ -219,7 +219,7 @@ uint8_t chordkey4_led_index6 = 99;
 uint8_t chordkey5_led_index6 = 99;
 uint8_t chordkey6_led_index6 = 99;
 uint8_t chordkey7_led_index6 = 99;
-uint8_t randomvelocitymodifier = 0;
+uint8_t dynamic_range = 127;  // Maximum allowed differential between velocity min and max
 int ccencoder = 130;
 int velocityencoder = 130;
 int channelencoder = 130;
@@ -2610,7 +2610,7 @@ void reset_keyboard_settings(void) {
     keyboard_settings.octave_number2 = octave_number2;
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
-    keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
+    keyboard_settings.dynamic_range = dynamic_range;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
     keyboard_settings.smartchordlightmode = smartchordlightmode;
@@ -2667,7 +2667,7 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     octave_number2 = keyboard_settings.octave_number2;
     transpose_number3 = keyboard_settings.transpose_number3;
     octave_number3 = keyboard_settings.octave_number3;
-    randomvelocitymodifier = keyboard_settings.randomvelocitymodifier;
+    dynamic_range = keyboard_settings.dynamic_range;
     oledkeyboard = keyboard_settings.oledkeyboard;
     overdub_advanced_mode = keyboard_settings.overdub_advanced_mode;
     smartchordlightmode = keyboard_settings.smartchordlightmode;
@@ -8597,17 +8597,80 @@ break;
 
 } else if (keycode == 0xC436){ // Velocity Up
     if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
-        // Normal behavior - affect global velocity
-        snprintf(name, sizeof(name), "VELOCITY UP");
-        if (velocity_number == 0) {
-            velocity_number += (velocity_sensitivity);
-        } else if ((velocity_number + (velocity_sensitivity)) < 127) {
-            velocity_number += (velocity_sensitivity);
-        } else if ((velocity_number + (velocity_sensitivity)) == 127) {
-            velocity_number = 127;
-        } else if ((velocity_number + (velocity_sensitivity)) > 127){
-            velocity_number = 127;
+        // Normal behavior - affect HE velocity min/max ranges
+        int16_t new_min = he_velocity_min + velocity_sensitivity;
+        int16_t new_max = he_velocity_max + velocity_sensitivity;
+
+        // Clamp to valid range
+        if (new_min > 127) new_min = 127;
+        if (new_max > 127) new_max = 127;
+
+        // Check if we can move both without violating dynamic_range
+        int16_t current_range = he_velocity_max - he_velocity_min;
+
+        if (current_range >= dynamic_range) {
+            // Current range meets or exceeds dynamic_range, move both
+            he_velocity_min = (uint8_t)new_min;
+            he_velocity_max = (uint8_t)new_max;
+        } else {
+            // Current range is less than dynamic_range, only move min
+            he_velocity_min = (uint8_t)new_min;
+            if (he_velocity_min > he_velocity_max) {
+                he_velocity_max = he_velocity_min;
+            }
         }
+
+        snprintf(name, sizeof(name), "VEL %d-%d", he_velocity_min, he_velocity_max);
+    } else if (keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
+        // Keysplit modifier held - affect keysplit velocity ranges
+        int16_t new_min = keysplit_he_velocity_min + velocity_sensitivity;
+        int16_t new_max = keysplit_he_velocity_max + velocity_sensitivity;
+
+        // Clamp to valid range
+        if (new_min > 127) new_min = 127;
+        if (new_max > 127) new_max = 127;
+
+        // Check if we can move both without violating dynamic_range
+        int16_t current_range = keysplit_he_velocity_max - keysplit_he_velocity_min;
+
+        if (current_range >= dynamic_range) {
+            // Current range meets or exceeds dynamic_range, move both
+            keysplit_he_velocity_min = (uint8_t)new_min;
+            keysplit_he_velocity_max = (uint8_t)new_max;
+        } else {
+            // Current range is less than dynamic_range, only move min
+            keysplit_he_velocity_min = (uint8_t)new_min;
+            if (keysplit_he_velocity_min > keysplit_he_velocity_max) {
+                keysplit_he_velocity_max = keysplit_he_velocity_min;
+            }
+        }
+
+        snprintf(name, sizeof(name), "KS VEL %d-%d", keysplit_he_velocity_min, keysplit_he_velocity_max);
+    } else if (triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
+        // Triplesplit modifier held - affect triplesplit velocity ranges
+        int16_t new_min = triplesplit_he_velocity_min + velocity_sensitivity;
+        int16_t new_max = triplesplit_he_velocity_max + velocity_sensitivity;
+
+        // Clamp to valid range
+        if (new_min > 127) new_min = 127;
+        if (new_max > 127) new_max = 127;
+
+        // Check if we can move both without violating dynamic_range
+        int16_t current_range = triplesplit_he_velocity_max - triplesplit_he_velocity_min;
+
+        if (current_range >= dynamic_range) {
+            // Current range meets or exceeds dynamic_range, move both
+            triplesplit_he_velocity_min = (uint8_t)new_min;
+            triplesplit_he_velocity_max = (uint8_t)new_max;
+        } else {
+            // Current range is less than dynamic_range, only move min
+            triplesplit_he_velocity_min = (uint8_t)new_min;
+            if (triplesplit_he_velocity_min > triplesplit_he_velocity_max) {
+                triplesplit_he_velocity_max = triplesplit_he_velocity_min;
+            }
+        }
+
+        snprintf(name, sizeof(name), "TS VEL %d-%d", triplesplit_he_velocity_min, triplesplit_he_velocity_max);
     } else if (is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
@@ -8634,20 +8697,81 @@ break;
 // Velocity Down (0xC437)
 } else if (keycode == 0xC437){ // Velocity Down
     if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
-        // Normal behavior - affect global velocity
-        snprintf(name, sizeof(name), "VELOCITY DOWN");
-        if (velocity_number == 127) {
-            velocity_number -= (velocity_sensitivity);
-        } else if ((velocity_number - (velocity_sensitivity)) > 0) {
-            velocity_number -= (velocity_sensitivity);
-        } else if ((velocity_number - (velocity_sensitivity)) == 0) {
-            velocity_number = 0;
-        } else if ((velocity_number - (velocity_sensitivity)) < 0){
-            velocity_number = 0;
+        // Normal behavior - affect HE velocity min/max ranges
+        int16_t new_min = he_velocity_min - velocity_sensitivity;
+        int16_t new_max = he_velocity_max - velocity_sensitivity;
+
+        // Clamp to valid range
+        if (new_min < 0) new_min = 0;
+        if (new_max < 0) new_max = 0;
+
+        // Check if we can move both without violating dynamic_range
+        int16_t current_range = he_velocity_max - he_velocity_min;
+
+        if (current_range >= dynamic_range) {
+            // Current range meets or exceeds dynamic_range, move both
+            he_velocity_min = (uint8_t)new_min;
+            he_velocity_max = (uint8_t)new_max;
+        } else {
+            // Current range is less than dynamic_range, only move max
+            he_velocity_max = (uint8_t)new_max;
+            if (he_velocity_max < he_velocity_min) {
+                he_velocity_min = he_velocity_max;
+            }
         }
-		} 
-	
-		else if (is_any_macro_modifier_active()) {
+
+        snprintf(name, sizeof(name), "VEL %d-%d", he_velocity_min, he_velocity_max);
+    } else if (keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
+        // Keysplit modifier held - affect keysplit velocity ranges
+        int16_t new_min = keysplit_he_velocity_min - velocity_sensitivity;
+        int16_t new_max = keysplit_he_velocity_max - velocity_sensitivity;
+
+        // Clamp to valid range
+        if (new_min < 0) new_min = 0;
+        if (new_max < 0) new_max = 0;
+
+        // Check if we can move both without violating dynamic_range
+        int16_t current_range = keysplit_he_velocity_max - keysplit_he_velocity_min;
+
+        if (current_range >= dynamic_range) {
+            // Current range meets or exceeds dynamic_range, move both
+            keysplit_he_velocity_min = (uint8_t)new_min;
+            keysplit_he_velocity_max = (uint8_t)new_max;
+        } else {
+            // Current range is less than dynamic_range, only move max
+            keysplit_he_velocity_max = (uint8_t)new_max;
+            if (keysplit_he_velocity_max < keysplit_he_velocity_min) {
+                keysplit_he_velocity_min = keysplit_he_velocity_max;
+            }
+        }
+
+        snprintf(name, sizeof(name), "KS VEL %d-%d", keysplit_he_velocity_min, keysplit_he_velocity_max);
+    } else if (triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
+        // Triplesplit modifier held - affect triplesplit velocity ranges
+        int16_t new_min = triplesplit_he_velocity_min - velocity_sensitivity;
+        int16_t new_max = triplesplit_he_velocity_max - velocity_sensitivity;
+
+        // Clamp to valid range
+        if (new_min < 0) new_min = 0;
+        if (new_max < 0) new_max = 0;
+
+        // Check if we can move both without violating dynamic_range
+        int16_t current_range = triplesplit_he_velocity_max - triplesplit_he_velocity_min;
+
+        if (current_range >= dynamic_range) {
+            // Current range meets or exceeds dynamic_range, move both
+            triplesplit_he_velocity_min = (uint8_t)new_min;
+            triplesplit_he_velocity_max = (uint8_t)new_max;
+        } else {
+            // Current range is less than dynamic_range, only move max
+            triplesplit_he_velocity_max = (uint8_t)new_max;
+            if (triplesplit_he_velocity_max < triplesplit_he_velocity_min) {
+                triplesplit_he_velocity_min = triplesplit_he_velocity_max;
+            }
+        }
+
+        snprintf(name, sizeof(name), "TS VEL %d-%d", triplesplit_he_velocity_min, triplesplit_he_velocity_max);
+    } else if (is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub

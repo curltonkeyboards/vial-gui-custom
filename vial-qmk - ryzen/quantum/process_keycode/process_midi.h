@@ -29,7 +29,6 @@ extern int8_t octave_number2;
 extern int8_t transpose_number3;
 extern int8_t octave_number3;
 extern uint8_t velocity_number;
-extern uint8_t randomvelocitymodifier;
 extern uint8_t keysplittransposestatus;
 extern uint8_t keysplitvelocitystatus;
 extern bool global_edit_modifier_held;
