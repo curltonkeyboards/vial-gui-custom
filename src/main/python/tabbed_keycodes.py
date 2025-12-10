@@ -5139,19 +5139,56 @@ class ArpeggiatorTab(QScrollArea):
         control_group.setLayout(control_layout)
         self.main_layout.addWidget(control_group)
         
-        # Gate section
+        # Gate section with dropdowns for up/down
         gate_group = QGroupBox("Gate Length")
-        gate_layout = FlowLayout()
+        gate_main_layout = QVBoxLayout()
+
+        # Fixed gate percentages (buttons)
+        gate_button_layout = FlowLayout()
         for keycode in self.arp_keycodes:
-            if keycode_filter(keycode) and "GATE" in keycode.qmk_id:
+            if keycode_filter(keycode) and "SET_GATE" in keycode.qmk_id:
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 btn.setText(keycode.label)
                 btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                gate_layout.addWidget(btn)
-        gate_group.setLayout(gate_layout)
+                gate_button_layout.addWidget(btn)
+        gate_main_layout.addLayout(gate_button_layout)
+
+        # Gate up/down dropdowns
+        gate_dropdown_layout = QHBoxLayout()
+
+        # Gate Up dropdown
+        gate_up_dropdown = CenteredComboBox()
+        gate_up_dropdown.setFixedHeight(40)
+        gate_up_dropdown.addItem("Gate Up (1-10%)")
+        for i in range(1, 11):
+            keycode_name = f"ARP_GATE_UP_{i}"
+            label = f"+{i}%"
+            gate_up_dropdown.addItem(label, keycode_name)
+        gate_up_dropdown.model().item(0).setEnabled(False)
+        gate_up_dropdown.currentIndexChanged.connect(
+            lambda idx, dd=gate_up_dropdown: self.on_gate_dropdown_change(idx, dd, "Gate Up (1-10%)")
+        )
+        gate_dropdown_layout.addWidget(gate_up_dropdown)
+
+        # Gate Down dropdown
+        gate_down_dropdown = CenteredComboBox()
+        gate_down_dropdown.setFixedHeight(40)
+        gate_down_dropdown.addItem("Gate Down (1-10%)")
+        for i in range(1, 11):
+            keycode_name = f"ARP_GATE_DOWN_{i}"
+            label = f"-{i}%"
+            gate_down_dropdown.addItem(label, keycode_name)
+        gate_down_dropdown.model().item(0).setEnabled(False)
+        gate_down_dropdown.currentIndexChanged.connect(
+            lambda idx, dd=gate_down_dropdown: self.on_gate_dropdown_change(idx, dd, "Gate Down (1-10%)")
+        )
+        gate_dropdown_layout.addWidget(gate_down_dropdown)
+
+        gate_main_layout.addLayout(gate_dropdown_layout)
+        gate_group.setLayout(gate_main_layout)
         self.main_layout.addWidget(gate_group)
         
         # Rate section
@@ -5218,9 +5255,19 @@ class ArpeggiatorTab(QScrollArea):
     
     def has_buttons(self):
         return len(self.arp_keycodes) > 0
-    
+
     def relabel_buttons(self):
         pass  # Implement if needed
+
+    def on_gate_dropdown_change(self, index, dropdown, header_text):
+        """Handle gate up/down dropdown selection"""
+        if index > 0:  # Skip the header item
+            keycode_name = dropdown.itemData(index)
+            self.keycode_changed.emit(keycode_name)
+            # Reset dropdown to header
+            dropdown.blockSignals(True)
+            dropdown.setCurrentIndex(0)
+            dropdown.blockSignals(False)
 
 
 class StepSequencerTab(QScrollArea):
@@ -5273,19 +5320,56 @@ class StepSequencerTab(QScrollArea):
         control_group.setLayout(control_layout)
         self.main_layout.addWidget(control_group)
         
-        # Gate section
+        # Gate section with dropdowns for up/down
         gate_group = QGroupBox("Gate Length")
-        gate_layout = FlowLayout()
+        gate_main_layout = QVBoxLayout()
+
+        # Fixed gate percentages (buttons)
+        gate_button_layout = FlowLayout()
         for keycode in self.seq_keycodes:
-            if keycode_filter(keycode) and "GATE" in keycode.qmk_id:
+            if keycode_filter(keycode) and "SET_GATE" in keycode.qmk_id:
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 btn.setText(keycode.label)
                 btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                gate_layout.addWidget(btn)
-        gate_group.setLayout(gate_layout)
+                gate_button_layout.addWidget(btn)
+        gate_main_layout.addLayout(gate_button_layout)
+
+        # Gate up/down dropdowns
+        gate_dropdown_layout = QHBoxLayout()
+
+        # Gate Up dropdown
+        gate_up_dropdown = CenteredComboBox()
+        gate_up_dropdown.setFixedHeight(40)
+        gate_up_dropdown.addItem("Gate Up (1-10%)")
+        for i in range(1, 11):
+            keycode_name = f"SEQ_GATE_UP_{i}"
+            label = f"+{i}%"
+            gate_up_dropdown.addItem(label, keycode_name)
+        gate_up_dropdown.model().item(0).setEnabled(False)
+        gate_up_dropdown.currentIndexChanged.connect(
+            lambda idx, dd=gate_up_dropdown: self.on_gate_dropdown_change(idx, dd, "Gate Up (1-10%)")
+        )
+        gate_dropdown_layout.addWidget(gate_up_dropdown)
+
+        # Gate Down dropdown
+        gate_down_dropdown = CenteredComboBox()
+        gate_down_dropdown.setFixedHeight(40)
+        gate_down_dropdown.addItem("Gate Down (1-10%)")
+        for i in range(1, 11):
+            keycode_name = f"SEQ_GATE_DOWN_{i}"
+            label = f"-{i}%"
+            gate_down_dropdown.addItem(label, keycode_name)
+        gate_down_dropdown.model().item(0).setEnabled(False)
+        gate_down_dropdown.currentIndexChanged.connect(
+            lambda idx, dd=gate_down_dropdown: self.on_gate_dropdown_change(idx, dd, "Gate Down (1-10%)")
+        )
+        gate_dropdown_layout.addWidget(gate_down_dropdown)
+
+        gate_main_layout.addLayout(gate_dropdown_layout)
+        gate_group.setLayout(gate_main_layout)
         self.main_layout.addWidget(gate_group)
         
         # Rate section
@@ -5337,9 +5421,19 @@ class StepSequencerTab(QScrollArea):
     
     def has_buttons(self):
         return len(self.seq_keycodes) > 0
-    
+
     def relabel_buttons(self):
         pass  # Implement if needed
+
+    def on_gate_dropdown_change(self, index, dropdown, header_text):
+        """Handle gate up/down dropdown selection"""
+        if index > 0:  # Skip the header item
+            keycode_name = dropdown.itemData(index)
+            self.keycode_changed.emit(keycode_name)
+            # Reset dropdown to header
+            dropdown.blockSignals(True)
+            dropdown.setCurrentIndex(0)
+            dropdown.blockSignals(False)
 
 
 class MusicTab(QWidget):
