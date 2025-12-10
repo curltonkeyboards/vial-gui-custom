@@ -1167,8 +1167,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.cc_sensitivity.addItem(str(i), i)
         advanced_layout.addWidget(self.cc_sensitivity, 0, 4)
 
-        # Velocity Shuffle
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Shuffle:")), 1, 1)
+        # Dynamic Range
+        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Dynamic Range:")), 1, 1)
         self.random_velocity_modifier = ArrowComboBox()
         self.random_velocity_modifier.setMinimumWidth(120)
         self.random_velocity_modifier.setMinimumHeight(25)
@@ -1176,7 +1176,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.random_velocity_modifier.setEditable(True)
         self.random_velocity_modifier.lineEdit().setReadOnly(True)
         self.random_velocity_modifier.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(17):
+        for i in range(128):
             self.random_velocity_modifier.addItem(str(i), i)
         advanced_layout.addWidget(self.random_velocity_modifier, 1, 2)
 
@@ -1864,7 +1864,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "cc_sensitivity": 1,
             "transpose_number2": 0,
             "transpose_number3": 0,
-            "random_velocity_modifier": 0,
+            "random_velocity_modifier": 127,
             "oled_keyboard": 0,
             "smart_chord_light": 0,
             "smart_chord_light_mode": 0,

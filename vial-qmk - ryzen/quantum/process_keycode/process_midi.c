@@ -397,15 +397,8 @@ uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_i
     uint8_t final_velocity;
 
     if (analog_mode == 0) {
-        // Mode 0: Fixed velocity with random modifier
+        // Mode 0: Fixed velocity (no random modifier)
         final_velocity = base_velocity;
-        if (randomvelocitymodifier != 0) {
-            int16_t random_offset = (rand() % (randomvelocitymodifier * 2 + 1)) - randomvelocitymodifier;
-            int16_t modified_velocity = final_velocity + random_offset;
-            if (modified_velocity < 1) modified_velocity = 1;
-            if (modified_velocity > 127) modified_velocity = 127;
-            final_velocity = (uint8_t)modified_velocity;
-        }
     } else {
         // Modes 1, 2, 3: Use pre-calculated analog velocity from matrix.c
         final_velocity = get_midi_velocity(layer, note_index);
@@ -438,15 +431,8 @@ uint8_t apply_he_velocity_from_record(uint8_t base_velocity, keyrecord_t *record
         }
     }
     {
-        // Fallback to base velocity with random modifier
+        // Fallback to base velocity (no random modifier)
         uint8_t final_velocity = base_velocity;
-        if (randomvelocitymodifier != 0) {
-            int16_t random_offset = (rand() % (randomvelocitymodifier * 2 + 1)) - randomvelocitymodifier;
-            int16_t modified_velocity = final_velocity + random_offset;
-            if (modified_velocity < 1) modified_velocity = 1;
-            if (modified_velocity > 127) modified_velocity = 127;
-            final_velocity = (uint8_t)modified_velocity;
-        }
         if (final_velocity < 1) final_velocity = 1;
         if (final_velocity > 127) final_velocity = 127;
         return final_velocity;

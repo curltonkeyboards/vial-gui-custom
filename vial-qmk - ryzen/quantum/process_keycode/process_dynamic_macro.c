@@ -12631,7 +12631,7 @@ static void handle_set_keyboard_config(const uint8_t* data) {
     octave_number2 = *(int8_t*)ptr++;
     transpose_number3 = *(int8_t*)ptr++;
     octave_number3 = *(int8_t*)ptr++;
-    randomvelocitymodifier = *ptr++;
+    dynamic_range = *ptr++;
 
     // Read 32-bit integer for oledkeyboard
     oledkeyboard = *(int32_t*)ptr; ptr += 4;
@@ -12650,7 +12650,7 @@ static void handle_set_keyboard_config(const uint8_t* data) {
     keyboard_settings.octave_number2 = octave_number2;
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
-    keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
+    keyboard_settings.dynamic_range = dynamic_range;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
     keyboard_settings.smartchordlightmode = smartchordlightmode;
@@ -12842,7 +12842,7 @@ static void handle_get_keyboard_config(void) {
     *(int8_t*)ptr++ = keyboard_settings.octave_number2;
     *(int8_t*)ptr++ = keyboard_settings.transpose_number3;
     *(int8_t*)ptr++ = keyboard_settings.octave_number3;
-    *ptr++ = keyboard_settings.randomvelocitymodifier;
+    *ptr++ = keyboard_settings.dynamic_range;
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
     *ptr++ = keyboard_settings.smartchordlightmode;
@@ -12887,7 +12887,7 @@ static void handle_reset_keyboard_config(void) {
     octave_number2 = 0;
     transpose_number3 = 0;
     octave_number3 = 0;
-    randomvelocitymodifier = 0;
+    dynamic_range = 127;  // Default: maximum range allowed
     oledkeyboard = 0;
     overdub_advanced_mode = false;
     smartchordlightmode = 0;
@@ -12918,7 +12918,7 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.octave_number2 = octave_number2;
     keyboard_settings.transpose_number3 = transpose_number3;
     keyboard_settings.octave_number3 = octave_number3;
-    keyboard_settings.randomvelocitymodifier = randomvelocitymodifier;
+    keyboard_settings.dynamic_range = dynamic_range;
     keyboard_settings.oledkeyboard = oledkeyboard;
     keyboard_settings.overdub_advanced_mode = overdub_advanced_mode;
     keyboard_settings.smartchordlightmode = smartchordlightmode;
@@ -12992,7 +12992,7 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *(int8_t*)ptr++ = keyboard_settings.octave_number2;
     *(int8_t*)ptr++ = keyboard_settings.transpose_number3;
     *(int8_t*)ptr++ = keyboard_settings.octave_number3;
-    *ptr++ = keyboard_settings.randomvelocitymodifier;
+    *ptr++ = keyboard_settings.dynamic_range;
     *(int32_t*)ptr = keyboard_settings.oledkeyboard; ptr += 4;
     *ptr++ = keyboard_settings.overdub_advanced_mode;
     *ptr++ = keyboard_settings.smartchordlightmode;
@@ -13032,7 +13032,7 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     octave_number2 = keyboard_settings.octave_number2;
     transpose_number3 = keyboard_settings.transpose_number3;
     octave_number3 = keyboard_settings.octave_number3;
-    randomvelocitymodifier = keyboard_settings.randomvelocitymodifier;
+    dynamic_range = keyboard_settings.dynamic_range;
     oledkeyboard = keyboard_settings.oledkeyboard;
     overdub_advanced_mode = keyboard_settings.overdub_advanced_mode;
     smartchordlightmode = keyboard_settings.smartchordlightmode;

@@ -325,7 +325,7 @@ typedef struct {
     int8_t octave_number2;
     int8_t transpose_number3;
     int8_t octave_number3;
-    uint8_t randomvelocitymodifier;
+    uint8_t dynamic_range;  // Maximum allowed differential between velocity min and max (0-127)
     int oledkeyboard;
     bool overdub_advanced_mode;
     int smartchordlightmode;
@@ -375,7 +375,7 @@ extern int8_t transpose_number2;
 extern int8_t octave_number2;
 extern int8_t transpose_number3;
 extern int8_t octave_number3;
-extern uint8_t randomvelocitymodifier;
+extern uint8_t dynamic_range;
 extern int oledkeyboard;
 extern int smartchordlight;
 extern int smartchordlightmode;
