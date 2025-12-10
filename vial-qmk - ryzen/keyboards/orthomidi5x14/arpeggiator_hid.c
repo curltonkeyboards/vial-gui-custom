@@ -114,10 +114,10 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
         }
 
         case ARP_CMD_LOAD_PRESET: {
-            // Load preset from EEPROM
+            // Load preset from EEPROM into active arp slot
             // params[0] = preset_id
             uint8_t preset_id = params[0];
-            bool success = arp_load_preset_from_eeprom(preset_id);
+            bool success = arp_load_preset_into_slot(preset_id);
             params[0] = success ? 0 : 1;  // 0=success, 1=error
             dprintf("ARP HID: LOAD_PRESET id=%d result=%d\n", preset_id, success);
             break;
