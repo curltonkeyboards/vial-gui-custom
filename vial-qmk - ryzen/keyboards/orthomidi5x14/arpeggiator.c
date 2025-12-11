@@ -37,10 +37,10 @@ arp_state_t arp_state = {
 
 // Step Sequencer runtime state (4 slots)
 seq_state_t seq_state[MAX_SEQ_SLOTS] = {
-    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0}
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0}
 };
 
 // Efficient RAM storage: Only active presets loaded
@@ -348,7 +348,7 @@ void arp_init(void) {
     for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
         seq_state[i].active = false;
         seq_state[i].sync_mode = true;
-        seq_state[i].current_preset_id = 32;  // Default to first seq preset
+        seq_state[i].current_preset_id = 68;  // Default to first seq preset
         seq_state[i].loaded_preset_id = 255;  // No preset loaded
         seq_state[i].rate_override = 0;
         seq_state[i].master_gate_override = 0;
