@@ -3293,9 +3293,9 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_MODE_CHORD_ADVANCED", "Chord\nAdvanced", "Arpeggiator mode: chord advanced"),
 ]
 
-# Generate preset selection keycodes
+# Generate preset selection keycodes (48 factory + 20 user = 68 total)
 KEYCODES_ARPEGGIATOR_PRESETS = []
-for x in range(64):
+for x in range(68):
     KEYCODES_ARPEGGIATOR_PRESETS.append(
         K("ARP_PRESET_{}".format(x), "Arp\nPreset\n{}".format(x), "Load arpeggiator preset {}".format(x))
     )
@@ -3329,9 +3329,9 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_RATE_SIXTEENTH_TRIP", "16th\nTriplet", "Sequencer rate: triplet sixteenth"),
 ]
 
-# Generate preset selection keycodes
+# Generate preset selection keycodes (48 factory + 20 user = 68 total)
 KEYCODES_STEP_SEQUENCER_PRESETS = []
-for x in range(64):
+for x in range(68):
     KEYCODES_STEP_SEQUENCER_PRESETS.append(
         K("SEQ_PRESET_{}".format(x), "Seq\nPreset\n{}".format(x), "Load step sequencer preset {}".format(x))
     )
