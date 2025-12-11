@@ -441,9 +441,9 @@ void arp_update(void) {
     }
 
     // Find notes to play at current position
-    uint8_t notes_to_play[MAX_PRESET_NOTES];
+    uint8_t notes_to_play[MAX_ARP_PRESET_NOTES];
     uint8_t note_count_to_play = 0;
-    unpacked_note_t unpacked_notes[MAX_PRESET_NOTES];
+    unpacked_note_t unpacked_notes[MAX_ARP_PRESET_NOTES];
 
     bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
 
@@ -689,7 +689,7 @@ void seq_update(void) {
         if (!seq_state[slot].active) continue;
 
         // Get preset for this slot
-        arp_preset_t *preset = &seq_active_presets[slot];
+        seq_preset_t *preset = &seq_active_presets[slot];
 
         // Check if it's time to play next note
         uint32_t current_time = timer_read32();
@@ -698,9 +698,9 @@ void seq_update(void) {
         }
 
         // Find notes to play at current position
-        uint8_t notes_to_play[MAX_PRESET_NOTES];
+        uint8_t notes_to_play[MAX_SEQ_PRESET_NOTES];
         uint8_t note_count_to_play = 0;
-        unpacked_note_t unpacked_notes[MAX_PRESET_NOTES];
+        unpacked_note_t unpacked_notes[MAX_SEQ_PRESET_NOTES];
 
         for (uint8_t i = 0; i < preset->note_count; i++) {
             unpack_note(&preset->notes[i], &unpacked_notes[i], false);  // false = step sequencer
@@ -929,8 +929,7 @@ void arp_set_mode(arp_mode_t mode) {
 // Calculate EEPROM address for arpeggiator presets
 // Factory arp presets: 0-47 (not in EEPROM, in PROGMEM)
 // User arp presets: 48-67 (20 slots, maps to EEPROM slots 0-19)
-#define USER_ARP_PRESET_START 48
-#define MAX_ARP_PRESETS (USER_ARP_PRESET_START + NUM_USER_ARP_PRESETS)  // 48 + 20 = 68
+// Note: USER_ARP_PRESET_START and MAX_ARP_PRESETS defined in orthomidi5x14.h
 
 static uint32_t arp_get_preset_eeprom_addr(uint8_t preset_id) {
     if (preset_id < USER_ARP_PRESET_START) {
@@ -946,8 +945,7 @@ static uint32_t arp_get_preset_eeprom_addr(uint8_t preset_id) {
 // Calculate EEPROM address for step sequencer presets
 // Factory seq presets: 68-115 (48 slots, not in EEPROM, in PROGMEM, maps internally to 0-47)
 // User seq presets: 116-135 (20 slots, maps to EEPROM slots 0-19)
-#define USER_SEQ_PRESET_START 116
-#define MAX_SEQ_PRESETS (USER_SEQ_PRESET_START + NUM_USER_SEQ_PRESETS)  // 116 + 20 = 136
+// Note: USER_SEQ_PRESET_START and MAX_SEQ_PRESETS defined in orthomidi5x14.h
 
 static uint32_t seq_get_preset_eeprom_addr(uint8_t preset_id) {
     if (preset_id < USER_SEQ_PRESET_START) {
