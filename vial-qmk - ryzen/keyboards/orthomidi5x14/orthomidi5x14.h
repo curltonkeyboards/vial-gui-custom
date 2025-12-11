@@ -450,6 +450,12 @@ void seq_reset_overrides(void);
 bool arp_load_preset_into_slot(uint8_t preset_id);  // Load preset into arp RAM slot
 bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot);  // Load preset into seq RAM slot
 int8_t seq_find_available_slot(void);  // Find available seq slot (-1 if none)
+int8_t seq_find_slot_with_preset(uint8_t preset_id);  // Find slot playing specific preset (-1 if none)
+
+// Smart toggle/selection functions
+void arp_toggle(void);  // Toggle arpeggiator on/off
+void arp_select_preset(uint8_t preset_id);  // Smart preset selection with toggle
+void seq_select_preset(uint8_t preset_id);  // Smart seq preset selection with slot management
 
 // EEPROM and preset management functions - ARPEGGIATOR
 bool arp_validate_preset(const arp_preset_t *preset);
