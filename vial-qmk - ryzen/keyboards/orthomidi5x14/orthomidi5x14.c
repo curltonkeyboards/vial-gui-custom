@@ -11102,8 +11102,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // DIRECT ARPEGGIATOR PRESET SELECTION (0xCD30 + preset_id)
-    if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 64) {
+    // DIRECT ARPEGGIATOR PRESET SELECTION (0xEE30 + preset_id, 68 presets: 0-67)
+    if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 68) {
         uint8_t preset_id = keycode - ARP_PRESET_BASE;
         if (record->event.pressed) {
             if (preset_id < MAX_ARP_PRESETS) {
@@ -11231,9 +11231,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // DIRECT STEP SEQUENCER PRESET SELECTION (0xCDA0 + preset_id)
-    if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 64) {
-        uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-131)
+    // DIRECT STEP SEQUENCER PRESET SELECTION (0xEEA0 + offset, 68 presets map to firmware IDs 68-135)
+    if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
+        uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-135)
         if (record->event.pressed) {
             if (preset_id < MAX_SEQ_PRESETS) {
                 seq_start(preset_id);
