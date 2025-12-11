@@ -270,6 +270,42 @@ static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
     return base_ms;
 }
 
+// Calculate milliseconds per 16th note for sequencer presets
+static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset) {
+    uint32_t actual_bpm = get_effective_bpm() / 100000;
+    if (actual_bpm == 0) actual_bpm = 120;
+
+    // Base calculation: quarter note duration / 4 = 16th note duration
+    uint32_t base_ms = (60000 / actual_bpm) / 4;
+
+    // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
+    uint8_t multiplier = 1;
+    switch (preset->note_value) {
+        case NOTE_VALUE_QUARTER:
+            multiplier = 4;  // Quarter notes are 4× 16ths
+            break;
+        case NOTE_VALUE_EIGHTH:
+            multiplier = 2;  // Eighth notes are 2× 16ths
+            break;
+        case NOTE_VALUE_SIXTEENTH:
+        default:
+            multiplier = 1;  // Sixteenth notes are 1× 16ths
+            break;
+    }
+    base_ms *= multiplier;
+
+    // Apply timing mode (triplet or dotted)
+    if (preset->timing_mode & TIMING_MODE_TRIPLET) {
+        // Triplet timing: compress to 2/3 of normal duration
+        base_ms = (base_ms * 2) / 3;
+    } else if (preset->timing_mode & TIMING_MODE_DOTTED) {
+        // Dotted timing: extend to 3/2 of normal duration
+        base_ms = (base_ms * 3) / 2;
+    }
+
+    return base_ms;
+}
+
 // Sort live notes by pitch (for consistent ordering)
 static void sort_live_notes_by_pitch(uint8_t sorted_indices[], uint8_t count) {
     // Create array of indices
@@ -717,7 +753,7 @@ void seq_update(void) {
                                    seq_state[slot].master_gate_override :
                                    preset->gate_length_percent;
 
-            uint32_t ms_per_16th = get_ms_per_16th(preset);
+            uint32_t ms_per_16th = seq_get_ms_per_16th(preset);
             uint32_t note_duration_ms = ms_per_16th;
             uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
@@ -755,7 +791,7 @@ void seq_update(void) {
         }
 
         // Calculate next note time
-        uint32_t ms_per_16th = get_ms_per_16th(preset);
+        uint32_t ms_per_16th = seq_get_ms_per_16th(preset);
         seq_state[slot].next_note_time = current_time + ms_per_16th;
     }
 }
