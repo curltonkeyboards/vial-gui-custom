@@ -247,7 +247,7 @@ typedef struct {
 } gaming_settings_t;
 
 // EEPROM address for gaming settings (100 bytes allocated)
-#define GAMING_SETTINGS_EEPROM_ADDR 65700
+#define GAMING_SETTINGS_EEPROM_ADDR 67840
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
 // Gaming mode global state
@@ -268,12 +268,13 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 // =============================================================================
 
 // Maximum limits
-#define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated
-#define MAX_PRESET_NOTES 128       // Maximum notes per preset in RAM
-#define MAX_ARP_PRESETS 64         // Total preset slots (0-47: Factory PROGMEM, 48-63: User EEPROM)
-#define NUM_FACTORY_PRESETS 48     // Factory presets (0-47) stored in PROGMEM
-#define NUM_USER_PRESETS 16        // User presets (48-63) stored in EEPROM
-#define USER_PRESET_START 48       // First user preset slot
+#define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated (for gate timing)
+#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator preset
+#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer preset
+#define NUM_FACTORY_ARP_PRESETS 48 // Factory arpeggiator presets (0-47) in PROGMEM
+#define NUM_FACTORY_SEQ_PRESETS 48 // Factory sequencer presets (0-47) in PROGMEM
+#define NUM_USER_ARP_PRESETS 20    // User arpeggiator presets (0-19) in EEPROM
+#define NUM_USER_SEQ_PRESETS 20    // User sequencer presets (0-19) in EEPROM
 
 // Preset type enumeration
 typedef enum {
@@ -328,17 +329,29 @@ typedef struct {
       // bits 4-7:   octave_offset (signed -8 to +7)
 } arp_preset_note_t;  // 3 bytes total (was 5 bytes)
 
-// Complete arpeggiator preset definition (OPTIMIZED: 392 bytes, was 663)
+// Arpeggiator preset definition (200 bytes for 64 notes)
 typedef struct {
-    uint8_t preset_type;                // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
+    uint8_t preset_type;                // Always PRESET_TYPE_ARPEGGIATOR
+    uint8_t note_count;                 // Number of notes in this preset (1-64)
+    uint8_t pattern_length_16ths;       // Total pattern length in 16th notes (1-127 = max 8 bars)
+    uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
+    uint8_t timing_mode;                // Timing mode flags (TIMING_MODE_STRAIGHT/TRIPLET/DOTTED)
+    uint8_t note_value;                 // Base note value (NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH)
+    arp_preset_note_t notes[MAX_ARP_PRESET_NOTES];  // Note definitions (3 bytes each × 64)
+    uint16_t magic;                     // 0xA89F for validation
+} arp_preset_t;  // Total: 8 + (64 × 3) = 200 bytes
+
+// Step Sequencer preset definition (392 bytes for 128 notes)
+typedef struct {
+    uint8_t preset_type;                // Always PRESET_TYPE_STEP_SEQUENCER
     uint8_t note_count;                 // Number of notes in this preset (1-128)
     uint8_t pattern_length_16ths;       // Total pattern length in 16th notes (1-127 = max 8 bars)
     uint8_t gate_length_percent;        // Gate length 0-100% (can be overridden by master)
     uint8_t timing_mode;                // Timing mode flags (TIMING_MODE_STRAIGHT/TRIPLET/DOTTED)
     uint8_t note_value;                 // Base note value (NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH)
-    arp_preset_note_t notes[MAX_PRESET_NOTES];  // Note definitions (3 bytes each)
+    arp_preset_note_t notes[MAX_SEQ_PRESET_NOTES];  // Note definitions (3 bytes each × 128)
     uint16_t magic;                     // 0xA89F for validation
-} arp_preset_t;  // Total: 8 + (128 × 3) = 392 bytes (was 663 bytes)
+} seq_preset_t;  // Total: 8 + (128 × 3) = 392 bytes
 
 // Arpeggiator runtime state
 typedef struct {
@@ -373,10 +386,12 @@ typedef struct {
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
-#define ARP_EEPROM_ADDR 65800       // Starting address for user presets in EEPROM
+#define ARP_EEPROM_ADDR 56000       // Starting address for user arp presets in EEPROM (20 slots)
+#define SEQ_EEPROM_ADDR 60000       // Starting address for user seq presets in EEPROM (20 slots)
 #define ARP_PRESET_MAGIC 0xA89F     // Magic number for preset validation
 #define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
-#define ARP_MAX_PRESET_EEPROM_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_PRESET_NOTES * 3))  // 8 + 384 = 392 bytes
+#define ARP_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_ARP_PRESET_NOTES * 3))  // 8 + 192 = 200 bytes
+#define SEQ_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_SEQ_PRESET_NOTES * 3))  // 8 + 384 = 392 bytes
 
 // Helper macros for unpacking note data
 #define NOTE_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
@@ -395,10 +410,9 @@ extern uint8_t arp_note_count;
 extern arp_state_t arp_state;
 extern seq_state_t seq_state[MAX_SEQ_SLOTS];
 
-// Efficient RAM storage: Only active presets loaded (was 64 × 392 = 25KB, now ~2KB)
-extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (~392 bytes)
-extern arp_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (~1.5KB)
-extern uint8_t arp_preset_count;  // Still track total count for NEXT/PREV navigation
+// Efficient RAM storage: Only active presets loaded
+extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
+extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (4 × 392 = 1568 bytes)
 
 // Arpeggiator functions
 void arp_init(void);
@@ -430,7 +444,7 @@ bool arp_load_preset_into_slot(uint8_t preset_id);  // Load preset into arp RAM 
 bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot);  // Load preset into seq RAM slot
 int8_t seq_find_available_slot(void);  // Find available seq slot (-1 if none)
 
-// EEPROM and preset management functions
+// EEPROM and preset management functions - ARPEGGIATOR
 bool arp_validate_preset(const arp_preset_t *preset);
 bool arp_save_preset_to_eeprom(uint8_t preset_id, const arp_preset_t *source);
 bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest);
@@ -438,6 +452,15 @@ void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest);
 bool arp_clear_preset(uint8_t preset_id);
 bool arp_copy_preset(uint8_t source_id, uint8_t dest_id);
 void arp_reset_all_user_presets(void);
+
+// EEPROM and preset management functions - STEP SEQUENCER
+bool seq_validate_preset(const seq_preset_t *preset);
+bool seq_save_preset_to_eeprom(uint8_t preset_id, const seq_preset_t *source);
+bool seq_load_preset_from_eeprom(uint8_t preset_id, seq_preset_t *dest);
+void seq_load_factory_preset(uint8_t preset_id, seq_preset_t *dest);
+bool seq_clear_preset(uint8_t preset_id);
+bool seq_copy_preset(uint8_t source_id, uint8_t dest_id);
+void seq_reset_all_user_presets(void);
 
 // Internal helper functions
 void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);

@@ -43,10 +43,9 @@ seq_state_t seq_state[MAX_SEQ_SLOTS] = {
     {.active = false, .sync_mode = true, .current_preset_id = 32, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0}
 };
 
-// Efficient RAM storage: Only active presets loaded (was 64 × 392 = 25KB, now ~2KB)
-arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (~392 bytes)
-arp_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (~1.5KB)
-uint8_t arp_preset_count = 64;  // Total count for navigation (0-63)
+// Efficient RAM storage: Only active presets loaded
+arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
+seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (4 × 392 = 1568 bytes)
 
 // External references
 extern uint8_t live_notes[MAX_LIVE_NOTES][3];  // [channel, note, velocity]
@@ -126,9 +125,10 @@ void process_arp_note_offs(void) {
 // =============================================================================
 
 // Load arpeggiator preset into active slot (lazy-load from EEPROM or factory data)
+// Preset IDs: 0-47 (factory), 48-67 (user, 20 slots)
 bool arp_load_preset_into_slot(uint8_t preset_id) {
-    if (preset_id >= arp_preset_count) {
-        dprintf("arp: load_preset_into_slot - invalid preset_id %d\n", preset_id);
+    if (preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: load_preset_into_slot - invalid preset_id %d (max %d)\n", preset_id, MAX_ARP_PRESETS - 1);
         return false;
     }
 
@@ -139,14 +139,14 @@ bool arp_load_preset_into_slot(uint8_t preset_id) {
     }
 
     // Load preset based on type
-    if (preset_id >= USER_PRESET_START) {
-        // User preset: load from EEPROM
+    if (preset_id >= USER_ARP_PRESET_START) {
+        // User preset: load from EEPROM (48-67)
         if (!arp_load_preset_from_eeprom(preset_id, &arp_active_preset)) {
             dprintf("arp: failed to load user preset %d from EEPROM\n", preset_id);
             return false;
         }
     } else {
-        // Factory preset: load from hardcoded data
+        // Factory preset: load from PROGMEM (0-47)
         arp_load_factory_preset(preset_id, &arp_active_preset);
     }
 
@@ -156,8 +156,9 @@ bool arp_load_preset_into_slot(uint8_t preset_id) {
 }
 
 // Load sequencer preset into specified slot (lazy-load from EEPROM or factory data)
+// Preset IDs: 68-115 (factory, 48 slots), 116-135 (user, 20 slots)
 bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
-    if (preset_id >= arp_preset_count || slot >= MAX_SEQ_SLOTS) {
+    if (preset_id < 68 || preset_id >= MAX_SEQ_PRESETS || slot >= MAX_SEQ_SLOTS) {
         dprintf("seq: load_preset_into_slot - invalid preset_id %d or slot %d\n", preset_id, slot);
         return false;
     }
@@ -169,15 +170,16 @@ bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
     }
 
     // Load preset based on type
-    if (preset_id >= USER_PRESET_START) {
-        // User preset: load from EEPROM
-        if (!arp_load_preset_from_eeprom(preset_id, &seq_active_presets[slot])) {
+    if (preset_id >= USER_SEQ_PRESET_START) {
+        // User preset: load from EEPROM (116-135)
+        if (!seq_load_preset_from_eeprom(preset_id, &seq_active_presets[slot])) {
             dprintf("seq: failed to load user preset %d from EEPROM\n", preset_id);
             return false;
         }
     } else {
-        // Factory preset: load from hardcoded data
-        arp_load_factory_preset(preset_id, &seq_active_presets[slot]);
+        // Factory preset: load from PROGMEM (68-115 maps to internal 0-47)
+        uint8_t factory_id = preset_id - 68;
+        seq_load_factory_preset(factory_id, &seq_active_presets[slot]);
     }
 
     seq_state[slot].loaded_preset_id = preset_id;
@@ -320,8 +322,8 @@ void arp_init(void) {
 }
 
 void arp_start(uint8_t preset_id) {
-    if (preset_id >= arp_preset_count) {
-        dprintf("arp: invalid preset id %d\n", preset_id);
+    if (preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: invalid preset id %d (max %d)\n", preset_id, MAX_ARP_PRESETS - 1);
         return;
     }
 
@@ -634,8 +636,8 @@ void arp_update(void) {
 // =============================================================================
 
 void seq_start(uint8_t preset_id) {
-    if (preset_id >= arp_preset_count) {
-        dprintf("seq: invalid preset id %d\n", preset_id);
+    if (preset_id < 68 || preset_id >= MAX_SEQ_PRESETS) {
+        dprintf("seq: invalid preset id %d (valid range 68-135)\n", preset_id);
         return;
     }
 
@@ -811,11 +813,13 @@ void seq_set_master_gate(uint8_t gate_percent) {
 }
 
 void seq_next_preset(void) {
-    if (arp_preset_count == 0) return;
-
-    // Navigate through ALL presets (0-63), but prefer sequencer presets (32-63)
+    // Navigate through sequencer presets (68-135, 68 total)
     uint8_t current = seq_state[0].current_preset_id;  // Use slot 0 as reference
-    current = (current + 1) % arp_preset_count;
+
+    current++;
+    if (current >= MAX_SEQ_PRESETS) {
+        current = 68;  // Wrap back to first seq preset
+    }
 
     for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
         seq_state[i].current_preset_id = current;
@@ -825,11 +829,10 @@ void seq_next_preset(void) {
 }
 
 void seq_prev_preset(void) {
-    if (arp_preset_count == 0) return;
-
     uint8_t current = seq_state[0].current_preset_id;  // Use slot 0 as reference
-    if (current == 0) {
-        current = arp_preset_count - 1;
+
+    if (current <= 68) {
+        current = MAX_SEQ_PRESETS - 1;  // Wrap to last seq preset (135)
     } else {
         current--;
     }
@@ -846,19 +849,17 @@ void seq_prev_preset(void) {
 // =============================================================================
 
 void arp_next_preset(void) {
-    if (arp_preset_count == 0) return;
-
-    arp_state.current_preset_id = (arp_state.current_preset_id + 1) % arp_preset_count;
+    // Navigate through arpeggiator presets (0-67, 68 total)
+    arp_state.current_preset_id = (arp_state.current_preset_id + 1) % MAX_ARP_PRESETS;
     dprintf("arp: next preset -> %d\n", arp_state.current_preset_id);
 
     // TODO: Update OLED display
 }
 
 void arp_prev_preset(void) {
-    if (arp_preset_count == 0) return;
-
+    // Navigate through arpeggiator presets (0-67, 68 total)
     if (arp_state.current_preset_id == 0) {
-        arp_state.current_preset_id = arp_preset_count - 1;
+        arp_state.current_preset_id = MAX_ARP_PRESETS - 1;
     } else {
         arp_state.current_preset_id--;
     }
@@ -925,32 +926,41 @@ void arp_set_mode(arp_mode_t mode) {
 // PHASE 3: EEPROM STORAGE & PRESET MANAGEMENT
 // =============================================================================
 
-// Calculate EEPROM address for a given preset slot
-// Slots 0-7: Factory arpeggiator presets (not stored in EEPROM)
-// Slots 8-31: User arpeggiator presets (stored in EEPROM)
-// Slots 32-39: Factory step sequencer presets (not stored in EEPROM)
-// Slots 40-63: User step sequencer presets (stored in EEPROM)
+// Calculate EEPROM address for arpeggiator presets
+// Factory arp presets: 0-47 (not in EEPROM, in PROGMEM)
+// User arp presets: 48-67 (20 slots, maps to EEPROM slots 0-19)
+#define USER_ARP_PRESET_START 48
+#define MAX_ARP_PRESETS (USER_ARP_PRESET_START + NUM_USER_ARP_PRESETS)  // 48 + 20 = 68
 
 static uint32_t arp_get_preset_eeprom_addr(uint8_t preset_id) {
-    // Factory presets (0-47) are not stored in EEPROM (in PROGMEM instead)
-    if (preset_id < USER_PRESET_START) {
-        return 0;
+    if (preset_id < USER_ARP_PRESET_START) {
+        return 0;  // Factory preset, not in EEPROM
     }
-
-    // User presets are 48-63 (16 total slots)
     if (preset_id >= MAX_ARP_PRESETS) {
-        return 0;  // Invalid preset ID
+        return 0;  // Invalid preset
     }
-
-    // Calculate EEPROM slot (0-15 for presets 48-63)
-    uint8_t eeprom_slot = preset_id - USER_PRESET_START;
-
-    // Fixed allocation: each preset gets max size regardless of note_count
-    // This simplifies addressing at the cost of some wasted space
-    return ARP_EEPROM_ADDR + (eeprom_slot * ARP_MAX_PRESET_EEPROM_SIZE);
+    uint8_t eeprom_slot = preset_id - USER_ARP_PRESET_START;  // Maps 48-67 to 0-19
+    return ARP_EEPROM_ADDR + (eeprom_slot * ARP_PRESET_SIZE);
 }
 
-// Validate preset structure
+// Calculate EEPROM address for step sequencer presets
+// Factory seq presets: 68-115 (48 slots, not in EEPROM, in PROGMEM, maps internally to 0-47)
+// User seq presets: 116-135 (20 slots, maps to EEPROM slots 0-19)
+#define USER_SEQ_PRESET_START 116
+#define MAX_SEQ_PRESETS (USER_SEQ_PRESET_START + NUM_USER_SEQ_PRESETS)  // 116 + 20 = 136
+
+static uint32_t seq_get_preset_eeprom_addr(uint8_t preset_id) {
+    if (preset_id < USER_SEQ_PRESET_START) {
+        return 0;  // Factory preset, not in EEPROM
+    }
+    if (preset_id >= MAX_SEQ_PRESETS) {
+        return 0;  // Invalid preset
+    }
+    uint8_t eeprom_slot = preset_id - USER_SEQ_PRESET_START;  // Maps 116-135 to 0-19
+    return SEQ_EEPROM_ADDR + (eeprom_slot * SEQ_PRESET_SIZE);
+}
+
+// Validate arpeggiator preset structure
 bool arp_validate_preset(const arp_preset_t *preset) {
     if (preset == NULL) {
         dprintf("arp: validate failed - NULL pointer\n");
@@ -964,10 +974,10 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Check note count bounds
-    if (preset->note_count > MAX_PRESET_NOTES) {
+    // Check note count bounds for arpeggiator (max 64 notes)
+    if (preset->note_count > MAX_ARP_PRESET_NOTES) {
         dprintf("arp: validate failed - note_count %d exceeds max %d\n",
-                preset->note_count, MAX_PRESET_NOTES);
+                preset->note_count, MAX_ARP_PRESET_NOTES);
         return false;
     }
 
@@ -1014,11 +1024,74 @@ bool arp_validate_preset(const arp_preset_t *preset) {
     return true;
 }
 
-// Save a preset to EEPROM (only for user slots 48-63)
+// Validate step sequencer preset structure
+bool seq_validate_preset(const seq_preset_t *preset) {
+    if (preset == NULL) {
+        dprintf("seq: validate failed - NULL pointer\n");
+        return false;
+    }
+
+    // Check magic number
+    if (preset->magic != ARP_PRESET_MAGIC) {
+        dprintf("seq: validate failed - bad magic: 0x%04X (expected 0x%04X)\n",
+                preset->magic, ARP_PRESET_MAGIC);
+        return false;
+    }
+
+    // Check note count bounds for step sequencer (max 128 notes)
+    if (preset->note_count > MAX_SEQ_PRESET_NOTES) {
+        dprintf("seq: validate failed - note_count %d exceeds max %d\n",
+                preset->note_count, MAX_SEQ_PRESET_NOTES);
+        return false;
+    }
+
+    // Check gate length bounds
+    if (preset->gate_length_percent > 100) {
+        dprintf("seq: validate failed - gate_length_percent %d > 100\n",
+                preset->gate_length_percent);
+        return false;
+    }
+
+    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
+        dprintf("seq: validate failed - pattern_length %d not in [1,127]\n",
+                preset->pattern_length_16ths);
+        return false;
+    }
+
+    // Validate individual notes
+    bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
+    for (uint8_t i = 0; i < preset->note_count; i++) {
+        const arp_preset_note_t *packed_note = &preset->notes[i];
+        unpacked_note_t note;
+        unpack_note(packed_note, &note, is_arpeggiator);
+
+        // Check timing is within pattern length
+        if (note.timing >= preset->pattern_length_16ths) {
+            dprintf("seq: validate failed - note[%d] timing %d >= pattern_length %d\n",
+                    i, note.timing, preset->pattern_length_16ths);
+            return false;
+        }
+
+        // Check octave offset is within new packed range (-8 to +7)
+        if (note.octave_offset < -8 || note.octave_offset > 7) {
+            dprintf("seq: validate failed - note[%d] octave_offset %d not in [-8,7]\n",
+                    i, note.octave_offset);
+            return false;
+        }
+
+        // Velocity is 0-127, always valid for unpacked value
+        // Note index for seq is 0-11, within int8_t range
+    }
+
+    dprintf("seq: preset validation passed\n");
+    return true;
+}
+
+// Save an arpeggiator preset to EEPROM (user slots 48-67)
 bool arp_save_preset_to_eeprom(uint8_t preset_id, const arp_preset_t *source) {
-    // Check if this is a user preset slot (48-63)
-    if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
-        dprintf("arp: save failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
+    if (preset_id < USER_ARP_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: save failed - preset_id %d is not a user preset slot (48-67)\n", preset_id);
         return false;
     }
 
@@ -1036,19 +1109,18 @@ bool arp_save_preset_to_eeprom(uint8_t preset_id, const arp_preset_t *source) {
     uint32_t addr = arp_get_preset_eeprom_addr(preset_id);
 
     dprintf("arp: saving preset %d to EEPROM addr 0x%08lX (size=%u bytes)\n",
-            preset_id, addr, sizeof(arp_preset_t));
+            preset_id, addr, ARP_PRESET_SIZE);
 
-    eeprom_update_block(source, (void*)addr, sizeof(arp_preset_t));
+    eeprom_update_block(source, (void*)addr, ARP_PRESET_SIZE);
 
     dprintf("arp: preset %d saved successfully\n", preset_id);
     return true;
 }
 
-// Load a preset from EEPROM (only for user slots 48-63) into destination
+// Load an arpeggiator preset from EEPROM (user slots 48-67)
 bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest) {
-    // Check if this is a user preset slot (48-63)
-    if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
-        dprintf("arp: load failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
+    if (preset_id < USER_ARP_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: load failed - preset_id %d is not a user preset slot (48-67)\n", preset_id);
         return false;
     }
 
@@ -1062,7 +1134,7 @@ bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest) {
     dprintf("arp: loading preset %d from EEPROM addr 0x%08lX\n", preset_id, addr);
 
     // Read directly into destination
-    eeprom_read_block(dest, (void*)addr, sizeof(arp_preset_t));
+    eeprom_read_block(dest, (void*)addr, ARP_PRESET_SIZE);
 
     // Validate loaded preset
     if (!arp_validate_preset(dest)) {
@@ -1075,6 +1147,65 @@ bool arp_load_preset_from_eeprom(uint8_t preset_id, arp_preset_t *dest) {
     return true;
 }
 
+// Save a step sequencer preset to EEPROM (user slots 116-135)
+bool seq_save_preset_to_eeprom(uint8_t preset_id, const seq_preset_t *source) {
+    if (preset_id < USER_SEQ_PRESET_START || preset_id >= MAX_SEQ_PRESETS) {
+        dprintf("seq: save failed - preset_id %d is not a user preset slot (116-135)\n", preset_id);
+        return false;
+    }
+
+    if (source == NULL) {
+        dprintf("seq: save failed - NULL source pointer\n");
+        return false;
+    }
+
+    // Validate preset before saving
+    if (!seq_validate_preset(source)) {
+        dprintf("seq: save failed - preset %d validation failed\n", preset_id);
+        return false;
+    }
+
+    uint32_t addr = seq_get_preset_eeprom_addr(preset_id);
+
+    dprintf("seq: saving preset %d to EEPROM addr 0x%08lX (size=%u bytes)\n",
+            preset_id, addr, SEQ_PRESET_SIZE);
+
+    eeprom_update_block(source, (void*)addr, SEQ_PRESET_SIZE);
+
+    dprintf("seq: preset %d saved successfully\n", preset_id);
+    return true;
+}
+
+// Load a step sequencer preset from EEPROM (user slots 116-135)
+bool seq_load_preset_from_eeprom(uint8_t preset_id, seq_preset_t *dest) {
+    if (preset_id < USER_SEQ_PRESET_START || preset_id >= MAX_SEQ_PRESETS) {
+        dprintf("seq: load failed - preset_id %d is not a user preset slot (116-135)\n", preset_id);
+        return false;
+    }
+
+    if (dest == NULL) {
+        dprintf("seq: load failed - NULL destination\n");
+        return false;
+    }
+
+    uint32_t addr = seq_get_preset_eeprom_addr(preset_id);
+
+    dprintf("seq: loading preset %d from EEPROM addr 0x%08lX\n", preset_id, addr);
+
+    // Read directly into destination
+    eeprom_read_block(dest, (void*)addr, SEQ_PRESET_SIZE);
+
+    // Validate loaded preset
+    if (!seq_validate_preset(dest)) {
+        dprintf("seq: load failed - preset %d failed validation (corrupted or uninitialized)\n",
+                preset_id);
+        return false;
+    }
+
+    dprintf("seq: preset %d loaded successfully\n", preset_id);
+    return true;
+}
+
 // OBSOLETE: No longer needed with lazy-loading system
 // User presets are loaded on-demand when selected
 // This function is kept for potential future EEPROM validation/migration
@@ -1083,11 +1214,10 @@ void arp_load_all_user_presets(void) {
     dprintf("arp: User presets (48-63) will be loaded on-demand from EEPROM\n");
 }
 
-// Clear a user preset (fill with empty/default values)
+// Clear an arpeggiator user preset (fill with empty/default values)
 bool arp_clear_preset(uint8_t preset_id) {
-    // Check if this is a user preset slot (48-63)
-    if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
-        dprintf("arp: clear failed - preset_id %d is not a user preset slot (48-63)\n", preset_id);
+    if (preset_id < USER_ARP_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+        dprintf("arp: clear failed - preset_id %d is not a user preset slot (48-67)\n", preset_id);
         return false;
     }
 
@@ -1109,15 +1239,40 @@ bool arp_clear_preset(uint8_t preset_id) {
     return arp_save_preset_to_eeprom(preset_id, &empty_preset);
 }
 
-// Copy a preset to another slot
+// Clear a sequencer user preset (fill with empty/default values)
+bool seq_clear_preset(uint8_t preset_id) {
+    if (preset_id < USER_SEQ_PRESET_START || preset_id >= MAX_SEQ_PRESETS) {
+        dprintf("seq: clear failed - preset_id %d is not a user preset slot (116-135)\n", preset_id);
+        return false;
+    }
+
+    dprintf("seq: clearing preset %d\n", preset_id);
+
+    // Create temporary empty preset
+    seq_preset_t empty_preset;
+    memset(&empty_preset, 0, sizeof(seq_preset_t));
+
+    empty_preset.preset_type = PRESET_TYPE_STEP_SEQUENCER;
+    empty_preset.note_count = 0;
+    empty_preset.pattern_length_16ths = 16;
+    empty_preset.gate_length_percent = 80;
+    empty_preset.timing_mode = TIMING_MODE_STRAIGHT;
+    empty_preset.note_value = NOTE_VALUE_QUARTER;
+    empty_preset.magic = ARP_PRESET_MAGIC;
+
+    // Save to EEPROM
+    return seq_save_preset_to_eeprom(preset_id, &empty_preset);
+}
+
+// Copy an arpeggiator preset to another slot
 bool arp_copy_preset(uint8_t source_id, uint8_t dest_id) {
     if (source_id >= MAX_ARP_PRESETS || dest_id >= MAX_ARP_PRESETS) {
         dprintf("arp: copy failed - invalid source %d or dest %d\n", source_id, dest_id);
         return false;
     }
 
-    // Check if destination is a user preset slot (48-63)
-    if (dest_id < USER_PRESET_START) {
+    // Check if destination is a user preset slot (48-67)
+    if (dest_id < USER_ARP_PRESET_START) {
         dprintf("arp: copy failed - cannot overwrite factory preset %d\n", dest_id);
         return false;
     }
@@ -1128,12 +1283,14 @@ bool arp_copy_preset(uint8_t source_id, uint8_t dest_id) {
     arp_preset_t temp_preset;
 
     // Load source preset (from EEPROM or factory data)
-    if (source_id >= USER_PRESET_START) {
+    if (source_id >= USER_ARP_PRESET_START) {
+        // User preset: load from EEPROM
         if (!arp_load_preset_from_eeprom(source_id, &temp_preset)) {
             dprintf("arp: copy failed - could not load source preset %d from EEPROM\n", source_id);
             return false;
         }
     } else {
+        // Factory preset: load from PROGMEM
         arp_load_factory_preset(source_id, &temp_preset);
     }
 
@@ -1147,14 +1304,67 @@ bool arp_copy_preset(uint8_t source_id, uint8_t dest_id) {
     return arp_save_preset_to_eeprom(dest_id, &temp_preset);
 }
 
-// Reset all user presets to empty state and clear EEPROM
+// Copy a sequencer preset to another slot
+bool seq_copy_preset(uint8_t source_id, uint8_t dest_id) {
+    if (source_id >= MAX_SEQ_PRESETS || dest_id >= MAX_SEQ_PRESETS) {
+        dprintf("seq: copy failed - invalid source %d or dest %d\n", source_id, dest_id);
+        return false;
+    }
+
+    // Check if destination is a user preset slot (116-135)
+    if (dest_id < USER_SEQ_PRESET_START) {
+        dprintf("seq: copy failed - cannot overwrite factory preset %d\n", dest_id);
+        return false;
+    }
+
+    dprintf("seq: copying preset %d to %d\n", source_id, dest_id);
+
+    // Create temporary preset for copying
+    seq_preset_t temp_preset;
+
+    // Load source preset (from EEPROM or factory data)
+    if (source_id >= USER_SEQ_PRESET_START) {
+        // User preset: load from EEPROM
+        if (!seq_load_preset_from_eeprom(source_id, &temp_preset)) {
+            dprintf("seq: copy failed - could not load source preset %d from EEPROM\n", source_id);
+            return false;
+        }
+    } else {
+        // Factory preset: load from PROGMEM (68-115 maps to internal 0-47)
+        uint8_t factory_id = source_id - 68;  // Map 68-115 to 0-47
+        seq_load_factory_preset(factory_id, &temp_preset);
+    }
+
+    // Validate source
+    if (!seq_validate_preset(&temp_preset)) {
+        dprintf("seq: copy failed - source preset %d invalid\n", source_id);
+        return false;
+    }
+
+    // Save to destination in EEPROM
+    return seq_save_preset_to_eeprom(dest_id, &temp_preset);
+}
+
+// Reset all arpeggiator user presets to empty state and clear EEPROM
 void arp_reset_all_user_presets(void) {
     dprintf("arp: resetting all user presets...\n");
 
-    // Reset all user presets (48-63)
-    for (uint8_t i = USER_PRESET_START; i < MAX_ARP_PRESETS; i++) {
+    // Reset all user arp presets (48-67, 20 slots)
+    for (uint8_t i = USER_ARP_PRESET_START; i < MAX_ARP_PRESETS; i++) {
         arp_clear_preset(i);
     }
 
     dprintf("arp: all user presets reset\n");
+}
+
+// Reset all sequencer user presets to empty state and clear EEPROM
+void seq_reset_all_user_presets(void) {
+    dprintf("seq: resetting all user presets...\n");
+
+    // Reset all user seq presets (116-135, 20 slots)
+    for (uint8_t i = USER_SEQ_PRESET_START; i < MAX_SEQ_PRESETS; i++) {
+        seq_clear_preset(i);
+    }
+
+    dprintf("seq: all user presets reset\n");
 }

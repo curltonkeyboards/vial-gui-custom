@@ -197,26 +197,26 @@ void set_custom_animations_eeprom_initialized(void);
 #define NUM_LAYERS 12
 #define TOTAL_STORAGE_SIZE (LAYER_BLOCK_SIZE * NUM_LAYERS)
 
-#define EECONFIG_CUSTOM_ANIMATIONS 62000
+#define EECONFIG_CUSTOM_ANIMATIONS 62000  // UNCHANGED - still at 62000
 #define EECONFIG_CUSTOM_ANIMATIONS_SIZE (sizeof(custom_animation_config_t) * NUM_CUSTOM_SLOTS)
 
 
 #define LOOP_SETTINGS_SIZE sizeof(loop_settings_t)
-#define LOOP_SETTINGS_EEPROM_ADDR 64600  // Single address, no slots needed
+#define LOOP_SETTINGS_EEPROM_ADDR 64600  // UNCHANGED - still at 64600
 
 #define RGB_DEFAULTS_MAGIC_ADDR 65300  // EEPROM address for magic number for the rgb custom layers
-#define RGB_DEFAULTS_MAGIC_NUMBER 0xC0DE 
+#define RGB_DEFAULTS_MAGIC_NUMBER 0xC0DE
 
-#define LAYER_SETTINGS_EEPROM_ADDR 65400
+#define LAYER_SETTINGS_EEPROM_ADDR 65400  // UNCHANGED - still at 65400
 
 // Settings storage definitions
 #define SETTINGS_SIZE sizeof(keyboard_settings_t)
-#define SETTINGS_BASE_ADDR 65000
+#define SETTINGS_BASE_ADDR 65000  // UNCHANGED - still at 65000
 #define SETTINGS_EEPROM_ADDR(slot) (SETTINGS_BASE_ADDR + ((slot) * SETTINGS_SIZE))
 #define SETTINGS_EEPROM_ADDR_DEFAULT SETTINGS_EEPROM_ADDR(0)
 
 
-#define LAYER_ACTUATION_EEPROM_ADDR 65600
+#define LAYER_ACTUATION_EEPROM_ADDR 68830  // MOVED from 65600
 #define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 96 bytes for 12 layers (8 bytes per layer)
 
 // Function declarations

@@ -29,7 +29,8 @@
 #define HID_DEVICE_ID       0x4D
 
 // Temporary buffer for HID preset editing (since presets are lazy-loaded)
-static arp_preset_t hid_edit_preset;
+// Use seq_preset_t since it's larger (392 bytes) and can hold both arp and seq presets
+static seq_preset_t hid_edit_preset;
 static uint8_t hid_edit_preset_id = 255;  // Which preset is being edited (255 = none)
 
 void arp_hid_receive(uint8_t *data, uint8_t length) {
@@ -42,15 +43,22 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
         case ARP_CMD_GET_INFO: {
             // Return system info
             // params[0] = status (0 = success)
-            // params[1] = number of presets
-            // params[2] = factory preset count
-            // params[3] = user preset start slot
+            // params[1] = num_factory_arp_presets (48)
+            // params[2] = num_user_arp_presets (20)
+            // params[3] = num_factory_seq_presets (48)
+            // params[4] = num_user_seq_presets (20)
+            // params[5] = max_arp_notes (64)
+            // params[6] = max_seq_notes (128)
             params[0] = 0;  // Success
-            params[1] = MAX_ARP_PRESETS;      // 64 total presets
-            params[2] = NUM_FACTORY_PRESETS;  // 48 factory presets (0-47)
-            params[3] = USER_PRESET_START;    // User presets start at slot 48
-            dprintf("ARP HID: GET_INFO - %d presets total, %d factory, %d user start\n",
-                    MAX_ARP_PRESETS, NUM_FACTORY_PRESETS, USER_PRESET_START);
+            params[1] = NUM_FACTORY_ARP_PRESETS;  // 48
+            params[2] = NUM_USER_ARP_PRESETS;     // 20
+            params[3] = NUM_FACTORY_SEQ_PRESETS;  // 48
+            params[4] = NUM_USER_SEQ_PRESETS;     // 20
+            params[5] = MAX_ARP_PRESET_NOTES;     // 64
+            params[6] = MAX_SEQ_PRESET_NOTES;     // 128
+            dprintf("ARP HID: GET_INFO - arp:%d+%d seq:%d+%d\n",
+                    NUM_FACTORY_ARP_PRESETS, NUM_USER_ARP_PRESETS,
+                    NUM_FACTORY_SEQ_PRESETS, NUM_USER_SEQ_PRESETS);
             break;
         }
 
@@ -107,19 +115,39 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            bool success = arp_save_preset_to_eeprom(preset_id, &hid_edit_preset);
+            // Route to correct save function based on preset type
+            bool success = false;
+            if (hid_edit_preset.preset_type == PRESET_TYPE_ARPEGGIATOR) {
+                success = arp_save_preset_to_eeprom(preset_id, (arp_preset_t*)&hid_edit_preset);
+            } else if (hid_edit_preset.preset_type == PRESET_TYPE_STEP_SEQUENCER) {
+                success = seq_save_preset_to_eeprom(preset_id, &hid_edit_preset);
+            }
+
             params[0] = success ? 0 : 1;  // 0=success, 1=error
-            dprintf("ARP HID: SAVE_PRESET id=%d result=%d\n", preset_id, success);
+            dprintf("ARP HID: SAVE_PRESET id=%d type=%d result=%d\n",
+                    preset_id, hid_edit_preset.preset_type, success);
             break;
         }
 
         case ARP_CMD_LOAD_PRESET: {
-            // Load preset from EEPROM into active arp slot
+            // Load preset into active slot
             // params[0] = preset_id
+            // params[1] = seq_slot (0-3, only used for sequencer presets)
             uint8_t preset_id = params[0];
-            bool success = arp_load_preset_into_slot(preset_id);
+            uint8_t seq_slot = params[1];
+            bool success = false;
+
+            // Route based on preset ID range
+            if (preset_id < 68) {
+                // Arpeggiator preset (0-67)
+                success = arp_load_preset_into_slot(preset_id);
+            } else if (preset_id >= 68 && preset_id < 136) {
+                // Sequencer preset (68-135)
+                success = seq_load_preset_into_slot(preset_id, seq_slot);
+            }
+
             params[0] = success ? 0 : 1;  // 0=success, 1=error
-            dprintf("ARP HID: LOAD_PRESET id=%d result=%d\n", preset_id, success);
+            dprintf("ARP HID: LOAD_PRESET id=%d slot=%d result=%d\n", preset_id, seq_slot, success);
             break;
         }
 
@@ -127,7 +155,17 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // Clear preset
             // params[0] = preset_id
             uint8_t preset_id = params[0];
-            bool success = arp_clear_preset(preset_id);
+            bool success = false;
+
+            // Route based on preset ID range
+            if (preset_id >= 48 && preset_id < 68) {
+                // Arpeggiator user preset (48-67)
+                success = arp_clear_preset(preset_id);
+            } else if (preset_id >= 116 && preset_id < 136) {
+                // Sequencer user preset (116-135)
+                success = seq_clear_preset(preset_id);
+            }
+
             params[0] = success ? 0 : 1;
             dprintf("ARP HID: CLEAR_PRESET id=%d result=%d\n", preset_id, success);
             break;
@@ -139,7 +177,17 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // params[1] = dest_id
             uint8_t source_id = params[0];
             uint8_t dest_id = params[1];
-            bool success = arp_copy_preset(source_id, dest_id);
+            bool success = false;
+
+            // Determine type based on destination ID and route accordingly
+            if (dest_id >= 48 && dest_id < 68) {
+                // Arpeggiator destination (must also have arp source)
+                success = arp_copy_preset(source_id, dest_id);
+            } else if (dest_id >= 116 && dest_id < 136) {
+                // Sequencer destination (must also have seq source)
+                success = seq_copy_preset(source_id, dest_id);
+            }
+
             params[0] = success ? 0 : 1;
             dprintf("ARP HID: COPY_PRESET src=%d dst=%d result=%d\n",
                     source_id, dest_id, success);
@@ -147,10 +195,19 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
         }
 
         case ARP_CMD_RESET_ALL: {
-            // Reset all user presets
-            arp_reset_all_user_presets();
+            // Reset all user presets (both arp and seq)
+            // params[0] = preset_type (0=arp, 1=seq, 2=both)
+            uint8_t type = params[0];
+
+            if (type == 0 || type == 2) {
+                arp_reset_all_user_presets();
+            }
+            if (type == 1 || type == 2) {
+                seq_reset_all_user_presets();
+            }
+
             params[0] = 0;  // Success
-            dprintf("ARP HID: RESET_ALL completed\n");
+            dprintf("ARP HID: RESET_ALL type=%d completed\n", type);
             break;
         }
 
@@ -167,19 +224,31 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             //   params[6] = timing_mode (0=straight, 1=triplet, 2=dotted)
             //   params[7] = note_value (0=quarter, 1=eighth, 2=sixteenth)
             uint8_t preset_id = params[0];
-            if (preset_id >= MAX_ARP_PRESETS) {
-                params[0] = 1;  // Error
-                dprintf("ARP HID: GET_PRESET failed - invalid id %d\n", preset_id);
-                break;
-            }
 
-            // Lazy-load preset into HID edit buffer
+            // Lazy-load preset into HID edit buffer based on ID range
             bool loaded = false;
-            if (preset_id >= USER_PRESET_START) {
-                loaded = arp_load_preset_from_eeprom(preset_id, &hid_edit_preset);
-            } else {
-                arp_load_factory_preset(preset_id, &hid_edit_preset);
-                loaded = true;
+
+            if (preset_id < 68) {
+                // Arpeggiator preset (0-67)
+                if (preset_id >= 48) {
+                    // User preset (48-67)
+                    loaded = arp_load_preset_from_eeprom(preset_id, (arp_preset_t*)&hid_edit_preset);
+                } else {
+                    // Factory preset (0-47)
+                    arp_load_factory_preset(preset_id, (arp_preset_t*)&hid_edit_preset);
+                    loaded = true;
+                }
+            } else if (preset_id >= 68 && preset_id < 136) {
+                // Sequencer preset (68-135)
+                if (preset_id >= 116) {
+                    // User preset (116-135)
+                    loaded = seq_load_preset_from_eeprom(preset_id, &hid_edit_preset);
+                } else {
+                    // Factory preset (68-115, maps to internal 0-47)
+                    uint8_t factory_id = preset_id - 68;
+                    seq_load_factory_preset(factory_id, &hid_edit_preset);
+                    loaded = true;
+                }
             }
 
             if (!loaded) {

@@ -2472,12 +2472,12 @@ for x in range(16):
 for x in range(32):
    keycodes_v5.kc["USER{:02}".format(x)] = keycodes_v5.kc["QK_KB"] + x
 
-# Generate Arpeggiator preset selection keycodes (0xCD30-0xCD6F) - 64 presets
-for x in range(64):
+# Generate Arpeggiator preset selection keycodes (48 factory + 20 user = 68 presets)
+for x in range(68):
     keycodes_v5.kc["ARP_PRESET_{}".format(x)] = keycodes_v5.kc["ARP_PRESET_BASE"] + x
 
-# Generate Step Sequencer preset selection keycodes (0xCDA0-0xCDDF) - 64 presets
-for x in range(64):
+# Generate Step Sequencer preset selection keycodes (48 factory + 20 user = 68 presets)
+for x in range(68):
     keycodes_v5.kc["SEQ_PRESET_{}".format(x)] = keycodes_v5.kc["SEQ_PRESET_BASE"] + x
 
 for name, val in keycodes_v5.kc.items():
