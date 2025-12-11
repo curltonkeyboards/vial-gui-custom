@@ -11106,7 +11106,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 64) {
         uint8_t preset_id = keycode - ARP_PRESET_BASE;
         if (record->event.pressed) {
-            if (preset_id < arp_preset_count) {
+            if (preset_id < MAX_ARP_PRESETS) {
                 arp_start(preset_id);
                 set_keylog(keycode, record);
             }
@@ -11233,9 +11233,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     // DIRECT STEP SEQUENCER PRESET SELECTION (0xCDA0 + preset_id)
     if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 64) {
-        uint8_t preset_id = keycode - SEQ_PRESET_BASE;
+        uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-131)
         if (record->event.pressed) {
-            if (preset_id < arp_preset_count) {
+            if (preset_id < MAX_SEQ_PRESETS) {
                 seq_start(preset_id);
                 set_keylog(keycode, record);
             }
