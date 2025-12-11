@@ -286,27 +286,44 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             // params[7] = note_value (0=quarter, 1=eighth, 2=sixteenth)
             uint8_t preset_id = params[0];
 
-            if (preset_id < USER_PRESET_START) {
-                params[0] = 1;  // Error: cannot modify factory presets (0-47)
-                dprintf("ARP HID: SET_PRESET failed - cannot modify factory preset %d\n", preset_id);
-                break;
-            }
+            // Determine preset type based on ID range
+            bool is_arp = (preset_id < 68);
+            bool is_seq = (preset_id >= 68 && preset_id < 136);
 
-            if (preset_id >= MAX_ARP_PRESETS) {
+            if (!is_arp && !is_seq) {
                 params[0] = 1;  // Error: invalid preset ID
                 dprintf("ARP HID: SET_PRESET failed - invalid id %d\n", preset_id);
                 break;
             }
 
+            // Check if this is a factory preset (cannot modify)
+            if (is_arp && preset_id < USER_ARP_PRESET_START) {
+                params[0] = 1;  // Error: cannot modify arp factory presets (0-47)
+                dprintf("ARP HID: SET_PRESET failed - cannot modify factory preset %d\n", preset_id);
+                break;
+            }
+            if (is_seq && preset_id < USER_SEQ_PRESET_START) {
+                params[0] = 1;  // Error: cannot modify seq factory presets (68-115)
+                dprintf("ARP HID: SET_PRESET failed - cannot modify factory preset %d\n", preset_id);
+                break;
+            }
+
             // Load preset into edit buffer if not already there
             if (hid_edit_preset_id != preset_id) {
-                if (preset_id >= USER_PRESET_START) {
-                    if (!arp_load_preset_from_eeprom(preset_id, &hid_edit_preset)) {
-                        // If load fails, initialize as empty
+                if (is_arp) {
+                    // Arpeggiator preset (48-67 user)
+                    if (!arp_load_preset_from_eeprom(preset_id, (arp_preset_t*)&hid_edit_preset)) {
+                        // If load fails, initialize as empty arp preset
                         memset(&hid_edit_preset, 0, sizeof(arp_preset_t));
+                        hid_edit_preset.preset_type = PRESET_TYPE_ARPEGGIATOR;
                     }
                 } else {
-                    arp_load_factory_preset(preset_id, &hid_edit_preset);
+                    // Sequencer preset (116-135 user)
+                    if (!seq_load_preset_from_eeprom(preset_id, &hid_edit_preset)) {
+                        // If load fails, initialize as empty seq preset
+                        memset(&hid_edit_preset, 0, sizeof(seq_preset_t));
+                        hid_edit_preset.preset_type = PRESET_TYPE_STEP_SEQUENCER;
+                    }
                 }
                 hid_edit_preset_id = preset_id;
             }
@@ -320,8 +337,15 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             hid_edit_preset.note_value = params[7];
             hid_edit_preset.magic = ARP_PRESET_MAGIC;
 
-            // Validate
-            if (!arp_validate_preset(&hid_edit_preset)) {
+            // Validate using appropriate function
+            bool valid = false;
+            if (hid_edit_preset.preset_type == PRESET_TYPE_ARPEGGIATOR) {
+                valid = arp_validate_preset((arp_preset_t*)&hid_edit_preset);
+            } else if (hid_edit_preset.preset_type == PRESET_TYPE_STEP_SEQUENCER) {
+                valid = seq_validate_preset(&hid_edit_preset);
+            }
+
+            if (!valid) {
                 params[0] = 1;  // Error: validation failed
                 dprintf("ARP HID: SET_PRESET validation failed for preset %d\n", preset_id);
                 break;
@@ -343,15 +367,33 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             uint8_t preset_id = params[0];
             uint8_t note_index = params[1];
 
-            if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+            // Determine preset type and validate ranges
+            bool is_arp = (preset_id < 68);
+            bool is_seq = (preset_id >= 68 && preset_id < 136);
+
+            if (!is_arp && !is_seq) {
                 params[0] = 1;  // Error: invalid preset ID
                 dprintf("ARP HID: SET_NOTE failed - invalid preset id %d\n", preset_id);
                 break;
             }
 
-            if (note_index >= MAX_PRESET_NOTES) {
+            // Check if this is a user preset (only user presets can be modified)
+            if (is_arp && (preset_id < USER_ARP_PRESET_START || preset_id >= MAX_ARP_PRESETS)) {
+                params[0] = 1;  // Error: invalid arp preset ID or factory preset
+                dprintf("ARP HID: SET_NOTE failed - invalid arp preset id %d\n", preset_id);
+                break;
+            }
+            if (is_seq && (preset_id < USER_SEQ_PRESET_START || preset_id >= MAX_SEQ_PRESETS)) {
+                params[0] = 1;  // Error: invalid seq preset ID or factory preset
+                dprintf("ARP HID: SET_NOTE failed - invalid seq preset id %d\n", preset_id);
+                break;
+            }
+
+            // Check note index against correct max
+            uint8_t max_notes = is_arp ? MAX_ARP_PRESET_NOTES : MAX_SEQ_PRESET_NOTES;
+            if (note_index >= max_notes) {
                 params[0] = 1;  // Error: invalid note index
-                dprintf("ARP HID: SET_NOTE failed - invalid note index %d\n", note_index);
+                dprintf("ARP HID: SET_NOTE failed - invalid note index %d (max %d)\n", note_index, max_notes);
                 break;
             }
 
@@ -391,15 +433,33 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             uint8_t start_index = params[1];
             uint8_t chunk_count = params[2];
 
-            if (preset_id < USER_PRESET_START || preset_id >= MAX_ARP_PRESETS) {
+            // Determine preset type and validate ranges
+            bool is_arp = (preset_id < 68);
+            bool is_seq = (preset_id >= 68 && preset_id < 136);
+
+            if (!is_arp && !is_seq) {
                 params[0] = 1;  // Error: invalid preset ID
                 dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid preset id %d\n", preset_id);
                 break;
             }
 
-            if (start_index >= MAX_PRESET_NOTES) {
+            // Check if this is a user preset (only user presets can be modified)
+            if (is_arp && (preset_id < USER_ARP_PRESET_START || preset_id >= MAX_ARP_PRESETS)) {
+                params[0] = 1;  // Error: invalid arp preset ID or factory preset
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid arp preset id %d\n", preset_id);
+                break;
+            }
+            if (is_seq && (preset_id < USER_SEQ_PRESET_START || preset_id >= MAX_SEQ_PRESETS)) {
+                params[0] = 1;  // Error: invalid seq preset ID or factory preset
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid seq preset id %d\n", preset_id);
+                break;
+            }
+
+            // Check note index against correct max
+            uint8_t max_notes = is_arp ? MAX_ARP_PRESET_NOTES : MAX_SEQ_PRESET_NOTES;
+            if (start_index >= max_notes) {
                 params[0] = 1;  // Error: invalid start index
-                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid start index %d\n", start_index);
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - invalid start index %d (max %d)\n", start_index, max_notes);
                 break;
             }
 
@@ -409,10 +469,10 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            if (start_index + chunk_count > MAX_PRESET_NOTES) {
+            if (start_index + chunk_count > max_notes) {
                 params[0] = 1;  // Error: would exceed preset note array
-                dprintf("ARP HID: SET_NOTES_CHUNK failed - would exceed array (start=%d count=%d)\n",
-                        start_index, chunk_count);
+                dprintf("ARP HID: SET_NOTES_CHUNK failed - would exceed array (start=%d count=%d max=%d)\n",
+                        start_index, chunk_count, max_notes);
                 break;
             }
 
