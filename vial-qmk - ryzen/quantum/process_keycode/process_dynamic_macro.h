@@ -16,6 +16,8 @@
 #    define MACRO_DELETE_THRESHOLD 1000  // 2 seconds
 #endif
 
+#define DOUBLE_TAP_THRESHOLD 200  // 300ms threshold for double-tap detection
+
 // MIDI event types
 #define MIDI_EVENT_NOTE_OFF 0
 #define MIDI_EVENT_NOTE_ON 1

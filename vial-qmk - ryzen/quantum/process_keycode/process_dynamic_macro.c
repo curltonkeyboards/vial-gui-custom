@@ -21,7 +21,6 @@ static int8_t macro_transpose_target[MAX_MACROS] = {0, 0, 0, 0};
 #define MACRO_BUFFER_SIZE 20480  // 2KB per macro
 #define TOTAL_BUFFER_SIZE (MAX_MACROS * MACRO_BUFFER_SIZE)
 #define MACRO_DELETE_THRESHOLD 1000  // 2 seconds in milliseconds
-#define DOUBLE_TAP_THRESHOLD 200  // 300ms threshold for double-tap detection
 #define OVERDUB_BUFFER_SIZE 5120  // Size of temporary buffer for overdub recording
 #define RESTART_PROXIMITY_THRESHOLD 200  // 200ms threshold for restart eligibility
 #define LOOP_SNAP_TO_START_THRESHOLD 100  // 100ms threshold for snapping to loop start

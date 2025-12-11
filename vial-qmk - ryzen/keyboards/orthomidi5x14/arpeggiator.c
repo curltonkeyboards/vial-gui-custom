@@ -195,21 +195,6 @@ int8_t seq_find_available_slot(void) {
     return -1;  // No available slots
 }
 
-// Load a factory preset directly into a destination slot
-void arp_load_factory_preset(uint8_t preset_id, arp_preset_t *dest) {
-    if (dest == NULL) {
-        dprintf("arp: load_factory_preset - NULL destination\n");
-        return;
-    }
-
-    // Clear destination first
-    memset(dest, 0, sizeof(arp_preset_t));
-
-    // Factory preset loading implemented in arp_factory_presets.c
-    // This function is called by the lazy-loading system
-    dprintf("arp: loading factory preset %d\n", preset_id);
-}
-
 // Forward declaration - actual implementation in arp_factory_presets.c
 // (kept here as stub for now, will be removed when linking with factory preset file)
 
