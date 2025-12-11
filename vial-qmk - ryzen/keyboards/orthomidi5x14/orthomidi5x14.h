@@ -276,6 +276,12 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 #define NUM_USER_ARP_PRESETS 20    // User arpeggiator presets (0-19) in EEPROM
 #define NUM_USER_SEQ_PRESETS 20    // User sequencer presets (0-19) in EEPROM
 
+// Preset ID ranges
+#define USER_ARP_PRESET_START 48   // First user arpeggiator preset ID (48-67)
+#define MAX_ARP_PRESETS (USER_ARP_PRESET_START + NUM_USER_ARP_PRESETS)  // 48 + 20 = 68
+#define USER_SEQ_PRESET_START 116  // First user sequencer preset ID (116-135)
+#define MAX_SEQ_PRESETS (USER_SEQ_PRESET_START + NUM_USER_SEQ_PRESETS)  // 116 + 20 = 136
+
 // Preset type enumeration
 typedef enum {
     PRESET_TYPE_ARPEGGIATOR = 0,  // Arpeggiator: intervals relative to master note
