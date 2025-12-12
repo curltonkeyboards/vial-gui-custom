@@ -2501,6 +2501,14 @@ class keycodes_v5:
         "SEQ_MOD_7": 0xEF07,  # Step Sequencer 7 Modifier
         "SEQ_MOD_8": 0xEF08,  # Step Sequencer 8 Modifier
 
+        # NEW: Arpeggiator Gate Up/Down (0xEF09-0xEF0A)
+        "ARP_GATE_UP": 0xEF09,  # Increase arpeggiator gate by 10%
+        "ARP_GATE_DOWN": 0xEF0A,  # Decrease arpeggiator gate by 10%
+
+        # NEW: Step Sequencer Gate Up/Down (0xEF0B-0xEF0C)
+        "SEQ_GATE_UP": 0xEF0B,  # Increase sequencer gate by 10%
+        "SEQ_GATE_DOWN": 0xEF0C,  # Decrease sequencer gate by 10%
+
         "QK_KB": 0xCC57, #custom keycodes safe range
 
 
