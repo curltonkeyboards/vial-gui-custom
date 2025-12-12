@@ -197,6 +197,51 @@ int8_t seq_find_available_slot(void) {
     return -1;  // No available slots
 }
 
+// Find which slot (if any) is playing a specific preset (-1 if not found)
+int8_t seq_find_slot_with_preset(uint8_t preset_id) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active && seq_state[i].current_preset_id == preset_id) {
+            return i;
+        }
+    }
+    return -1;  // Preset not currently playing
+}
+
+// Smart preset selection: toggle if playing, or start in new slot
+void seq_select_preset(uint8_t preset_id) {
+    if (preset_id < 68 || preset_id >= MAX_SEQ_PRESETS) {
+        dprintf("seq: invalid preset id %d\n", preset_id);
+        return;
+    }
+
+    // Check if this preset is already playing
+    int8_t existing_slot = seq_find_slot_with_preset(preset_id);
+
+    if (existing_slot >= 0) {
+        // Preset is playing: toggle it off
+        seq_stop(existing_slot);
+        dprintf("seq: toggled OFF preset %d from slot %d\n", preset_id, existing_slot);
+    } else {
+        // Preset not playing: find available slot and start
+        int8_t slot = seq_find_available_slot();
+        if (slot < 0) {
+            dprintf("seq: no available slots for preset %d\n", preset_id);
+            return;
+        }
+
+        // Initialize BPM if not set
+        if (current_bpm == 0) {
+            current_bpm = 12000000;  // 120.00000 BPM
+            dprintf("seq: initialized BPM to 120\n");
+        }
+
+        // Set current preset for this slot
+        seq_state[slot].current_preset_id = preset_id;
+        seq_start(preset_id);
+        dprintf("seq: started preset %d in slot %d\n", preset_id, slot);
+    }
+}
+
 // Forward declaration - actual implementation in arp_factory_presets.c
 // (kept here as stub for now, will be removed when linking with factory preset file)
 
@@ -907,36 +952,51 @@ void arp_prev_preset(void) {
 
 #define ARP_DOUBLE_TAP_WINDOW 300  // ms for double-tap detection
 
-void arp_handle_button_press(void) {
-    uint32_t current_time = timer_read32();
-    uint32_t time_since_last = current_time - arp_state.last_tap_time;
-
-    // Check for double-tap (latch mode)
-    if (time_since_last < ARP_DOUBLE_TAP_WINDOW) {
-        // Double-tap detected - toggle latch mode
-        arp_state.latch_mode = !arp_state.latch_mode;
-        dprintf("arp: double-tap detected, latch mode: %d\n", arp_state.latch_mode);
-
-        if (arp_state.latch_mode) {
-            // Start arp in latch mode (acts as if button is held)
-            arp_start(arp_state.current_preset_id);
-        }
+// Simple toggle arpeggiator on/off
+void arp_toggle(void) {
+    if (arp_state.active) {
+        arp_stop();
+        dprintf("arp: toggled OFF\n");
     } else {
-        // Single press - start arp normally
-        arp_state.key_held = true;
+        // Initialize BPM if not set
+        if (current_bpm == 0) {
+            current_bpm = 12000000;  // 120.00000 BPM
+            dprintf("arp: initialized BPM to 120\n");
+        }
         arp_start(arp_state.current_preset_id);
+        dprintf("arp: toggled ON with preset %d\n", arp_state.current_preset_id);
     }
+}
 
-    arp_state.last_tap_time = current_time;
+// Smart preset selection: switch preset and/or toggle on/off
+void arp_select_preset(uint8_t preset_id) {
+    if (preset_id >= MAX_ARP_PRESETS) return;
+
+    if (arp_state.current_preset_id == preset_id) {
+        // Same preset: toggle on/off
+        arp_toggle();
+    } else {
+        // Different preset: switch to it and turn on
+        arp_state.current_preset_id = preset_id;
+
+        // Initialize BPM if not set
+        if (current_bpm == 0) {
+            current_bpm = 12000000;  // 120.00000 BPM
+            dprintf("arp: initialized BPM to 120\n");
+        }
+
+        arp_start(preset_id);
+        dprintf("arp: switched to preset %d and turned ON\n", preset_id);
+    }
+}
+
+// DEPRECATED: Old button press/release handlers (kept for compatibility)
+void arp_handle_button_press(void) {
+    arp_toggle();
 }
 
 void arp_handle_button_release(void) {
-    arp_state.key_held = false;
-
-    // Only stop if not in latch mode
-    if (!arp_state.latch_mode) {
-        arp_stop();
-    }
+    // No longer used - toggle handles everything
 }
 
 void arp_toggle_sync_mode(void) {

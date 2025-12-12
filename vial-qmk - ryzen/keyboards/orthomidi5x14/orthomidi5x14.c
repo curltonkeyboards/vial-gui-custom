@@ -670,6 +670,12 @@ static uint8_t sustain_released_count = 0;
 
 static uint32_t last_tap_time = 0;
 static uint32_t tap_times[MAX_TAPS_AVERAGE];
+
+// Hold detection for sequencer buttons (500ms threshold)
+#define SEQ_HOLD_THRESHOLD 500
+static uint32_t seq_play_press_time = 0;
+static uint32_t seq_preset_press_time = 0;
+static uint16_t seq_preset_held_keycode = 0;
 static uint8_t active_taps = 0;
 uint32_t current_bpm = 0;  // Starting with 120 as default
 static bool tap_tempo_active = false;
@@ -10974,13 +10980,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // ARPEGGIATOR & STEP SEQUENCER KEYCODES (0xCD00-0xCDFF)
     // =============================================================================
 
-    // ARPEGGIATOR CONTROL KEYCODES (0xCD00-0xCD0F)
+    // ARPEGGIATOR CONTROL KEYCODES (0xEE00-0xEE0F)
     if (keycode == ARP_PLAY) {
         if (record->event.pressed) {
-            arp_handle_button_press();
+            arp_toggle();  // Simple toggle on/off
             set_keylog(keycode, record);
-        } else {
-            arp_handle_button_release();
         }
         return false;
     }
@@ -11102,29 +11106,37 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // DIRECT ARPEGGIATOR PRESET SELECTION (0xCD30 + preset_id)
-    if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 64) {
+    // DIRECT ARPEGGIATOR PRESET SELECTION (0xEE30 + preset_id, 68 presets: 0-67)
+    // Smart behavior: press to toggle/switch, checks BPM and initializes if needed
+    if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 68) {
         uint8_t preset_id = keycode - ARP_PRESET_BASE;
         if (record->event.pressed) {
             if (preset_id < MAX_ARP_PRESETS) {
-                arp_start(preset_id);
+                arp_select_preset(preset_id);  // Smart toggle/switch with BPM check
                 set_keylog(keycode, record);
-            }
-        } else {
-            // Release: stop arp if not in latch mode
-            if (!arp_state.latch_mode) {
-                arp_stop();
             }
         }
         return false;
     }
 
-    // STEP SEQUENCER CONTROL KEYCODES (0xCD80-0xCD8F)
+    // STEP SEQUENCER CONTROL KEYCODES (0xEE80-0xEE8F)
+    // SEQ_PLAY: Press to toggle, Hold to stop all
     if (keycode == SEQ_PLAY) {
         if (record->event.pressed) {
-            uint8_t current = seq_state[0].current_preset_id;
-            seq_start(current);
+            seq_play_press_time = timer_read32();
             set_keylog(keycode, record);
+        } else {
+            // Release: check if held
+            uint32_t hold_duration = timer_read32() - seq_play_press_time;
+            if (hold_duration >= SEQ_HOLD_THRESHOLD) {
+                // Held: stop and clear all sequences
+                seq_stop_all();
+                dprintf("seq: held - stopped all sequences\n");
+            } else {
+                // Quick press: toggle current preset
+                uint8_t current = seq_state[0].current_preset_id;
+                seq_select_preset(current);
+            }
         }
         return false;
     }
@@ -11231,13 +11243,29 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // DIRECT STEP SEQUENCER PRESET SELECTION (0xCDA0 + preset_id)
-    if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 64) {
-        uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-131)
+    // DIRECT STEP SEQUENCER PRESET SELECTION (0xEEA0 + offset, 68 presets map to firmware IDs 68-135)
+    // Smart behavior: Press to toggle/add, Hold to stop all
+    if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
+        uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-135)
         if (record->event.pressed) {
-            if (preset_id < MAX_SEQ_PRESETS) {
-                seq_start(preset_id);
-                set_keylog(keycode, record);
+            seq_preset_press_time = timer_read32();
+            seq_preset_held_keycode = keycode;
+            set_keylog(keycode, record);
+        } else {
+            // Release: check if held
+            if (seq_preset_held_keycode == keycode) {
+                uint32_t hold_duration = timer_read32() - seq_preset_press_time;
+                if (hold_duration >= SEQ_HOLD_THRESHOLD) {
+                    // Held: stop and clear all sequences
+                    seq_stop_all();
+                    dprintf("seq: held preset button - stopped all sequences\n");
+                } else {
+                    // Quick press: smart toggle/add to slot
+                    if (preset_id < MAX_SEQ_PRESETS) {
+                        seq_select_preset(preset_id);
+                    }
+                }
+                seq_preset_held_keycode = 0;
             }
         }
         return false;
