@@ -243,6 +243,48 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 // Direct Step Sequencer Preset Selection (0xEEA5-0xEEE8) - 68 presets (maps to firmware IDs 68-135)
 #define SEQ_PRESET_BASE         0xEEA5  // Base address for seq presets (0xEEA5 + offset, maps to firmware ID 68+offset)
 
+// NEW: Arpeggiator Rate Up/Down (0xEEE9-0xEEEA)
+#define ARP_RATE_UP             0xEEE9  // Cycle to next rate (1/4 → 1/4 dot → 1/4 trip → 1/8...)
+#define ARP_RATE_DOWN           0xEEEA  // Cycle to previous rate
+
+// NEW: Arpeggiator Static Gate Values (0xEEEB-0xEEF4)
+#define ARP_SET_GATE_10         0xEEEB  // Set gate to 10%
+#define ARP_SET_GATE_20         0xEEEC  // Set gate to 20%
+#define ARP_SET_GATE_30         0xEEED  // Set gate to 30%
+#define ARP_SET_GATE_40         0xEEEE  // Set gate to 40%
+#define ARP_SET_GATE_50         0xEEEF  // Set gate to 50%
+#define ARP_SET_GATE_60         0xEEF0  // Set gate to 60%
+#define ARP_SET_GATE_70         0xEEF1  // Set gate to 70%
+#define ARP_SET_GATE_80         0xEEF2  // Set gate to 80%
+#define ARP_SET_GATE_90         0xEEF3  // Set gate to 90%
+#define ARP_SET_GATE_100        0xEEF4  // Set gate to 100%
+
+// NEW: Step Sequencer Rate Up/Down (0xEEF5-0xEEF6)
+#define SEQ_RATE_UP             0xEEF5  // Cycle to next rate (1/4 → 1/4 dot → 1/4 trip → 1/8...)
+#define SEQ_RATE_DOWN           0xEEF6  // Cycle to previous rate
+
+// NEW: Step Sequencer Static Gate Values (0xEEF7-0xEF00)
+#define STEP_SET_GATE_10        0xEEF7  // Set gate to 10%
+#define STEP_SET_GATE_20        0xEEF8  // Set gate to 20%
+#define STEP_SET_GATE_30        0xEEF9  // Set gate to 30%
+#define STEP_SET_GATE_40        0xEEFA  // Set gate to 40%
+#define STEP_SET_GATE_50        0xEEFB  // Set gate to 50%
+#define STEP_SET_GATE_60        0xEEFC  // Set gate to 60%
+#define STEP_SET_GATE_70        0xEEFD  // Set gate to 70%
+#define STEP_SET_GATE_80        0xEEFE  // Set gate to 80%
+#define STEP_SET_GATE_90        0xEEFF  // Set gate to 90%
+#define STEP_SET_GATE_100       0xEF00  // Set gate to 100%
+
+// NEW: Step Sequencer Modifiers (0xEF01-0xEF08)
+#define SEQ_MOD_1               0xEF01  // Step Sequencer 1 Modifier (affects slot 1)
+#define SEQ_MOD_2               0xEF02  // Step Sequencer 2 Modifier (affects slot 2)
+#define SEQ_MOD_3               0xEF03  // Step Sequencer 3 Modifier (affects slot 3)
+#define SEQ_MOD_4               0xEF04  // Step Sequencer 4 Modifier (affects slot 4)
+#define SEQ_MOD_5               0xEF05  // Step Sequencer 5 Modifier (affects slot 5)
+#define SEQ_MOD_6               0xEF06  // Step Sequencer 6 Modifier (affects slot 6)
+#define SEQ_MOD_7               0xEF07  // Step Sequencer 7 Modifier (affects slot 7)
+#define SEQ_MOD_8               0xEF08  // Step Sequencer 8 Modifier (affects slot 8)
+
 // =============================================================================
 // GAMING / JOYSTICK SYSTEM
 // =============================================================================
@@ -423,7 +465,7 @@ typedef struct {
 } arp_state_t;
 
 // Step Sequencer runtime state (per slot)
-#define MAX_SEQ_SLOTS 4
+#define MAX_SEQ_SLOTS 8
 typedef struct {
     bool active;                        // Is this seq slot currently running
     bool sync_mode;                     // Sync to BPM beat boundaries
@@ -434,6 +476,12 @@ typedef struct {
     uint8_t rate_override;              // 0=use preset, else override (NOTE_VALUE_* | TIMING_MODE_*)
     uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
     uint32_t pattern_start_time;        // When current pattern loop started
+
+    // Locked-in values (captured when sequencer starts playing)
+    uint8_t locked_channel;             // Locked MIDI channel
+    uint8_t locked_velocity_min;        // Locked velocity minimum
+    uint8_t locked_velocity_max;        // Locked velocity maximum
+    int8_t locked_transpose;            // Locked transposition value
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
@@ -463,7 +511,10 @@ extern seq_state_t seq_state[MAX_SEQ_SLOTS];
 
 // Efficient RAM storage: Only active presets loaded
 extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
-extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (4 × 392 = 1568 bytes)
+extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
+
+// Step Sequencer modifier tracking
+extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are held
 
 // Arpeggiator functions
 void arp_init(void);
@@ -519,11 +570,25 @@ bool seq_clear_preset(uint8_t preset_id);
 bool seq_copy_preset(uint8_t source_id, uint8_t dest_id);
 void seq_reset_all_user_presets(void);
 
+// NEW: Rate cycling functions
+void arp_rate_up(void);
+void arp_rate_down(void);
+void seq_rate_up(void);
+void seq_rate_down(void);
+void seq_rate_up_for_slot(uint8_t slot);
+void seq_rate_down_for_slot(uint8_t slot);
+
+// NEW: Static gate setting functions
+void arp_set_gate_static(uint8_t gate_percent);
+void seq_set_gate_static(uint8_t gate_percent);
+void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
+
 // Internal helper functions
 void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);
 void remove_arp_note(uint8_t channel, uint8_t note);
 void process_arp_note_offs(void);
 void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127);
 void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity);
 
 #endif // ORTHOMIDI5X14_H

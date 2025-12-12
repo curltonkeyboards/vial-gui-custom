@@ -6396,10 +6396,20 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && ccencoder != 130) { // Encoder
 
 // Transpose encoder handling (no limits)
 if (record->event.key.row == KEYLOC_ENCODER_CW && transposeencoder != 130) {
-    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    // Check if any sequencer modifier is held
+    bool any_seq_mod_held = false;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_modifier_held[i]) {
+            seq_state[i].locked_transpose++;
+            snprintf(name, sizeof(name), "Seq %d Transpose: %d", i + 1, seq_state[i].locked_transpose);
+            any_seq_mod_held = true;
+        }
+    }
+
+    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         transpose_number++;
         snprintf(name, sizeof(name), "Transpose: %d", transpose_number);
-    } else if (is_any_macro_modifier_active()) {
+    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -6420,20 +6430,30 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && transposeencoder != 130) {
                 }
             }
         }
-    } else if (keysplitmodifierheld) {
+    } else if (!any_seq_mod_held && keysplitmodifierheld) {
         // Keysplit modifier is held - affect transpose_number2
         transpose_number2++;
         snprintf(name, sizeof(name), "Keysplit Transpose: %d", transpose_number2);
-    } else if (triplesplitmodifierheld) {
+    } else if (!any_seq_mod_held && triplesplitmodifierheld) {
         // Triplesplit modifier is held - affect transpose_number3
         transpose_number3++;
         snprintf(name, sizeof(name), "Triplesplit Transpose: %d", transpose_number3);
     }
 } else if (record->event.key.row == KEYLOC_ENCODER_CCW && transposeencoder != 130) {
-    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    // Check if any sequencer modifier is held
+    bool any_seq_mod_held = false;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_modifier_held[i]) {
+            seq_state[i].locked_transpose--;
+            snprintf(name, sizeof(name), "Seq %d Transpose: %d", i + 1, seq_state[i].locked_transpose);
+            any_seq_mod_held = true;
+        }
+    }
+
+    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         transpose_number--;
         snprintf(name, sizeof(name), "Transpose: %d", transpose_number);
-    } else if (is_any_macro_modifier_active()) {
+    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -6454,11 +6474,11 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && transposeencoder != 130) {
                 }
             }
         }
-    } else if (keysplitmodifierheld) {
+    } else if (!any_seq_mod_held && keysplitmodifierheld) {
         // Keysplit modifier is held - affect transpose_number2
         transpose_number2--;
         snprintf(name, sizeof(name), "Keysplit Transpose: %d", transpose_number2);
-    } else if (triplesplitmodifierheld) {
+    } else if (!any_seq_mod_held && triplesplitmodifierheld) {
         // Triplesplit modifier is held - affect transpose_number3
         transpose_number3--;
         snprintf(name, sizeof(name), "Triplesplit Transpose: %d", transpose_number3);
@@ -6533,13 +6553,26 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && velocityencoder != 130) { // E
 
 // Channel encoder handling
 if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // Encoder turned clockwise
-    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    // Check if any sequencer modifier is held
+    bool any_seq_mod_held = false;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_modifier_held[i]) {
+            seq_state[i].locked_channel++;
+            if (seq_state[i].locked_channel > 15) {
+                seq_state[i].locked_channel = 0;
+            }
+            snprintf(name, sizeof(name), "Seq %d Channel: %d", i + 1, seq_state[i].locked_channel + 1);
+            any_seq_mod_held = true;
+        }
+    }
+
+    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         channel_number++;
         if (channel_number > 15) {
             channel_number = 0;
         }
         snprintf(name, sizeof(name), "Channel: %d", channel_number);
-    } else if (is_any_macro_modifier_active()) {
+    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -6560,14 +6593,14 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
                 }
             }
         }
-    } else if (keysplitmodifierheld) {
+    } else if (!any_seq_mod_held && keysplitmodifierheld) {
         // Keysplit modifier is held - affect keysplitchannel
         keysplitchannel++;
         if (keysplitchannel > 15) {
             keysplitchannel = 0;
         }
         snprintf(name, sizeof(name), "Keysplit Channel: %d", keysplitchannel);
-    } else if (triplesplitmodifierheld) {
+    } else if (!any_seq_mod_held && triplesplitmodifierheld) {
         // Triplesplit modifier is held - affect keysplit2channel
         keysplit2channel++;
         if (keysplit2channel > 15) {
@@ -6576,14 +6609,28 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
         snprintf(name, sizeof(name), "Triplesplit Channel: %d", keysplit2channel);
     }
 } else if (record->event.key.row == KEYLOC_ENCODER_CCW && channelencoder != 130) { // Encoder turned counter-clockwise
-    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    // Check if any sequencer modifier is held
+    bool any_seq_mod_held = false;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_modifier_held[i]) {
+            if (seq_state[i].locked_channel == 0) {
+                seq_state[i].locked_channel = 15;
+            } else {
+                seq_state[i].locked_channel--;
+            }
+            snprintf(name, sizeof(name), "Seq %d Channel: %d", i + 1, seq_state[i].locked_channel + 1);
+            any_seq_mod_held = true;
+        }
+    }
+
+    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         if (channel_number == 0) {
             channel_number = 15;
         } else {
             channel_number--;
         }
         snprintf(name, sizeof(name), "Channel: %d", channel_number);
-    } else if (is_any_macro_modifier_active()) {
+    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -6604,7 +6651,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
                 }
             }
         }
-    } else if (keysplitmodifierheld) {
+    } else if (!any_seq_mod_held && keysplitmodifierheld) {
         // Keysplit modifier is held - affect keysplitchannel
         if (keysplitchannel == 0) {
             keysplitchannel = 15;
@@ -6612,7 +6659,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
             keysplitchannel--;
         }
         snprintf(name, sizeof(name), "Keysplit Channel: %d", keysplitchannel);
-    } else if (triplesplitmodifierheld) {
+    } else if (!any_seq_mod_held && triplesplitmodifierheld) {
         // Triplesplit modifier is held - affect keysplit2channel
         if (keysplit2channel == 0) {
             keysplit2channel = 15;
@@ -8602,7 +8649,38 @@ break;
 		
 
 } else if (keycode == 0xC436){ // Velocity Up
-    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    // Check if any sequencer modifier is held
+    bool any_seq_mod_held = false;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_modifier_held[i]) {
+            int16_t new_min = seq_state[i].locked_velocity_min + velocity_sensitivity;
+            int16_t new_max = seq_state[i].locked_velocity_max + velocity_sensitivity;
+
+            // Clamp to valid range
+            if (new_min > 127) new_min = 127;
+            if (new_max > 127) new_max = 127;
+
+            // Check if we can move both without violating dynamic_range
+            int16_t current_range = seq_state[i].locked_velocity_max - seq_state[i].locked_velocity_min;
+
+            if (current_range >= dynamic_range) {
+                // Current range meets or exceeds dynamic_range, move both
+                seq_state[i].locked_velocity_min = (uint8_t)new_min;
+                seq_state[i].locked_velocity_max = (uint8_t)new_max;
+            } else {
+                // Current range is less than dynamic_range, only move min
+                seq_state[i].locked_velocity_min = (uint8_t)new_min;
+                if (seq_state[i].locked_velocity_min > seq_state[i].locked_velocity_max) {
+                    seq_state[i].locked_velocity_max = seq_state[i].locked_velocity_min;
+                }
+            }
+
+            snprintf(name, sizeof(name), "Seq %d VEL %d-%d", i + 1, seq_state[i].locked_velocity_min, seq_state[i].locked_velocity_max);
+            any_seq_mod_held = true;
+        }
+    }
+
+    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         // Normal behavior - affect HE velocity min/max ranges
         int16_t new_min = he_velocity_min + velocity_sensitivity;
         int16_t new_max = he_velocity_max + velocity_sensitivity;
@@ -8627,7 +8705,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "VEL %d-%d", he_velocity_min, he_velocity_max);
-    } else if (keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
+    } else if (!any_seq_mod_held && keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
         // Keysplit modifier held - affect keysplit velocity ranges
         int16_t new_min = keysplit_he_velocity_min + velocity_sensitivity;
         int16_t new_max = keysplit_he_velocity_max + velocity_sensitivity;
@@ -8652,7 +8730,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "KS VEL %d-%d", keysplit_he_velocity_min, keysplit_he_velocity_max);
-    } else if (triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
+    } else if (!any_seq_mod_held && triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
         // Triplesplit modifier held - affect triplesplit velocity ranges
         int16_t new_min = triplesplit_he_velocity_min + velocity_sensitivity;
         int16_t new_max = triplesplit_he_velocity_max + velocity_sensitivity;
@@ -8677,7 +8755,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "TS VEL %d-%d", triplesplit_he_velocity_min, triplesplit_he_velocity_max);
-    } else if (is_any_macro_modifier_active()) {
+    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -8702,7 +8780,38 @@ break;
 
 // Velocity Down (0xC437)
 } else if (keycode == 0xC437){ // Velocity Down
-    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    // Check if any sequencer modifier is held
+    bool any_seq_mod_held = false;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_modifier_held[i]) {
+            int16_t new_min = seq_state[i].locked_velocity_min - velocity_sensitivity;
+            int16_t new_max = seq_state[i].locked_velocity_max - velocity_sensitivity;
+
+            // Clamp to valid range
+            if (new_min < 0) new_min = 0;
+            if (new_max < 0) new_max = 0;
+
+            // Check if we can move both without violating dynamic_range
+            int16_t current_range = seq_state[i].locked_velocity_max - seq_state[i].locked_velocity_min;
+
+            if (current_range >= dynamic_range) {
+                // Current range meets or exceeds dynamic_range, move both
+                seq_state[i].locked_velocity_min = (uint8_t)new_min;
+                seq_state[i].locked_velocity_max = (uint8_t)new_max;
+            } else {
+                // Current range is less than dynamic_range, only move max
+                seq_state[i].locked_velocity_max = (uint8_t)new_max;
+                if (seq_state[i].locked_velocity_max < seq_state[i].locked_velocity_min) {
+                    seq_state[i].locked_velocity_min = seq_state[i].locked_velocity_max;
+                }
+            }
+
+            snprintf(name, sizeof(name), "Seq %d VEL %d-%d", i + 1, seq_state[i].locked_velocity_min, seq_state[i].locked_velocity_max);
+            any_seq_mod_held = true;
+        }
+    }
+
+    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         // Normal behavior - affect HE velocity min/max ranges
         int16_t new_min = he_velocity_min - velocity_sensitivity;
         int16_t new_max = he_velocity_max - velocity_sensitivity;
@@ -8727,7 +8836,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "VEL %d-%d", he_velocity_min, he_velocity_max);
-    } else if (keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
+    } else if (!any_seq_mod_held && keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
         // Keysplit modifier held - affect keysplit velocity ranges
         int16_t new_min = keysplit_he_velocity_min - velocity_sensitivity;
         int16_t new_max = keysplit_he_velocity_max - velocity_sensitivity;
@@ -8752,7 +8861,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "KS VEL %d-%d", keysplit_he_velocity_min, keysplit_he_velocity_max);
-    } else if (triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
+    } else if (!any_seq_mod_held && triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
         // Triplesplit modifier held - affect triplesplit velocity ranges
         int16_t new_min = triplesplit_he_velocity_min - velocity_sensitivity;
         int16_t new_max = triplesplit_he_velocity_max - velocity_sensitivity;
@@ -8777,7 +8886,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "TS VEL %d-%d", triplesplit_he_velocity_min, triplesplit_he_velocity_max);
-    } else if (is_any_macro_modifier_active()) {
+    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -11081,6 +11190,33 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // NEW: Arpeggiator Rate Up/Down
+    if (keycode == ARP_RATE_UP) {
+        if (record->event.pressed) {
+            arp_rate_up();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_RATE_DOWN) {
+        if (record->event.pressed) {
+            arp_rate_down();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // NEW: Arpeggiator Static Gate Values (0xEEEB-0xEEF4)
+    if (keycode >= ARP_SET_GATE_10 && keycode <= ARP_SET_GATE_100) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 10 + ((keycode - ARP_SET_GATE_10) * 10);
+            arp_set_gate_static(gate_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
     // ARPEGGIATOR MODES (0xCD20-0xCD2F)
     if (keycode == ARP_MODE_SINGLE) {
         if (record->event.pressed) {
@@ -11240,6 +11376,78 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             set_keylog(keycode, record);
         }
+        return false;
+    }
+
+    // NEW: Step Sequencer Rate Up/Down
+    if (keycode == SEQ_RATE_UP) {
+        if (record->event.pressed) {
+            // Check if any sequencer modifier is held
+            bool modifier_held = false;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_modifier_held[i]) {
+                    seq_rate_up_for_slot(i);
+                    modifier_held = true;
+                }
+            }
+            // If no modifier held, affect all active slots
+            if (!modifier_held) {
+                seq_rate_up();
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_RATE_DOWN) {
+        if (record->event.pressed) {
+            // Check if any sequencer modifier is held
+            bool modifier_held = false;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_modifier_held[i]) {
+                    seq_rate_down_for_slot(i);
+                    modifier_held = true;
+                }
+            }
+            // If no modifier held, affect all active slots
+            if (!modifier_held) {
+                seq_rate_down();
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // NEW: Step Sequencer Static Gate Values (0xEEF7-0xEF00)
+    if (keycode >= STEP_SET_GATE_10 && keycode <= STEP_SET_GATE_100) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 10 + ((keycode - STEP_SET_GATE_10) * 10);
+            // Check if any sequencer modifier is held
+            bool modifier_held = false;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_modifier_held[i]) {
+                    seq_set_gate_for_slot(i, gate_value);
+                    modifier_held = true;
+                }
+            }
+            // If no modifier held, affect all active slots
+            if (!modifier_held) {
+                seq_set_gate_static(gate_value);
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // NEW: Step Sequencer Modifiers (0xEF01-0xEF08)
+    if (keycode >= SEQ_MOD_1 && keycode <= SEQ_MOD_8) {
+        uint8_t slot = keycode - SEQ_MOD_1;
+        if (record->event.pressed) {
+            seq_modifier_held[slot] = true;
+        } else {
+            seq_modifier_held[slot] = false;
+        }
+        set_keylog(keycode, record);
         return false;
     }
 

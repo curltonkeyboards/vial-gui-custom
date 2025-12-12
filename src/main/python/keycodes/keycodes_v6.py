@@ -2404,6 +2404,22 @@ class keycodes_v6:
         "ARP_RATE_SIXTEENTH_TRIP": 0xEE22,  # Triplet sixteenth
         "ARP_RATE_RESET": 0xEE23,  # Reset rate to preset default
 
+        # NEW: Arpeggiator Rate Up/Down (0xEEE9-0xEEEA)
+        "ARP_RATE_UP": 0xEEE9,  # Cycle to next rate
+        "ARP_RATE_DOWN": 0xEEEA,  # Cycle to previous rate
+
+        # NEW: Arpeggiator Static Gate Values (0xEEEB-0xEEF4)
+        "ARP_SET_GATE_10": 0xEEEB,  # Set gate to 10%
+        "ARP_SET_GATE_20": 0xEEEC,  # Set gate to 20%
+        "ARP_SET_GATE_30": 0xEEED,  # Set gate to 30%
+        "ARP_SET_GATE_40": 0xEEEE,  # Set gate to 40%
+        "ARP_SET_GATE_50": 0xEEEF,  # Set gate to 50%
+        "ARP_SET_GATE_60": 0xEEF0,  # Set gate to 60%
+        "ARP_SET_GATE_70": 0xEEF1,  # Set gate to 70%
+        "ARP_SET_GATE_80": 0xEEF2,  # Set gate to 80%
+        "ARP_SET_GATE_90": 0xEEF3,  # Set gate to 90%
+        "ARP_SET_GATE_100": 0xEEF4,  # Set gate to 100%
+
         # Arpeggiator Modes (0xEE24-0xEE26)
         "ARP_MODE_SINGLE": 0xEE24,  # Single note mode
         "ARP_MODE_CHORD_BASIC": 0xEE25,  # Chord basic mode
@@ -2459,6 +2475,32 @@ class keycodes_v6:
 
         # Step Sequencer Preset Base (0xEEA5-0xEEE8) - 68 presets (maps to firmware IDs 68-135)
         "SEQ_PRESET_BASE": 0xEEA5,  # Base for seq preset selection
+
+        # NEW: Step Sequencer Rate Up/Down (0xEEF5-0xEEF6)
+        "SEQ_RATE_UP": 0xEEF5,  # Cycle to next rate
+        "SEQ_RATE_DOWN": 0xEEF6,  # Cycle to previous rate
+
+        # NEW: Step Sequencer Static Gate Values (0xEEF7-0xEF00)
+        "STEP_SET_GATE_10": 0xEEF7,  # Set gate to 10%
+        "STEP_SET_GATE_20": 0xEEF8,  # Set gate to 20%
+        "STEP_SET_GATE_30": 0xEEF9,  # Set gate to 30%
+        "STEP_SET_GATE_40": 0xEEFA,  # Set gate to 40%
+        "STEP_SET_GATE_50": 0xEEFB,  # Set gate to 50%
+        "STEP_SET_GATE_60": 0xEEFC,  # Set gate to 60%
+        "STEP_SET_GATE_70": 0xEEFD,  # Set gate to 70%
+        "STEP_SET_GATE_80": 0xEEFE,  # Set gate to 80%
+        "STEP_SET_GATE_90": 0xEEFF,  # Set gate to 90%
+        "STEP_SET_GATE_100": 0xEF00,  # Set gate to 100%
+
+        # NEW: Step Sequencer Modifiers (0xEF01-0xEF08)
+        "SEQ_MOD_1": 0xEF01,  # Step Sequencer 1 Modifier
+        "SEQ_MOD_2": 0xEF02,  # Step Sequencer 2 Modifier
+        "SEQ_MOD_3": 0xEF03,  # Step Sequencer 3 Modifier
+        "SEQ_MOD_4": 0xEF04,  # Step Sequencer 4 Modifier
+        "SEQ_MOD_5": 0xEF05,  # Step Sequencer 5 Modifier
+        "SEQ_MOD_6": 0xEF06,  # Step Sequencer 6 Modifier
+        "SEQ_MOD_7": 0xEF07,  # Step Sequencer 7 Modifier
+        "SEQ_MOD_8": 0xEF08,  # Step Sequencer 8 Modifier
 
         "QK_KB": 0xCC57, #custom keycodes safe range
         
