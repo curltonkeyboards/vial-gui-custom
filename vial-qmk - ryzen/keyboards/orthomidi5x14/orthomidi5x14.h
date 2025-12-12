@@ -146,27 +146,49 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define ARP_NEXT_PRESET     0xEE01  // Navigate to next arp preset
 #define ARP_PREV_PRESET     0xEE02  // Navigate to previous arp preset
 #define ARP_SYNC_TOGGLE     0xEE03  // Toggle sync mode (BPM-locked vs free-running)
-#define ARP_GATE_UP         0xEE04  // Increase master gate length (+10%)
-#define ARP_GATE_DOWN       0xEE05  // Decrease master gate length (-10%)
-#define ARP_GATE_RESET      0xEE06  // Reset gate to preset default
-#define ARP_RESET_TO_DEFAULT 0xEE07 // Reset all overrides to preset defaults
+#define ARP_GATE_RESET      0xEE04  // Reset gate to preset default
+#define ARP_RESET_TO_DEFAULT 0xEE05 // Reset all overrides to preset defaults
 
-// Arpeggiator Pattern Rate Overrides (0xEE10-0xEE1B)
-#define ARP_RATE_QUARTER        0xEE10  // Quarter note straight
-#define ARP_RATE_QUARTER_DOT    0xEE11  // Quarter note dotted
-#define ARP_RATE_QUARTER_TRIP   0xEE12  // Quarter note triplet
-#define ARP_RATE_EIGHTH         0xEE13  // Eighth note straight
-#define ARP_RATE_EIGHTH_DOT     0xEE14  // Eighth note dotted
-#define ARP_RATE_EIGHTH_TRIP    0xEE15  // Eighth note triplet
-#define ARP_RATE_SIXTEENTH      0xEE16  // Sixteenth note straight
-#define ARP_RATE_SIXTEENTH_DOT  0xEE17  // Sixteenth note dotted
-#define ARP_RATE_SIXTEENTH_TRIP 0xEE18  // Sixteenth note triplet
-#define ARP_RATE_RESET          0xEE19  // Reset to preset's default rate
+// Arpeggiator Gate Up keycodes (0xEE06-0xEE0F) - Increase gate by 1-10%
+#define ARP_GATE_1_UP       0xEE06  // Increase master gate length (+1%)
+#define ARP_GATE_2_UP       0xEE07  // Increase master gate length (+2%)
+#define ARP_GATE_3_UP       0xEE08  // Increase master gate length (+3%)
+#define ARP_GATE_4_UP       0xEE09  // Increase master gate length (+4%)
+#define ARP_GATE_5_UP       0xEE0A  // Increase master gate length (+5%)
+#define ARP_GATE_6_UP       0xEE0B  // Increase master gate length (+6%)
+#define ARP_GATE_7_UP       0xEE0C  // Increase master gate length (+7%)
+#define ARP_GATE_8_UP       0xEE0D  // Increase master gate length (+8%)
+#define ARP_GATE_9_UP       0xEE0E  // Increase master gate length (+9%)
+#define ARP_GATE_10_UP      0xEE0F  // Increase master gate length (+10%)
 
-// Arpeggiator Modes (0xEE20-0xEE2F)
-#define ARP_MODE_SINGLE         0xEE20  // Single note mode (classic arp)
-#define ARP_MODE_CHORD_BASIC    0xEE21  // Chord basic mode (all notes per step)
-#define ARP_MODE_CHORD_ADVANCED 0xEE22  // Chord advanced mode (staggered notes)
+// Arpeggiator Gate Down keycodes (0xEE10-0xEE19) - Decrease gate by 1-10%
+#define ARP_GATE_1_DOWN     0xEE10  // Decrease master gate length (-1%)
+#define ARP_GATE_2_DOWN     0xEE11  // Decrease master gate length (-2%)
+#define ARP_GATE_3_DOWN     0xEE12  // Decrease master gate length (-3%)
+#define ARP_GATE_4_DOWN     0xEE13  // Decrease master gate length (-4%)
+#define ARP_GATE_5_DOWN     0xEE14  // Decrease master gate length (-5%)
+#define ARP_GATE_6_DOWN     0xEE15  // Decrease master gate length (-6%)
+#define ARP_GATE_7_DOWN     0xEE16  // Decrease master gate length (-7%)
+#define ARP_GATE_8_DOWN     0xEE17  // Decrease master gate length (-8%)
+#define ARP_GATE_9_DOWN     0xEE18  // Decrease master gate length (-9%)
+#define ARP_GATE_10_DOWN    0xEE19  // Decrease master gate length (-10%)
+
+// Arpeggiator Pattern Rate Overrides (0xEE1A-0xEE23)
+#define ARP_RATE_QUARTER        0xEE1A  // Quarter note straight
+#define ARP_RATE_QUARTER_DOT    0xEE1B  // Quarter note dotted
+#define ARP_RATE_QUARTER_TRIP   0xEE1C  // Quarter note triplet
+#define ARP_RATE_EIGHTH         0xEE1D  // Eighth note straight
+#define ARP_RATE_EIGHTH_DOT     0xEE1E  // Eighth note dotted
+#define ARP_RATE_EIGHTH_TRIP    0xEE1F  // Eighth note triplet
+#define ARP_RATE_SIXTEENTH      0xEE20  // Sixteenth note straight
+#define ARP_RATE_SIXTEENTH_DOT  0xEE21  // Sixteenth note dotted
+#define ARP_RATE_SIXTEENTH_TRIP 0xEE22  // Sixteenth note triplet
+#define ARP_RATE_RESET          0xEE23  // Reset to preset's default rate
+
+// Arpeggiator Modes (0xEE24-0xEE26)
+#define ARP_MODE_SINGLE         0xEE24  // Single note mode (classic arp)
+#define ARP_MODE_CHORD_BASIC    0xEE25  // Chord basic mode (all notes per step)
+#define ARP_MODE_CHORD_ADVANCED 0xEE26  // Chord advanced mode (staggered notes)
 
 // Direct Arpeggiator Preset Selection (0xEE30-0xEE73) - 68 presets (0-67)
 #define ARP_PRESET_BASE         0xEE30  // Base address for arp presets (0xEE30 + preset_id)
@@ -179,25 +201,47 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_NEXT_PRESET     0xEE82  // Navigate to next seq preset
 #define SEQ_PREV_PRESET     0xEE83  // Navigate to previous seq preset
 #define SEQ_SYNC_TOGGLE     0xEE84  // Toggle sync mode (BPM-locked vs free-running)
-#define SEQ_GATE_UP         0xEE85  // Increase master gate length (+10%)
-#define SEQ_GATE_DOWN       0xEE86  // Decrease master gate length (-10%)
-#define SEQ_GATE_RESET      0xEE87  // Reset gate to preset default
-#define SEQ_RESET_TO_DEFAULT 0xEE88 // Reset all overrides to preset defaults
+#define SEQ_GATE_RESET      0xEE85  // Reset gate to preset default
+#define SEQ_RESET_TO_DEFAULT 0xEE86 // Reset all overrides to preset defaults
 
-// Step Sequencer Pattern Rate Overrides (0xEE90-0xEE9B)
-#define SEQ_RATE_QUARTER        0xEE90  // Quarter note straight
-#define SEQ_RATE_QUARTER_DOT    0xEE91  // Quarter note dotted
-#define SEQ_RATE_QUARTER_TRIP   0xEE92  // Quarter note triplet
-#define SEQ_RATE_EIGHTH         0xEE93  // Eighth note straight
-#define SEQ_RATE_EIGHTH_DOT     0xEE94  // Eighth note dotted
-#define SEQ_RATE_EIGHTH_TRIP    0xEE95  // Eighth note triplet
-#define SEQ_RATE_SIXTEENTH      0xEE96  // Sixteenth note straight
-#define SEQ_RATE_SIXTEENTH_DOT  0xEE97  // Sixteenth note dotted
-#define SEQ_RATE_SIXTEENTH_TRIP 0xEE98  // Sixteenth note triplet
-#define SEQ_RATE_RESET          0xEE99  // Reset to preset's default rate
+// Step Sequencer Gate Up keycodes (0xEE87-0xEE90) - Increase gate by 1-10%
+#define SEQ_GATE_1_UP       0xEE87  // Increase master gate length (+1%)
+#define SEQ_GATE_2_UP       0xEE88  // Increase master gate length (+2%)
+#define SEQ_GATE_3_UP       0xEE89  // Increase master gate length (+3%)
+#define SEQ_GATE_4_UP       0xEE8A  // Increase master gate length (+4%)
+#define SEQ_GATE_5_UP       0xEE8B  // Increase master gate length (+5%)
+#define SEQ_GATE_6_UP       0xEE8C  // Increase master gate length (+6%)
+#define SEQ_GATE_7_UP       0xEE8D  // Increase master gate length (+7%)
+#define SEQ_GATE_8_UP       0xEE8E  // Increase master gate length (+8%)
+#define SEQ_GATE_9_UP       0xEE8F  // Increase master gate length (+9%)
+#define SEQ_GATE_10_UP      0xEE90  // Increase master gate length (+10%)
 
-// Direct Step Sequencer Preset Selection (0xEEA0-0xEEE3) - 68 presets (maps to firmware IDs 68-135)
-#define SEQ_PRESET_BASE         0xEEA0  // Base address for seq presets (0xEEA0 + offset, maps to firmware ID 68+offset)
+// Step Sequencer Gate Down keycodes (0xEE91-0xEE9A) - Decrease gate by 1-10%
+#define SEQ_GATE_1_DOWN     0xEE91  // Decrease master gate length (-1%)
+#define SEQ_GATE_2_DOWN     0xEE92  // Decrease master gate length (-2%)
+#define SEQ_GATE_3_DOWN     0xEE93  // Decrease master gate length (-3%)
+#define SEQ_GATE_4_DOWN     0xEE94  // Decrease master gate length (-4%)
+#define SEQ_GATE_5_DOWN     0xEE95  // Decrease master gate length (-5%)
+#define SEQ_GATE_6_DOWN     0xEE96  // Decrease master gate length (-6%)
+#define SEQ_GATE_7_DOWN     0xEE97  // Decrease master gate length (-7%)
+#define SEQ_GATE_8_DOWN     0xEE98  // Decrease master gate length (-8%)
+#define SEQ_GATE_9_DOWN     0xEE99  // Decrease master gate length (-9%)
+#define SEQ_GATE_10_DOWN    0xEE9A  // Decrease master gate length (-10%)
+
+// Step Sequencer Pattern Rate Overrides (0xEE9B-0xEEA4)
+#define SEQ_RATE_QUARTER        0xEE9B  // Quarter note straight
+#define SEQ_RATE_QUARTER_DOT    0xEE9C  // Quarter note dotted
+#define SEQ_RATE_QUARTER_TRIP   0xEE9D  // Quarter note triplet
+#define SEQ_RATE_EIGHTH         0xEE9E  // Eighth note straight
+#define SEQ_RATE_EIGHTH_DOT     0xEE9F  // Eighth note dotted
+#define SEQ_RATE_EIGHTH_TRIP    0xEEA0  // Eighth note triplet
+#define SEQ_RATE_SIXTEENTH      0xEEA1  // Sixteenth note straight
+#define SEQ_RATE_SIXTEENTH_DOT  0xEEA2  // Sixteenth note dotted
+#define SEQ_RATE_SIXTEENTH_TRIP 0xEEA3  // Sixteenth note triplet
+#define SEQ_RATE_RESET          0xEEA4  // Reset to preset's default rate
+
+// Direct Step Sequencer Preset Selection (0xEEA5-0xEEE8) - 68 presets (maps to firmware IDs 68-135)
+#define SEQ_PRESET_BASE         0xEEA5  // Base address for seq presets (0xEEA5 + offset, maps to firmware ID 68+offset)
 
 // =============================================================================
 // GAMING / JOYSTICK SYSTEM
