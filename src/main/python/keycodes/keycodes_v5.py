@@ -2364,78 +2364,100 @@ class keycodes_v5:
         "ARP_NEXT_PRESET": 0xEE01,  # Next arp preset
         "ARP_PREV_PRESET": 0xEE02,  # Previous arp preset
         "ARP_SYNC_MODE": 0xEE03,  # Toggle sync mode
-        "ARP_GATE_UP": 0xEE04,  # Increase gate (+10%)
-        "ARP_GATE_DOWN": 0xEE05,  # Decrease gate (-10%)
-        "ARP_GATE_RESET": 0xEE06,  # Reset gate to preset default
-        "ARP_RESET_OVERRIDES": 0xEE07,  # Reset all overrides
-        "ARP_SET_GATE_100": 0xEE08,  # Set gate 100%
-        "ARP_SET_GATE_90": 0xEE09,  # Set gate 90%
-        "ARP_SET_GATE_80": 0xEE0A,  # Set gate 80%
-        "ARP_SET_GATE_70": 0xEE0B,  # Set gate 70%
-        "ARP_SET_GATE_60": 0xEE0C,  # Set gate 60%
-        "ARP_SET_GATE_50": 0xEE0D,  # Set gate 50%
-        "ARP_SET_GATE_40": 0xEE0E,  # Set gate 40%
-        "ARP_SET_GATE_30": 0xEE0F,  # Set gate 30%
+        "ARP_GATE_RESET": 0xEE04,  # Reset gate to preset default
+        "ARP_RESET_OVERRIDES": 0xEE05,  # Reset all overrides
 
-        # Arpeggiator Rate Overrides (0xEE10-0xEE18)
-        "ARP_RATE_QUARTER": 0xEE10,  # Quarter notes
-        "ARP_RATE_QUARTER_DOT": 0xEE11,  # Dotted quarter
-        "ARP_RATE_QUARTER_TRIP": 0xEE12,  # Triplet quarter
-        "ARP_RATE_EIGHTH": 0xEE13,  # Eighth notes
-        "ARP_RATE_EIGHTH_DOT": 0xEE14,  # Dotted eighth
-        "ARP_RATE_EIGHTH_TRIP": 0xEE15,  # Triplet eighth
-        "ARP_RATE_SIXTEENTH": 0xEE16,  # Sixteenth notes
-        "ARP_RATE_SIXTEENTH_DOT": 0xEE17,  # Dotted sixteenth
-        "ARP_RATE_SIXTEENTH_TRIP": 0xEE18,  # Triplet sixteenth
+        # Arpeggiator Gate Up (0xEE06-0xEE0F)
+        "ARP_GATE_1_UP": 0xEE06,  # Increase gate (+1%)
+        "ARP_GATE_2_UP": 0xEE07,  # Increase gate (+2%)
+        "ARP_GATE_3_UP": 0xEE08,  # Increase gate (+3%)
+        "ARP_GATE_4_UP": 0xEE09,  # Increase gate (+4%)
+        "ARP_GATE_5_UP": 0xEE0A,  # Increase gate (+5%)
+        "ARP_GATE_6_UP": 0xEE0B,  # Increase gate (+6%)
+        "ARP_GATE_7_UP": 0xEE0C,  # Increase gate (+7%)
+        "ARP_GATE_8_UP": 0xEE0D,  # Increase gate (+8%)
+        "ARP_GATE_9_UP": 0xEE0E,  # Increase gate (+9%)
+        "ARP_GATE_10_UP": 0xEE0F,  # Increase gate (+10%)
 
-        # Additional gate buttons (0xEE19-0xEE1A)
-        "ARP_SET_GATE_20": 0xEE19,  # Set gate 20%
-        "ARP_SET_GATE_10": 0xEE1A,  # Set gate 10%
+        # Arpeggiator Gate Down (0xEE10-0xEE19)
+        "ARP_GATE_1_DOWN": 0xEE10,  # Decrease gate (-1%)
+        "ARP_GATE_2_DOWN": 0xEE11,  # Decrease gate (-2%)
+        "ARP_GATE_3_DOWN": 0xEE12,  # Decrease gate (-3%)
+        "ARP_GATE_4_DOWN": 0xEE13,  # Decrease gate (-4%)
+        "ARP_GATE_5_DOWN": 0xEE14,  # Decrease gate (-5%)
+        "ARP_GATE_6_DOWN": 0xEE15,  # Decrease gate (-6%)
+        "ARP_GATE_7_DOWN": 0xEE16,  # Decrease gate (-7%)
+        "ARP_GATE_8_DOWN": 0xEE17,  # Decrease gate (-8%)
+        "ARP_GATE_9_DOWN": 0xEE18,  # Decrease gate (-9%)
+        "ARP_GATE_10_DOWN": 0xEE19,  # Decrease gate (-10%)
 
-        # Arpeggiator Modes (0xEE20-0xEE2F)
-        "ARP_MODE_SINGLE": 0xEE20,  # Single note mode
-        "ARP_MODE_CHORD_BASIC": 0xEE21,  # Chord basic mode
-        "ARP_MODE_CHORD_ADVANCED": 0xEE22,  # Chord advanced mode
+        # Arpeggiator Rate Overrides (0xEE1A-0xEE23)
+        "ARP_RATE_QUARTER": 0xEE1A,  # Quarter notes
+        "ARP_RATE_QUARTER_DOT": 0xEE1B,  # Dotted quarter
+        "ARP_RATE_QUARTER_TRIP": 0xEE1C,  # Triplet quarter
+        "ARP_RATE_EIGHTH": 0xEE1D,  # Eighth notes
+        "ARP_RATE_EIGHTH_DOT": 0xEE1E,  # Dotted eighth
+        "ARP_RATE_EIGHTH_TRIP": 0xEE1F,  # Triplet eighth
+        "ARP_RATE_SIXTEENTH": 0xEE20,  # Sixteenth notes
+        "ARP_RATE_SIXTEENTH_DOT": 0xEE21,  # Dotted sixteenth
+        "ARP_RATE_SIXTEENTH_TRIP": 0xEE22,  # Triplet sixteenth
+        "ARP_RATE_RESET": 0xEE23,  # Reset rate to preset default
+
+        # Arpeggiator Modes (0xEE24-0xEE26)
+        "ARP_MODE_SINGLE": 0xEE24,  # Single note mode
+        "ARP_MODE_CHORD_BASIC": 0xEE25,  # Chord basic mode
+        "ARP_MODE_CHORD_ADVANCED": 0xEE26,  # Chord advanced mode
 
         # Arpeggiator Preset Base (0xEE30-0xEE73) - 68 presets (0-67)
         "ARP_PRESET_BASE": 0xEE30,  # Base for arp preset selection
 
-        # Step Sequencer Control (0xEE80-0xEE8F)
+        # Step Sequencer Control (0xEE80-0xEE86)
         "SEQ_PLAY": 0xEE80,  # Sequencer play
         "SEQ_STOP_ALL": 0xEE81,  # Stop all sequencers
         "SEQ_NEXT_PRESET": 0xEE82,  # Next seq preset
         "SEQ_PREV_PRESET": 0xEE83,  # Previous seq preset
         "SEQ_SYNC_MODE": 0xEE84,  # Toggle sync mode
-        "SEQ_GATE_UP": 0xEE85,  # Increase gate (+10%)
-        "SEQ_GATE_DOWN": 0xEE86,  # Decrease gate (-10%)
-        "SEQ_GATE_RESET": 0xEE87,  # Reset gate to preset default
-        "SEQ_RESET_OVERRIDES": 0xEE88,  # Reset all overrides
-        "SEQ_SET_GATE_100": 0xEE89,  # Set gate 100%
-        "SEQ_SET_GATE_90": 0xEE8A,  # Set gate 90%
-        "SEQ_SET_GATE_80": 0xEE8B,  # Set gate 80%
-        "SEQ_SET_GATE_70": 0xEE8C,  # Set gate 70%
-        "SEQ_SET_GATE_60": 0xEE8D,  # Set gate 60%
-        "SEQ_SET_GATE_50": 0xEE8E,  # Set gate 50%
-        "SEQ_SET_GATE_40": 0xEE8F,  # Set gate 40%
+        "SEQ_GATE_RESET": 0xEE85,  # Reset gate to preset default
+        "SEQ_RESET_OVERRIDES": 0xEE86,  # Reset all overrides
 
-        # Step Sequencer Rate Overrides (0xEE90-0xEE98)
-        "SEQ_RATE_QUARTER": 0xEE90,  # Quarter notes
-        "SEQ_RATE_QUARTER_DOT": 0xEE91,  # Dotted quarter
-        "SEQ_RATE_QUARTER_TRIP": 0xEE92,  # Triplet quarter
-        "SEQ_RATE_EIGHTH": 0xEE93,  # Eighth notes
-        "SEQ_RATE_EIGHTH_DOT": 0xEE94,  # Dotted eighth
-        "SEQ_RATE_EIGHTH_TRIP": 0xEE95,  # Triplet eighth
-        "SEQ_RATE_SIXTEENTH": 0xEE96,  # Sixteenth notes
-        "SEQ_RATE_SIXTEENTH_DOT": 0xEE97,  # Dotted sixteenth
-        "SEQ_RATE_SIXTEENTH_TRIP": 0xEE98,  # Triplet sixteenth
+        # Step Sequencer Gate Up (0xEE87-0xEE90)
+        "SEQ_GATE_1_UP": 0xEE87,  # Increase gate (+1%)
+        "SEQ_GATE_2_UP": 0xEE88,  # Increase gate (+2%)
+        "SEQ_GATE_3_UP": 0xEE89,  # Increase gate (+3%)
+        "SEQ_GATE_4_UP": 0xEE8A,  # Increase gate (+4%)
+        "SEQ_GATE_5_UP": 0xEE8B,  # Increase gate (+5%)
+        "SEQ_GATE_6_UP": 0xEE8C,  # Increase gate (+6%)
+        "SEQ_GATE_7_UP": 0xEE8D,  # Increase gate (+7%)
+        "SEQ_GATE_8_UP": 0xEE8E,  # Increase gate (+8%)
+        "SEQ_GATE_9_UP": 0xEE8F,  # Increase gate (+9%)
+        "SEQ_GATE_10_UP": 0xEE90,  # Increase gate (+10%)
 
-        # Additional sequencer gate buttons (0xEE99-0xEE9B)
-        "SEQ_SET_GATE_30": 0xEE99,  # Set gate 30%
-        "SEQ_SET_GATE_20": 0xEE9A,  # Set gate 20%
-        "SEQ_SET_GATE_10": 0xEE9B,  # Set gate 10%
+        # Step Sequencer Gate Down (0xEE91-0xEE9A)
+        "SEQ_GATE_1_DOWN": 0xEE91,  # Decrease gate (-1%)
+        "SEQ_GATE_2_DOWN": 0xEE92,  # Decrease gate (-2%)
+        "SEQ_GATE_3_DOWN": 0xEE93,  # Decrease gate (-3%)
+        "SEQ_GATE_4_DOWN": 0xEE94,  # Decrease gate (-4%)
+        "SEQ_GATE_5_DOWN": 0xEE95,  # Decrease gate (-5%)
+        "SEQ_GATE_6_DOWN": 0xEE96,  # Decrease gate (-6%)
+        "SEQ_GATE_7_DOWN": 0xEE97,  # Decrease gate (-7%)
+        "SEQ_GATE_8_DOWN": 0xEE98,  # Decrease gate (-8%)
+        "SEQ_GATE_9_DOWN": 0xEE99,  # Decrease gate (-9%)
+        "SEQ_GATE_10_DOWN": 0xEE9A,  # Decrease gate (-10%)
 
-        # Step Sequencer Preset Base (0xEEA0-0xEEE3) - 68 presets (maps to firmware IDs 68-135)
-        "SEQ_PRESET_BASE": 0xEEA0,  # Base for seq preset selection
+        # Step Sequencer Rate Overrides (0xEE9B-0xEEA4)
+        "SEQ_RATE_QUARTER": 0xEE9B,  # Quarter notes
+        "SEQ_RATE_QUARTER_DOT": 0xEE9C,  # Dotted quarter
+        "SEQ_RATE_QUARTER_TRIP": 0xEE9D,  # Triplet quarter
+        "SEQ_RATE_EIGHTH": 0xEE9E,  # Eighth notes
+        "SEQ_RATE_EIGHTH_DOT": 0xEE9F,  # Dotted eighth
+        "SEQ_RATE_EIGHTH_TRIP": 0xEEA0,  # Triplet eighth
+        "SEQ_RATE_SIXTEENTH": 0xEEA1,  # Sixteenth notes
+        "SEQ_RATE_SIXTEENTH_DOT": 0xEEA2,  # Dotted sixteenth
+        "SEQ_RATE_SIXTEENTH_TRIP": 0xEEA3,  # Triplet sixteenth
+        "SEQ_RATE_RESET": 0xEEA4,  # Reset rate to preset default
+
+        # Step Sequencer Preset Base (0xEEA5-0xEEE8) - 68 presets (maps to firmware IDs 68-135)
+        "SEQ_PRESET_BASE": 0xEEA5,  # Base for seq preset selection
 
         "QK_KB": 0xCC57, #custom keycodes safe range
 

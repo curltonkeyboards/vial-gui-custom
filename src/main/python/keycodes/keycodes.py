@@ -3265,24 +3265,33 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_NEXT_PRESET", "Next\nPreset", "Load next arpeggiator preset"),
     K("ARP_PREV_PRESET", "Prev\nPreset", "Load previous arpeggiator preset"),
     K("ARP_SYNC_MODE", "Sync\nMode", "Toggle arpeggiator sync mode"),
+    K("ARP_GATE_RESET", "Gate\nReset", "Reset gate to preset default"),
     K("ARP_RESET_OVERRIDES", "Reset\nOverrides", "Reset all arpeggiator overrides"),
 
-    # Gate length controls
-    K("ARP_GATE_UP", "Gate\nUp", "Increase arpeggiator gate (+10%)"),
-    K("ARP_GATE_DOWN", "Gate\nDown", "Decrease arpeggiator gate (-10%)"),
+    # Gate up controls (1-10%)
+    K("ARP_GATE_1_UP", "Gate\n+1%", "Increase arpeggiator gate (+1%)"),
+    K("ARP_GATE_2_UP", "Gate\n+2%", "Increase arpeggiator gate (+2%)"),
+    K("ARP_GATE_3_UP", "Gate\n+3%", "Increase arpeggiator gate (+3%)"),
+    K("ARP_GATE_4_UP", "Gate\n+4%", "Increase arpeggiator gate (+4%)"),
+    K("ARP_GATE_5_UP", "Gate\n+5%", "Increase arpeggiator gate (+5%)"),
+    K("ARP_GATE_6_UP", "Gate\n+6%", "Increase arpeggiator gate (+6%)"),
+    K("ARP_GATE_7_UP", "Gate\n+7%", "Increase arpeggiator gate (+7%)"),
+    K("ARP_GATE_8_UP", "Gate\n+8%", "Increase arpeggiator gate (+8%)"),
+    K("ARP_GATE_9_UP", "Gate\n+9%", "Increase arpeggiator gate (+9%)"),
+    K("ARP_GATE_10_UP", "Gate\n+10%", "Increase arpeggiator gate (+10%)"),
 
-    # Gate length presets
-    K("ARP_SET_GATE_100", "Gate\n100%", "Set arpeggiator gate to 100%"),
-    K("ARP_SET_GATE_90", "Gate\n90%", "Set arpeggiator gate to 90%"),
-    K("ARP_SET_GATE_80", "Gate\n80%", "Set arpeggiator gate to 80%"),
-    K("ARP_SET_GATE_70", "Gate\n70%", "Set arpeggiator gate to 70%"),
-    K("ARP_SET_GATE_60", "Gate\n60%", "Set arpeggiator gate to 60%"),
-    K("ARP_SET_GATE_50", "Gate\n50%", "Set arpeggiator gate to 50%"),
-    K("ARP_SET_GATE_40", "Gate\n40%", "Set arpeggiator gate to 40%"),
-    K("ARP_SET_GATE_30", "Gate\n30%", "Set arpeggiator gate to 30%"),
-    K("ARP_SET_GATE_20", "Gate\n20%", "Set arpeggiator gate to 20%"),
-    K("ARP_SET_GATE_10", "Gate\n10%", "Set arpeggiator gate to 10%"),
-    
+    # Gate down controls (1-10%)
+    K("ARP_GATE_1_DOWN", "Gate\n-1%", "Decrease arpeggiator gate (-1%)"),
+    K("ARP_GATE_2_DOWN", "Gate\n-2%", "Decrease arpeggiator gate (-2%)"),
+    K("ARP_GATE_3_DOWN", "Gate\n-3%", "Decrease arpeggiator gate (-3%)"),
+    K("ARP_GATE_4_DOWN", "Gate\n-4%", "Decrease arpeggiator gate (-4%)"),
+    K("ARP_GATE_5_DOWN", "Gate\n-5%", "Decrease arpeggiator gate (-5%)"),
+    K("ARP_GATE_6_DOWN", "Gate\n-6%", "Decrease arpeggiator gate (-6%)"),
+    K("ARP_GATE_7_DOWN", "Gate\n-7%", "Decrease arpeggiator gate (-7%)"),
+    K("ARP_GATE_8_DOWN", "Gate\n-8%", "Decrease arpeggiator gate (-8%)"),
+    K("ARP_GATE_9_DOWN", "Gate\n-9%", "Decrease arpeggiator gate (-9%)"),
+    K("ARP_GATE_10_DOWN", "Gate\n-10%", "Decrease arpeggiator gate (-10%)"),
+
     # Rate overrides
     K("ARP_RATE_QUARTER", "Quarter\nNotes", "Arpeggiator rate: quarter notes"),
     K("ARP_RATE_QUARTER_DOT", "Quarter\nDotted", "Arpeggiator rate: dotted quarter"),
@@ -3293,7 +3302,8 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_RATE_SIXTEENTH", "16th\nNotes", "Arpeggiator rate: sixteenth notes"),
     K("ARP_RATE_SIXTEENTH_DOT", "16th\nDotted", "Arpeggiator rate: dotted sixteenth"),
     K("ARP_RATE_SIXTEENTH_TRIP", "16th\nTriplet", "Arpeggiator rate: triplet sixteenth"),
-    
+    K("ARP_RATE_RESET", "Rate\nReset", "Reset to preset's default rate"),
+
     # Modes
     K("ARP_MODE_SINGLE", "Single\nNote", "Arpeggiator mode: single note"),
     K("ARP_MODE_CHORD_BASIC", "Chord\nBasic", "Arpeggiator mode: chord basic"),
@@ -3321,24 +3331,33 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_NEXT_PRESET", "Next\nPreset", "Load next sequencer preset"),
     K("SEQ_PREV_PRESET", "Prev\nPreset", "Load previous sequencer preset"),
     K("SEQ_SYNC_MODE", "Sync\nMode", "Toggle sequencer sync mode"),
+    K("SEQ_GATE_RESET", "Gate\nReset", "Reset gate to preset default"),
     K("SEQ_RESET_OVERRIDES", "Reset\nOverrides", "Reset all sequencer overrides"),
 
-    # Gate length controls
-    K("SEQ_GATE_UP", "Gate\nUp", "Increase sequencer gate (+10%)"),
-    K("SEQ_GATE_DOWN", "Gate\nDown", "Decrease sequencer gate (-10%)"),
+    # Gate up controls (1-10%)
+    K("SEQ_GATE_1_UP", "Gate\n+1%", "Increase sequencer gate (+1%)"),
+    K("SEQ_GATE_2_UP", "Gate\n+2%", "Increase sequencer gate (+2%)"),
+    K("SEQ_GATE_3_UP", "Gate\n+3%", "Increase sequencer gate (+3%)"),
+    K("SEQ_GATE_4_UP", "Gate\n+4%", "Increase sequencer gate (+4%)"),
+    K("SEQ_GATE_5_UP", "Gate\n+5%", "Increase sequencer gate (+5%)"),
+    K("SEQ_GATE_6_UP", "Gate\n+6%", "Increase sequencer gate (+6%)"),
+    K("SEQ_GATE_7_UP", "Gate\n+7%", "Increase sequencer gate (+7%)"),
+    K("SEQ_GATE_8_UP", "Gate\n+8%", "Increase sequencer gate (+8%)"),
+    K("SEQ_GATE_9_UP", "Gate\n+9%", "Increase sequencer gate (+9%)"),
+    K("SEQ_GATE_10_UP", "Gate\n+10%", "Increase sequencer gate (+10%)"),
 
-    # Gate length presets
-    K("SEQ_SET_GATE_100", "Gate\n100%", "Set sequencer gate to 100%"),
-    K("SEQ_SET_GATE_90", "Gate\n90%", "Set sequencer gate to 90%"),
-    K("SEQ_SET_GATE_80", "Gate\n80%", "Set sequencer gate to 80%"),
-    K("SEQ_SET_GATE_70", "Gate\n70%", "Set sequencer gate to 70%"),
-    K("SEQ_SET_GATE_60", "Gate\n60%", "Set sequencer gate to 60%"),
-    K("SEQ_SET_GATE_50", "Gate\n50%", "Set sequencer gate to 50%"),
-    K("SEQ_SET_GATE_40", "Gate\n40%", "Set sequencer gate to 40%"),
-    K("SEQ_SET_GATE_30", "Gate\n30%", "Set sequencer gate to 30%"),
-    K("SEQ_SET_GATE_20", "Gate\n20%", "Set sequencer gate to 20%"),
-    K("SEQ_SET_GATE_10", "Gate\n10%", "Set sequencer gate to 10%"),
-    
+    # Gate down controls (1-10%)
+    K("SEQ_GATE_1_DOWN", "Gate\n-1%", "Decrease sequencer gate (-1%)"),
+    K("SEQ_GATE_2_DOWN", "Gate\n-2%", "Decrease sequencer gate (-2%)"),
+    K("SEQ_GATE_3_DOWN", "Gate\n-3%", "Decrease sequencer gate (-3%)"),
+    K("SEQ_GATE_4_DOWN", "Gate\n-4%", "Decrease sequencer gate (-4%)"),
+    K("SEQ_GATE_5_DOWN", "Gate\n-5%", "Decrease sequencer gate (-5%)"),
+    K("SEQ_GATE_6_DOWN", "Gate\n-6%", "Decrease sequencer gate (-6%)"),
+    K("SEQ_GATE_7_DOWN", "Gate\n-7%", "Decrease sequencer gate (-7%)"),
+    K("SEQ_GATE_8_DOWN", "Gate\n-8%", "Decrease sequencer gate (-8%)"),
+    K("SEQ_GATE_9_DOWN", "Gate\n-9%", "Decrease sequencer gate (-9%)"),
+    K("SEQ_GATE_10_DOWN", "Gate\n-10%", "Decrease sequencer gate (-10%)"),
+
     # Rate overrides
     K("SEQ_RATE_QUARTER", "Quarter\nNotes", "Sequencer rate: quarter notes"),
     K("SEQ_RATE_QUARTER_DOT", "Quarter\nDotted", "Sequencer rate: dotted quarter"),
@@ -3349,6 +3368,7 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_RATE_SIXTEENTH", "16th\nNotes", "Sequencer rate: sixteenth notes"),
     K("SEQ_RATE_SIXTEENTH_DOT", "16th\nDotted", "Sequencer rate: dotted sixteenth"),
     K("SEQ_RATE_SIXTEENTH_TRIP", "16th\nTriplet", "Sequencer rate: triplet sixteenth"),
+    K("SEQ_RATE_RESET", "Rate\nReset", "Reset to preset's default rate"),
 ]
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)
@@ -3477,18 +3497,19 @@ def recreate_keycodes():
 
     KEYCODES.clear()
     KEYCODES.extend(KEYCODES_SPECIAL + KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_ISO + KEYCODES_LAYERS + KEYCODES_LAYERS_DF + KEYCODES_LAYERS_MO + KEYCODES_LAYERS_TG + KEYCODES_LAYERS_TT + KEYCODES_LAYERS_OSL + KEYCODES_LAYERS_TO + KEYCODES_LAYERS_LT +
-                    KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA + KEYCODES_OLED + KEYCODES_CLEAR + KEYCODES_RGB_KC_COLOR + KEYCODES_MIDI_OCTAVE2 + KEYCODES_MIDI_OCTAVE3 + KEYCODES_MIDI_KEY2 + KEYCODES_MIDI_KEY3 + KEYCODES_MIDI_VELOCITY2 + KEYCODES_MIDI_VELOCITY3 + 
+                    KEYCODES_BOOT + KEYCODES_MODIFIERS + KEYCODES_QUANTUM + KEYCODES_BACKLIGHT + KEYCODES_MEDIA + KEYCODES_OLED + KEYCODES_CLEAR + KEYCODES_RGB_KC_COLOR + KEYCODES_MIDI_OCTAVE2 + KEYCODES_MIDI_OCTAVE3 + KEYCODES_MIDI_KEY2 + KEYCODES_MIDI_KEY3 + KEYCODES_MIDI_VELOCITY2 + KEYCODES_MIDI_VELOCITY3 +
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_EARTRAINER + KEYCODES_SAVE + KEYCODES_SETTINGS1 + KEYCODES_SETTINGS2 + KEYCODES_SETTINGS3 + KEYCODES_CHORDTRAINER + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_RGB_KC_CUSTOM2 + KEYCODES_RGBSAVE + KEYCODES_MIDI_CHANNEL_KEYSPLIT + KEYCODES_MIDI_CHANNEL_KEYSPLIT2 + KEYCODES_KEYSPLIT_BUTTONS +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+KEYCODES_VELOCITY_SHUFFLE + KEYCODES_CC_ENCODERVALUE+ KEYCODES_EXWHEEL +
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_0+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_CHORD_5+KEYCODES_MIDI_SPLIT+KEYCODES_MIDI_SPLIT2+
                     KEYCODES_HE_VELOCITY_CURVE+KEYCODES_HE_VELOCITY_RANGE+
-                    KEYCODES_C_CHORDPROG_BASIC_MINOR + KEYCODES_C_CHORDPROG_BASIC_MAJOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_CHORDPROG_EXPERT_MINOR + KEYCODES_C_CHORDPROG_EXPERT_MAJOR + 
-                    KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR + 
-                    KEYCODES_D_CHORDPROG_BASIC_MINOR + KEYCODES_D_CHORDPROG_BASIC_MAJOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_D_CHORDPROG_EXPERT_MINOR + KEYCODES_D_CHORDPROG_EXPERT_MAJOR + 
-                    KEYCODES_E_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_E_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_E_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_E_FLAT_CHORDPROG_EXPERT_MAJOR + 
-                    KEYCODES_E_CHORDPROG_BASIC_MINOR + KEYCODES_E_CHORDPROG_BASIC_MAJOR + KEYCODES_E_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_E_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_E_CHORDPROG_EXPERT_MINOR + KEYCODES_E_CHORDPROG_EXPERT_MAJOR + 
+                    KEYCODES_ARPEGGIATOR+KEYCODES_ARPEGGIATOR_PRESETS+KEYCODES_STEP_SEQUENCER+KEYCODES_STEP_SEQUENCER_PRESETS+
+                    KEYCODES_C_CHORDPROG_BASIC_MINOR + KEYCODES_C_CHORDPROG_BASIC_MAJOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_CHORDPROG_EXPERT_MINOR + KEYCODES_C_CHORDPROG_EXPERT_MAJOR +
+                    KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR +
+                    KEYCODES_D_CHORDPROG_BASIC_MINOR + KEYCODES_D_CHORDPROG_BASIC_MAJOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_D_CHORDPROG_EXPERT_MINOR + KEYCODES_D_CHORDPROG_EXPERT_MAJOR +
+                    KEYCODES_E_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_E_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_E_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_E_FLAT_CHORDPROG_EXPERT_MAJOR +
+                    KEYCODES_E_CHORDPROG_BASIC_MINOR + KEYCODES_E_CHORDPROG_BASIC_MAJOR + KEYCODES_E_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_E_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_E_CHORDPROG_EXPERT_MINOR + KEYCODES_E_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_F_CHORDPROG_BASIC_MINOR + KEYCODES_F_CHORDPROG_BASIC_MAJOR + KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_CHORDPROG_EXPERT_MINOR + KEYCODES_F_CHORDPROG_EXPERT_MAJOR + KEYCODES_LOOP_BUTTONS + KEYCODES_GAMING +
-                    KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR + 
+                    KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_G_CHORDPROG_BASIC_MINOR + KEYCODES_G_CHORDPROG_BASIC_MAJOR + KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_G_CHORDPROG_EXPERT_MINOR + KEYCODES_G_CHORDPROG_EXPERT_MAJOR + KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR + KEYCODES_A_CHORDPROG_BASIC_MINOR + KEYCODES_A_CHORDPROG_BASIC_MAJOR + KEYCODES_A_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_A_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_A_CHORDPROG_EXPERT_MINOR + KEYCODES_A_CHORDPROG_EXPERT_MAJOR + KEYCODES_B_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_B_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR + KEYCODES_B_CHORDPROG_BASIC_MINOR + KEYCODES_B_CHORDPROG_BASIC_MAJOR + KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_B_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_B_CHORDPROG_EXPERT_MINOR + KEYCODES_B_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED+KEYCODES_MIDI_INOUT+KEYCODES_MIDI_SPLIT_BUTTONS+KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_CHORD_PROG_CONTROLS)
     KEYCODES_MAP.clear()
