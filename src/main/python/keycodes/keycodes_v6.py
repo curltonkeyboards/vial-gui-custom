@@ -2365,16 +2365,20 @@ class keycodes_v6:
         "ARP_NEXT_PRESET": 0xEE01,  # Next arp preset
         "ARP_PREV_PRESET": 0xEE02,  # Previous arp preset
         "ARP_SYNC_MODE": 0xEE03,  # Toggle sync mode
-        "ARP_LATCH_MODE": 0xEE04,  # Toggle latch mode
-        "ARP_RESET_OVERRIDES": 0xEE05,  # Reset all overrides
-        "ARP_SET_GATE_100": 0xEE06,  # Set gate 100%
-        "ARP_SET_GATE_90": 0xEE07,  # Set gate 90%
-        "ARP_SET_GATE_80": 0xEE08,  # Set gate 80%
-        "ARP_SET_GATE_70": 0xEE09,  # Set gate 70%
-        "ARP_SET_GATE_60": 0xEE0A,  # Set gate 60%
-        "ARP_SET_GATE_50": 0xEE0B,  # Set gate 50%
+        "ARP_GATE_UP": 0xEE04,  # Increase gate (+10%)
+        "ARP_GATE_DOWN": 0xEE05,  # Decrease gate (-10%)
+        "ARP_GATE_RESET": 0xEE06,  # Reset gate to preset default
+        "ARP_RESET_OVERRIDES": 0xEE07,  # Reset all overrides
+        "ARP_SET_GATE_100": 0xEE08,  # Set gate 100%
+        "ARP_SET_GATE_90": 0xEE09,  # Set gate 90%
+        "ARP_SET_GATE_80": 0xEE0A,  # Set gate 80%
+        "ARP_SET_GATE_70": 0xEE0B,  # Set gate 70%
+        "ARP_SET_GATE_60": 0xEE0C,  # Set gate 60%
+        "ARP_SET_GATE_50": 0xEE0D,  # Set gate 50%
+        "ARP_SET_GATE_40": 0xEE0E,  # Set gate 40%
+        "ARP_SET_GATE_30": 0xEE0F,  # Set gate 30%
 
-        # Arpeggiator Rate Overrides (0xEE10-0xEE1F)
+        # Arpeggiator Rate Overrides (0xEE10-0xEE18)
         "ARP_RATE_QUARTER": 0xEE10,  # Quarter notes
         "ARP_RATE_QUARTER_DOT": 0xEE11,  # Dotted quarter
         "ARP_RATE_QUARTER_TRIP": 0xEE12,  # Triplet quarter
@@ -2384,6 +2388,10 @@ class keycodes_v6:
         "ARP_RATE_SIXTEENTH": 0xEE16,  # Sixteenth notes
         "ARP_RATE_SIXTEENTH_DOT": 0xEE17,  # Dotted sixteenth
         "ARP_RATE_SIXTEENTH_TRIP": 0xEE18,  # Triplet sixteenth
+
+        # Additional gate buttons (0xEE19-0xEE1A)
+        "ARP_SET_GATE_20": 0xEE19,  # Set gate 20%
+        "ARP_SET_GATE_10": 0xEE1A,  # Set gate 10%
 
         # Arpeggiator Modes (0xEE20-0xEE2F)
         "ARP_MODE_SINGLE": 0xEE20,  # Single note mode
@@ -2399,15 +2407,19 @@ class keycodes_v6:
         "SEQ_NEXT_PRESET": 0xEE82,  # Next seq preset
         "SEQ_PREV_PRESET": 0xEE83,  # Previous seq preset
         "SEQ_SYNC_MODE": 0xEE84,  # Toggle sync mode
-        "SEQ_RESET_OVERRIDES": 0xEE85,  # Reset all overrides
-        "SEQ_SET_GATE_100": 0xEE86,  # Set gate 100%
-        "SEQ_SET_GATE_90": 0xEE87,  # Set gate 90%
-        "SEQ_SET_GATE_80": 0xEE88,  # Set gate 80%
-        "SEQ_SET_GATE_70": 0xEE89,  # Set gate 70%
-        "SEQ_SET_GATE_60": 0xEE8A,  # Set gate 60%
-        "SEQ_SET_GATE_50": 0xEE8B,  # Set gate 50%
+        "SEQ_GATE_UP": 0xEE85,  # Increase gate (+10%)
+        "SEQ_GATE_DOWN": 0xEE86,  # Decrease gate (-10%)
+        "SEQ_GATE_RESET": 0xEE87,  # Reset gate to preset default
+        "SEQ_RESET_OVERRIDES": 0xEE88,  # Reset all overrides
+        "SEQ_SET_GATE_100": 0xEE89,  # Set gate 100%
+        "SEQ_SET_GATE_90": 0xEE8A,  # Set gate 90%
+        "SEQ_SET_GATE_80": 0xEE8B,  # Set gate 80%
+        "SEQ_SET_GATE_70": 0xEE8C,  # Set gate 70%
+        "SEQ_SET_GATE_60": 0xEE8D,  # Set gate 60%
+        "SEQ_SET_GATE_50": 0xEE8E,  # Set gate 50%
+        "SEQ_SET_GATE_40": 0xEE8F,  # Set gate 40%
 
-        # Step Sequencer Rate Overrides (0xEE90-0xEE9F)
+        # Step Sequencer Rate Overrides (0xEE90-0xEE98)
         "SEQ_RATE_QUARTER": 0xEE90,  # Quarter notes
         "SEQ_RATE_QUARTER_DOT": 0xEE91,  # Dotted quarter
         "SEQ_RATE_QUARTER_TRIP": 0xEE92,  # Triplet quarter
@@ -2417,6 +2429,11 @@ class keycodes_v6:
         "SEQ_RATE_SIXTEENTH": 0xEE96,  # Sixteenth notes
         "SEQ_RATE_SIXTEENTH_DOT": 0xEE97,  # Dotted sixteenth
         "SEQ_RATE_SIXTEENTH_TRIP": 0xEE98,  # Triplet sixteenth
+
+        # Additional sequencer gate buttons (0xEE99-0xEE9B)
+        "SEQ_SET_GATE_30": 0xEE99,  # Set gate 30%
+        "SEQ_SET_GATE_20": 0xEE9A,  # Set gate 20%
+        "SEQ_SET_GATE_10": 0xEE9B,  # Set gate 10%
 
         # Step Sequencer Preset Base (0xEEA0-0xEEE3) - 68 presets (maps to firmware IDs 68-135)
         "SEQ_PRESET_BASE": 0xEEA0,  # Base for seq preset selection

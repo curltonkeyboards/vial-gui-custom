@@ -3265,9 +3265,12 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_NEXT_PRESET", "Next\nPreset", "Load next arpeggiator preset"),
     K("ARP_PREV_PRESET", "Prev\nPreset", "Load previous arpeggiator preset"),
     K("ARP_SYNC_MODE", "Sync\nMode", "Toggle arpeggiator sync mode"),
-    K("ARP_LATCH_MODE", "Latch\nMode", "Toggle arpeggiator latch mode"),
     K("ARP_RESET_OVERRIDES", "Reset\nOverrides", "Reset all arpeggiator overrides"),
-    
+
+    # Gate length controls
+    K("ARP_GATE_UP", "Gate\nUp", "Increase arpeggiator gate (+10%)"),
+    K("ARP_GATE_DOWN", "Gate\nDown", "Decrease arpeggiator gate (-10%)"),
+
     # Gate length presets
     K("ARP_SET_GATE_100", "Gate\n100%", "Set arpeggiator gate to 100%"),
     K("ARP_SET_GATE_90", "Gate\n90%", "Set arpeggiator gate to 90%"),
@@ -3275,6 +3278,10 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_SET_GATE_70", "Gate\n70%", "Set arpeggiator gate to 70%"),
     K("ARP_SET_GATE_60", "Gate\n60%", "Set arpeggiator gate to 60%"),
     K("ARP_SET_GATE_50", "Gate\n50%", "Set arpeggiator gate to 50%"),
+    K("ARP_SET_GATE_40", "Gate\n40%", "Set arpeggiator gate to 40%"),
+    K("ARP_SET_GATE_30", "Gate\n30%", "Set arpeggiator gate to 30%"),
+    K("ARP_SET_GATE_20", "Gate\n20%", "Set arpeggiator gate to 20%"),
+    K("ARP_SET_GATE_10", "Gate\n10%", "Set arpeggiator gate to 10%"),
     
     # Rate overrides
     K("ARP_RATE_QUARTER", "Quarter\nNotes", "Arpeggiator rate: quarter notes"),
@@ -3295,9 +3302,16 @@ KEYCODES_ARPEGGIATOR = [
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)
 KEYCODES_ARPEGGIATOR_PRESETS = []
-for x in range(68):
+# Factory presets 0-47
+for x in range(48):
     KEYCODES_ARPEGGIATOR_PRESETS.append(
         K("ARP_PRESET_{}".format(x), "Arp\nPreset\n{}".format(x), "Load arpeggiator preset {}".format(x))
+    )
+# User presets 48-67 (displayed as User 1-20)
+for x in range(48, 68):
+    user_num = x - 47
+    KEYCODES_ARPEGGIATOR_PRESETS.append(
+        K("ARP_PRESET_{}".format(x), "Arp\nUser\n{}".format(user_num), "Load arpeggiator user preset {}".format(user_num))
     )
 
 KEYCODES_STEP_SEQUENCER = [
@@ -3308,7 +3322,11 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_PREV_PRESET", "Prev\nPreset", "Load previous sequencer preset"),
     K("SEQ_SYNC_MODE", "Sync\nMode", "Toggle sequencer sync mode"),
     K("SEQ_RESET_OVERRIDES", "Reset\nOverrides", "Reset all sequencer overrides"),
-    
+
+    # Gate length controls
+    K("SEQ_GATE_UP", "Gate\nUp", "Increase sequencer gate (+10%)"),
+    K("SEQ_GATE_DOWN", "Gate\nDown", "Decrease sequencer gate (-10%)"),
+
     # Gate length presets
     K("SEQ_SET_GATE_100", "Gate\n100%", "Set sequencer gate to 100%"),
     K("SEQ_SET_GATE_90", "Gate\n90%", "Set sequencer gate to 90%"),
@@ -3316,6 +3334,10 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_SET_GATE_70", "Gate\n70%", "Set sequencer gate to 70%"),
     K("SEQ_SET_GATE_60", "Gate\n60%", "Set sequencer gate to 60%"),
     K("SEQ_SET_GATE_50", "Gate\n50%", "Set sequencer gate to 50%"),
+    K("SEQ_SET_GATE_40", "Gate\n40%", "Set sequencer gate to 40%"),
+    K("SEQ_SET_GATE_30", "Gate\n30%", "Set sequencer gate to 30%"),
+    K("SEQ_SET_GATE_20", "Gate\n20%", "Set sequencer gate to 20%"),
+    K("SEQ_SET_GATE_10", "Gate\n10%", "Set sequencer gate to 10%"),
     
     # Rate overrides
     K("SEQ_RATE_QUARTER", "Quarter\nNotes", "Sequencer rate: quarter notes"),
@@ -3331,9 +3353,16 @@ KEYCODES_STEP_SEQUENCER = [
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)
 KEYCODES_STEP_SEQUENCER_PRESETS = []
-for x in range(68):
+# Factory presets 0-47
+for x in range(48):
     KEYCODES_STEP_SEQUENCER_PRESETS.append(
-        K("SEQ_PRESET_{}".format(x), "Seq\nPreset\n{}".format(x), "Load step sequencer preset {}".format(x))
+        K("SEQ_PRESET_{}".format(x), "Seq\nPreset\n{}".format(x), "Load sequencer preset {}".format(x))
+    )
+# User presets 48-67 (displayed as User 1-20)
+for x in range(48, 68):
+    user_num = x - 47
+    KEYCODES_STEP_SEQUENCER_PRESETS.append(
+        K("SEQ_PRESET_{}".format(x), "Seq\nUser\n{}".format(user_num), "Load sequencer user preset {}".format(user_num))
     )
 
 KEYCODES_HIDDEN = []

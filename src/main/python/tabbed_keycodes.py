@@ -5185,9 +5185,9 @@ class ArpeggiatorTab(QScrollArea):
         self.main_layout.addWidget(mode_group)
         
         # Preset section
-        preset_group = QGroupBox("Preset Selection (0-63)")
+        preset_group = QGroupBox("Preset Selection (68 total: 48 factory + 20 user)")
         preset_layout = FlowLayout()
-        for keycode in self.arp_preset_keycodes[:32]:  # Show first 32 presets initially
+        for keycode in self.arp_preset_keycodes:  # Show all 68 presets
             if keycode_filter(keycode):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
@@ -5289,9 +5289,9 @@ class StepSequencerTab(QScrollArea):
         self.main_layout.addWidget(rate_group)
         
         # Preset section
-        preset_group = QGroupBox("Preset Selection (0-63)")
+        preset_group = QGroupBox("Preset Selection (68 total: 48 factory + 20 user)")
         preset_layout = FlowLayout()
-        for keycode in self.seq_preset_keycodes[:32]:  # Show first 32 presets initially
+        for keycode in self.seq_preset_keycodes:  # Show all 68 presets
             if keycode_filter(keycode):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
