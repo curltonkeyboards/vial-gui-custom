@@ -3304,6 +3304,22 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_RATE_SIXTEENTH_TRIP", "16th\nTriplet", "Arpeggiator rate: triplet sixteenth"),
     K("ARP_RATE_RESET", "Rate\nReset", "Reset to preset's default rate"),
 
+    # NEW: Rate cycling
+    K("ARP_RATE_UP", "Rate\nUp", "Cycle to next arpeggiator rate"),
+    K("ARP_RATE_DOWN", "Rate\nDown", "Cycle to previous arpeggiator rate"),
+
+    # NEW: Static gate values
+    K("ARP_SET_GATE_10", "Gate\n10%", "Set arpeggiator gate to 10%"),
+    K("ARP_SET_GATE_20", "Gate\n20%", "Set arpeggiator gate to 20%"),
+    K("ARP_SET_GATE_30", "Gate\n30%", "Set arpeggiator gate to 30%"),
+    K("ARP_SET_GATE_40", "Gate\n40%", "Set arpeggiator gate to 40%"),
+    K("ARP_SET_GATE_50", "Gate\n50%", "Set arpeggiator gate to 50%"),
+    K("ARP_SET_GATE_60", "Gate\n60%", "Set arpeggiator gate to 60%"),
+    K("ARP_SET_GATE_70", "Gate\n70%", "Set arpeggiator gate to 70%"),
+    K("ARP_SET_GATE_80", "Gate\n80%", "Set arpeggiator gate to 80%"),
+    K("ARP_SET_GATE_90", "Gate\n90%", "Set arpeggiator gate to 90%"),
+    K("ARP_SET_GATE_100", "Gate\n100%", "Set arpeggiator gate to 100%"),
+
     # Modes
     K("ARP_MODE_SINGLE", "Single\nNote", "Arpeggiator mode: single note"),
     K("ARP_MODE_CHORD_BASIC", "Chord\nBasic", "Arpeggiator mode: chord basic"),
@@ -3369,6 +3385,32 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_RATE_SIXTEENTH_DOT", "16th\nDotted", "Sequencer rate: dotted sixteenth"),
     K("SEQ_RATE_SIXTEENTH_TRIP", "16th\nTriplet", "Sequencer rate: triplet sixteenth"),
     K("SEQ_RATE_RESET", "Rate\nReset", "Reset to preset's default rate"),
+
+    # NEW: Rate cycling
+    K("SEQ_RATE_UP", "Rate\nUp", "Cycle to next sequencer rate"),
+    K("SEQ_RATE_DOWN", "Rate\nDown", "Cycle to previous sequencer rate"),
+
+    # NEW: Static gate values
+    K("STEP_SET_GATE_10", "Gate\n10%", "Set sequencer gate to 10%"),
+    K("STEP_SET_GATE_20", "Gate\n20%", "Set sequencer gate to 20%"),
+    K("STEP_SET_GATE_30", "Gate\n30%", "Set sequencer gate to 30%"),
+    K("STEP_SET_GATE_40", "Gate\n40%", "Set sequencer gate to 40%"),
+    K("STEP_SET_GATE_50", "Gate\n50%", "Set sequencer gate to 50%"),
+    K("STEP_SET_GATE_60", "Gate\n60%", "Set sequencer gate to 60%"),
+    K("STEP_SET_GATE_70", "Gate\n70%", "Set sequencer gate to 70%"),
+    K("STEP_SET_GATE_80", "Gate\n80%", "Set sequencer gate to 80%"),
+    K("STEP_SET_GATE_90", "Gate\n90%", "Set sequencer gate to 90%"),
+    K("STEP_SET_GATE_100", "Gate\n100%", "Set sequencer gate to 100%"),
+
+    # NEW: Sequencer modifiers
+    K("SEQ_MOD_1", "Seq 1\nModifier", "Step Sequencer 1 Modifier"),
+    K("SEQ_MOD_2", "Seq 2\nModifier", "Step Sequencer 2 Modifier"),
+    K("SEQ_MOD_3", "Seq 3\nModifier", "Step Sequencer 3 Modifier"),
+    K("SEQ_MOD_4", "Seq 4\nModifier", "Step Sequencer 4 Modifier"),
+    K("SEQ_MOD_5", "Seq 5\nModifier", "Step Sequencer 5 Modifier"),
+    K("SEQ_MOD_6", "Seq 6\nModifier", "Step Sequencer 6 Modifier"),
+    K("SEQ_MOD_7", "Seq 7\nModifier", "Step Sequencer 7 Modifier"),
+    K("SEQ_MOD_8", "Seq 8\nModifier", "Step Sequencer 8 Modifier"),
 ]
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)

@@ -35,23 +35,33 @@ arp_state_t arp_state = {
     .key_held = false
 };
 
-// Step Sequencer runtime state (4 slots)
+// Step Sequencer runtime state (8 slots)
 seq_state_t seq_state[MAX_SEQ_SLOTS] = {
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0}
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0}
 };
+
+// Step Sequencer modifier tracking
+bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, false, false, false};
 
 // Efficient RAM storage: Only active presets loaded
 arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
-seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 4 slots for sequencers (4 × 392 = 1568 bytes)
+seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
 
 // External references
 extern uint8_t live_notes[MAX_LIVE_NOTES][3];  // [channel, note, velocity]
 extern uint8_t live_note_count;
 extern uint32_t current_bpm;  // BPM in format: actual_bpm * 100000
 extern uint8_t channel_number;  // Current MIDI channel
+extern int8_t transpose_number;  // Global transpose
+extern uint8_t he_velocity_min;  // Global HE velocity minimum
+extern uint8_t he_velocity_max;  // Global HE velocity maximum
 
 // =============================================================================
 // ARP NOTES TRACKING (for gate timing)
@@ -397,6 +407,11 @@ void arp_init(void) {
         seq_state[i].loaded_preset_id = 255;  // No preset loaded
         seq_state[i].rate_override = 0;
         seq_state[i].master_gate_override = 0;
+        seq_state[i].locked_channel = 0;
+        seq_state[i].locked_velocity_min = 1;
+        seq_state[i].locked_velocity_max = 127;
+        seq_state[i].locked_transpose = 0;
+        seq_modifier_held[i] = false;
     }
 
     dprintf("arp: initialized with lazy-loading preset system (64 total presets)\n");
@@ -742,7 +757,16 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].pattern_start_time = timer_read32();
     seq_state[slot].next_note_time = timer_read32();  // Start immediately
 
-    dprintf("seq: started preset %d in slot %d\n", preset_id, slot);
+    // Lock in global values when sequencer starts
+    seq_state[slot].locked_channel = channel_number;
+    seq_state[slot].locked_velocity_min = he_velocity_min;
+    seq_state[slot].locked_velocity_max = he_velocity_max;
+    seq_state[slot].locked_transpose = 0;  // Always starts at 0, changes only with modifier
+
+    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d)\n",
+            preset_id, slot, seq_state[slot].locked_channel,
+            seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
+            seq_state[slot].locked_transpose);
 }
 
 void seq_stop(uint8_t slot) {
@@ -813,16 +837,12 @@ void seq_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                // Scale velocity from 0-127 to raw_travel (0-255)
-                uint8_t raw_travel = (note->velocity * 2);
-                uint8_t channel = channel_number;  // Use current MIDI channel
+                // Send note-on using sequencer's locked-in values
+                midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
 
-                // Send note-on
-                midi_send_noteon_arp(channel, (uint8_t)midi_note, raw_travel, raw_travel);
-
-                // Add to arp_notes for gate tracking
+                // Add to arp_notes for gate tracking (use locked channel)
                 uint32_t note_off_time = current_time + gate_duration_ms;
-                add_arp_note(channel, (uint8_t)midi_note, raw_travel, note_off_time);
+                add_arp_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity * 2, note_off_time);
             }
         }
 
@@ -839,6 +859,38 @@ void seq_update(void) {
         uint32_t ms_per_16th = seq_get_ms_per_16th(preset);
         seq_state[slot].next_note_time = current_time + ms_per_16th;
     }
+}
+
+// =============================================================================
+// MIDI NOTE SENDING FOR SEQUENCER (with locked-in values)
+// =============================================================================
+
+// Send note-on for sequencer using locked-in channel/velocity/transpose
+void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+
+    // Use locked-in channel
+    uint8_t channel = seq_state[slot].locked_channel;
+
+    // Apply locked-in transpose
+    int16_t transposed_note = note + seq_state[slot].locked_transpose;
+
+    // Clamp to MIDI range
+    if (transposed_note < 0) transposed_note = 0;
+    if (transposed_note > 127) transposed_note = 127;
+
+    // Scale velocity using locked-in min/max range
+    uint8_t min_vel = seq_state[slot].locked_velocity_min;
+    uint8_t max_vel = seq_state[slot].locked_velocity_max;
+
+    // Scale from 0-127 to min_vel-max_vel
+    uint8_t scaled_velocity = min_vel + ((velocity_0_127 * (max_vel - min_vel)) / 127);
+
+    // Convert to raw_travel (0-255) for MIDI sending
+    uint8_t raw_travel = scaled_velocity * 2;
+
+    // Send the note
+    midi_send_noteon_arp(channel, (uint8_t)transposed_note, raw_travel, raw_travel);
 }
 
 // =============================================================================
@@ -1016,6 +1068,143 @@ void arp_set_mode(arp_mode_t mode) {
     if (mode >= ARPMODE_COUNT) return;
     arp_state.mode = mode;
     dprintf("arp: mode set to %d\n", mode);
+}
+
+// =============================================================================
+// RATE CYCLING FUNCTIONS
+// =============================================================================
+
+// Helper function to get next rate in the cycle
+// Cycle: 1/4 → 1/4 dot → 1/4 trip → 1/8 → 1/8 dot → 1/8 trip → 1/16 → 1/16 dot → 1/16 trip → (wrap)
+static void cycle_rate(uint8_t *rate_override, bool up) {
+    // Rate states: 0-8 representing the 9 positions in the cycle
+    uint8_t current_state = 0;
+
+    // Determine current state from rate_override
+    uint8_t note_val = (*rate_override) & ~TIMING_MODE_MASK;  // Note value (0, 1, or 2)
+    uint8_t timing = (*rate_override) & TIMING_MODE_MASK;      // Timing mode (0, 1, or 2)
+
+    // Map to state (0-8)
+    if (note_val == NOTE_VALUE_QUARTER && timing == TIMING_MODE_STRAIGHT) current_state = 0;
+    else if (note_val == NOTE_VALUE_QUARTER && timing == TIMING_MODE_DOTTED) current_state = 1;
+    else if (note_val == NOTE_VALUE_QUARTER && timing == TIMING_MODE_TRIPLET) current_state = 2;
+    else if (note_val == NOTE_VALUE_EIGHTH && timing == TIMING_MODE_STRAIGHT) current_state = 3;
+    else if (note_val == NOTE_VALUE_EIGHTH && timing == TIMING_MODE_DOTTED) current_state = 4;
+    else if (note_val == NOTE_VALUE_EIGHTH && timing == TIMING_MODE_TRIPLET) current_state = 5;
+    else if (note_val == NOTE_VALUE_SIXTEENTH && timing == TIMING_MODE_STRAIGHT) current_state = 6;
+    else if (note_val == NOTE_VALUE_SIXTEENTH && timing == TIMING_MODE_DOTTED) current_state = 7;
+    else if (note_val == NOTE_VALUE_SIXTEENTH && timing == TIMING_MODE_TRIPLET) current_state = 8;
+
+    // Cycle state
+    if (up) {
+        current_state = (current_state + 1) % 9;
+    } else {
+        current_state = (current_state == 0) ? 8 : current_state - 1;
+    }
+
+    // Map state back to note_val and timing
+    switch (current_state) {
+        case 0: *rate_override = NOTE_VALUE_QUARTER | TIMING_MODE_STRAIGHT; break;
+        case 1: *rate_override = NOTE_VALUE_QUARTER | TIMING_MODE_DOTTED; break;
+        case 2: *rate_override = NOTE_VALUE_QUARTER | TIMING_MODE_TRIPLET; break;
+        case 3: *rate_override = NOTE_VALUE_EIGHTH | TIMING_MODE_STRAIGHT; break;
+        case 4: *rate_override = NOTE_VALUE_EIGHTH | TIMING_MODE_DOTTED; break;
+        case 5: *rate_override = NOTE_VALUE_EIGHTH | TIMING_MODE_TRIPLET; break;
+        case 6: *rate_override = NOTE_VALUE_SIXTEENTH | TIMING_MODE_STRAIGHT; break;
+        case 7: *rate_override = NOTE_VALUE_SIXTEENTH | TIMING_MODE_DOTTED; break;
+        case 8: *rate_override = NOTE_VALUE_SIXTEENTH | TIMING_MODE_TRIPLET; break;
+    }
+}
+
+// Arpeggiator rate cycling
+void arp_rate_up(void) {
+    if (arp_state.rate_override == 0) {
+        // Start from 1/4 straight
+        arp_state.rate_override = NOTE_VALUE_QUARTER | TIMING_MODE_STRAIGHT;
+    } else {
+        cycle_rate(&arp_state.rate_override, true);
+    }
+    dprintf("arp: rate cycled up to %d\n", arp_state.rate_override);
+}
+
+void arp_rate_down(void) {
+    if (arp_state.rate_override == 0) {
+        // Start from 1/16 triplet
+        arp_state.rate_override = NOTE_VALUE_SIXTEENTH | TIMING_MODE_TRIPLET;
+    } else {
+        cycle_rate(&arp_state.rate_override, false);
+    }
+    dprintf("arp: rate cycled down to %d\n", arp_state.rate_override);
+}
+
+// Step sequencer rate cycling (affects all active slots)
+void seq_rate_up(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_rate_up_for_slot(i);
+        }
+    }
+}
+
+void seq_rate_down(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_rate_down_for_slot(i);
+        }
+    }
+}
+
+// Step sequencer rate cycling for specific slot
+void seq_rate_up_for_slot(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+
+    if (seq_state[slot].rate_override == 0) {
+        // Start from 1/4 straight
+        seq_state[slot].rate_override = NOTE_VALUE_QUARTER | TIMING_MODE_STRAIGHT;
+    } else {
+        cycle_rate(&seq_state[slot].rate_override, true);
+    }
+    dprintf("seq: slot %d rate cycled up to %d\n", slot, seq_state[slot].rate_override);
+}
+
+void seq_rate_down_for_slot(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+
+    if (seq_state[slot].rate_override == 0) {
+        // Start from 1/16 triplet
+        seq_state[slot].rate_override = NOTE_VALUE_SIXTEENTH | TIMING_MODE_TRIPLET;
+    } else {
+        cycle_rate(&seq_state[slot].rate_override, false);
+    }
+    dprintf("seq: slot %d rate cycled down to %d\n", slot, seq_state[slot].rate_override);
+}
+
+// =============================================================================
+// STATIC GATE SETTING FUNCTIONS
+// =============================================================================
+
+void arp_set_gate_static(uint8_t gate_percent) {
+    if (gate_percent > 100) gate_percent = 100;
+    arp_state.master_gate_override = gate_percent;
+    dprintf("arp: gate set to %d%%\n", gate_percent);
+}
+
+void seq_set_gate_static(uint8_t gate_percent) {
+    if (gate_percent > 100) gate_percent = 100;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_state[i].master_gate_override = gate_percent;
+        }
+    }
+    dprintf("seq: gate set to %d%% for all active slots\n", gate_percent);
+}
+
+void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+    if (gate_percent > 100) gate_percent = 100;
+
+    seq_state[slot].master_gate_override = gate_percent;
+    dprintf("seq: slot %d gate set to %d%%\n", slot, gate_percent);
 }
 
 // =============================================================================

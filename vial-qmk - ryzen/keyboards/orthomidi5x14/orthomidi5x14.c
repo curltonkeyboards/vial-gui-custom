@@ -11081,6 +11081,33 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // NEW: Arpeggiator Rate Up/Down
+    if (keycode == ARP_RATE_UP) {
+        if (record->event.pressed) {
+            arp_rate_up();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_RATE_DOWN) {
+        if (record->event.pressed) {
+            arp_rate_down();
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // NEW: Arpeggiator Static Gate Values (0xEEEB-0xEEF4)
+    if (keycode >= ARP_SET_GATE_10 && keycode <= ARP_SET_GATE_100) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 10 + ((keycode - ARP_SET_GATE_10) * 10);
+            arp_set_gate_static(gate_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
     // ARPEGGIATOR MODES (0xCD20-0xCD2F)
     if (keycode == ARP_MODE_SINGLE) {
         if (record->event.pressed) {
@@ -11240,6 +11267,78 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             set_keylog(keycode, record);
         }
+        return false;
+    }
+
+    // NEW: Step Sequencer Rate Up/Down
+    if (keycode == SEQ_RATE_UP) {
+        if (record->event.pressed) {
+            // Check if any sequencer modifier is held
+            bool modifier_held = false;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_modifier_held[i]) {
+                    seq_rate_up_for_slot(i);
+                    modifier_held = true;
+                }
+            }
+            // If no modifier held, affect all active slots
+            if (!modifier_held) {
+                seq_rate_up();
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == SEQ_RATE_DOWN) {
+        if (record->event.pressed) {
+            // Check if any sequencer modifier is held
+            bool modifier_held = false;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_modifier_held[i]) {
+                    seq_rate_down_for_slot(i);
+                    modifier_held = true;
+                }
+            }
+            // If no modifier held, affect all active slots
+            if (!modifier_held) {
+                seq_rate_down();
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // NEW: Step Sequencer Static Gate Values (0xEEF7-0xEF00)
+    if (keycode >= STEP_SET_GATE_10 && keycode <= STEP_SET_GATE_100) {
+        if (record->event.pressed) {
+            uint8_t gate_value = 10 + ((keycode - STEP_SET_GATE_10) * 10);
+            // Check if any sequencer modifier is held
+            bool modifier_held = false;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_modifier_held[i]) {
+                    seq_set_gate_for_slot(i, gate_value);
+                    modifier_held = true;
+                }
+            }
+            // If no modifier held, affect all active slots
+            if (!modifier_held) {
+                seq_set_gate_static(gate_value);
+            }
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // NEW: Step Sequencer Modifiers (0xEF01-0xEF08)
+    if (keycode >= SEQ_MOD_1 && keycode <= SEQ_MOD_8) {
+        uint8_t slot = keycode - SEQ_MOD_1;
+        if (record->event.pressed) {
+            seq_modifier_held[slot] = true;
+        } else {
+            seq_modifier_held[slot] = false;
+        }
+        set_keylog(keycode, record);
         return false;
     }
 
