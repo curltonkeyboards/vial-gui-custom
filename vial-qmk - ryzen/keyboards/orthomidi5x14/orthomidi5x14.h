@@ -285,11 +285,11 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_MOD_7               0xEF07  // Step Sequencer 7 Modifier (affects slot 7)
 #define SEQ_MOD_8               0xEF08  // Step Sequencer 8 Modifier (affects slot 8)
 
-/ NEW: Arpeggiator Gate Up/Down (0xEF09-0xEF0A)
+// NEW: Arpeggiator Gate Up/Down (0xEF09-0xEF0A)
 #define ARP_GATE_UP             0xEF09  // Increase arpeggiator gate by 10%
 #define ARP_GATE_DOWN           0xEF0A  // Decrease arpeggiator gate by 10%
 
-/ NEW: Step Sequencer Gate Up/Down (0xEF0B-0xEF0C)
+// NEW: Step Sequencer Gate Up/Down (0xEF0B-0xEF0C)
 #define SEQ_GATE_UP             0xEF0B  // Increase sequencer gate by 10%
 #define SEQ_GATE_DOWN           0xEF0C  // Decrease sequencer gate by 10%
 
