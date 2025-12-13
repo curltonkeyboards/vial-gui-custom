@@ -126,26 +126,18 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
-        # Check if this is the Base Note cell in arpeggiator (col 11, interval 0)
-        # Note: With swapped axes in arpeggiator, interval 0 is at column 11
-        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.col == 11
-
         # Get theme colors
         palette = self.palette()
         bg_color = palette.color(QPalette.Window)
         highlight = palette.color(QPalette.Highlight)
 
-        # Base Note row gets theme-based border (white on dark, black on light)
-        if is_root_note:
-            # Determine theme (light vs dark) based on window background
-            is_light_theme = bg_color.lightness() > 128
-            border_color = "black" if is_light_theme else "white"
-            border_width = 2
-        else:
-            # Use theme-based border colors
-            border_color_qcolor = highlight.darker(150) if self.active else highlight.darker(300)
-            border_color = border_color_qcolor.name()
-            border_width = 1
+        # Determine if light or dark theme
+        is_light_theme = bg_color.lightness() > 128
+
+        # Use theme-based border colors (no special border for column 0)
+        border_color_qcolor = highlight.darker(150) if self.active else highlight.darker(300)
+        border_color = border_color_qcolor.name()
+        border_width = 1
 
         if self.active:
             # Intensity based on velocity (velocity is 0-255, display as 0-127)
@@ -154,16 +146,34 @@ class GridCell(QFrame):
             # For arpeggiator, blend with octave color
             if hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator:
                 octave_color = self.get_octave_color()
-                # Blend octave color with intensity - increased brightness range (0.5 to 1.2)
-                r = min(255, int(octave_color.red() * (0.5 + 0.7 * intensity)))
-                g = min(255, int(octave_color.green() * (0.5 + 0.7 * intensity)))
-                b = min(255, int(octave_color.blue() * (0.5 + 0.7 * intensity)))
+
+                # On light themes: darken only (no brightening)
+                # On dark themes: keep current behavior
+                if is_light_theme:
+                    # Darken: multiply by factor 0.5 to 0.85 based on intensity
+                    factor = 0.5 + 0.35 * intensity
+                else:
+                    # Dark theme: keep current behavior (0.5 to 1.2)
+                    factor = 0.5 + 0.7 * intensity
+
+                r = min(255, int(octave_color.red() * factor))
+                g = min(255, int(octave_color.green() * factor))
+                b = min(255, int(octave_color.blue() * factor))
                 color = QColor(r, g, b)
             else:
-                # For step sequencer, use theme color with intensity - increased brightness range (0.5 to 1.2)
-                r = min(255, int(highlight.red() * (0.5 + 0.7 * intensity)))
-                g = min(255, int(highlight.green() * (0.5 + 0.7 * intensity)))
-                b = min(255, int(highlight.blue() * (0.5 + 0.7 * intensity)))
+                # For step sequencer, use theme color with intensity
+                # On light themes: darken only (no brightening)
+                # On dark themes: keep current behavior
+                if is_light_theme:
+                    # Darken: multiply by factor 0.5 to 0.85 based on intensity
+                    factor = 0.5 + 0.35 * intensity
+                else:
+                    # Dark theme: keep current behavior (0.5 to 1.2)
+                    factor = 0.5 + 0.7 * intensity
+
+                r = min(255, int(highlight.red() * factor))
+                g = min(255, int(highlight.green() * factor))
+                b = min(255, int(highlight.blue() * factor))
                 color = QColor(r, g, b)
 
             # Use opacity for scale filtering instead of darkening
@@ -171,7 +181,6 @@ class GridCell(QFrame):
             self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
         else:
             # Inactive state - use white for light themes, black for dark themes
-            is_light_theme = bg_color.lightness() > 128
             inactive_color = QColor(255, 255, 255) if is_light_theme else QColor(0, 0, 0)
             # Use opacity for scale filtering instead of darkening
             opacity = 0.3 if not self.in_scale else 1.0
@@ -319,13 +328,32 @@ class BasicStepSequencerGrid(QWidget):
 
     def _update_add_button_position(self):
         """Update the position of the '+' button to be after all note rows"""
-        # Remove the button from its current position if it exists
+        # Remove the button and label from their current positions if they exist
         if self.btn_add_note.parent() is not None:
             self.grid_layout.removeWidget(self.btn_add_note)
+        if hasattr(self, 'add_note_label') and self.add_note_label.parent() is not None:
+            self.grid_layout.removeWidget(self.add_note_label)
 
-        # Add it at the row after all existing rows (len(self.rows) + 1, accounting for header)
+        # Add them at the row after all existing rows (len(self.rows) + 1, accounting for header)
         row_position = len(self.rows) + 1
-        self.grid_layout.addWidget(self.btn_add_note, row_position, 0)
+
+        # Create horizontal layout for + button and label
+        add_note_container = QWidget()
+        add_note_layout = QHBoxLayout()
+        add_note_layout.setContentsMargins(0, 0, 0, 0)
+        add_note_layout.setSpacing(5)
+
+        add_note_layout.addWidget(self.btn_add_note)
+
+        # Add "Add Note" label
+        if not hasattr(self, 'add_note_label'):
+            self.add_note_label = QLabel("Add Note")
+            self.add_note_label.setStyleSheet("font-weight: bold;")
+        add_note_layout.addWidget(self.add_note_label)
+        add_note_layout.addStretch()
+
+        add_note_container.setLayout(add_note_layout)
+        self.grid_layout.addWidget(add_note_container, row_position, 0, 1, self.num_steps + 1)
 
     def rebuild_header(self):
         """Rebuild the header row with step numbers"""
@@ -397,27 +425,23 @@ class BasicStepSequencerGrid(QWidget):
         # Delete button (on the left)
         delete_btn = QPushButton("X")
         delete_btn.setFixedSize(20, 20)
-        # Use theme-based warning color (red-shifted from highlight)
-        palette = self.palette()
-        highlight = palette.color(QPalette.Highlight)
-        text_color = palette.color(QPalette.HighlightedText)
+        # Use red background with white text
         warning_color = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
-        delete_btn.setStyleSheet(f"background-color: {warning_color.name()}; color: {text_color.name()}; font-weight: bold; border-radius: 3px;")
+        delete_btn.setStyleSheet(f"background-color: {warning_color.name()}; color: white; font-weight: bold; border-radius: 3px;")
         delete_btn.clicked.connect(lambda: self.delete_note_row(row_idx))
         note_layout.addWidget(delete_btn)
 
-        # Note label - clickable with theme styling
+        # Note label - clickable with theme styling (50x50 square)
         note_label = QPushButton(f"{note_names[note_index]}{octave}")
+        note_label.setFixedSize(50, 50)
         palette = self.palette()
         highlight = palette.color(QPalette.Highlight)
         note_label.setStyleSheet(f"""
             QPushButton {{
                 font-weight: bold;
-                min-width: 50px;
                 text-align: center;
                 border: 2px solid {highlight.name()};
                 background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
-                padding: 3px;
                 border-radius: 3px;
             }}
             QPushButton:hover {{
@@ -566,26 +590,23 @@ class BasicStepSequencerGrid(QWidget):
             # Delete button (on the left)
             delete_btn = QPushButton("X")
             delete_btn.setFixedSize(20, 20)
-            # Use theme-based warning color (red-shifted from highlight)
-            palette_temp = self.palette()
-            text_color_temp = palette_temp.color(QPalette.HighlightedText)
+            # Use red background with white text
             warning_color_temp = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
-            delete_btn.setStyleSheet(f"background-color: {warning_color_temp.name()}; color: {text_color_temp.name()}; font-weight: bold; border-radius: 3px;")
+            delete_btn.setStyleSheet(f"background-color: {warning_color_temp.name()}; color: white; font-weight: bold; border-radius: 3px;")
             delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
             note_layout.addWidget(delete_btn)
 
-            # Note label - clickable with theme styling
+            # Note label - clickable with theme styling (50x50 square)
             note_label = QPushButton(f"{note_names[row_data['note']]}{row_data['octave']}")
+            note_label.setFixedSize(50, 50)
             palette = self.palette()
             highlight = palette.color(QPalette.Highlight)
             note_label.setStyleSheet(f"""
                 QPushButton {{
                     font-weight: bold;
-                    min-width: 50px;
                     text-align: center;
                     border: 2px solid {highlight.name()};
                     background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
-                    padding: 3px;
                     border-radius: 3px;
                 }}
                 QPushButton:hover {{
@@ -685,6 +706,38 @@ class BasicStepSequencerGrid(QWidget):
             num_steps: Number of steps in the grid
             rate_16ths: Timing in 16th notes per step (default 1 = 1/16 notes)
         """
+        # Save existing rows configuration before any changes
+        existing_rows_config = []
+        for row_data in self.rows:
+            row_config = {
+                'note': row_data['note'],
+                'octave': row_data['octave'],
+                'cells_state': []
+            }
+            for cell in row_data['cells']:
+                row_config['cells_state'].append({
+                    'active': cell.active,
+                    'velocity': cell.velocity,
+                    'octave': cell.octave
+                })
+            existing_rows_config.append(row_config)
+
+        # Group notes by (note_index, octave) to create rows
+        note_groups = {}
+        for note in notes_data:
+            key = (note.get('note_index', 0), note.get('octave_offset', 4))
+            if key not in note_groups:
+                note_groups[key] = []
+            note_groups[key].append(note)
+
+        # If no data AND we have existing rows, preserve them (don't clear)
+        # This prevents data loss when switching tabs
+        if not note_groups and existing_rows_config:
+            # Just update num_steps if needed
+            if self.num_steps != num_steps:
+                self.on_steps_changed(num_steps)
+            return
+
         # Clear existing rows - iterate with index to avoid lookup issues
         for i in range(len(self.rows) - 1, -1, -1):
             row_data = self.rows[i]
@@ -703,15 +756,7 @@ class BasicStepSequencerGrid(QWidget):
         self.num_steps = num_steps
         self.rebuild_header()
 
-        # Group notes by (note_index, octave) to create rows
-        note_groups = {}
-        for note in notes_data:
-            key = (note.get('note_index', 0), note.get('octave_offset', 4))
-            if key not in note_groups:
-                note_groups[key] = []
-            note_groups[key].append(note)
-
-        # If no data, create default rows (C1, D1, E1, F1)
+        # If no data AND no existing rows, create default rows (C1, D1, E1, F1)
         if not note_groups:
             note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
             default_notes = [
@@ -746,26 +791,23 @@ class BasicStepSequencerGrid(QWidget):
             # Delete button (on the left)
             delete_btn = QPushButton("X")
             delete_btn.setFixedSize(20, 20)
-            # Use theme-based warning color (red-shifted from highlight)
-            palette_temp = self.palette()
-            text_color_temp = palette_temp.color(QPalette.HighlightedText)
+            # Use red background with white text
             warning_color_temp = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
-            delete_btn.setStyleSheet(f"background-color: {warning_color_temp.name()}; color: {text_color_temp.name()}; font-weight: bold; border-radius: 3px;")
+            delete_btn.setStyleSheet(f"background-color: {warning_color_temp.name()}; color: white; font-weight: bold; border-radius: 3px;")
             delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
             note_layout.addWidget(delete_btn)
 
-            # Note label - clickable with theme styling
+            # Note label - clickable with theme styling (50x50 square)
             note_label = QPushButton(f"{note_names[note_idx]}{octave}")
+            note_label.setFixedSize(50, 50)
             palette = self.palette()
             highlight = palette.color(QPalette.Highlight)
             note_label.setStyleSheet(f"""
                 QPushButton {{
                     font-weight: bold;
-                    min-width: 50px;
                     text-align: center;
                     border: 2px solid {highlight.name()};
                     background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
-                    padding: 3px;
                     border-radius: 3px;
                 }}
                 QPushButton:hover {{
@@ -920,11 +962,8 @@ class BasicArpeggiatorGrid(QWidget):
             lbl = QLabel(lbl_text)
             lbl.setAlignment(Qt.AlignCenter)
 
-            # Highlight the base interval (interval 0, which is col 11)
-            if interval == 0:
-                lbl.setStyleSheet("font-weight: bold; color: white;")
-            else:
-                lbl.setStyleSheet("")
+            # Make all intervals bold
+            lbl.setStyleSheet("font-weight: bold;")
             self.grid_layout.addWidget(lbl, 1, col + 1)
 
         # Create num_steps rows (one for each step) x 23 columns (intervals -11 to +11)
@@ -1118,16 +1157,12 @@ class BasicArpeggiatorGrid(QWidget):
                 label = label_item.widget()
                 palette_grid = self.palette()
                 if in_scale:
-                    # Restore base styling
-                    if interval == 0:
-                        label_color = palette_grid.color(QPalette.HighlightedText)
-                        label.setStyleSheet(f"font-weight: bold; color: {label_color.name()};")
-                    else:
-                        label.setStyleSheet("")
+                    # Restore base styling - all intervals bold
+                    label.setStyleSheet("font-weight: bold;")
                 else:
-                    # Grey out label significantly - use theme-based dark color
+                    # Grey out label significantly - use theme-based dark color, keep bold
                     dark_color = palette_grid.color(QPalette.WindowText).darker(300)
-                    label.setStyleSheet(f"color: {dark_color.name()};")
+                    label.setStyleSheet(f"font-weight: bold; color: {dark_color.name()};")
 
             # Darken all cells in this column if not in scale - keep them selectable
             for row in range(len(self.cells)):
