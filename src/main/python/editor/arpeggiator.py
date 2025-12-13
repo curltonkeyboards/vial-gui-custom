@@ -1977,7 +1977,7 @@ class Arpeggiator(BasicEditor):
         # === Status ===
         self.lbl_status = QLabel("Ready. Select a preset to begin.")
         # Use theme-based info color
-        palette_status = self.palette()
+        palette_status = self.lbl_status.palette()
         info_color = palette_status.color(QPalette.Highlight)
         self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         # === Header Section ===
