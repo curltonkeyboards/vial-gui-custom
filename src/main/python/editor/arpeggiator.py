@@ -126,26 +126,15 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
-        # Check if this is the Base Note cell in arpeggiator (col 11, interval 0)
-        # Note: With swapped axes in arpeggiator, interval 0 is at column 11
-        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.col == 11
-
         # Get theme colors
         palette = self.palette()
         bg_color = palette.color(QPalette.Window)
         highlight = palette.color(QPalette.Highlight)
 
-        # Base Note row gets theme-based border (white on dark, black on light)
-        if is_root_note:
-            # Determine theme (light vs dark) based on window background
-            is_light_theme = bg_color.lightness() > 128
-            border_color = "black" if is_light_theme else "white"
-            border_width = 2
-        else:
-            # Use theme-based border colors
-            border_color_qcolor = highlight.darker(150) if self.active else highlight.darker(300)
-            border_color = border_color_qcolor.name()
-            border_width = 1
+        # Use theme-based border colors - same for all cells
+        border_color_qcolor = highlight.darker(150) if self.active else highlight.darker(300)
+        border_color = border_color_qcolor.name()
+        border_width = 1
 
         if self.active:
             # Intensity based on velocity (velocity is 0-255, display as 0-127)
@@ -369,6 +358,11 @@ class BasicStepSequencerGrid(QWidget):
                     cell.deleteLater()
 
         self.rebuild_header()
+
+        # Refresh newly added cells to ensure theme colors are applied
+        if new_steps > old_steps:
+            self.refresh_cell_styles()
+
         self.dataChanged.emit()
 
     def on_default_velocity_changed(self, value):
@@ -618,6 +612,9 @@ class BasicStepSequencerGrid(QWidget):
 
         self._update_add_button_position()
 
+        # Refresh all cell styles to ensure theme colors are applied
+        self.refresh_cell_styles()
+
     def on_cell_left_click(self, row, col):
         """Handle left click - toggle cell"""
         if row >= len(self.rows):
@@ -798,6 +795,15 @@ class BasicStepSequencerGrid(QWidget):
 
         self._update_add_button_position()
 
+        # Refresh all cell styles to ensure theme colors are applied
+        self.refresh_cell_styles()
+
+    def refresh_cell_styles(self):
+        """Force all cells to update their styles with current theme colors"""
+        for row_data in self.rows:
+            for cell in row_data['cells']:
+                cell.update_style()
+
 
 class BasicArpeggiatorGrid(QWidget):
     """Grid widget for arpeggiator basic tab with fixed 23 rows (intervals -11 to +11)"""
@@ -897,20 +903,20 @@ class BasicArpeggiatorGrid(QWidget):
 
         self.cells = []
 
-        # Header row 1: "Interval" label
-        interval_title = QLabel("Interval")
-        interval_title.setAlignment(Qt.AlignCenter)
-        interval_title.setStyleSheet("font-weight: bold;")
-        self.grid_layout.addWidget(interval_title, 0, 0, 1, 24)  # Span across all columns
+        # Header row: Interval numbers (no title row)
+        # Empty label for step column (no "Step" title)
+        self.grid_layout.addWidget(QLabel(""), 0, 0)
 
-        # Header row 2: Interval numbers
-        self.grid_layout.addWidget(QLabel("Step"), 1, 0)  # Label for step column
+        # Get theme colors for interval labels
+        palette = self.palette()
+        text_color = palette.color(QPalette.WindowText)
+
         for col in range(23):
             interval = col - 11  # Col 0 = -11, col 11 = 0, col 22 = +11
 
             # Interval label
             if interval == 0:
-                lbl_text = "0"  # Changed from "Base Note" to "0"
+                lbl_text = "0"
             elif interval > 0:
                 lbl_text = f"+{interval}"
             else:
@@ -919,12 +925,9 @@ class BasicArpeggiatorGrid(QWidget):
             lbl = QLabel(lbl_text)
             lbl.setAlignment(Qt.AlignCenter)
 
-            # Highlight the base interval (interval 0, which is col 11)
-            if interval == 0:
-                lbl.setStyleSheet("font-weight: bold; color: white;")
-            else:
-                lbl.setStyleSheet("")
-            self.grid_layout.addWidget(lbl, 1, col + 1)
+            # Make all interval numbers bold with theme-based color
+            lbl.setStyleSheet(f"font-weight: bold; color: {text_color.name()};")
+            self.grid_layout.addWidget(lbl, 0, col + 1)
 
         # Create num_steps rows (one for each step) x 23 columns (intervals -11 to +11)
         for row in range(self.num_steps):
@@ -932,7 +935,7 @@ class BasicArpeggiatorGrid(QWidget):
             lbl = QLabel(f"{row + 1}")
             lbl.setAlignment(Qt.AlignRight)
             lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold;")
-            self.grid_layout.addWidget(lbl, row + 2, 0)
+            self.grid_layout.addWidget(lbl, row + 1, 0)
 
             # Create cells for this row (all 23 intervals)
             row_cells = []
@@ -941,10 +944,19 @@ class BasicArpeggiatorGrid(QWidget):
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
                 row_cells.append(cell)
-                self.grid_layout.addWidget(cell, row + 2, col + 1)
+                self.grid_layout.addWidget(cell, row + 1, col + 1)
 
             self.cells.append(row_cells)
 
+        # Refresh all cell styles to ensure theme colors are applied
+        self.refresh_cell_styles()
+
+    def refresh_cell_styles(self):
+        """Force all cells to update their styles with current theme colors"""
+        for row in range(len(self.cells)):
+            for col in range(len(self.cells[row])):
+                cell = self.cells[row][col]
+                cell.update_style()
 
     def on_steps_changed(self, new_steps):
         """Handle number of steps changed - preserve existing data"""
@@ -958,7 +970,7 @@ class BasicArpeggiatorGrid(QWidget):
                 lbl = QLabel(f"{step + 1}")
                 lbl.setAlignment(Qt.AlignRight)
                 lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold;")
-                self.grid_layout.addWidget(lbl, step + 2, 0)
+                self.grid_layout.addWidget(lbl, step + 1, 0)
 
                 # Create cells for this row (all 23 intervals)
                 row_cells = []
@@ -967,7 +979,7 @@ class BasicArpeggiatorGrid(QWidget):
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
                     row_cells.append(cell)
-                    self.grid_layout.addWidget(cell, step + 2, col + 1)
+                    self.grid_layout.addWidget(cell, step + 1, col + 1)
 
                 self.cells.append(row_cells)
         elif new_steps < old_steps:
@@ -975,7 +987,7 @@ class BasicArpeggiatorGrid(QWidget):
             for step in range(new_steps, old_steps):
                 if step < len(self.cells):
                     # Remove label
-                    label_item = self.grid_layout.itemAtPosition(step + 2, 0)
+                    label_item = self.grid_layout.itemAtPosition(step + 1, 0)
                     if label_item and label_item.widget():
                         label_item.widget().deleteLater()
 
@@ -987,6 +999,10 @@ class BasicArpeggiatorGrid(QWidget):
 
             # Trim cells list
             self.cells = self.cells[:new_steps]
+
+        # Refresh newly added cells to ensure theme colors are applied
+        if new_steps > old_steps:
+            self.refresh_cell_styles()
 
         self.dataChanged.emit()
 
@@ -1100,6 +1116,9 @@ class BasicArpeggiatorGrid(QWidget):
                 cell = self.cells[step][col]
                 cell.set_active(True, velocity, octave)
 
+        # Refresh all cell styles to ensure theme colors are applied
+        self.refresh_cell_styles()
+
     def filter_rows_by_scale(self, allowed_intervals):
         """Darken columns that aren't in the selected scale
         Note: With swapped axes, intervals are columns, not rows
@@ -1112,21 +1131,18 @@ class BasicArpeggiatorGrid(QWidget):
             in_scale = interval in allowed_intervals
 
             # Darken the interval label if not in scale - grey out LOTS
-            label_item = self.grid_layout.itemAtPosition(1, col + 1)
+            label_item = self.grid_layout.itemAtPosition(0, col + 1)
             if label_item and label_item.widget():
                 label = label_item.widget()
                 palette_grid = self.palette()
+                text_color = palette_grid.color(QPalette.WindowText)
                 if in_scale:
-                    # Restore base styling
-                    if interval == 0:
-                        label_color = palette_grid.color(QPalette.HighlightedText)
-                        label.setStyleSheet(f"font-weight: bold; color: {label_color.name()};")
-                    else:
-                        label.setStyleSheet("")
+                    # Restore base styling - all intervals bold with theme color
+                    label.setStyleSheet(f"font-weight: bold; color: {text_color.name()};")
                 else:
                     # Grey out label significantly - use theme-based dark color
-                    dark_color = palette_grid.color(QPalette.WindowText).darker(300)
-                    label.setStyleSheet(f"color: {dark_color.name()};")
+                    dark_color = text_color.darker(300)
+                    label.setStyleSheet(f"font-weight: bold; color: {dark_color.name()};")
 
             # Darken all cells in this column if not in scale - keep them selectable
             for row in range(len(self.cells)):
