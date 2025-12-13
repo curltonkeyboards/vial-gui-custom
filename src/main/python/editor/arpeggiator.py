@@ -126,27 +126,28 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
-        # Check if this is the Base Note cell in arpeggiator (row 11, interval 0)
-        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.row == 11
+        # Check if this is the Base Note cell in arpeggiator (col 11, interval 0)
+        # Note: With swapped axes in arpeggiator, interval 0 is at column 11
+        is_root_note = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator and self.col == 11
+
+        # Get theme colors
+        palette = self.palette()
+        bg_color = palette.color(QPalette.Window)
+        highlight = palette.color(QPalette.Highlight)
 
         # Base Note row gets theme-based border (white on dark, black on light)
         if is_root_note:
             # Determine theme (light vs dark) based on window background
-            palette = self.palette()
-            bg_color = palette.color(QPalette.Window)
-            # If background is light (luminance > 128), use black border, else white
             is_light_theme = bg_color.lightness() > 128
             border_color = "black" if is_light_theme else "white"
             border_width = 2
         else:
-            border_color = "#666" if self.active else "#555"
+            # Use theme-based border colors
+            border_color_qcolor = highlight.darker(150) if self.active else highlight.darker(300)
+            border_color = border_color_qcolor.name()
             border_width = 1
 
         if self.active:
-            # Get theme highlight color
-            palette = self.palette()
-            highlight = palette.color(QPalette.Highlight)
-
             # Intensity based on velocity (velocity is 0-255, display as 0-127)
             intensity = self.velocity / 255.0
 
@@ -172,15 +173,17 @@ class GridCell(QFrame):
                 b = int(color.blue() * 0.2)
                 color = QColor(r, g, b)
 
-            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: {border_width}px solid {border_color};")
+            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: {border_width}px solid {border_color}; border-radius: 3px;")
         else:
-            # Inactive state
+            # Inactive state - use theme-based colors
             if not self.in_scale:
-                # Very dark gray for non-scale rows
-                self.setStyleSheet(f"background-color: #0a0a0a; border: {border_width}px solid {border_color};")
+                # Very dark theme color for non-scale rows
+                inactive_color = bg_color.darker(150)
+                self.setStyleSheet(f"background-color: {inactive_color.name()}; border: {border_width}px solid {border_color}; border-radius: 3px;")
             else:
-                # Normal dark gray
-                self.setStyleSheet(f"background-color: #2a2a2a; border: {border_width}px solid {border_color};")
+                # Slightly darker theme color for normal inactive state
+                inactive_color = bg_color.darker(120)
+                self.setStyleSheet(f"background-color: {inactive_color.name()}; border: {border_width}px solid {border_color}; border-radius: 3px;")
 
     def mousePressEvent(self, event):
         """Handle mouse clicks"""
@@ -340,9 +343,9 @@ class BasicStepSequencerGrid(QWidget):
             if item and item.widget():
                 item.widget().deleteLater()
 
-        # Add label for note column
-        note_header = QLabel("Note")
-        note_header.setStyleSheet("font-weight: bold; padding-right: 5px;")
+        # Add empty label for note column (no "Note" title)
+        note_header = QLabel("")
+        note_header.setStyleSheet("padding-right: 5px;")
         self.grid_layout.addWidget(note_header, 0, 0)
 
         # Add step numbers
@@ -399,6 +402,13 @@ class BasicStepSequencerGrid(QWidget):
         note_layout.setContentsMargins(0, 0, 0, 0)
         note_layout.setSpacing(2)
 
+        # Delete button (on the left)
+        delete_btn = QPushButton("X")
+        delete_btn.setFixedSize(20, 20)
+        delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold; border-radius: 3px;")
+        delete_btn.clicked.connect(lambda: self.delete_note_row(row_idx))
+        note_layout.addWidget(delete_btn)
+
         # Note label - clickable with theme styling
         note_label = QPushButton(f"{note_names[note_index]}{octave}")
         palette = self.palette()
@@ -411,6 +421,7 @@ class BasicStepSequencerGrid(QWidget):
                 border: 2px solid {highlight.name()};
                 background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
                 padding: 3px;
+                border-radius: 3px;
             }}
             QPushButton:hover {{
                 background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 100);
@@ -419,13 +430,6 @@ class BasicStepSequencerGrid(QWidget):
         note_label.setCursor(Qt.PointingHandCursor)
         note_label.clicked.connect(lambda: self.edit_note_row(row_idx))
         note_layout.addWidget(note_label)
-
-        # Delete button
-        delete_btn = QPushButton("X")
-        delete_btn.setFixedSize(20, 20)
-        delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold;")
-        delete_btn.clicked.connect(lambda: self.delete_note_row(row_idx))
-        note_layout.addWidget(delete_btn)
 
         note_widget.setLayout(note_layout)
         self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
@@ -562,6 +566,13 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.setContentsMargins(0, 0, 0, 0)
             note_layout.setSpacing(2)
 
+            # Delete button (on the left)
+            delete_btn = QPushButton("X")
+            delete_btn.setFixedSize(20, 20)
+            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold; border-radius: 3px;")
+            delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
+            note_layout.addWidget(delete_btn)
+
             # Note label - clickable with theme styling
             note_label = QPushButton(f"{note_names[row_data['note']]}{row_data['octave']}")
             palette = self.palette()
@@ -574,6 +585,7 @@ class BasicStepSequencerGrid(QWidget):
                     border: 2px solid {highlight.name()};
                     background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
                     padding: 3px;
+                    border-radius: 3px;
                 }}
                 QPushButton:hover {{
                     background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 100);
@@ -582,12 +594,6 @@ class BasicStepSequencerGrid(QWidget):
             note_label.setCursor(Qt.PointingHandCursor)
             note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
             note_layout.addWidget(note_label)
-
-            delete_btn = QPushButton("X")
-            delete_btn.setFixedSize(20, 20)
-            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold;")
-            delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
-            note_layout.addWidget(delete_btn)
 
             note_widget.setLayout(note_layout)
             self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
@@ -736,6 +742,13 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.setContentsMargins(0, 0, 0, 0)
             note_layout.setSpacing(2)
 
+            # Delete button (on the left)
+            delete_btn = QPushButton("X")
+            delete_btn.setFixedSize(20, 20)
+            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold; border-radius: 3px;")
+            delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
+            note_layout.addWidget(delete_btn)
+
             # Note label - clickable with theme styling
             note_label = QPushButton(f"{note_names[note_idx]}{octave}")
             palette = self.palette()
@@ -748,6 +761,7 @@ class BasicStepSequencerGrid(QWidget):
                     border: 2px solid {highlight.name()};
                     background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
                     padding: 3px;
+                    border-radius: 3px;
                 }}
                 QPushButton:hover {{
                     background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 100);
@@ -756,12 +770,6 @@ class BasicStepSequencerGrid(QWidget):
             note_label.setCursor(Qt.PointingHandCursor)
             note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
             note_layout.addWidget(note_label)
-
-            delete_btn = QPushButton("X")
-            delete_btn.setFixedSize(20, 20)
-            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold;")
-            delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
-            note_layout.addWidget(delete_btn)
 
             note_widget.setLayout(note_layout)
             self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
@@ -795,10 +803,10 @@ class BasicArpeggiatorGrid(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.is_arpeggiator = True  # For octave color logic
-        self.num_steps = 8  # Default number of columns
+        self.num_steps = 8  # Default number of rows
         self.default_velocity = 255  # Default velocity for new cells
-        self.cells = []  # 25 rows x num_steps columns
-        self.show_negative_intervals = False  # Hide negative intervals by default
+        self.cells = []  # num_steps rows x 23 columns (intervals)
+        self.show_negative_intervals = True  # Show negative intervals by default
 
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(2)
@@ -873,7 +881,7 @@ class BasicArpeggiatorGrid(QWidget):
         self.build_grid()
 
     def build_grid(self):
-        """Build the complete grid with 23 rows"""
+        """Build the complete grid - swapped axes: steps as rows, intervals as columns"""
         # Clear existing
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
@@ -882,74 +890,54 @@ class BasicArpeggiatorGrid(QWidget):
 
         self.cells = []
 
-        # Header row (step numbers)
-        self.grid_layout.addWidget(QLabel("Interval"), 0, 0)
-        for step in range(self.num_steps):
-            lbl = QLabel(f"{step + 1}")
-            lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("font-weight: bold;")
-            self.grid_layout.addWidget(lbl, 0, step + 1)
+        # Header row 1: "Interval" label
+        interval_title = QLabel("Interval")
+        interval_title.setAlignment(Qt.AlignCenter)
+        interval_title.setStyleSheet("font-weight: bold;")
+        self.grid_layout.addWidget(interval_title, 0, 0, 1, 24)  # Span across all columns
 
-        # Create 23 rows (intervals -11 to +11)
-        for row in range(23):
-            interval = 11 - row  # Row 0 = +11, row 11 = 0, row 22 = -11
+        # Header row 2: Interval numbers
+        self.grid_layout.addWidget(QLabel("Step"), 1, 0)  # Label for step column
+        for col in range(23):
+            interval = 11 - col  # Col 0 = +11, col 11 = 0, col 22 = -11
 
             # Interval label
             if interval == 0:
-                lbl_text = "Base Note"
+                lbl_text = "0"  # Changed from "Base Note" to "0"
             elif interval > 0:
                 lbl_text = f"+{interval}"
             else:
                 lbl_text = str(interval)
 
             lbl = QLabel(lbl_text)
-            lbl.setAlignment(Qt.AlignRight)
+            lbl.setAlignment(Qt.AlignCenter)
 
-            # Highlight the Base Note row (interval 0, which is row 11)
+            # Highlight the base interval (interval 0, which is col 11)
             if interval == 0:
-                lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold; color: white;")
+                lbl.setStyleSheet("font-weight: bold; color: white;")
             else:
-                lbl.setStyleSheet("min-width: 30px; padding-right: 5px;")
-            self.grid_layout.addWidget(lbl, row + 1, 0)
+                lbl.setStyleSheet("")
+            self.grid_layout.addWidget(lbl, 1, col + 1)
 
-            # Create cells for this row
+        # Create num_steps rows (one for each step) x 23 columns (intervals -11 to +11)
+        for row in range(self.num_steps):
+            # Step label
+            lbl = QLabel(f"{row + 1}")
+            lbl.setAlignment(Qt.AlignRight)
+            lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold;")
+            self.grid_layout.addWidget(lbl, row + 2, 0)
+
+            # Create cells for this row (all 23 intervals)
             row_cells = []
-            for step in range(self.num_steps):
-                cell = GridCell(row, step, self)
+            for col in range(23):
+                cell = GridCell(row, col, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
                 row_cells.append(cell)
-                self.grid_layout.addWidget(cell, row + 1, step + 1)
+                self.grid_layout.addWidget(cell, row + 2, col + 1)
 
             self.cells.append(row_cells)
 
-        # Add "Show negative intervals" checkbox below Base Note row (row 12, which is after row 11 + header)
-        self.chk_show_negative = QCheckBox("Show negative intervals")
-        self.chk_show_negative.setChecked(self.show_negative_intervals)
-        self.chk_show_negative.stateChanged.connect(self.on_show_negative_changed)
-        self.grid_layout.addWidget(self.chk_show_negative, 13, 0, 1, self.num_steps + 1)  # Span across all columns
-
-        # Hide negative interval rows by default (rows 12-22, intervals -1 to -11)
-        self.update_negative_interval_visibility()
-
-    def on_show_negative_changed(self, state):
-        """Handle show negative intervals checkbox change"""
-        self.show_negative_intervals = (state == Qt.Checked)
-        self.update_negative_interval_visibility()
-
-    def update_negative_interval_visibility(self):
-        """Show or hide negative interval rows based on checkbox state"""
-        # Rows 12-22 are intervals -1 to -11
-        for row in range(12, 23):
-            # Hide/show the label
-            label_item = self.grid_layout.itemAtPosition(row + 1, 0)
-            if label_item and label_item.widget():
-                label_item.widget().setVisible(self.show_negative_intervals)
-
-            # Hide/show all cells in this row
-            if row < len(self.cells):
-                for cell in self.cells[row]:
-                    cell.setVisible(self.show_negative_intervals)
 
     def on_steps_changed(self, new_steps):
         """Handle number of steps changed - preserve existing data"""
@@ -957,48 +945,41 @@ class BasicArpeggiatorGrid(QWidget):
         self.num_steps = new_steps
 
         if new_steps > old_steps:
-            # Add columns - append new cells to each row
-            for row_idx, row_cells in enumerate(self.cells):
-                for step in range(old_steps, new_steps):
-                    cell = GridCell(row_idx, step, self)
+            # Add rows - append new rows with all 23 interval cells
+            for step in range(old_steps, new_steps):
+                # Step label
+                lbl = QLabel(f"{step + 1}")
+                lbl.setAlignment(Qt.AlignRight)
+                lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold;")
+                self.grid_layout.addWidget(lbl, step + 2, 0)
+
+                # Create cells for this row (all 23 intervals)
+                row_cells = []
+                for col in range(23):
+                    cell = GridCell(step, col, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
                     row_cells.append(cell)
-                    self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
-                    # Set visibility based on negative interval setting
-                    if row_idx >= 12 and not self.show_negative_intervals:
-                        cell.setVisible(False)
+                    self.grid_layout.addWidget(cell, step + 2, col + 1)
+
+                self.cells.append(row_cells)
         elif new_steps < old_steps:
-            # Remove columns - remove cells from end of each row
-            for row_cells in self.cells:
-                for step in range(new_steps, old_steps):
-                    cell = row_cells.pop()
-                    self.grid_layout.removeWidget(cell)
-                    cell.deleteLater()
+            # Remove rows - remove from end
+            for step in range(new_steps, old_steps):
+                if step < len(self.cells):
+                    # Remove label
+                    label_item = self.grid_layout.itemAtPosition(step + 2, 0)
+                    if label_item and label_item.widget():
+                        label_item.widget().deleteLater()
 
-        # Update header row
-        # Clear header first (row 0)
-        for col in range(self.grid_layout.columnCount()):
-            item = self.grid_layout.itemAtPosition(0, col)
-            if item and item.widget():
-                item.widget().deleteLater()
+                    # Remove all cells in this row
+                    row_cells = self.cells[step]
+                    for cell in row_cells:
+                        self.grid_layout.removeWidget(cell)
+                        cell.deleteLater()
 
-        # Rebuild header
-        self.grid_layout.addWidget(QLabel("Interval"), 0, 0)
-        for step in range(self.num_steps):
-            lbl = QLabel(f"{step + 1}")
-            lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("font-weight: bold;")
-            self.grid_layout.addWidget(lbl, 0, step + 1)
-
-        # Update checkbox position to span new number of columns
-        if hasattr(self, 'chk_show_negative'):
-            self.grid_layout.removeWidget(self.chk_show_negative)
-            self.grid_layout.addWidget(self.chk_show_negative, 13, 0, 1, self.num_steps + 1)
-
-        # Update negative interval visibility after column changes
-        if hasattr(self, 'show_negative_intervals'):
-            self.update_negative_interval_visibility()
+            # Trim cells list
+            self.cells = self.cells[:new_steps]
 
         self.dataChanged.emit()
 
@@ -1007,8 +988,10 @@ class BasicArpeggiatorGrid(QWidget):
         self.default_velocity = value * 2  # Store as 0-255 internally
 
     def on_cell_left_click(self, row, col):
-        """Handle left click - toggle cell"""
-        if row >= len(self.cells):
+        """Handle left click - toggle cell
+        Note: With swapped axes, row is the step, col is the interval
+        """
+        if row >= len(self.cells) or col >= len(self.cells[row]):
             return
 
         cell = self.cells[row][col]
@@ -1023,17 +1006,19 @@ class BasicArpeggiatorGrid(QWidget):
         self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
-        """Handle right click - activate and configure (always reset to defaults)"""
-        if row >= len(self.cells):
+        """Handle right click - activate and configure
+        Note: With swapped axes, row is the step, col is the interval
+        """
+        if row >= len(self.cells) or col >= len(self.cells[row]):
             return
 
         cell = self.cells[row][col]
-        interval = 11 - row  # Calculate interval from row
+        interval = 11 - col  # Calculate interval from column (col 0 = +11, col 11 = 0, col 22 = -11)
 
-        # Determine octave constraints based on row position
-        # Row 11 (interval 0) allows both negative and positive
-        # Rows above 11 (positive intervals) only allow positive octaves
-        # Rows below 11 (negative intervals) only allow negative octaves
+        # Determine octave constraints based on interval
+        # Interval 0 allows both negative and positive
+        # Positive intervals only allow positive octaves
+        # Negative intervals only allow negative octaves
         allow_negative = (interval <= 0)
         allow_positive = (interval >= 0)
 
@@ -1052,19 +1037,20 @@ class BasicArpeggiatorGrid(QWidget):
 
     def get_grid_data(self, rate_16ths=16):
         """Get grid data as list of notes with timing
+        Note: With swapped axes, each row is a step, each column is an interval
 
         Args:
             rate_16ths: Timing in 16th notes per step (default 1 = 1/16 notes)
         """
         notes = []
 
-        for row_idx, row_cells in enumerate(self.cells):
-            interval = 11 - row_idx  # Calculate interval
+        for step_idx, row_cells in enumerate(self.cells):
+            # Calculate timing for this step
+            timing_16ths = step_idx * rate_16ths
 
-            for step, cell in enumerate(row_cells):
+            for col_idx, cell in enumerate(row_cells):
                 if cell.active:
-                    # Calculate timing based on actual rate
-                    timing_16ths = step * rate_16ths
+                    interval = 11 - col_idx  # Calculate interval from column
 
                     notes.append({
                         'timing_16ths': timing_16ths,
@@ -1079,6 +1065,7 @@ class BasicArpeggiatorGrid(QWidget):
 
     def set_grid_data(self, notes_data, num_steps=8, rate_16ths=16):
         """Set grid data from notes list
+        Note: With swapped axes, each row is a step, each column is an interval
 
         Args:
             notes_data: List of note dictionaries
@@ -1099,35 +1086,42 @@ class BasicArpeggiatorGrid(QWidget):
             # Calculate step from timing using actual rate
             step = timing_16ths // rate_16ths
 
-            # Calculate row from interval (row 0 = +11, row 11 = 0, row 22 = -11)
-            row = 11 - interval
+            # Calculate column from interval (col 0 = +11, col 11 = 0, col 22 = -11)
+            col = 11 - interval
 
-            if 0 <= row < 23 and 0 <= step < self.num_steps:
-                cell = self.cells[row][step]
+            if 0 <= step < self.num_steps and 0 <= col < 23:
+                cell = self.cells[step][col]
                 cell.set_active(True, velocity, octave)
 
     def filter_rows_by_scale(self, allowed_intervals):
-        """Darken rows that aren't in the selected scale"""
+        """Darken columns that aren't in the selected scale
+        Note: With swapped axes, intervals are columns, not rows
+        """
         # allowed_intervals is a set of semitone offsets (-11 to +11)
-        for row in range(23):
-            interval = 11 - row  # Row 0 = +11, row 11 = 0, row 22 = -11
+        for col in range(23):
+            interval = 11 - col  # Col 0 = +11, col 11 = 0, col 22 = -11
 
             # Determine if this interval is in the scale
             in_scale = interval in allowed_intervals
 
             # Darken the interval label if not in scale - grey out LOTS
-            label_item = self.grid_layout.itemAtPosition(row + 1, 0)
+            label_item = self.grid_layout.itemAtPosition(1, col + 1)
             if label_item and label_item.widget():
                 label = label_item.widget()
                 if in_scale:
-                    label.setStyleSheet("min-width: 30px; padding-right: 5px;")
+                    # Restore base styling
+                    if interval == 0:
+                        label.setStyleSheet("font-weight: bold; color: white;")
+                    else:
+                        label.setStyleSheet("")
                 else:
                     # Grey out label significantly
-                    label.setStyleSheet("min-width: 30px; padding-right: 5px; color: #333;")
+                    label.setStyleSheet("color: #333;")
 
-            # Darken all cells in this row if not in scale - keep them selectable
-            if row < len(self.cells):
-                for cell in self.cells[row]:
+            # Darken all cells in this column if not in scale - keep them selectable
+            for row in range(len(self.cells)):
+                if col < len(self.cells[row]):
+                    cell = self.cells[row][col]
                     # Store scale state in cell for use in update_style
                     cell.in_scale = in_scale
                     # Force update of cell style
@@ -1472,7 +1466,8 @@ class VelocityBar(QWidget):
         return self.velocity
 
     def paintEvent(self, event):
-        from PyQt5.QtGui import QPalette
+        from PyQt5.QtGui import QPalette, QPainterPath
+        from PyQt5.QtCore import QRectF
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -1482,17 +1477,22 @@ class VelocityBar(QWidget):
         bg_color = palette.color(QPalette.Window)
         highlight_color = palette.color(QPalette.Highlight)
 
+        # Create rounded rectangle path for background
+        bg_path = QPainterPath()
+        bg_rect = QRectF(0, 0, self.width(), self.height())
+        bg_path.addRoundedRect(bg_rect, 5, 5)
+
         # Background
-        painter.fillRect(self.rect(), bg_color.darker(120))
+        painter.fillPath(bg_path, bg_color.darker(120))
 
         # Border
         painter.setPen(QPen(palette.color(QPalette.Mid), 1))
-        painter.drawRect(0, 0, self.width() - 1, self.height() - 1)
+        painter.drawPath(bg_path)
 
         # Velocity bar with theme highlight color
         if self.velocity > 0:
-            bar_height = int((self.velocity / 255.0) * self.height())
-            bar_y = self.height() - bar_height
+            bar_height = int((self.velocity / 255.0) * (self.height() - 2))
+            bar_y = self.height() - bar_height - 1
 
             # Use theme highlight color with intensity based on velocity
             intensity = self.velocity / 255.0
@@ -1502,7 +1502,11 @@ class VelocityBar(QWidget):
                 int(highlight_color.blue() * (0.5 + 0.5 * intensity))
             )
 
-            painter.fillRect(1, bar_y, self.width() - 2, bar_height, color)
+            # Create rounded rectangle path for velocity bar
+            bar_path = QPainterPath()
+            bar_rect = QRectF(1, bar_y, self.width() - 2, bar_height)
+            bar_path.addRoundedRect(bar_rect, 4, 4)
+            painter.fillPath(bar_path, color)
 
         # Velocity text (display half the value, rounded down)
         painter.setPen(palette.color(QPalette.Text))
@@ -1757,8 +1761,11 @@ class StepWidget(QFrame):
         is_empty = len(self.note_labels) == 0
 
         if is_empty:
-            # Grey out the container
-            self.setStyleSheet("QFrame { background-color: #3a3a3a; }")
+            # Use theme-based darker background
+            palette = self.palette()
+            bg_color = palette.color(QPalette.Window)
+            darker_bg = bg_color.darker(130)
+            self.setStyleSheet(f"QFrame {{ background-color: {darker_bg.name()}; }}")
             self.empty_container.setVisible(True)
             self.filled_container.setVisible(False)
         else:
