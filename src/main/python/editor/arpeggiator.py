@@ -170,8 +170,9 @@ class GridCell(QFrame):
             opacity = 0.3 if not self.in_scale else 1.0
             self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
         else:
-            # Inactive state - use much darker theme-based color for better contrast
-            inactive_color = bg_color.darker(200)
+            # Inactive state - use white for light themes, black for dark themes
+            is_light_theme = bg_color.lightness() > 128
+            inactive_color = QColor(255, 255, 255) if is_light_theme else QColor(0, 0, 0)
             # Use opacity for scale filtering instead of darkening
             opacity = 0.3 if not self.in_scale else 1.0
             self.setStyleSheet(f"background-color: rgba({inactive_color.red()}, {inactive_color.green()}, {inactive_color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
