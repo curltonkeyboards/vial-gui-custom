@@ -80,8 +80,8 @@ class GridCell(QFrame):
             # Step sequencer - 50x50
             self.setFixedSize(50, 50)
         else:
-            # Arpeggiator - 20x20
-            self.setFixedSize(20, 20)
+            # Arpeggiator - 30x30
+            self.setFixedSize(30, 30)
         self.setFrameStyle(QFrame.Box)
         self.setLineWidth(1)
 
@@ -105,9 +105,9 @@ class GridCell(QFrame):
         s = highlight.hsvSaturation()
         v = highlight.value()
 
-        # Root octave (0) uses the theme color
+        # Root octave (0) uses the theme color directly
         if self.octave == 0:
-            return QColor(200, 200, 200)  # Neutral gray for root
+            return highlight
 
         # Apply hue shift based on octave
         # Negative octaves shift hue one direction, positive the other
@@ -122,7 +122,7 @@ class GridCell(QFrame):
         value_adjust = max(128, v - (octave_distance * 10))
 
         color = QColor.fromHsv(new_hue, saturation_boost, value_adjust)
-        return color if color.isValid() else QColor(200, 200, 200)
+        return color if color.isValid() else highlight
 
     def update_style(self):
         """Update visual appearance based on state"""
@@ -154,36 +154,27 @@ class GridCell(QFrame):
             # For arpeggiator, blend with octave color
             if hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator:
                 octave_color = self.get_octave_color()
-                # Blend octave color with intensity
-                r = int(octave_color.red() * (0.3 + 0.7 * intensity))
-                g = int(octave_color.green() * (0.3 + 0.7 * intensity))
-                b = int(octave_color.blue() * (0.3 + 0.7 * intensity))
+                # Blend octave color with intensity - increased brightness range (0.5 to 1.2)
+                r = min(255, int(octave_color.red() * (0.5 + 0.7 * intensity)))
+                g = min(255, int(octave_color.green() * (0.5 + 0.7 * intensity)))
+                b = min(255, int(octave_color.blue() * (0.5 + 0.7 * intensity)))
                 color = QColor(r, g, b)
             else:
-                # For step sequencer, use theme color with intensity
-                r = int(highlight.red() * (0.3 + 0.7 * intensity))
-                g = int(highlight.green() * (0.3 + 0.7 * intensity))
-                b = int(highlight.blue() * (0.3 + 0.7 * intensity))
+                # For step sequencer, use theme color with intensity - increased brightness range (0.5 to 1.2)
+                r = min(255, int(highlight.red() * (0.5 + 0.7 * intensity)))
+                g = min(255, int(highlight.green() * (0.5 + 0.7 * intensity)))
+                b = min(255, int(highlight.blue() * (0.5 + 0.7 * intensity)))
                 color = QColor(r, g, b)
 
-            # Darken significantly if not in scale
-            if not self.in_scale:
-                r = int(color.red() * 0.2)  # Very dark - 20% of original
-                g = int(color.green() * 0.2)
-                b = int(color.blue() * 0.2)
-                color = QColor(r, g, b)
-
-            self.setStyleSheet(f"background-color: rgb({color.red()}, {color.green()}, {color.blue()}); border: {border_width}px solid {border_color}; border-radius: 3px;")
+            # Use opacity for scale filtering instead of darkening
+            opacity = 0.3 if not self.in_scale else 1.0
+            self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
         else:
-            # Inactive state - use theme-based colors
-            if not self.in_scale:
-                # Very dark theme color for non-scale rows
-                inactive_color = bg_color.darker(150)
-                self.setStyleSheet(f"background-color: {inactive_color.name()}; border: {border_width}px solid {border_color}; border-radius: 3px;")
-            else:
-                # Slightly darker theme color for normal inactive state
-                inactive_color = bg_color.darker(120)
-                self.setStyleSheet(f"background-color: {inactive_color.name()}; border: {border_width}px solid {border_color}; border-radius: 3px;")
+            # Inactive state - use much darker theme-based color for better contrast
+            inactive_color = bg_color.darker(200)
+            # Use opacity for scale filtering instead of darkening
+            opacity = 0.3 if not self.in_scale else 1.0
+            self.setStyleSheet(f"background-color: rgba({inactive_color.red()}, {inactive_color.green()}, {inactive_color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
 
     def mousePressEvent(self, event):
         """Handle mouse clicks"""
@@ -405,7 +396,12 @@ class BasicStepSequencerGrid(QWidget):
         # Delete button (on the left)
         delete_btn = QPushButton("X")
         delete_btn.setFixedSize(20, 20)
-        delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold; border-radius: 3px;")
+        # Use theme-based warning color (red-shifted from highlight)
+        palette = self.palette()
+        highlight = palette.color(QPalette.Highlight)
+        text_color = palette.color(QPalette.HighlightedText)
+        warning_color = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
+        delete_btn.setStyleSheet(f"background-color: {warning_color.name()}; color: {text_color.name()}; font-weight: bold; border-radius: 3px;")
         delete_btn.clicked.connect(lambda: self.delete_note_row(row_idx))
         note_layout.addWidget(delete_btn)
 
@@ -569,7 +565,11 @@ class BasicStepSequencerGrid(QWidget):
             # Delete button (on the left)
             delete_btn = QPushButton("X")
             delete_btn.setFixedSize(20, 20)
-            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold; border-radius: 3px;")
+            # Use theme-based warning color (red-shifted from highlight)
+            palette_temp = self.palette()
+            text_color_temp = palette_temp.color(QPalette.HighlightedText)
+            warning_color_temp = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
+            delete_btn.setStyleSheet(f"background-color: {warning_color_temp.name()}; color: {text_color_temp.name()}; font-weight: bold; border-radius: 3px;")
             delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
             note_layout.addWidget(delete_btn)
 
@@ -745,7 +745,11 @@ class BasicStepSequencerGrid(QWidget):
             # Delete button (on the left)
             delete_btn = QPushButton("X")
             delete_btn.setFixedSize(20, 20)
-            delete_btn.setStyleSheet("background-color: #ff4444; color: white; font-weight: bold; border-radius: 3px;")
+            # Use theme-based warning color (red-shifted from highlight)
+            palette_temp = self.palette()
+            text_color_temp = palette_temp.color(QPalette.HighlightedText)
+            warning_color_temp = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
+            delete_btn.setStyleSheet(f"background-color: {warning_color_temp.name()}; color: {text_color_temp.name()}; font-weight: bold; border-radius: 3px;")
             delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
             note_layout.addWidget(delete_btn)
 
@@ -870,7 +874,10 @@ class BasicArpeggiatorGrid(QWidget):
         # Add octave color legend note
         legend_layout = QHBoxLayout()
         legend_label = QLabel("Octave colors use theme-relative hue shifts (0 = root, ±1-4 = shifted hues)")
-        legend_label.setStyleSheet("color: #aaa; font-size: 10px; font-style: italic;")
+        # Use theme-based muted text color
+        palette = self.palette()
+        muted_color = palette.color(QPalette.WindowText).lighter(150)
+        legend_label.setStyleSheet(f"color: {muted_color.name()}; font-size: 10px; font-style: italic;")
         legend_layout.addWidget(legend_label)
         legend_layout.addStretch()
         self.main_layout.addLayout(legend_layout)
@@ -899,7 +906,7 @@ class BasicArpeggiatorGrid(QWidget):
         # Header row 2: Interval numbers
         self.grid_layout.addWidget(QLabel("Step"), 1, 0)  # Label for step column
         for col in range(23):
-            interval = 11 - col  # Col 0 = +11, col 11 = 0, col 22 = -11
+            interval = col - 11  # Col 0 = -11, col 11 = 0, col 22 = +11
 
             # Interval label
             if interval == 0:
@@ -1013,7 +1020,7 @@ class BasicArpeggiatorGrid(QWidget):
             return
 
         cell = self.cells[row][col]
-        interval = 11 - col  # Calculate interval from column (col 0 = +11, col 11 = 0, col 22 = -11)
+        interval = col - 11  # Calculate interval from column (col 0 = -11, col 11 = 0, col 22 = +11)
 
         # Determine octave constraints based on interval
         # Interval 0 allows both negative and positive
@@ -1050,7 +1057,7 @@ class BasicArpeggiatorGrid(QWidget):
 
             for col_idx, cell in enumerate(row_cells):
                 if cell.active:
-                    interval = 11 - col_idx  # Calculate interval from column
+                    interval = col_idx - 11  # Calculate interval from column
 
                     notes.append({
                         'timing_16ths': timing_16ths,
@@ -1086,8 +1093,8 @@ class BasicArpeggiatorGrid(QWidget):
             # Calculate step from timing using actual rate
             step = timing_16ths // rate_16ths
 
-            # Calculate column from interval (col 0 = +11, col 11 = 0, col 22 = -11)
-            col = 11 - interval
+            # Calculate column from interval (col 0 = -11, col 11 = 0, col 22 = +11)
+            col = interval + 11
 
             if 0 <= step < self.num_steps and 0 <= col < 23:
                 cell = self.cells[step][col]
@@ -1099,7 +1106,7 @@ class BasicArpeggiatorGrid(QWidget):
         """
         # allowed_intervals is a set of semitone offsets (-11 to +11)
         for col in range(23):
-            interval = 11 - col  # Col 0 = +11, col 11 = 0, col 22 = -11
+            interval = col - 11  # Col 0 = -11, col 11 = 0, col 22 = +11
 
             # Determine if this interval is in the scale
             in_scale = interval in allowed_intervals
@@ -1108,15 +1115,18 @@ class BasicArpeggiatorGrid(QWidget):
             label_item = self.grid_layout.itemAtPosition(1, col + 1)
             if label_item and label_item.widget():
                 label = label_item.widget()
+                palette_grid = self.palette()
                 if in_scale:
                     # Restore base styling
                     if interval == 0:
-                        label.setStyleSheet("font-weight: bold; color: white;")
+                        label_color = palette_grid.color(QPalette.HighlightedText)
+                        label.setStyleSheet(f"font-weight: bold; color: {label_color.name()};")
                     else:
                         label.setStyleSheet("")
                 else:
-                    # Grey out label significantly
-                    label.setStyleSheet("color: #333;")
+                    # Grey out label significantly - use theme-based dark color
+                    dark_color = palette_grid.color(QPalette.WindowText).darker(300)
+                    label.setStyleSheet(f"color: {dark_color.name()};")
 
             # Darken all cells in this column if not in scale - keep them selectable
             for row in range(len(self.cells)):
@@ -1966,7 +1976,10 @@ class Arpeggiator(BasicEditor):
 
         # === Status ===
         self.lbl_status = QLabel("Ready. Select a preset to begin.")
-        self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
+        # Use theme-based info color
+        palette_status = self.palette()
+        info_color = palette_status.color(QPalette.Highlight)
+        self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         # === Header Section ===
         header_layout = QHBoxLayout()
 
@@ -2815,10 +2828,14 @@ class Arpeggiator(BasicEditor):
         """Update status label"""
         logger.info(message)
         self.lbl_status.setText(message)
+        # Use theme-based colors for status
+        palette_upd = self.palette()
         if error:
-            self.lbl_status.setStyleSheet("color: #ff4444; padding: 5px;")
+            error_color = QColor.fromHsv(0, 200, 200)  # Red hue
+            self.lbl_status.setStyleSheet(f"color: {error_color.name()}; padding: 5px;")
         else:
-            self.lbl_status.setStyleSheet("color: #00aaff; padding: 5px;")
+            info_color = palette_upd.color(QPalette.Highlight)
+            self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
 
     def valid(self):
         """Check if this tab should be visible"""
