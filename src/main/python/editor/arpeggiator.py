@@ -829,7 +829,7 @@ class BasicStepSequencerGrid(QWidget):
 
                 # Check if this step has a note - use actual rate
                 timing_16ths = step * rate_16ths
-                matching_note = next((n for n in notes if abs(n['timing_16ths'] - timing_16ths) < (rate_16ths // 2)), None)
+                matching_note = next((n for n in notes if abs(n['timing_16ths'] - timing_16ths) <= (rate_16ths // 2)), None)
 
                 if matching_note:
                     cell.set_active(True, matching_note.get('velocity', 127), 0)
