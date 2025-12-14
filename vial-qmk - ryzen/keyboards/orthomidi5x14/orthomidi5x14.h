@@ -293,6 +293,17 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_GATE_UP             0xEF0B  // Increase sequencer gate by 10%
 #define SEQ_GATE_DOWN           0xEF0C  // Decrease sequencer gate by 10%
 
+// NEW: Quick Build Buttons (0xEF0D-0xEF15)
+#define ARP_QUICK_BUILD         0xEF0D  // Quick build arpeggiator preset
+#define SEQ_QUICK_BUILD_1       0xEF0E  // Quick build step sequencer slot 1
+#define SEQ_QUICK_BUILD_2       0xEF0F  // Quick build step sequencer slot 2
+#define SEQ_QUICK_BUILD_3       0xEF10  // Quick build step sequencer slot 3
+#define SEQ_QUICK_BUILD_4       0xEF11  // Quick build step sequencer slot 4
+#define SEQ_QUICK_BUILD_5       0xEF12  // Quick build step sequencer slot 5
+#define SEQ_QUICK_BUILD_6       0xEF13  // Quick build step sequencer slot 6
+#define SEQ_QUICK_BUILD_7       0xEF14  // Quick build step sequencer slot 7
+#define SEQ_QUICK_BUILD_8       0xEF15  // Quick build step sequencer slot 8
+
 // =============================================================================
 // GAMING / JOYSTICK SYSTEM
 // =============================================================================
@@ -590,6 +601,19 @@ void seq_rate_down_for_slot(uint8_t slot);
 void arp_set_gate_static(uint8_t gate_percent);
 void seq_set_gate_static(uint8_t gate_percent);
 void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
+
+// NEW: Quick Build functions
+void quick_build_start_arp(void);
+void quick_build_start_seq(uint8_t slot);
+void quick_build_cancel(void);
+void quick_build_finish(void);
+void quick_build_erase(void);
+void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+void quick_build_handle_sustain_release(void);
+void quick_build_update(void);
+bool quick_build_is_active(void);
+uint8_t quick_build_get_current_step(void);
+void render_big_number(uint8_t number);
 
 // Internal helper functions
 void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);

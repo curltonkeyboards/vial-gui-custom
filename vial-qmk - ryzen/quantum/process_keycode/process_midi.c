@@ -690,6 +690,13 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     // Use raw_travel if available, otherwise use final_velocity as fallback
     uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : final_velocity;
 
+    // QUICK BUILD HOOK: Intercept notes for arpeggiator/sequencer building
+    extern bool quick_build_is_active(void);
+    extern void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+    if (quick_build_is_active()) {
+        quick_build_handle_note(channel, note, final_velocity, raw_travel);
+    }
+
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
     }
