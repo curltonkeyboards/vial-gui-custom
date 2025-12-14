@@ -50,6 +50,43 @@ seq_state_t seq_state[MAX_SEQ_SLOTS] = {
 // Step Sequencer modifier tracking
 bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, false, false, false};
 
+// =============================================================================
+// QUICK BUILD SYSTEM
+// =============================================================================
+
+// Quick Build mode type
+typedef enum {
+    QUICK_BUILD_NONE = 0,
+    QUICK_BUILD_ARP,
+    QUICK_BUILD_SEQ
+} quick_build_mode_t;
+
+// Quick Build state
+typedef struct {
+    quick_build_mode_t mode;           // Current build mode (NONE, ARP, or SEQ)
+    uint8_t seq_slot;                  // Which seq slot we're building (0-7)
+    uint8_t current_step;              // Current step (0-based internal)
+    uint8_t note_count;                // Total notes recorded so far
+    uint8_t root_note;                 // First note played (arp only, for interval calculation)
+    bool has_root;                     // Have we recorded the root yet? (arp only)
+    bool sustain_held_last_check;      // Track sustain state for release detection
+    uint32_t button_press_time;        // For 3-second hold detection
+    bool has_saved_build;              // Has user completed a build?
+} quick_build_state_t;
+
+// Quick build state (initialized to all zeros/false)
+quick_build_state_t quick_build_state = {
+    .mode = QUICK_BUILD_NONE,
+    .seq_slot = 0,
+    .current_step = 0,
+    .note_count = 0,
+    .root_note = 0,
+    .has_root = false,
+    .sustain_held_last_check = false,
+    .button_press_time = 0,
+    .has_saved_build = false
+};
+
 // Efficient RAM storage: Only active presets loaded
 arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
 seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
@@ -418,6 +455,11 @@ void arp_init(void) {
 }
 
 void arp_start(uint8_t preset_id) {
+    // QUICK BUILD HOOK: Cancel quick build if active (arp play takes priority)
+    if (quick_build_is_active()) {
+        quick_build_cancel();
+    }
+
     if (preset_id >= MAX_ARP_PRESETS) {
         dprintf("arp: invalid preset id %d (max %d)\n", preset_id, MAX_ARP_PRESETS - 1);
         return;
@@ -732,6 +774,11 @@ void arp_update(void) {
 // =============================================================================
 
 void seq_start(uint8_t preset_id) {
+    // QUICK BUILD HOOK: Cancel quick build if active (seq play takes priority)
+    if (quick_build_is_active()) {
+        quick_build_cancel();
+    }
+
     if (preset_id < 68 || preset_id >= MAX_SEQ_PRESETS) {
         dprintf("seq: invalid preset id %d (valid range 68-135)\n", preset_id);
         return;
@@ -1650,4 +1697,292 @@ void seq_reset_all_user_presets(void) {
     }
 
     dprintf("seq: all user presets reset\n");
+}
+
+// =============================================================================
+// QUICK BUILD IMPLEMENTATION
+// =============================================================================
+
+// Check if quick build is currently active
+bool quick_build_is_active(void) {
+    return (quick_build_state.mode != QUICK_BUILD_NONE);
+}
+
+// Get current step number (1-indexed for display)
+uint8_t quick_build_get_current_step(void) {
+    return quick_build_state.current_step + 1;  // Return 1-indexed
+}
+
+// Start quick build for arpeggiator
+void quick_build_start_arp(void) {
+    dprintf("quick_build: starting arp builder\n");
+
+    // Stop any playing arp
+    if (arp_state.active) {
+        arp_stop();
+    }
+
+    // Cancel seq quick build if active
+    if (quick_build_state.mode == QUICK_BUILD_SEQ) {
+        quick_build_cancel();
+    }
+
+    // Initialize state
+    quick_build_state.mode = QUICK_BUILD_ARP;
+    quick_build_state.current_step = 0;
+    quick_build_state.note_count = 0;
+    quick_build_state.has_root = false;
+    quick_build_state.has_saved_build = false;
+    quick_build_state.sustain_held_last_check = false;
+
+    // Clear and initialize arp_active_preset
+    memset(&arp_active_preset, 0, sizeof(arp_preset_t));
+    arp_active_preset.preset_type = PRESET_TYPE_ARPEGGIATOR;
+    arp_active_preset.note_count = 0;
+    arp_active_preset.pattern_length_16ths = 1;  // Start with 1 step
+    arp_active_preset.gate_length_percent = 80;
+    arp_active_preset.timing_mode = TIMING_MODE_STRAIGHT;
+    arp_active_preset.note_value = NOTE_VALUE_SIXTEENTH;
+    arp_active_preset.magic = ARP_PRESET_MAGIC;
+
+    // Mark as custom preset (not from EEPROM)
+    arp_state.loaded_preset_id = 255;
+
+    dprintf("quick_build: arp builder ready, waiting for first note\n");
+}
+
+// Start quick build for step sequencer (specific slot)
+void quick_build_start_seq(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) {
+        dprintf("quick_build: invalid slot %d\n", slot);
+        return;
+    }
+
+    dprintf("quick_build: starting seq builder for slot %d\n", slot);
+
+    // Stop all playing sequencers
+    seq_stop_all();
+
+    // Cancel arp quick build if active
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        quick_build_cancel();
+    }
+
+    // Initialize state
+    quick_build_state.mode = QUICK_BUILD_SEQ;
+    quick_build_state.seq_slot = slot;
+    quick_build_state.current_step = 0;
+    quick_build_state.note_count = 0;
+    quick_build_state.has_saved_build = false;
+    quick_build_state.sustain_held_last_check = false;
+
+    // Clear and initialize seq preset for this slot
+    memset(&seq_active_presets[slot], 0, sizeof(seq_preset_t));
+    seq_active_presets[slot].preset_type = PRESET_TYPE_STEP_SEQUENCER;
+    seq_active_presets[slot].note_count = 0;
+    seq_active_presets[slot].pattern_length_16ths = 1;  // Start with 1 step
+    seq_active_presets[slot].gate_length_percent = 80;
+    seq_active_presets[slot].timing_mode = TIMING_MODE_STRAIGHT;
+    seq_active_presets[slot].note_value = NOTE_VALUE_SIXTEENTH;
+    seq_active_presets[slot].magic = ARP_PRESET_MAGIC;
+
+    // Mark as custom preset (not from EEPROM)
+    seq_state[slot].loaded_preset_id = 255;
+
+    dprintf("quick_build: seq builder ready for slot %d, waiting for first note\n", slot);
+}
+
+// Cancel quick build and return to normal mode
+void quick_build_cancel(void) {
+    if (!quick_build_is_active()) return;
+
+    dprintf("quick_build: canceling build mode %d\n", quick_build_state.mode);
+
+    quick_build_state.mode = QUICK_BUILD_NONE;
+    quick_build_state.has_saved_build = false;
+    quick_build_state.current_step = 0;
+    quick_build_state.note_count = 0;
+    quick_build_state.has_root = false;
+
+    dprintf("quick_build: canceled\n");
+}
+
+// Finish and save the quick build
+void quick_build_finish(void) {
+    if (!quick_build_is_active()) return;
+
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        // Validate arpeggiator preset
+        if (!arp_validate_preset(&arp_active_preset)) {
+            dprintf("quick_build: arp validation failed, canceling\n");
+            quick_build_cancel();
+            return;
+        }
+
+        dprintf("quick_build: arp finished with %d notes, %d steps\n",
+                quick_build_state.note_count, quick_build_state.current_step + 1);
+        quick_build_state.has_saved_build = true;
+
+    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
+        uint8_t slot = quick_build_state.seq_slot;
+
+        // Validate sequencer preset
+        if (!seq_validate_preset(&seq_active_presets[slot])) {
+            dprintf("quick_build: seq validation failed, canceling\n");
+            quick_build_cancel();
+            return;
+        }
+
+        dprintf("quick_build: seq slot %d finished with %d notes, %d steps\n",
+                slot, quick_build_state.note_count, quick_build_state.current_step + 1);
+        quick_build_state.has_saved_build = true;
+    }
+
+    // Exit build mode but keep the build in RAM
+    quick_build_state.mode = QUICK_BUILD_NONE;
+
+    dprintf("quick_build: saved to RAM, ready to play\n");
+}
+
+// Erase the saved quick build
+void quick_build_erase(void) {
+    dprintf("quick_build: erasing saved build\n");
+
+    quick_build_state.has_saved_build = false;
+    quick_build_state.mode = QUICK_BUILD_NONE;
+    quick_build_state.current_step = 0;
+    quick_build_state.note_count = 0;
+    quick_build_state.has_root = false;
+
+    dprintf("quick_build: erased\n");
+}
+
+// Advance to next step
+static void quick_build_advance_step(void) {
+    quick_build_state.current_step++;
+
+    // Update pattern length in active preset
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        arp_active_preset.pattern_length_16ths = quick_build_state.current_step + 1;
+        dprintf("quick_build: arp advanced to step %d\n", quick_build_state.current_step + 1);
+    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
+        uint8_t slot = quick_build_state.seq_slot;
+        seq_active_presets[slot].pattern_length_16ths = quick_build_state.current_step + 1;
+        dprintf("quick_build: seq slot %d advanced to step %d\n", slot, quick_build_state.current_step + 1);
+    }
+}
+
+// Handle incoming MIDI note during quick build
+void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
+    if (!quick_build_is_active()) return;
+
+    // Use raw_travel for velocity if available (0-255), otherwise use velocity (0-127)
+    uint8_t record_velocity = (raw_travel > 0) ? (raw_travel >> 1) : velocity;  // Scale to 0-127
+
+    // Track if we need to advance step (only if sustain is NOT held)
+    extern bool get_live_sustain_state(void);
+    bool sustain_held = get_live_sustain_state();
+    bool should_advance = false;
+
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        // Check if we've hit max notes
+        if (quick_build_state.note_count >= MAX_ARP_PRESET_NOTES) {
+            dprintf("quick_build: arp max notes reached, finishing\n");
+            quick_build_finish();
+            return;
+        }
+
+        // First note = root
+        if (!quick_build_state.has_root) {
+            quick_build_state.root_note = note;
+            quick_build_state.has_root = true;
+            dprintf("quick_build: arp root note set to %d\n", note);
+        }
+
+        // Calculate interval from root
+        int16_t interval = note - quick_build_state.root_note;
+        uint8_t interval_sign = (interval < 0) ? 1 : 0;
+        uint8_t interval_mag = abs(interval) % 12;  // 0-11
+        int8_t octave_offset = interval / 12;  // Can be negative
+
+        // Pack note data
+        arp_active_preset.notes[quick_build_state.note_count].packed_timing_vel =
+            NOTE_PACK_TIMING_VEL(quick_build_state.current_step, record_velocity, interval_sign);
+        arp_active_preset.notes[quick_build_state.note_count].note_octave =
+            NOTE_PACK_NOTE_OCTAVE(interval_mag, octave_offset);
+
+        quick_build_state.note_count++;
+        arp_active_preset.note_count = quick_build_state.note_count;
+
+        dprintf("quick_build: arp recorded note %d (interval %+d) at step %d\n",
+                note, interval, quick_build_state.current_step + 1);
+
+        // Advance step if sustain not held
+        if (!sustain_held) {
+            should_advance = true;
+        }
+
+    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
+        uint8_t slot = quick_build_state.seq_slot;
+
+        // Check max notes
+        if (quick_build_state.note_count >= MAX_SEQ_PRESET_NOTES) {
+            dprintf("quick_build: seq max notes reached, finishing\n");
+            quick_build_finish();
+            return;
+        }
+
+        // For sequencer: store absolute MIDI note
+        uint8_t note_index = note % 12;  // 0-11 (C-B)
+        int8_t octave_offset = (note / 12) - 5;  // Relative to middle C octave
+
+        // Pack note data
+        seq_active_presets[slot].notes[quick_build_state.note_count].packed_timing_vel =
+            NOTE_PACK_TIMING_VEL(quick_build_state.current_step, record_velocity, 0);
+        seq_active_presets[slot].notes[quick_build_state.note_count].note_octave =
+            NOTE_PACK_NOTE_OCTAVE(note_index, octave_offset);
+
+        quick_build_state.note_count++;
+        seq_active_presets[slot].note_count = quick_build_state.note_count;
+
+        dprintf("quick_build: seq slot %d recorded note %d at step %d\n",
+                slot, note, quick_build_state.current_step + 1);
+
+        // Advance step if sustain not held
+        if (!sustain_held) {
+            should_advance = true;
+        }
+    }
+
+    // Actually advance the step if needed (after recording all notes in potential chord)
+    // This is done AFTER the note recording so if multiple notes come in quickly (chord),
+    // they all get recorded to the same step before advancing
+    if (should_advance) {
+        quick_build_advance_step();
+    }
+}
+
+// Called when sustain pedal is released
+void quick_build_handle_sustain_release(void) {
+    if (!quick_build_is_active()) return;
+
+    // Advance to next step when sustain is released
+    quick_build_advance_step();
+}
+
+// Update function - call this from matrix_scan or similar periodic location
+void quick_build_update(void) {
+    if (!quick_build_is_active()) return;
+
+    // Check for sustain state changes (need external function)
+    extern bool get_live_sustain_state(void);
+    bool sustain_now = get_live_sustain_state();
+
+    // Detect sustain release (was held, now released)
+    if (quick_build_state.sustain_held_last_check && !sustain_now) {
+        // Sustain was released - advance to next step
+        quick_build_handle_sustain_release();
+    }
+
+    quick_build_state.sustain_held_last_check = sustain_now;
 }

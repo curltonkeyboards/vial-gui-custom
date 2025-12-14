@@ -11347,6 +11347,70 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // =============================================================================
+    // QUICK BUILD BUTTONS (0xEF0D-0xEF15)
+    // =============================================================================
+
+    // ARPEGGIATOR QUICK BUILD
+    if (keycode == ARP_QUICK_BUILD) {
+        if (record->event.pressed) {
+            // Record press time for 3-second hold detection
+            quick_build_state.button_press_time = timer_read32();
+
+            if (quick_build_state.has_saved_build && quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Has saved build and not currently building: toggle play
+                arp_toggle();
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP) {
+                // Currently building arp: finish and save
+                quick_build_finish();
+            } else {
+                // Start new arp quick build
+                quick_build_start_arp();
+            }
+        } else {
+            // Button released: check for 3-second hold
+            if (timer_elapsed32(quick_build_state.button_press_time) > 3000) {
+                // Held for 3+ seconds: erase saved build
+                quick_build_erase();
+            }
+        }
+        set_keylog(keycode, record);
+        return false;
+    }
+
+    // STEP SEQUENCER QUICK BUILD (8 buttons for 8 slots)
+    if (keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) {
+        uint8_t slot = keycode - SEQ_QUICK_BUILD_1;  // 0-7
+
+        if (record->event.pressed) {
+            // Record press time for 3-second hold detection
+            quick_build_state.button_press_time = timer_read32();
+
+            if (quick_build_state.has_saved_build &&
+                quick_build_state.mode == QUICK_BUILD_NONE &&
+                quick_build_state.seq_slot == slot) {
+                // Has saved build for this slot and not currently building: toggle play
+                seq_start(seq_state[slot].current_preset_id);
+            } else if (quick_build_state.mode == QUICK_BUILD_SEQ &&
+                       quick_build_state.seq_slot == slot) {
+                // Currently building this seq slot: finish and save
+                quick_build_finish();
+            } else {
+                // Start new seq quick build for this slot
+                quick_build_start_seq(slot);
+            }
+        } else {
+            // Button released: check for 3-second hold
+            if (quick_build_state.seq_slot == slot &&
+                timer_elapsed32(quick_build_state.button_press_time) > 3000) {
+                // Held for 3+ seconds: erase saved build for this slot
+                quick_build_erase();
+            }
+        }
+        set_keylog(keycode, record);
+        return false;
+    }
+
     // STEP SEQUENCER RATE OVERRIDES (0xCD90-0xCD9B)
     if (keycode >= SEQ_RATE_QUARTER && keycode <= SEQ_RATE_SIXTEENTH_TRIP) {
         if (record->event.pressed) {
@@ -13610,7 +13674,60 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 #include "usb_main.h"  // For USB_DRIVER access
 
+// Render a big number on the OLED display for quick build step indication
+void render_big_number(uint8_t number) {
+    char buf[64];
+
+    // Clear the display area
+    oled_clear();
+
+    // Line 1: Title
+    oled_set_cursor(0, 0);
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        oled_write_P(PSTR("  ARP QUICK BUILD  "), false);
+    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
+        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD ", quick_build_state.seq_slot + 1);
+        oled_write(buf, false);
+    }
+
+    // Line 2: Separator
+    oled_set_cursor(0, 1);
+    oled_write_P(PSTR("---------------------"), false);
+
+    // Lines 3-5: Big number (centered)
+    oled_set_cursor(0, 3);
+
+    if (number < 10) {
+        snprintf(buf, sizeof(buf), "      STEP %d      ", number);
+    } else if (number < 100) {
+        snprintf(buf, sizeof(buf), "     STEP %d      ", number);
+    } else {
+        snprintf(buf, sizeof(buf), "     STEP %d     ", number);
+    }
+    oled_write(buf, false);
+
+    // Line 6: Note count
+    oled_set_cursor(0, 5);
+    snprintf(buf, sizeof(buf), "    %d NOTES TOTAL   ", quick_build_state.note_count);
+    oled_write(buf, false);
+
+    // Line 7: Instruction
+    oled_set_cursor(0, 7);
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        oled_write_P(PSTR(" Press to finish     "), false);
+    } else {
+        oled_write_P(PSTR(" Press to finish     "), false);
+    }
+}
+
 bool oled_task_user(void) {
+    // Check if quick build is active - if so, show big number display
+    if (quick_build_is_active()) {
+        render_big_number(quick_build_get_current_step());
+        return false;
+    }
+
+    // Normal display mode
     // Buffer to store the formatted string
     char str[22] = "";
     char name[124] = "";  // Define `name` buffer to be used later
@@ -13658,6 +13775,9 @@ void matrix_scan_user(void) {
     // Update arpeggiator and sequencer timing and gate-offs
     arp_update();
     seq_update();
+
+    // Update quick build sustain monitoring
+    quick_build_update();
 
 #ifdef JOYSTICK_ENABLE
     // Update joystick/gaming controller state
