@@ -602,6 +602,27 @@ void arp_set_gate_static(uint8_t gate_percent);
 void seq_set_gate_static(uint8_t gate_percent);
 void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 
+// NEW: Quick Build System Types
+typedef enum {
+    QUICK_BUILD_NONE = 0,
+    QUICK_BUILD_ARP,
+    QUICK_BUILD_SEQ
+} quick_build_mode_t;
+
+typedef struct {
+    quick_build_mode_t mode;           // Current build mode (NONE, ARP, or SEQ)
+    uint8_t seq_slot;                  // Which seq slot we're building (0-7)
+    uint8_t current_step;              // Current step (0-based internal)
+    uint8_t note_count;                // Total notes recorded so far
+    uint8_t root_note;                 // First note played (arp only, for interval calculation)
+    bool has_root;                     // Have we recorded the root yet? (arp only)
+    bool sustain_held_last_check;      // Track sustain state for release detection
+    uint32_t button_press_time;        // For 3-second hold detection
+    bool has_saved_build;              // Has user completed a build?
+} quick_build_state_t;
+
+extern quick_build_state_t quick_build_state;
+
 // NEW: Quick Build functions
 void quick_build_start_arp(void);
 void quick_build_start_seq(uint8_t slot);

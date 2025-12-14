@@ -54,26 +54,6 @@ bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, fals
 // QUICK BUILD SYSTEM
 // =============================================================================
 
-// Quick Build mode type
-typedef enum {
-    QUICK_BUILD_NONE = 0,
-    QUICK_BUILD_ARP,
-    QUICK_BUILD_SEQ
-} quick_build_mode_t;
-
-// Quick Build state
-typedef struct {
-    quick_build_mode_t mode;           // Current build mode (NONE, ARP, or SEQ)
-    uint8_t seq_slot;                  // Which seq slot we're building (0-7)
-    uint8_t current_step;              // Current step (0-based internal)
-    uint8_t note_count;                // Total notes recorded so far
-    uint8_t root_note;                 // First note played (arp only, for interval calculation)
-    bool has_root;                     // Have we recorded the root yet? (arp only)
-    bool sustain_held_last_check;      // Track sustain state for release detection
-    uint32_t button_press_time;        // For 3-second hold detection
-    bool has_saved_build;              // Has user completed a build?
-} quick_build_state_t;
-
 // Quick build state (initialized to all zeros/false)
 quick_build_state_t quick_build_state = {
     .mode = QUICK_BUILD_NONE,
