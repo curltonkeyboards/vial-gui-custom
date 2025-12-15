@@ -229,34 +229,165 @@ class LoopManager(BasicEditor):
         }
 
     def parse_midi_events(self, data):
-        """Parse MIDI events from loop data - each event is 16 bytes"""
-        events = []
-        event_size = 16
+        """Parse MIDI events from loop data - adaptive event size detection (8, 12, or 16 bytes)"""
+        logger.info(f"Parsing {len(data)} bytes of event data")
 
-        for i in range(0, len(data), event_size):
-            if i + event_size > len(data):
-                break
+        # Try each possible event size and score the results
+        candidate_sizes = [8, 12, 16]
+        best_result = None
+        best_score = -1
 
-            event_data = data[i:i + event_size]
+        for event_size in candidate_sizes:
+            candidate_events = []
+            valid_events = 0
+            invalid_events = 0
+            last_timestamp = 0
+            timestamp_increases = 0
+            timestamp_decreases = 0
 
-            event_type = event_data[0]
-            channel = event_data[1]
-            note = event_data[2]
-            velocity = event_data[3]
+            logger.info(f"Trying event_size={event_size}")
 
-            # Timestamp is 32-bit little-endian
-            timestamp = (event_data[4]) | (event_data[5] << 8) | \
-                       (event_data[6] << 16) | (event_data[7] << 24)
+            offset = 0
+            while offset + event_size <= len(data):
+                event_type = data[offset]
+                channel = data[offset + 1]
+                note = data[offset + 2]
+                velocity = data[offset + 3]
 
-            events.append({
-                'type': event_type,
-                'channel': channel,
-                'note': note,
-                'velocity': velocity,
-                'timestamp': timestamp
-            })
+                # Read timestamp (4 bytes, little-endian) - handle as signed 32-bit
+                timestamp = (data[offset + 4]) | (data[offset + 5] << 8) | \
+                           (data[offset + 6] << 16) | (data[offset + 7] << 24)
 
-        return events
+                # Convert to signed 32-bit integer
+                if timestamp > 0x7FFFFFFF:
+                    timestamp = timestamp - 0x100000000
+
+                # Handle negative timestamps (preroll) - clamp to 1ms
+                if timestamp < 0:
+                    logger.info(f"PREROLL: Found negative timestamp {timestamp}ms, clamping to 1ms")
+                    timestamp = 1
+
+                # Skip completely empty events (all zeros)
+                if event_type == 0 and channel == 0 and note == 0 and velocity == 0 and timestamp == 0:
+                    offset += event_size
+                    continue
+
+                # Check if this looks like a valid MIDI event
+                is_valid_type = (event_type >= 0 and event_type <= 2)  # NOTE_OFF, NOTE_ON, CC
+                is_valid_channel = (channel >= 0 and channel <= 15)
+                is_valid_note = (note >= 0 and note <= 127)
+                is_valid_velocity = (velocity >= 0 and velocity <= 127)
+                is_reasonable_timestamp = (timestamp >= 0 and timestamp < 600000)  # Less than 10 minutes
+
+                if is_valid_type and is_valid_channel and is_valid_note and is_valid_velocity and is_reasonable_timestamp:
+                    candidate_events.append({
+                        'type': event_type,
+                        'channel': channel,
+                        'note': note,
+                        'velocity': velocity,
+                        'timestamp': timestamp
+                    })
+                    valid_events += 1
+
+                    # Track timestamp ordering (should generally increase)
+                    if timestamp >= last_timestamp:
+                        timestamp_increases += 1
+                    else:
+                        timestamp_decreases += 1
+                    last_timestamp = timestamp
+                else:
+                    invalid_events += 1
+
+                offset += event_size
+
+            # Score this attempt
+            note_ons = sum(1 for e in candidate_events if e['type'] == 1)
+            note_offs = sum(1 for e in candidate_events if e['type'] == 0)
+            has_balanced_events = min(note_ons, note_offs) > 0
+
+            score = (valid_events * 100
+                    - invalid_events * 50
+                    + timestamp_increases * 10
+                    - timestamp_decreases * 20
+                    + (500 if has_balanced_events else 0))
+
+            logger.info(f"event_size={event_size}, valid={valid_events}, invalid={invalid_events}, "
+                       f"note_ons={note_ons}, note_offs={note_offs}, score={score}")
+
+            if score > best_score:
+                best_score = score
+                best_result = {
+                    'event_size': event_size,
+                    'events': candidate_events,
+                    'note_ons': note_ons,
+                    'note_offs': note_offs
+                }
+
+        if best_result:
+            logger.info(f"Selected event_size={best_result['event_size']} with {len(best_result['events'])} events "
+                       f"({best_result['note_ons']} note-ons, {best_result['note_offs']} note-offs)")
+
+            # Sort events by timestamp
+            best_result['events'].sort(key=lambda e: e['timestamp'])
+
+            if len(best_result['events']) > 0:
+                logger.info(f"Timestamp range: {best_result['events'][0]['timestamp']}ms to "
+                           f"{best_result['events'][-1]['timestamp']}ms")
+
+                # Log first few events for debugging
+                for i in range(min(5, len(best_result['events']))):
+                    e = best_result['events'][i]
+                    type_str = 'NOTE_ON' if e['type'] == 1 else 'NOTE_OFF' if e['type'] == 0 else 'CC'
+                    logger.info(f"Event {i+1}: {type_str} ch={e['channel']} note={e['note']} "
+                               f"vel={e['velocity']} time={e['timestamp']}ms")
+
+            return best_result['events']
+
+        logger.info("No valid events found with any event size")
+        return []
+
+    def find_shortest_track_length(self, tracks, bpm, tpqn):
+        """Find the shortest track length for sync reference"""
+        if len(tracks) <= 1:
+            logger.info(f"Only {len(tracks)} track(s), skipping synchronization")
+            return None
+
+        track_lengths = [track.get('loopLength', 0) for track in tracks]
+        shortest_ms = min([length for length in track_lengths if length > 0], default=0)
+
+        if shortest_ms == 0:
+            return None
+
+        shortest_ticks = self.ms_to_ticks(shortest_ms, bpm, tpqn)
+        logger.info(f"SYNC: Shortest track reference: {shortest_ms}ms ({shortest_ticks} ticks)")
+
+        return {'ms': shortest_ms, 'ticks': shortest_ticks}
+
+    def find_sync_target(self, track_ms, shortest_ms, threshold_ms):
+        """Find the closest multiple of the shortest track that's within threshold"""
+        # Calculate which multiple we're closest to
+        exact_multiple = track_ms / shortest_ms
+        lower_multiple = int(exact_multiple)
+        upper_multiple = int(exact_multiple) + 1
+
+        # Check both possibilities
+        lower_target = lower_multiple * shortest_ms
+        upper_target = upper_multiple * shortest_ms
+
+        lower_diff = abs(track_ms - lower_target)
+        upper_diff = abs(track_ms - upper_target)
+
+        # Choose the closest one that's within threshold
+        if lower_diff <= threshold_ms and upper_diff <= threshold_ms:
+            # Both are within threshold, choose the closest
+            return lower_target if lower_diff <= upper_diff else upper_target
+        elif lower_diff <= threshold_ms:
+            return lower_target
+        elif upper_diff <= threshold_ms:
+            return upper_target
+        else:
+            # Neither is within threshold, don't adjust
+            return track_ms
 
     def convert_loop_to_midi(self, loops_data, bpm):
         """Convert loop data to MIDI file bytes - matches webapp createMIDIFile()"""
@@ -313,15 +444,18 @@ class LoopManager(BasicEditor):
 
         logger.info(f"Creating MIDI with {len(tracks)} tracks")
 
+        # Find shortest track for sync reference
+        shortest_track_ref = self.find_shortest_track_length(tracks, bpm, MIDI_TPQN)
+
         # Create MIDI file
         midi_data = bytearray()
 
         # MIDI Header
         midi_data.extend(self.create_midi_header(len(tracks), MIDI_TPQN))
 
-        # Create each track
+        # Create each track with sync info
         for track in tracks:
-            track_data = self.create_midi_track(track, bpm, MIDI_TPQN)
+            track_data = self.create_midi_track(track, bpm, MIDI_TPQN, shortest_track_ref)
             midi_data.extend(track_data)
 
         return bytes(midi_data)
@@ -347,8 +481,8 @@ class LoopManager(BasicEditor):
 
         return header
 
-    def create_midi_track(self, track, bpm, tpqn):
-        """Create a MIDI track from events"""
+    def create_midi_track(self, track, bpm, tpqn, shortest_track_ref=None):
+        """Create a MIDI track from events with loopLength silence and sync adjustment"""
         track_events = bytearray()
 
         # Track name event
@@ -416,8 +550,54 @@ class LoopManager(BasicEditor):
                 if idx < 3:
                     logger.info(f"Event {idx}: CC ch={channel} cc={note} val={velocity} @{time_ms}ms ({time_ticks} ticks)")
 
-        # End of track
-        track_events.extend(self.create_variable_length(0))
+        # Calculate end-of-track delta (silence to reach loopLength)
+        end_track_delta = 0
+        loop_length = track.get('loopLength', 0)
+
+        if loop_length and loop_length > 0 and loop_length < 600000:
+            loop_length_ticks = self.ms_to_ticks(loop_length, bpm, tpqn)
+            if loop_length_ticks > last_time_ticks:
+                end_track_delta = loop_length_ticks - last_time_ticks
+                logger.info(f"TRACK: Will add {end_track_delta} ticks of silence before end of track ({loop_length}ms)")
+            else:
+                logger.info(f"TRACK: No silence needed - events already fill loop length")
+        else:
+            logger.info(f"TRACK: No valid loopLength specified ({loop_length}ms)")
+
+        # Apply sync adjustment if we have a reference and this isn't the shortest track
+        if shortest_track_ref and loop_length != shortest_track_ref['ms']:
+            current_final_length_ticks = last_time_ticks + end_track_delta
+            current_final_length_ms = self.ticks_to_ms(current_final_length_ticks, bpm, tpqn)
+
+            # Calculate sync target
+            sync_target = self.find_sync_target(current_final_length_ms, shortest_track_ref['ms'],
+                                               shortest_track_ref['ms'] * 0.1)
+
+            if sync_target != current_final_length_ms:
+                sync_target_ticks = self.ms_to_ticks(sync_target, bpm, tpqn)
+                adjustment = sync_target_ticks - current_final_length_ticks
+                adjustment_ms = sync_target - current_final_length_ms
+
+                # Apply the adjustment to end_track_delta
+                original_delta = end_track_delta
+                end_track_delta += adjustment
+
+                # Ensure we don't go negative
+                if end_track_delta < 0:
+                    logger.info(f"SYNC: Track '{track['name']}': Sync adjustment would create negative delta "
+                               f"({end_track_delta}), clamping to 0")
+                    end_track_delta = 0
+
+                action = 'Adding' if adjustment > 0 else 'Removing'
+                logger.info(f"SYNC: Track '{track['name']}': {current_final_length_ms}ms → {sync_target}ms "
+                           f"({action} {abs(adjustment_ms)}ms)")
+                logger.info(f"SYNC: Track '{track['name']}': {action} {abs(adjustment)} ticks for synchronization")
+                logger.info(f"SYNC: Track '{track['name']}': Final delta: {original_delta} → {end_track_delta} ticks")
+            else:
+                logger.info(f"SYNC: Track '{track['name']}': {current_final_length_ms}ms (no adjustment needed)")
+
+        # End of track (with silence incorporated into the delta time)
+        track_events.extend(self.create_variable_length(end_track_delta))
         track_events.extend(bytes([0xFF, 0x2F, 0x00]))
 
         # Create track chunk
