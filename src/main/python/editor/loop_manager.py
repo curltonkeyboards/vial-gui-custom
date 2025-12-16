@@ -941,12 +941,12 @@ class LoopManager(BasicEditor):
         buffer.append((loop_gap >> 8) & 0xFF)
         buffer.append(loop_gap & 0xFF)
 
-        # BPM data (5 bytes: flag + reserved + 3-byte BPM value)
+        # BPM data (5 bytes: flag + 4-byte BPM value)
         buffer.append(0x01)  # BPM flag
-        buffer.append(0x00)  # Reserved
 
-        # BPM as 3-byte value (scaled by 100000)
+        # BPM as 4-byte value (scaled by 100000) to match firmware format
         bpm_value = int(bpm * 100000)
+        buffer.append((bpm_value >> 24) & 0xFF)
         buffer.append((bpm_value >> 16) & 0xFF)
         buffer.append((bpm_value >> 8) & 0xFF)
         buffer.append(bpm_value & 0xFF)
