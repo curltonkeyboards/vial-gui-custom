@@ -121,11 +121,11 @@ class LoopManager(BasicEditor):
             logger.info("Flag indicates no BPM set, using default 120 BPM")
             return 120.0
 
-        # Extract 3-byte BPM value (bytes 2, 3, 4 of the last 5 bytes)
-        bpm_bytes = last_five[2:5]
+        # Extract 4-byte BPM value (bytes 1, 2, 3, 4 of the last 5 bytes) to match firmware format
+        bpm_bytes = last_five[1:5]
         logger.info(f"BPM bytes: {' '.join(f'{b:02x}' for b in bpm_bytes)}")
 
-        bpm_value = (bpm_bytes[0] << 16) | (bpm_bytes[1] << 8) | bpm_bytes[2]
+        bpm_value = (bpm_bytes[0] << 24) | (bpm_bytes[1] << 16) | (bpm_bytes[2] << 8) | bpm_bytes[3]
         logger.info(f"Raw BPM value: {bpm_value}")
 
         bpm = bpm_value / 100000.0
