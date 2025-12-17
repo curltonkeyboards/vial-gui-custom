@@ -324,7 +324,7 @@ class LoopManager(BasicEditor):
                 }
 
         if best_result:
-            logger.info(f"Selected event_size={best_result['event_size']} with {len(best_result['events'])} events "
+            logger.info(f"✅ Selected event_size={best_result['event_size']} with {len(best_result['events'])} events "
                        f"({best_result['note_ons']} note-ons, {best_result['note_offs']} note-offs)")
 
             # Sort events by timestamp
@@ -334,16 +334,16 @@ class LoopManager(BasicEditor):
                 logger.info(f"Timestamp range: {best_result['events'][0]['timestamp']}ms to "
                            f"{best_result['events'][-1]['timestamp']}ms")
 
-                # Log first few events for debugging
-                for i in range(min(5, len(best_result['events']))):
-                    e = best_result['events'][i]
+                # Log ALL events for debugging
+                logger.info(f"📋 ALL PARSED EVENTS ({len(best_result['events'])} total):")
+                for i, e in enumerate(best_result['events']):
                     type_str = 'NOTE_ON' if e['type'] == 1 else 'NOTE_OFF' if e['type'] == 0 else 'CC'
-                    logger.info(f"Event {i+1}: {type_str} ch={e['channel']} note={e['note']} "
-                               f"vel={e['velocity']} time={e['timestamp']}ms")
+                    logger.info(f"  [{i+1}] {type_str} ch={e['channel']} note={e['note']} "
+                               f"vel={e['velocity']} @{e['timestamp']}ms")
 
             return best_result['events']
 
-        logger.info("No valid events found with any event size")
+        logger.info("❌ No valid events found with any event size")
         return []
 
     def find_shortest_track_length(self, tracks, bpm, tpqn):
@@ -509,11 +509,13 @@ class LoopManager(BasicEditor):
         # Filter out invalid event types (only 0, 1, 2 are valid)
         valid_events = [e for e in sorted_events if e['type'] in [0, 1, 2]]
         if len(valid_events) < len(sorted_events):
-            logger.info(f"Filtered out {len(sorted_events) - len(valid_events)} invalid events (types not in [0,1,2])")
+            logger.info(f"⚠️ Filtered out {len(sorted_events) - len(valid_events)} invalid events (types not in [0,1,2])")
             # Log the invalid events for debugging
             invalid_events = [e for e in sorted_events if e['type'] not in [0, 1, 2]]
-            for inv_evt in invalid_events[:3]:  # Log first 3 invalid events
-                logger.info(f"  Invalid event: type={inv_evt['type']} ch={inv_evt['channel']} note={inv_evt['note']} vel={inv_evt['velocity']} @{inv_evt['timestamp']}ms")
+            for inv_evt in invalid_events:  # Log ALL invalid events
+                logger.info(f"  ❌ Invalid event: type={inv_evt['type']} ch={inv_evt['channel']} note={inv_evt['note']} vel={inv_evt['velocity']} @{inv_evt['timestamp']}ms")
+
+        logger.info(f"🎵 Writing {len(valid_events)} events to MIDI track")
 
         # Convert events to MIDI
         last_time_ticks = 0
