@@ -799,17 +799,29 @@ class LoopManager(BasicEditor):
         return {'events': events, 'tempo': tempo, 'trackName': track_name, 'maxTicks': max_ticks}
 
     def convert_midi_to_loop_format(self, events, bpm, tpqn=480):
-        """Convert MIDI events to loop format - matches webapp convertMIDIToLoopFormat()"""
+        """Convert MIDI events to loop format - matches webapp convertMIDIToLoopFormat()
+
+        Returns tuple: (loop_events, first_event_ticks) where first_event_ticks is the
+        tick offset that was subtracted for normalization
+        """
         logger.info(f"Converting {len(events)} MIDI events to loop format at {bpm} BPM")
+
+        if not events:
+            return [], 0
+
+        # Find the first event's tick value for normalization
+        first_event_ticks = min(event['ticks'] for event in events)
 
         loop_events = []
         for event in events:
+            # Normalize ticks by subtracting first event's tick offset
+            normalized_ticks = event['ticks'] - first_event_ticks
             loop_events.append({
                 'type': event['type'],
                 'channel': event['channel'],
                 'note': event['note'],
                 'velocity': event['velocity'],
-                'timestamp': self.ticks_to_ms(event['ticks'], bpm, tpqn)
+                'timestamp': self.ticks_to_ms(normalized_ticks, bpm, tpqn)
             })
 
         # Sort by timestamp
@@ -817,9 +829,9 @@ class LoopManager(BasicEditor):
 
         logger.info(f"Converted to {len(loop_events)} loop events")
         if loop_events:
-            logger.info(f"Event range: {loop_events[0]['timestamp']}ms to {loop_events[-1]['timestamp']}ms")
+            logger.info(f"Normalized by {first_event_ticks} ticks, event range: {loop_events[0]['timestamp']}ms to {loop_events[-1]['timestamp']}ms")
 
-        return loop_events
+        return loop_events, first_event_ticks
 
     def calculate_loop_timing(self, events, bpm, track_length_ticks=None, skip_quantization=False):
         """Calculate loop timing from events - matches webapp calculateLoopTiming()"""
@@ -1804,9 +1816,11 @@ class LoopManager(BasicEditor):
                 duration_ms = 0
                 if parsed_track['events']:
                     # Convert MIDI track to loop format to calculate timing
-                    loop_events = self.convert_midi_to_loop_format(parsed_track['events'], found_bpm, tpqn)
+                    loop_events, first_event_ticks = self.convert_midi_to_loop_format(parsed_track['events'], found_bpm, tpqn)
                     if loop_events:
-                        timing = self.calculate_loop_timing(loop_events, found_bpm, parsed_track['maxTicks'], False)
+                        # Adjust maxTicks to account for timestamp normalization
+                        adjusted_max_ticks = parsed_track['maxTicks'] - first_event_ticks if parsed_track['maxTicks'] else None
+                        timing = self.calculate_loop_timing(loop_events, found_bpm, adjusted_max_ticks, False)
                         duration_ms = timing['loopLength']
 
                 tracks.append({
@@ -2175,11 +2189,13 @@ class LoopManager(BasicEditor):
 
                     # Convert MIDI track to loop format
                     logger.info(f"Converting track {idx + 1} to loop format: {len(track['events'])} events")
-                    loop_events = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
+                    loop_events, first_event_ticks = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
 
                     if loop_events:
-                        # Calculate timing
-                        timing = self.calculate_loop_timing(loop_events, bpm, track.get('maxTicks'), False)
+                        # Calculate timing with adjusted maxTicks
+                        max_ticks = track.get('maxTicks')
+                        adjusted_max_ticks = max_ticks - first_event_ticks if max_ticks else None
+                        timing = self.calculate_loop_timing(loop_events, bpm, adjusted_max_ticks, False)
 
                         # Create loop data
                         loop_data = self.create_loop_data_from_events(loop_events, loop_num, bpm, timing, False)
@@ -2249,11 +2265,13 @@ class LoopManager(BasicEditor):
 
                     # Convert MIDI track to loop format
                     logger.info(f"Converting MIDI track to loop format: {len(track['events'])} events at {bpm} BPM")
-                    loop_events = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
+                    loop_events, first_event_ticks = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
 
                     if loop_events:
-                        # Calculate timing
-                        timing = self.calculate_loop_timing(loop_events, bpm, track.get('maxTicks'), False)
+                        # Calculate timing with adjusted maxTicks
+                        max_ticks = track.get('maxTicks')
+                        adjusted_max_ticks = max_ticks - first_event_ticks if max_ticks else None
+                        timing = self.calculate_loop_timing(loop_events, bpm, adjusted_max_ticks, False)
 
                         # Create loop data
                         loop_data = self.create_loop_data_from_events(loop_events, loop_num, bpm, timing, False)
@@ -2294,11 +2312,13 @@ class LoopManager(BasicEditor):
 
                     # Convert MIDI track to loop format
                     logger.info(f"Converting MIDI track to loop format: {len(track['events'])} events at {bpm} BPM")
-                    loop_events = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
+                    loop_events, first_event_ticks = self.convert_midi_to_loop_format(track['events'], bpm, tpqn)
 
                     if loop_events:
-                        # Calculate timing
-                        timing = self.calculate_loop_timing(loop_events, bpm, track.get('maxTicks'), False)
+                        # Calculate timing with adjusted maxTicks
+                        max_ticks = track.get('maxTicks')
+                        adjusted_max_ticks = max_ticks - first_event_ticks if max_ticks else None
+                        timing = self.calculate_loop_timing(loop_events, bpm, adjusted_max_ticks, False)
 
                         # Create loop data
                         loop_data = self.create_loop_data_from_events(loop_events, loop_num, bpm, timing, True)
