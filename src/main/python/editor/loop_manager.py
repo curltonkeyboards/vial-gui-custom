@@ -880,10 +880,11 @@ class LoopManager(BasicEditor):
         # Header: AA 55 01 <loop_num>
         buffer.extend([0xAA, 0x55, 0x01, loop_num])
 
-        # Convert events to binary format (16 bytes per event to match device structure)
+        # Convert events to binary format (8 bytes per event to match device midi_event_t structure)
         event_data = bytearray()
         for event in events:
-            # Each event: type(1) + channel(1) + note(1) + velocity(1) + timestamp(4 LE) + padding(8)
+            # Each event: type(1) + channel(1) + note(1) + velocity(1) + timestamp(4 LE) = 8 bytes total
+            # Matches firmware typedef struct { uint8_t type; uint8_t channel; uint8_t note; uint8_t raw_travel; uint32_t timestamp; }
             event_data.append(event['type'])
             event_data.append(event['channel'])
             event_data.append(event['note'])
@@ -896,8 +897,7 @@ class LoopManager(BasicEditor):
             event_data.append((timestamp >> 16) & 0xFF)
             event_data.append((timestamp >> 24) & 0xFF)
 
-            # Padding (8 bytes)
-            event_data.extend([0] * 8)
+            # No padding - firmware expects 8-byte events
 
         # Main macro size (2 bytes, big-endian)
         if not is_overdub:
