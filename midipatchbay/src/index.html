@@ -3413,11 +3413,11 @@
                 return 120; // Default BPM if this loop didn't set BPM
             }
             
-            // Extract 3-byte BPM value (bytes 2, 3, 4 of the last 5 bytes)
-            const bpmBytes = lastFiveBytes.slice(2, 5);
+            // Extract 4-byte BPM value (bytes 1, 2, 3, 4 of the last 5 bytes)
+            const bpmBytes = lastFiveBytes.slice(1, 5);
             debugLog(`⚡ QUICK BPM: bmp bytes: [${Array.from(bpmBytes).map(b => b.toString(16).padStart(2, '0')).join(' ')}]`);
-            
-            const bpmValue = (bpmBytes[0] << 16) | (bpmBytes[1] << 8) | bpmBytes[2];
+
+            const bpmValue = (bpmBytes[0] << 24) | (bpmBytes[1] << 16) | (bpmBytes[2] << 8) | bpmBytes[3];
             debugLog(`⚡ QUICK BPM: raw bmp value: ${bpmValue}`);
             
             const bpm = bpmValue / 100000;
@@ -3449,11 +3449,11 @@
                 return 120; // Default BPM if this loop didn't set BPM
             }
             
-            // Extract 3-byte BPM value (bytes 2, 3, 4 of the last 5 bytes)
-            const bpmBytes = lastFiveBytes.slice(2, 5);
+            // Extract 4-byte BPM value (bytes 1, 2, 3, 4 of the last 5 bytes)
+            const bpmBytes = lastFiveBytes.slice(1, 5);
             debugLog(`🔍 DEBUG BPM: bmp bytes: [${Array.from(bpmBytes).map(b => b.toString(16).padStart(2, '0')).join(' ')}]`);
-            
-            const bpmValue = (bpmBytes[0] << 16) | (bpmBytes[1] << 8) | bpmBytes[2];
+
+            const bpmValue = (bpmBytes[0] << 24) | (bpmBytes[1] << 16) | (bpmBytes[2] << 8) | bpmBytes[3];
             debugLog(`🔍 DEBUG BPM: raw bmp value: ${bpmValue}`);
             
             const bpm = bpmValue / 100000;
