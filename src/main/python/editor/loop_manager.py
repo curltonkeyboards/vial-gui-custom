@@ -701,9 +701,9 @@ class LoopManager(BasicEditor):
                     except:
                         track_name = None
                 elif meta_type == 0x51 and meta_length == 3:
-                    # Tempo
+                    # Tempo - keep as float to preserve precision
                     microseconds_per_quarter = (data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2]
-                    tempo = round(60000000 / microseconds_per_quarter)
+                    tempo = 60000000.0 / microseconds_per_quarter
                 elif meta_type == 0x2F:
                     # End of track
                     max_ticks = max(max_ticks, current_ticks)
