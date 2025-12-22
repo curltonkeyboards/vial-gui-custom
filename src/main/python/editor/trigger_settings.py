@@ -412,8 +412,8 @@ class TriggerSettingsTab(BasicEditor):
                 if key_index < 70:
                     value = self.per_key_values[layer][key_index]
                     # Display as "X.Xmm" on the key
-                    key.setMultilineText([self.value_to_mm(value)])
+                    key.setText(self.value_to_mm(value))
                 else:
-                    key.setMultilineText([""])
+                    key.setText("")
 
         self.container.update()
