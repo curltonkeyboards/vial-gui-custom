@@ -25,6 +25,7 @@ class TriggerSettingsTab(BasicEditor):
     """Per-key actuation settings editor"""
 
     def __init__(self, layout_editor):
+        print("TriggerSettingsTab.__init__ called")
         super().__init__()
 
         self.layout_editor = layout_editor
@@ -349,6 +350,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def rebuild(self, device):
         """Rebuild UI with new device"""
+        print(f"TriggerSettingsTab.rebuild() called with device={device}")
         super().rebuild(device)
         if self.valid():
             self.keyboard = device.keyboard
@@ -386,7 +388,9 @@ class TriggerSettingsTab(BasicEditor):
 
     def valid(self):
         """Check if device is valid"""
-        return isinstance(self.device, VialKeyboard)
+        result = isinstance(self.device, VialKeyboard)
+        print(f"TriggerSettingsTab.valid() called: device={self.device}, result={result}")
+        return result
 
     def refresh_layer_display(self):
         """Refresh keyboard display with actuation values"""

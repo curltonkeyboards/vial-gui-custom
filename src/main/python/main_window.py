@@ -94,7 +94,9 @@ class MainWindow(QMainWindow):
 
         self.layout_editor = LayoutEditor()
         self.keymap_editor = KeymapEditor(self.layout_editor)
+        print("Creating TriggerSettingsTab...")
         self.trigger_settings = TriggerSettingsTab(self.layout_editor)
+        print(f"TriggerSettingsTab created: {self.trigger_settings}")
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -349,13 +351,17 @@ class MainWindow(QMainWindow):
             e.rebuild(self.autorefresh.current_device)
 
     def refresh_tabs(self):
+        print("refresh_tabs() called")
         self.tabs.clear()
         for container, lbl in self.editors:
-            if not container.valid():
+            is_valid = container.valid()
+            print(f"  Tab '{lbl}': valid={is_valid}, container={container}")
+            if not is_valid:
                 continue
 
             c = EditorContainer(container)
             self.tabs.addTab(c, tr("MainWindow", lbl))
+            print(f"    -> Added tab '{lbl}'")
 
     def load_via_stack_json(self):
         from urllib.request import urlopen
