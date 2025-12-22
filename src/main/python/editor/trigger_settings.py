@@ -57,39 +57,38 @@ class TriggerSettingsTab(BasicEditor):
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Keyboard in scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        # Keyboard area with layer buttons
+        keyboard_area = QVBoxLayout()
+        keyboard_area.addLayout(layout_labels_container)
 
-        w = ClickableWidget()
         keyboard_layout = QHBoxLayout()
         keyboard_layout.addStretch(1)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)
-        w.setLayout(keyboard_layout)
+        keyboard_area.addLayout(keyboard_layout)
+
+        w = ClickableWidget()
+        w.setLayout(keyboard_area)
         w.clicked.connect(self.on_empty_space_clicked)
+
+        # Wrap keyboard area in scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setWidget(w)
 
         # Control panel at bottom
         control_panel = self.create_control_panel()
 
-        # Main widget to hold everything
-        main_widget = QWidget()
-        layout = QVBoxLayout()
-        layout.addLayout(layout_labels_container)
-        layout.addWidget(scroll_area)
-        layout.addWidget(control_panel)
-        main_widget.setLayout(layout)
-
-        # Add the main widget to the BasicEditor layout
-        self.addWidget(main_widget)
-
         self.layer_buttons = []
         self.device = None
 
         layout_editor.changed.connect(self.on_layout_changed)
+
+        # Add widgets to BasicEditor layout (QVBoxLayout)
+        self.addWidget(scroll_area)
+        self.addWidget(control_panel)
 
     def create_control_panel(self):
         """Create the bottom control panel with checkboxes, slider, and buttons"""
