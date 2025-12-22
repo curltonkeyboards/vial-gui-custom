@@ -527,6 +527,72 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a per-key actuation command (0xE0-0xE6)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xE0 && data[3] <= 0xE6) {
+
+        dprintf("raw_hid_receive_kb: Per-key actuation command detected\n");
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xE0:  // HID_CMD_SET_PER_KEY_ACTUATION
+                // Format: [layer, row, col, actuation_value] at data[4-7]
+                handle_set_per_key_actuation(&data[4]);
+                response[4] = 0x01;  // Success
+                break;
+
+            case 0xE1:  // HID_CMD_GET_PER_KEY_ACTUATION
+                // Format: [layer, row, col] at data[4-6]
+                handle_get_per_key_actuation(&data[4], &response[4]);
+                break;
+
+            case 0xE2:  // HID_CMD_GET_ALL_PER_KEY_ACTUATIONS
+                // TODO: Implement chunking for large data transfer
+                response[4] = 0x00;  // Not implemented yet
+                break;
+
+            case 0xE3:  // HID_CMD_RESET_PER_KEY_ACTUATIONS
+                handle_reset_per_key_actuations_hid();
+                response[4] = 0x01;  // Success
+                break;
+
+            case 0xE4:  // HID_CMD_SET_PER_KEY_MODE
+                // Format: [mode_enabled, per_layer_enabled] at data[4-5]
+                handle_set_per_key_mode(&data[4]);
+                response[4] = 0x01;  // Success
+                break;
+
+            case 0xE5:  // HID_CMD_GET_PER_KEY_MODE
+                handle_get_per_key_mode(&response[4]);
+                break;
+
+            case 0xE6:  // HID_CMD_COPY_LAYER_ACTUATIONS
+                // Format: [source_layer, dest_layer] at data[4-5]
+                handle_copy_layer_actuations(&data[4]);
+                response[4] = 0x01;  // Success
+                break;
+
+            default:
+                response[4] = 0x00;  // Error - unknown command
+                break;
+        }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Not an arpeggiator command - ignore or handle other custom commands
     dprintf("raw_hid_receive_kb: Unhandled packet\n");
 }

@@ -912,11 +912,27 @@ typedef struct {
 #define LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED  (1 << 1)
 #define LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY      (1 << 2)
 
+// ============================================================================
+// PER-KEY ACTUATION SYSTEM
+// ============================================================================
+
+// Per-key actuation storage
+typedef struct {
+    uint8_t actuation[70];  // One byte per key (0-100 for 0-2.5mm)
+} layer_key_actuations_t;
+
+#define DEFAULT_ACTUATION_VALUE 60  // 60/40 = 1.5mm (since 0-100 maps to 0-2.5mm)
+
 // External declarations
 extern layer_actuation_t layer_actuations[12];
 extern uint8_t aftertouch_mode;
 extern bool aftertouch_pedal_active;
 extern uint8_t analog_mode;  // Global analog mode
+
+// Per-key actuation arrays and flags
+extern layer_key_actuations_t per_key_actuations[12];  // 840 bytes total
+extern bool per_key_mode_enabled;
+extern bool per_key_per_layer_enabled;
 
 void save_layer_actuations(void);
 void load_layer_actuations(void);
@@ -938,3 +954,24 @@ void handle_set_layer_actuation(const uint8_t* data);
 void handle_get_layer_actuation(uint8_t layer);
 void handle_get_all_layer_actuations(void);
 void handle_reset_layer_actuations(void);
+
+// ============================================================================
+// PER-KEY ACTUATION FUNCTIONS
+// ============================================================================
+
+// Initialization and EEPROM functions
+void initialize_per_key_actuations(void);
+void save_per_key_actuations(void);
+void load_per_key_actuations(void);
+void reset_per_key_actuations(void);
+
+// Actuation lookup function
+uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col);
+
+// HID handlers for per-key actuation
+void handle_set_per_key_actuation(const uint8_t* data);
+void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response);
+void handle_set_per_key_mode(const uint8_t* data);
+void handle_get_per_key_mode(uint8_t* response);
+void handle_reset_per_key_actuations_hid(void);
+void handle_copy_layer_actuations(const uint8_t* data);

@@ -67,6 +67,15 @@
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB
 #define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xBD
 
+// Per-Key Actuation Commands (0xE0-0xE6)
+#define HID_CMD_SET_PER_KEY_ACTUATION       0xE0
+#define HID_CMD_GET_PER_KEY_ACTUATION       0xE1
+#define HID_CMD_GET_ALL_PER_KEY_ACTUATIONS  0xE2
+#define HID_CMD_RESET_PER_KEY_ACTUATIONS    0xE3
+#define HID_CMD_SET_PER_KEY_MODE            0xE4
+#define HID_CMD_GET_PER_KEY_MODE            0xE5
+#define HID_CMD_COPY_LAYER_ACTUATIONS       0xE6
+
 #ifdef VIAL_INSECURE
 #pragma message "Building Vial-enabled firmware in insecure mode."
 int vial_unlocked = 1;
