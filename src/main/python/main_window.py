@@ -21,6 +21,7 @@ from editor.firmware_flasher import FirmwareFlasher
 from editor.key_override import KeyOverride
 from protocol.keyboard_comm import ProtocolError
 from editor.keymap_editor import KeymapEditor
+from editor.trigger_settings import TriggerSettingsTab
 from keymaps import KEYMAPS
 from editor.layout_editor import LayoutEditor
 from editor.macro_recorder import MacroRecorder
@@ -93,6 +94,9 @@ class MainWindow(QMainWindow):
 
         self.layout_editor = LayoutEditor()
         self.keymap_editor = KeymapEditor(self.layout_editor)
+        print("Creating TriggerSettingsTab...")
+        self.trigger_settings = TriggerSettingsTab(self.layout_editor)
+        print(f"TriggerSettingsTab created: {self.trigger_settings}")
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -118,7 +122,8 @@ class MainWindow(QMainWindow):
         self.step_sequencer = StepSequencer()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
-        self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
+        self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
+                        (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
                         (self.midi_patchbay, "MIDI Patch"), (self.loop_manager, "Loop Manager"),
@@ -346,13 +351,17 @@ class MainWindow(QMainWindow):
             e.rebuild(self.autorefresh.current_device)
 
     def refresh_tabs(self):
+        print("refresh_tabs() called")
         self.tabs.clear()
         for container, lbl in self.editors:
-            if not container.valid():
+            is_valid = container.valid()
+            print(f"  Tab '{lbl}': valid={is_valid}, container={container}")
+            if not is_valid:
                 continue
 
             c = EditorContainer(container)
             self.tabs.addTab(c, tr("MainWindow", lbl))
+            print(f"    -> Added tab '{lbl}'")
 
     def load_via_stack_json(self):
         from urllib.request import urlopen

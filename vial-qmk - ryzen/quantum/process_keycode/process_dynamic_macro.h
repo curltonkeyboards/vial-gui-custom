@@ -219,6 +219,15 @@ void set_custom_animations_eeprom_initialized(void);
 #define LAYER_ACTUATION_EEPROM_ADDR 68830  // MOVED from 65600
 #define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 96 bytes for 12 layers (8 bytes per layer)
 
+// Per-Key Actuation EEPROM addresses
+#define PER_KEY_ACTUATION_EEPROM_ADDR 67000
+#define PER_KEY_ACTUATION_SIZE (70 * 12)  // 840 bytes (70 keys × 12 layers)
+#define PER_KEY_ACTUATION_FLAGS_ADDR (PER_KEY_ACTUATION_EEPROM_ADDR + PER_KEY_ACTUATION_SIZE)
+// Flags: 2 bytes at 67840-67841
+//   - Byte 0: per_key_mode_enabled (0/1)
+//   - Byte 1: per_key_per_layer_enabled (0/1)
+// Total: 842 bytes (67000-67841)
+
 // Function declarations
 void save_layer_actuations(void);
 void load_layer_actuations(void);
@@ -298,7 +307,13 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 //              - Each preset maps 70 LEDs to palette indices (0-15)
 //              - Default: All keys set to palette index 0 (black)
 //
-// 66890-end:   Available for future use
+// 66890-66999: Gap (110 bytes)
+//
+// 67000-67841: Per-Key Actuation Settings (842 bytes)
+//              - 70 keys × 12 layers = 840 bytes of actuation data
+//              - 2 bytes for flags (mode_enabled, per_layer_enabled)
+//
+// 67842-end:   Available for future use
 //
 // =============================================================================
 // EEPROM ADDRESSES SUMMARY:
@@ -306,9 +321,10 @@ bool layer_midi_rapidfire_enabled(uint8_t layer);
 // Loop Settings:       LOOP_SETTINGS_EEPROM_ADDR     = 64600
 // Keyboard Settings:   SETTINGS_BASE_ADDR            = 65000
 // Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 65400
-// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 65600
-// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 65700
+// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 68830
+// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 67840 (NOTE: Check orthomidi5x14.h)
 // Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 66000
+// Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 67000
 // =============================================================================
 
 // Function declarations for layer settings

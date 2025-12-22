@@ -2236,6 +2236,14 @@ layer_actuation_t layer_actuations[12] = {
     {80, 80}, {80, 80}, {80, 80}, {80, 80}
 };
 
+// =============================================================================
+// PER-KEY ACTUATION GLOBAL VARIABLES
+// =============================================================================
+
+layer_key_actuations_t per_key_actuations[12];  // 840 bytes total (70 keys × 12 layers)
+bool per_key_mode_enabled = false;
+bool per_key_per_layer_enabled = false;
+
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
@@ -3121,6 +3129,168 @@ void handle_reset_layer_actuations(void) {
     reset_layer_actuations();
 }
 
+// =============================================================================
+// PER-KEY ACTUATION FUNCTIONS
+// =============================================================================
+
+// Initialize all keys to default 1.5mm (value 60)
+void initialize_per_key_actuations(void) {
+    for (uint8_t layer = 0; layer < 12; layer++) {
+        for (uint8_t key = 0; key < 70; key++) {
+            per_key_actuations[layer].actuation[key] = DEFAULT_ACTUATION_VALUE;
+        }
+    }
+    per_key_mode_enabled = false;
+    per_key_per_layer_enabled = false;
+}
+
+// Save per-key actuations to EEPROM
+void save_per_key_actuations(void) {
+    eeprom_update_block(per_key_actuations,
+                        (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
+                        PER_KEY_ACTUATION_SIZE);
+
+    // Save flags
+    eeprom_update_byte((uint8_t*)PER_KEY_ACTUATION_FLAGS_ADDR,
+                       per_key_mode_enabled ? 1 : 0);
+    eeprom_update_byte((uint8_t*)(PER_KEY_ACTUATION_FLAGS_ADDR + 1),
+                       per_key_per_layer_enabled ? 1 : 0);
+}
+
+// Load per-key actuations from EEPROM
+void load_per_key_actuations(void) {
+    eeprom_read_block(per_key_actuations,
+                      (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
+                      PER_KEY_ACTUATION_SIZE);
+
+    // Load flags
+    per_key_mode_enabled = eeprom_read_byte((uint8_t*)PER_KEY_ACTUATION_FLAGS_ADDR) != 0;
+    per_key_per_layer_enabled = eeprom_read_byte((uint8_t*)(PER_KEY_ACTUATION_FLAGS_ADDR + 1)) != 0;
+}
+
+// Reset all per-key actuations to default
+void reset_per_key_actuations(void) {
+    initialize_per_key_actuations();
+    save_per_key_actuations();
+}
+
+// Get actuation point for a specific key
+// This function is called by matrix scanning code to determine actuation threshold
+//
+// INTEGRATION NOTE FOR MATRIX SCANNING:
+// This function should be called from the analog matrix scanning code (likely in
+// quantum/matrix or a custom matrix implementation) wherever the actuation threshold
+// is checked. Replace direct accesses to:
+//   - layer_actuations[layer].normal_actuation
+//   - layer_actuations[layer].midi_actuation
+// with calls to:
+//   - get_key_actuation_point(layer, row, col)
+//
+// The function returns a value 0-100 representing 0-2.5mm of travel.
+uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
+    // If per-key mode is disabled, use layer defaults
+    if (!per_key_mode_enabled) {
+        // Return layer-wide setting (use midi_actuation as the default)
+        // NOTE: Since per-key mode uses a single value for both MIDI and normal keys,
+        // we use midi_actuation as the default when per-key mode is off
+        return layer_actuations[layer].midi_actuation;
+    }
+
+    // Per-key mode enabled
+    uint8_t key_index = row * 14 + col;  // 14 columns per row
+    if (key_index >= 70) return DEFAULT_ACTUATION_VALUE;
+
+    // Per-layer mode: use specific layer
+    if (per_key_per_layer_enabled) {
+        return per_key_actuations[layer].actuation[key_index];
+    }
+
+        // Global mode: always use layer 0
+    return per_key_actuations[0].actuation[key_index];
+}
+
+// =============================================================================
+// PER-KEY ACTUATION HID HANDLERS
+// =============================================================================
+
+// Set per-key actuation from HID data
+// Format: [layer, row, col, actuation_value]
+void handle_set_per_key_actuation(const uint8_t* data) {
+    uint8_t layer = data[0];
+    uint8_t row = data[1];
+    uint8_t col = data[2];
+    uint8_t actuation = data[3];
+
+    if (layer >= 12 || row >= 5 || col >= 14) {
+        return;  // Invalid parameters
+    }
+
+    uint8_t key_index = row * 14 + col;
+    if (key_index < 70) {
+        per_key_actuations[layer].actuation[key_index] = actuation;
+        save_per_key_actuations();
+    }
+}
+
+// Get per-key actuation and send back via HID
+// Format: [layer, row, col]
+// Response: [actuation_value]
+void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
+    uint8_t layer = data[0];
+    uint8_t row = data[1];
+    uint8_t col = data[2];
+
+    if (layer >= 12 || row >= 5 || col >= 14) {
+        response[0] = 0;  // Error
+        return;
+    }
+
+    uint8_t key_index = row * 14 + col;
+    if (key_index < 70) {
+        response[0] = per_key_actuations[layer].actuation[key_index];
+    } else {
+        response[0] = 0;  // Error
+    }
+}
+
+// Set per-key mode flags
+// Format: [mode_enabled, per_layer_enabled]
+void handle_set_per_key_mode(const uint8_t* data) {
+    per_key_mode_enabled = data[0] != 0;
+    per_key_per_layer_enabled = data[1] != 0;
+    save_per_key_actuations();
+}
+
+// Get per-key mode flags
+// Response: [mode_enabled, per_layer_enabled]
+void handle_get_per_key_mode(uint8_t* response) {
+    response[0] = per_key_mode_enabled ? 0x01 : 0x00;
+    response[1] = per_key_per_layer_enabled ? 0x01 : 0x00;
+}
+
+// Reset all per-key actuations to default (HID handler)
+void handle_reset_per_key_actuations_hid(void) {
+    reset_per_key_actuations();
+}
+
+// Copy layer actuations from one layer to another
+// Format: [source_layer, dest_layer]
+void handle_copy_layer_actuations(const uint8_t* data) {
+    uint8_t source = data[0];
+    uint8_t dest = data[1];
+
+    if (source >= 12 || dest >= 12) {
+        return;  // Invalid parameters
+    }
+
+    // Copy all 70 actuation values from source to dest
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuations[dest].actuation[i] = per_key_actuations[source].actuation[i];
+    }
+
+    save_per_key_actuations();
+}
+
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
 }
@@ -3507,6 +3677,15 @@ void keyboard_post_init_user(void) {
 	dynamic_macro_init();
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
+
+	// Initialize per-key actuations
+	load_per_key_actuations();
+	// If EEPROM is uninitialized (all 0xFF), set defaults
+	if (per_key_actuations[0].actuation[0] == 0xFF) {
+		initialize_per_key_actuations();
+		save_per_key_actuations();
+	}
+
 	dwt_init();
 
 #ifdef JOYSTICK_ENABLE
