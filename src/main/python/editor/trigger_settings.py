@@ -75,13 +75,16 @@ class TriggerSettingsTab(BasicEditor):
         # Control panel at bottom
         control_panel = self.create_control_panel()
 
-        # Main layout
+        # Main widget to hold everything
+        main_widget = QWidget()
         layout = QVBoxLayout()
         layout.addLayout(layout_labels_container)
         layout.addWidget(scroll_area)
         layout.addWidget(control_panel)
+        main_widget.setLayout(layout)
 
-        self.addLayout(layout)
+        # Add the main widget to the BasicEditor layout
+        self.addWidget(main_widget)
 
         self.layer_buttons = []
         self.device = None
