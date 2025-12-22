@@ -169,8 +169,12 @@ class TriggerSettingsTab(BasicEditor):
         self.container.deselect()
         self.container.update()
 
-    def on_key_clicked(self, key):
+    def on_key_clicked(self):
         """Handle key click - load its actuation value"""
+        if self.container.active_key is None:
+            return
+
+        key = self.container.active_key
         if key.desc.row is None:
             # Encoder, not a key
             return
