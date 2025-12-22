@@ -21,6 +21,7 @@ from editor.firmware_flasher import FirmwareFlasher
 from editor.key_override import KeyOverride
 from protocol.keyboard_comm import ProtocolError
 from editor.keymap_editor import KeymapEditor
+from editor.trigger_settings import TriggerSettingsTab
 from keymaps import KEYMAPS
 from editor.layout_editor import LayoutEditor
 from editor.macro_recorder import MacroRecorder
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
 
         self.layout_editor = LayoutEditor()
         self.keymap_editor = KeymapEditor(self.layout_editor)
+        self.trigger_settings = TriggerSettingsTab(self.layout_editor)
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -118,7 +120,8 @@ class MainWindow(QMainWindow):
         self.step_sequencer = StepSequencer()
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
-        self.editors = [(self.keymap_editor, "Keymap"), (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
+        self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
+                        (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
                         (self.midi_patchbay, "MIDI Patch"), (self.loop_manager, "Loop Manager"),

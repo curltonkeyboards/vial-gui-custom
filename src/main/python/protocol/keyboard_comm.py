@@ -87,6 +87,15 @@ HID_CMD_GAMING_SET_ANALOG_CONFIG = 0xD0  # Set min/max travel and deadzone
 HID_CMD_GAMING_GET_SETTINGS = 0xD1       # Get current gaming settings
 HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
 
+# Per-Key Actuation Commands (0xE0-0xE6)
+HID_CMD_SET_PER_KEY_ACTUATION = 0xE0     # Set actuation for specific key
+HID_CMD_GET_PER_KEY_ACTUATION = 0xE1     # Get actuation for specific key
+HID_CMD_GET_ALL_PER_KEY_ACTUATIONS = 0xE2  # Get all per-key actuations
+HID_CMD_RESET_PER_KEY_ACTUATIONS = 0xE3  # Reset all to defaults
+HID_CMD_SET_PER_KEY_MODE = 0xE4          # Set per-key mode flags
+HID_CMD_GET_PER_KEY_MODE = 0xE5          # Get per-key mode flags
+HID_CMD_COPY_LAYER_ACTUATIONS = 0xE6     # Copy one layer to another
+
 class ProtocolError(Exception):
     pass
 
@@ -1427,3 +1436,111 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             self.gaming_settings = self.get_gaming_settings()
         except:
             self.gaming_settings = None
+
+    def set_per_key_actuation(self, layer, row, col, actuation_value):
+        """Set actuation point for a specific key
+
+        Args:
+            layer: Layer number (0-11)
+            row: Matrix row (0-4)
+            col: Matrix column (0-13)
+            actuation_value: Actuation value (0-100, where 60 = 1.5mm)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            data = [layer, row, col, actuation_value]
+            packet = self._create_hid_packet(HID_CMD_SET_PER_KEY_ACTUATION, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 5 and response[5] == 0x01
+        except Exception as e:
+            return False
+
+    def get_per_key_actuation(self, layer, row, col):
+        """Get actuation point for a specific key
+
+        Args:
+            layer: Layer number (0-11)
+            row: Matrix row (0-4)
+            col: Matrix column (0-13)
+
+        Returns:
+            int: Actuation value (0-100) or None on error
+        """
+        try:
+            data = [layer, row, col]
+            packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_ACTUATION, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            if response and len(response) > 6:
+                return response[6]
+            return None
+        except Exception as e:
+            return None
+
+    def set_per_key_mode(self, mode_enabled, per_layer_enabled):
+        """Set per-key actuation mode flags
+
+        Args:
+            mode_enabled: True to enable per-key actuation mode, False to use layer defaults
+            per_layer_enabled: True for per-layer mode, False for global mode (layer 0 only)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            data = [1 if mode_enabled else 0, 1 if per_layer_enabled else 0]
+            packet = self._create_hid_packet(HID_CMD_SET_PER_KEY_MODE, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 5 and response[5] == 0x01
+        except Exception as e:
+            return False
+
+    def get_per_key_mode(self):
+        """Get per-key actuation mode flags
+
+        Returns:
+            dict: {'mode_enabled': bool, 'per_layer_enabled': bool} or None on error
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_MODE, 0, None)
+            response = self.usb_send(self.dev, packet, retries=20)
+            if response and len(response) > 7:
+                return {
+                    'mode_enabled': response[6] != 0,
+                    'per_layer_enabled': response[7] != 0
+                }
+            return None
+        except Exception as e:
+            return None
+
+    def reset_per_key_actuations(self):
+        """Reset all per-key actuations to default (60 = 1.5mm)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_RESET_PER_KEY_ACTUATIONS, 0, None)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 5 and response[5] == 0x01
+        except Exception as e:
+            return False
+
+    def copy_layer_actuations(self, source_layer, dest_layer):
+        """Copy actuation settings from one layer to another
+
+        Args:
+            source_layer: Source layer number (0-11)
+            dest_layer: Destination layer number (0-11)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            data = [source_layer, dest_layer]
+            packet = self._create_hid_packet(HID_CMD_COPY_LAYER_ACTUATIONS, 0, data)
+            response = self.usb_send(self.dev, packet, retries=20)
+            return response and len(response) > 5 and response[5] == 0x01
+        except Exception as e:
+            return False
