@@ -2,7 +2,7 @@
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
-                              QSizePolicy, QScrollArea)
+                              QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from editor.basic_editor import BasicEditor
@@ -32,6 +32,7 @@ class TriggerSettingsTab(BasicEditor):
         self.keyboard = None
         self.current_layer = 0
         self.syncing = False
+        self.actuation_widget_ref = None  # Reference to QuickActuationWidget for synchronization
 
         # Cache for per-key actuation values (70 keys × 12 layers)
         self.per_key_values = []
@@ -41,6 +42,21 @@ class TriggerSettingsTab(BasicEditor):
         # Mode flags
         self.mode_enabled = False
         self.per_layer_enabled = False
+
+        # Cache for layer actuation settings (from Actuation Settings tab)
+        self.layer_data = []
+        for _ in range(12):
+            self.layer_data.append({
+                'normal': 80,
+                'midi': 80,
+                'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
+                'rapid': 4,
+                'midi_rapid_sens': 10,
+                'midi_rapid_vel': 10,
+                'vel_speed': 10,  # Velocity speed scale
+                'rapidfire_enabled': False,
+                'midi_rapidfire_enabled': False
+            })
 
         # Top bar with layer selection
         self.layout_layers = QHBoxLayout()
@@ -92,15 +108,15 @@ class TriggerSettingsTab(BasicEditor):
         self.addWidget(control_panel)
 
     def create_control_panel(self):
-        """Create the bottom control panel with checkboxes, slider, and buttons"""
+        """Create the bottom control panel with tabbed interface"""
         panel = QFrame()
         panel.setFrameShape(QFrame.StyledPanel)
-        panel.setMaximumHeight(200)
+        panel.setMaximumHeight(400)  # Increased to accommodate tabs
         layout = QVBoxLayout()
         layout.setSpacing(10)
         layout.setContentsMargins(20, 10, 20, 10)
 
-        # Checkboxes row
+        # Top checkboxes row (outside tabs)
         checkbox_row = QHBoxLayout()
 
         self.enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
@@ -108,7 +124,7 @@ class TriggerSettingsTab(BasicEditor):
         self.enable_checkbox.stateChanged.connect(self.on_enable_changed)
         checkbox_row.addWidget(self.enable_checkbox)
 
-        self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Per-Layer Mode"))
+        self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
         self.per_layer_checkbox.setEnabled(False)
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
         checkbox_row.addWidget(self.per_layer_checkbox)
@@ -116,37 +132,30 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_row.addStretch()
         layout.addLayout(checkbox_row)
 
-        # Actuation slider
-        slider_layout = QHBoxLayout()
-        slider_layout.setSpacing(10)
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        layout.addWidget(self.tab_widget)
 
-        actuation_label = QLabel(tr("TriggerSettings", "Actuation:"))
-        actuation_label.setMinimumWidth(80)
-        slider_layout.addWidget(actuation_label)
+        # Create Basic tab
+        self.basic_tab = self.create_basic_tab()
+        self.tab_widget.addTab(self.basic_tab, "Basic")
 
-        self.actuation_slider = QSlider(Qt.Horizontal)
-        self.actuation_slider.setMinimum(0)
-        self.actuation_slider.setMaximum(100)
-        self.actuation_slider.setValue(60)
-        self.actuation_slider.setEnabled(False)
-        self.actuation_slider.valueChanged.connect(self.on_slider_changed)
-        slider_layout.addWidget(self.actuation_slider, 1)
+        # Create Rapidfire tab
+        self.rapidfire_tab = self.create_rapidfire_tab()
+        self.tab_widget.addTab(self.rapidfire_tab, "Rapidfire")
 
-        self.actuation_value_label = QLabel("1.5mm")
-        self.actuation_value_label.setMinimumWidth(60)
-        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 14px; }")
-        self.actuation_value_label.setAlignment(Qt.AlignCenter)
-        slider_layout.addWidget(self.actuation_value_label)
-
-        layout.addLayout(slider_layout)
-
-        # Buttons row
+        # Bottom buttons row (outside tabs)
         button_row = QHBoxLayout()
 
         self.copy_layer_btn = QPushButton(tr("TriggerSettings", "Copy from Layer..."))
         self.copy_layer_btn.setEnabled(False)
         self.copy_layer_btn.clicked.connect(self.on_copy_layer)
         button_row.addWidget(self.copy_layer_btn)
+
+        self.copy_all_layers_btn = QPushButton(tr("TriggerSettings", "Copy Per-Key Settings to All Layers"))
+        self.copy_all_layers_btn.setEnabled(False)
+        self.copy_all_layers_btn.clicked.connect(self.on_copy_to_all_layers)
+        button_row.addWidget(self.copy_all_layers_btn)
 
         self.reset_btn = QPushButton(tr("TriggerSettings", "Reset All to Default"))
         self.reset_btn.setEnabled(False)
@@ -158,6 +167,217 @@ class TriggerSettingsTab(BasicEditor):
 
         panel.setLayout(layout)
         return panel
+
+    def create_basic_tab(self):
+        """Create the Basic settings tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Key Actuation slider (for selected key)
+        key_actuation_layout = QHBoxLayout()
+        key_actuation_label = QLabel(tr("TriggerSettings", "Key Actuation:"))
+        key_actuation_label.setMinimumWidth(100)
+        key_actuation_layout.addWidget(key_actuation_label)
+
+        self.actuation_slider = QSlider(Qt.Horizontal)
+        self.actuation_slider.setMinimum(0)
+        self.actuation_slider.setMaximum(100)
+        self.actuation_slider.setValue(60)
+        self.actuation_slider.setEnabled(False)
+        self.actuation_slider.valueChanged.connect(self.on_key_actuation_changed)
+        key_actuation_layout.addWidget(self.actuation_slider, 1)
+
+        self.actuation_value_label = QLabel("1.5mm")
+        self.actuation_value_label.setMinimumWidth(60)
+        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        key_actuation_layout.addWidget(self.actuation_value_label)
+
+        layout.addLayout(key_actuation_layout)
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(line)
+
+        # Normal Keys slider
+        normal_layout = QHBoxLayout()
+        normal_label = QLabel(tr("TriggerSettings", "Normal Keys:"))
+        normal_label.setMinimumWidth(100)
+        normal_layout.addWidget(normal_label)
+
+        self.normal_slider = QSlider(Qt.Horizontal)
+        self.normal_slider.setMinimum(0)
+        self.normal_slider.setMaximum(100)
+        self.normal_slider.setValue(80)
+        self.normal_slider.valueChanged.connect(self.on_normal_changed)
+        normal_layout.addWidget(self.normal_slider, 1)
+
+        self.normal_value_label = QLabel("2.0mm")
+        self.normal_value_label.setMinimumWidth(60)
+        self.normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        normal_layout.addWidget(self.normal_value_label)
+
+        layout.addLayout(normal_layout)
+
+        # MIDI Keys slider
+        midi_layout = QHBoxLayout()
+        midi_label = QLabel(tr("TriggerSettings", "MIDI Keys:"))
+        midi_label.setMinimumWidth(100)
+        midi_layout.addWidget(midi_label)
+
+        self.midi_slider = QSlider(Qt.Horizontal)
+        self.midi_slider.setMinimum(0)
+        self.midi_slider.setMaximum(100)
+        self.midi_slider.setValue(80)
+        self.midi_slider.valueChanged.connect(self.on_midi_changed)
+        midi_layout.addWidget(self.midi_slider, 1)
+
+        self.midi_value_label = QLabel("2.0mm")
+        self.midi_value_label.setMinimumWidth(60)
+        self.midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        midi_layout.addWidget(self.midi_value_label)
+
+        layout.addLayout(midi_layout)
+
+        # Separator
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(line2)
+
+        # Velocity Mode combo
+        velocity_layout = QHBoxLayout()
+        velocity_label = QLabel(tr("TriggerSettings", "Velocity Mode:"))
+        velocity_label.setMinimumWidth(100)
+        velocity_layout.addWidget(velocity_label)
+
+        self.velocity_combo = QComboBox()
+        self.velocity_combo.addItem("Fixed (64)", 0)
+        self.velocity_combo.addItem("Peak at Apex", 1)
+        self.velocity_combo.addItem("Speed-Based", 2)
+        self.velocity_combo.addItem("Speed + Peak", 3)
+        self.velocity_combo.setCurrentIndex(2)
+        self.velocity_combo.currentIndexChanged.connect(self.on_velocity_mode_changed)
+        velocity_layout.addWidget(self.velocity_combo, 1)
+
+        layout.addLayout(velocity_layout)
+
+        # Velocity Speed Scale slider
+        vel_speed_layout = QHBoxLayout()
+        vel_speed_label = QLabel(tr("TriggerSettings", "Velocity Scale:"))
+        vel_speed_label.setMinimumWidth(100)
+        vel_speed_layout.addWidget(vel_speed_label)
+
+        self.vel_speed_slider = QSlider(Qt.Horizontal)
+        self.vel_speed_slider.setMinimum(1)
+        self.vel_speed_slider.setMaximum(20)
+        self.vel_speed_slider.setValue(10)
+        self.vel_speed_slider.valueChanged.connect(self.on_vel_speed_changed)
+        vel_speed_layout.addWidget(self.vel_speed_slider, 1)
+
+        self.vel_speed_value_label = QLabel("10")
+        self.vel_speed_value_label.setMinimumWidth(60)
+        self.vel_speed_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        vel_speed_layout.addWidget(self.vel_speed_value_label)
+
+        layout.addLayout(vel_speed_layout)
+
+        layout.addStretch()
+        tab.setLayout(layout)
+        return tab
+
+    def create_rapidfire_tab(self):
+        """Create the Rapidfire settings tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Enable Rapidfire checkbox
+        self.rapid_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
+        self.rapid_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
+        layout.addWidget(self.rapid_checkbox)
+
+        # Rapidfire Sensitivity slider
+        rapid_layout = QHBoxLayout()
+        rapid_label = QLabel(tr("TriggerSettings", "RF Sensitivity:"))
+        rapid_label.setMinimumWidth(100)
+        rapid_layout.addWidget(rapid_label)
+
+        self.rapid_slider = QSlider(Qt.Horizontal)
+        self.rapid_slider.setMinimum(1)
+        self.rapid_slider.setMaximum(100)
+        self.rapid_slider.setValue(4)
+        self.rapid_slider.setEnabled(False)
+        self.rapid_slider.valueChanged.connect(self.on_rapid_changed)
+        rapid_layout.addWidget(self.rapid_slider, 1)
+
+        self.rapid_value_label = QLabel("4")
+        self.rapid_value_label.setMinimumWidth(60)
+        self.rapid_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        rapid_layout.addWidget(self.rapid_value_label)
+
+        layout.addLayout(rapid_layout)
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(line)
+
+        # Enable MIDI Rapidfire checkbox
+        self.midi_rapid_checkbox = QCheckBox(tr("TriggerSettings", "Enable MIDI Rapidfire"))
+        self.midi_rapid_checkbox.stateChanged.connect(self.on_midi_rapidfire_toggled)
+        layout.addWidget(self.midi_rapid_checkbox)
+
+        # MIDI Rapidfire Sensitivity slider
+        midi_rapid_sens_layout = QHBoxLayout()
+        midi_rapid_sens_label = QLabel(tr("TriggerSettings", "MRF Sens:"))
+        midi_rapid_sens_label.setMinimumWidth(100)
+        midi_rapid_sens_layout.addWidget(midi_rapid_sens_label)
+
+        self.midi_rapid_sens_slider = QSlider(Qt.Horizontal)
+        self.midi_rapid_sens_slider.setMinimum(1)
+        self.midi_rapid_sens_slider.setMaximum(100)
+        self.midi_rapid_sens_slider.setValue(10)
+        self.midi_rapid_sens_slider.setEnabled(False)
+        self.midi_rapid_sens_slider.valueChanged.connect(self.on_midi_rapid_sens_changed)
+        midi_rapid_sens_layout.addWidget(self.midi_rapid_sens_slider, 1)
+
+        self.midi_rapid_sens_value_label = QLabel("10")
+        self.midi_rapid_sens_value_label.setMinimumWidth(60)
+        self.midi_rapid_sens_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        midi_rapid_sens_layout.addWidget(self.midi_rapid_sens_value_label)
+
+        layout.addLayout(midi_rapid_sens_layout)
+
+        # MIDI Rapidfire Velocity Range slider
+        midi_rapid_vel_layout = QHBoxLayout()
+        midi_rapid_vel_label = QLabel(tr("TriggerSettings", "MRF Vel Range:"))
+        midi_rapid_vel_label.setMinimumWidth(100)
+        midi_rapid_vel_layout.addWidget(midi_rapid_vel_label)
+
+        self.midi_rapid_vel_slider = QSlider(Qt.Horizontal)
+        self.midi_rapid_vel_slider.setMinimum(0)
+        self.midi_rapid_vel_slider.setMaximum(20)
+        self.midi_rapid_vel_slider.setValue(10)
+        self.midi_rapid_vel_slider.setEnabled(False)
+        self.midi_rapid_vel_slider.valueChanged.connect(self.on_midi_rapid_vel_changed)
+        midi_rapid_vel_layout.addWidget(self.midi_rapid_vel_slider, 1)
+
+        self.midi_rapid_vel_value_label = QLabel("±10")
+        self.midi_rapid_vel_value_label.setMinimumWidth(60)
+        self.midi_rapid_vel_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        midi_rapid_vel_layout.addWidget(self.midi_rapid_vel_value_label)
+
+        layout.addLayout(midi_rapid_vel_layout)
+
+        layout.addStretch()
+        tab.setLayout(layout)
+        return tab
 
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
@@ -202,8 +422,8 @@ class TriggerSettingsTab(BasicEditor):
         """Handle key deselection"""
         self.actuation_slider.setEnabled(False)
 
-    def on_slider_changed(self, value):
-        """Handle slider value change"""
+    def on_key_actuation_changed(self, value):
+        """Handle key actuation slider value change (per-key mode)"""
         self.actuation_value_label.setText(self.value_to_mm(value))
 
         if self.syncing or not self.mode_enabled:
@@ -226,6 +446,160 @@ class TriggerSettingsTab(BasicEditor):
                 # Refresh display
                 self.refresh_layer_display()
 
+    def on_normal_changed(self, value):
+        """Handle normal keys actuation slider change"""
+        self.normal_value_label.setText(self.value_to_mm(value))
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['normal'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_midi_changed(self, value):
+        """Handle MIDI keys actuation slider change"""
+        self.midi_value_label.setText(self.value_to_mm(value))
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['midi'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_velocity_mode_changed(self, index):
+        """Handle velocity mode combo change"""
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['velocity'] = self.velocity_combo.currentData()
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_vel_speed_changed(self, value):
+        """Handle velocity speed scale slider change"""
+        self.vel_speed_value_label.setText(str(value))
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['vel_speed'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_rapidfire_toggled(self, state):
+        """Handle rapidfire checkbox toggle"""
+        enabled = (state == Qt.Checked)
+        self.rapid_slider.setEnabled(enabled)
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['rapidfire_enabled'] = enabled
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_rapid_changed(self, value):
+        """Handle rapidfire sensitivity slider change"""
+        self.rapid_value_label.setText(str(value))
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['rapid'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_midi_rapidfire_toggled(self, state):
+        """Handle MIDI rapidfire checkbox toggle"""
+        enabled = (state == Qt.Checked)
+        self.midi_rapid_sens_slider.setEnabled(enabled)
+        self.midi_rapid_vel_slider.setEnabled(enabled)
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['midi_rapidfire_enabled'] = enabled
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_midi_rapid_sens_changed(self, value):
+        """Handle MIDI rapidfire sensitivity slider change"""
+        self.midi_rapid_sens_value_label.setText(str(value))
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['midi_rapid_sens'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_midi_rapid_vel_changed(self, value):
+        """Handle MIDI rapidfire velocity range slider change"""
+        self.midi_rapid_vel_value_label.setText(f"±{value}")
+
+        if self.syncing:
+            return
+
+        layer = self.current_layer
+        self.layer_data[layer]['midi_rapid_vel'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def send_layer_actuation(self, layer):
+        """Send layer actuation settings to device"""
+        data = self.layer_data[layer]
+
+        # Build flags byte
+        flags = 0
+        if data['rapidfire_enabled']:
+            flags |= 0x01  # Bit 0
+        if data['midi_rapidfire_enabled']:
+            flags |= 0x02  # Bit 1
+
+        # Build payload: [layer, normal, midi, velocity, rapid, midi_rapid_sens, midi_rapid_vel, vel_speed, flags]
+        payload = bytes([
+            layer,
+            data['normal'],
+            data['midi'],
+            data['velocity'],
+            data['rapid'],
+            data['midi_rapid_sens'],
+            data['midi_rapid_vel'],
+            data['vel_speed'],
+            flags
+        ])
+
+        # Send to device
+        self.device.keyboard.set_layer_actuation(payload)
+
     def on_enable_changed(self, state):
         """Handle enable checkbox toggle"""
         if self.syncing:
@@ -234,13 +608,48 @@ class TriggerSettingsTab(BasicEditor):
         self.mode_enabled = (state == Qt.Checked)
         self.per_layer_checkbox.setEnabled(self.mode_enabled)
         self.copy_layer_btn.setEnabled(self.mode_enabled)
+        self.copy_all_layers_btn.setEnabled(self.mode_enabled)
         self.reset_btn.setEnabled(self.mode_enabled)
+
+        # Implement blanking logic
+        self.update_slider_states()
 
         # Update device
         if self.device and isinstance(self.device, VialKeyboard):
             self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
 
         self.refresh_layer_display()
+
+    def update_slider_states(self):
+        """Update slider enabled states based on per-key mode"""
+        if self.mode_enabled:
+            # Per-key enabled: blank out Normal/MIDI sliders, show layer 0 value grayed out
+            self.normal_slider.setEnabled(False)
+            self.midi_slider.setEnabled(False)
+
+            # Show layer 0 values grayed out
+            self.syncing = True
+            self.normal_slider.setValue(self.layer_data[0]['normal'])
+            self.midi_slider.setValue(self.layer_data[0]['midi'])
+            self.normal_value_label.setText(self.value_to_mm(self.layer_data[0]['normal']))
+            self.midi_value_label.setText(self.value_to_mm(self.layer_data[0]['midi']))
+            self.syncing = False
+
+            # Apply grayed out style
+            self.normal_value_label.setStyleSheet("QLabel { font-weight: bold; color: gray; }")
+            self.midi_value_label.setStyleSheet("QLabel { font-weight: bold; color: gray; }")
+
+            # Key actuation slider enabled when key is selected
+            # (handled in on_key_clicked)
+        else:
+            # Per-key disabled: enable Normal/MIDI sliders, blank out Key Actuation
+            self.normal_slider.setEnabled(True)
+            self.midi_slider.setEnabled(True)
+            self.actuation_slider.setEnabled(False)
+
+            # Restore normal style
+            self.normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+            self.midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
 
     def on_per_layer_changed(self, state):
         """Handle per-layer checkbox toggle"""
@@ -252,6 +661,12 @@ class TriggerSettingsTab(BasicEditor):
         # Update device
         if self.device and isinstance(self.device, VialKeyboard):
             self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
+
+        # Synchronize with Actuation Settings tab
+        if self.actuation_widget_ref:
+            self.actuation_widget_ref.syncing = True
+            self.actuation_widget_ref.per_layer_checkbox.setChecked(self.per_layer_enabled)
+            self.actuation_widget_ref.syncing = False
 
         self.refresh_layer_display()
 
@@ -285,6 +700,38 @@ class TriggerSettingsTab(BasicEditor):
                 self.device.keyboard.copy_layer_actuations(source_layer, dest_layer)
 
             self.refresh_layer_display()
+
+    def on_copy_to_all_layers(self):
+        """Copy current layer's per-key settings to all layers"""
+        if not self.mode_enabled:
+            return
+
+        ret = QMessageBox.question(
+            self.widget(),
+            tr("TriggerSettings", "Copy to All Layers"),
+            tr("TriggerSettings", f"Copy per-key settings from Layer {self.current_layer} to all layers?"),
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if ret == QMessageBox.Yes:
+            source_layer = self.current_layer
+
+            # Copy to all layers in memory and on device
+            for dest_layer in range(12):
+                if dest_layer != source_layer:
+                    # Copy in memory
+                    self.per_key_values[dest_layer] = self.per_key_values[source_layer].copy()
+
+                    # Copy on device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        self.device.keyboard.copy_layer_actuations(source_layer, dest_layer)
+
+            self.refresh_layer_display()
+            QMessageBox.information(
+                self.widget(),
+                tr("TriggerSettings", "Copy Complete"),
+                tr("TriggerSettings", f"Per-key settings copied to all layers.")
+            )
 
     def on_reset_all(self):
         """Reset all actuations to default with confirmation"""
@@ -346,7 +793,53 @@ class TriggerSettingsTab(BasicEditor):
         self.current_layer = layer
         for idx, btn in enumerate(self.layer_buttons[:self.keyboard.layers]):
             btn.setChecked(idx == layer)
+
+        # Load layer data into controls
+        self.load_layer_controls()
+
         self.refresh_layer_display()
+
+    def load_layer_controls(self):
+        """Load current layer's data into control widgets"""
+        if not self.valid():
+            return
+
+        layer = self.current_layer
+        data = self.layer_data[layer]
+
+        self.syncing = True
+
+        # Load Basic tab controls
+        self.normal_slider.setValue(data['normal'])
+        self.normal_value_label.setText(self.value_to_mm(data['normal']))
+
+        self.midi_slider.setValue(data['midi'])
+        self.midi_value_label.setText(self.value_to_mm(data['midi']))
+
+        # Set velocity combo by finding matching data value
+        for i in range(self.velocity_combo.count()):
+            if self.velocity_combo.itemData(i) == data['velocity']:
+                self.velocity_combo.setCurrentIndex(i)
+                break
+
+        self.vel_speed_slider.setValue(data['vel_speed'])
+        self.vel_speed_value_label.setText(str(data['vel_speed']))
+
+        # Load Rapidfire tab controls
+        self.rapid_checkbox.setChecked(data['rapidfire_enabled'])
+        self.rapid_slider.setEnabled(data['rapidfire_enabled'])
+        self.rapid_slider.setValue(data['rapid'])
+        self.rapid_value_label.setText(str(data['rapid']))
+
+        self.midi_rapid_checkbox.setChecked(data['midi_rapidfire_enabled'])
+        self.midi_rapid_sens_slider.setEnabled(data['midi_rapidfire_enabled'])
+        self.midi_rapid_vel_slider.setEnabled(data['midi_rapidfire_enabled'])
+        self.midi_rapid_sens_slider.setValue(data['midi_rapid_sens'])
+        self.midi_rapid_sens_value_label.setText(str(data['midi_rapid_sens']))
+        self.midi_rapid_vel_slider.setValue(data['midi_rapid_vel'])
+        self.midi_rapid_vel_value_label.setText(f"±{data['midi_rapid_vel']}")
+
+        self.syncing = False
 
     def on_layout_changed(self):
         """Handle layout change from layout editor"""
@@ -373,6 +866,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.per_layer_checkbox.setChecked(self.per_layer_enabled)
                 self.per_layer_checkbox.setEnabled(self.mode_enabled)
                 self.copy_layer_btn.setEnabled(self.mode_enabled)
+                self.copy_all_layers_btn.setEnabled(self.mode_enabled)
                 self.reset_btn.setEnabled(self.mode_enabled)
                 self.syncing = False
 
@@ -385,6 +879,34 @@ class TriggerSettingsTab(BasicEditor):
                             value = self.keyboard.get_per_key_actuation(layer, row, col)
                             if value is not None:
                                 self.per_key_values[layer][key_index] = value
+
+            # Load layer actuation data from device
+            try:
+                actuations = self.keyboard.get_all_layer_actuations()
+                if actuations and len(actuations) == 96:  # 12 layers × 8 bytes
+                    for layer in range(12):
+                        offset = layer * 8
+                        flags = actuations[offset + 7]
+
+                        self.layer_data[layer] = {
+                            'normal': actuations[offset + 0],
+                            'midi': actuations[offset + 1],
+                            'velocity': actuations[offset + 2],
+                            'rapid': actuations[offset + 3],
+                            'midi_rapid_sens': actuations[offset + 4],
+                            'midi_rapid_vel': actuations[offset + 5],
+                            'vel_speed': actuations[offset + 6],
+                            'rapidfire_enabled': bool(flags & 0x01),
+                            'midi_rapidfire_enabled': bool(flags & 0x02)
+                        }
+            except Exception as e:
+                print(f"Error loading layer actuations: {e}")
+
+            # Update slider states
+            self.update_slider_states()
+
+            # Load current layer data into controls
+            self.load_layer_controls()
 
             self.refresh_layer_display()
 

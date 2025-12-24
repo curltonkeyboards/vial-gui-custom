@@ -54,6 +54,9 @@ class Debouncer:
 class QuickActuationWidget(QWidget):
     """Full-featured per-layer actuation controls in keymap editor"""
 
+    # Signal emitted when "Enable Per-Key" is checked
+    enable_per_key_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
 
@@ -61,6 +64,7 @@ class QuickActuationWidget(QWidget):
         self.syncing = False
         self.current_layer = 0
         self.per_layer_enabled = False
+        self.trigger_settings_ref = None  # Reference to TriggerSettingsTab
 
         # Cache all layer data in memory to avoid device I/O lag
         self.layer_data = []
@@ -134,12 +138,17 @@ class QuickActuationWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         tab.setLayout(layout)
 
-        # Top row with Enable Per-Layer and Show Advanced checkboxes
+        # Top row with checkboxes
         top_row_layout = QHBoxLayout()
         top_row_layout.setContentsMargins(0, 0, 0, 0)
         top_row_layout.setSpacing(10)
 
-        self.per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer"))
+        self.enable_per_key_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Key"))
+        self.enable_per_key_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
+        self.enable_per_key_checkbox.stateChanged.connect(self.on_enable_per_key_toggled)
+        top_row_layout.addWidget(self.enable_per_key_checkbox)
+
+        self.per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer Actuation"))
         self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
         top_row_layout.addWidget(self.per_layer_checkbox)
@@ -1197,10 +1206,10 @@ class QuickActuationWidget(QWidget):
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
         self.per_layer_enabled = self.per_layer_checkbox.isChecked()
-        
+
         # Show/hide layer label
         self.layer_label.setVisible(self.per_layer_enabled)
-        
+
         # Update save button text
         if self.per_layer_enabled:
             self.save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {self.current_layer}"))
@@ -1208,7 +1217,31 @@ class QuickActuationWidget(QWidget):
             self.load_layer_from_memory()
         else:
             self.save_btn.setText(tr("QuickActuationWidget", "Save to All Layers"))
-    
+
+        # Synchronize with Trigger Settings tab
+        if self.trigger_settings_ref:
+            self.trigger_settings_ref.syncing = True
+            self.trigger_settings_ref.per_layer_checkbox.setChecked(self.per_layer_enabled)
+            self.trigger_settings_ref.syncing = False
+
+    def on_enable_per_key_toggled(self):
+        """Handle enable per-key checkbox toggle"""
+        if self.enable_per_key_checkbox.isChecked():
+            # Show notification message
+            QMessageBox.information(
+                self,
+                tr("QuickActuationWidget", "Switching to Advanced Trigger Settings"),
+                tr("QuickActuationWidget", "Switching to advanced trigger settings tab")
+            )
+
+            # Emit signal to request tab switch
+            self.enable_per_key_requested.emit()
+
+            # Uncheck this checkbox (it will be managed in Trigger Settings tab)
+            self.syncing = True
+            self.enable_per_key_checkbox.setChecked(False)
+            self.syncing = False
+
     def on_simple_channel_changed(self, value):
         """Handle simple channel slider changes"""
         self.simple_channel_label.setText(str(value + 1))
