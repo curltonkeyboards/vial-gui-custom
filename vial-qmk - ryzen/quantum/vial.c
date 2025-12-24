@@ -769,6 +769,71 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			break;
 		}
 
+		// Per-Key Actuation Commands (0xE0-0xE6)
+		case HID_CMD_SET_PER_KEY_ACTUATION: {  // 0xE0
+			// Format: [layer, row, col, actuation_value]
+			if (length >= 6) {
+				handle_set_per_key_actuation(&msg[2]);
+				msg[0] = 0x01; // Success
+			} else {
+				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case HID_CMD_GET_PER_KEY_ACTUATION: {  // 0xE1
+			// Format: [layer, row, col] -> returns [actuation_value]
+			if (length >= 5) {
+				handle_get_per_key_actuation(&msg[2], msg);
+				msg[0] = 0x01; // Success (actuation value in msg[1])
+			} else {
+				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case HID_CMD_GET_ALL_PER_KEY_ACTUATIONS: {  // 0xE2
+			// TODO: Implement chunked response for 840 bytes (12 layers × 70 keys)
+			// For now, return error as this needs multi-packet protocol
+			msg[0] = 0x00; // Not implemented yet
+			break;
+		}
+
+		case HID_CMD_RESET_PER_KEY_ACTUATIONS: {  // 0xE3
+			handle_reset_per_key_actuations_hid();
+			msg[0] = 0x01; // Success
+			break;
+		}
+
+		case HID_CMD_SET_PER_KEY_MODE: {  // 0xE4
+			// Format: [per_key_enabled, per_layer_enabled]
+			if (length >= 4) {
+				handle_set_per_key_mode(&msg[2]);
+				msg[0] = 0x01; // Success
+			} else {
+				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case HID_CMD_GET_PER_KEY_MODE: {  // 0xE5
+			// Response: [per_key_enabled, per_layer_enabled]
+			handle_get_per_key_mode(&msg[1]);
+			msg[0] = 0x01; // Success
+			break;
+		}
+
+		case HID_CMD_COPY_LAYER_ACTUATIONS: {  // 0xE6
+			// Format: [source_layer, dest_layer]
+			if (length >= 4) {
+				handle_copy_layer_actuations(&msg[2]);
+				msg[0] = 0x01; // Success
+			} else {
+				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
         // END LAYER RGB CASES
 
         case vial_dynamic_entry_op: {

@@ -97,6 +97,14 @@ class MainWindow(QMainWindow):
         print("Creating TriggerSettingsTab...")
         self.trigger_settings = TriggerSettingsTab(self.layout_editor)
         print(f"TriggerSettingsTab created: {self.trigger_settings}")
+
+        # Set up references between Actuation Settings and Trigger Settings for synchronization
+        self.keymap_editor.quick_actuation.trigger_settings_ref = self.trigger_settings
+        self.trigger_settings.actuation_widget_ref = self.keymap_editor.quick_actuation
+
+        # Connect signal for tab switching
+        self.keymap_editor.quick_actuation.enable_per_key_requested.connect(self.switch_to_trigger_settings)
+
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -439,6 +447,23 @@ class MainWindow(QMainWindow):
             new_tab.editor.activate()
 
         self.current_tab = new_tab
+
+    def switch_to_trigger_settings(self):
+        """Switch to Trigger Settings tab and enable per-key mode"""
+        # Find the index of the Trigger Settings tab
+        for i in range(self.tabs.count()):
+            if self.tabs.widget(i).editor == self.trigger_settings:
+                # Switch to the tab
+                self.tabs.setCurrentIndex(i)
+
+                # Enable per-key mode in Trigger Settings
+                self.trigger_settings.syncing = True
+                self.trigger_settings.enable_checkbox.setChecked(True)
+                self.trigger_settings.syncing = False
+
+                # Trigger the enable changed handler
+                self.trigger_settings.on_enable_changed(Qt.Checked)
+                break
 
     def about_vial(self):
         title = "About SwitchStation"
