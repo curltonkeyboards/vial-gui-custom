@@ -366,15 +366,13 @@ typedef struct {
     uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
     uint8_t aftertouch_cc;                // 0-127 (CC number for aftertouch)
     // Base/Main MIDI HE Velocity curve and range
-    uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)
     uint8_t he_velocity_max;              // 1-127 (maximum velocity)
-    // Keysplit HE Velocity curve and range
-    uint8_t keysplit_he_velocity_curve;   // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    // Keysplit HE Velocity range (curve now uses per-key or global fallback)
     uint8_t keysplit_he_velocity_min;     // 1-127 (minimum velocity)
     uint8_t keysplit_he_velocity_max;     // 1-127 (maximum velocity)
-    // Triplesplit HE Velocity curve and range
-    uint8_t triplesplit_he_velocity_curve; // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    // Triplesplit HE Velocity range (curve now uses per-key or global fallback)
     uint8_t triplesplit_he_velocity_min;   // 1-127 (minimum velocity)
     uint8_t triplesplit_he_velocity_max;   // 1-127 (maximum velocity)
     // Sustain settings (0=Ignore, 1=ON)
@@ -417,10 +415,8 @@ extern uint8_t aftertouch_cc;
 extern uint8_t he_velocity_curve;
 extern uint8_t he_velocity_min;
 extern uint8_t he_velocity_max;
-extern uint8_t keysplit_he_velocity_curve;
 extern uint8_t keysplit_he_velocity_min;
 extern uint8_t keysplit_he_velocity_max;
-extern uint8_t triplesplit_he_velocity_curve;
 extern uint8_t triplesplit_he_velocity_min;
 extern uint8_t triplesplit_he_velocity_max;
 extern uint8_t base_sustain;

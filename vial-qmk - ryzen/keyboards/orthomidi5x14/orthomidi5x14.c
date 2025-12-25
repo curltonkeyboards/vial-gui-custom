@@ -93,10 +93,9 @@ uint8_t modified_note;
 uint8_t original_note;
 
 // MIDI velocity and sustain settings (defined here, declared extern in process_dynamic_macro.h)
-uint8_t keysplit_he_velocity_curve = 2;    // Default to MEDIUM
+// Note: Keysplit/Triplesplit curves now use per-key or global fallback - only min/max remain
 uint8_t keysplit_he_velocity_min = 1;
 uint8_t keysplit_he_velocity_max = 127;
-uint8_t triplesplit_he_velocity_curve = 2; // Default to MEDIUM
 uint8_t triplesplit_he_velocity_min = 1;
 uint8_t triplesplit_he_velocity_max = 127;
 uint8_t base_sustain = 0;
@@ -449,7 +448,28 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
     he_velocity_max = max;
 }
 
-// Get HE velocity from matrix position (row, col) using per-layer settings
+// Helper: Check if layer uses per-key velocity curve flag
+bool layer_use_per_key_velocity_curve(uint8_t layer) {
+    if (layer >= 12) return false;
+    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE) != 0;
+}
+
+// Helper: Get velocity curve for a specific key (per-key or global fallback)
+uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col) {
+    // Check if per-key velocity curve is enabled for this layer
+    if (layer_use_per_key_velocity_curve(layer) && per_key_mode_enabled) {
+        uint8_t key_index = row * 14 + col;
+        if (key_index < 70) {
+            uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
+            return per_key_actuations[target_layer].keys[key_index].velocity_curve;
+        }
+    }
+
+    // Fallback to global curve
+    return keyboard_settings.he_velocity_curve;
+}
+
+// Get HE velocity from matrix position (row, col) using per-key or global settings
 // This is called when a MIDI note is triggered to get the velocity from the analog matrix
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
@@ -462,8 +482,8 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get global settings
-    uint8_t curve = keyboard_settings.he_velocity_curve;
+    // Get velocity curve (per-key or global) and global min/max
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
     uint8_t min_vel = keyboard_settings.he_velocity_min;
     uint8_t max_vel = keyboard_settings.he_velocity_max;
 
@@ -504,13 +524,15 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     return (uint8_t)velocity;
 }
 
-// Get Keysplit HE velocity from matrix position (row, col) using global settings
+// Get Keysplit HE velocity from matrix position (row, col) using per-key or global settings
 uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get global keysplit settings
-    uint8_t curve = keyboard_settings.keysplit_he_velocity_curve;
+    // Get velocity curve (per-key or global) and keysplit min/max
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
@@ -551,13 +573,15 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     return (uint8_t)velocity;
 }
 
-// Get Triplesplit HE velocity from matrix position (row, col) using global settings
+// Get Triplesplit HE velocity from matrix position (row, col) using per-key or global settings
 uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get global triplesplit settings
-    uint8_t curve = keyboard_settings.triplesplit_he_velocity_curve;
+    // Get velocity curve (per-key or global) and triplesplit min/max
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
