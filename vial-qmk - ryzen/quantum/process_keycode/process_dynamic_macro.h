@@ -216,32 +216,31 @@ void set_custom_animations_eeprom_initialized(void);
 #define SETTINGS_EEPROM_ADDR_DEFAULT SETTINGS_EEPROM_ADDR(0)
 
 
-#define LAYER_ACTUATION_EEPROM_ADDR 68830  // MOVED from 65600
-#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 96 bytes for 12 layers (8 bytes per layer)
-
-// Per-Key Actuation EEPROM addresses
+// Per-Key Actuation EEPROM addresses (REORGANIZED for larger structure)
 #define PER_KEY_ACTUATION_EEPROM_ADDR 67000
-#define PER_KEY_ACTUATION_SIZE (70 * 12)  // 840 bytes (70 keys × 12 layers)
+#define PER_KEY_ACTUATION_SIZE (sizeof(per_key_actuation_t) * 70 * 12)  // 6720 bytes (8 bytes × 70 keys × 12 layers)
 #define PER_KEY_ACTUATION_FLAGS_ADDR (PER_KEY_ACTUATION_EEPROM_ADDR + PER_KEY_ACTUATION_SIZE)
-// Flags: 2 bytes at 67840-67841
+// Flags: 2 bytes at 73720-73721
 //   - Byte 0: per_key_mode_enabled (0/1)
 //   - Byte 1: per_key_per_layer_enabled (0/1)
-// Total: 842 bytes (67000-67841)
+// Total: 6722 bytes (67000-73721)
 
-// Function declarations
+// Layer Actuation EEPROM addresses (MOVED to avoid overlap)
+#define LAYER_ACTUATION_EEPROM_ADDR 74000
+#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 60 bytes for 12 layers (5 bytes per layer after removing rapidfire fields)
+
+// Function declarations (updated signatures - removed rapidfire params)
 void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
                          uint8_t vel_speed, uint8_t flags);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
                          uint8_t *vel_speed, uint8_t *flags);
 
-bool layer_rapidfire_enabled(uint8_t layer);
-bool layer_midi_rapidfire_enabled(uint8_t layer);
+bool layer_use_fixed_velocity(uint8_t layer);
+bool layer_use_per_key_velocity_curve(uint8_t layer);
 // Add these HID command definitions to vial.c (around line with other HID_CMD defines)
 #define HID_CMD_SET_LAYER_ACTUATION 0xCA
 #define HID_CMD_GET_LAYER_ACTUATION 0xCB
@@ -367,15 +366,13 @@ typedef struct {
     uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
     uint8_t aftertouch_cc;                // 0-127 (CC number for aftertouch)
     // Base/Main MIDI HE Velocity curve and range
-    uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)
     uint8_t he_velocity_max;              // 1-127 (maximum velocity)
-    // Keysplit HE Velocity curve and range
-    uint8_t keysplit_he_velocity_curve;   // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    // Keysplit HE Velocity range (curve now uses per-key or global fallback)
     uint8_t keysplit_he_velocity_min;     // 1-127 (minimum velocity)
     uint8_t keysplit_he_velocity_max;     // 1-127 (maximum velocity)
-    // Triplesplit HE Velocity curve and range
-    uint8_t triplesplit_he_velocity_curve; // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+    // Triplesplit HE Velocity range (curve now uses per-key or global fallback)
     uint8_t triplesplit_he_velocity_min;   // 1-127 (minimum velocity)
     uint8_t triplesplit_he_velocity_max;   // 1-127 (maximum velocity)
     // Sustain settings (0=Ignore, 1=ON)
@@ -418,10 +415,8 @@ extern uint8_t aftertouch_cc;
 extern uint8_t he_velocity_curve;
 extern uint8_t he_velocity_min;
 extern uint8_t he_velocity_max;
-extern uint8_t keysplit_he_velocity_curve;
 extern uint8_t keysplit_he_velocity_min;
 extern uint8_t keysplit_he_velocity_max;
-extern uint8_t triplesplit_he_velocity_curve;
 extern uint8_t triplesplit_he_velocity_min;
 extern uint8_t triplesplit_he_velocity_max;
 extern uint8_t base_sustain;

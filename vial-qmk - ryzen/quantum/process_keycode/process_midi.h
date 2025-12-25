@@ -899,29 +899,45 @@ typedef struct {
     uint8_t normal_actuation;              // 0-100 (0-2.5mm)
     uint8_t midi_actuation;                // 0-100 (0-2.5mm)
     uint8_t velocity_mode;                 // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
-    uint8_t rapidfire_sensitivity;         // 1-100 (actuation threshold for regular keys)
-    uint8_t midi_rapidfire_sensitivity;    // 1-100 (actuation threshold for MIDI keys)
-    uint8_t midi_rapidfire_velocity;       // 0-20 (velocity modifier range ±)
     uint8_t velocity_speed_scale;          // 1-20 (velocity scale multiplier)
-    uint8_t flags;                         // Bit 0: rapidfire_enabled, Bit 1: midi_rapidfire_enabled, Bit 2: use_fixed_velocity
+    uint8_t flags;                         // Bit 2: use_fixed_velocity, Bit 3: use_per_key_velocity_curve
 } layer_actuation_t;
 
 
 // Flag bit definitions
-#define LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED       (1 << 0)
-#define LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED  (1 << 1)
-#define LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY      (1 << 2)
+#define LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY         (1 << 2)
+#define LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE (1 << 3)
 
 // ============================================================================
 // PER-KEY ACTUATION SYSTEM
 // ============================================================================
 
-// Per-key actuation storage
+// Per-key actuation settings (8 bytes per key)
 typedef struct {
-    uint8_t actuation[70];  // One byte per key (0-100 for 0-2.5mm)
+    uint8_t actuation;              // 0-100 (0-2.5mm) - Default: 60 (1.5mm)
+    uint8_t deadzone_top;           // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
+    uint8_t deadzone_bottom;        // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
+    uint8_t velocity_curve;         // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - Default: 2
+    uint8_t rapidfire_enabled;      // 0=off, 1=on - Default: 0
+    uint8_t rapidfire_press_sens;   // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
+    uint8_t rapidfire_release_sens; // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
+    int8_t  rapidfire_velocity_mod; // -64 to +64 (velocity offset per RT) - Default: 0
+} per_key_actuation_t;
+
+// Per-key actuation storage (70 keys × 8 bytes = 560 bytes per layer)
+typedef struct {
+    per_key_actuation_t keys[70];
 } layer_key_actuations_t;
 
-#define DEFAULT_ACTUATION_VALUE 60  // 60/40 = 1.5mm (since 0-100 maps to 0-2.5mm)
+// Default values
+#define DEFAULT_ACTUATION_VALUE 60              // 1.5mm
+#define DEFAULT_DEADZONE_TOP 4                  // 0.1mm
+#define DEFAULT_DEADZONE_BOTTOM 4               // 0.1mm
+#define DEFAULT_VELOCITY_CURVE 2                // MEDIUM (linear)
+#define DEFAULT_RAPIDFIRE_ENABLED 0             // Off
+#define DEFAULT_RAPIDFIRE_PRESS_SENS 4          // 0.1mm
+#define DEFAULT_RAPIDFIRE_RELEASE_SENS 4        // 0.1mm
+#define DEFAULT_RAPIDFIRE_VELOCITY_MOD 0        // No offset
 
 // External declarations
 extern layer_actuation_t layer_actuations[12];
@@ -930,7 +946,7 @@ extern bool aftertouch_pedal_active;
 extern uint8_t analog_mode;  // Global analog mode
 
 // Per-key actuation arrays and flags
-extern layer_key_actuations_t per_key_actuations[12];  // 840 bytes total
+extern layer_key_actuations_t per_key_actuations[12];  // 6720 bytes total (560 bytes × 12 layers)
 extern bool per_key_mode_enabled;
 extern bool per_key_per_layer_enabled;
 
@@ -938,20 +954,17 @@ void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
                          uint8_t vel_speed, uint8_t flags);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
                          uint8_t *vel_speed, uint8_t *flags);
 
-bool layer_rapidfire_enabled(uint8_t layer);
-bool layer_midi_rapidfire_enabled(uint8_t layer);
 bool layer_use_fixed_velocity(uint8_t layer);
+bool layer_use_per_key_velocity_curve(uint8_t layer);
 
 // HID handlers
 void handle_set_layer_actuation(const uint8_t* data);
-void handle_get_layer_actuation(uint8_t layer);
+void handle_get_layer_actuation(uint8_t layer, uint8_t* response);
 void handle_get_all_layer_actuations(void);
 void handle_reset_layer_actuations(void);
 
@@ -965,8 +978,10 @@ void save_per_key_actuations(void);
 void load_per_key_actuations(void);
 void reset_per_key_actuations(void);
 
-// Actuation lookup function
+// Per-key lookup functions
 uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col);
+per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col);
+uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col);
 
 // HID handlers for per-key actuation
 void handle_set_per_key_actuation(const uint8_t* data);

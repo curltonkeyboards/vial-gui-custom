@@ -1211,15 +1211,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         Args:
             data: bytearray [layer, normal_actuation, midi_actuation, velocity_mode,
-                            rapidfire_sensitivity, midi_rapidfire_sensitivity,
-                            midi_rapidfire_velocity, velocity_speed_scale, flags] (9 bytes total)
+                            velocity_speed_scale, flags] (6 bytes total)
 
-        Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
+        Note: Rapidfire settings are now per-key only (removed from layer settings).
+              Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings.
         """
         try:
             packet = self._create_hid_packet(0xCA, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[5] == 0
+            return response and len(response) > 0 and response[5] == 0x01
         except Exception as e:
             return False
 
@@ -1230,29 +1230,25 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             layer: Layer number (0-11)
 
         Returns:
-            dict: {normal, midi, velocity, rapid, midi_rapid_sens, midi_rapid_vel,
-                   vel_speed, rapidfire_enabled, midi_rapidfire_enabled} or None
+            dict: {normal, midi, velocity, vel_speed, use_per_key_velocity_curve} or None
 
-        Note: Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings
+        Note: Rapidfire settings are now per-key only (removed from layer settings).
+              Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings.
         """
         try:
             packet = self._create_hid_packet(0xCB, layer, None)
             response = self.usb_send(self.dev, packet, retries=20)
 
-            if not response or len(response) < 14:
+            if not response or len(response) < 11:
                 return None
 
-            flags = response[13]
+            flags = response[10]
             return {
                 'normal': response[6],
                 'midi': response[7],
                 'velocity': response[8],
-                'rapid': response[9],
-                'midi_rapid_sens': response[10],
-                'midi_rapid_vel': response[11],
-                'vel_speed': response[12],
-                'rapidfire_enabled': (flags & 0x01) != 0,
-                'midi_rapidfire_enabled': (flags & 0x02) != 0
+                'vel_speed': response[9],
+                'use_per_key_velocity_curve': (flags & 0x08) != 0  # Bit 3 = LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE
             }
         except Exception as e:
             return None
@@ -1437,43 +1433,83 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except:
             self.gaming_settings = None
 
-    def set_per_key_actuation(self, layer, row, col, actuation_value):
-        """Set actuation point for a specific key
+    def set_per_key_actuation(self, layer, key_index, settings):
+        """Set per-key actuation settings for a specific key
 
         Args:
             layer: Layer number (0-11)
-            row: Matrix row (0-4)
-            col: Matrix column (0-13)
-            actuation_value: Actuation value (0-100, where 60 = 1.5mm)
+            key_index: Key index (0-69, calculated as row * 14 + col)
+            settings: dict with keys:
+                - actuation: Actuation point (0-100, where 60 = 1.5mm)
+                - deadzone_top: Top deadzone (0-100, default 4 = 0.1mm)
+                - deadzone_bottom: Bottom deadzone (0-100, default 4 = 0.1mm)
+                - velocity_curve: Velocity curve (0-4: SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+                - rapidfire_enabled: Enable rapidfire (0 or 1)
+                - rapidfire_press_sens: Rapidfire press sensitivity (0-100, default 4 = 0.1mm)
+                - rapidfire_release_sens: Rapidfire release sensitivity (0-100, default 4 = 0.1mm)
+                - rapidfire_velocity_mod: Rapidfire velocity modifier (-64 to +64)
 
         Returns:
             bool: True if successful, False otherwise
         """
         try:
-            data = [layer, row, col, actuation_value]
+            # Convert signed velocity mod to unsigned byte
+            velocity_mod = settings.get('rapidfire_velocity_mod', 0)
+            velocity_mod_byte = velocity_mod & 0xFF if velocity_mod < 0 else velocity_mod
+
+            data = bytearray([
+                layer,
+                key_index,
+                settings.get('actuation', 60),
+                settings.get('deadzone_top', 4),
+                settings.get('deadzone_bottom', 4),
+                settings.get('velocity_curve', 2),
+                settings.get('rapidfire_enabled', 0),
+                settings.get('rapidfire_press_sens', 4),
+                settings.get('rapidfire_release_sens', 4),
+                velocity_mod_byte
+            ])
             packet = self._create_hid_packet(HID_CMD_SET_PER_KEY_ACTUATION, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
             return response and len(response) > 5 and response[5] == 0x01
         except Exception as e:
             return False
 
-    def get_per_key_actuation(self, layer, row, col):
-        """Get actuation point for a specific key
+    def get_per_key_actuation(self, layer, key_index):
+        """Get per-key actuation settings for a specific key
 
         Args:
             layer: Layer number (0-11)
-            row: Matrix row (0-4)
-            col: Matrix column (0-13)
+            key_index: Key index (0-69, calculated as row * 14 + col)
 
         Returns:
-            int: Actuation value (0-100) or None on error
+            dict: {
+                actuation, deadzone_top, deadzone_bottom, velocity_curve,
+                rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens,
+                rapidfire_velocity_mod
+            } or None on error
         """
         try:
-            data = [layer, row, col]
+            data = [layer, key_index]
             packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_ACTUATION, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            if response and len(response) > 6:
-                return response[6]
+
+            if response and len(response) >= 14:
+                # Response format: [header (6 bytes)] + [8 per-key fields]
+                # Convert unsigned byte to signed for velocity mod
+                velocity_mod_byte = response[13]
+                velocity_mod = velocity_mod_byte if velocity_mod_byte < 128 else velocity_mod_byte - 256
+
+                return {
+                    'actuation': response[6],
+                    'deadzone_top': response[7],
+                    'deadzone_bottom': response[8],
+                    'velocity_curve': response[9],
+                    'rapidfire_enabled': response[10],
+                    'rapidfire_press_sens': response[11],
+                    'rapidfire_release_sens': response[12],
+                    'rapidfire_velocity_mod': velocity_mod
+                }
             return None
         except Exception as e:
             return None

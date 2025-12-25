@@ -93,10 +93,9 @@ uint8_t modified_note;
 uint8_t original_note;
 
 // MIDI velocity and sustain settings (defined here, declared extern in process_dynamic_macro.h)
-uint8_t keysplit_he_velocity_curve = 2;    // Default to MEDIUM
+// Note: Keysplit/Triplesplit curves now use per-key or global fallback - only min/max remain
 uint8_t keysplit_he_velocity_min = 1;
 uint8_t keysplit_he_velocity_max = 127;
-uint8_t triplesplit_he_velocity_curve = 2; // Default to MEDIUM
 uint8_t triplesplit_he_velocity_min = 1;
 uint8_t triplesplit_he_velocity_max = 127;
 uint8_t base_sustain = 0;
@@ -449,7 +448,28 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
     he_velocity_max = max;
 }
 
-// Get HE velocity from matrix position (row, col) using per-layer settings
+// Helper: Check if layer uses per-key velocity curve flag
+bool layer_use_per_key_velocity_curve(uint8_t layer) {
+    if (layer >= 12) return false;
+    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE) != 0;
+}
+
+// Helper: Get velocity curve for a specific key (per-key or global fallback)
+uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col) {
+    // Check if per-key velocity curve is enabled for this layer
+    if (layer_use_per_key_velocity_curve(layer) && per_key_mode_enabled) {
+        uint8_t key_index = row * 14 + col;
+        if (key_index < 70) {
+            uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
+            return per_key_actuations[target_layer].keys[key_index].velocity_curve;
+        }
+    }
+
+    // Fallback to global curve
+    return keyboard_settings.he_velocity_curve;
+}
+
+// Get HE velocity from matrix position (row, col) using per-key or global settings
 // This is called when a MIDI note is triggered to get the velocity from the analog matrix
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
@@ -462,8 +482,8 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get global settings
-    uint8_t curve = keyboard_settings.he_velocity_curve;
+    // Get velocity curve (per-key or global) and global min/max
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
     uint8_t min_vel = keyboard_settings.he_velocity_min;
     uint8_t max_vel = keyboard_settings.he_velocity_max;
 
@@ -504,13 +524,15 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     return (uint8_t)velocity;
 }
 
-// Get Keysplit HE velocity from matrix position (row, col) using global settings
+// Get Keysplit HE velocity from matrix position (row, col) using per-key or global settings
 uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get global keysplit settings
-    uint8_t curve = keyboard_settings.keysplit_he_velocity_curve;
+    // Get velocity curve (per-key or global) and keysplit min/max
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
@@ -551,13 +573,15 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     return (uint8_t)velocity;
 }
 
-// Get Triplesplit HE velocity from matrix position (row, col) using global settings
+// Get Triplesplit HE velocity from matrix position (row, col) using per-key or global settings
 uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+
     // Get normalized travel value (0-255) from analog matrix
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
-    // Get global triplesplit settings
-    uint8_t curve = keyboard_settings.triplesplit_he_velocity_curve;
+    // Get velocity curve (per-key or global) and triplesplit min/max
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
@@ -2604,10 +2628,9 @@ void reset_keyboard_settings(void) {
     he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     he_velocity_min = 1;
     he_velocity_max = 127;
-    keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    // Note: keysplit/triplesplit curves now use per-key or global fallback
     keysplit_he_velocity_min = 1;
     keysplit_he_velocity_max = 127;
-    triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     triplesplit_he_velocity_min = 1;
     triplesplit_he_velocity_max = 127;
     base_sustain = 0;
@@ -2649,10 +2672,9 @@ void reset_keyboard_settings(void) {
     keyboard_settings.he_velocity_curve = he_velocity_curve;
     keyboard_settings.he_velocity_min = he_velocity_min;
     keyboard_settings.he_velocity_max = he_velocity_max;
-    keyboard_settings.keysplit_he_velocity_curve = keysplit_he_velocity_curve;
+    // Note: keysplit/triplesplit curves removed - now use per-key or global fallback
     keyboard_settings.keysplit_he_velocity_min = keysplit_he_velocity_min;
     keyboard_settings.keysplit_he_velocity_max = keysplit_he_velocity_max;
-    keyboard_settings.triplesplit_he_velocity_curve = triplesplit_he_velocity_curve;
     keyboard_settings.triplesplit_he_velocity_min = triplesplit_he_velocity_min;
     keyboard_settings.triplesplit_he_velocity_max = triplesplit_he_velocity_max;
     keyboard_settings.base_sustain = base_sustain;
@@ -2709,10 +2731,9 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     he_velocity_curve = keyboard_settings.he_velocity_curve;
     he_velocity_min = keyboard_settings.he_velocity_min;
     he_velocity_max = keyboard_settings.he_velocity_max;
-    keysplit_he_velocity_curve = keyboard_settings.keysplit_he_velocity_curve;
+    // Note: keysplit/triplesplit curves removed - now use per-key or global fallback
     keysplit_he_velocity_min = keyboard_settings.keysplit_he_velocity_min;
     keysplit_he_velocity_max = keyboard_settings.keysplit_he_velocity_max;
-    triplesplit_he_velocity_curve = keyboard_settings.triplesplit_he_velocity_curve;
     triplesplit_he_velocity_min = keyboard_settings.triplesplit_he_velocity_min;
     triplesplit_he_velocity_max = keyboard_settings.triplesplit_he_velocity_max;
     base_sustain = keyboard_settings.base_sustain;
@@ -3047,46 +3068,29 @@ void reset_layer_actuations(void) {
 
 // Set layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
                          uint8_t vel_speed, uint8_t flags) {
     if (layer >= 12) return;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
     layer_actuations[layer].velocity_mode = velocity;
-    layer_actuations[layer].rapidfire_sensitivity = rapid;
-    layer_actuations[layer].midi_rapidfire_sensitivity = midi_rapid_sens;
-    layer_actuations[layer].midi_rapidfire_velocity = midi_rapid_vel;
     layer_actuations[layer].velocity_speed_scale = vel_speed;
     layer_actuations[layer].flags = flags;
 }
 
 // Get layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
                          uint8_t *vel_speed, uint8_t *flags) {
     if (layer >= 12) return;
 
     *normal = layer_actuations[layer].normal_actuation;
     *midi = layer_actuations[layer].midi_actuation;
     *velocity = layer_actuations[layer].velocity_mode;
-    *rapid = layer_actuations[layer].rapidfire_sensitivity;
-    *midi_rapid_sens = layer_actuations[layer].midi_rapidfire_sensitivity;
-    *midi_rapid_vel = layer_actuations[layer].midi_rapidfire_velocity;
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
     *flags = layer_actuations[layer].flags;
 }
 
-// Helper functions for flag checking
-bool layer_rapidfire_enabled(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) != 0;
-}
-
-bool layer_midi_rapidfire_enabled(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) != 0;
-}
+// Helper function for flag checking (already defined in orthomidi5x14.c earlier - this is the implementation)
 
 bool layer_use_fixed_velocity(uint8_t layer) {
     if (layer >= 12) return false;
@@ -3104,17 +3108,25 @@ void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
     if (layer >= 12) return;
 
-    // Only 11 bytes now: layer + 10 params (removed 9 velocity bytes)
-    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5],
-                       data[6], data[7], data[8]);
+    // 6 bytes: layer + 5 params (normal, midi, velocity_mode, vel_speed, flags)
+    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5]);
     save_layer_actuations();
 }
 
 // Get layer actuation and send back via HID
-void handle_get_layer_actuation(uint8_t layer) {
-    // This would send back the data via HID
-    // Implementation depends on your HID protocol
-    // Placeholder for now
+// Response format: [normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags] (5 bytes)
+void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
+    if (layer >= 12) {
+        response[0] = 0;  // Error indicator
+        return;
+    }
+
+    response[0] = 0x01;  // Success
+    response[1] = layer_actuations[layer].normal_actuation;
+    response[2] = layer_actuations[layer].midi_actuation;
+    response[3] = layer_actuations[layer].velocity_mode;
+    response[4] = layer_actuations[layer].velocity_speed_scale;
+    response[5] = layer_actuations[layer].flags;
 }
 
 // Get all layer actuations
@@ -3137,7 +3149,14 @@ void handle_reset_layer_actuations(void) {
 void initialize_per_key_actuations(void) {
     for (uint8_t layer = 0; layer < 12; layer++) {
         for (uint8_t key = 0; key < 70; key++) {
-            per_key_actuations[layer].actuation[key] = DEFAULT_ACTUATION_VALUE;
+            per_key_actuations[layer].keys[key].actuation = DEFAULT_ACTUATION_VALUE;
+            per_key_actuations[layer].keys[key].deadzone_top = DEFAULT_DEADZONE_TOP;
+            per_key_actuations[layer].keys[key].deadzone_bottom = DEFAULT_DEADZONE_BOTTOM;
+            per_key_actuations[layer].keys[key].velocity_curve = DEFAULT_VELOCITY_CURVE;
+            per_key_actuations[layer].keys[key].rapidfire_enabled = DEFAULT_RAPIDFIRE_ENABLED;
+            per_key_actuations[layer].keys[key].rapidfire_press_sens = DEFAULT_RAPIDFIRE_PRESS_SENS;
+            per_key_actuations[layer].keys[key].rapidfire_release_sens = DEFAULT_RAPIDFIRE_RELEASE_SENS;
+            per_key_actuations[layer].keys[key].rapidfire_velocity_mod = DEFAULT_RAPIDFIRE_VELOCITY_MOD;
         }
     }
     per_key_mode_enabled = false;
@@ -3202,11 +3221,20 @@ uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
 
     // Per-layer mode: use specific layer
     if (per_key_per_layer_enabled) {
-        return per_key_actuations[layer].actuation[key_index];
+        return per_key_actuations[layer].keys[key_index].actuation;
     }
 
-        // Global mode: always use layer 0
-    return per_key_actuations[0].actuation[key_index];
+    // Global mode: always use layer 0
+    return per_key_actuations[0].keys[key_index].actuation;
+}
+
+// Get pointer to per-key settings for a specific key
+per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col) {
+    uint8_t key_index = row * 14 + col;
+    if (key_index >= 70) return NULL;
+
+    uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
+    return &per_key_actuations[target_layer].keys[key_index];
 }
 
 // =============================================================================
@@ -3214,43 +3242,53 @@ uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
 // =============================================================================
 
 // Set per-key actuation from HID data
-// Format: [layer, row, col, actuation_value]
+// Format: [layer, key_index, actuation, deadzone_top, deadzone_bottom, velocity_curve,
+//          rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+// Total: 10 bytes
 void handle_set_per_key_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
-    uint8_t row = data[1];
-    uint8_t col = data[2];
-    uint8_t actuation = data[3];
+    uint8_t key_index = data[1];
 
-    if (layer >= 12 || row >= 5 || col >= 14) {
+    if (layer >= 12 || key_index >= 70) {
         return;  // Invalid parameters
     }
 
-    uint8_t key_index = row * 14 + col;
-    if (key_index < 70) {
-        per_key_actuations[layer].actuation[key_index] = actuation;
-        save_per_key_actuations();
-    }
+    // Set all 8 fields of the per-key structure
+    per_key_actuations[layer].keys[key_index].actuation = data[2];
+    per_key_actuations[layer].keys[key_index].deadzone_top = data[3];
+    per_key_actuations[layer].keys[key_index].deadzone_bottom = data[4];
+    per_key_actuations[layer].keys[key_index].velocity_curve = data[5];
+    per_key_actuations[layer].keys[key_index].rapidfire_enabled = data[6];
+    per_key_actuations[layer].keys[key_index].rapidfire_press_sens = data[7];
+    per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
+    per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
+
+    save_per_key_actuations();
 }
 
 // Get per-key actuation and send back via HID
-// Format: [layer, row, col]
-// Response: [actuation_value]
+// Format: [layer, key_index]
+// Response: [actuation, deadzone_top, deadzone_bottom, velocity_curve,
+//            rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+// Total: 8 bytes
 void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
     uint8_t layer = data[0];
-    uint8_t row = data[1];
-    uint8_t col = data[2];
+    uint8_t key_index = data[1];
 
-    if (layer >= 12 || row >= 5 || col >= 14) {
-        response[0] = 0;  // Error
+    if (layer >= 12 || key_index >= 70) {
+        response[0] = 0;  // Error - set first byte to 0
         return;
     }
 
-    uint8_t key_index = row * 14 + col;
-    if (key_index < 70) {
-        response[0] = per_key_actuations[layer].actuation[key_index];
-    } else {
-        response[0] = 0;  // Error
-    }
+    // Return all 8 fields of the per-key structure
+    response[0] = per_key_actuations[layer].keys[key_index].actuation;
+    response[1] = per_key_actuations[layer].keys[key_index].deadzone_top;
+    response[2] = per_key_actuations[layer].keys[key_index].deadzone_bottom;
+    response[3] = per_key_actuations[layer].keys[key_index].velocity_curve;
+    response[4] = per_key_actuations[layer].keys[key_index].rapidfire_enabled;
+    response[5] = per_key_actuations[layer].keys[key_index].rapidfire_press_sens;
+    response[6] = per_key_actuations[layer].keys[key_index].rapidfire_release_sens;
+    response[7] = (uint8_t)per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod;
 }
 
 // Set per-key mode flags

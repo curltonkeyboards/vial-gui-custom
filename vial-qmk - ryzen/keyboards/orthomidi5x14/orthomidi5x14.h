@@ -352,8 +352,8 @@ typedef struct {
     uint16_t magic;  // 0x47A3 (GAME) for validation
 } gaming_settings_t;
 
-// EEPROM address for gaming settings (100 bytes allocated)
-#define GAMING_SETTINGS_EEPROM_ADDR 67840
+// EEPROM address for gaming settings (100 bytes allocated) - MOVED to avoid overlap with expanded per-key actuation
+#define GAMING_SETTINGS_EEPROM_ADDR 74100
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
 // Gaming mode global state
