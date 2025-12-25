@@ -671,83 +671,6 @@ class TriggerSettingsTab(BasicEditor):
         if self.device and isinstance(self.device, VialKeyboard):
             self.send_layer_actuation(self.current_layer)
 
-    def on_normal_changed(self, value):
-        """Handle normal keys actuation slider change"""
-        self.normal_value_label.setText(self.value_to_mm(value))
-
-        if self.syncing:
-            return
-
-        if self.per_layer_enabled:
-            # Save to current layer only
-            self.layer_data[self.current_layer]['normal'] = value
-            if self.device and isinstance(self.device, VialKeyboard):
-                self.send_layer_actuation(self.current_layer)
-        else:
-            # Save to ALL layers
-            for layer in range(12):
-                self.layer_data[layer]['normal'] = value
-                if self.device and isinstance(self.device, VialKeyboard):
-                    self.send_layer_actuation(layer)
-
-    def on_midi_changed(self, value):
-        """Handle MIDI keys actuation slider change"""
-        self.midi_value_label.setText(self.value_to_mm(value))
-
-        if self.syncing:
-            return
-
-        if self.per_layer_enabled:
-            # Save to current layer only
-            self.layer_data[self.current_layer]['midi'] = value
-            if self.device and isinstance(self.device, VialKeyboard):
-                self.send_layer_actuation(self.current_layer)
-        else:
-            # Save to ALL layers
-            for layer in range(12):
-                self.layer_data[layer]['midi'] = value
-                if self.device and isinstance(self.device, VialKeyboard):
-                    self.send_layer_actuation(layer)
-
-    def on_velocity_mode_changed(self, index):
-        """Handle velocity mode combo change"""
-        if self.syncing:
-            return
-
-        velocity_value = self.velocity_combo.currentData()
-
-        if self.per_layer_enabled:
-            # Save to current layer only
-            self.layer_data[self.current_layer]['velocity'] = velocity_value
-            if self.device and isinstance(self.device, VialKeyboard):
-                self.send_layer_actuation(self.current_layer)
-        else:
-            # Save to ALL layers
-            for layer in range(12):
-                self.layer_data[layer]['velocity'] = velocity_value
-                if self.device and isinstance(self.device, VialKeyboard):
-                    self.send_layer_actuation(layer)
-
-    def on_vel_speed_changed(self, value):
-        """Handle velocity speed scale slider change"""
-        self.vel_speed_value_label.setText(str(value))
-
-        if self.syncing:
-            return
-
-        if self.per_layer_enabled:
-            # Save to current layer only
-            self.layer_data[self.current_layer]['vel_speed'] = value
-            if self.device and isinstance(self.device, VialKeyboard):
-                self.send_layer_actuation(self.current_layer)
-        else:
-            # Save to ALL layers
-            for layer in range(12):
-                self.layer_data[layer]['vel_speed'] = value
-                if self.device and isinstance(self.device, VialKeyboard):
-                    self.send_layer_actuation(layer)
-
-
     def send_layer_actuation(self, layer):
         """Send layer actuation settings to device"""
         data = self.layer_data[layer]
@@ -964,22 +887,6 @@ class TriggerSettingsTab(BasicEditor):
         data = self.layer_data[layer]
 
         self.syncing = True
-
-        # Load Basic tab controls
-        self.normal_slider.setValue(data['normal'])
-        self.normal_value_label.setText(self.value_to_mm(data['normal']))
-
-        self.midi_slider.setValue(data['midi'])
-        self.midi_value_label.setText(self.value_to_mm(data['midi']))
-
-        # Set velocity combo by finding matching data value
-        for i in range(self.velocity_combo.count()):
-            if self.velocity_combo.itemData(i) == data['velocity']:
-                self.velocity_combo.setCurrentIndex(i)
-                break
-
-        self.vel_speed_slider.setValue(data['vel_speed'])
-        self.vel_speed_value_label.setText(str(data['vel_speed']))
 
         # Load layer-level velocity curve checkbox
         self.use_per_key_curve_checkbox.setChecked(data['use_per_key_velocity_curve'])
