@@ -900,13 +900,12 @@ typedef struct {
     uint8_t midi_actuation;                // 0-100 (0-2.5mm)
     uint8_t velocity_mode;                 // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
     uint8_t velocity_speed_scale;          // 1-20 (velocity scale multiplier)
-    uint8_t flags;                         // Bit 2: use_fixed_velocity, Bit 3: use_per_key_velocity_curve
+    uint8_t flags;                         // Bit 2: use_fixed_velocity (per-key velocity curve now moved to per-key flags)
 } layer_actuation_t;
 
 
 // Flag bit definitions
 #define LAYER_ACTUATION_FLAG_USE_FIXED_VELOCITY         (1 << 2)
-#define LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE (1 << 3)
 
 // ============================================================================
 // PER-KEY ACTUATION SYSTEM
@@ -918,11 +917,15 @@ typedef struct {
     uint8_t deadzone_top;           // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
     uint8_t deadzone_bottom;        // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
     uint8_t velocity_curve;         // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - Default: 2
-    uint8_t rapidfire_enabled;      // 0=off, 1=on - Default: 0
+    uint8_t flags;                  // Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve - Default: 0
     uint8_t rapidfire_press_sens;   // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
     uint8_t rapidfire_release_sens; // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
     int8_t  rapidfire_velocity_mod; // -64 to +64 (velocity offset per RT) - Default: 0
 } per_key_actuation_t;
+
+// Per-key flag bit definitions
+#define PER_KEY_FLAG_RAPIDFIRE_ENABLED          (1 << 0)
+#define PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE (1 << 1)
 
 // Per-key actuation storage (70 keys × 8 bytes = 560 bytes per layer)
 typedef struct {
@@ -934,7 +937,7 @@ typedef struct {
 #define DEFAULT_DEADZONE_TOP 4                  // 0.1mm
 #define DEFAULT_DEADZONE_BOTTOM 4               // 0.1mm
 #define DEFAULT_VELOCITY_CURVE 2                // MEDIUM (linear)
-#define DEFAULT_RAPIDFIRE_ENABLED 0             // Off
+#define DEFAULT_PER_KEY_FLAGS 0                 // All flags off (rapidfire off, use global velocity curve)
 #define DEFAULT_RAPIDFIRE_PRESS_SENS 4          // 0.1mm
 #define DEFAULT_RAPIDFIRE_RELEASE_SENS 4        // 0.1mm
 #define DEFAULT_RAPIDFIRE_VELOCITY_MOD 0        // No offset
