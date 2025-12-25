@@ -41,14 +41,14 @@ class TriggerSettingsTab(BasicEditor):
             layer_keys = []
             for _ in range(70):
                 layer_keys.append({
-                    'actuation': 60,               # 0-100 = 0-2.5mm, default 1.5mm
-                    'deadzone_top': 4,             # 0-100 = 0-2.5mm, default 0.1mm
-                    'deadzone_bottom': 4,          # 0-100 = 0-2.5mm, default 0.1mm
-                    'velocity_curve': 2,           # 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST), default MEDIUM
-                    'rapidfire_enabled': 0,        # 0=off, 1=on
-                    'rapidfire_press_sens': 4,     # 0-100 = 0-2.5mm, default 0.1mm
-                    'rapidfire_release_sens': 4,   # 0-100 = 0-2.5mm, default 0.1mm
-                    'rapidfire_velocity_mod': 0    # -64 to +64, default 0
+                    'actuation': 60,                    # 0-100 = 0-2.5mm, default 1.5mm
+                    'deadzone_top': 4,                  # 0-100 = 0-2.5mm, default 0.1mm
+                    'deadzone_bottom': 4,               # 0-100 = 0-2.5mm, default 0.1mm
+                    'velocity_curve': 2,                # 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST), default MEDIUM
+                    'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve
+                    'rapidfire_press_sens': 4,          # 0-100 = 0-2.5mm, default 0.1mm
+                    'rapidfire_release_sens': 4,        # 0-100 = 0-2.5mm, default 0.1mm
+                    'rapidfire_velocity_mod': 0         # -64 to +64, default 0
                 })
             self.per_key_values.append(layer_keys)
 
@@ -56,15 +56,14 @@ class TriggerSettingsTab(BasicEditor):
         self.mode_enabled = False
         self.per_layer_enabled = False
 
-        # Cache for layer actuation settings (removed rapidfire, added velocity curve flag)
+        # Cache for layer actuation settings
         self.layer_data = []
         for _ in range(12):
             self.layer_data.append({
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'vel_speed': 10,  # Velocity speed scale
-                'use_per_key_velocity_curve': False  # Flag bit 3
+                'vel_speed': 10  # Velocity speed scale
             })
 
         # Top bar with layer selection
@@ -140,16 +139,23 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_row.addStretch()
         layout.addLayout(checkbox_row)
 
-        # Layer-level settings row
-        layer_settings_row = QHBoxLayout()
+        # Selection buttons row
+        selection_row = QHBoxLayout()
 
-        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
-        self.use_per_key_curve_checkbox.setToolTip("When enabled, each key uses its own velocity curve. When disabled, uses global velocity curve.")
-        self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        layer_settings_row.addWidget(self.use_per_key_curve_checkbox)
+        self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
+        self.select_all_btn.clicked.connect(self.on_select_all)
+        selection_row.addWidget(self.select_all_btn)
 
-        layer_settings_row.addStretch()
-        layout.addLayout(layer_settings_row)
+        self.unselect_all_btn = QPushButton(tr("TriggerSettings", "Unselect All"))
+        self.unselect_all_btn.clicked.connect(self.on_unselect_all)
+        selection_row.addWidget(self.unselect_all_btn)
+
+        self.invert_selection_btn = QPushButton(tr("TriggerSettings", "Invert Selection"))
+        self.invert_selection_btn.clicked.connect(self.on_invert_selection)
+        selection_row.addWidget(self.invert_selection_btn)
+
+        selection_row.addStretch()
+        layout.addLayout(selection_row)
 
         # Create tab widget
         self.tab_widget = QTabWidget()
@@ -244,6 +250,13 @@ class TriggerSettingsTab(BasicEditor):
         curve_layout.addWidget(self.velocity_curve_combo, 1)
 
         layout.addLayout(curve_layout)
+
+        # Use Per-Key Velocity Curve checkbox
+        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
+        self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve. When disabled, uses global velocity curve.")
+        self.use_per_key_curve_checkbox.setEnabled(False)
+        self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
+        layout.addWidget(self.use_per_key_curve_checkbox)
 
         # Separator
         line = QFrame()
@@ -986,3 +999,15 @@ class TriggerSettingsTab(BasicEditor):
                     key.setText("")
 
         self.container.update()
+
+    def on_select_all(self):
+        """Handle Select All button click"""
+        self.container.select_all()
+
+    def on_unselect_all(self):
+        """Handle Unselect All button click"""
+        self.container.unselect_all()
+
+    def on_invert_selection(self):
+        """Handle Invert Selection button click"""
+        self.container.invert_selection()
