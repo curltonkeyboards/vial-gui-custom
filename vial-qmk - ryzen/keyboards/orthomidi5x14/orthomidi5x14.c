@@ -3114,10 +3114,19 @@ void handle_set_layer_actuation(const uint8_t* data) {
 }
 
 // Get layer actuation and send back via HID
-void handle_get_layer_actuation(uint8_t layer) {
-    // This would send back the data via HID
-    // Implementation depends on your HID protocol
-    // Placeholder for now
+// Response format: [normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags] (5 bytes)
+void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
+    if (layer >= 12) {
+        response[0] = 0;  // Error indicator
+        return;
+    }
+
+    response[0] = 0x01;  // Success
+    response[1] = layer_actuations[layer].normal_actuation;
+    response[2] = layer_actuations[layer].midi_actuation;
+    response[3] = layer_actuations[layer].velocity_mode;
+    response[4] = layer_actuations[layer].velocity_speed_scale;
+    response[5] = layer_actuations[layer].flags;
 }
 
 // Get all layer actuations
@@ -3233,43 +3242,53 @@ per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col) {
 // =============================================================================
 
 // Set per-key actuation from HID data
-// Format: [layer, row, col, actuation_value]
+// Format: [layer, key_index, actuation, deadzone_top, deadzone_bottom, velocity_curve,
+//          rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+// Total: 10 bytes
 void handle_set_per_key_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
-    uint8_t row = data[1];
-    uint8_t col = data[2];
-    uint8_t actuation = data[3];
+    uint8_t key_index = data[1];
 
-    if (layer >= 12 || row >= 5 || col >= 14) {
+    if (layer >= 12 || key_index >= 70) {
         return;  // Invalid parameters
     }
 
-    uint8_t key_index = row * 14 + col;
-    if (key_index < 70) {
-        per_key_actuations[layer].actuation[key_index] = actuation;
-        save_per_key_actuations();
-    }
+    // Set all 8 fields of the per-key structure
+    per_key_actuations[layer].keys[key_index].actuation = data[2];
+    per_key_actuations[layer].keys[key_index].deadzone_top = data[3];
+    per_key_actuations[layer].keys[key_index].deadzone_bottom = data[4];
+    per_key_actuations[layer].keys[key_index].velocity_curve = data[5];
+    per_key_actuations[layer].keys[key_index].rapidfire_enabled = data[6];
+    per_key_actuations[layer].keys[key_index].rapidfire_press_sens = data[7];
+    per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
+    per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
+
+    save_per_key_actuations();
 }
 
 // Get per-key actuation and send back via HID
-// Format: [layer, row, col]
-// Response: [actuation_value]
+// Format: [layer, key_index]
+// Response: [actuation, deadzone_top, deadzone_bottom, velocity_curve,
+//            rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+// Total: 8 bytes
 void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
     uint8_t layer = data[0];
-    uint8_t row = data[1];
-    uint8_t col = data[2];
+    uint8_t key_index = data[1];
 
-    if (layer >= 12 || row >= 5 || col >= 14) {
-        response[0] = 0;  // Error
+    if (layer >= 12 || key_index >= 70) {
+        response[0] = 0;  // Error - set first byte to 0
         return;
     }
 
-    uint8_t key_index = row * 14 + col;
-    if (key_index < 70) {
-        response[0] = per_key_actuations[layer].actuation[key_index];
-    } else {
-        response[0] = 0;  // Error
-    }
+    // Return all 8 fields of the per-key structure
+    response[0] = per_key_actuations[layer].keys[key_index].actuation;
+    response[1] = per_key_actuations[layer].keys[key_index].deadzone_top;
+    response[2] = per_key_actuations[layer].keys[key_index].deadzone_bottom;
+    response[3] = per_key_actuations[layer].keys[key_index].velocity_curve;
+    response[4] = per_key_actuations[layer].keys[key_index].rapidfire_enabled;
+    response[5] = per_key_actuations[layer].keys[key_index].rapidfire_press_sens;
+    response[6] = per_key_actuations[layer].keys[key_index].rapidfire_release_sens;
+    response[7] = (uint8_t)per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod;
 }
 
 // Set per-key mode flags

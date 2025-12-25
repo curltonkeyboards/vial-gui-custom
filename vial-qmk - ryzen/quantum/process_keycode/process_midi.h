@@ -964,7 +964,7 @@ bool layer_use_per_key_velocity_curve(uint8_t layer);
 
 // HID handlers
 void handle_set_layer_actuation(const uint8_t* data);
-void handle_get_layer_actuation(uint8_t layer);
+void handle_get_layer_actuation(uint8_t layer, uint8_t* response);
 void handle_get_all_layer_actuations(void);
 void handle_reset_layer_actuations(void);
 

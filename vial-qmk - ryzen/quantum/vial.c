@@ -502,7 +502,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		// (around where you have the other custom commands like vial_layer_rgb_save)
 
 		case 0xCA: {  // HID_CMD_SET_LAYER_ACTUATION
-			if (length >= 12) {  // Header (6) + layer (1) + 9 params + flags (1) = 11 bytes minimum
+			if (length >= 8) {  // Magic (1) + Cmd (1) + layer (1) + 5 params = 8 bytes minimum
 				handle_set_layer_actuation(&msg[2]);
 				msg[0] = 0x01; // Success
 			} else {
@@ -514,8 +514,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		case 0xCB: {  // HID_CMD_GET_LAYER_ACTUATION
 			uint8_t layer = msg[2];
 			if (layer < 12) {
-				handle_get_layer_actuation(layer);
-				// Response is sent inside the handler
+				handle_get_layer_actuation(layer, msg);
+				// Response written to msg[0-5]: success + 5 params
 			} else {
 				msg[0] = 0x00; // Error
 			}
@@ -771,8 +771,10 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 		// Per-Key Actuation Commands (0xE0-0xE6)
 		case HID_CMD_SET_PER_KEY_ACTUATION: {  // 0xE0
-			// Format: [layer, row, col, actuation_value]
-			if (length >= 6) {
+			// Format: [layer, key_index, actuation, deadzone_top, deadzone_bottom, velocity_curve,
+			//          rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+			// Total: 10 data bytes + 2 overhead = 12 bytes minimum
+			if (length >= 12) {
 				handle_set_per_key_actuation(&msg[2]);
 				msg[0] = 0x01; // Success
 			} else {
@@ -782,10 +784,13 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		}
 
 		case HID_CMD_GET_PER_KEY_ACTUATION: {  // 0xE1
-			// Format: [layer, row, col] -> returns [actuation_value]
-			if (length >= 5) {
+			// Format: [layer, key_index]
+			// Response: [actuation, deadzone_top, deadzone_bottom, velocity_curve,
+			//            rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+			// Total: 8 response bytes
+			if (length >= 4) {
 				handle_get_per_key_actuation(&msg[2], msg);
-				msg[0] = 0x01; // Success (actuation value in msg[1])
+				msg[0] = 0x01; // Success - 8 bytes returned in msg[0-7]
 			} else {
 				msg[0] = 0x00; // Error
 			}
@@ -793,7 +798,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		}
 
 		case HID_CMD_GET_ALL_PER_KEY_ACTUATIONS: {  // 0xE2
-			// TODO: Implement chunked response for 840 bytes (12 layers × 70 keys)
+			// TODO: Implement chunked response for 6,720 bytes (12 layers × 70 keys × 8 bytes)
 			// For now, return error as this needs multi-packet protocol
 			msg[0] = 0x00; // Not implemented yet
 			break;

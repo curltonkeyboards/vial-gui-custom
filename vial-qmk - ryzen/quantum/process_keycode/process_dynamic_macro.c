@@ -13218,20 +13218,19 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     dprintf("HID: Set layer %d actuation (velocity settings now global)\n", layer);
 }
 
-__attribute__((weak)) void handle_get_layer_actuation(uint8_t layer) {
+__attribute__((weak)) void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
     if (layer >= 12) {
         dprintf("HID: Invalid layer %d for actuation get\n", layer);
+        response[0] = 0;  // Error
         return;
     }
 
-    uint8_t response[8];  // 8 bytes per layer (normal, midi, velocity, rapid, midi_rapid_sens, midi_rapid_vel, vel_speed, flags)
-    get_layer_actuation(layer, &response[0], &response[1], &response[2],
-                        &response[3], &response[4], &response[5], &response[6],
-                        &response[7]);
+    // Get 5 layer parameters (removed rapidfire params)
+    response[0] = 0x01;  // Success
+    get_layer_actuation(layer, &response[1], &response[2], &response[3],
+                        &response[4], &response[5]);
 
-    send_hid_response(HID_CMD_GET_LAYER_ACTUATION, layer, 0, response, 8);
-
-    dprintf("HID: Sent layer %d actuation (velocity settings now global)\n", layer);
+    dprintf("HID: Sent layer %d actuation (5 bytes: normal, midi, velocity_mode, vel_speed, flags)\n", layer);
 }
 
 __attribute__((weak)) void handle_get_all_layer_actuations(void) {
