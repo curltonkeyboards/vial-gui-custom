@@ -73,12 +73,7 @@ class QuickActuationWidget(QWidget):
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'rapid': 4,
-                'midi_rapid_sens': 10,
-                'midi_rapid_vel': 10,
-                'vel_speed': 10,  # Velocity speed scale
-                'rapidfire_enabled': False,
-                'midi_rapidfire_enabled': False
+                'vel_speed': 10  # Velocity speed scale
             })
 
         # MIDI settings (global, per keyboard)
@@ -198,43 +193,7 @@ class QuickActuationWidget(QWidget):
         self.normal_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('normal', v, self.normal_value_label)
         )
-        
-        # Enable Rapidfire checkbox - ALWAYS VISIBLE
-        self.rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Rapidfire"))
-        self.rapid_checkbox.setChecked(False)
-        layout.addWidget(self.rapid_checkbox)
-        self.rapid_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
-        
-        # Rapidfire Sensitivity slider (hidden by default)
-        rapid_slider_layout = QHBoxLayout()
-        rapid_slider_layout.setContentsMargins(0, 0, 0, 0)
-        rapid_slider_layout.setSpacing(6)
-        rapid_label = QLabel(tr("QuickActuationWidget", "RF Sensitivity:"))
-        rapid_label.setMinimumWidth(90)
-        rapid_label.setMaximumWidth(90)
-        rapid_slider_layout.addWidget(rapid_label)
-        
-        self.rapid_slider = QSlider(Qt.Horizontal)
-        self.rapid_slider.setMinimum(1)
-        self.rapid_slider.setMaximum(100)
-        self.rapid_slider.setValue(4)
-        rapid_slider_layout.addWidget(self.rapid_slider, 1)
-        
-        self.rapid_value_label = QLabel("4")
-        self.rapid_value_label.setMinimumWidth(50)
-        self.rapid_value_label.setMaximumWidth(50)
-        self.rapid_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        rapid_slider_layout.addWidget(self.rapid_value_label)
-        
-        self.rapid_widget = QWidget()
-        self.rapid_widget.setLayout(rapid_slider_layout)
-        self.rapid_widget.setVisible(False)
-        layout.addWidget(self.rapid_widget)
-        
-        self.rapid_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('rapid', v, self.rapid_value_label)
-        )
-        
+
         # MIDI Keys Actuation slider (visible in advanced mode)
         midi_slider_layout = QHBoxLayout()
         midi_slider_layout.setContentsMargins(0, 0, 0, 0)
@@ -263,73 +222,6 @@ class QuickActuationWidget(QWidget):
 
         self.midi_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('midi', v, self.midi_value_label)
-        )
-
-        # Enable MIDI Rapidfire checkbox (visible in advanced mode)
-        self.midi_rapid_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable MIDI Rapidfire"))
-        self.midi_rapid_checkbox.setChecked(False)
-        self.midi_rapid_checkbox.setVisible(False)
-        layout.addWidget(self.midi_rapid_checkbox)
-        self.midi_rapid_checkbox.stateChanged.connect(self.on_midi_rapidfire_toggled)
-        
-        # MIDI Rapidfire Sensitivity slider
-        midi_rapid_sens_layout = QHBoxLayout()
-        midi_rapid_sens_layout.setContentsMargins(0, 0, 0, 0)
-        midi_rapid_sens_layout.setSpacing(6)
-        midi_rapid_sens_label = QLabel(tr("QuickActuationWidget", "MRF Sens:"))
-        midi_rapid_sens_label.setMinimumWidth(90)
-        midi_rapid_sens_label.setMaximumWidth(90)
-        midi_rapid_sens_layout.addWidget(midi_rapid_sens_label)
-        
-        self.midi_rapid_sens_slider = QSlider(Qt.Horizontal)
-        self.midi_rapid_sens_slider.setMinimum(1)
-        self.midi_rapid_sens_slider.setMaximum(100)
-        self.midi_rapid_sens_slider.setValue(10)
-        midi_rapid_sens_layout.addWidget(self.midi_rapid_sens_slider, 1)
-        
-        self.midi_rapid_sens_value_label = QLabel("10")
-        self.midi_rapid_sens_value_label.setMinimumWidth(50)
-        self.midi_rapid_sens_value_label.setMaximumWidth(50)
-        self.midi_rapid_sens_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        midi_rapid_sens_layout.addWidget(self.midi_rapid_sens_value_label)
-        
-        self.midi_rapid_sens_widget = QWidget()
-        self.midi_rapid_sens_widget.setLayout(midi_rapid_sens_layout)
-        self.midi_rapid_sens_widget.setVisible(False)
-        layout.addWidget(self.midi_rapid_sens_widget)
-        
-        self.midi_rapid_sens_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('midi_rapid_sens', v, self.midi_rapid_sens_value_label)
-        )
-        
-        # MIDI Rapidfire Velocity Range slider
-        midi_rapid_vel_layout = QHBoxLayout()
-        midi_rapid_vel_layout.setContentsMargins(0, 0, 0, 0)
-        midi_rapid_vel_layout.setSpacing(6)
-        midi_rapid_vel_label = QLabel(tr("QuickActuationWidget", "MRF Vel:"))
-        midi_rapid_vel_label.setMinimumWidth(90)
-        midi_rapid_vel_label.setMaximumWidth(90)
-        midi_rapid_vel_layout.addWidget(midi_rapid_vel_label)
-        
-        self.midi_rapid_vel_slider = QSlider(Qt.Horizontal)
-        self.midi_rapid_vel_slider.setMinimum(0)
-        self.midi_rapid_vel_slider.setMaximum(20)
-        self.midi_rapid_vel_slider.setValue(10)
-        midi_rapid_vel_layout.addWidget(self.midi_rapid_vel_slider, 1)
-        
-        self.midi_rapid_vel_value_label = QLabel("±10")
-        self.midi_rapid_vel_value_label.setMinimumWidth(50)
-        self.midi_rapid_vel_value_label.setMaximumWidth(50)
-        self.midi_rapid_vel_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
-        midi_rapid_vel_layout.addWidget(self.midi_rapid_vel_value_label)
-        
-        self.midi_rapid_vel_widget = QWidget()
-        self.midi_rapid_vel_widget.setLayout(midi_rapid_vel_layout)
-        self.midi_rapid_vel_widget.setVisible(False)
-        layout.addWidget(self.midi_rapid_vel_widget)
-        
-        self.midi_rapid_vel_slider.valueChanged.connect(
-            lambda v: self.on_slider_changed('midi_rapid_vel', v, self.midi_rapid_vel_value_label)
         )
 
         # Note: Velocity Curve, Velocity Min/Max, Transpose, Channel, Aftertouch, and Aftertouch CC
@@ -1193,15 +1085,6 @@ class QuickActuationWidget(QWidget):
 
         # Show/hide MIDI controls based on advanced state
         self.midi_widget.setVisible(show_advanced)
-        self.midi_rapid_checkbox.setVisible(show_advanced)
-
-        # Update MIDI rapidfire widgets visibility based on checkbox state
-        if show_advanced and self.midi_rapid_checkbox.isChecked():
-            self.midi_rapid_sens_widget.setVisible(True)
-            self.midi_rapid_vel_widget.setVisible(True)
-        else:
-            self.midi_rapid_sens_widget.setVisible(False)
-            self.midi_rapid_vel_widget.setVisible(False)
     
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
@@ -1338,22 +1221,6 @@ class QuickActuationWidget(QWidget):
         if not self.syncing:
             self.save_ui_to_memory()
     
-    def on_rapidfire_toggled(self, state):
-        """Show/hide rapidfire sensitivity slider"""
-        self.rapid_widget.setVisible(state == Qt.Checked)
-        if not self.syncing:
-            self.save_ui_to_memory()
-    
-    def on_midi_rapidfire_toggled(self, state):
-        """Show/hide MIDI rapidfire sliders"""
-        enabled = (state == Qt.Checked)
-        # Only show if advanced is visible
-        if self.advanced_widget.isVisible():
-            self.midi_rapid_sens_widget.setVisible(enabled)
-            self.midi_rapid_vel_widget.setVisible(enabled)
-        if not self.syncing:
-            self.save_ui_to_memory()
-    
     def save_ui_to_memory(self):
         """Save current UI state to memory (for current layer if per-layer, all if master)"""
         if self.per_layer_enabled:
@@ -1362,12 +1229,7 @@ class QuickActuationWidget(QWidget):
                 'normal': self.normal_slider.value(),
                 'midi': self.midi_slider.value(),
                 'velocity': self.velocity_combo.currentData(),
-                'rapid': self.rapid_slider.value(),
-                'midi_rapid_sens': self.midi_rapid_sens_slider.value(),
-                'midi_rapid_vel': self.midi_rapid_vel_slider.value(),
-                'vel_speed': self.vel_speed_combo.currentData(),
-                'rapidfire_enabled': self.rapid_checkbox.isChecked(),
-                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
+                'vel_speed': self.vel_speed_combo.currentData()
             }
         else:
             # Save to all layers (master mode)
@@ -1375,12 +1237,7 @@ class QuickActuationWidget(QWidget):
                 'normal': self.normal_slider.value(),
                 'midi': self.midi_slider.value(),
                 'velocity': self.velocity_combo.currentData(),
-                'rapid': self.rapid_slider.value(),
-                'midi_rapid_sens': self.midi_rapid_sens_slider.value(),
-                'midi_rapid_vel': self.midi_rapid_vel_slider.value(),
-                'vel_speed': self.vel_speed_combo.currentData(),
-                'rapidfire_enabled': self.rapid_checkbox.isChecked(),
-                'midi_rapidfire_enabled': self.midi_rapid_checkbox.isChecked()
+                'vel_speed': self.vel_speed_combo.currentData()
             }
             for i in range(12):
                 self.layer_data[i] = data.copy()
@@ -1394,18 +1251,9 @@ class QuickActuationWidget(QWidget):
         # Set sliders and immediately update labels
         self.normal_slider.setValue(data['normal'])
         self.normal_value_label.setText(f"{data['normal'] * 0.025:.2f}mm")
-        
+
         self.midi_slider.setValue(data['midi'])
         self.midi_value_label.setText(f"{data['midi'] * 0.025:.2f}mm")
-        
-        self.rapid_slider.setValue(data['rapid'])
-        self.rapid_value_label.setText(str(data['rapid']))
-        
-        self.midi_rapid_sens_slider.setValue(data['midi_rapid_sens'])
-        self.midi_rapid_sens_value_label.setText(str(data['midi_rapid_sens']))
-        
-        self.midi_rapid_vel_slider.setValue(data['midi_rapid_vel'])
-        self.midi_rapid_vel_value_label.setText(f"±{data['midi_rapid_vel']}")
 
         # Set combos
         for i in range(self.velocity_combo.count()):
@@ -1417,19 +1265,6 @@ class QuickActuationWidget(QWidget):
             if self.vel_speed_combo.itemData(i) == data['vel_speed']:
                 self.vel_speed_combo.setCurrentIndex(i)
                 break
-
-        # Set checkboxes
-        self.rapid_checkbox.setChecked(data['rapidfire_enabled'])
-        self.rapid_widget.setVisible(data['rapidfire_enabled'])
-        self.midi_rapid_checkbox.setChecked(data['midi_rapidfire_enabled'])
-
-        # Update MIDI rapidfire widgets visibility based on checkbox state and advanced mode
-        if self.advanced_widget.isVisible() and data['midi_rapidfire_enabled']:
-            self.midi_rapid_sens_widget.setVisible(True)
-            self.midi_rapid_vel_widget.setVisible(True)
-        else:
-            self.midi_rapid_sens_widget.setVisible(False)
-            self.midi_rapid_vel_widget.setVisible(False)
 
         self.syncing = False
     

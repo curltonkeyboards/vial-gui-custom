@@ -1202,12 +1202,19 @@ class KeyboardWidget2(QWidget):
             # Toggle selection: add if not selected, remove if already selected
             if clicked_key in self.selected_keys:
                 self.selected_keys.remove(clicked_key)
+                # If this was the last selected key, deselect entirely
+                if not self.selected_keys:
+                    self.active_key = None
+                    self.deselected.emit()
+                else:
+                    self.active_key = clicked_key
+                    self.is_dragging = True  # Start drag painting
+                    self.clicked.emit()
             else:
                 self.selected_keys.add(clicked_key)
-
-            self.active_key = clicked_key
-            self.is_dragging = True  # Start drag painting
-            self.clicked.emit()
+                self.active_key = clicked_key
+                self.is_dragging = True  # Start drag painting
+                self.clicked.emit()
         else:
             # Clicked empty space - clear selection
             self.selected_keys.clear()
