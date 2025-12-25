@@ -2628,10 +2628,9 @@ void reset_keyboard_settings(void) {
     he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     he_velocity_min = 1;
     he_velocity_max = 127;
-    keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    // Note: keysplit/triplesplit curves now use per-key or global fallback
     keysplit_he_velocity_min = 1;
     keysplit_he_velocity_max = 127;
-    triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     triplesplit_he_velocity_min = 1;
     triplesplit_he_velocity_max = 127;
     base_sustain = 0;
@@ -2673,10 +2672,9 @@ void reset_keyboard_settings(void) {
     keyboard_settings.he_velocity_curve = he_velocity_curve;
     keyboard_settings.he_velocity_min = he_velocity_min;
     keyboard_settings.he_velocity_max = he_velocity_max;
-    keyboard_settings.keysplit_he_velocity_curve = keysplit_he_velocity_curve;
+    // Note: keysplit/triplesplit curves removed - now use per-key or global fallback
     keyboard_settings.keysplit_he_velocity_min = keysplit_he_velocity_min;
     keyboard_settings.keysplit_he_velocity_max = keysplit_he_velocity_max;
-    keyboard_settings.triplesplit_he_velocity_curve = triplesplit_he_velocity_curve;
     keyboard_settings.triplesplit_he_velocity_min = triplesplit_he_velocity_min;
     keyboard_settings.triplesplit_he_velocity_max = triplesplit_he_velocity_max;
     keyboard_settings.base_sustain = base_sustain;
@@ -2733,10 +2731,9 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     he_velocity_curve = keyboard_settings.he_velocity_curve;
     he_velocity_min = keyboard_settings.he_velocity_min;
     he_velocity_max = keyboard_settings.he_velocity_max;
-    keysplit_he_velocity_curve = keyboard_settings.keysplit_he_velocity_curve;
+    // Note: keysplit/triplesplit curves removed - now use per-key or global fallback
     keysplit_he_velocity_min = keyboard_settings.keysplit_he_velocity_min;
     keysplit_he_velocity_max = keyboard_settings.keysplit_he_velocity_max;
-    triplesplit_he_velocity_curve = keyboard_settings.triplesplit_he_velocity_curve;
     triplesplit_he_velocity_min = keyboard_settings.triplesplit_he_velocity_min;
     triplesplit_he_velocity_max = keyboard_settings.triplesplit_he_velocity_max;
     base_sustain = keyboard_settings.base_sustain;
@@ -3071,46 +3068,29 @@ void reset_layer_actuations(void) {
 
 // Set layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
                          uint8_t vel_speed, uint8_t flags) {
     if (layer >= 12) return;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
     layer_actuations[layer].velocity_mode = velocity;
-    layer_actuations[layer].rapidfire_sensitivity = rapid;
-    layer_actuations[layer].midi_rapidfire_sensitivity = midi_rapid_sens;
-    layer_actuations[layer].midi_rapidfire_velocity = midi_rapid_vel;
     layer_actuations[layer].velocity_speed_scale = vel_speed;
     layer_actuations[layer].flags = flags;
 }
 
 // Get layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
                          uint8_t *vel_speed, uint8_t *flags) {
     if (layer >= 12) return;
 
     *normal = layer_actuations[layer].normal_actuation;
     *midi = layer_actuations[layer].midi_actuation;
     *velocity = layer_actuations[layer].velocity_mode;
-    *rapid = layer_actuations[layer].rapidfire_sensitivity;
-    *midi_rapid_sens = layer_actuations[layer].midi_rapidfire_sensitivity;
-    *midi_rapid_vel = layer_actuations[layer].midi_rapidfire_velocity;
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
     *flags = layer_actuations[layer].flags;
 }
 
-// Helper functions for flag checking
-bool layer_rapidfire_enabled(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) != 0;
-}
-
-bool layer_midi_rapidfire_enabled(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) != 0;
-}
+// Helper function for flag checking (already defined in orthomidi5x14.c earlier - this is the implementation)
 
 bool layer_use_fixed_velocity(uint8_t layer) {
     if (layer >= 12) return false;
@@ -3128,9 +3108,8 @@ void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
     if (layer >= 12) return;
 
-    // Only 11 bytes now: layer + 10 params (removed 9 velocity bytes)
-    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5],
-                       data[6], data[7], data[8]);
+    // 6 bytes: layer + 5 params (normal, midi, velocity_mode, vel_speed, flags)
+    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5]);
     save_layer_actuations();
 }
 
@@ -3161,7 +3140,14 @@ void handle_reset_layer_actuations(void) {
 void initialize_per_key_actuations(void) {
     for (uint8_t layer = 0; layer < 12; layer++) {
         for (uint8_t key = 0; key < 70; key++) {
-            per_key_actuations[layer].actuation[key] = DEFAULT_ACTUATION_VALUE;
+            per_key_actuations[layer].keys[key].actuation = DEFAULT_ACTUATION_VALUE;
+            per_key_actuations[layer].keys[key].deadzone_top = DEFAULT_DEADZONE_TOP;
+            per_key_actuations[layer].keys[key].deadzone_bottom = DEFAULT_DEADZONE_BOTTOM;
+            per_key_actuations[layer].keys[key].velocity_curve = DEFAULT_VELOCITY_CURVE;
+            per_key_actuations[layer].keys[key].rapidfire_enabled = DEFAULT_RAPIDFIRE_ENABLED;
+            per_key_actuations[layer].keys[key].rapidfire_press_sens = DEFAULT_RAPIDFIRE_PRESS_SENS;
+            per_key_actuations[layer].keys[key].rapidfire_release_sens = DEFAULT_RAPIDFIRE_RELEASE_SENS;
+            per_key_actuations[layer].keys[key].rapidfire_velocity_mod = DEFAULT_RAPIDFIRE_VELOCITY_MOD;
         }
     }
     per_key_mode_enabled = false;
@@ -3226,11 +3212,20 @@ uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
 
     // Per-layer mode: use specific layer
     if (per_key_per_layer_enabled) {
-        return per_key_actuations[layer].actuation[key_index];
+        return per_key_actuations[layer].keys[key_index].actuation;
     }
 
-        // Global mode: always use layer 0
-    return per_key_actuations[0].actuation[key_index];
+    // Global mode: always use layer 0
+    return per_key_actuations[0].keys[key_index].actuation;
+}
+
+// Get pointer to per-key settings for a specific key
+per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col) {
+    uint8_t key_index = row * 14 + col;
+    if (key_index >= 70) return NULL;
+
+    uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
+    return &per_key_actuations[target_layer].keys[key_index];
 }
 
 // =============================================================================
