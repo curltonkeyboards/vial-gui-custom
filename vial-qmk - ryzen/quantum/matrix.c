@@ -423,21 +423,21 @@ static uint8_t calculate_speed_velocity(uint8_t travel_delta, uint16_t time_delt
     return velocity;
 }
 
-static int8_t calculate_rapid_velocity_modifier(uint8_t travel_delta, uint16_t time_delta) {
-    if (time_delta == 0) return 0;
-    
-    // Use the VELOCITY RANGE setting from layer settings
-    uint8_t midi_rapid_vel_range = active_settings.midi_rapidfire_velocity;
-    
-    uint32_t speed = ((uint32_t)travel_delta * 1000) / time_delta;
-    
-    int32_t modifier = ((int32_t)speed * midi_rapid_vel_range) / 25;
-    modifier -= midi_rapid_vel_range;
-    
-    if (modifier < -(int8_t)midi_rapid_vel_range) modifier = -(int8_t)midi_rapid_vel_range;
-    if (modifier > (int8_t)midi_rapid_vel_range) modifier = (int8_t)midi_rapid_vel_range;
-    
-    return (int8_t)modifier;
+// Helper: Check if travel is in deadzone (top or bottom)
+// deadzone values are 0-100 scale (0-2.5mm), converted to 0-240 travel units
+static inline bool is_in_deadzone(uint8_t travel, uint8_t deadzone_top, uint8_t deadzone_bottom) {
+    // Convert deadzone from 0-100 scale to 0-240 travel units
+    // Formula: travel_units = (deadzone * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100 = (deadzone * 240) / 100
+    uint8_t top_threshold = (deadzone_top * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    uint8_t bottom_threshold = (FULL_TRAVEL_UNIT * TRAVEL_SCALE) - ((deadzone_bottom * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100);
+
+    // Top deadzone: 0 to top_threshold
+    if (travel <= top_threshold) return true;
+
+    // Bottom deadzone: bottom_threshold to max (240)
+    if (travel >= bottom_threshold) return true;
+
+    return false;
 }
 
 static void store_midi_velocity(uint8_t note_index, uint8_t velocity) {
@@ -472,39 +472,88 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
     
     state->was_pressed = state->pressed;
     state->pressed = pressed;
-    
-    // Handle MIDI rapid trigger mode
-    if (key->mode == AKM_RAPID && state->is_midi_key) {
-        uint16_t time_delta = now - state->last_time;
-        uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-        
-        if (pressed && !state->was_pressed) {
-            if (!state->rapid_cycle_active) {
-                state->rapid_cycle_active = true;
-                
-                switch (analog_mode) {
-                    case 0:
-                        state->base_velocity = 64;
-                        break;
-                    case 2:
-                        state->base_velocity = calculate_speed_velocity(travel_delta, time_delta);
-                        store_midi_velocity(state->note_index, state->base_velocity);
-                        break;
+
+    // Handle per-key rapid trigger mode (for MIDI keys)
+    if (key->mode == AKM_RAPID && state->is_midi_key && per_key_mode_enabled) {
+        // Get per-key settings
+        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+        if (current_layer >= 12) current_layer = 0;
+        uint8_t key_index = row * 14 + col;
+
+        if (key_index < 70) {
+            uint8_t target_layer = per_key_per_layer_enabled ? current_layer : 0;
+            per_key_actuation_t *settings = &per_key_actuations[target_layer].keys[key_index];
+
+            // Check if rapidfire is enabled for this key
+            if (settings->rapidfire_enabled) {
+                // Check if we're in a deadzone - if so, disable rapid trigger
+                bool in_deadzone = is_in_deadzone(travel, settings->deadzone_top, settings->deadzone_bottom);
+
+                // Full release detection - reset rapid trigger state
+                uint8_t top_threshold = (settings->deadzone_top * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+                if (travel <= top_threshold) {
+                    key->rapid_cycle_active = false;
+                    key->awaiting_release = false;
+                    key->base_velocity = 0;
                 }
-            } else {
-                int8_t modifier = calculate_rapid_velocity_modifier(travel_delta, time_delta);
-                int16_t modified_velocity = state->base_velocity + modifier;
-                
-                if (modified_velocity < MIN_VELOCITY) modified_velocity = MIN_VELOCITY;
-                if (modified_velocity > MAX_VELOCITY) modified_velocity = MAX_VELOCITY;
-                
-                store_midi_velocity(state->note_index, (uint8_t)modified_velocity);
+
+                if (!in_deadzone) {
+                    uint16_t time_delta = now - state->last_time;
+                    uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
+
+                    // Initial press - cross actuation point
+                    if (pressed && !state->was_pressed && !key->rapid_cycle_active) {
+                        key->rapid_cycle_active = true;
+                        key->awaiting_release = true;
+
+                        // Calculate initial velocity
+                        switch (analog_mode) {
+                            case 0:  // Fixed
+                                key->base_velocity = 64;
+                                break;
+                            case 2:  // Speed-based
+                                key->base_velocity = calculate_speed_velocity(travel_delta, time_delta);
+                                break;
+                            default:
+                                key->base_velocity = 64;
+                                break;
+                        }
+                        store_midi_velocity(state->note_index, key->base_velocity);
+                    }
+                    // Rapid re-trigger logic
+                    else if (key->rapid_cycle_active) {
+                        // Convert rapidfire sensitivity from 0-100 scale to travel units
+                        uint8_t press_sens = (settings->rapidfire_press_sens * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+                        uint8_t release_sens = (settings->rapidfire_release_sens * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+
+                        // Detect release: travel decreased by >= release_sens
+                        if (key->awaiting_release && state->last_travel > travel) {
+                            uint8_t down_travel = state->last_travel - travel;
+                            if (down_travel >= release_sens) {
+                                key->awaiting_release = false;
+                            }
+                        }
+
+                        // Detect re-trigger: travel increased by >= press_sens (after release detected)
+                        if (!key->awaiting_release && travel > state->last_travel) {
+                            uint8_t up_travel = travel - state->last_travel;
+                            if (up_travel >= press_sens) {
+                                // Re-trigger! Accumulate velocity
+                                int16_t new_velocity = key->base_velocity + settings->rapidfire_velocity_mod;
+
+                                // Clamp to valid range
+                                if (new_velocity < MIN_VELOCITY) new_velocity = MIN_VELOCITY;
+                                if (new_velocity > MAX_VELOCITY) new_velocity = MAX_VELOCITY;
+
+                                key->base_velocity = (uint8_t)new_velocity;  // Update base for next cycle
+                                store_midi_velocity(state->note_index, key->base_velocity);
+
+                                key->awaiting_release = true;  // Wait for next release
+                            }
+                        }
+                    }
+                }
             }
-        }
-        
-        if (travel < (midi_threshold >> 1)) {
-            state->rapid_cycle_active = false;
-            state->base_velocity = 0;
         }
     }
     
@@ -539,9 +588,9 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
                     
                     store_midi_velocity(state->note_index, velocity);
                     state->send_on_release = true;
-                    
+
                     if (key->mode == AKM_RAPID) {
-                        state->base_velocity = velocity;
+                        key->base_velocity = velocity;
                     }
                 }
                 
@@ -557,17 +606,17 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
             break;
             
         case 2: // Speed-based
-            if (pressed && !state->was_pressed && !(key->mode == AKM_RAPID && state->rapid_cycle_active)) {
+            if (pressed && !state->was_pressed && !(key->mode == AKM_RAPID && key->rapid_cycle_active)) {
                 uint16_t time_delta = now - state->last_time;
                 uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-                
+
                 uint8_t velocity = calculate_speed_velocity(travel_delta, time_delta);
-                
+
                 store_midi_velocity(state->note_index, velocity);
                 state->calculated_velocity = velocity;
-                
+
                 if (key->mode == AKM_RAPID) {
-                    state->base_velocity = velocity;
+                    key->base_velocity = velocity;
                 }
             }
             
@@ -608,9 +657,9 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
                     
                     store_midi_velocity(state->note_index, final_velocity);
                     state->send_on_release = true;
-                    
+
                     if (key->mode == AKM_RAPID) {
-                        state->base_velocity = final_velocity;
+                        key->base_velocity = final_velocity;
                     }
                 }
                 
@@ -798,14 +847,20 @@ void matrix_init_custom(void) {
             
             key->mode = AKM_REGULAR;
             key->state = AKS_REGULAR_RELEASED;
-            
+
             uint8_t act_pt = DEFAULT_ACTUATION_POINT * TRAVEL_SCALE;
             key->regular.actn_pt = act_pt;
-            key->regular.deactn_pt = act_pt > STATIC_HYSTERESIS * TRAVEL_SCALE ? 
+            key->regular.deactn_pt = act_pt > STATIC_HYSTERESIS * TRAVEL_SCALE ?
                                      act_pt - STATIC_HYSTERESIS * TRAVEL_SCALE : 0;
-            
+
             key->rpd_trig_sen = DEFAULT_RAPID_TRIGGER_SENSITIVITY * TRAVEL_SCALE;
             key->rpd_trig_sen_release = key->rpd_trig_sen;
+
+            // Initialize per-key rapid trigger state
+            key->base_velocity = 0;
+            key->rapid_cycle_active = false;
+            key->awaiting_release = false;
+            key->last_direction = 0;
             
             cal->value.zero_travel = DEFAULT_ZERO_TRAVEL_VALUE;
             cal->value.full_travel = DEFAULT_ZERO_TRAVEL_VALUE - DEFAULT_FULL_RANGE;
