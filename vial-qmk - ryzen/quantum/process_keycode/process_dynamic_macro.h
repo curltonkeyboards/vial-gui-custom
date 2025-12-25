@@ -240,7 +240,6 @@ void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t 
                          uint8_t *vel_speed, uint8_t *flags);
 
 bool layer_use_fixed_velocity(uint8_t layer);
-bool layer_use_per_key_velocity_curve(uint8_t layer);
 // Add these HID command definitions to vial.c (around line with other HID_CMD defines)
 #define HID_CMD_SET_LAYER_ACTUATION 0xCA
 #define HID_CMD_GET_LAYER_ACTUATION 0xCB

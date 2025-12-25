@@ -448,20 +448,17 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
     he_velocity_max = max;
 }
 
-// Helper: Check if layer uses per-key velocity curve flag
-bool layer_use_per_key_velocity_curve(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE) != 0;
-}
-
 // Helper: Get velocity curve for a specific key (per-key or global fallback)
+// Checks the per-key flag - works independently of per_key_mode_enabled
 uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col) {
-    // Check if per-key velocity curve is enabled for this layer
-    if (layer_use_per_key_velocity_curve(layer) && per_key_mode_enabled) {
-        uint8_t key_index = row * 14 + col;
-        if (key_index < 70) {
-            uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
-            return per_key_actuations[target_layer].keys[key_index].velocity_curve;
+    uint8_t key_index = row * 14 + col;
+    if (key_index < 70) {
+        uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
+        per_key_actuation_t *settings = &per_key_actuations[target_layer].keys[key_index];
+
+        // Check if this specific key uses per-key velocity curve (using flags field)
+        if (settings->flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
+            return settings->velocity_curve;
         }
     }
 
@@ -3153,7 +3150,7 @@ void initialize_per_key_actuations(void) {
             per_key_actuations[layer].keys[key].deadzone_top = DEFAULT_DEADZONE_TOP;
             per_key_actuations[layer].keys[key].deadzone_bottom = DEFAULT_DEADZONE_BOTTOM;
             per_key_actuations[layer].keys[key].velocity_curve = DEFAULT_VELOCITY_CURVE;
-            per_key_actuations[layer].keys[key].rapidfire_enabled = DEFAULT_RAPIDFIRE_ENABLED;
+            per_key_actuations[layer].keys[key].flags = DEFAULT_PER_KEY_FLAGS;  // Now using flags field
             per_key_actuations[layer].keys[key].rapidfire_press_sens = DEFAULT_RAPIDFIRE_PRESS_SENS;
             per_key_actuations[layer].keys[key].rapidfire_release_sens = DEFAULT_RAPIDFIRE_RELEASE_SENS;
             per_key_actuations[layer].keys[key].rapidfire_velocity_mod = DEFAULT_RAPIDFIRE_VELOCITY_MOD;
@@ -3243,7 +3240,8 @@ per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col) {
 
 // Set per-key actuation from HID data
 // Format: [layer, key_index, actuation, deadzone_top, deadzone_bottom, velocity_curve,
-//          rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+//          flags, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+// flags: Bit 0=rapidfire_enabled, Bit 1=use_per_key_velocity_curve
 // Total: 10 bytes
 void handle_set_per_key_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
@@ -3258,7 +3256,7 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     per_key_actuations[layer].keys[key_index].deadzone_top = data[3];
     per_key_actuations[layer].keys[key_index].deadzone_bottom = data[4];
     per_key_actuations[layer].keys[key_index].velocity_curve = data[5];
-    per_key_actuations[layer].keys[key_index].rapidfire_enabled = data[6];
+    per_key_actuations[layer].keys[key_index].flags = data[6];  // Now using flags field
     per_key_actuations[layer].keys[key_index].rapidfire_press_sens = data[7];
     per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
     per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
@@ -3269,7 +3267,8 @@ void handle_set_per_key_actuation(const uint8_t* data) {
 // Get per-key actuation and send back via HID
 // Format: [layer, key_index]
 // Response: [actuation, deadzone_top, deadzone_bottom, velocity_curve,
-//            rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+//            flags, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+// flags: Bit 0=rapidfire_enabled, Bit 1=use_per_key_velocity_curve
 // Total: 8 bytes
 void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
     uint8_t layer = data[0];
@@ -3285,7 +3284,7 @@ void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
     response[1] = per_key_actuations[layer].keys[key_index].deadzone_top;
     response[2] = per_key_actuations[layer].keys[key_index].deadzone_bottom;
     response[3] = per_key_actuations[layer].keys[key_index].velocity_curve;
-    response[4] = per_key_actuations[layer].keys[key_index].rapidfire_enabled;
+    response[4] = per_key_actuations[layer].keys[key_index].flags;  // Now using flags field
     response[5] = per_key_actuations[layer].keys[key_index].rapidfire_press_sens;
     response[6] = per_key_actuations[layer].keys[key_index].rapidfire_release_sens;
     response[7] = (uint8_t)per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod;

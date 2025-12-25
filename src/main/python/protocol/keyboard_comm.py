@@ -1444,7 +1444,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 - deadzone_top: Top deadzone (0-100, default 4 = 0.1mm)
                 - deadzone_bottom: Bottom deadzone (0-100, default 4 = 0.1mm)
                 - velocity_curve: Velocity curve (0-4: SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
-                - rapidfire_enabled: Enable rapidfire (0 or 1)
+                - flags: Flags byte (Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve)
                 - rapidfire_press_sens: Rapidfire press sensitivity (0-100, default 4 = 0.1mm)
                 - rapidfire_release_sens: Rapidfire release sensitivity (0-100, default 4 = 0.1mm)
                 - rapidfire_velocity_mod: Rapidfire velocity modifier (-64 to +64)
@@ -1464,7 +1464,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 settings.get('deadzone_top', 4),
                 settings.get('deadzone_bottom', 4),
                 settings.get('velocity_curve', 2),
-                settings.get('rapidfire_enabled', 0),
+                settings.get('flags', 0),  # Now using flags field
                 settings.get('rapidfire_press_sens', 4),
                 settings.get('rapidfire_release_sens', 4),
                 velocity_mod_byte
@@ -1485,7 +1485,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         Returns:
             dict: {
                 actuation, deadzone_top, deadzone_bottom, velocity_curve,
-                rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens,
+                flags, rapidfire_press_sens, rapidfire_release_sens,
                 rapidfire_velocity_mod
             } or None on error
         """
@@ -1505,7 +1505,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     'deadzone_top': response[7],
                     'deadzone_bottom': response[8],
                     'velocity_curve': response[9],
-                    'rapidfire_enabled': response[10],
+                    'flags': response[10],  # Now using flags field
                     'rapidfire_press_sens': response[11],
                     'rapidfire_release_sens': response[12],
                     'rapidfire_velocity_mod': velocity_mod

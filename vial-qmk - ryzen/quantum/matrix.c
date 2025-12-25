@@ -473,8 +473,9 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
     state->was_pressed = state->pressed;
     state->pressed = pressed;
 
-    // Handle per-key rapid trigger mode (for MIDI keys)
-    if (key->mode == AKM_RAPID && state->is_midi_key && per_key_mode_enabled) {
+    // Handle per-key rapid trigger mode (for ALL keys - MIDI and non-MIDI)
+    // Per-key rapidfire works independently of per_key_mode_enabled
+    if (key->mode == AKM_RAPID) {
         // Get per-key settings
         uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         if (current_layer >= 12) current_layer = 0;
@@ -484,8 +485,8 @@ static void process_midi_key_analog(uint8_t row, uint8_t col) {
             uint8_t target_layer = per_key_per_layer_enabled ? current_layer : 0;
             per_key_actuation_t *settings = &per_key_actuations[target_layer].keys[key_index];
 
-            // Check if rapidfire is enabled for this key
-            if (settings->rapidfire_enabled) {
+            // Check if rapidfire is enabled for this key (using flags field)
+            if (settings->flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) {
                 // Check if we're in a deadzone - if so, disable rapid trigger
                 bool in_deadzone = is_in_deadzone(travel, settings->deadzone_top, settings->deadzone_bottom);
 

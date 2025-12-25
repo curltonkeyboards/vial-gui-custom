@@ -41,14 +41,14 @@ class TriggerSettingsTab(BasicEditor):
             layer_keys = []
             for _ in range(70):
                 layer_keys.append({
-                    'actuation': 60,               # 0-100 = 0-2.5mm, default 1.5mm
-                    'deadzone_top': 4,             # 0-100 = 0-2.5mm, default 0.1mm
-                    'deadzone_bottom': 4,          # 0-100 = 0-2.5mm, default 0.1mm
-                    'velocity_curve': 2,           # 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST), default MEDIUM
-                    'rapidfire_enabled': 0,        # 0=off, 1=on
-                    'rapidfire_press_sens': 4,     # 0-100 = 0-2.5mm, default 0.1mm
-                    'rapidfire_release_sens': 4,   # 0-100 = 0-2.5mm, default 0.1mm
-                    'rapidfire_velocity_mod': 0    # -64 to +64, default 0
+                    'actuation': 60,                    # 0-100 = 0-2.5mm, default 1.5mm
+                    'deadzone_top': 4,                  # 0-100 = 0-2.5mm, default 0.1mm
+                    'deadzone_bottom': 4,               # 0-100 = 0-2.5mm, default 0.1mm
+                    'velocity_curve': 2,                # 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST), default MEDIUM
+                    'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve
+                    'rapidfire_press_sens': 4,          # 0-100 = 0-2.5mm, default 0.1mm
+                    'rapidfire_release_sens': 4,        # 0-100 = 0-2.5mm, default 0.1mm
+                    'rapidfire_velocity_mod': 0         # -64 to +64, default 0
                 })
             self.per_key_values.append(layer_keys)
 
@@ -56,15 +56,14 @@ class TriggerSettingsTab(BasicEditor):
         self.mode_enabled = False
         self.per_layer_enabled = False
 
-        # Cache for layer actuation settings (removed rapidfire, added velocity curve flag)
+        # Cache for layer actuation settings
         self.layer_data = []
         for _ in range(12):
             self.layer_data.append({
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'vel_speed': 10,  # Velocity speed scale
-                'use_per_key_velocity_curve': False  # Flag bit 3
+                'vel_speed': 10  # Velocity speed scale
             })
 
         # Top bar with layer selection
@@ -140,16 +139,23 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_row.addStretch()
         layout.addLayout(checkbox_row)
 
-        # Layer-level settings row
-        layer_settings_row = QHBoxLayout()
+        # Selection buttons row
+        selection_row = QHBoxLayout()
 
-        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
-        self.use_per_key_curve_checkbox.setToolTip("When enabled, each key uses its own velocity curve. When disabled, uses global velocity curve.")
-        self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        layer_settings_row.addWidget(self.use_per_key_curve_checkbox)
+        self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
+        self.select_all_btn.clicked.connect(self.on_select_all)
+        selection_row.addWidget(self.select_all_btn)
 
-        layer_settings_row.addStretch()
-        layout.addLayout(layer_settings_row)
+        self.unselect_all_btn = QPushButton(tr("TriggerSettings", "Unselect All"))
+        self.unselect_all_btn.clicked.connect(self.on_unselect_all)
+        selection_row.addWidget(self.unselect_all_btn)
+
+        self.invert_selection_btn = QPushButton(tr("TriggerSettings", "Invert Selection"))
+        self.invert_selection_btn.clicked.connect(self.on_invert_selection)
+        selection_row.addWidget(self.invert_selection_btn)
+
+        selection_row.addStretch()
+        layout.addLayout(selection_row)
 
         # Create tab widget
         self.tab_widget = QTabWidget()
@@ -244,6 +250,13 @@ class TriggerSettingsTab(BasicEditor):
         curve_layout.addWidget(self.velocity_curve_combo, 1)
 
         layout.addLayout(curve_layout)
+
+        # Use Per-Key Velocity Curve checkbox
+        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
+        self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve. When disabled, uses global velocity curve.")
+        self.use_per_key_curve_checkbox.setEnabled(False)
+        self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
+        layout.addWidget(self.use_per_key_curve_checkbox)
 
         # Separator
         line = QFrame()
@@ -433,8 +446,9 @@ class TriggerSettingsTab(BasicEditor):
         self.deadzone_bottom_slider.setValue(settings['deadzone_bottom'])
         self.deadzone_bottom_value_label.setText(self.value_to_mm(settings['deadzone_bottom']))
 
-        # Load rapidfire settings
-        self.rapidfire_checkbox.setChecked(settings['rapidfire_enabled'] != 0)
+        # Load rapidfire settings (extract bit 0 from flags)
+        rapidfire_enabled = (settings['flags'] & 0x01) != 0
+        self.rapidfire_checkbox.setChecked(rapidfire_enabled)
         self.rf_press_slider.setValue(settings['rapidfire_press_sens'])
         self.rf_press_value_label.setText(self.value_to_mm(settings['rapidfire_press_sens']))
         self.rf_release_slider.setValue(settings['rapidfire_release_sens'])
@@ -442,20 +456,25 @@ class TriggerSettingsTab(BasicEditor):
         self.rf_vel_mod_slider.setValue(settings['rapidfire_velocity_mod'])
         self.rf_vel_mod_value_label.setText(str(settings['rapidfire_velocity_mod']))
 
+        # Load per-key velocity curve checkbox (extract bit 1 from flags)
+        use_per_key_curve = (settings['flags'] & 0x02) != 0
+        self.use_per_key_curve_checkbox.setChecked(use_per_key_curve)
+
         self.syncing = False
 
         # Enable controls when key is selected
-        key_selected = self.mode_enabled and self.container.active_key is not None
-        self.actuation_slider.setEnabled(key_selected)
-        self.velocity_curve_combo.setEnabled(key_selected and self.layer_data[self.current_layer]['use_per_key_velocity_curve'])
+        # Note: Actuation requires mode_enabled, but rapidfire/deadzone/velocity curve work independently
+        key_selected = self.container.active_key is not None
+        self.actuation_slider.setEnabled(key_selected and self.mode_enabled)
+        self.use_per_key_curve_checkbox.setEnabled(key_selected)
+        self.velocity_curve_combo.setEnabled(key_selected and use_per_key_curve)
         self.deadzone_checkbox.setEnabled(key_selected)
         self.deadzone_top_slider.setEnabled(key_selected and deadzone_enabled)
         self.deadzone_bottom_slider.setEnabled(key_selected and deadzone_enabled)
         self.rapidfire_checkbox.setEnabled(key_selected)
-        rf_enabled = key_selected and settings['rapidfire_enabled'] != 0
-        self.rf_press_slider.setEnabled(rf_enabled)
-        self.rf_release_slider.setEnabled(rf_enabled)
-        self.rf_vel_mod_slider.setEnabled(rf_enabled)
+        self.rf_press_slider.setEnabled(key_selected and rapidfire_enabled)
+        self.rf_release_slider.setEnabled(key_selected and rapidfire_enabled)
+        self.rf_vel_mod_slider.setEnabled(key_selected and rapidfire_enabled)
 
     def on_key_deselected(self):
         """Handle key deselection - disable all controls"""
@@ -492,195 +511,328 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
 
     def on_key_actuation_changed(self, value):
-        """Handle key actuation slider value change"""
+        """Handle key actuation slider value change - applies to all selected keys"""
         self.actuation_value_label.setText(self.value_to_mm(value))
 
         if self.syncing or not self.mode_enabled:
             return
 
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
 
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['actuation'] = value
-                self.save_current_key_settings()
+        layer = self.current_layer if self.per_layer_enabled else 0
 
-    def on_velocity_curve_changed(self, index):
-        """Handle velocity curve dropdown change"""
-        if self.syncing or not self.mode_enabled:
-            return
-
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
-
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['velocity_curve'] = index
-                self.save_current_key_settings()
-
-    def on_deadzone_toggled(self, state):
-        """Handle deadzone checkbox toggle"""
-        enabled = (state == Qt.Checked)
-
-        if not self.syncing:
-            # Enable/disable deadzone sliders
-            self.deadzone_top_slider.setEnabled(enabled and self.mode_enabled)
-            self.deadzone_bottom_slider.setEnabled(enabled and self.mode_enabled)
-
-            if self.container.active_key and self.container.active_key.desc.row is not None:
-                row = self.container.active_key.desc.row
-                col = self.container.active_key.desc.col
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
                 key_index = row * 14 + col
 
                 if key_index < 70:
-                    layer = self.current_layer if self.per_layer_enabled else 0
-                    # When disabling, set deadzones to 0. When enabling, set to defaults if they were 0
-                    if not enabled:
-                        self.per_key_values[layer][key_index]['deadzone_top'] = 0
-                        self.per_key_values[layer][key_index]['deadzone_bottom'] = 0
-                    else:
-                        if self.per_key_values[layer][key_index]['deadzone_top'] == 0:
-                            self.per_key_values[layer][key_index]['deadzone_top'] = 4
-                        if self.per_key_values[layer][key_index]['deadzone_bottom'] == 0:
-                            self.per_key_values[layer][key_index]['deadzone_bottom'] = 4
-                    self.save_current_key_settings()
+                    self.per_key_values[layer][key_index]['actuation'] = value
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        self.refresh_layer_display()
+
+    def on_velocity_curve_changed(self, index):
+        """Handle velocity curve dropdown change - applies to all selected keys"""
+        if self.syncing:
+            return
+
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
+
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    self.per_key_values[layer][key_index]['velocity_curve'] = index
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        self.refresh_layer_display()
+
+    def on_deadzone_toggled(self, state):
+        """Handle deadzone checkbox toggle - applies to all selected keys"""
+        enabled = (state == Qt.Checked)
+
+        if not self.syncing:
+            # Enable/disable deadzone sliders (no mode_enabled gate)
+            self.deadzone_top_slider.setEnabled(enabled)
+            self.deadzone_bottom_slider.setEnabled(enabled)
+
+            # Get all selected keys (or just active key if none selected)
+            selected_keys = self.container.get_selected_keys()
+            if not selected_keys and self.container.active_key:
+                selected_keys = [self.container.active_key]
+
+            layer = self.current_layer if self.per_layer_enabled else 0
+
+            # Apply to all selected keys
+            for key in selected_keys:
+                if key.desc.row is not None:
+                    row, col = key.desc.row, key.desc.col
+                    key_index = row * 14 + col
+
+                    if key_index < 70:
+                        # When disabling, set deadzones to 0. When enabling, set to defaults if they were 0
+                        if not enabled:
+                            self.per_key_values[layer][key_index]['deadzone_top'] = 0
+                            self.per_key_values[layer][key_index]['deadzone_bottom'] = 0
+                        else:
+                            if self.per_key_values[layer][key_index]['deadzone_top'] == 0:
+                                self.per_key_values[layer][key_index]['deadzone_top'] = 4
+                            if self.per_key_values[layer][key_index]['deadzone_bottom'] == 0:
+                                self.per_key_values[layer][key_index]['deadzone_bottom'] = 4
+
+                        # Send to device
+                        if self.device and isinstance(self.device, VialKeyboard):
+                            settings = self.per_key_values[layer][key_index]
+                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+            self.refresh_layer_display()
 
     def on_deadzone_top_changed(self, value):
-        """Handle top deadzone slider change"""
+        """Handle top deadzone slider change - applies to all selected keys"""
         self.deadzone_top_value_label.setText(self.value_to_mm(value))
 
-        if self.syncing or not self.mode_enabled:
+        if self.syncing:
             return
 
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
 
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['deadzone_top'] = value
-                self.save_current_key_settings()
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    self.per_key_values[layer][key_index]['deadzone_top'] = value
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        self.refresh_layer_display()
 
     def on_deadzone_bottom_changed(self, value):
-        """Handle bottom deadzone slider change"""
+        """Handle bottom deadzone slider change - applies to all selected keys"""
         self.deadzone_bottom_value_label.setText(self.value_to_mm(value))
 
-        if self.syncing or not self.mode_enabled:
+        if self.syncing:
             return
 
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
 
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['deadzone_bottom'] = value
-                self.save_current_key_settings()
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    self.per_key_values[layer][key_index]['deadzone_bottom'] = value
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        self.refresh_layer_display()
 
     def on_rapidfire_toggled(self, state):
         """Handle rapidfire checkbox toggle"""
         enabled = (state == Qt.Checked)
 
         if not self.syncing:
-            # Enable/disable rapidfire sliders
-            self.rf_press_slider.setEnabled(enabled and self.mode_enabled)
-            self.rf_release_slider.setEnabled(enabled and self.mode_enabled)
-            self.rf_vel_mod_slider.setEnabled(enabled and self.mode_enabled)
+            # Enable/disable rapidfire sliders (no mode_enabled gate)
+            self.rf_press_slider.setEnabled(enabled)
+            self.rf_release_slider.setEnabled(enabled)
+            self.rf_vel_mod_slider.setEnabled(enabled)
 
-            if self.container.active_key and self.container.active_key.desc.row is not None:
-                row = self.container.active_key.desc.row
-                col = self.container.active_key.desc.col
+            # Get all selected keys (or just active key if none selected)
+            selected_keys = self.container.get_selected_keys()
+            if not selected_keys and self.container.active_key:
+                selected_keys = [self.container.active_key]
+
+            layer = self.current_layer if self.per_layer_enabled else 0
+
+            # Apply to all selected keys
+            for key in selected_keys:
+                if key.desc.row is not None:
+                    row, col = key.desc.row, key.desc.col
+                    key_index = row * 14 + col
+
+                    if key_index < 70:
+                        # Update flags field: set or clear bit 0
+                        if enabled:
+                            self.per_key_values[layer][key_index]['flags'] |= 0x01  # Set bit 0
+                        else:
+                            self.per_key_values[layer][key_index]['flags'] &= ~0x01  # Clear bit 0
+
+                        # Send to device
+                        if self.device and isinstance(self.device, VialKeyboard):
+                            settings = self.per_key_values[layer][key_index]
+                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+            self.refresh_layer_display()
+
+    def on_rf_press_changed(self, value):
+        """Handle rapidfire press sensitivity slider change - applies to all selected keys"""
+        self.rf_press_value_label.setText(self.value_to_mm(value))
+
+        if self.syncing:
+            return
+
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
+
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
                 key_index = row * 14 + col
 
                 if key_index < 70:
-                    layer = self.current_layer if self.per_layer_enabled else 0
-                    self.per_key_values[layer][key_index]['rapidfire_enabled'] = 1 if enabled else 0
-                    self.save_current_key_settings()
+                    self.per_key_values[layer][key_index]['rapidfire_press_sens'] = value
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
-    def on_rf_press_changed(self, value):
-        """Handle rapidfire press sensitivity slider change"""
-        self.rf_press_value_label.setText(self.value_to_mm(value))
-
-        if self.syncing or not self.mode_enabled:
-            return
-
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
-
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['rapidfire_press_sens'] = value
-                self.save_current_key_settings()
+        self.refresh_layer_display()
 
     def on_rf_release_changed(self, value):
-        """Handle rapidfire release sensitivity slider change"""
+        """Handle rapidfire release sensitivity slider change - applies to all selected keys"""
         self.rf_release_value_label.setText(self.value_to_mm(value))
 
-        if self.syncing or not self.mode_enabled:
+        if self.syncing:
             return
 
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
 
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['rapidfire_release_sens'] = value
-                self.save_current_key_settings()
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    self.per_key_values[layer][key_index]['rapidfire_release_sens'] = value
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        self.refresh_layer_display()
 
     def on_rf_vel_mod_changed(self, value):
-        """Handle rapidfire velocity modifier slider change"""
+        """Handle rapidfire velocity modifier slider change - applies to all selected keys"""
         self.rf_vel_mod_value_label.setText(str(value))
 
-        if self.syncing or not self.mode_enabled:
+        if self.syncing:
             return
 
-        if self.container.active_key and self.container.active_key.desc.row is not None:
-            row = self.container.active_key.desc.row
-            col = self.container.active_key.desc.col
-            key_index = row * 14 + col
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
 
-            if key_index < 70:
-                layer = self.current_layer if self.per_layer_enabled else 0
-                self.per_key_values[layer][key_index]['rapidfire_velocity_mod'] = value
-                self.save_current_key_settings()
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    self.per_key_values[layer][key_index]['rapidfire_velocity_mod'] = value
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        self.refresh_layer_display()
 
     def on_use_per_key_curve_changed(self, state):
-        """Handle 'Use Per-Key Velocity Curve' checkbox toggle (layer-level setting)"""
+        """Handle 'Use Per-Key Velocity Curve' checkbox toggle (per-key setting)"""
         if self.syncing:
             return
 
         enabled = (state == Qt.Checked)
-        self.layer_data[self.current_layer]['use_per_key_velocity_curve'] = enabled
+
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
+
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    # Update flags field: set or clear bit 1
+                    if enabled:
+                        self.per_key_values[layer][key_index]['flags'] |= 0x02  # Set bit 1
+                    else:
+                        self.per_key_values[layer][key_index]['flags'] &= ~0x02  # Clear bit 1
+
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
         # Enable/disable velocity curve dropdown based on this flag
-        if self.container.active_key:
-            self.velocity_curve_combo.setEnabled(enabled and self.mode_enabled)
-
-        # Send updated layer settings
-        if self.device and isinstance(self.device, VialKeyboard):
-            self.send_layer_actuation(self.current_layer)
+        self.velocity_curve_combo.setEnabled(enabled)
+        self.refresh_layer_display()
 
     def send_layer_actuation(self, layer):
         """Send layer actuation settings to device"""
         data = self.layer_data[layer]
 
-        # Build flags byte
+        # Build flags byte (no velocity curve flag - that's now per-key)
         flags = 0
-        if data['use_per_key_velocity_curve']:
-            flags |= 0x08  # Bit 3 = LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE
+        # Bit 2 (use_fixed_velocity) is set in the actuation settings tab, not here
 
-        # Build payload: [layer, normal, midi, velocity, vel_speed, flags] (6 bytes, removed rapidfire)
+        # Build payload: [layer, normal, midi, velocity, vel_speed, flags] (6 bytes)
         payload = bytes([
             layer,
             data['normal'],
@@ -820,7 +972,7 @@ class TriggerSettingsTab(BasicEditor):
                         'deadzone_top': 4,
                         'deadzone_bottom': 4,
                         'velocity_curve': 2,
-                        'rapidfire_enabled': 0,
+                        'flags': 0,  # Both rapidfire and per-key velocity curve disabled
                         'rapidfire_press_sens': 4,
                         'rapidfire_release_sens': 4,
                         'rapidfire_velocity_mod': 0
@@ -883,15 +1035,9 @@ class TriggerSettingsTab(BasicEditor):
         if not self.valid():
             return
 
-        layer = self.current_layer
-        data = self.layer_data[layer]
-
-        self.syncing = True
-
-        # Load layer-level velocity curve checkbox
-        self.use_per_key_curve_checkbox.setChecked(data['use_per_key_velocity_curve'])
-
-        self.syncing = False
+        # No layer-level controls to load anymore
+        # The velocity curve checkbox is now per-key and loaded in on_key_clicked
+        pass
 
     def on_layout_changed(self):
         """Handle layout change from layout editor"""
@@ -930,7 +1076,7 @@ class TriggerSettingsTab(BasicEditor):
                         # get_per_key_actuation now returns a dict with all 8 fields
                         self.per_key_values[layer][key_index] = settings
 
-            # Load layer actuation data from device (now 6 bytes per layer)
+            # Load layer actuation data from device (6 bytes per layer)
             try:
                 for layer in range(12):
                     data = self.keyboard.get_layer_actuation(layer)
@@ -939,8 +1085,8 @@ class TriggerSettingsTab(BasicEditor):
                             'normal': data['normal'],
                             'midi': data['midi'],
                             'velocity': data['velocity'],
-                            'vel_speed': data['vel_speed'],
-                            'use_per_key_velocity_curve': data['use_per_key_velocity_curve']
+                            'vel_speed': data['vel_speed']
+                            # Removed: 'use_per_key_velocity_curve' - now per-key
                         }
             except Exception as e:
                 print(f"Error loading layer actuations: {e}")
@@ -986,3 +1132,15 @@ class TriggerSettingsTab(BasicEditor):
                     key.setText("")
 
         self.container.update()
+
+    def on_select_all(self):
+        """Handle Select All button click"""
+        self.container.select_all()
+
+    def on_unselect_all(self):
+        """Handle Unselect All button click"""
+        self.container.unselect_all()
+
+    def on_invert_selection(self):
+        """Handle Invert Selection button click"""
+        self.container.invert_selection()

@@ -876,6 +876,9 @@ class KeyboardWidget2(QWidget):
         self.active_mask = False
         self.is_dragging = False  # Track if we're drag-painting
 
+        # Multi-selection support
+        self.selected_keys = set()  # Set of selected key widgets
+
     def set_keys(self, keys, encoders):
         self.common_widgets = []
         self.widgets_for_layout = []
@@ -1078,7 +1081,8 @@ class KeyboardWidget2(QWidget):
             qp.rotate(key.rotation_angle)
             qp.translate(-key.rotation_x, -key.rotation_y)
 
-            active = key.active or (self.active_key == key and not self.active_mask)
+            # Check if key is active (selected or is the current active key)
+            active = key.active or (self.active_key == key and not self.active_mask) or (key in self.selected_keys)
 
             # If this key has a custom color set (from per-key RGB painting), use it for entire key
             if key.color:
@@ -1193,11 +1197,21 @@ class KeyboardWidget2(QWidget):
         if not self.enabled:
             return
 
-        self.active_key, self.active_mask = self.hit_test(ev.pos())
-        if self.active_key is not None:
+        clicked_key, self.active_mask = self.hit_test(ev.pos())
+        if clicked_key is not None:
+            # Toggle selection: add if not selected, remove if already selected
+            if clicked_key in self.selected_keys:
+                self.selected_keys.remove(clicked_key)
+            else:
+                self.selected_keys.add(clicked_key)
+
+            self.active_key = clicked_key
             self.is_dragging = True  # Start drag painting
             self.clicked.emit()
         else:
+            # Clicked empty space - clear selection
+            self.selected_keys.clear()
+            self.active_key = None
             self.deselected.emit()
         self.update()
 
@@ -1272,3 +1286,45 @@ class KeyboardWidget2(QWidget):
 
     def get_scale(self):
         return self.scale
+
+    def select_all(self):
+        """Select all keys (excluding encoders)"""
+        self.selected_keys.clear()
+        for widget in self.widgets:
+            if not isinstance(widget, EncoderWidget2):
+                self.selected_keys.add(widget)
+        if self.selected_keys:
+            self.active_key = next(iter(self.selected_keys))
+            self.clicked.emit()
+        self.update()
+
+    def unselect_all(self):
+        """Unselect all keys"""
+        self.selected_keys.clear()
+        self.active_key = None
+        self.deselected.emit()
+        self.update()
+
+    def invert_selection(self):
+        """Invert the current selection"""
+        new_selection = set()
+        for widget in self.widgets:
+            if not isinstance(widget, EncoderWidget2):
+                if widget not in self.selected_keys:
+                    new_selection.add(widget)
+        self.selected_keys = new_selection
+        if self.selected_keys:
+            self.active_key = next(iter(self.selected_keys))
+            self.clicked.emit()
+        else:
+            self.active_key = None
+            self.deselected.emit()
+        self.update()
+
+    def get_selected_keys(self):
+        """Returns list of selected keys (or active key if no selection)"""
+        if self.selected_keys:
+            return list(self.selected_keys)
+        elif self.active_key:
+            return [self.active_key]
+        return []

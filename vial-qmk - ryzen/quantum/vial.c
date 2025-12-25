@@ -772,7 +772,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		// Per-Key Actuation Commands (0xE0-0xE6)
 		case HID_CMD_SET_PER_KEY_ACTUATION: {  // 0xE0
 			// Format: [layer, key_index, actuation, deadzone_top, deadzone_bottom, velocity_curve,
-			//          rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+			//          flags, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+			// flags: Bit 0=rapidfire_enabled, Bit 1=use_per_key_velocity_curve
 			// Total: 10 data bytes + 2 overhead = 12 bytes minimum
 			if (length >= 12) {
 				handle_set_per_key_actuation(&msg[2]);
@@ -786,7 +787,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		case HID_CMD_GET_PER_KEY_ACTUATION: {  // 0xE1
 			// Format: [layer, key_index]
 			// Response: [actuation, deadzone_top, deadzone_bottom, velocity_curve,
-			//            rapidfire_enabled, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+			//            flags, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
+			// flags: Bit 0=rapidfire_enabled, Bit 1=use_per_key_velocity_curve
 			// Total: 8 response bytes
 			if (length >= 4) {
 				handle_get_per_key_actuation(&msg[2], msg);
