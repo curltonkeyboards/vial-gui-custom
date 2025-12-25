@@ -44,9 +44,6 @@ static struct {
     uint8_t normal_actuation;
     uint8_t midi_actuation;
     uint8_t velocity_mode;
-    uint8_t rapidfire_sensitivity;
-    uint8_t midi_rapidfire_sensitivity;      // Actuation threshold for MIDI rapid
-    uint8_t midi_rapidfire_velocity;          // Velocity modifier range ±
     uint8_t velocity_speed_scale;
     uint8_t cached_layer;
     bool needs_update;
@@ -54,9 +51,6 @@ static struct {
     .normal_actuation = 80,
     .midi_actuation = 80,
     .velocity_mode = 2,
-    .rapidfire_sensitivity = 4,
-    .midi_rapidfire_sensitivity = 10,
-    .midi_rapidfire_velocity = 10,
     .velocity_speed_scale = 10,
     .cached_layer = 0,
     .needs_update = true
@@ -69,14 +63,11 @@ void analog_matrix_refresh_settings(void) {
 
 static inline void update_active_settings(uint8_t current_layer) {
     if (current_layer >= 12) current_layer = 0;
-    
+
     if (active_settings.cached_layer != current_layer || active_settings.needs_update) {
         active_settings.normal_actuation = layer_actuations[current_layer].normal_actuation;
         active_settings.midi_actuation = layer_actuations[current_layer].midi_actuation;
         active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
-        active_settings.rapidfire_sensitivity = layer_actuations[current_layer].rapidfire_sensitivity;
-        active_settings.midi_rapidfire_sensitivity = layer_actuations[current_layer].midi_rapidfire_sensitivity;
-        active_settings.midi_rapidfire_velocity = layer_actuations[current_layer].midi_rapidfire_velocity;
         active_settings.velocity_speed_scale = layer_actuations[current_layer].velocity_speed_scale;
         active_settings.cached_layer = current_layer;
         active_settings.needs_update = false;
@@ -118,6 +109,12 @@ typedef struct {
     uint8_t act_pt;
     uint8_t rpd_trig_sen;
     uint8_t rpd_trig_sen_release;
+
+    // Per-key rapid trigger state
+    uint8_t base_velocity;        // Stored first-press velocity for RT
+    bool rapid_cycle_active;      // Flag: in rapid trigger mode
+    bool awaiting_release;        // Flag: waiting for release_sens
+    uint8_t last_direction;       // 0=none, 1=up, 2=down
 } analog_key_t;
 
 // MIDI key state tracking for analog velocity
@@ -126,26 +123,22 @@ typedef struct {
     uint8_t note_index;
     bool pressed;
     bool was_pressed;
-    
+
     // Mode 1: Peak travel at apex
     uint8_t peak_travel;
     bool send_on_release;
-    
+
     // Mode 2 & 3: Speed-based
     uint8_t last_travel;
     uint16_t last_time;
     uint8_t calculated_velocity;
     uint8_t peak_velocity;
-    
+
     // Mode 3: Speed threshold
     bool speed_threshold_met;
     uint8_t speed_samples[4];
     uint8_t speed_sample_idx;
-    
-    // Rapid trigger for MIDI
-    uint8_t base_velocity;
-    bool rapid_cycle_active;
-    
+
     // Aftertouch
     uint8_t last_aftertouch;
 } midi_key_state_t;
