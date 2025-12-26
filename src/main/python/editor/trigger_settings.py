@@ -131,8 +131,9 @@ class TriggerSettingsTab(BasicEditor):
         keyboard_area.addLayout(layout_labels_container)
 
         keyboard_layout = QHBoxLayout()
+        keyboard_layout.addSpacing(15)  # Add left margin so buttons aren't against the wall
         keyboard_layout.addLayout(selection_buttons_layout)
-        keyboard_layout.addStretch(1)
+        keyboard_layout.addSpacing(20)  # Add spacing between buttons and keyboard
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)
         keyboard_area.addLayout(keyboard_layout)
@@ -317,11 +318,24 @@ class TriggerSettingsTab(BasicEditor):
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
 
+        # Enable checkbox container for centering
+        self.rapidfire_checkbox_container = QWidget()
+        checkbox_container_layout = QVBoxLayout()
+        checkbox_container_layout.setContentsMargins(0, 0, 0, 0)
+
         # Enable checkbox
         self.rapidfire_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
         self.rapidfire_checkbox.setEnabled(False)
         self.rapidfire_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
-        layout.addWidget(self.rapidfire_checkbox)
+        # Make it bigger and bold when unchecked - will be updated in on_rapidfire_toggled
+        self.rapidfire_checkbox.setStyleSheet("QCheckBox { font-size: 14pt; font-weight: bold; }")
+
+        checkbox_container_layout.addStretch()
+        checkbox_container_layout.addWidget(self.rapidfire_checkbox, 0, Qt.AlignCenter)
+        checkbox_container_layout.addStretch()
+
+        self.rapidfire_checkbox_container.setLayout(checkbox_container_layout)
+        layout.addWidget(self.rapidfire_checkbox_container)
 
         # Rapidfire widget
         self.rf_widget = QWidget()
@@ -375,10 +389,10 @@ class TriggerSettingsTab(BasicEditor):
         rf_vel_label = QLabel("Velocity Mod")
         rf_vel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
         rf_vel_header.addWidget(rf_vel_label)
-        rf_vel_header.addStretch()
         self.rf_vel_mod_value_label = QLabel("0")
-        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
+        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; margin-left: 8px; }")
         rf_vel_header.addWidget(self.rf_vel_mod_value_label)
+        rf_vel_header.addStretch()
         rf_vel_layout.addLayout(rf_vel_header)
 
         self.rf_vel_mod_slider = StyledSlider(minimum=-64, maximum=64)
@@ -419,6 +433,7 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_row.addWidget(self.enable_checkbox)
 
         self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
+        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
         checkbox_row.addWidget(self.per_layer_checkbox)
 
@@ -433,9 +448,13 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_container.setLayout(checkbox_container_layout)
         main_layout.addWidget(checkbox_container)
 
-        # Main content layout
+        # Main content container with theme background
+        content_container = QFrame()
+        content_container.setFrameShape(QFrame.StyledPanel)
+        content_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
         content_layout = QHBoxLayout()
         content_layout.setSpacing(15)
+        content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Left side: Trigger travel configuration
         trigger_container = self.create_trigger_container()
@@ -445,12 +464,22 @@ class TriggerSettingsTab(BasicEditor):
         rapidfire_container = self.create_rapidfire_container()
         content_layout.addWidget(rapidfire_container, 1)
 
-        main_layout.addLayout(content_layout)
+        content_container.setLayout(content_layout)
+        main_layout.addWidget(content_container)
 
-        # Velocity curve section
+        # Velocity curve section - checkbox and dropdown in horizontal layout
         curve_layout = QHBoxLayout()
+        curve_layout.setSpacing(15)  # Add spacing between elements
+
+        # Use Per-Key Velocity Curve checkbox
+        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
+        self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
+        self.use_per_key_curve_checkbox.setEnabled(False)
+        self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
+        curve_layout.addWidget(self.use_per_key_curve_checkbox)
+
+        # Velocity curve dropdown
         curve_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        curve_label.setMinimumWidth(100)
         curve_layout.addWidget(curve_label)
 
         self.velocity_curve_combo = QComboBox()
@@ -462,16 +491,11 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_combo.setCurrentIndex(2)
         self.velocity_curve_combo.setEnabled(False)
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
-        curve_layout.addWidget(self.velocity_curve_combo, 1)
+        curve_layout.addWidget(self.velocity_curve_combo)
+
+        curve_layout.addStretch()  # Push everything to the left
 
         main_layout.addLayout(curve_layout)
-
-        # Use Per-Key Velocity Curve checkbox
-        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
-        self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
-        self.use_per_key_curve_checkbox.setEnabled(False)
-        self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        main_layout.addWidget(self.use_per_key_curve_checkbox)
 
         widget.setLayout(main_layout)
         return widget
@@ -744,6 +768,32 @@ class TriggerSettingsTab(BasicEditor):
     def on_rapidfire_toggled(self, state):
         """Handle rapidfire checkbox toggle"""
         enabled = (state == Qt.Checked)
+
+        # Update checkbox styling based on state
+        if enabled:
+            # When checked: normal size, left-aligned
+            self.rapidfire_checkbox.setStyleSheet("QCheckBox { font-size: 9pt; font-weight: normal; }")
+            # Clear the checkbox container layout and re-add without centering
+            for i in reversed(range(self.rapidfire_checkbox_container.layout().count())):
+                item = self.rapidfire_checkbox_container.layout().itemAt(i)
+                if item.widget():
+                    item.widget().setParent(None)
+                elif item.spacerItem():
+                    self.rapidfire_checkbox_container.layout().removeItem(item)
+            self.rapidfire_checkbox_container.layout().addWidget(self.rapidfire_checkbox)
+        else:
+            # When unchecked: bigger, bold, centered
+            self.rapidfire_checkbox.setStyleSheet("QCheckBox { font-size: 14pt; font-weight: bold; }")
+            # Clear and re-add with centering
+            for i in reversed(range(self.rapidfire_checkbox_container.layout().count())):
+                item = self.rapidfire_checkbox_container.layout().itemAt(i)
+                if item.widget():
+                    item.widget().setParent(None)
+                elif item.spacerItem():
+                    self.rapidfire_checkbox_container.layout().removeItem(item)
+            self.rapidfire_checkbox_container.layout().addStretch()
+            self.rapidfire_checkbox_container.layout().addWidget(self.rapidfire_checkbox, 0, Qt.AlignCenter)
+            self.rapidfire_checkbox_container.layout().addStretch()
 
         if not self.syncing:
             # Show/hide rapidfire widget and enable sliders
@@ -1260,9 +1310,29 @@ class TriggerSettingsTab(BasicEditor):
                 key_index = row * 14 + col
 
                 if key_index < 70:
-                    settings = self.per_key_values[layer][key_index]
-                    # Display actuation value as "X.Xmm" on the key
-                    key.setText(self.value_to_mm(settings['actuation']))
+                    if self.mode_enabled:
+                        # Per-key mode: show per-key actuation value
+                        settings = self.per_key_values[layer][key_index]
+                        key.setText(self.value_to_mm(settings['actuation']))
+                    else:
+                        # Global mode: show Normal/MIDI key actuation values
+                        # Check if key is a MIDI key
+                        from keycodes.keycodes import Keycode
+                        keycode = self.keyboard.layout[(layer, row, col)]
+
+                        is_midi = False
+                        if hasattr(keycode, 'qmk_id') and keycode.qmk_id:
+                            # MIDI keycodes typically start with specific prefixes
+                            qmk_id = keycode.qmk_id
+                            is_midi = qmk_id.startswith('MI_') or 'MIDI' in qmk_id
+
+                        layer_to_use = self.current_layer if self.per_layer_enabled else 0
+                        if is_midi:
+                            value = self.layer_data[layer_to_use]['midi']
+                            key.setText(f"\n{self.value_to_mm(value)}")
+                        else:
+                            value = self.layer_data[layer_to_use]['normal']
+                            key.setText(self.value_to_mm(value))
                 else:
                     key.setText("")
 
