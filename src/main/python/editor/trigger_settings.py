@@ -197,8 +197,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def create_trigger_container(self):
         """Create the trigger travel configuration container"""
-        container = QFrame()
-        container.setFrameShape(QFrame.StyledPanel)
+        container = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -324,8 +323,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def create_rapidfire_container(self):
         """Create the rapidfire configuration container"""
-        container = QFrame()
-        container.setFrameShape(QFrame.StyledPanel)
+        container = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -460,10 +458,8 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_container.setLayout(checkbox_container_layout)
         main_layout.addWidget(checkbox_container)
 
-        # Main content container with theme background
-        content_container = QFrame()
-        content_container.setFrameShape(QFrame.StyledPanel)
-        content_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        # Main content container (no special background)
+        content_container = QWidget()
         content_layout = QHBoxLayout()
         content_layout.setSpacing(15)
         content_layout.setContentsMargins(10, 10, 10, 10)
@@ -479,27 +475,32 @@ class TriggerSettingsTab(BasicEditor):
         content_container.setLayout(content_layout)
         main_layout.addWidget(content_container)
 
+        # Velocity curve section in a container with darker background
+        curve_container = QFrame()
+        curve_container.setFrameShape(QFrame.StyledPanel)
+        curve_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        curve_container_layout = QVBoxLayout()
+        curve_container_layout.setSpacing(6)
+        curve_container_layout.setContentsMargins(8, 8, 8, 8)
+
         # Velocity curve section - checkbox and dropdown in horizontal layout
         curve_layout = QHBoxLayout()
-        curve_layout.setSpacing(15)  # Add spacing between elements
+        curve_layout.setSpacing(8)  # Reduced spacing between checkbox and dropdown
 
         # Use Per-Key Velocity Curve checkbox
-        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
+        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
         curve_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Velocity curve dropdown
-        curve_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        curve_layout.addWidget(curve_label)
-
+        # Velocity curve dropdown (no label)
         self.velocity_curve_combo = QComboBox()
-        self.velocity_curve_combo.addItem("Softest (x³)", 0)
-        self.velocity_curve_combo.addItem("Soft (x²)", 1)
-        self.velocity_curve_combo.addItem("Medium (x)", 2)
-        self.velocity_curve_combo.addItem("Hard (√x)", 3)
-        self.velocity_curve_combo.addItem("Hardest (∛x)", 4)
+        self.velocity_curve_combo.addItem("Softest", 0)
+        self.velocity_curve_combo.addItem("Soft", 1)
+        self.velocity_curve_combo.addItem("Medium", 2)
+        self.velocity_curve_combo.addItem("Hard", 3)
+        self.velocity_curve_combo.addItem("Hardest", 4)
         self.velocity_curve_combo.setCurrentIndex(2)
         self.velocity_curve_combo.setEnabled(False)
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
@@ -507,7 +508,9 @@ class TriggerSettingsTab(BasicEditor):
 
         curve_layout.addStretch()  # Push everything to the left
 
-        main_layout.addLayout(curve_layout)
+        curve_container_layout.addLayout(curve_layout)
+        curve_container.setLayout(curve_container_layout)
+        main_layout.addWidget(curve_container)
 
         widget.setLayout(main_layout)
         return widget
@@ -515,7 +518,7 @@ class TriggerSettingsTab(BasicEditor):
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
         mm = (value / 40.0)  # 0-100 maps to 0-2.5mm (100/40 = 2.5)
-        return f"{mm:.1f}mm"
+        return f"{mm:.2f}mm"
 
     def on_global_normal_changed(self, value):
         """Handle global normal actuation slider change"""
@@ -1370,6 +1373,10 @@ class TriggerSettingsTab(BasicEditor):
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
 
+        # Import QColor and QApplication here to access theme colors
+        from PyQt5.QtGui import QColor, QPalette
+        from PyQt5.QtWidgets import QApplication
+
         for key in self.container.widgets:
             if key.desc.row is not None:
                 row, col = key.desc.row, key.desc.col
@@ -1380,6 +1387,22 @@ class TriggerSettingsTab(BasicEditor):
                         # Per-key mode: show per-key actuation value
                         settings = self.per_key_values[layer][key_index]
                         key.setText(self.value_to_mm(settings['actuation']))
+
+                        # Check if rapidfire is enabled (bit 0 of flags)
+                        rapidfire_enabled = (settings['flags'] & 0x01) != 0
+                        if rapidfire_enabled:
+                            # Set 80% transparent theme color (20% opacity)
+                            highlight_color = QApplication.palette().color(QPalette.Highlight)
+                            transparent_color = QColor(
+                                highlight_color.red(),
+                                highlight_color.green(),
+                                highlight_color.blue(),
+                                int(255 * 0.2)  # 20% opacity = 80% transparent
+                            )
+                            key.setColor(transparent_color)
+                        else:
+                            # Clear color for non-rapidfire keys
+                            key.setColor(None)
                     else:
                         # Global mode: show both Normal and MIDI actuation values
                         layer_to_use = self.current_layer if self.per_layer_enabled else 0
@@ -1388,6 +1411,9 @@ class TriggerSettingsTab(BasicEditor):
 
                         # Show both values on separate lines
                         key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
+
+                        # Clear color in global mode
+                        key.setColor(None)
                 else:
                     key.setText("")
 
