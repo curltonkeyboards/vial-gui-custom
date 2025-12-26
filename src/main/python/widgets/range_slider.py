@@ -373,11 +373,11 @@ class TriggerSlider(MultiHandleSlider):
 class RapidTriggerSlider(MultiHandleSlider):
     """
     Specialized slider for rapid trigger settings with 2 handles:
-    - Press sensitivity (from left: 1-60, where 1=0.025mm, 60=1.5mm MAX)
-    - Release sensitivity (from right: 1-60, where 1=0.025mm from right, inverted, 60=1.5mm MAX)
+    - Press sensitivity (from left: 1-50, where 1=0.025mm, 50=1.25mm MAX)
+    - Release sensitivity (from right: 1-50, where 1=0.025mm from right, inverted, 50=1.25mm MAX)
 
     Release is inverted - stored internally as (101 - user_value)
-    Each side has a maximum of 1.5mm (60 units) with a divider in the middle
+    Each side has a maximum of 1.25mm (50 units) with a divider in the middle at 50%
     """
 
     pressSensChanged = pyqtSignal(int)
@@ -405,14 +405,14 @@ class RapidTriggerSlider(MultiHandleSlider):
         self.releaseSensChanged.emit(inverted_release)
 
     def set_press_sens(self, value):
-        """Set press sensitivity value (1-60 max)"""
-        clamped_value = max(1, min(value, 60))
+        """Set press sensitivity value (1-50 max)"""
+        clamped_value = max(1, min(value, 50))
         self.set_value(0, clamped_value)
 
     def set_release_sens(self, value):
-        """Set release sensitivity value (1-60 max, inverted internally)"""
+        """Set release sensitivity value (1-50 max, inverted internally)"""
         # Convert user value (distance from right) to internal position
-        clamped_value = max(1, min(value, 60))
+        clamped_value = max(1, min(value, 50))
         self._user_release = clamped_value
         internal_value = 101 - clamped_value
         self.set_value(1, internal_value)
@@ -471,18 +471,18 @@ class RapidTriggerSlider(MultiHandleSlider):
             pos_x = self._value_to_pixel(value)
             self._draw_handle(painter, pos_x, height // 2, i)
 
-        # Draw center divider line at 1.5mm mark (60 units = 60% of track from left)
-        divider_x = track_x + (60.0 / 100.0) * track_width
+        # Draw center divider line at middle (50% of track)
+        divider_x = track_x + (50.0 / 100.0) * track_width
         painter.setPen(QPen(QColor(150, 150, 150), 2))
         painter.drawLine(int(divider_x), track_y - 5, int(divider_x), track_y + self.track_height + 5)
 
     def _apply_constraints(self, handle_index, new_value):
-        """Apply constraints to prevent overlap - max 1.5mm (60 units) per side"""
+        """Apply constraints to prevent overlap - handles cannot cross the center divider at 50%"""
         if handle_index == 0:  # Press sensitivity (from left)
-            # Max 60 units (1.5mm) and must not exceed center (50)
-            return max(self.minimum, min(new_value, 60))
+            # Cannot exceed 50 (middle divider)
+            return max(self.minimum, min(new_value, 50))
         elif handle_index == 1:  # Release sensitivity (from right, inverted)
-            # Internal values from 41-100 (representing user values 60-1)
-            # Minimum internal value is 41 (= 101 - 60)
-            return max(41, min(new_value, self.maximum))
+            # Internal values from 51-100 (representing user values 50-1)
+            # Minimum internal value is 51 (= 101 - 50) to prevent crossing divider
+            return max(51, min(new_value, self.maximum))
         return max(self.minimum, min(new_value, self.maximum))

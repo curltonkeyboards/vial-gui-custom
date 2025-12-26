@@ -84,8 +84,8 @@ class TriggerSettingsTab(BasicEditor):
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
-        # Selection buttons column (left of keyboard)
-        selection_buttons_layout = QVBoxLayout()
+        # Selection buttons row (above keyboard)
+        selection_buttons_layout = QHBoxLayout()
 
         self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
         self.select_all_btn.clicked.connect(self.on_select_all)
@@ -104,15 +104,15 @@ class TriggerSettingsTab(BasicEditor):
         # Keyboard area with layer buttons
         keyboard_area = QVBoxLayout()
         keyboard_area.addLayout(layout_labels_container)
+        keyboard_area.addLayout(selection_buttons_layout)
 
         keyboard_layout = QHBoxLayout()
-        keyboard_layout.addLayout(selection_buttons_layout)
         keyboard_layout.addStretch(1)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)
         keyboard_area.addLayout(keyboard_layout)
         keyboard_area.setContentsMargins(0, 0, 0, 0)  # Remove margins
-        keyboard_area.setSpacing(0)  # Remove spacing
+        keyboard_area.setSpacing(2)  # Minimal spacing
 
         w = ClickableWidget()
         w.setLayout(keyboard_area)
@@ -141,10 +141,10 @@ class TriggerSettingsTab(BasicEditor):
         """Create the bottom control panel"""
         panel = QFrame()
         panel.setFrameShape(QFrame.StyledPanel)
-        panel.setMaximumHeight(350)  # Reduced height
+        panel.setMaximumHeight(280)  # Further reduced height
         layout = QVBoxLayout()
-        layout.setSpacing(3)
-        layout.setContentsMargins(15, 3, 15, 8)
+        layout.setSpacing(2)
+        layout.setContentsMargins(10, 2, 10, 5)
 
         # Create settings content directly (no tabs)
         settings_widget = self.create_settings_content()
@@ -179,8 +179,8 @@ class TriggerSettingsTab(BasicEditor):
         container = QFrame()
         container.setFrameShape(QFrame.StyledPanel)
         layout = QVBoxLayout()
-        layout.setSpacing(8)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
+        layout.setContentsMargins(6, 4, 6, 4)
 
         # Global actuation widget (shown when per-key mode is disabled)
         self.global_actuation_widget = QWidget()
@@ -303,8 +303,8 @@ class TriggerSettingsTab(BasicEditor):
         container = QFrame()
         container.setFrameShape(QFrame.StyledPanel)
         layout = QVBoxLayout()
-        layout.setSpacing(8)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
+        layout.setContentsMargins(6, 4, 6, 4)
 
         # Enable checkbox
         self.rapidfire_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
@@ -390,8 +390,8 @@ class TriggerSettingsTab(BasicEditor):
         """Create the settings content"""
         widget = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(6)
-        main_layout.setContentsMargins(5, 3, 5, 5)
+        main_layout.setSpacing(3)
+        main_layout.setContentsMargins(5, 2, 5, 2)
 
         # Top checkboxes row
         checkbox_row = QHBoxLayout()
@@ -415,7 +415,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Main content layout
         content_layout = QHBoxLayout()
-        content_layout.setSpacing(15)
+        content_layout.setSpacing(10)
 
         # Left side: Trigger travel configuration
         trigger_container = self.create_trigger_container()
