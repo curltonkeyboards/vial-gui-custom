@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
 from widgets.square_button import SquareButton
+from widgets.range_slider import TriggerSlider, RapidTriggerSlider
 from util import tr
 from vial_device import VialKeyboard
 
@@ -266,28 +267,64 @@ class TriggerSettingsTab(BasicEditor):
         # Per-Key Actuation slider (shown when per-key mode is enabled)
         self.per_key_actuation_widget = QWidget()
         per_key_actuation_layout = QVBoxLayout()
-        per_key_actuation_layout.setSpacing(8)
+        per_key_actuation_layout.setSpacing(12)
         per_key_actuation_layout.setContentsMargins(0, 0, 0, 0)
 
-        actuation_layout = QHBoxLayout()
-        actuation_label = QLabel(tr("TriggerSettings", "Per-Key Actuation:"))
-        actuation_label.setMinimumWidth(140)
-        actuation_layout.addWidget(actuation_label)
+        # Title and value labels for the combined slider
+        title_layout = QHBoxLayout()
+        title_label = QLabel(tr("TriggerSettings", "Trigger Travel Configuration"))
+        title_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11pt; }")
+        title_layout.addWidget(title_label)
+        title_layout.addStretch()
+        per_key_actuation_layout.addLayout(title_layout)
 
-        self.actuation_slider = QSlider(Qt.Horizontal)
-        self.actuation_slider.setMinimum(0)
-        self.actuation_slider.setMaximum(100)
-        self.actuation_slider.setValue(60)
-        self.actuation_slider.setEnabled(False)
-        self.actuation_slider.valueChanged.connect(self.on_key_actuation_changed)
-        actuation_layout.addWidget(self.actuation_slider, 1)
+        # Value display row
+        values_layout = QHBoxLayout()
 
+        # Deadzone bottom label
+        dz_bottom_container = QVBoxLayout()
+        dz_bottom_title = QLabel("Deadzone Min")
+        dz_bottom_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
+        self.deadzone_bottom_value_label = QLabel("0.1mm")
+        self.deadzone_bottom_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        dz_bottom_container.addWidget(dz_bottom_title)
+        dz_bottom_container.addWidget(self.deadzone_bottom_value_label)
+        values_layout.addLayout(dz_bottom_container)
+
+        values_layout.addStretch()
+
+        # Actuation label
+        actuation_container = QVBoxLayout()
+        actuation_title = QLabel("Actuation Point")
+        actuation_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
         self.actuation_value_label = QLabel("1.5mm")
-        self.actuation_value_label.setMinimumWidth(80)
-        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        actuation_layout.addWidget(self.actuation_value_label)
+        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12pt; color: #ff8c32; }")
+        actuation_container.addWidget(actuation_title)
+        actuation_container.addWidget(self.actuation_value_label)
+        values_layout.addLayout(actuation_container)
 
-        per_key_actuation_layout.addLayout(actuation_layout)
+        values_layout.addStretch()
+
+        # Deadzone top label
+        dz_top_container = QVBoxLayout()
+        dz_top_title = QLabel("Deadzone Max")
+        dz_top_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
+        self.deadzone_top_value_label = QLabel("2.4mm")
+        self.deadzone_top_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        dz_top_container.addWidget(dz_top_title)
+        dz_top_container.addWidget(self.deadzone_top_value_label)
+        values_layout.addLayout(dz_top_container)
+
+        per_key_actuation_layout.addLayout(values_layout)
+
+        # Combined trigger slider (deadzone bottom, actuation, deadzone top)
+        self.trigger_slider = TriggerSlider(minimum=0, maximum=100)
+        self.trigger_slider.setEnabled(False)
+        self.trigger_slider.deadzoneBottomChanged.connect(self.on_deadzone_bottom_changed)
+        self.trigger_slider.actuationChanged.connect(self.on_key_actuation_changed)
+        self.trigger_slider.deadzoneTopChanged.connect(self.on_deadzone_top_changed)
+        self.trigger_slider.setMinimumHeight(60)
+        per_key_actuation_layout.addWidget(self.trigger_slider)
 
         self.per_key_actuation_widget.setLayout(per_key_actuation_layout)
         self.per_key_actuation_widget.setVisible(False)  # Hidden by default when mode_enabled is False
@@ -325,61 +362,6 @@ class TriggerSettingsTab(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line)
 
-        # === DEADZONE SECTION ===
-        # Enable Deadzone checkbox
-        self.deadzone_checkbox = QCheckBox(tr("TriggerSettings", "Enable Deadzone"))
-        self.deadzone_checkbox.setEnabled(False)
-        self.deadzone_checkbox.stateChanged.connect(self.on_deadzone_toggled)
-        layout.addWidget(self.deadzone_checkbox)
-
-        # Top Deadzone slider
-        deadzone_top_layout = QHBoxLayout()
-        deadzone_top_label = QLabel(tr("TriggerSettings", "Top Deadzone:"))
-        deadzone_top_label.setMinimumWidth(140)
-        deadzone_top_layout.addWidget(deadzone_top_label)
-
-        self.deadzone_top_slider = QSlider(Qt.Horizontal)
-        self.deadzone_top_slider.setMinimum(0)
-        self.deadzone_top_slider.setMaximum(20)  # 0-0.5mm
-        self.deadzone_top_slider.setValue(4)
-        self.deadzone_top_slider.setEnabled(False)
-        self.deadzone_top_slider.valueChanged.connect(self.on_deadzone_top_changed)
-        deadzone_top_layout.addWidget(self.deadzone_top_slider, 1)
-
-        self.deadzone_top_value_label = QLabel("0.1mm")
-        self.deadzone_top_value_label.setMinimumWidth(80)
-        self.deadzone_top_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        deadzone_top_layout.addWidget(self.deadzone_top_value_label)
-
-        layout.addLayout(deadzone_top_layout)
-
-        # Bottom Deadzone slider
-        deadzone_bottom_layout = QHBoxLayout()
-        deadzone_bottom_label = QLabel(tr("TriggerSettings", "Bottom Deadzone:"))
-        deadzone_bottom_label.setMinimumWidth(140)
-        deadzone_bottom_layout.addWidget(deadzone_bottom_label)
-
-        self.deadzone_bottom_slider = QSlider(Qt.Horizontal)
-        self.deadzone_bottom_slider.setMinimum(0)
-        self.deadzone_bottom_slider.setMaximum(20)  # 0-0.5mm
-        self.deadzone_bottom_slider.setValue(4)
-        self.deadzone_bottom_slider.setEnabled(False)
-        self.deadzone_bottom_slider.valueChanged.connect(self.on_deadzone_bottom_changed)
-        deadzone_bottom_layout.addWidget(self.deadzone_bottom_slider, 1)
-
-        self.deadzone_bottom_value_label = QLabel("0.1mm")
-        self.deadzone_bottom_value_label.setMinimumWidth(80)
-        self.deadzone_bottom_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        deadzone_bottom_layout.addWidget(self.deadzone_bottom_value_label)
-
-        layout.addLayout(deadzone_bottom_layout)
-
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(line)
-
         # === RAPIDFIRE SECTION ===
         # Enable Rapidfire checkbox
         self.rapidfire_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
@@ -387,47 +369,58 @@ class TriggerSettingsTab(BasicEditor):
         self.rapidfire_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
         layout.addWidget(self.rapidfire_checkbox)
 
-        # Rapidfire Press Sensitivity slider
-        rf_press_layout = QHBoxLayout()
-        rf_press_label = QLabel(tr("TriggerSettings", "RF Press Sens:"))
-        rf_press_label.setMinimumWidth(140)
-        rf_press_layout.addWidget(rf_press_label)
+        # Rapid Trigger combined slider widget
+        self.rf_widget = QWidget()
+        rf_layout = QVBoxLayout()
+        rf_layout.setSpacing(12)
+        rf_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.rf_press_slider = QSlider(Qt.Horizontal)
-        self.rf_press_slider.setMinimum(1)
-        self.rf_press_slider.setMaximum(100)
-        self.rf_press_slider.setValue(4)
-        self.rf_press_slider.setEnabled(False)
-        self.rf_press_slider.valueChanged.connect(self.on_rf_press_changed)
-        rf_press_layout.addWidget(self.rf_press_slider, 1)
+        # Title and value labels
+        rf_title_layout = QHBoxLayout()
+        rf_title_label = QLabel(tr("TriggerSettings", "Rapid Trigger Sensitivity"))
+        rf_title_label.setStyleSheet("QLabel { font-weight: bold; }")
+        rf_title_layout.addWidget(rf_title_label)
+        rf_title_layout.addStretch()
+        rf_layout.addLayout(rf_title_layout)
 
+        # Value display row
+        rf_values_layout = QHBoxLayout()
+
+        # Press sensitivity label
+        press_container = QVBoxLayout()
+        press_title = QLabel("Press Sensitivity")
+        press_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
         self.rf_press_value_label = QLabel("0.1mm")
-        self.rf_press_value_label.setMinimumWidth(80)
-        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        rf_press_layout.addWidget(self.rf_press_value_label)
+        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
+        press_container.addWidget(press_title)
+        press_container.addWidget(self.rf_press_value_label)
+        rf_values_layout.addLayout(press_container)
 
-        layout.addLayout(rf_press_layout)
+        rf_values_layout.addStretch()
 
-        # Rapidfire Release Sensitivity slider
-        rf_release_layout = QHBoxLayout()
-        rf_release_label = QLabel(tr("TriggerSettings", "RF Release Sens:"))
-        rf_release_label.setMinimumWidth(140)
-        rf_release_layout.addWidget(rf_release_label)
-
-        self.rf_release_slider = QSlider(Qt.Horizontal)
-        self.rf_release_slider.setMinimum(1)
-        self.rf_release_slider.setMaximum(100)
-        self.rf_release_slider.setValue(4)
-        self.rf_release_slider.setEnabled(False)
-        self.rf_release_slider.valueChanged.connect(self.on_rf_release_changed)
-        rf_release_layout.addWidget(self.rf_release_slider, 1)
-
+        # Release sensitivity label
+        release_container = QVBoxLayout()
+        release_title = QLabel("Release Sensitivity")
+        release_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
         self.rf_release_value_label = QLabel("0.1mm")
-        self.rf_release_value_label.setMinimumWidth(80)
-        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        rf_release_layout.addWidget(self.rf_release_value_label)
+        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; color: #64c8ff; }")
+        release_container.addWidget(release_title)
+        release_container.addWidget(self.rf_release_value_label)
+        rf_values_layout.addLayout(release_container)
 
-        layout.addLayout(rf_release_layout)
+        rf_layout.addLayout(rf_values_layout)
+
+        # Combined rapid trigger slider
+        self.rapid_trigger_slider = RapidTriggerSlider(minimum=1, maximum=100)
+        self.rapid_trigger_slider.setEnabled(False)
+        self.rapid_trigger_slider.pressSensChanged.connect(self.on_rf_press_changed)
+        self.rapid_trigger_slider.releaseSensChanged.connect(self.on_rf_release_changed)
+        self.rapid_trigger_slider.setMinimumHeight(60)
+        rf_layout.addWidget(self.rapid_trigger_slider)
+
+        self.rf_widget.setLayout(rf_layout)
+        self.rf_widget.setVisible(False)  # Hidden until rapidfire is enabled
+        layout.addWidget(self.rf_widget)
 
         # Rapidfire Velocity Modifier slider
         rf_vel_mod_layout = QHBoxLayout()
@@ -536,28 +529,30 @@ class TriggerSettingsTab(BasicEditor):
         settings = self.per_key_values[layer][key_index]
         self.syncing = True
 
-        # Load actuation
-        self.actuation_slider.setValue(settings['actuation'])
+        # Load trigger slider (actuation + deadzones)
+        self.trigger_slider.set_deadzone_bottom(settings['deadzone_bottom'])
+        self.trigger_slider.set_actuation(settings['actuation'])
+        self.trigger_slider.set_deadzone_top(settings['deadzone_top'])
+
+        # Update labels
+        self.deadzone_bottom_value_label.setText(self.value_to_mm(settings['deadzone_bottom']))
         self.actuation_value_label.setText(self.value_to_mm(settings['actuation']))
+        self.deadzone_top_value_label.setText(self.value_to_mm(settings['deadzone_top']))
 
         # Load velocity curve
         self.velocity_curve_combo.setCurrentIndex(settings['velocity_curve'])
 
-        # Load deadzone settings
-        deadzone_enabled = (settings['deadzone_top'] > 0 or settings['deadzone_bottom'] > 0)
-        self.deadzone_checkbox.setChecked(deadzone_enabled)
-        self.deadzone_top_slider.setValue(settings['deadzone_top'])
-        self.deadzone_top_value_label.setText(self.value_to_mm(settings['deadzone_top']))
-        self.deadzone_bottom_slider.setValue(settings['deadzone_bottom'])
-        self.deadzone_bottom_value_label.setText(self.value_to_mm(settings['deadzone_bottom']))
-
         # Load rapidfire settings (extract bit 0 from flags)
         rapidfire_enabled = (settings['flags'] & 0x01) != 0
         self.rapidfire_checkbox.setChecked(rapidfire_enabled)
-        self.rf_press_slider.setValue(settings['rapidfire_press_sens'])
+
+        # Load rapid trigger slider
+        self.rapid_trigger_slider.set_press_sens(settings['rapidfire_press_sens'])
+        self.rapid_trigger_slider.set_release_sens(settings['rapidfire_release_sens'])
         self.rf_press_value_label.setText(self.value_to_mm(settings['rapidfire_press_sens']))
-        self.rf_release_slider.setValue(settings['rapidfire_release_sens'])
         self.rf_release_value_label.setText(self.value_to_mm(settings['rapidfire_release_sens']))
+
+        # Load velocity modifier
         self.rf_vel_mod_slider.setValue(settings['rapidfire_velocity_mod'])
         self.rf_vel_mod_value_label.setText(str(settings['rapidfire_velocity_mod']))
 
@@ -568,30 +563,23 @@ class TriggerSettingsTab(BasicEditor):
         self.syncing = False
 
         # Enable controls when key is selected
-        # Note: Actuation requires mode_enabled, but rapidfire/deadzone/velocity curve work independently
         key_selected = self.container.active_key is not None
-        self.actuation_slider.setEnabled(key_selected and self.mode_enabled)
+        self.trigger_slider.setEnabled(key_selected and self.mode_enabled)
         self.use_per_key_curve_checkbox.setEnabled(key_selected)
         self.velocity_curve_combo.setEnabled(key_selected and use_per_key_curve)
-        self.deadzone_checkbox.setEnabled(key_selected)
-        self.deadzone_top_slider.setEnabled(key_selected and deadzone_enabled)
-        self.deadzone_bottom_slider.setEnabled(key_selected and deadzone_enabled)
         self.rapidfire_checkbox.setEnabled(key_selected)
-        self.rf_press_slider.setEnabled(key_selected and rapidfire_enabled)
-        self.rf_release_slider.setEnabled(key_selected and rapidfire_enabled)
+        self.rapid_trigger_slider.setEnabled(key_selected and rapidfire_enabled)
+        self.rf_widget.setVisible(rapidfire_enabled)
         self.rf_vel_mod_slider.setEnabled(key_selected and rapidfire_enabled)
 
     def on_key_deselected(self):
         """Handle key deselection - disable all controls"""
-        self.actuation_slider.setEnabled(False)
+        self.trigger_slider.setEnabled(False)
         self.velocity_curve_combo.setEnabled(False)
-        self.deadzone_checkbox.setEnabled(False)
-        self.deadzone_top_slider.setEnabled(False)
-        self.deadzone_bottom_slider.setEnabled(False)
         self.rapidfire_checkbox.setEnabled(False)
-        self.rf_press_slider.setEnabled(False)
-        self.rf_release_slider.setEnabled(False)
+        self.rapid_trigger_slider.setEnabled(False)
         self.rf_vel_mod_slider.setEnabled(False)
+        self.rf_widget.setVisible(False)
 
     def save_current_key_settings(self):
         """Helper to save current key's settings to device"""
@@ -671,46 +659,6 @@ class TriggerSettingsTab(BasicEditor):
 
         self.refresh_layer_display()
 
-    def on_deadzone_toggled(self, state):
-        """Handle deadzone checkbox toggle - applies to all selected keys"""
-        enabled = (state == Qt.Checked)
-
-        if not self.syncing:
-            # Enable/disable deadzone sliders (no mode_enabled gate)
-            self.deadzone_top_slider.setEnabled(enabled)
-            self.deadzone_bottom_slider.setEnabled(enabled)
-
-            # Get all selected keys (or just active key if none selected)
-            selected_keys = self.container.get_selected_keys()
-            if not selected_keys and self.container.active_key:
-                selected_keys = [self.container.active_key]
-
-            layer = self.current_layer if self.per_layer_enabled else 0
-
-            # Apply to all selected keys
-            for key in selected_keys:
-                if key.desc.row is not None:
-                    row, col = key.desc.row, key.desc.col
-                    key_index = row * 14 + col
-
-                    if key_index < 70:
-                        # When disabling, set deadzones to 0. When enabling, set to defaults if they were 0
-                        if not enabled:
-                            self.per_key_values[layer][key_index]['deadzone_top'] = 0
-                            self.per_key_values[layer][key_index]['deadzone_bottom'] = 0
-                        else:
-                            if self.per_key_values[layer][key_index]['deadzone_top'] == 0:
-                                self.per_key_values[layer][key_index]['deadzone_top'] = 4
-                            if self.per_key_values[layer][key_index]['deadzone_bottom'] == 0:
-                                self.per_key_values[layer][key_index]['deadzone_bottom'] = 4
-
-                        # Send to device
-                        if self.device and isinstance(self.device, VialKeyboard):
-                            settings = self.per_key_values[layer][key_index]
-                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
-
-            self.refresh_layer_display()
-
     def on_deadzone_top_changed(self, value):
         """Handle top deadzone slider change - applies to all selected keys"""
         self.deadzone_top_value_label.setText(self.value_to_mm(value))
@@ -774,9 +722,9 @@ class TriggerSettingsTab(BasicEditor):
         enabled = (state == Qt.Checked)
 
         if not self.syncing:
-            # Enable/disable rapidfire sliders (no mode_enabled gate)
-            self.rf_press_slider.setEnabled(enabled)
-            self.rf_release_slider.setEnabled(enabled)
+            # Show/hide rapidfire widget and enable sliders
+            self.rf_widget.setVisible(enabled)
+            self.rapid_trigger_slider.setEnabled(enabled)
             self.rf_vel_mod_slider.setEnabled(enabled)
 
             # Get all selected keys (or just active key if none selected)
@@ -970,10 +918,10 @@ class TriggerSettingsTab(BasicEditor):
             # Load global actuation values
             self.load_global_actuation()
 
-        # Update enabled state of actuation slider when in per-key mode
+        # Update enabled state of trigger slider when in per-key mode
         if self.mode_enabled:
             key_selected = self.container.active_key is not None
-            self.actuation_slider.setEnabled(key_selected)
+            self.trigger_slider.setEnabled(key_selected)
 
         # Update device
         if self.device and isinstance(self.device, VialKeyboard):
