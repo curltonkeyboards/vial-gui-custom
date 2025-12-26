@@ -874,7 +874,8 @@ class KeyboardWidget2(QWidget):
         self.width = self.height = 0
         self.active_key = None
         self.active_mask = False
-        self.is_dragging = False  # Track if we're drag-painting
+        self.is_dragging = False  # Track if we're drag-selecting
+        self.drag_mode = None  # 'select' or 'deselect'
 
         # Multi-selection support
         self.selected_keys = set()  # Set of selected key widgets
@@ -1199,8 +1200,13 @@ class KeyboardWidget2(QWidget):
 
         clicked_key, self.active_mask = self.hit_test(ev.pos())
         if clicked_key is not None:
-            # Toggle selection: add if not selected, remove if already selected
+            # Start drag mode
+            self.is_dragging = True
+
+            # Determine drag mode based on current selection state
             if clicked_key in self.selected_keys:
+                # Clicking on already selected key - start deselect mode
+                self.drag_mode = 'deselect'
                 self.selected_keys.remove(clicked_key)
                 # If this was the last selected key, deselect entirely
                 if not self.selected_keys:
@@ -1209,40 +1215,57 @@ class KeyboardWidget2(QWidget):
                 else:
                     # Set active_key to one of the remaining selected keys
                     self.active_key = next(iter(self.selected_keys))
-                    self.is_dragging = True  # Start drag painting
                     self.clicked.emit()
             else:
+                # Clicking on unselected key - start select mode
+                self.drag_mode = 'select'
                 self.selected_keys.add(clicked_key)
                 self.active_key = clicked_key
-                self.is_dragging = True  # Start drag painting
                 self.clicked.emit()
         else:
             # Clicked empty space - clear selection
             self.selected_keys.clear()
             self.active_key = None
+            self.is_dragging = False
+            self.drag_mode = None
             self.deselected.emit()
         self.update()
 
     def mouseMoveEvent(self, ev):
-        """Handle mouse move for drag painting"""
-        if not self.enabled or not self.is_dragging:
+        """Handle mouse move for drag selecting/deselecting"""
+        if not self.enabled or not self.is_dragging or self.drag_mode is None:
             return
 
         # Check if we're over a key
         key, mask = self.hit_test(ev.pos())
-        if key is not None and key != self.active_key:
-            # We've dragged onto a new key, paint it
-            self.active_key = key
-            self.active_mask = mask
-            self.clicked.emit()
-            self.update()
+        if key is not None and not isinstance(key, EncoderWidget2):
+            if self.drag_mode == 'select':
+                # Add key to selection if not already selected
+                if key not in self.selected_keys:
+                    self.selected_keys.add(key)
+                    self.active_key = key
+                    self.active_mask = mask
+                    self.clicked.emit()
+                    self.update()
+            elif self.drag_mode == 'deselect':
+                # Remove key from selection if currently selected
+                if key in self.selected_keys:
+                    self.selected_keys.remove(key)
+                    if self.selected_keys:
+                        self.active_key = next(iter(self.selected_keys))
+                    else:
+                        self.active_key = None
+                    self.active_mask = mask
+                    self.clicked.emit()
+                    self.update()
 
     def mouseReleaseEvent(self, ev):
-        """Handle mouse release to stop drag painting"""
+        """Handle mouse release to stop drag selecting/deselecting"""
         if not self.enabled:
             return
 
         self.is_dragging = False
+        self.drag_mode = None
 
     def resizeEvent(self, ev):
         if self.isEnabled():

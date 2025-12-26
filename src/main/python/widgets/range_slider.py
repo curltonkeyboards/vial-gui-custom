@@ -1,8 +1,148 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QSlider
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QLinearGradient
+
+
+class StyledSlider(QWidget):
+    """
+    A styled single-handle slider matching the MultiHandleSlider aesthetic
+    """
+
+    valueChanged = pyqtSignal(int)
+
+    def __init__(self, minimum=0, maximum=100, parent=None):
+        super().__init__(parent)
+        self.minimum = minimum
+        self.maximum = maximum
+        self.value = (minimum + maximum) // 2
+        self.active = False
+
+        # Visual settings (matching MultiHandleSlider)
+        self.handle_radius = 10
+        self.track_height = 8
+        self.margin = 25
+
+        # Color scheme (matching MultiHandleSlider)
+        self.track_bg_color = QColor(45, 45, 50)
+        self.handle_color = QColor(255, 255, 255)
+        self.handle_border_color = QColor(120, 120, 130)
+        self.fill_color = QColor(255, 140, 50)  # Orange fill
+
+        self.setMinimumHeight(40)
+        self.setMinimumWidth(200)
+
+    def setValue(self, value):
+        """Set slider value"""
+        self.value = max(self.minimum, min(self.maximum, value))
+        self.update()
+
+    def getValue(self):
+        """Get slider value"""
+        return self.value
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        width = self.width()
+        height = self.height()
+
+        # Calculate track geometry
+        track_y = height // 2 - self.track_height // 2
+        track_x = self.margin
+        track_width = width - 2 * self.margin
+
+        # Draw background track with shadow
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(0, 0, 0, 40)))
+        painter.drawRoundedRect(track_x + 1, track_y + 1, track_width, self.track_height, 4, 4)
+
+        # Draw background track
+        painter.setBrush(QBrush(self.track_bg_color))
+        painter.drawRoundedRect(track_x, track_y, track_width, self.track_height, 4, 4)
+
+        # Draw filled section (from left to handle)
+        handle_x = self._value_to_pixel(self.value)
+        painter.setBrush(QBrush(self.fill_color))
+        painter.drawRoundedRect(int(track_x), track_y, int(handle_x - track_x), self.track_height, 4, 4)
+        # Square off right edge
+        painter.drawRect(int(handle_x - 4), track_y, 4, self.track_height)
+
+        # Draw handle
+        self._draw_handle(painter, handle_x, height // 2)
+
+    def _draw_handle(self, painter, x, y):
+        """Draw handle with depth and modern styling (matching MultiHandleSlider)"""
+        # Draw shadow
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(0, 0, 0, 80)))
+        painter.drawEllipse(QPointF(x + 2, y + 2), self.handle_radius, self.handle_radius)
+
+        # Draw outer glow for active handle
+        if self.active:
+            painter.setBrush(QBrush(QColor(100, 150, 255, 60)))
+            painter.drawEllipse(QPointF(x, y), self.handle_radius + 3, self.handle_radius + 3)
+
+        # Draw handle with gradient
+        gradient = QLinearGradient(x, y - self.handle_radius, x, y + self.handle_radius)
+        gradient.setColorAt(0, QColor(255, 255, 255))
+        gradient.setColorAt(1, QColor(230, 230, 235))
+        painter.setBrush(QBrush(gradient))
+        painter.setPen(QPen(self.handle_border_color, 2))
+        painter.drawEllipse(QPointF(x, y), self.handle_radius, self.handle_radius)
+
+        # Draw inner indicator/grip
+        if self.active:
+            painter.setBrush(QBrush(QColor(100, 150, 255)))
+        else:
+            painter.setBrush(QBrush(QColor(140, 140, 145)))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(QPointF(x, y), self.handle_radius - 4, self.handle_radius - 4)
+
+    def _value_to_pixel(self, value):
+        """Convert value to pixel position"""
+        track_width = self.width() - 2 * self.margin
+        ratio = (value - self.minimum) / (self.maximum - self.minimum)
+        return self.margin + ratio * track_width
+
+    def _pixel_to_value(self, pixel):
+        """Convert pixel position to value"""
+        track_width = self.width() - 2 * self.margin
+        ratio = (pixel - self.margin) / track_width
+        value = self.minimum + ratio * (self.maximum - self.minimum)
+        return max(self.minimum, min(self.maximum, value))
+
+    def _is_over_handle(self, x, y):
+        """Check if position is over handle"""
+        center_y = self.height() // 2
+        handle_x = self._value_to_pixel(self.value)
+
+        dx = x - handle_x
+        dy = y - center_y
+        distance = (dx ** 2 + dy ** 2) ** 0.5
+
+        return distance <= self.handle_radius + 5
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self._is_over_handle(event.x(), event.y()):
+                self.active = True
+                self.update()
+
+    def mouseMoveEvent(self, event):
+        if self.active:
+            new_value = int(self._pixel_to_value(event.x()))
+            if new_value != self.value:
+                self.value = new_value
+                self.update()
+                self.valueChanged.emit(self.value)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.active = False
+            self.update()
 
 
 class MultiHandleSlider(QWidget):
@@ -373,11 +513,11 @@ class TriggerSlider(MultiHandleSlider):
 class RapidTriggerSlider(MultiHandleSlider):
     """
     Specialized slider for rapid trigger settings with 2 handles:
-    - Press sensitivity (from left: 1-60, where 1=0.025mm, 60=1.5mm MAX)
-    - Release sensitivity (from right: 1-60, where 1=0.025mm from right, inverted, 60=1.5mm MAX)
+    - Press sensitivity (from left: 1-50, where 1=0.025mm, 50=1.25mm MAX)
+    - Release sensitivity (from right: 1-50, where 1=0.025mm from right, inverted, 50=1.25mm MAX)
 
     Release is inverted - stored internally as (101 - user_value)
-    Each side has a maximum of 1.5mm (60 units) with a divider in the middle
+    Each side has a maximum of 1.25mm (50 units) with a divider exactly in the middle at 50%
     """
 
     pressSensChanged = pyqtSignal(int)
@@ -386,9 +526,9 @@ class RapidTriggerSlider(MultiHandleSlider):
     def __init__(self, minimum=1, maximum=100, parent=None):
         super().__init__(num_handles=2, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: press=4 (0.1mm), release=96 (which is 4 from right = 0.1mm)
+        # Set default values: press=4 (0.1mm), release=97 (which is 4 from right = 0.1mm)
         # Internal representation: [press, 101 - release]
-        self.values = [4, 96]  # 96 = 100 - 4 + 1 (accounting for minimum=1)
+        self.values = [4, 97]  # 97 = 101 - 4
 
         # Store the actual user-facing release value (inverted)
         self._user_release = 4
@@ -405,14 +545,14 @@ class RapidTriggerSlider(MultiHandleSlider):
         self.releaseSensChanged.emit(inverted_release)
 
     def set_press_sens(self, value):
-        """Set press sensitivity value (1-60 max)"""
-        clamped_value = max(1, min(value, 60))
+        """Set press sensitivity value (1-50 max)"""
+        clamped_value = max(1, min(value, 50))
         self.set_value(0, clamped_value)
 
     def set_release_sens(self, value):
-        """Set release sensitivity value (1-60 max, inverted internally)"""
+        """Set release sensitivity value (1-50 max, inverted internally)"""
         # Convert user value (distance from right) to internal position
-        clamped_value = max(1, min(value, 60))
+        clamped_value = max(1, min(value, 50))
         self._user_release = clamped_value
         internal_value = 101 - clamped_value
         self.set_value(1, internal_value)
@@ -471,18 +611,18 @@ class RapidTriggerSlider(MultiHandleSlider):
             pos_x = self._value_to_pixel(value)
             self._draw_handle(painter, pos_x, height // 2, i)
 
-        # Draw center divider line at 1.5mm mark (60 units = 60% of track from left)
-        divider_x = track_x + (60.0 / 100.0) * track_width
+        # Draw center divider line at exactly 50% (middle)
+        divider_x = track_x + (50.0 / 100.0) * track_width
         painter.setPen(QPen(QColor(150, 150, 150), 2))
         painter.drawLine(int(divider_x), track_y - 5, int(divider_x), track_y + self.track_height + 5)
 
     def _apply_constraints(self, handle_index, new_value):
-        """Apply constraints to prevent overlap - max 1.5mm (60 units) per side"""
+        """Apply constraints to prevent overlap - max 50 units per side, divider at 50%"""
         if handle_index == 0:  # Press sensitivity (from left)
-            # Max 60 units (1.5mm) and must not exceed center (50)
-            return max(self.minimum, min(new_value, 60))
+            # Max 50 units and must not exceed center (50)
+            return max(self.minimum, min(new_value, 50))
         elif handle_index == 1:  # Release sensitivity (from right, inverted)
-            # Internal values from 41-100 (representing user values 60-1)
-            # Minimum internal value is 41 (= 101 - 60)
-            return max(41, min(new_value, self.maximum))
+            # Internal values from 51-100 (representing user values 50-1)
+            # Minimum internal value is 51 (= 101 - 50)
+            return max(51, min(new_value, self.maximum))
         return max(self.minimum, min(new_value, self.maximum))
