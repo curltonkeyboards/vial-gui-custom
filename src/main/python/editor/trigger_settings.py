@@ -196,16 +196,28 @@ class TriggerSettingsTab(BasicEditor):
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # === GLOBAL ACTUATION WIDGET (shown when per-key mode is disabled) ===
-        self.global_actuation_widget = QWidget()
-        global_layout = QVBoxLayout()
-        global_layout.setSpacing(12)
-        global_layout.setContentsMargins(0, 0, 0, 0)
+        # Info label
+        info_label = QLabel(tr("TriggerSettings", "Select a key to configure its settings"))
+        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; }")
+        main_layout.addWidget(info_label)
 
-        # Info label for global mode
-        global_info_label = QLabel(tr("TriggerSettings", "Global actuation settings (per-key mode disabled)"))
-        global_info_label.setStyleSheet("QLabel { font-style: italic; color: gray; }")
-        global_layout.addWidget(global_info_label)
+        # Scroll area for all controls
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        scroll_widget = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+
+        # === ACTUATION SECTION ===
+        # Container for actuation sliders that will swap based on mode
+
+        # Global actuation sliders (shown when per-key mode is disabled)
+        self.global_actuation_widget = QWidget()
+        global_actuation_layout = QVBoxLayout()
+        global_actuation_layout.setSpacing(8)
+        global_actuation_layout.setContentsMargins(0, 0, 0, 0)
 
         # Normal Keys Actuation slider
         normal_layout = QHBoxLayout()
@@ -225,7 +237,7 @@ class TriggerSettingsTab(BasicEditor):
         self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         normal_layout.addWidget(self.global_normal_value_label)
 
-        global_layout.addLayout(normal_layout)
+        global_actuation_layout.addLayout(normal_layout)
 
         # MIDI Keys Actuation slider
         midi_layout = QHBoxLayout()
@@ -245,35 +257,18 @@ class TriggerSettingsTab(BasicEditor):
         self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         midi_layout.addWidget(self.global_midi_value_label)
 
-        global_layout.addLayout(midi_layout)
-        global_layout.addStretch()
+        global_actuation_layout.addLayout(midi_layout)
 
-        self.global_actuation_widget.setLayout(global_layout)
+        self.global_actuation_widget.setLayout(global_actuation_layout)
         self.global_actuation_widget.setVisible(True)  # Visible by default when mode_enabled is False
-        main_layout.addWidget(self.global_actuation_widget)
+        layout.addWidget(self.global_actuation_widget)
 
-        # === PER-KEY ACTUATION WIDGET (shown when per-key mode is enabled) ===
+        # Per-Key Actuation slider (shown when per-key mode is enabled)
         self.per_key_actuation_widget = QWidget()
-        per_key_layout = QVBoxLayout()
-        per_key_layout.setSpacing(12)
-        per_key_layout.setContentsMargins(0, 0, 0, 0)
+        per_key_actuation_layout = QVBoxLayout()
+        per_key_actuation_layout.setSpacing(8)
+        per_key_actuation_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Info label for per-key mode
-        info_label = QLabel(tr("TriggerSettings", "Select a key to configure its settings"))
-        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; }")
-        per_key_layout.addWidget(info_label)
-
-        # Scroll area for all per-key controls
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-
-        scroll_widget = QWidget()
-        per_key_controls_layout = QVBoxLayout()
-        per_key_controls_layout.setSpacing(12)
-
-        # === ACTUATION SECTION ===
-        # Per-Key Actuation slider
         actuation_layout = QHBoxLayout()
         actuation_label = QLabel(tr("TriggerSettings", "Per-Key Actuation:"))
         actuation_label.setMinimumWidth(140)
@@ -292,7 +287,11 @@ class TriggerSettingsTab(BasicEditor):
         self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         actuation_layout.addWidget(self.actuation_value_label)
 
-        per_key_controls_layout.addLayout(actuation_layout)
+        per_key_actuation_layout.addLayout(actuation_layout)
+
+        self.per_key_actuation_widget.setLayout(per_key_actuation_layout)
+        self.per_key_actuation_widget.setVisible(False)  # Hidden by default when mode_enabled is False
+        layout.addWidget(self.per_key_actuation_widget)
 
         # Velocity Curve dropdown
         curve_layout = QHBoxLayout()
@@ -311,27 +310,27 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
         curve_layout.addWidget(self.velocity_curve_combo, 1)
 
-        per_key_controls_layout.addLayout(curve_layout)
+        layout.addLayout(curve_layout)
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve. When disabled, uses global velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        per_key_controls_layout.addWidget(self.use_per_key_curve_checkbox)
+        layout.addWidget(self.use_per_key_curve_checkbox)
 
         # Separator
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
-        per_key_controls_layout.addWidget(line)
+        layout.addWidget(line)
 
         # === DEADZONE SECTION ===
         # Enable Deadzone checkbox
         self.deadzone_checkbox = QCheckBox(tr("TriggerSettings", "Enable Deadzone"))
         self.deadzone_checkbox.setEnabled(False)
         self.deadzone_checkbox.stateChanged.connect(self.on_deadzone_toggled)
-        per_key_controls_layout.addWidget(self.deadzone_checkbox)
+        layout.addWidget(self.deadzone_checkbox)
 
         # Top Deadzone slider
         deadzone_top_layout = QHBoxLayout()
@@ -352,7 +351,7 @@ class TriggerSettingsTab(BasicEditor):
         self.deadzone_top_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         deadzone_top_layout.addWidget(self.deadzone_top_value_label)
 
-        per_key_controls_layout.addLayout(deadzone_top_layout)
+        layout.addLayout(deadzone_top_layout)
 
         # Bottom Deadzone slider
         deadzone_bottom_layout = QHBoxLayout()
@@ -373,20 +372,20 @@ class TriggerSettingsTab(BasicEditor):
         self.deadzone_bottom_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         deadzone_bottom_layout.addWidget(self.deadzone_bottom_value_label)
 
-        per_key_controls_layout.addLayout(deadzone_bottom_layout)
+        layout.addLayout(deadzone_bottom_layout)
 
         # Separator
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
-        per_key_controls_layout.addWidget(line)
+        layout.addWidget(line)
 
         # === RAPIDFIRE SECTION ===
         # Enable Rapidfire checkbox
         self.rapidfire_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
         self.rapidfire_checkbox.setEnabled(False)
         self.rapidfire_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
-        per_key_controls_layout.addWidget(self.rapidfire_checkbox)
+        layout.addWidget(self.rapidfire_checkbox)
 
         # Rapidfire Press Sensitivity slider
         rf_press_layout = QHBoxLayout()
@@ -407,7 +406,7 @@ class TriggerSettingsTab(BasicEditor):
         self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         rf_press_layout.addWidget(self.rf_press_value_label)
 
-        per_key_controls_layout.addLayout(rf_press_layout)
+        layout.addLayout(rf_press_layout)
 
         # Rapidfire Release Sensitivity slider
         rf_release_layout = QHBoxLayout()
@@ -428,7 +427,7 @@ class TriggerSettingsTab(BasicEditor):
         self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         rf_release_layout.addWidget(self.rf_release_value_label)
 
-        per_key_controls_layout.addLayout(rf_release_layout)
+        layout.addLayout(rf_release_layout)
 
         # Rapidfire Velocity Modifier slider
         rf_vel_mod_layout = QHBoxLayout()
@@ -449,16 +448,12 @@ class TriggerSettingsTab(BasicEditor):
         self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         rf_vel_mod_layout.addWidget(self.rf_vel_mod_value_label)
 
-        per_key_controls_layout.addLayout(rf_vel_mod_layout)
+        layout.addLayout(rf_vel_mod_layout)
 
-        per_key_controls_layout.addStretch()
-        scroll_widget.setLayout(per_key_controls_layout)
+        layout.addStretch()
+        scroll_widget.setLayout(layout)
         scroll.setWidget(scroll_widget)
-        per_key_layout.addWidget(scroll)
-
-        self.per_key_actuation_widget.setLayout(per_key_layout)
-        self.per_key_actuation_widget.setVisible(False)  # Hidden by default when mode_enabled is False
-        main_layout.addWidget(self.per_key_actuation_widget)
+        main_layout.addWidget(scroll)
 
         tab.setLayout(main_layout)
         return tab
@@ -966,7 +961,7 @@ class TriggerSettingsTab(BasicEditor):
         self.copy_all_layers_btn.setEnabled(self.mode_enabled)
         self.reset_btn.setEnabled(self.mode_enabled)
 
-        # Toggle between global and per-key widgets
+        # Toggle between global and per-key actuation sliders only
         self.global_actuation_widget.setVisible(not self.mode_enabled)
         self.per_key_actuation_widget.setVisible(self.mode_enabled)
 
@@ -974,6 +969,11 @@ class TriggerSettingsTab(BasicEditor):
         if not self.mode_enabled:
             # Load global actuation values
             self.load_global_actuation()
+
+        # Update enabled state of actuation slider when in per-key mode
+        if self.mode_enabled:
+            key_selected = self.container.active_key is not None
+            self.actuation_slider.setEnabled(key_selected)
 
         # Update device
         if self.device and isinstance(self.device, VialKeyboard):

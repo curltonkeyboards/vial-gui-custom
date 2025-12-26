@@ -1207,7 +1207,8 @@ class KeyboardWidget2(QWidget):
                     self.active_key = None
                     self.deselected.emit()
                 else:
-                    self.active_key = clicked_key
+                    # Set active_key to one of the remaining selected keys
+                    self.active_key = next(iter(self.selected_keys))
                     self.is_dragging = True  # Start drag painting
                     self.clicked.emit()
             else:
