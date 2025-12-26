@@ -107,10 +107,12 @@ class TriggerSettingsTab(BasicEditor):
 
         keyboard_layout = QHBoxLayout()
         keyboard_layout.addLayout(selection_buttons_layout)
+        keyboard_layout.addStretch(1)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)
         keyboard_area.addLayout(keyboard_layout)
-        keyboard_area.setContentsMargins(0, 0, 0, 0)  # Remove bottom margin
+        keyboard_area.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        keyboard_area.setSpacing(0)  # Remove spacing
 
         w = ClickableWidget()
         w.setLayout(keyboard_area)
@@ -136,21 +138,17 @@ class TriggerSettingsTab(BasicEditor):
         self.addWidget(control_panel)
 
     def create_control_panel(self):
-        """Create the bottom control panel with tabbed interface"""
+        """Create the bottom control panel"""
         panel = QFrame()
         panel.setFrameShape(QFrame.StyledPanel)
-        panel.setMaximumHeight(400)  # Increased to accommodate tabs
+        panel.setMaximumHeight(350)  # Reduced height
         layout = QVBoxLayout()
-        layout.setSpacing(5)
-        layout.setContentsMargins(20, 5, 20, 10)
+        layout.setSpacing(3)
+        layout.setContentsMargins(15, 3, 15, 8)
 
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        layout.addWidget(self.tab_widget)
-
-        # Create Basic tab (without title since tab already has label)
-        self.basic_tab = self.create_basic_tab()
-        self.tab_widget.addTab(self.basic_tab, "Settings")
+        # Create settings content directly (no tabs)
+        settings_widget = self.create_settings_content()
+        layout.addWidget(settings_widget)
 
         # Bottom buttons row (outside tabs)
         button_row = QHBoxLayout()
@@ -176,12 +174,224 @@ class TriggerSettingsTab(BasicEditor):
         panel.setLayout(layout)
         return panel
 
-    def create_basic_tab(self):
-        """Create the Per-Key Settings tab"""
-        tab = QWidget()
+    def create_trigger_container(self):
+        """Create the trigger travel configuration container"""
+        container = QFrame()
+        container.setFrameShape(QFrame.StyledPanel)
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Global actuation widget (shown when per-key mode is disabled)
+        self.global_actuation_widget = QWidget()
+        global_actuation_layout = QVBoxLayout()
+        global_actuation_layout.setSpacing(6)
+        global_actuation_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Normal Keys Actuation slider
+        normal_layout = QHBoxLayout()
+        normal_label = QLabel(tr("TriggerSettings", "Normal Keys:"))
+        normal_label.setMinimumWidth(100)
+        normal_layout.addWidget(normal_label)
+
+        self.global_normal_slider = QSlider(Qt.Horizontal)
+        self.global_normal_slider.setMinimum(0)
+        self.global_normal_slider.setMaximum(100)
+        self.global_normal_slider.setValue(80)
+        self.global_normal_slider.valueChanged.connect(self.on_global_normal_changed)
+        normal_layout.addWidget(self.global_normal_slider, 1)
+
+        self.global_normal_value_label = QLabel("2.00mm")
+        self.global_normal_value_label.setMinimumWidth(60)
+        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        normal_layout.addWidget(self.global_normal_value_label)
+
+        global_actuation_layout.addLayout(normal_layout)
+
+        # MIDI Keys Actuation slider
+        midi_layout = QHBoxLayout()
+        midi_label = QLabel(tr("TriggerSettings", "MIDI Keys:"))
+        midi_label.setMinimumWidth(100)
+        midi_layout.addWidget(midi_label)
+
+        self.global_midi_slider = QSlider(Qt.Horizontal)
+        self.global_midi_slider.setMinimum(0)
+        self.global_midi_slider.setMaximum(100)
+        self.global_midi_slider.setValue(80)
+        self.global_midi_slider.valueChanged.connect(self.on_global_midi_changed)
+        midi_layout.addWidget(self.global_midi_slider, 1)
+
+        self.global_midi_value_label = QLabel("2.00mm")
+        self.global_midi_value_label.setMinimumWidth(60)
+        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        midi_layout.addWidget(self.global_midi_value_label)
+
+        global_actuation_layout.addLayout(midi_layout)
+
+        self.global_actuation_widget.setLayout(global_actuation_layout)
+        self.global_actuation_widget.setVisible(True)
+        layout.addWidget(self.global_actuation_widget)
+
+        # Per-Key Trigger Travel widget
+        self.per_key_actuation_widget = QWidget()
+        per_key_layout = QVBoxLayout()
+        per_key_layout.setSpacing(6)
+        per_key_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Title
+        title_label = QLabel("Trigger Travel")
+        title_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; }")
+        per_key_layout.addWidget(title_label)
+
+        # Value display row
+        values_layout = QHBoxLayout()
+
+        # Deadzone bottom
+        dz_bottom_container = QVBoxLayout()
+        dz_bottom_title = QLabel("DZ Min")
+        dz_bottom_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.deadzone_bottom_value_label = QLabel("0.1mm")
+        self.deadzone_bottom_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
+        dz_bottom_container.addWidget(dz_bottom_title, 0, Qt.AlignCenter)
+        dz_bottom_container.addWidget(self.deadzone_bottom_value_label, 0, Qt.AlignCenter)
+        values_layout.addLayout(dz_bottom_container)
+
+        values_layout.addStretch()
+
+        # Actuation
+        actuation_container = QVBoxLayout()
+        actuation_title = QLabel("Actuation")
+        actuation_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.actuation_value_label = QLabel("1.5mm")
+        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; color: #ff8c32; }")
+        actuation_container.addWidget(actuation_title, 0, Qt.AlignCenter)
+        actuation_container.addWidget(self.actuation_value_label, 0, Qt.AlignCenter)
+        values_layout.addLayout(actuation_container)
+
+        values_layout.addStretch()
+
+        # Deadzone top
+        dz_top_container = QVBoxLayout()
+        dz_top_title = QLabel("DZ Max")
+        dz_top_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.deadzone_top_value_label = QLabel("0.1mm")
+        self.deadzone_top_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
+        dz_top_container.addWidget(dz_top_title, 0, Qt.AlignCenter)
+        dz_top_container.addWidget(self.deadzone_top_value_label, 0, Qt.AlignCenter)
+        values_layout.addLayout(dz_top_container)
+
+        per_key_layout.addLayout(values_layout)
+
+        # Combined trigger slider
+        self.trigger_slider = TriggerSlider(minimum=0, maximum=100)
+        self.trigger_slider.setEnabled(False)
+        self.trigger_slider.deadzoneBottomChanged.connect(self.on_deadzone_bottom_changed)
+        self.trigger_slider.actuationChanged.connect(self.on_key_actuation_changed)
+        self.trigger_slider.deadzoneTopChanged.connect(self.on_deadzone_top_changed)
+        self.trigger_slider.setMinimumHeight(50)
+        per_key_layout.addWidget(self.trigger_slider)
+
+        self.per_key_actuation_widget.setLayout(per_key_layout)
+        self.per_key_actuation_widget.setVisible(False)
+        layout.addWidget(self.per_key_actuation_widget)
+
+        container.setLayout(layout)
+        return container
+
+    def create_rapidfire_container(self):
+        """Create the rapidfire configuration container"""
+        container = QFrame()
+        container.setFrameShape(QFrame.StyledPanel)
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Enable checkbox
+        self.rapidfire_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
+        self.rapidfire_checkbox.setEnabled(False)
+        self.rapidfire_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
+        layout.addWidget(self.rapidfire_checkbox)
+
+        # Rapidfire widget
+        self.rf_widget = QWidget()
+        rf_layout = QVBoxLayout()
+        rf_layout.setSpacing(6)
+        rf_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Title
+        rf_title = QLabel("Rapid Trigger")
+        rf_title.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; }")
+        rf_layout.addWidget(rf_title)
+
+        # Value display row
+        rf_values_layout = QHBoxLayout()
+
+        # Press sensitivity
+        press_container = QVBoxLayout()
+        press_title = QLabel("Press")
+        press_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.rf_press_value_label = QLabel("0.1mm")
+        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: #ff8c32; }")
+        press_container.addWidget(press_title, 0, Qt.AlignCenter)
+        press_container.addWidget(self.rf_press_value_label, 0, Qt.AlignCenter)
+        rf_values_layout.addLayout(press_container)
+
+        rf_values_layout.addStretch()
+
+        # Release sensitivity
+        release_container = QVBoxLayout()
+        release_title = QLabel("Release")
+        release_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.rf_release_value_label = QLabel("0.1mm")
+        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: #64c8ff; }")
+        release_container.addWidget(release_title, 0, Qt.AlignCenter)
+        release_container.addWidget(self.rf_release_value_label, 0, Qt.AlignCenter)
+        rf_values_layout.addLayout(release_container)
+
+        rf_layout.addLayout(rf_values_layout)
+
+        # Combined rapid trigger slider
+        self.rapid_trigger_slider = RapidTriggerSlider(minimum=1, maximum=100)
+        self.rapid_trigger_slider.setEnabled(False)
+        self.rapid_trigger_slider.pressSensChanged.connect(self.on_rf_press_changed)
+        self.rapid_trigger_slider.releaseSensChanged.connect(self.on_rf_release_changed)
+        self.rapid_trigger_slider.setMinimumHeight(50)
+        rf_layout.addWidget(self.rapid_trigger_slider)
+
+        # Velocity modifier
+        rf_vel_layout = QHBoxLayout()
+        rf_vel_label = QLabel("Velocity Mod:")
+        rf_vel_label.setMinimumWidth(80)
+        rf_vel_layout.addWidget(rf_vel_label)
+
+        self.rf_vel_mod_slider = QSlider(Qt.Horizontal)
+        self.rf_vel_mod_slider.setMinimum(-64)
+        self.rf_vel_mod_slider.setMaximum(64)
+        self.rf_vel_mod_slider.setValue(0)
+        self.rf_vel_mod_slider.setEnabled(False)
+        self.rf_vel_mod_slider.valueChanged.connect(self.on_rf_vel_mod_changed)
+        rf_vel_layout.addWidget(self.rf_vel_mod_slider, 1)
+
+        self.rf_vel_mod_value_label = QLabel("0")
+        self.rf_vel_mod_value_label.setMinimumWidth(40)
+        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        rf_vel_layout.addWidget(self.rf_vel_mod_value_label)
+
+        rf_layout.addLayout(rf_vel_layout)
+
+        self.rf_widget.setLayout(rf_layout)
+        self.rf_widget.setVisible(False)
+        layout.addWidget(self.rf_widget)
+
+        container.setLayout(layout)
+        return container
+
+    def create_settings_content(self):
+        """Create the settings content"""
+        widget = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(8)
-        main_layout.setContentsMargins(10, 5, 10, 10)
+        main_layout.setSpacing(6)
+        main_layout.setContentsMargins(5, 3, 5, 5)
 
         # Top checkboxes row
         checkbox_row = QHBoxLayout()
@@ -200,141 +410,27 @@ class TriggerSettingsTab(BasicEditor):
 
         # Info label
         info_label = QLabel(tr("TriggerSettings", "Select a key to configure its settings"))
-        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; font-size: 9pt; }")
+        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; font-size: 8pt; }")
         main_layout.addWidget(info_label)
 
-        # Scroll area for all controls
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        # Main content layout
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(15)
 
-        scroll_widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(12)
+        # Left side: Trigger travel configuration
+        trigger_container = self.create_trigger_container()
+        content_layout.addWidget(trigger_container, 1)
 
-        # === ACTUATION SECTION ===
-        # Container for actuation sliders that will swap based on mode
+        # Right side: Rapidfire configuration
+        rapidfire_container = self.create_rapidfire_container()
+        content_layout.addWidget(rapidfire_container, 1)
 
-        # Global actuation sliders (shown when per-key mode is disabled)
-        self.global_actuation_widget = QWidget()
-        global_actuation_layout = QVBoxLayout()
-        global_actuation_layout.setSpacing(8)
-        global_actuation_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addLayout(content_layout)
 
-        # Normal Keys Actuation slider
-        normal_layout = QHBoxLayout()
-        normal_label = QLabel(tr("TriggerSettings", "Normal Keys:"))
-        normal_label.setMinimumWidth(140)
-        normal_layout.addWidget(normal_label)
-
-        self.global_normal_slider = QSlider(Qt.Horizontal)
-        self.global_normal_slider.setMinimum(0)
-        self.global_normal_slider.setMaximum(100)
-        self.global_normal_slider.setValue(80)
-        self.global_normal_slider.valueChanged.connect(self.on_global_normal_changed)
-        normal_layout.addWidget(self.global_normal_slider, 1)
-
-        self.global_normal_value_label = QLabel("2.00mm")
-        self.global_normal_value_label.setMinimumWidth(80)
-        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        normal_layout.addWidget(self.global_normal_value_label)
-
-        global_actuation_layout.addLayout(normal_layout)
-
-        # MIDI Keys Actuation slider
-        midi_layout = QHBoxLayout()
-        midi_label = QLabel(tr("TriggerSettings", "MIDI Keys:"))
-        midi_label.setMinimumWidth(140)
-        midi_layout.addWidget(midi_label)
-
-        self.global_midi_slider = QSlider(Qt.Horizontal)
-        self.global_midi_slider.setMinimum(0)
-        self.global_midi_slider.setMaximum(100)
-        self.global_midi_slider.setValue(80)
-        self.global_midi_slider.valueChanged.connect(self.on_global_midi_changed)
-        midi_layout.addWidget(self.global_midi_slider, 1)
-
-        self.global_midi_value_label = QLabel("2.00mm")
-        self.global_midi_value_label.setMinimumWidth(80)
-        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_layout.addWidget(self.global_midi_value_label)
-
-        global_actuation_layout.addLayout(midi_layout)
-
-        self.global_actuation_widget.setLayout(global_actuation_layout)
-        self.global_actuation_widget.setVisible(True)  # Visible by default when mode_enabled is False
-        layout.addWidget(self.global_actuation_widget)
-
-        # Per-Key Actuation slider (shown when per-key mode is enabled)
-        self.per_key_actuation_widget = QWidget()
-        per_key_actuation_layout = QVBoxLayout()
-        per_key_actuation_layout.setSpacing(12)
-        per_key_actuation_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Title and value labels for the combined slider
-        title_layout = QHBoxLayout()
-        title_label = QLabel(tr("TriggerSettings", "Trigger Travel Configuration"))
-        title_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11pt; }")
-        title_layout.addWidget(title_label)
-        title_layout.addStretch()
-        per_key_actuation_layout.addLayout(title_layout)
-
-        # Value display row
-        values_layout = QHBoxLayout()
-
-        # Deadzone bottom label
-        dz_bottom_container = QVBoxLayout()
-        dz_bottom_title = QLabel("Deadzone Min")
-        dz_bottom_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
-        self.deadzone_bottom_value_label = QLabel("0.1mm")
-        self.deadzone_bottom_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        dz_bottom_container.addWidget(dz_bottom_title)
-        dz_bottom_container.addWidget(self.deadzone_bottom_value_label)
-        values_layout.addLayout(dz_bottom_container)
-
-        values_layout.addStretch()
-
-        # Actuation label
-        actuation_container = QVBoxLayout()
-        actuation_title = QLabel("Actuation Point")
-        actuation_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
-        self.actuation_value_label = QLabel("1.5mm")
-        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 12pt; color: #ff8c32; }")
-        actuation_container.addWidget(actuation_title)
-        actuation_container.addWidget(self.actuation_value_label)
-        values_layout.addLayout(actuation_container)
-
-        values_layout.addStretch()
-
-        # Deadzone top label
-        dz_top_container = QVBoxLayout()
-        dz_top_title = QLabel("Deadzone Max")
-        dz_top_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
-        self.deadzone_top_value_label = QLabel("2.4mm")
-        self.deadzone_top_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        dz_top_container.addWidget(dz_top_title)
-        dz_top_container.addWidget(self.deadzone_top_value_label)
-        values_layout.addLayout(dz_top_container)
-
-        per_key_actuation_layout.addLayout(values_layout)
-
-        # Combined trigger slider (deadzone bottom, actuation, deadzone top)
-        self.trigger_slider = TriggerSlider(minimum=0, maximum=100)
-        self.trigger_slider.setEnabled(False)
-        self.trigger_slider.deadzoneBottomChanged.connect(self.on_deadzone_bottom_changed)
-        self.trigger_slider.actuationChanged.connect(self.on_key_actuation_changed)
-        self.trigger_slider.deadzoneTopChanged.connect(self.on_deadzone_top_changed)
-        self.trigger_slider.setMinimumHeight(60)
-        per_key_actuation_layout.addWidget(self.trigger_slider)
-
-        self.per_key_actuation_widget.setLayout(per_key_actuation_layout)
-        self.per_key_actuation_widget.setVisible(False)  # Hidden by default when mode_enabled is False
-        layout.addWidget(self.per_key_actuation_widget)
-
-        # Velocity Curve dropdown
+        # Velocity curve section
         curve_layout = QHBoxLayout()
         curve_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        curve_label.setMinimumWidth(140)
+        curve_label.setMinimumWidth(100)
         curve_layout.addWidget(curve_label)
 
         self.velocity_curve_combo = QComboBox()
@@ -348,110 +444,17 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
         curve_layout.addWidget(self.velocity_curve_combo, 1)
 
-        layout.addLayout(curve_layout)
+        main_layout.addLayout(curve_layout)
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
-        self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve. When disabled, uses global velocity curve.")
+        self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        layout.addWidget(self.use_per_key_curve_checkbox)
+        main_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(line)
-
-        # === RAPIDFIRE SECTION ===
-        # Enable Rapidfire checkbox
-        self.rapidfire_checkbox = QCheckBox(tr("TriggerSettings", "Enable Rapidfire"))
-        self.rapidfire_checkbox.setEnabled(False)
-        self.rapidfire_checkbox.stateChanged.connect(self.on_rapidfire_toggled)
-        layout.addWidget(self.rapidfire_checkbox)
-
-        # Rapid Trigger combined slider widget
-        self.rf_widget = QWidget()
-        rf_layout = QVBoxLayout()
-        rf_layout.setSpacing(12)
-        rf_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Title and value labels
-        rf_title_layout = QHBoxLayout()
-        rf_title_label = QLabel(tr("TriggerSettings", "Rapid Trigger Sensitivity"))
-        rf_title_label.setStyleSheet("QLabel { font-weight: bold; }")
-        rf_title_layout.addWidget(rf_title_label)
-        rf_title_layout.addStretch()
-        rf_layout.addLayout(rf_title_layout)
-
-        # Value display row
-        rf_values_layout = QHBoxLayout()
-
-        # Press sensitivity label
-        press_container = QVBoxLayout()
-        press_title = QLabel("Press Sensitivity")
-        press_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
-        self.rf_press_value_label = QLabel("0.1mm")
-        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
-        press_container.addWidget(press_title)
-        press_container.addWidget(self.rf_press_value_label)
-        rf_values_layout.addLayout(press_container)
-
-        rf_values_layout.addStretch()
-
-        # Release sensitivity label
-        release_container = QVBoxLayout()
-        release_title = QLabel("Release Sensitivity")
-        release_title.setStyleSheet("QLabel { color: gray; font-size: 8pt; }")
-        self.rf_release_value_label = QLabel("0.1mm")
-        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; color: #64c8ff; }")
-        release_container.addWidget(release_title)
-        release_container.addWidget(self.rf_release_value_label)
-        rf_values_layout.addLayout(release_container)
-
-        rf_layout.addLayout(rf_values_layout)
-
-        # Combined rapid trigger slider
-        self.rapid_trigger_slider = RapidTriggerSlider(minimum=1, maximum=100)
-        self.rapid_trigger_slider.setEnabled(False)
-        self.rapid_trigger_slider.pressSensChanged.connect(self.on_rf_press_changed)
-        self.rapid_trigger_slider.releaseSensChanged.connect(self.on_rf_release_changed)
-        self.rapid_trigger_slider.setMinimumHeight(60)
-        rf_layout.addWidget(self.rapid_trigger_slider)
-
-        self.rf_widget.setLayout(rf_layout)
-        self.rf_widget.setVisible(False)  # Hidden until rapidfire is enabled
-        layout.addWidget(self.rf_widget)
-
-        # Rapidfire Velocity Modifier slider
-        rf_vel_mod_layout = QHBoxLayout()
-        rf_vel_mod_label = QLabel(tr("TriggerSettings", "RF Velocity Mod:"))
-        rf_vel_mod_label.setMinimumWidth(140)
-        rf_vel_mod_layout.addWidget(rf_vel_mod_label)
-
-        self.rf_vel_mod_slider = QSlider(Qt.Horizontal)
-        self.rf_vel_mod_slider.setMinimum(-64)
-        self.rf_vel_mod_slider.setMaximum(64)
-        self.rf_vel_mod_slider.setValue(0)
-        self.rf_vel_mod_slider.setEnabled(False)
-        self.rf_vel_mod_slider.valueChanged.connect(self.on_rf_vel_mod_changed)
-        rf_vel_mod_layout.addWidget(self.rf_vel_mod_slider, 1)
-
-        self.rf_vel_mod_value_label = QLabel("0")
-        self.rf_vel_mod_value_label.setMinimumWidth(80)
-        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        rf_vel_mod_layout.addWidget(self.rf_vel_mod_value_label)
-
-        layout.addLayout(rf_vel_mod_layout)
-
-        layout.addStretch()
-        scroll_widget.setLayout(layout)
-        scroll.setWidget(scroll_widget)
-        main_layout.addWidget(scroll)
-
-        tab.setLayout(main_layout)
-        return tab
-
+        widget.setLayout(main_layout)
+        return widget
 
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""

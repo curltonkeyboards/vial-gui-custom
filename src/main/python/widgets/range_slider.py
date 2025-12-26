@@ -54,11 +54,11 @@ class MultiHandleSlider(QWidget):
         ]
 
         # For 2-handle mode (rapid trigger)
+        # Layout: Orange (press from left) - Gray (middle unused) - Blue (release from right)
         self.rf_section_colors = [
-            QColor(80, 80, 85),     # Before first handle (gray)
-            QColor(255, 140, 50),   # Orange - press zone
-            QColor(100, 200, 255),  # Cyan - release zone
-            QColor(80, 80, 85),     # After last handle (gray)
+            QColor(255, 140, 50),   # Orange - press zone (from left)
+            QColor(100, 100, 105),  # Gray - unused middle section
+            QColor(100, 200, 255),  # Blue - release zone (from right)
         ]
 
         self.setMinimumHeight(40)
@@ -426,21 +426,55 @@ class RapidTriggerSlider(MultiHandleSlider):
         return self._user_release
 
     def paintEvent(self, event):
-        """Override to draw center divider"""
-        super().paintEvent(event)
-
-        # Draw center divider line
+        """Override to draw sections and center divider"""
+        # Call grandparent paintEvent but not parent to customize section drawing
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         width = self.width()
         height = self.height()
-        center_x = width // 2
-        track_y = height // 2 - self.track_height // 2
 
-        # Draw divider line
+        # Calculate track geometry
+        track_y = height // 2 - self.track_height // 2
+        track_x = self.margin
+        track_width = width - 2 * self.margin
+
+        # Draw background track with shadow
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(0, 0, 0, 40)))
+        painter.drawRoundedRect(track_x + 1, track_y + 1, track_width, self.track_height, 4, 4)
+
+        # Draw background track
+        painter.setBrush(QBrush(self.track_bg_color))
+        painter.drawRoundedRect(track_x, track_y, track_width, self.track_height, 4, 4)
+
+        # Draw 3 colored sections: press (orange), middle (gray), release (blue)
+        press_x = self._value_to_pixel(self.values[0])  # Press handle position
+        release_x = self._value_to_pixel(self.values[1])  # Release handle position
+
+        # Section 1: Orange (from left to press handle)
+        painter.setBrush(QBrush(self.rf_section_colors[0]))
+        painter.drawRoundedRect(int(track_x), track_y, int(press_x - track_x), self.track_height, 4, 4)
+        painter.drawRect(int(press_x - 4), track_y, 4, self.track_height)  # Square off right edge
+
+        # Section 2: Gray (from press handle to release handle - unused middle)
+        painter.setBrush(QBrush(self.rf_section_colors[1]))
+        painter.drawRect(int(press_x), track_y, int(release_x - press_x), self.track_height)
+
+        # Section 3: Blue (from release handle to right)
+        painter.setBrush(QBrush(self.rf_section_colors[2]))
+        painter.drawRoundedRect(int(release_x), track_y, int(track_x + track_width - release_x), self.track_height, 4, 4)
+        painter.drawRect(int(release_x), track_y, 4, self.track_height)  # Square off left edge
+
+        # Draw handles
+        for i, value in enumerate(self.values):
+            pos_x = self._value_to_pixel(value)
+            self._draw_handle(painter, pos_x, height // 2, i)
+
+        # Draw center divider line at 1.5mm mark (60 units = 60% of track from left)
+        divider_x = track_x + (60.0 / 100.0) * track_width
         painter.setPen(QPen(QColor(150, 150, 150), 2))
-        painter.drawLine(center_x, track_y - 5, center_x, track_y + self.track_height + 5)
+        painter.drawLine(int(divider_x), track_y - 5, int(divider_x), track_y + self.track_height + 5)
 
     def _apply_constraints(self, handle_index, new_value):
         """Apply constraints to prevent overlap - max 1.5mm (60 units) per side"""
