@@ -37,18 +37,19 @@ class TriggerSettingsTab(BasicEditor):
 
         # Cache for per-key actuation values (70 keys × 12 layers)
         # Each key now stores 8 fields
+        # Note: deadzone values are ALWAYS enabled (non-zero by default)
         self.per_key_values = []
         for layer in range(12):
             layer_keys = []
             for _ in range(70):
                 layer_keys.append({
-                    'actuation': 60,                    # 0-100 = 0-2.5mm, default 1.5mm
-                    'deadzone_top': 4,                  # 0-100 = 0-2.5mm, default 0.1mm
-                    'deadzone_bottom': 4,               # 0-100 = 0-2.5mm, default 0.1mm
+                    'actuation': 60,                    # 0-100 = 0-2.5mm, default 1.5mm (60/40 = 1.5)
+                    'deadzone_top': 4,                  # 0-20 = 0-0.5mm, default 0.1mm (4/40 = 0.1) - FROM RIGHT
+                    'deadzone_bottom': 4,               # 0-20 = 0-0.5mm, default 0.1mm (4/40 = 0.1) - FROM LEFT
                     'velocity_curve': 2,                # 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST), default MEDIUM
                     'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve
-                    'rapidfire_press_sens': 4,          # 0-100 = 0-2.5mm, default 0.1mm
-                    'rapidfire_release_sens': 4,        # 0-100 = 0-2.5mm, default 0.1mm
+                    'rapidfire_press_sens': 4,          # 1-100 = 0.025-2.5mm, default 0.1mm (4/40 = 0.1) - FROM LEFT
+                    'rapidfire_release_sens': 4,        # 1-100 = 0.025-2.5mm, default 0.1mm (4/40 = 0.1) - FROM RIGHT
                     'rapidfire_velocity_mod': 0         # -64 to +64, default 0
                 })
             self.per_key_values.append(layer_keys)
@@ -83,15 +84,33 @@ class TriggerSettingsTab(BasicEditor):
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
+        # Selection buttons column (left of keyboard)
+        selection_buttons_layout = QVBoxLayout()
+
+        self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
+        self.select_all_btn.clicked.connect(self.on_select_all)
+        selection_buttons_layout.addWidget(self.select_all_btn)
+
+        self.unselect_all_btn = QPushButton(tr("TriggerSettings", "Unselect All"))
+        self.unselect_all_btn.clicked.connect(self.on_unselect_all)
+        selection_buttons_layout.addWidget(self.unselect_all_btn)
+
+        self.invert_selection_btn = QPushButton(tr("TriggerSettings", "Invert Selection"))
+        self.invert_selection_btn.clicked.connect(self.on_invert_selection)
+        selection_buttons_layout.addWidget(self.invert_selection_btn)
+
+        selection_buttons_layout.addStretch()
+
         # Keyboard area with layer buttons
         keyboard_area = QVBoxLayout()
         keyboard_area.addLayout(layout_labels_container)
 
         keyboard_layout = QHBoxLayout()
-        keyboard_layout.addStretch(1)
+        keyboard_layout.addLayout(selection_buttons_layout)
         keyboard_layout.addWidget(self.container, 0, Qt.AlignTop)
         keyboard_layout.addStretch(1)
         keyboard_area.addLayout(keyboard_layout)
+        keyboard_area.setContentsMargins(0, 0, 0, 0)  # Remove bottom margin
 
         w = ClickableWidget()
         w.setLayout(keyboard_area)
@@ -122,49 +141,16 @@ class TriggerSettingsTab(BasicEditor):
         panel.setFrameShape(QFrame.StyledPanel)
         panel.setMaximumHeight(400)  # Increased to accommodate tabs
         layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(20, 10, 20, 10)
-
-        # Top checkboxes row (outside tabs)
-        checkbox_row = QHBoxLayout()
-
-        self.enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
-        self.enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
-        self.enable_checkbox.stateChanged.connect(self.on_enable_changed)
-        checkbox_row.addWidget(self.enable_checkbox)
-
-        self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
-        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
-        checkbox_row.addWidget(self.per_layer_checkbox)
-
-        checkbox_row.addStretch()
-        layout.addLayout(checkbox_row)
-
-        # Selection buttons row
-        selection_row = QHBoxLayout()
-
-        self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
-        self.select_all_btn.clicked.connect(self.on_select_all)
-        selection_row.addWidget(self.select_all_btn)
-
-        self.unselect_all_btn = QPushButton(tr("TriggerSettings", "Unselect All"))
-        self.unselect_all_btn.clicked.connect(self.on_unselect_all)
-        selection_row.addWidget(self.unselect_all_btn)
-
-        self.invert_selection_btn = QPushButton(tr("TriggerSettings", "Invert Selection"))
-        self.invert_selection_btn.clicked.connect(self.on_invert_selection)
-        selection_row.addWidget(self.invert_selection_btn)
-
-        selection_row.addStretch()
-        layout.addLayout(selection_row)
+        layout.setSpacing(5)
+        layout.setContentsMargins(20, 5, 20, 10)
 
         # Create tab widget
         self.tab_widget = QTabWidget()
         layout.addWidget(self.tab_widget)
 
-        # Create Basic tab
+        # Create Basic tab (without title since tab already has label)
         self.basic_tab = self.create_basic_tab()
-        self.tab_widget.addTab(self.basic_tab, "Per-Key Settings")
+        self.tab_widget.addTab(self.basic_tab, "Settings")
 
         # Bottom buttons row (outside tabs)
         button_row = QHBoxLayout()
@@ -194,12 +180,27 @@ class TriggerSettingsTab(BasicEditor):
         """Create the Per-Key Settings tab"""
         tab = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(10, 5, 10, 10)
+
+        # Top checkboxes row
+        checkbox_row = QHBoxLayout()
+
+        self.enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
+        self.enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.enable_checkbox.stateChanged.connect(self.on_enable_changed)
+        checkbox_row.addWidget(self.enable_checkbox)
+
+        self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
+        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
+        checkbox_row.addWidget(self.per_layer_checkbox)
+
+        checkbox_row.addStretch()
+        main_layout.addLayout(checkbox_row)
 
         # Info label
         info_label = QLabel(tr("TriggerSettings", "Select a key to configure its settings"))
-        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; }")
+        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; font-size: 9pt; }")
         main_layout.addWidget(info_label)
 
         # Scroll area for all controls
@@ -1028,18 +1029,18 @@ class TriggerSettingsTab(BasicEditor):
         )
 
         if ret == QMessageBox.Yes:
-            # Reset in memory to defaults
+            # Reset in memory to defaults (deadzones always enabled)
             for layer in range(12):
                 for key_index in range(70):
                     self.per_key_values[layer][key_index] = {
-                        'actuation': 60,
-                        'deadzone_top': 4,
-                        'deadzone_bottom': 4,
-                        'velocity_curve': 2,
-                        'flags': 0,  # Both rapidfire and per-key velocity curve disabled
-                        'rapidfire_press_sens': 4,
-                        'rapidfire_release_sens': 4,
-                        'rapidfire_velocity_mod': 0
+                        'actuation': 60,                    # 1.5mm
+                        'deadzone_top': 4,                  # 0.1mm from right
+                        'deadzone_bottom': 4,               # 0.1mm from left
+                        'velocity_curve': 2,                # Medium
+                        'flags': 0,                         # Both rapidfire and per-key velocity curve disabled
+                        'rapidfire_press_sens': 4,          # 0.1mm from left
+                        'rapidfire_release_sens': 4,        # 0.1mm from right
+                        'rapidfire_velocity_mod': 0         # No modifier
                     }
 
             # Reset on device

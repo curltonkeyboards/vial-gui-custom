@@ -273,9 +273,11 @@ class MultiHandleSlider(QWidget):
 class TriggerSlider(MultiHandleSlider):
     """
     Specialized slider for trigger settings with 3 handles:
-    - Deadzone bottom
-    - Actuation point
-    - Deadzone top
+    - Deadzone bottom (from left: 0-20, where 0=0mm, 20=0.5mm)
+    - Actuation point (normal: 0-100)
+    - Deadzone top (from right: 0-20, where 0=0mm from top, 20=0.5mm from top)
+
+    Deadzone top is inverted - stored internally as (100 - user_value)
     """
 
     deadzoneBottomChanged = pyqtSignal(int)
@@ -285,8 +287,12 @@ class TriggerSlider(MultiHandleSlider):
     def __init__(self, minimum=0, maximum=100, parent=None):
         super().__init__(num_handles=3, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: bottom=4, actuation=60, top=96
-        self.values = [4, 60, 96]
+        # Set default values: bottom=4 (0.1mm), actuation=60 (1.5mm), top=96 (which is 4 from right = 0.1mm)
+        # Internal representation: [deadzone_bottom, actuation, 100 - deadzone_top]
+        self.values = [4, 60, 96]  # 96 = 100 - 4
+
+        # Store the actual user-facing deadzone_top value (inverted)
+        self._user_deadzone_top = 4
 
         # Connect to emit individual signals
         self.valuesChanged.connect(self._on_values_changed)
@@ -295,19 +301,25 @@ class TriggerSlider(MultiHandleSlider):
         """Emit individual signals for each handle"""
         self.deadzoneBottomChanged.emit(int(values[0]))
         self.actuationChanged.emit(int(values[1]))
-        self.deadzoneTopChanged.emit(int(values[2]))
+        # For deadzone_top, emit the inverted value (distance from right)
+        inverted_top = 100 - int(values[2])
+        self._user_deadzone_top = inverted_top
+        self.deadzoneTopChanged.emit(inverted_top)
 
     def set_deadzone_bottom(self, value):
-        """Set deadzone bottom value"""
+        """Set deadzone bottom value (0-20)"""
         self.set_value(0, value)
 
     def set_actuation(self, value):
-        """Set actuation point value"""
+        """Set actuation point value (0-100)"""
         self.set_value(1, value)
 
     def set_deadzone_top(self, value):
-        """Set deadzone top value"""
-        self.set_value(2, value)
+        """Set deadzone top value (0-20, inverted internally to 100-80)"""
+        # Convert user value (distance from top) to internal position
+        self._user_deadzone_top = value
+        internal_value = 100 - value
+        self.set_value(2, internal_value)
 
     def get_deadzone_bottom(self):
         """Get deadzone bottom value"""
@@ -318,15 +330,36 @@ class TriggerSlider(MultiHandleSlider):
         return int(self.values[1])
 
     def get_deadzone_top(self):
-        """Get deadzone top value"""
-        return int(self.values[2])
+        """Get deadzone top value (user-facing, inverted)"""
+        return self._user_deadzone_top
+
+    def _apply_constraints(self, handle_index, new_value):
+        """Apply constraints to handle movement"""
+        if handle_index == 0:  # Deadzone bottom
+            # Must be less than actuation, max 20 (0.5mm)
+            max_val = min(self.values[1] - 1, 20)
+            return max(self.minimum, min(new_value, max_val))
+        elif handle_index == 1:  # Actuation
+            # Must be between deadzones
+            min_val = self.values[0] + 1
+            max_val = self.values[2] - 1
+            return max(min_val, min(new_value, max_val))
+        elif handle_index == 2:  # Deadzone top (inverted)
+            # Must be greater than actuation
+            # User value range is 0-20, internal is 100-80
+            min_val = max(self.values[1] + 1, 80)  # 80 = 100 - 20 (max 0.5mm deadzone)
+            return max(min_val, min(new_value, self.maximum))
+
+        return new_value
 
 
 class RapidTriggerSlider(MultiHandleSlider):
     """
     Specialized slider for rapid trigger settings with 2 handles:
-    - Press sensitivity
-    - Release sensitivity
+    - Press sensitivity (from left: 1-100, where 1=0.025mm, 100=2.5mm)
+    - Release sensitivity (from right: 1-100, where 1=0.025mm from right, inverted)
+
+    Release is inverted - stored internally as (101 - user_value)
     """
 
     pressSensChanged = pyqtSignal(int)
@@ -335,8 +368,12 @@ class RapidTriggerSlider(MultiHandleSlider):
     def __init__(self, minimum=1, maximum=100, parent=None):
         super().__init__(num_handles=2, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: press=4, release=4
-        self.values = [4, 4]
+        # Set default values: press=4 (0.1mm), release=96 (which is 4 from right = 0.1mm)
+        # Internal representation: [press, 101 - release]
+        self.values = [4, 96]  # 96 = 100 - 4 + 1 (accounting for minimum=1)
+
+        # Store the actual user-facing release value (inverted)
+        self._user_release = 4
 
         # Connect to emit individual signals
         self.valuesChanged.connect(self._on_values_changed)
@@ -344,20 +381,31 @@ class RapidTriggerSlider(MultiHandleSlider):
     def _on_values_changed(self, values):
         """Emit individual signals for each handle"""
         self.pressSensChanged.emit(int(values[0]))
-        self.releaseSensChanged.emit(int(values[1]))
+        # For release, emit the inverted value (distance from right)
+        inverted_release = 101 - int(values[1])  # 101 because minimum is 1
+        self._user_release = inverted_release
+        self.releaseSensChanged.emit(inverted_release)
 
     def set_press_sens(self, value):
-        """Set press sensitivity value"""
+        """Set press sensitivity value (1-100)"""
         self.set_value(0, value)
 
     def set_release_sens(self, value):
-        """Set release sensitivity value"""
-        self.set_value(1, value)
+        """Set release sensitivity value (1-100, inverted internally)"""
+        # Convert user value (distance from right) to internal position
+        self._user_release = value
+        internal_value = 101 - value
+        self.set_value(1, internal_value)
 
     def get_press_sens(self):
         """Get press sensitivity value"""
         return int(self.values[0])
 
     def get_release_sens(self):
-        """Get release sensitivity value"""
-        return int(self.values[1])
+        """Get release sensitivity value (user-facing, inverted)"""
+        return self._user_release
+
+    def _apply_constraints(self, handle_index, new_value):
+        """Apply constraints to handle movement for rapid trigger"""
+        # No strict ordering required, but keep within bounds
+        return max(self.minimum, min(new_value, self.maximum))
