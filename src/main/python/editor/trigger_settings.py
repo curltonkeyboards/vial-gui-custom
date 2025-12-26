@@ -211,7 +211,64 @@ class TriggerSettingsTab(BasicEditor):
         layout.setSpacing(12)
 
         # === ACTUATION SECTION ===
-        # Per-Key Actuation slider
+        # Container for actuation sliders that will swap based on mode
+
+        # Global actuation sliders (shown when per-key mode is disabled)
+        self.global_actuation_widget = QWidget()
+        global_actuation_layout = QVBoxLayout()
+        global_actuation_layout.setSpacing(8)
+        global_actuation_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Normal Keys Actuation slider
+        normal_layout = QHBoxLayout()
+        normal_label = QLabel(tr("TriggerSettings", "Normal Keys:"))
+        normal_label.setMinimumWidth(140)
+        normal_layout.addWidget(normal_label)
+
+        self.global_normal_slider = QSlider(Qt.Horizontal)
+        self.global_normal_slider.setMinimum(0)
+        self.global_normal_slider.setMaximum(100)
+        self.global_normal_slider.setValue(80)
+        self.global_normal_slider.valueChanged.connect(self.on_global_normal_changed)
+        normal_layout.addWidget(self.global_normal_slider, 1)
+
+        self.global_normal_value_label = QLabel("2.00mm")
+        self.global_normal_value_label.setMinimumWidth(80)
+        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        normal_layout.addWidget(self.global_normal_value_label)
+
+        global_actuation_layout.addLayout(normal_layout)
+
+        # MIDI Keys Actuation slider
+        midi_layout = QHBoxLayout()
+        midi_label = QLabel(tr("TriggerSettings", "MIDI Keys:"))
+        midi_label.setMinimumWidth(140)
+        midi_layout.addWidget(midi_label)
+
+        self.global_midi_slider = QSlider(Qt.Horizontal)
+        self.global_midi_slider.setMinimum(0)
+        self.global_midi_slider.setMaximum(100)
+        self.global_midi_slider.setValue(80)
+        self.global_midi_slider.valueChanged.connect(self.on_global_midi_changed)
+        midi_layout.addWidget(self.global_midi_slider, 1)
+
+        self.global_midi_value_label = QLabel("2.00mm")
+        self.global_midi_value_label.setMinimumWidth(80)
+        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        midi_layout.addWidget(self.global_midi_value_label)
+
+        global_actuation_layout.addLayout(midi_layout)
+
+        self.global_actuation_widget.setLayout(global_actuation_layout)
+        self.global_actuation_widget.setVisible(True)  # Visible by default when mode_enabled is False
+        layout.addWidget(self.global_actuation_widget)
+
+        # Per-Key Actuation slider (shown when per-key mode is enabled)
+        self.per_key_actuation_widget = QWidget()
+        per_key_actuation_layout = QVBoxLayout()
+        per_key_actuation_layout.setSpacing(8)
+        per_key_actuation_layout.setContentsMargins(0, 0, 0, 0)
+
         actuation_layout = QHBoxLayout()
         actuation_label = QLabel(tr("TriggerSettings", "Per-Key Actuation:"))
         actuation_label.setMinimumWidth(140)
@@ -230,7 +287,11 @@ class TriggerSettingsTab(BasicEditor):
         self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         actuation_layout.addWidget(self.actuation_value_label)
 
-        layout.addLayout(actuation_layout)
+        per_key_actuation_layout.addLayout(actuation_layout)
+
+        self.per_key_actuation_widget.setLayout(per_key_actuation_layout)
+        self.per_key_actuation_widget.setVisible(False)  # Hidden by default when mode_enabled is False
+        layout.addWidget(self.per_key_actuation_widget)
 
         # Velocity Curve dropdown
         curve_layout = QHBoxLayout()
@@ -402,6 +463,50 @@ class TriggerSettingsTab(BasicEditor):
         """Convert 0-100 value to millimeters string"""
         mm = (value / 40.0)  # 0-100 maps to 0-2.5mm (100/40 = 2.5)
         return f"{mm:.1f}mm"
+
+    def on_global_normal_changed(self, value):
+        """Handle global normal actuation slider change"""
+        self.global_normal_value_label.setText(self.value_to_mm(value))
+
+        if self.syncing:
+            return
+
+        # Update layer_data for current layer (or all layers if not per-layer)
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        if self.per_layer_enabled:
+            # Update only current layer
+            self.layer_data[layer]['normal'] = value
+        else:
+            # Update all layers
+            for i in range(12):
+                self.layer_data[i]['normal'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
+
+    def on_global_midi_changed(self, value):
+        """Handle global MIDI actuation slider change"""
+        self.global_midi_value_label.setText(self.value_to_mm(value))
+
+        if self.syncing:
+            return
+
+        # Update layer_data for current layer (or all layers if not per-layer)
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        if self.per_layer_enabled:
+            # Update only current layer
+            self.layer_data[layer]['midi'] = value
+        else:
+            # Update all layers
+            for i in range(12):
+                self.layer_data[i]['midi'] = value
+
+        # Send to device
+        if self.device and isinstance(self.device, VialKeyboard):
+            self.send_layer_actuation(layer)
 
     def on_empty_space_clicked(self):
         """Deselect key when clicking empty space"""
@@ -856,8 +961,19 @@ class TriggerSettingsTab(BasicEditor):
         self.copy_all_layers_btn.setEnabled(self.mode_enabled)
         self.reset_btn.setEnabled(self.mode_enabled)
 
-        # Implement visibility logic
-        self.update_slider_states()
+        # Toggle between global and per-key actuation sliders only
+        self.global_actuation_widget.setVisible(not self.mode_enabled)
+        self.per_key_actuation_widget.setVisible(self.mode_enabled)
+
+        # Load appropriate values for the visible widget
+        if not self.mode_enabled:
+            # Load global actuation values
+            self.load_global_actuation()
+
+        # Update enabled state of actuation slider when in per-key mode
+        if self.mode_enabled:
+            key_selected = self.container.active_key is not None
+            self.actuation_slider.setEnabled(key_selected)
 
         # Update device
         if self.device and isinstance(self.device, VialKeyboard):
@@ -1035,9 +1151,28 @@ class TriggerSettingsTab(BasicEditor):
         if not self.valid():
             return
 
-        # No layer-level controls to load anymore
-        # The velocity curve checkbox is now per-key and loaded in on_key_clicked
-        pass
+        # Load global actuation values if per-key mode is disabled
+        if not self.mode_enabled:
+            self.load_global_actuation()
+
+    def load_global_actuation(self):
+        """Load global actuation values from layer_data"""
+        if not self.valid():
+            return
+
+        self.syncing = True
+
+        # Get layer to use
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Load normal and MIDI actuation values
+        self.global_normal_slider.setValue(self.layer_data[layer]['normal'])
+        self.global_normal_value_label.setText(self.value_to_mm(self.layer_data[layer]['normal']))
+
+        self.global_midi_slider.setValue(self.layer_data[layer]['midi'])
+        self.global_midi_value_label.setText(self.value_to_mm(self.layer_data[layer]['midi']))
+
+        self.syncing = False
 
     def on_layout_changed(self):
         """Handle layout change from layout editor"""
