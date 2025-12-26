@@ -1153,12 +1153,39 @@ class TriggerSettingsTab(BasicEditor):
                 self.syncing = False
 
             # Load all per-key values from device (now returns dict with 8 fields)
-            for layer in range(12):
-                for key_index in range(70):
-                    settings = self.keyboard.get_per_key_actuation(layer, key_index)
-                    if settings is not None:
-                        # get_per_key_actuation now returns a dict with all 8 fields
-                        self.per_key_values[layer][key_index] = settings
+            # If communication fails or returns None, set safe defaults
+            communication_failed = False
+            try:
+                for layer in range(12):
+                    for key_index in range(70):
+                        settings = self.keyboard.get_per_key_actuation(layer, key_index)
+                        if settings is not None:
+                            # get_per_key_actuation now returns a dict with all 8 fields
+                            self.per_key_values[layer][key_index] = settings
+                        else:
+                            communication_failed = True
+                            break
+                    if communication_failed:
+                        break
+            except Exception as e:
+                print(f"Error loading per-key actuations from device: {e}")
+                communication_failed = True
+
+            # If communication failed, set all keys to safe defaults
+            if communication_failed:
+                print("Setting all keys to safe defaults: 0.1mm deadzones, 2.0mm actuation")
+                for layer in range(12):
+                    for key_index in range(70):
+                        self.per_key_values[layer][key_index] = {
+                            'actuation': 80,                    # 2.0mm (80/40 = 2.0)
+                            'deadzone_top': 4,                  # 0.1mm from right
+                            'deadzone_bottom': 4,               # 0.1mm from left
+                            'velocity_curve': 2,                # Medium
+                            'flags': 0,                         # All disabled
+                            'rapidfire_press_sens': 4,          # 0.1mm from left
+                            'rapidfire_release_sens': 4,        # 0.1mm from right
+                            'rapidfire_velocity_mod': 0         # No modifier
+                        }
 
             # Load layer actuation data from device (6 bytes per layer)
             try:

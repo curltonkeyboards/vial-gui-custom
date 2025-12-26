@@ -204,12 +204,12 @@ class MultiHandleSlider(QWidget):
         return max(self.minimum, min(self.maximum, value))
 
     def _get_handle_at_position(self, x, y):
-        """Get handle index at position, or None"""
+        """Get handle index at position, or None - check in reverse order for topmost"""
         center_y = self.height() // 2
 
-        # Check each handle
-        for i, value in enumerate(self.values):
-            handle_x = self._value_to_pixel(value)
+        # Check each handle in REVERSE order (so topmost/last-drawn handles are checked first)
+        for i in range(len(self.values) - 1, -1, -1):
+            handle_x = self._value_to_pixel(self.values[i])
 
             # Check if click is within handle circle
             dx = x - handle_x
@@ -333,21 +333,38 @@ class TriggerSlider(MultiHandleSlider):
         """Get deadzone top value (user-facing, inverted)"""
         return self._user_deadzone_top
 
+    def paintEvent(self, event):
+        """Override to draw actuation point marker"""
+        super().paintEvent(event)
+
+        # Draw actuation point marker line (handle 1)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        height = self.height()
+        track_y = height // 2 - self.track_height // 2
+        actuation_x = self._value_to_pixel(self.values[1])
+
+        # Draw marker line above and below the actuation point
+        painter.setPen(QPen(QColor(255, 140, 50), 3))  # Orange color
+        painter.drawLine(int(actuation_x), track_y - 10, int(actuation_x), track_y - 2)
+        painter.drawLine(int(actuation_x), track_y + self.track_height + 2, int(actuation_x), track_y + self.track_height + 10)
+
     def _apply_constraints(self, handle_index, new_value):
         """Apply constraints to handle movement"""
         if handle_index == 0:  # Deadzone bottom
-            # Must be less than actuation, max 20 (0.5mm)
-            max_val = min(self.values[1] - 1, 20)
+            # Can go from 0 to 20 (0.5mm), but must not exceed actuation minus small gap
+            max_val = min(self.values[1] - 0.5, 20)
             return max(self.minimum, min(new_value, max_val))
         elif handle_index == 1:  # Actuation
-            # Must be between deadzones
-            min_val = self.values[0] + 1
-            max_val = self.values[2] - 1
+            # Must be between deadzones with small gaps for breathing room
+            min_val = max(self.values[0], 0)  # At least at deadzone bottom
+            max_val = min(self.values[2], 100)  # At most at deadzone top
             return max(min_val, min(new_value, max_val))
         elif handle_index == 2:  # Deadzone top (inverted)
-            # Must be greater than actuation
             # User value range is 0-20, internal is 100-80
-            min_val = max(self.values[1] + 1, 80)  # 80 = 100 - 20 (max 0.5mm deadzone)
+            # Must not go below actuation minus small gap
+            min_val = max(self.values[1], 80)  # 80 = 100 - 20 (max 0.5mm deadzone)
             return max(min_val, min(new_value, self.maximum))
 
         return new_value
@@ -356,10 +373,11 @@ class TriggerSlider(MultiHandleSlider):
 class RapidTriggerSlider(MultiHandleSlider):
     """
     Specialized slider for rapid trigger settings with 2 handles:
-    - Press sensitivity (from left: 1-100, where 1=0.025mm, 100=2.5mm)
-    - Release sensitivity (from right: 1-100, where 1=0.025mm from right, inverted)
+    - Press sensitivity (from left: 1-60, where 1=0.025mm, 60=1.5mm MAX)
+    - Release sensitivity (from right: 1-60, where 1=0.025mm from right, inverted, 60=1.5mm MAX)
 
     Release is inverted - stored internally as (101 - user_value)
+    Each side has a maximum of 1.5mm (60 units) with a divider in the middle
     """
 
     pressSensChanged = pyqtSignal(int)
@@ -387,14 +405,16 @@ class RapidTriggerSlider(MultiHandleSlider):
         self.releaseSensChanged.emit(inverted_release)
 
     def set_press_sens(self, value):
-        """Set press sensitivity value (1-100)"""
-        self.set_value(0, value)
+        """Set press sensitivity value (1-60 max)"""
+        clamped_value = max(1, min(value, 60))
+        self.set_value(0, clamped_value)
 
     def set_release_sens(self, value):
-        """Set release sensitivity value (1-100, inverted internally)"""
+        """Set release sensitivity value (1-60 max, inverted internally)"""
         # Convert user value (distance from right) to internal position
-        self._user_release = value
-        internal_value = 101 - value
+        clamped_value = max(1, min(value, 60))
+        self._user_release = clamped_value
+        internal_value = 101 - clamped_value
         self.set_value(1, internal_value)
 
     def get_press_sens(self):
@@ -405,7 +425,30 @@ class RapidTriggerSlider(MultiHandleSlider):
         """Get release sensitivity value (user-facing, inverted)"""
         return self._user_release
 
+    def paintEvent(self, event):
+        """Override to draw center divider"""
+        super().paintEvent(event)
+
+        # Draw center divider line
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        width = self.width()
+        height = self.height()
+        center_x = width // 2
+        track_y = height // 2 - self.track_height // 2
+
+        # Draw divider line
+        painter.setPen(QPen(QColor(150, 150, 150), 2))
+        painter.drawLine(center_x, track_y - 5, center_x, track_y + self.track_height + 5)
+
     def _apply_constraints(self, handle_index, new_value):
-        """Apply constraints to handle movement for rapid trigger"""
-        # No strict ordering required, but keep within bounds
+        """Apply constraints to prevent overlap - max 1.5mm (60 units) per side"""
+        if handle_index == 0:  # Press sensitivity (from left)
+            # Max 60 units (1.5mm) and must not exceed center (50)
+            return max(self.minimum, min(new_value, 60))
+        elif handle_index == 1:  # Release sensitivity (from right, inverted)
+            # Internal values from 41-100 (representing user values 60-1)
+            # Minimum internal value is 41 (= 101 - 60)
+            return max(41, min(new_value, self.maximum))
         return max(self.minimum, min(new_value, self.maximum))
