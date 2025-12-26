@@ -70,7 +70,9 @@ class TriggerSettingsTab(BasicEditor):
 
         # Top bar with layer selection
         self.layout_layers = QHBoxLayout()
+        self.layout_layers.setSpacing(6)  # Add spacing between layer buttons
         self.layout_size = QVBoxLayout()
+        self.layout_size.setSpacing(6)  # Add spacing between size buttons
         layer_label = QLabel(tr("TriggerSettings", "Layer"))
 
         layout_labels_container = QHBoxLayout()
@@ -86,31 +88,38 @@ class TriggerSettingsTab(BasicEditor):
 
         # Selection buttons column (left of keyboard)
         selection_buttons_layout = QVBoxLayout()
+        selection_buttons_layout.setSpacing(8)  # Add spacing between buttons
 
         self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
+        self.select_all_btn.setMinimumHeight(32)  # Make buttons bigger
         self.select_all_btn.clicked.connect(self.on_select_all)
         selection_buttons_layout.addWidget(self.select_all_btn)
 
         self.unselect_all_btn = QPushButton(tr("TriggerSettings", "Unselect All"))
+        self.unselect_all_btn.setMinimumHeight(32)  # Make buttons bigger
         self.unselect_all_btn.clicked.connect(self.on_unselect_all)
         selection_buttons_layout.addWidget(self.unselect_all_btn)
 
         self.invert_selection_btn = QPushButton(tr("TriggerSettings", "Invert Selection"))
+        self.invert_selection_btn.setMinimumHeight(32)  # Make buttons bigger
         self.invert_selection_btn.clicked.connect(self.on_invert_selection)
         selection_buttons_layout.addWidget(self.invert_selection_btn)
 
         # Add layer management buttons to selection section
         self.copy_layer_btn = QPushButton(tr("TriggerSettings", "Copy from Layer..."))
+        self.copy_layer_btn.setMinimumHeight(32)  # Make buttons bigger
         self.copy_layer_btn.setEnabled(False)
         self.copy_layer_btn.clicked.connect(self.on_copy_layer)
         selection_buttons_layout.addWidget(self.copy_layer_btn)
 
         self.copy_all_layers_btn = QPushButton(tr("TriggerSettings", "Copy Settings to All Layers"))
+        self.copy_all_layers_btn.setMinimumHeight(32)  # Make buttons bigger
         self.copy_all_layers_btn.setEnabled(False)
         self.copy_all_layers_btn.clicked.connect(self.on_copy_to_all_layers)
         selection_buttons_layout.addWidget(self.copy_all_layers_btn)
 
         self.reset_btn = QPushButton(tr("TriggerSettings", "Reset All to Default"))
+        self.reset_btn.setMinimumHeight(32)  # Make buttons bigger
         self.reset_btn.setEnabled(False)
         self.reset_btn.clicked.connect(self.on_reset_all)
         selection_buttons_layout.addWidget(self.reset_btn)
@@ -135,11 +144,12 @@ class TriggerSettingsTab(BasicEditor):
         w.setLayout(keyboard_area)
         w.clicked.connect(self.on_empty_space_clicked)
 
-        # Wrap keyboard area in scroll area
+        # Wrap keyboard area in scroll area with max height
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setMaximumHeight(500)  # Set maximum height of 500 pixels
         scroll_area.setWidget(w)
 
         # Control panel at bottom
@@ -293,6 +303,9 @@ class TriggerSettingsTab(BasicEditor):
         self.per_key_actuation_widget.setVisible(False)
         layout.addWidget(self.per_key_actuation_widget)
 
+        # Add spacer to push everything to the top
+        layout.addStretch()
+
         container.setLayout(layout)
         return container
 
@@ -391,7 +404,13 @@ class TriggerSettingsTab(BasicEditor):
         main_layout.setSpacing(6)
         main_layout.setContentsMargins(5, 3, 5, 5)
 
-        # Top checkboxes row
+        # Top checkboxes in a styled container with theme background
+        checkbox_container = QFrame()
+        checkbox_container.setFrameShape(QFrame.StyledPanel)
+        checkbox_container_layout = QVBoxLayout()
+        checkbox_container_layout.setSpacing(6)
+        checkbox_container_layout.setContentsMargins(8, 8, 8, 8)
+
         checkbox_row = QHBoxLayout()
 
         self.enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
@@ -404,12 +423,15 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_row.addWidget(self.per_layer_checkbox)
 
         checkbox_row.addStretch()
-        main_layout.addLayout(checkbox_row)
+        checkbox_container_layout.addLayout(checkbox_row)
 
-        # Info label
+        # Info label inside the container
         info_label = QLabel(tr("TriggerSettings", "Select a key to configure its settings"))
         info_label.setStyleSheet("QLabel { font-style: italic; color: gray; font-size: 8pt; }")
-        main_layout.addWidget(info_label)
+        checkbox_container_layout.addWidget(info_label)
+
+        checkbox_container.setLayout(checkbox_container_layout)
+        main_layout.addWidget(checkbox_container)
 
         # Main content layout
         content_layout = QHBoxLayout()
@@ -1062,7 +1084,7 @@ class TriggerSettingsTab(BasicEditor):
         for x in range(self.keyboard.layers):
             btn = SquareButton(str(x))
             btn.setFocusPolicy(Qt.NoFocus)
-            btn.setRelSize(1.667)
+            btn.setRelSize(2.0)  # Increased from 1.667 to 2.0 for bigger buttons
             btn.setCheckable(True)
             btn.clicked.connect(lambda state, idx=x: self.switch_layer(idx))
             self.layout_layers.addWidget(btn)
@@ -1072,6 +1094,7 @@ class TriggerSettingsTab(BasicEditor):
         for x in range(0, 2):
             btn = SquareButton("-") if x else SquareButton("+")
             btn.setFocusPolicy(Qt.NoFocus)
+            btn.setRelSize(2.0)  # Increased from 1.667 to 2.0 for bigger buttons
             btn.setCheckable(False)
             btn.clicked.connect(lambda state, idx=x: self.adjust_size(idx))
             self.layout_size.addWidget(btn)
