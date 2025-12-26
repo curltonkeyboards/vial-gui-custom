@@ -1316,8 +1316,8 @@ class TriggerSettingsTab(BasicEditor):
                         key.setText(self.value_to_mm(settings['actuation']))
                     else:
                         # Global mode: show Normal/MIDI key actuation values
-                        # Check if key is a MIDI key (you may need to adjust this logic based on your keycode detection)
-                        from keycodes import Keycode
+                        # Check if key is a MIDI key
+                        from keycodes.keycodes import Keycode
                         keycode = self.keyboard.layout[(layer, row, col)]
 
                         is_midi = False
@@ -1329,10 +1329,10 @@ class TriggerSettingsTab(BasicEditor):
                         layer_to_use = self.current_layer if self.per_layer_enabled else 0
                         if is_midi:
                             value = self.layer_data[layer_to_use]['midi']
-                            key.setText(f"MIDI\n{self.value_to_mm(value)}")
+                            key.setText(f"\n{self.value_to_mm(value)}")
                         else:
                             value = self.layer_data[layer_to_use]['normal']
-                            key.setText(f"Normal\n{self.value_to_mm(value)}")
+                            key.setText(self.value_to_mm(value))
                 else:
                     key.setText("")
 
