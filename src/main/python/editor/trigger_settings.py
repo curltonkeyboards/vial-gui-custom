@@ -198,7 +198,6 @@ class TriggerSettingsTab(BasicEditor):
     def create_trigger_container(self):
         """Create the trigger travel configuration container"""
         container = QFrame()
-        container.setFrameShape(QFrame.StyledPanel)
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -325,7 +324,6 @@ class TriggerSettingsTab(BasicEditor):
     def create_rapidfire_container(self):
         """Create the rapidfire configuration container"""
         container = QFrame()
-        container.setFrameShape(QFrame.StyledPanel)
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -425,7 +423,9 @@ class TriggerSettingsTab(BasicEditor):
 
     def create_settings_content(self):
         """Create the settings content"""
-        widget = QWidget()
+        widget = QFrame()
+        widget.setFrameShape(QFrame.StyledPanel)
+        widget.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
         main_layout = QVBoxLayout()
         main_layout.setSpacing(6)
         main_layout.setContentsMargins(5, 3, 5, 5)
@@ -460,10 +460,8 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_container.setLayout(checkbox_container_layout)
         main_layout.addWidget(checkbox_container)
 
-        # Main content container with theme background
-        content_container = QFrame()
-        content_container.setFrameShape(QFrame.StyledPanel)
-        content_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        # Main content container
+        content_container = QWidget()
         content_layout = QHBoxLayout()
         content_layout.setSpacing(15)
         content_layout.setContentsMargins(10, 10, 10, 10)
@@ -481,25 +479,22 @@ class TriggerSettingsTab(BasicEditor):
 
         # Velocity curve section - checkbox and dropdown in horizontal layout
         curve_layout = QHBoxLayout()
-        curve_layout.setSpacing(15)  # Add spacing between elements
+        curve_layout.setSpacing(8)  # Reduced spacing between checkbox and dropdown
 
         # Use Per-Key Velocity Curve checkbox
-        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
+        self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
         curve_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Velocity curve dropdown
-        curve_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        curve_layout.addWidget(curve_label)
-
+        # Velocity curve dropdown (no label)
         self.velocity_curve_combo = QComboBox()
-        self.velocity_curve_combo.addItem("Softest (x³)", 0)
-        self.velocity_curve_combo.addItem("Soft (x²)", 1)
-        self.velocity_curve_combo.addItem("Medium (x)", 2)
-        self.velocity_curve_combo.addItem("Hard (√x)", 3)
-        self.velocity_curve_combo.addItem("Hardest (∛x)", 4)
+        self.velocity_curve_combo.addItem("Softest", 0)
+        self.velocity_curve_combo.addItem("Soft", 1)
+        self.velocity_curve_combo.addItem("Medium", 2)
+        self.velocity_curve_combo.addItem("Hard", 3)
+        self.velocity_curve_combo.addItem("Hardest", 4)
         self.velocity_curve_combo.setCurrentIndex(2)
         self.velocity_curve_combo.setEnabled(False)
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
@@ -515,7 +510,7 @@ class TriggerSettingsTab(BasicEditor):
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
         mm = (value / 40.0)  # 0-100 maps to 0-2.5mm (100/40 = 2.5)
-        return f"{mm:.1f}mm"
+        return f"{mm:.2f}mm"
 
     def on_global_normal_changed(self, value):
         """Handle global normal actuation slider change"""
@@ -1380,6 +1375,9 @@ class TriggerSettingsTab(BasicEditor):
                         # Per-key mode: show per-key actuation value
                         settings = self.per_key_values[layer][key_index]
                         key.setText(self.value_to_mm(settings['actuation']))
+                        # Set rapidfire background if enabled (bit 0 of flags)
+                        rapidfire_enabled = (settings['flags'] & 0x01) != 0
+                        key.setRapidfireEnabled(rapidfire_enabled)
                     else:
                         # Global mode: show both Normal and MIDI actuation values
                         layer_to_use = self.current_layer if self.per_layer_enabled else 0
@@ -1388,8 +1386,11 @@ class TriggerSettingsTab(BasicEditor):
 
                         # Show both values on separate lines
                         key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
+                        # No rapidfire in global mode
+                        key.setRapidfireEnabled(False)
                 else:
                     key.setText("")
+                    key.setRapidfireEnabled(False)
 
         self.container.update()
 

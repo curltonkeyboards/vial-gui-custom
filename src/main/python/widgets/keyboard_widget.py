@@ -609,6 +609,7 @@ class KeyWidget2:
         self.tooltip = ""
         self.color = None
         self.mask_color = None
+        self.rapidfire_enabled = False
         self.scale = 0
 
         self.rotation_angle = desc.rotation_angle
@@ -781,6 +782,9 @@ class KeyWidget2:
 
     def setMaskColor(self, color):
         self.mask_color = color
+
+    def setRapidfireEnabled(self, enabled):
+        self.rapidfire_enabled = enabled
 
     def __repr__(self):
         qualifiers = ["KeyboardWidget2"]
@@ -1084,6 +1088,17 @@ class KeyboardWidget2(QWidget):
 
             # Check if key is active (selected or is the current active key)
             active = key.active or (self.active_key == key and not self.active_mask) or (key in self.selected_keys)
+
+            # Draw rapidfire background if enabled (semi-transparent orange/red overlay)
+            if key.rapidfire_enabled:
+                qp.setPen(Qt.NoPen)
+                rapidfire_brush = QBrush()
+                # Use a semi-transparent orange/red color for rapidfire indication
+                rapidfire_color = QColor(255, 140, 50, 100)  # Orange with ~40% opacity
+                rapidfire_brush.setColor(rapidfire_color)
+                rapidfire_brush.setStyle(Qt.SolidPattern)
+                qp.setBrush(rapidfire_brush)
+                qp.drawPath(key.foreground_draw_path)
 
             # If this key has a custom color set (from per-key RGB painting), use it for entire key
             if key.color:
