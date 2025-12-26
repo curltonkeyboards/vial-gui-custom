@@ -68,6 +68,10 @@ class TriggerSettingsTab(BasicEditor):
                 'vel_speed': 10  # Velocity speed scale
             })
 
+        # Track unsaved changes for global actuation settings
+        self.has_unsaved_changes = False
+        self.pending_layer_data = None  # Will store pending changes before save
+
         # Top bar with layer selection
         self.layout_layers = QHBoxLayout()
         self.layout_layers.setSpacing(6)  # Add spacing between layer buttons
@@ -124,6 +128,13 @@ class TriggerSettingsTab(BasicEditor):
         self.reset_btn.clicked.connect(self.on_reset_all)
         selection_buttons_layout.addWidget(self.reset_btn)
 
+        self.save_btn = QPushButton(tr("TriggerSettings", "Save"))
+        self.save_btn.setMinimumHeight(32)  # Make buttons bigger
+        self.save_btn.setEnabled(False)
+        self.save_btn.setStyleSheet("QPushButton:enabled { font-weight: bold; color: #ff8c32; }")
+        self.save_btn.clicked.connect(self.on_save)
+        selection_buttons_layout.addWidget(self.save_btn)
+
         selection_buttons_layout.addStretch()
 
         # Keyboard area with layer buttons
@@ -131,6 +142,7 @@ class TriggerSettingsTab(BasicEditor):
         keyboard_area.addLayout(layout_labels_container)
 
         keyboard_layout = QHBoxLayout()
+        keyboard_layout.addStretch(1)  # Add spacer to center the buttons and keyboard
         keyboard_layout.addSpacing(15)  # Add left margin so buttons aren't against the wall
         keyboard_layout.addLayout(selection_buttons_layout)
         keyboard_layout.addSpacing(20)  # Add spacing between buttons and keyboard
@@ -512,20 +524,29 @@ class TriggerSettingsTab(BasicEditor):
         if self.syncing:
             return
 
-        # Update layer_data for current layer (or all layers if not per-layer)
+        # Initialize pending data if not already
+        if self.pending_layer_data is None:
+            self.pending_layer_data = []
+            for layer_data in self.layer_data:
+                self.pending_layer_data.append(layer_data.copy())
+
+        # Update pending_layer_data for current layer (or all layers if not per-layer)
         layer = self.current_layer if self.per_layer_enabled else 0
 
         if self.per_layer_enabled:
             # Update only current layer
-            self.layer_data[layer]['normal'] = value
+            self.pending_layer_data[layer]['normal'] = value
         else:
             # Update all layers
             for i in range(12):
-                self.layer_data[i]['normal'] = value
+                self.pending_layer_data[i]['normal'] = value
 
-        # Send to device
-        if self.device and isinstance(self.device, VialKeyboard):
-            self.send_layer_actuation(layer)
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+
+        # Update display to show pending value
+        self.refresh_layer_display()
 
     def on_global_midi_changed(self, value):
         """Handle global MIDI actuation slider change"""
@@ -534,20 +555,54 @@ class TriggerSettingsTab(BasicEditor):
         if self.syncing:
             return
 
-        # Update layer_data for current layer (or all layers if not per-layer)
+        # Initialize pending data if not already
+        if self.pending_layer_data is None:
+            self.pending_layer_data = []
+            for layer_data in self.layer_data:
+                self.pending_layer_data.append(layer_data.copy())
+
+        # Update pending_layer_data for current layer (or all layers if not per-layer)
         layer = self.current_layer if self.per_layer_enabled else 0
 
         if self.per_layer_enabled:
             # Update only current layer
-            self.layer_data[layer]['midi'] = value
+            self.pending_layer_data[layer]['midi'] = value
         else:
             # Update all layers
             for i in range(12):
-                self.layer_data[i]['midi'] = value
+                self.pending_layer_data[i]['midi'] = value
+
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+
+        # Update display to show pending value
+        self.refresh_layer_display()
+
+    def on_save(self):
+        """Save pending global actuation changes to device"""
+        if not self.has_unsaved_changes or self.pending_layer_data is None:
+            return
+
+        # Apply pending changes to layer_data
+        for i in range(12):
+            self.layer_data[i]['normal'] = self.pending_layer_data[i]['normal']
+            self.layer_data[i]['midi'] = self.pending_layer_data[i]['midi']
 
         # Send to device
         if self.device and isinstance(self.device, VialKeyboard):
-            self.send_layer_actuation(layer)
+            if self.per_layer_enabled:
+                # Send all layers if per-layer is enabled
+                for layer in range(12):
+                    self.send_layer_actuation(layer)
+            else:
+                # Send only layer 0 if not per-layer
+                self.send_layer_actuation(0)
+
+        # Clear unsaved changes flag
+        self.has_unsaved_changes = False
+        self.pending_layer_data = None
+        self.save_btn.setEnabled(False)
 
     def on_empty_space_clicked(self):
         """Deselect key when clicking empty space"""
@@ -1188,12 +1243,15 @@ class TriggerSettingsTab(BasicEditor):
         # Get layer to use
         layer = self.current_layer if self.per_layer_enabled else 0
 
-        # Load normal and MIDI actuation values
-        self.global_normal_slider.setValue(self.layer_data[layer]['normal'])
-        self.global_normal_value_label.setText(self.value_to_mm(self.layer_data[layer]['normal']))
+        # Use pending data if available, otherwise use saved data
+        data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
 
-        self.global_midi_slider.setValue(self.layer_data[layer]['midi'])
-        self.global_midi_value_label.setText(self.value_to_mm(self.layer_data[layer]['midi']))
+        # Load normal and MIDI actuation values
+        self.global_normal_slider.setValue(data_source[layer]['normal'])
+        self.global_normal_value_label.setText(self.value_to_mm(data_source[layer]['normal']))
+
+        self.global_midi_slider.setValue(data_source[layer]['midi'])
+        self.global_midi_value_label.setText(self.value_to_mm(data_source[layer]['midi']))
 
         self.syncing = False
 
@@ -1276,6 +1334,11 @@ class TriggerSettingsTab(BasicEditor):
             except Exception as e:
                 print(f"Error loading layer actuations: {e}")
 
+            # Clear any unsaved changes when loading from device
+            self.has_unsaved_changes = False
+            self.pending_layer_data = None
+            self.save_btn.setEnabled(False)
+
             # Update slider states
             self.update_slider_states()
 
@@ -1304,6 +1367,9 @@ class TriggerSettingsTab(BasicEditor):
         # Update keyboard key displays
         layer = self.current_layer if self.per_layer_enabled else 0
 
+        # Use pending data if available, otherwise use saved data
+        data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
+
         for key in self.container.widgets:
             if key.desc.row is not None:
                 row, col = key.desc.row, key.desc.col
@@ -1315,24 +1381,13 @@ class TriggerSettingsTab(BasicEditor):
                         settings = self.per_key_values[layer][key_index]
                         key.setText(self.value_to_mm(settings['actuation']))
                     else:
-                        # Global mode: show Normal/MIDI key actuation values
-                        # Check if key is a MIDI key
-                        from keycodes.keycodes import Keycode
-                        keycode = self.keyboard.layout[(layer, row, col)]
-
-                        is_midi = False
-                        if hasattr(keycode, 'qmk_id') and keycode.qmk_id:
-                            # MIDI keycodes typically start with specific prefixes
-                            qmk_id = keycode.qmk_id
-                            is_midi = qmk_id.startswith('MI_') or 'MIDI' in qmk_id
-
+                        # Global mode: show both Normal and MIDI actuation values
                         layer_to_use = self.current_layer if self.per_layer_enabled else 0
-                        if is_midi:
-                            value = self.layer_data[layer_to_use]['midi']
-                            key.setText(f"\n{self.value_to_mm(value)}")
-                        else:
-                            value = self.layer_data[layer_to_use]['normal']
-                            key.setText(self.value_to_mm(value))
+                        normal_value = data_source[layer_to_use]['normal']
+                        midi_value = data_source[layer_to_use]['midi']
+
+                        # Show both values on separate lines
+                        key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
                 else:
                     key.setText("")
 
