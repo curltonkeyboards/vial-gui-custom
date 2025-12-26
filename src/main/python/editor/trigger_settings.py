@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
 from widgets.square_button import SquareButton
-from widgets.range_slider import TriggerSlider, RapidTriggerSlider
+from widgets.range_slider import TriggerSlider, RapidTriggerSlider, StyledSlider
 from util import tr
 from vial_device import VialKeyboard
 
@@ -99,6 +99,22 @@ class TriggerSettingsTab(BasicEditor):
         self.invert_selection_btn.clicked.connect(self.on_invert_selection)
         selection_buttons_layout.addWidget(self.invert_selection_btn)
 
+        # Add layer management buttons to selection section
+        self.copy_layer_btn = QPushButton(tr("TriggerSettings", "Copy from Layer..."))
+        self.copy_layer_btn.setEnabled(False)
+        self.copy_layer_btn.clicked.connect(self.on_copy_layer)
+        selection_buttons_layout.addWidget(self.copy_layer_btn)
+
+        self.copy_all_layers_btn = QPushButton(tr("TriggerSettings", "Copy Settings to All Layers"))
+        self.copy_all_layers_btn.setEnabled(False)
+        self.copy_all_layers_btn.clicked.connect(self.on_copy_to_all_layers)
+        selection_buttons_layout.addWidget(self.copy_all_layers_btn)
+
+        self.reset_btn = QPushButton(tr("TriggerSettings", "Reset All to Default"))
+        self.reset_btn.setEnabled(False)
+        self.reset_btn.clicked.connect(self.on_reset_all)
+        selection_buttons_layout.addWidget(self.reset_btn)
+
         selection_buttons_layout.addStretch()
 
         # Keyboard area with layer buttons
@@ -113,6 +129,7 @@ class TriggerSettingsTab(BasicEditor):
         keyboard_area.addLayout(keyboard_layout)
         keyboard_area.setContentsMargins(0, 0, 0, 0)  # Remove margins
         keyboard_area.setSpacing(0)  # Remove spacing
+        keyboard_area.addStretch()  # Push keyboard to top to minimize gap
 
         w = ClickableWidget()
         w.setLayout(keyboard_area)
@@ -141,7 +158,7 @@ class TriggerSettingsTab(BasicEditor):
         """Create the bottom control panel"""
         panel = QFrame()
         panel.setFrameShape(QFrame.StyledPanel)
-        panel.setMaximumHeight(350)  # Reduced height
+        panel.setMaximumHeight(500)  # Increased to allow more expansion for rapidfire mode
         layout = QVBoxLayout()
         layout.setSpacing(3)
         layout.setContentsMargins(15, 3, 15, 8)
@@ -150,26 +167,7 @@ class TriggerSettingsTab(BasicEditor):
         settings_widget = self.create_settings_content()
         layout.addWidget(settings_widget)
 
-        # Bottom buttons row (outside tabs)
-        button_row = QHBoxLayout()
-
-        self.copy_layer_btn = QPushButton(tr("TriggerSettings", "Copy from Layer..."))
-        self.copy_layer_btn.setEnabled(False)
-        self.copy_layer_btn.clicked.connect(self.on_copy_layer)
-        button_row.addWidget(self.copy_layer_btn)
-
-        self.copy_all_layers_btn = QPushButton(tr("TriggerSettings", "Copy Per-Key Settings to All Layers"))
-        self.copy_all_layers_btn.setEnabled(False)
-        self.copy_all_layers_btn.clicked.connect(self.on_copy_to_all_layers)
-        button_row.addWidget(self.copy_all_layers_btn)
-
-        self.reset_btn = QPushButton(tr("TriggerSettings", "Reset All to Default"))
-        self.reset_btn.setEnabled(False)
-        self.reset_btn.clicked.connect(self.on_reset_all)
-        button_row.addWidget(self.reset_btn)
-
-        button_row.addStretch()
-        layout.addLayout(button_row)
+        # Buttons moved to selection section, so removed from here
 
         panel.setLayout(layout)
         return panel
@@ -189,42 +187,42 @@ class TriggerSettingsTab(BasicEditor):
         global_actuation_layout.setContentsMargins(0, 0, 0, 0)
 
         # Normal Keys Actuation slider
-        normal_layout = QHBoxLayout()
-        normal_label = QLabel(tr("TriggerSettings", "Normal Keys:"))
-        normal_label.setMinimumWidth(100)
-        normal_layout.addWidget(normal_label)
+        normal_layout = QVBoxLayout()
+        normal_header = QHBoxLayout()
+        normal_label = QLabel(tr("TriggerSettings", "Normal Keys"))
+        normal_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
+        normal_header.addWidget(normal_label)
+        normal_header.addStretch()
+        self.global_normal_value_label = QLabel("2.00mm")
+        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
+        normal_header.addWidget(self.global_normal_value_label)
+        normal_layout.addLayout(normal_header)
 
-        self.global_normal_slider = QSlider(Qt.Horizontal)
-        self.global_normal_slider.setMinimum(0)
-        self.global_normal_slider.setMaximum(100)
+        self.global_normal_slider = StyledSlider(minimum=0, maximum=100)
         self.global_normal_slider.setValue(80)
         self.global_normal_slider.valueChanged.connect(self.on_global_normal_changed)
-        normal_layout.addWidget(self.global_normal_slider, 1)
-
-        self.global_normal_value_label = QLabel("2.00mm")
-        self.global_normal_value_label.setMinimumWidth(60)
-        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        normal_layout.addWidget(self.global_normal_value_label)
+        self.global_normal_slider.setMinimumHeight(50)
+        normal_layout.addWidget(self.global_normal_slider)
 
         global_actuation_layout.addLayout(normal_layout)
 
         # MIDI Keys Actuation slider
-        midi_layout = QHBoxLayout()
-        midi_label = QLabel(tr("TriggerSettings", "MIDI Keys:"))
-        midi_label.setMinimumWidth(100)
-        midi_layout.addWidget(midi_label)
+        midi_layout = QVBoxLayout()
+        midi_header = QHBoxLayout()
+        midi_label = QLabel(tr("TriggerSettings", "MIDI Keys"))
+        midi_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
+        midi_header.addWidget(midi_label)
+        midi_header.addStretch()
+        self.global_midi_value_label = QLabel("2.00mm")
+        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
+        midi_header.addWidget(self.global_midi_value_label)
+        midi_layout.addLayout(midi_header)
 
-        self.global_midi_slider = QSlider(Qt.Horizontal)
-        self.global_midi_slider.setMinimum(0)
-        self.global_midi_slider.setMaximum(100)
+        self.global_midi_slider = StyledSlider(minimum=0, maximum=100)
         self.global_midi_slider.setValue(80)
         self.global_midi_slider.valueChanged.connect(self.on_global_midi_changed)
-        midi_layout.addWidget(self.global_midi_slider, 1)
-
-        self.global_midi_value_label = QLabel("2.00mm")
-        self.global_midi_value_label.setMinimumWidth(60)
-        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_layout.addWidget(self.global_midi_value_label)
+        self.global_midi_slider.setMinimumHeight(50)
+        midi_layout.addWidget(self.global_midi_slider)
 
         global_actuation_layout.addLayout(midi_layout)
 
@@ -359,23 +357,23 @@ class TriggerSettingsTab(BasicEditor):
         rf_layout.addWidget(self.rapid_trigger_slider)
 
         # Velocity modifier
-        rf_vel_layout = QHBoxLayout()
-        rf_vel_label = QLabel("Velocity Mod:")
-        rf_vel_label.setMinimumWidth(80)
-        rf_vel_layout.addWidget(rf_vel_label)
+        rf_vel_layout = QVBoxLayout()
+        rf_vel_header = QHBoxLayout()
+        rf_vel_label = QLabel("Velocity Mod")
+        rf_vel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
+        rf_vel_header.addWidget(rf_vel_label)
+        rf_vel_header.addStretch()
+        self.rf_vel_mod_value_label = QLabel("0")
+        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
+        rf_vel_header.addWidget(self.rf_vel_mod_value_label)
+        rf_vel_layout.addLayout(rf_vel_header)
 
-        self.rf_vel_mod_slider = QSlider(Qt.Horizontal)
-        self.rf_vel_mod_slider.setMinimum(-64)
-        self.rf_vel_mod_slider.setMaximum(64)
+        self.rf_vel_mod_slider = StyledSlider(minimum=-64, maximum=64)
         self.rf_vel_mod_slider.setValue(0)
         self.rf_vel_mod_slider.setEnabled(False)
         self.rf_vel_mod_slider.valueChanged.connect(self.on_rf_vel_mod_changed)
-        rf_vel_layout.addWidget(self.rf_vel_mod_slider, 1)
-
-        self.rf_vel_mod_value_label = QLabel("0")
-        self.rf_vel_mod_value_label.setMinimumWidth(40)
-        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        rf_vel_layout.addWidget(self.rf_vel_mod_value_label)
+        self.rf_vel_mod_slider.setMinimumHeight(50)
+        rf_vel_layout.addWidget(self.rf_vel_mod_slider)
 
         rf_layout.addLayout(rf_vel_layout)
 
