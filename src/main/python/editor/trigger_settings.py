@@ -460,10 +460,10 @@ class TriggerSettingsTab(BasicEditor):
         checkbox_container.setLayout(checkbox_container_layout)
         main_layout.addWidget(checkbox_container)
 
-        # Main content container with theme background
+        # Main content container with theme background (using window color like keyboard container)
         content_container = QFrame()
         content_container.setFrameShape(QFrame.StyledPanel)
-        content_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        content_container.setStyleSheet("QFrame { background-color: palette(window); }")
         content_layout = QHBoxLayout()
         content_layout.setSpacing(15)
         content_layout.setContentsMargins(10, 10, 10, 10)
@@ -481,7 +481,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Velocity curve section - checkbox and dropdown in horizontal layout
         curve_layout = QHBoxLayout()
-        curve_layout.setSpacing(15)  # Add spacing between elements
+        curve_layout.setSpacing(8)  # Reduced spacing to move dropdown closer to checkbox
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
@@ -490,16 +490,13 @@ class TriggerSettingsTab(BasicEditor):
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
         curve_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Velocity curve dropdown
-        curve_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        curve_layout.addWidget(curve_label)
-
+        # Velocity curve dropdown (label removed as requested)
         self.velocity_curve_combo = QComboBox()
-        self.velocity_curve_combo.addItem("Softest (x³)", 0)
-        self.velocity_curve_combo.addItem("Soft (x²)", 1)
-        self.velocity_curve_combo.addItem("Medium (x)", 2)
-        self.velocity_curve_combo.addItem("Hard (√x)", 3)
-        self.velocity_curve_combo.addItem("Hardest (∛x)", 4)
+        self.velocity_curve_combo.addItem("Softest", 0)
+        self.velocity_curve_combo.addItem("Soft", 1)
+        self.velocity_curve_combo.addItem("Medium", 2)
+        self.velocity_curve_combo.addItem("Hard", 3)
+        self.velocity_curve_combo.addItem("Hardest", 4)
         self.velocity_curve_combo.setCurrentIndex(2)
         self.velocity_curve_combo.setEnabled(False)
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
@@ -515,7 +512,7 @@ class TriggerSettingsTab(BasicEditor):
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
         mm = (value / 40.0)  # 0-100 maps to 0-2.5mm (100/40 = 2.5)
-        return f"{mm:.1f}mm"
+        return f"{mm:.2f}mm"
 
     def on_global_normal_changed(self, value):
         """Handle global normal actuation slider change"""
@@ -1381,13 +1378,8 @@ class TriggerSettingsTab(BasicEditor):
                         settings = self.per_key_values[layer][key_index]
                         key.setText(self.value_to_mm(settings['actuation']))
                     else:
-                        # Global mode: show both Normal and MIDI actuation values
-                        layer_to_use = self.current_layer if self.per_layer_enabled else 0
-                        normal_value = data_source[layer_to_use]['normal']
-                        midi_value = data_source[layer_to_use]['midi']
-
-                        # Show both values on separate lines
-                        key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
+                        # Global mode: show nothing on keys
+                        key.setText("")
                 else:
                     key.setText("")
 
