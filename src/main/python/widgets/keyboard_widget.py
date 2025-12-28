@@ -1413,3 +1413,54 @@ class KeyboardWidgetSimple(KeyboardWidget2):
             return
 
         self.is_dragging = False
+
+
+class KeyboardWidgetNoHighlight(KeyboardWidgetSimple):
+    """
+    Keyboard widget with no selection highlighting at all.
+    Used by lighting/RGB configurator where color painting is done
+    and selection highlighting would interfere with seeing the actual colors.
+
+    Keys still emit clicked signals for interaction, but no visual highlighting.
+    """
+
+    def mousePressEvent(self, ev):
+        """Click to interact with key, but don't highlight it"""
+        if not self.enabled:
+            return
+
+        clicked_key, clicked_mask = self.hit_test(ev.pos())
+        if clicked_key is not None:
+            # Don't set active_key to avoid highlighting
+            self.active_mask = clicked_mask
+            self.is_dragging = True
+            # Temporarily set active_key for the signal, then clear it
+            self.active_key = clicked_key
+            self.clicked.emit()
+            self.active_key = None  # Clear immediately to prevent highlighting
+        else:
+            self.deselected.emit()
+        self.update()
+
+    def mouseMoveEvent(self, ev):
+        """Drag over keys to interact, but don't highlight them"""
+        if not self.enabled or not self.is_dragging:
+            return
+
+        key, mask = self.hit_test(ev.pos())
+        if key is not None:
+            # Allow dragging without highlighting
+            self.active_mask = mask
+            # Temporarily set for signal emission
+            self.active_key = key
+            self.clicked.emit()
+            self.active_key = None  # Clear immediately
+            self.update()
+
+    def mouseReleaseEvent(self, ev):
+        """Stop drag interaction on mouse release"""
+        if not self.enabled:
+            return
+
+        self.is_dragging = False
+        self.active_key = None  # Ensure no highlighting remains
