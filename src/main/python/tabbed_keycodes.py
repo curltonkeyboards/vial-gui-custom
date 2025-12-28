@@ -4598,28 +4598,28 @@ class GamingTab(QScrollArea):
         if btn4:
             btn4.setText("Button\n4")
             btn4.setParent(gamepad_widget)
-            btn4.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn4.setStyleSheet("QPushButton { border-radius: 25px; } QPushButton:hover { border-radius: 25px; } QPushButton:pressed { border-radius: 25px; }")  # Make circular in all states
             btn4.move(517, 103)  # Centered between btn3 and btn2, up 4px
 
         btn3 = self.create_button("XBOX_X", 50, 50)
         if btn3:
             btn3.setText("Button\n3")
             btn3.setParent(gamepad_widget)
-            btn3.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn3.setStyleSheet("QPushButton { border-radius: 25px; } QPushButton:hover { border-radius: 25px; } QPushButton:pressed { border-radius: 25px; }")  # Make circular in all states
             btn3.move(481, 139)  # Size adjusted to keep center
 
         btn2 = self.create_button("XBOX_B", 50, 50)
         if btn2:
             btn2.setText("Button\n2")
             btn2.setParent(gamepad_widget)
-            btn2.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn2.setStyleSheet("QPushButton { border-radius: 25px; } QPushButton:hover { border-radius: 25px; } QPushButton:pressed { border-radius: 25px; }")  # Make circular in all states
             btn2.move(553, 139)  # Same vertical as btn3, size adjusted
 
         btn1 = self.create_button("XBOX_A", 50, 50)
         if btn1:
             btn1.setText("Button\n1")
             btn1.setParent(gamepad_widget)
-            btn1.setStyleSheet("border-radius: 25px;")  # Make circular
+            btn1.setStyleSheet("QPushButton { border-radius: 25px; } QPushButton:hover { border-radius: 25px; } QPushButton:pressed { border-radius: 25px; }")  # Make circular in all states
             btn1.move(517, 178)  # Centered between btn3 and btn2, down 6px
 
         # Create horizontal container for calibration (left) and gamepad (right)
