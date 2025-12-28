@@ -3712,9 +3712,11 @@ class GamingConfigurator(BasicEditor):
             btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
             btn.setProperty("control_id", control_id)
 
-            # Store reference
+            # Store reference with button type
+            button_type = "dpad" if "dpad" in key else ("face" if key in ["btn1", "btn2", "btn3", "btn4"] else "regular")
             self.gaming_controls[control_id] = {
                 'button': btn,
+                'button_type': button_type,
                 'keycode': None,
                 'row': None,
                 'col': None,
@@ -3773,15 +3775,42 @@ class GamingConfigurator(BasicEditor):
             }
         """)
 
+    def get_button_style(self, button_type, highlighted=False):
+        """Get the appropriate style for a button based on its type"""
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QPalette
+
+        if button_type == "face":
+            # Face buttons are circular
+            base_style = "border-radius: 25px;"
+        elif button_type == "dpad":
+            # D-pad buttons don't have inline styles (they use masks)
+            base_style = ""
+        else:
+            # Regular buttons have no special styling
+            base_style = ""
+
+        if highlighted:
+            # Use theme colors for highlighting
+            palette = QApplication.palette()
+            highlight_color = palette.color(QPalette.Highlight).name()
+            highlight_text = palette.color(QPalette.HighlightedText).name()
+            return f"QPushButton {{ {base_style} background-color: {highlight_color}; color: {highlight_text}; }}"
+        else:
+            # Return empty stylesheet to clear any previous styling (except base_style)
+            return f"QPushButton {{ {base_style} }}"
+
     def on_assign_key(self, control_id):
         """Handle key assignment for a gaming control"""
         self.active_control_id = control_id
-        # Highlight the button being assigned
+        # Highlight the button being assigned and unhighlight all others
         for cid, data in self.gaming_controls.items():
+            button_type = data.get('button_type', 'regular')
             if cid == control_id:
-                data['button'].setStyleSheet("QPushButton { text-align: center; border-radius: 3px; font-size: 9px; background-color: #4CAF50; color: white; }")
+                data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=True))
             else:
-                data['button'].setStyleSheet("QPushButton { text-align: center; border-radius: 3px; font-size: 9px; }")
+                # Always set style to clear any previous highlighting
+                data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=False))
 
     def on_keycode_selected(self, keycode):
         """Called when a keycode is selected from TabbedKeycodes"""
@@ -3806,7 +3835,10 @@ class GamingConfigurator(BasicEditor):
             if len(label) > 7:
                 label = label[:6] + ".."
             data['button'].setText(label)
-            data['button'].setStyleSheet("QPushButton { text-align: center; border-radius: 3px; font-size: 9px; }")
+
+            # Reset button style based on its type (clears highlighting)
+            button_type = data.get('button_type', 'regular')
+            data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=False))
 
             # Clear active control
             self.active_control_id = None
@@ -3815,9 +3847,10 @@ class GamingConfigurator(BasicEditor):
             QMessageBox.warning(None, "Key Not Found",
                               f"The selected keycode is not found in your keymap on any layer.\n"
                               f"Please select a key that exists in your keymap.")
-            # Reset the button style
+            # Reset the button style (clears highlighting)
             data = self.gaming_controls[self.active_control_id]
-            data['button'].setStyleSheet("QPushButton { text-align: center; border-radius: 3px; font-size: 9px; }")
+            button_type = data.get('button_type', 'regular')
+            data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=False))
             self.active_control_id = None
 
     def find_keycode_position(self, keycode):
