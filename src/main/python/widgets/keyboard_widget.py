@@ -1087,14 +1087,14 @@ class KeyboardWidget2(QWidget):
 
             # If this key has a custom color set (from per-key RGB painting), use it for entire key
             if key.color:
-                # No border - just paint the key with radial gradient at 40% opacity
-                qp.setPen(Qt.NoPen)
+                # Show border when active/selected - enable highlighting for rapidfire keys
+                qp.setPen(active_pen if active else Qt.NoPen)
 
                 # Create radial gradient brush for modern look (brighter center, darker edges)
-                # Apply 40% opacity to all colors
+                # Apply 25% opacity for more transparency and better theme integration
                 color = key.color
                 r, g, b = color.red(), color.green(), color.blue()
-                opacity = int(255 * 0.4)  # 40% opacity
+                opacity = int(255 * 0.25)  # 25% opacity - more transparent and theme-related
 
                 # Stronger darkening for better visibility
                 r_dark = max(0, r - 60)
@@ -1114,7 +1114,7 @@ class KeyboardWidget2(QWidget):
                 gradient_brush = QBrush(gradient)
                 qp.setBrush(gradient_brush)
                 qp.drawPath(key.background_draw_path)
-                # Don't draw foreground path to avoid overlap - single uniform 40% opacity layer
+                # Don't draw foreground path to avoid overlap - single uniform opacity layer
             else:
                 # Default theme-based rendering for unpainted keys
                 # draw keycap background/drop-shadow
@@ -1143,7 +1143,7 @@ class KeyboardWidget2(QWidget):
             if key.masked:
                 # draw the outer legend doesnt seem to change font size
                 qp.setFont(mask_font)
-                qp.setPen(key.color if key.color else regular_pen)
+                qp.setPen(regular_pen)  # Always use regular text color, even for colored keys
                 qp.drawText(key.nonmask_rect, Qt.AlignCenter, key.text)
 
                 # draw the inner highlight rect
@@ -1158,8 +1158,8 @@ class KeyboardWidget2(QWidget):
                 qp.setFont(smaller_font)
                 qp.drawText(key.mask_rect, Qt.AlignCenter, key.mask_text)
             else:
-                # draw the legend
-                qp.setPen(key.color if key.color else regular_pen)
+                # draw the legend - always use regular text color, even for colored keys
+                qp.setPen(regular_pen)
                 smaller_font = qp.font()
                 smaller_font.setPointSize(smaller_font.pointSize() - 1)
                 qp.setFont(smaller_font)
