@@ -880,6 +880,9 @@ class KeyboardWidget2(QWidget):
         # Multi-selection support
         self.selected_keys = set()  # Set of selected key widgets
 
+        # Highlight mode: "multi" (default), "single", "none"
+        self.highlight_mode = "multi"
+
     def set_keys(self, keys, encoders):
         self.common_widgets = []
         self.widgets_for_layout = []
@@ -1082,8 +1085,16 @@ class KeyboardWidget2(QWidget):
             qp.rotate(key.rotation_angle)
             qp.translate(-key.rotation_x, -key.rotation_y)
 
-            # Check if key is active (selected or is the current active key)
-            active = key.active or (self.active_key == key and not self.active_mask) or (key in self.selected_keys)
+            # Check if key is active based on highlight mode
+            if self.highlight_mode == "none":
+                # No highlights at all
+                active = False
+            elif self.highlight_mode == "single":
+                # Only highlight the active_key (single selection)
+                active = (self.active_key == key and not self.active_mask)
+            else:  # "multi" mode (default)
+                # Original behavior: multi-select
+                active = key.active or (self.active_key == key and not self.active_mask) or (key in self.selected_keys)
 
             # If this key has a custom color set (from per-key RGB painting), use it for entire key
             if key.color:
@@ -1317,6 +1328,17 @@ class KeyboardWidget2(QWidget):
 
     def get_scale(self):
         return self.scale
+
+    def set_highlight_mode(self, mode):
+        """
+        Set the highlight border mode for the keyboard widget.
+
+        Args:
+            mode: "multi" (multi-select), "single" (only active_key), "none" (no highlights)
+        """
+        if mode in ["multi", "single", "none"]:
+            self.highlight_mode = mode
+            self.update()
 
     def select_all(self):
         """Select all keys (excluding encoders)"""

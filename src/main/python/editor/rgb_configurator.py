@@ -1705,6 +1705,7 @@ class PerKeyRGBHandler(BasicHandler):
 
         # Create KeyboardWidget2
         self.keyboard_widget = KeyboardWidget2(self.layout_editor)
+        self.keyboard_widget.set_highlight_mode("none")  # No highlight borders in lighting configurator
         self.keyboard_widget.clicked.connect(self.on_key_clicked)
         keyboard_layout.addWidget(self.keyboard_widget)
 

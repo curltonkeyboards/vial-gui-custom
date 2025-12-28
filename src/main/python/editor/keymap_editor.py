@@ -2196,6 +2196,7 @@ class KeymapEditor(BasicEditor):
 
         # contains the actual keyboard
         self.container = KeyboardWidget2(layout_editor)
+        self.container.set_highlight_mode("single")  # Only one highlight border at a time
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
