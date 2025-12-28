@@ -2155,44 +2155,9 @@ class CustomLightsHandler(BasicHandler):
         self.lbl_custom_lights = QLabel(tr("RGBConfigurator", "Custom Lights"))
         container.addWidget(self.lbl_custom_lights, row, 0, 1, 2)
 
-        # Basic Controls - Enable/Disable checkbox
-        self.lbl_custom_enable = QLabel(tr("RGBConfigurator", "Enable Custom Lights"))
-        container.addWidget(self.lbl_custom_enable, row + 1, 0)
-        self.custom_enable = QCheckBox()
-        self.custom_enable.stateChanged.connect(self.on_custom_enable_changed)
-        container.addWidget(self.custom_enable, row + 1, 1)
-
-        # Basic Controls - Action buttons (Save All, Load All, Reset All)
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-
-        self.save_all_button = QPushButton(tr("RGBConfigurator", "Save All Slots"))
-        self.save_all_button.clicked.connect(self.on_save_all_slots)
-        self.save_all_button.setMinimumHeight(30)
-        self.save_all_button.setStyleSheet("QPushButton { border-radius: 5px; padding: 8px; }")
-        button_layout.addWidget(self.save_all_button)
-
-        self.load_all_button = QPushButton(tr("RGBConfigurator", "Load All Slots"))
-        self.load_all_button.clicked.connect(self.on_load_all_slots)
-        self.load_all_button.setMinimumHeight(30)
-        self.load_all_button.setStyleSheet("QPushButton { border-radius: 5px; padding: 8px; }")
-        button_layout.addWidget(self.load_all_button)
-
-        self.reset_all_button = QPushButton(tr("RGBConfigurator", "Reset All Slots"))
-        self.reset_all_button.clicked.connect(self.on_reset_all_slots)
-        self.reset_all_button.setMinimumHeight(30)
-        self.reset_all_button.setStyleSheet("QPushButton { border-radius: 5px; padding: 8px; }")
-        button_layout.addWidget(self.reset_all_button)
-
-        button_layout.addStretch()
-
-        button_widget = QWidget()
-        button_widget.setLayout(button_layout)
-        container.addWidget(button_widget, row + 2, 0, 1, 2)
-
         # Create main tab widget for groups
         self.main_tab_widget = QTabWidget()
-        container.addWidget(self.main_tab_widget, row + 3, 0, 1, 2)
+        container.addWidget(self.main_tab_widget, row + 1, 0, 1, 2)
         
         # Track the currently active slot (for parameter changes)
         self.current_active_slot = None
@@ -2218,8 +2183,7 @@ class CustomLightsHandler(BasicHandler):
         for group_name, start_idx, end_idx in self.groups:
             self.create_group_tab(group_name, start_idx, end_idx)
 
-        self.widgets = [self.lbl_custom_lights, self.lbl_custom_enable, self.custom_enable,
-                       button_widget, self.main_tab_widget]
+        self.widgets = [self.lbl_custom_lights, self.main_tab_widget]
 
     def create_group_tab(self, group_name, start_idx, end_idx):
         """Create a main tab containing sub-tabs for a group of slots"""
@@ -2828,67 +2792,6 @@ class CustomLightsHandler(BasicHandler):
         
         # Reset combo box to header
         self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
-
-    def on_custom_enable_changed(self, state):
-        """Handle custom lights enable/disable"""
-        try:
-            enabled = 1 if state == QtCore.Qt.Checked else 0
-            if hasattr(self.device.keyboard, 'set_custom_lights_enabled'):
-                self.device.keyboard.set_custom_lights_enabled(enabled)
-                print(f"Custom lights {'enabled' if enabled else 'disabled'}")
-            else:
-                print("Custom lights enable/disable not implemented on keyboard")
-        except Exception as e:
-            print(f"Error setting custom lights enable state: {e}")
-
-    def on_save_all_slots(self):
-        """Save all custom light slots to EEPROM"""
-        try:
-            if hasattr(self.device.keyboard, 'save_all_custom_slots'):
-                self.device.keyboard.save_all_custom_slots()
-                print("All custom light slots saved to EEPROM")
-            else:
-                # Fallback: save each slot individually
-                for slot in range(NUM_CUSTOM_SLOTS):
-                    self.on_save_slot(slot)
-                print("All custom light slots saved individually")
-        except Exception as e:
-            print(f"Error saving all slots: {e}")
-
-    def on_load_all_slots(self):
-        """Load all custom light slots from keyboard"""
-        try:
-            if hasattr(self.device.keyboard, 'load_all_custom_slots'):
-                self.device.keyboard.load_all_custom_slots()
-                print("All custom light slots loaded from keyboard")
-                # Update UI
-                self.update_from_keyboard()
-            else:
-                # Fallback: load each slot individually
-                for slot in range(NUM_CUSTOM_SLOTS):
-                    self.on_load_from_keyboard(slot)
-                print("All custom light slots loaded individually")
-        except Exception as e:
-            print(f"Error loading all slots: {e}")
-
-    def on_reset_all_slots(self):
-        """Reset all custom light slots to defaults"""
-        try:
-            if hasattr(self.device.keyboard, 'reset_all_custom_slots'):
-                self.device.keyboard.reset_all_custom_slots()
-                print("All custom light slots reset to defaults")
-                # Update UI
-                self.update_from_keyboard()
-            else:
-                # Fallback: reset each slot individually
-                for slot in range(NUM_CUSTOM_SLOTS):
-                    if hasattr(self.device.keyboard, 'reset_custom_slot'):
-                        self.device.keyboard.reset_custom_slot(slot)
-                print("All custom light slots reset individually")
-                # Update UI
-                self.update_from_keyboard()
-        except Exception as e:
-            print(f"Error resetting all slots: {e}")
 
 class RGBConfigurator(BasicEditor):
 

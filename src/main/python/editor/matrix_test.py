@@ -3645,7 +3645,7 @@ class GamingConfigurator(BasicEditor):
             # Create button based on type
             if "dpad" in key:
                 # Use DpadButton for d-pad with shaped paths
-                btn = DpadButton(text)
+                btn = DpadButton("Not Set")
                 btn.setFixedSize(w, h)
                 btn.setParent(gamepad_widget)
                 btn.move(x, y)
@@ -3696,19 +3696,18 @@ class GamingConfigurator(BasicEditor):
                 btn.setMask(QRegion(path.toFillPolygon().toPolygon()))
                 btn.set_border_path(path)
             elif "btn" in key and key in ["btn1", "btn2", "btn3", "btn4"]:
-                # Circular face buttons
+                # Circular face buttons (exactly like GamingTab)
                 btn = QPushButton("Not Set")
                 btn.setFixedSize(w, h)
                 btn.setParent(gamepad_widget)
                 btn.move(x, y)
-                btn.setStyleSheet("border-radius: 25px; font-size: 9px;")
+                btn.setStyleSheet("border-radius: 25px;")
             else:
-                # Regular rectangular buttons
+                # Regular rectangular buttons (no special styling, exactly like GamingTab)
                 btn = QPushButton("Not Set")
                 btn.setFixedSize(w, h)
                 btn.setParent(gamepad_widget)
                 btn.move(x, y)
-                btn.setStyleSheet("font-size: 9px;")
 
             btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
             btn.setProperty("control_id", control_id)
