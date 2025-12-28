@@ -25,7 +25,7 @@ from protocol.keyboard_comm import (
     PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS,
     PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS
 )
-from widgets.keyboard_widget import KeyboardWidget2
+from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
 from vial_device import VialKeyboard
 from unlocker import Unlocker
@@ -38,7 +38,7 @@ class MatrixTest(BasicEditor):
 
         self.layout_editor = layout_editor
 
-        self.KeyboardWidget2 = KeyboardWidget2(layout_editor)
+        self.KeyboardWidget2 = KeyboardWidgetSimple(layout_editor)
         self.KeyboardWidget2.set_enabled(False)
 
         self.unlock_btn = QPushButton("Unlock")

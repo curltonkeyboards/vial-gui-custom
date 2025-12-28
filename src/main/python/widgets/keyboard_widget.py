@@ -1359,3 +1359,57 @@ class KeyboardWidget2(QWidget):
         elif self.active_key:
             return [self.active_key]
         return []
+
+
+class KeyboardWidgetSimple(KeyboardWidget2):
+    """
+    Simplified version of KeyboardWidget2 with original selection behavior.
+    Used by keymap, lighting, and layout editors that don't need multi-selection.
+
+    This restores the pre-trigger-settings behavior where:
+    - Click selects a single key
+    - Drag paints over multiple keys sequentially
+    - No multi-selection or drag-to-deselect modes
+    """
+
+    def __init__(self, layout_editor):
+        # Call parent init which sets up all the widgets
+        super().__init__(layout_editor)
+
+        # Remove multi-selection features not needed for simple mode
+        self.drag_mode = None
+        self.selected_keys = set()
+
+    def mousePressEvent(self, ev):
+        """Original simple mouse press behavior: click to select, drag to paint"""
+        if not self.enabled:
+            return
+
+        self.active_key, self.active_mask = self.hit_test(ev.pos())
+        if self.active_key is not None:
+            self.is_dragging = True  # Start drag painting
+            self.clicked.emit()
+        else:
+            self.deselected.emit()
+        self.update()
+
+    def mouseMoveEvent(self, ev):
+        """Original drag painting: drag over keys to select them sequentially"""
+        if not self.enabled or not self.is_dragging:
+            return
+
+        # Check if we're over a key
+        key, mask = self.hit_test(ev.pos())
+        if key is not None and key != self.active_key:
+            # We've dragged onto a new key, paint it
+            self.active_key = key
+            self.active_mask = mask
+            self.clicked.emit()
+            self.update()
+
+    def mouseReleaseEvent(self, ev):
+        """Stop drag painting on mouse release"""
+        if not self.enabled:
+            return
+
+        self.is_dragging = False

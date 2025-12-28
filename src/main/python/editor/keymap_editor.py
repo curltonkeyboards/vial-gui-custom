@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from widgets.combo_box import ArrowComboBox
 from any_keycode_dialog import AnyKeycodeDialog
 from editor.basic_editor import BasicEditor
-from widgets.keyboard_widget import KeyboardWidget2, EncoderWidget, EncoderWidget2
+from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple, EncoderWidget, EncoderWidget2
 from keycodes.keycodes import Keycode
 from widgets.square_button import SquareButton
 from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
@@ -2195,7 +2195,7 @@ class KeymapEditor(BasicEditor):
         self.encoder_assign = EncoderAssignWidget()
 
         # contains the actual keyboard
-        self.container = KeyboardWidget2(layout_editor)
+        self.container = KeyboardWidgetSimple(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
 
