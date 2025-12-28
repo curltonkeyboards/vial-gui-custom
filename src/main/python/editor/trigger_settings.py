@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWid
                               QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
                               QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor
 
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
@@ -199,6 +200,7 @@ class TriggerSettingsTab(BasicEditor):
         """Create the trigger travel configuration container"""
         container = QFrame()
         container.setFrameShape(QFrame.StyledPanel)
+        container.setStyleSheet("QFrame { background-color: palette(base); }")
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -326,6 +328,7 @@ class TriggerSettingsTab(BasicEditor):
         """Create the rapidfire configuration container"""
         container = QFrame()
         container.setFrameShape(QFrame.StyledPanel)
+        container.setStyleSheet("QFrame { background-color: palette(base); }")
         layout = QVBoxLayout()
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -481,7 +484,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Velocity curve section - checkbox and dropdown in horizontal layout
         curve_layout = QHBoxLayout()
-        curve_layout.setSpacing(15)  # Add spacing between elements
+        curve_layout.setSpacing(8)  # Reduced spacing for tighter layout
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
@@ -490,16 +493,13 @@ class TriggerSettingsTab(BasicEditor):
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
         curve_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Velocity curve dropdown
-        curve_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        curve_layout.addWidget(curve_label)
-
+        # Velocity curve dropdown (no label, directly next to checkbox)
         self.velocity_curve_combo = QComboBox()
-        self.velocity_curve_combo.addItem("Softest (x³)", 0)
-        self.velocity_curve_combo.addItem("Soft (x²)", 1)
-        self.velocity_curve_combo.addItem("Medium (x)", 2)
-        self.velocity_curve_combo.addItem("Hard (√x)", 3)
-        self.velocity_curve_combo.addItem("Hardest (∛x)", 4)
+        self.velocity_curve_combo.addItem("Softest", 0)
+        self.velocity_curve_combo.addItem("Soft", 1)
+        self.velocity_curve_combo.addItem("Medium", 2)
+        self.velocity_curve_combo.addItem("Hard", 3)
+        self.velocity_curve_combo.addItem("Hardest", 4)
         self.velocity_curve_combo.setCurrentIndex(2)
         self.velocity_curve_combo.setEnabled(False)
         self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
@@ -515,7 +515,7 @@ class TriggerSettingsTab(BasicEditor):
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
         mm = (value / 40.0)  # 0-100 maps to 0-2.5mm (100/40 = 2.5)
-        return f"{mm:.1f}mm"
+        return f"{mm:.2f}mm"
 
     def on_global_normal_changed(self, value):
         """Handle global normal actuation slider change"""
@@ -1376,9 +1376,20 @@ class TriggerSettingsTab(BasicEditor):
                 key_index = row * 14 + col
 
                 if key_index < 70:
+                    # Check if rapidfire is enabled for this key
+                    settings = self.per_key_values[layer][key_index]
+                    rapidfire_enabled = (settings['flags'] & 0x01) != 0
+
+                    # Set background color if rapidfire is enabled
+                    if rapidfire_enabled:
+                        # Use orange color with transparency (handled by keyboard_widget)
+                        key.setColor(QColor(255, 140, 50))
+                    else:
+                        # Clear color if rapidfire is disabled
+                        key.setColor(None)
+
                     if self.mode_enabled:
                         # Per-key mode: show per-key actuation value
-                        settings = self.per_key_values[layer][key_index]
                         key.setText(self.value_to_mm(settings['actuation']))
                     else:
                         # Global mode: show both Normal and MIDI actuation values
