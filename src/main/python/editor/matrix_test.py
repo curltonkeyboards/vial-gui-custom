@@ -9,10 +9,12 @@ from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLa
                            QScrollArea, QSlider)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
+from PyQt5.QtGui import QPainterPath, QRegion
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
+from tabbed_keycodes import GamepadWidget, DpadButton
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
     PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
@@ -3517,16 +3519,19 @@ class GamingConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area)
 
-        # Create horizontal layout for calibration (left) and mappings (center)
+        # Create horizontal layout for calibration (left) and gamepad (center)
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(30)
         main_layout.addLayout(controls_layout)
+
+        # Add outer stretch to center content
+        controls_layout.addStretch(1)
 
         # Analog Calibration Group (LEFT SIDE)
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
         calibration_group.setMaximumWidth(250)
         calibration_layout = QVBoxLayout()
-        calibration_layout.setSpacing(8)  # Reduced from 15
+        calibration_layout.setSpacing(8)
         calibration_group.setLayout(calibration_layout)
         controls_layout.addWidget(calibration_group, alignment=QtCore.Qt.AlignTop)
 
@@ -3534,15 +3539,13 @@ class GamingConfigurator(BasicEditor):
         def create_compact_slider(label_text, default_value):
             widget = QWidget()
             layout = QVBoxLayout()
-            layout.setSpacing(2)  # Minimal spacing
+            layout.setSpacing(2)
             layout.setContentsMargins(0, 0, 0, 0)
             widget.setLayout(layout)
 
-            # Label with value inline
             label_with_value = QLabel(f"{label_text}: {default_value/10:.1f}")
             layout.addWidget(label_with_value)
 
-            # Slider
             slider = QSlider(Qt.Horizontal)
             slider.setMinimum(0)
             slider.setMaximum(25)
@@ -3551,7 +3554,6 @@ class GamingConfigurator(BasicEditor):
             slider.setMinimumWidth(200)
             layout.addWidget(slider)
 
-            # Connect slider to update label
             slider.valueChanged.connect(
                 lambda val, lbl=label_with_value, txt=label_text: lbl.setText(f"{txt}: {val/10:.1f}")
             )
@@ -3600,102 +3602,128 @@ class GamingConfigurator(BasicEditor):
         )
         calibration_layout.addWidget(trigger_max_widget)
 
-        # Gaming Control Mappings Group (CENTER) - 5 columns (4 cols of 5 rows + 1 col of 4 rows)
-        mappings_group = QGroupBox(tr("GamingConfigurator", "Controller Mappings - Click button to assign"))
-        mappings_group.setMaximumWidth(900)
-        controls_layout.addWidget(mappings_group)
-        mappings_layout = QHBoxLayout()
-        mappings_layout.setSpacing(15)
-        mappings_group.setLayout(mappings_layout)
+        # Create gamepad widget with drawn outline
+        gamepad_widget = GamepadWidget()
+        gamepad_widget.setFixedSize(750, 560)
+        controls_layout.addWidget(gamepad_widget)
 
-        # Define gaming controls in 5 columns
-        # Column 1 (5): D-pad + Start
-        column1_controls = [
-            ("D-pad Up", 10),
-            ("D-pad Down", 11),
-            ("D-pad Left", 12),
-            ("D-pad Right", 13),
-            ("Start", 21),
-        ]
+        # Map control IDs to positions and names (matching the original control IDs)
+        control_mapping = {
+            # D-pad
+            10: ("D-pad Up", "dpad_up", 180, 105, 56, 58, "↑"),
+            11: ("D-pad Down", "dpad_down", 180, 163, 56, 58, "↓"),
+            12: ("D-pad Left", "dpad_left", 150, 135, 58, 56, "←"),
+            13: ("D-pad Right", "dpad_right", 208, 135, 58, 56, "→"),
+            # Face buttons
+            14: ("Button 1", "btn1", 517, 178, 50, 50, "1"),  # A
+            15: ("Button 2", "btn2", 553, 139, 50, 50, "2"),  # B
+            16: ("Button 3", "btn3", 481, 139, 50, 50, "3"),  # X
+            17: ("Button 4", "btn4", 517, 103, 50, 50, "4"),  # Y
+            # Sticks
+            0: ("LS Up", "ls_up", 275, 185, 38, 38, "↑"),
+            1: ("LS Down", "ls_down", 275, 261, 38, 38, "↓"),
+            2: ("LS Left", "ls_left", 237, 223, 38, 38, "←"),
+            3: ("LS Right", "ls_right", 313, 223, 38, 38, "→"),
+            22: ("LS Click", "l3", 275, 223, 38, 38, "L3"),
+            4: ("RS Up", "rs_up", 439, 185, 38, 38, "↑"),
+            5: ("RS Down", "rs_down", 439, 261, 38, 38, "↓"),
+            6: ("RS Left", "rs_left", 401, 223, 38, 38, "←"),
+            7: ("RS Right", "rs_right", 477, 223, 38, 38, "→"),
+            23: ("RS Click", "r3", 439, 223, 38, 38, "R3"),
+            # Bumpers and triggers
+            18: ("LB", "lb", 177, 65, 60, 30, "LB"),
+            19: ("RB", "rb", 503, 65, 60, 30, "RB"),
+            8: ("LT", "lt", 177, 25, 60, 35, "LT"),
+            9: ("RT", "rt", 503, 25, 60, 35, "RT"),
+            # Center buttons
+            20: ("Back", "back", 320, 170, 50, 30, "Back"),
+            21: ("Start", "start", 380, 170, 50, 30, "Start"),
+        }
 
-        # Column 2 (5): Face Buttons + Back
-        column2_controls = [
-            ("Button 1 (A)", 14),
-            ("Button 2 (B)", 15),
-            ("Button 3 (X)", 16),
-            ("Button 4 (Y)", 17),
-            ("Back", 20),
-        ]
+        # Create buttons positioned over gamepad
+        for control_id, (name, key, x, y, w, h, text) in control_mapping.items():
+            # Create button based on type
+            if "dpad" in key:
+                # Use DpadButton for d-pad with shaped paths
+                btn = DpadButton(text)
+                btn.setFixedSize(w, h)
+                btn.setParent(gamepad_widget)
+                btn.move(x, y)
 
-        # Column 3 (5): Right Stick + Right Bumper
-        column3_controls = [
-            ("RS Up", 4),
-            ("RS Down", 5),
-            ("RS Left", 6),
-            ("RS Right", 7),
-            ("RB", 19),
-        ]
+                # Set shaped path for d-pad buttons
+                path = QPainterPath()
+                if key == "dpad_up":
+                    path.moveTo(28, 58)
+                    path.lineTo(3, 33)
+                    path.lineTo(3, 8)
+                    path.quadTo(8, 3, 15, 3)
+                    path.lineTo(41, 3)
+                    path.quadTo(48, 3, 53, 8)
+                    path.lineTo(53, 33)
+                    path.lineTo(28, 58)
+                    path.closeSubpath()
+                elif key == "dpad_down":
+                    path.moveTo(28, 0)
+                    path.lineTo(3, 25)
+                    path.lineTo(3, 50)
+                    path.quadTo(8, 55, 15, 55)
+                    path.lineTo(41, 55)
+                    path.quadTo(48, 55, 53, 50)
+                    path.lineTo(53, 25)
+                    path.lineTo(28, 0)
+                    path.closeSubpath()
+                elif key == "dpad_left":
+                    path.moveTo(58, 28)
+                    path.lineTo(33, 3)
+                    path.lineTo(8, 3)
+                    path.quadTo(3, 8, 3, 15)
+                    path.lineTo(3, 41)
+                    path.quadTo(3, 48, 8, 53)
+                    path.lineTo(33, 53)
+                    path.lineTo(58, 28)
+                    path.closeSubpath()
+                elif key == "dpad_right":
+                    path.moveTo(0, 28)
+                    path.lineTo(25, 3)
+                    path.lineTo(50, 3)
+                    path.quadTo(55, 8, 55, 15)
+                    path.lineTo(55, 41)
+                    path.quadTo(55, 48, 50, 53)
+                    path.lineTo(25, 53)
+                    path.lineTo(0, 28)
+                    path.closeSubpath()
 
-        # Column 4 (5): Left Stick + Left Bumper
-        column4_controls = [
-            ("LS Up", 0),
-            ("LS Down", 1),
-            ("LS Left", 2),
-            ("LS Right", 3),
-            ("LB", 18),
-        ]
+                btn.setMask(QRegion(path.toFillPolygon().toPolygon()))
+                btn.set_border_path(path)
+            elif "btn" in key and key in ["btn1", "btn2", "btn3", "btn4"]:
+                # Circular face buttons
+                btn = QPushButton("Not Set")
+                btn.setFixedSize(w, h)
+                btn.setParent(gamepad_widget)
+                btn.move(x, y)
+                btn.setStyleSheet("border-radius: 25px; font-size: 9px;")
+            else:
+                # Regular rectangular buttons
+                btn = QPushButton("Not Set")
+                btn.setFixedSize(w, h)
+                btn.setParent(gamepad_widget)
+                btn.move(x, y)
+                btn.setStyleSheet("font-size: 9px;")
 
-        # Column 5 (4): Triggers and Stick Clicks
-        column5_controls = [
-            ("LT", 8),
-            ("RT", 9),
-            ("LS Click", 22),
-            ("RS Click", 23),
-        ]
+            btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
+            btn.setProperty("control_id", control_id)
 
-        # Create 5 columns
-        for column_controls in [column1_controls, column2_controls, column3_controls, column4_controls, column5_controls]:
-            column_widget = QWidget()
-            column_layout = QVBoxLayout()
-            column_layout.setSpacing(5)
-            column_widget.setLayout(column_layout)
+            # Store reference
+            self.gaming_controls[control_id] = {
+                'button': btn,
+                'keycode': None,
+                'row': None,
+                'col': None,
+                'enabled': False
+            }
 
-            for name, control_id in column_controls:
-                # Create horizontal layout for label and button
-                row_widget = QWidget()
-                row_layout = QHBoxLayout()
-                row_layout.setSpacing(5)
-                row_layout.setContentsMargins(0, 0, 0, 0)
-                row_widget.setLayout(row_layout)
-
-                # Control label
-                label = QLabel(name)
-                label.setMinimumWidth(90)
-                row_layout.addWidget(label)
-
-                # Assign button - 50x50 SQUARE
-                assign_btn = QPushButton("Not Set")
-                assign_btn.setFixedSize(50, 50)
-                assign_btn.setStyleSheet("QPushButton { text-align: center; border-radius: 3px; font-size: 9px; }")
-                assign_btn.setProperty("control_id", control_id)
-                assign_btn.clicked.connect(lambda checked, cid=control_id: self.on_assign_key(cid))
-                row_layout.addWidget(assign_btn)
-
-                # Add stretch to push label and button together to the left
-                row_layout.addStretch()
-
-                # Store reference
-                self.gaming_controls[control_id] = {
-                    'button': assign_btn,
-                    'keycode': None,
-                    'row': None,
-                    'col': None,
-                    'enabled': False
-                }
-
-                column_layout.addWidget(row_widget)
-
-            mappings_layout.addWidget(column_widget)
+        # Add outer stretch on the right
+        controls_layout.addStretch(1)
 
         # Buttons
         main_layout.addStretch()
