@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGri
     QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout
 
 from widgets.combo_box import ArrowComboBox
-from widgets.keyboard_widget import KeyboardWidget2
+from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple, KeyboardWidgetNoHighlight
 from editor.basic_editor import BasicEditor
 from widgets.clickable_label import ClickableLabel
 from util import tr
@@ -1704,7 +1704,7 @@ class PerKeyRGBHandler(BasicHandler):
         self.layout_editor = SimpleLayoutEditor()
 
         # Create KeyboardWidget2
-        self.keyboard_widget = KeyboardWidget2(self.layout_editor)
+        self.keyboard_widget = KeyboardWidgetNoHighlight(self.layout_editor)
         self.keyboard_widget.clicked.connect(self.on_key_clicked)
         keyboard_layout.addWidget(self.keyboard_widget)
 

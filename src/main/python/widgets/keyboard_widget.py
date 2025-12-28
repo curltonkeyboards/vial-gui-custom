@@ -1359,3 +1359,108 @@ class KeyboardWidget2(QWidget):
         elif self.active_key:
             return [self.active_key]
         return []
+
+
+class KeyboardWidgetSimple(KeyboardWidget2):
+    """
+    Simplified version of KeyboardWidget2 with original selection behavior.
+    Used by keymap, lighting, and layout editors that don't need multi-selection.
+
+    This restores the pre-trigger-settings behavior where:
+    - Click selects a single key
+    - Drag paints over multiple keys sequentially
+    - No multi-selection or drag-to-deselect modes
+    """
+
+    def __init__(self, layout_editor):
+        # Call parent init which sets up all the widgets
+        super().__init__(layout_editor)
+
+        # Remove multi-selection features not needed for simple mode
+        self.drag_mode = None
+        self.selected_keys = set()
+
+    def mousePressEvent(self, ev):
+        """Original simple mouse press behavior: click to select, drag to paint"""
+        if not self.enabled:
+            return
+
+        self.active_key, self.active_mask = self.hit_test(ev.pos())
+        if self.active_key is not None:
+            self.is_dragging = True  # Start drag painting
+            self.clicked.emit()
+        else:
+            self.deselected.emit()
+        self.update()
+
+    def mouseMoveEvent(self, ev):
+        """Original drag painting: drag over keys to select them sequentially"""
+        if not self.enabled or not self.is_dragging:
+            return
+
+        # Check if we're over a key
+        key, mask = self.hit_test(ev.pos())
+        if key is not None and key != self.active_key:
+            # We've dragged onto a new key, paint it
+            self.active_key = key
+            self.active_mask = mask
+            self.clicked.emit()
+            self.update()
+
+    def mouseReleaseEvent(self, ev):
+        """Stop drag painting on mouse release"""
+        if not self.enabled:
+            return
+
+        self.is_dragging = False
+
+
+class KeyboardWidgetNoHighlight(KeyboardWidgetSimple):
+    """
+    Keyboard widget with no selection highlighting at all.
+    Used by lighting/RGB configurator where color painting is done
+    and selection highlighting would interfere with seeing the actual colors.
+
+    Keys still emit clicked signals for interaction, but no visual highlighting.
+    """
+
+    def mousePressEvent(self, ev):
+        """Click to interact with key, but don't highlight it"""
+        if not self.enabled:
+            return
+
+        clicked_key, clicked_mask = self.hit_test(ev.pos())
+        if clicked_key is not None:
+            # Don't set active_key to avoid highlighting
+            self.active_mask = clicked_mask
+            self.is_dragging = True
+            # Temporarily set active_key for the signal, then clear it
+            self.active_key = clicked_key
+            self.clicked.emit()
+            self.active_key = None  # Clear immediately to prevent highlighting
+        else:
+            self.deselected.emit()
+        self.update()
+
+    def mouseMoveEvent(self, ev):
+        """Drag over keys to interact, but don't highlight them"""
+        if not self.enabled or not self.is_dragging:
+            return
+
+        key, mask = self.hit_test(ev.pos())
+        if key is not None:
+            # Allow dragging without highlighting
+            self.active_mask = mask
+            # Temporarily set for signal emission
+            self.active_key = key
+            self.clicked.emit()
+            self.active_key = None  # Clear immediately
+            self.update()
+
+    def mouseReleaseEvent(self, ev):
+        """Stop drag interaction on mouse release"""
+        if not self.enabled:
+            return
+
+        self.is_dragging = False
+        self.active_key = None  # Ensure no highlighting remains

@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QLabel, QCheckBox, QComboBox, QGridLayout, QWidget, 
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
-from widgets.keyboard_widget import KeyboardWidget2
+from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from vial_device import VialKeyboard
 
 
@@ -96,7 +96,7 @@ class LayoutEditor(BasicEditor):
         self.widgets = []
 
         self.addStretch()
-        self.keyboard_preview = KeyboardWidget2(self)
+        self.keyboard_preview = KeyboardWidgetSimple(self)
         self.keyboard_preview.set_enabled(False)
         self.keyboard_preview.set_scale(0.7)
         self.addWidget(self.keyboard_preview)
