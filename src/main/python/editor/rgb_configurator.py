@@ -2838,13 +2838,28 @@ class RGBConfigurator(BasicEditor):
         self.handler_per_key_rgb = PerKeyRGBHandler(self.lighting_container)
         # No update connection needed for per-key handler
 
-        # Initialize handler for Custom Lights tab
+        # Initialize handlers for Custom Lights tab
+        # First, add all Basic tab handlers to Custom Lights tab (duplicate Basic content)
+        self.handler_backlight_custom = QmkBacklightHandler(self.custom_container)
+        self.handler_backlight_custom.update.connect(self.update_from_keyboard)
+        self.handler_rgblight_custom = QmkRgblightHandler(self.custom_container)
+        self.handler_rgblight_custom.update.connect(self.update_from_keyboard)
+        self.handler_vialrgb_custom = VialRGBHandler(self.custom_container)
+        self.handler_vialrgb_custom.update.connect(self.update_from_keyboard)
+        self.handler_rescan_custom = RescanButtonHandler(self.custom_container)
+        self.handler_layer_rgb_custom = LayerRGBHandler(self.custom_container)
+        self.handler_layer_rgb_custom.update.connect(self.update_from_keyboard)
+
+        # Then add the Custom Lights handler (original custom lights content will appear below Basic content)
         self.handler_custom_lights = CustomLightsHandler(self.custom_container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
 
         self.handlers = [self.handler_backlight, self.handler_rgblight,
                         self.handler_vialrgb, self.handler_rescan,
-                        self.handler_layer_rgb, self.handler_per_key_rgb, self.handler_custom_lights]
+                        self.handler_layer_rgb, self.handler_per_key_rgb,
+                        self.handler_backlight_custom, self.handler_rgblight_custom,
+                        self.handler_vialrgb_custom, self.handler_rescan_custom,
+                        self.handler_layer_rgb_custom, self.handler_custom_lights]
 
         # Save button is now inside the Basic tab, after LayerRGBHandler
 
