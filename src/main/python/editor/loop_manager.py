@@ -980,6 +980,9 @@ class LoopManager(BasicEditor):
         columns_layout = QHBoxLayout()
         main_layout.addLayout(columns_layout)
 
+        # Add stretch to push boxes together in center
+        columns_layout.addStretch()
+
         # === SAVE SECTION (Left Column) ===
         save_group = QGroupBox(tr("LoopManager", "Save from Device"))
         save_layout = QVBoxLayout()
@@ -1049,6 +1052,9 @@ class LoopManager(BasicEditor):
         load_group.setLayout(load_layout)
         load_group.setMaximumWidth(500)
         columns_layout.addWidget(load_group)
+
+        # Add stretch to push boxes together in center
+        columns_layout.addStretch()
 
         # Browse button
         browse_btn = QPushButton(tr("LoopManager", "Browse for Loop/MIDI Files"))
@@ -1140,15 +1146,15 @@ class LoopManager(BasicEditor):
         for i in range(4):
             # Main loop button with container
             main_container = QWidget()
-            main_container.setFixedSize(100, 60)
+            main_container.setFixedSize(120, 60)  # Increased width by 20px
             main_container_layout = QVBoxLayout(main_container)
             main_container_layout.setContentsMargins(0, 0, 0, 0)
             main_container_layout.setSpacing(0)
 
             main_btn = QPushButton(f"Loop {i+1}")
             main_btn.setMinimumHeight(60)
-            main_btn.setMaximumWidth(100)
-            main_btn.setMinimumWidth(100)
+            main_btn.setMaximumWidth(120)  # Increased by 20px
+            main_btn.setMinimumWidth(120)  # Increased by 20px
             main_btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_main(loop))
             main_btn.setProperty('loop_num', i+1)
             main_container_layout.addWidget(main_btn)
@@ -1156,7 +1162,7 @@ class LoopManager(BasicEditor):
             # X button positioned at top right
             main_clear_btn = QPushButton("✕")
             main_clear_btn.setParent(main_container)
-            main_clear_btn.setGeometry(75, 2, 20, 20)
+            main_clear_btn.setGeometry(95, 2, 20, 20)  # Adjusted for wider button
             main_clear_btn.setVisible(False)
             main_clear_btn.setStyleSheet("""
                 QPushButton {
@@ -1179,15 +1185,15 @@ class LoopManager(BasicEditor):
 
             # Overdub loop button with container
             overdub_container = QWidget()
-            overdub_container.setFixedSize(100, 60)
+            overdub_container.setFixedSize(120, 60)  # Increased width by 20px
             overdub_container_layout = QVBoxLayout(overdub_container)
             overdub_container_layout.setContentsMargins(0, 0, 0, 0)
             overdub_container_layout.setSpacing(0)
 
             overdub_btn = QPushButton(f"Overdub {i+1}")
             overdub_btn.setMinimumHeight(60)
-            overdub_btn.setMaximumWidth(100)
-            overdub_btn.setMinimumWidth(100)
+            overdub_btn.setMaximumWidth(120)  # Increased by 20px
+            overdub_btn.setMinimumWidth(120)  # Increased by 20px
             overdub_btn.setEnabled(False)
             overdub_btn.clicked.connect(lambda checked, loop=i+1: self.on_assign_overdub(loop))
             overdub_btn.setProperty('loop_num', i+1)
@@ -1196,7 +1202,7 @@ class LoopManager(BasicEditor):
             # X button positioned at top right
             overdub_clear_btn = QPushButton("✕")
             overdub_clear_btn.setParent(overdub_container)
-            overdub_clear_btn.setGeometry(75, 2, 20, 20)
+            overdub_clear_btn.setGeometry(95, 2, 20, 20)  # Adjusted for wider button
             overdub_clear_btn.setVisible(False)
             overdub_clear_btn.setStyleSheet("""
                 QPushButton {
@@ -1953,12 +1959,13 @@ class LoopManager(BasicEditor):
             highlight_text = palette.color(QPalette.HighlightedText).name()
             alt_base = palette.color(QPalette.AlternateBase).name()
             light_color = palette.color(QPalette.Light).name()
+            mid_color = palette.color(QPalette.Mid).name()
 
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {btn_color};
                     color: {btn_text};
-                    border: none;
+                    border: 2px solid {mid_color};
                     border-radius: 4px;
                     font-weight: bold;
                     padding: 5px;
@@ -1969,7 +1976,7 @@ class LoopManager(BasicEditor):
                 QPushButton:checked {{
                     background-color: {highlight_color};
                     color: {highlight_text};
-                    border: 2px solid {light_color};
+                    border: 4px solid {light_color};
                 }}
                 QPushButton:disabled {{
                     background-color: {alt_base};

@@ -2792,7 +2792,7 @@ class CustomLightsHandler(BasicHandler):
         
         # Reset combo box to header
         self.slot_widgets[slot]['preset_combo'].setCurrentIndex(0)
-        
+
 class RGBConfigurator(BasicEditor):
 
     def __init__(self):

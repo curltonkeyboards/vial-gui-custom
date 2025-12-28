@@ -4323,8 +4323,7 @@ class DpadButton(QPushButton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.border_path = None
-        self.border_color = QColor(85, 85, 85)  # #555555
-        self.border_width = 2
+        self.border_width = 3  # Increased from 2 to 3 (1px thicker)
 
     def set_border_path(self, path):
         """Set the path to draw the border along"""
@@ -4338,7 +4337,9 @@ class DpadButton(QPushButton):
         if self.border_path:
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
-            pen = QPen(self.border_color, self.border_width)
+            # Use theme-related color from palette
+            border_color = QApplication.palette().color(QPalette.Mid)
+            pen = QPen(border_color, self.border_width)
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(self.border_path)
