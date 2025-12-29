@@ -352,6 +352,12 @@ static const char* clock_source_names[] = {
 velocity_curve_t he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
 uint8_t he_velocity_min = 1;    // Default: 1
 uint8_t he_velocity_max = 127;  // Default: 127
+velocity_curve_t keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
+uint8_t keysplit_he_velocity_min = 1;    // Default: 1
+uint8_t keysplit_he_velocity_max = 127;  // Default: 127
+velocity_curve_t triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
+uint8_t triplesplit_he_velocity_min = 1;    // Default: 1
+uint8_t triplesplit_he_velocity_max = 127;  // Default: 127
 
 // Velocity curve names for display
 __attribute__((unused)) static const char* velocity_curve_names[] = {
@@ -448,21 +454,32 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
     he_velocity_max = max;
 }
 
-// Helper: Get velocity curve for a specific key (per-key or global fallback)
-// Checks the per-key flag - works independently of per_key_mode_enabled
-uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col) {
+// Helper: Get velocity curve for a specific key with 3-tier priority
+// split_type: 0=base, 1=keysplit, 2=triplesplit
+// Priority 1: Per-key curve (if flag enabled)
+// Priority 2: Split-specific curve (if keysplitvelocitystatus enables it)
+// Priority 3: Global fallback curve
+uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t split_type) {
     uint8_t key_index = row * 14 + col;
     if (key_index < 70) {
         uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
         per_key_actuation_t *settings = &per_key_actuations[target_layer].keys[key_index];
 
-        // Check if this specific key uses per-key velocity curve (using flags field)
+        // Priority 1: Check if this specific key uses per-key velocity curve
         if (settings->flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
             return settings->velocity_curve;
         }
     }
 
-    // Fallback to global curve
+    // Priority 2: Check for split-specific curve
+    // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
+    if (split_type == 1 && (keyboard_settings.keysplitvelocitystatus == 1 || keyboard_settings.keysplitvelocitystatus == 3)) {
+        return keyboard_settings.keysplit_he_velocity_curve;
+    } else if (split_type == 2 && (keyboard_settings.keysplitvelocitystatus == 2 || keyboard_settings.keysplitvelocitystatus == 3)) {
+        return keyboard_settings.triplesplit_he_velocity_curve;
+    }
+
+    // Priority 3: Fallback to global curve
     return keyboard_settings.he_velocity_curve;
 }
 
@@ -480,7 +497,7 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
     // Get velocity curve (per-key or global) and global min/max
-    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col, 0);  // split_type=0 (base)
     uint8_t min_vel = keyboard_settings.he_velocity_min;
     uint8_t max_vel = keyboard_settings.he_velocity_max;
 
@@ -529,7 +546,7 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
     // Get velocity curve (per-key or global) and keysplit min/max
-    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col, 1);  // split_type=1 (keysplit)
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
@@ -578,7 +595,7 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
     // Get velocity curve (per-key or global) and triplesplit min/max
-    uint8_t curve = get_key_velocity_curve(current_layer, row, col);
+    uint8_t curve = get_key_velocity_curve(current_layer, row, col, 2);  // split_type=2 (triplesplit)
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
@@ -2271,11 +2288,9 @@ void initialize_layer_actuations(void) {
         layer_actuations[i].normal_actuation = 80;  // 2.0mm
         layer_actuations[i].midi_actuation = 80;    // 2.0mm
         layer_actuations[i].velocity_mode = 0;      // Fixed
-        layer_actuations[i].rapidfire_sensitivity = 50;
-        layer_actuations[i].midi_rapidfire_sensitivity = 50;
-        layer_actuations[i].midi_rapidfire_velocity = 0;
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
+        // Note: Rapidfire settings are now per-key in per_key_actuations
         // Note: Velocity curve/min/max settings and aftertouch are now global in keyboard_settings
     }
 }
@@ -2625,9 +2640,10 @@ void reset_keyboard_settings(void) {
     he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     he_velocity_min = 1;
     he_velocity_max = 127;
-    // Note: keysplit/triplesplit curves now use per-key or global fallback
+    keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     keysplit_he_velocity_min = 1;
     keysplit_he_velocity_max = 127;
+    triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
     triplesplit_he_velocity_min = 1;
     triplesplit_he_velocity_max = 127;
     base_sustain = 0;
@@ -2669,9 +2685,10 @@ void reset_keyboard_settings(void) {
     keyboard_settings.he_velocity_curve = he_velocity_curve;
     keyboard_settings.he_velocity_min = he_velocity_min;
     keyboard_settings.he_velocity_max = he_velocity_max;
-    // Note: keysplit/triplesplit curves removed - now use per-key or global fallback
+    keyboard_settings.keysplit_he_velocity_curve = keysplit_he_velocity_curve;
     keyboard_settings.keysplit_he_velocity_min = keysplit_he_velocity_min;
     keyboard_settings.keysplit_he_velocity_max = keysplit_he_velocity_max;
+    keyboard_settings.triplesplit_he_velocity_curve = triplesplit_he_velocity_curve;
     keyboard_settings.triplesplit_he_velocity_min = triplesplit_he_velocity_min;
     keyboard_settings.triplesplit_he_velocity_max = triplesplit_he_velocity_max;
     keyboard_settings.base_sustain = base_sustain;
@@ -2728,9 +2745,10 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     he_velocity_curve = keyboard_settings.he_velocity_curve;
     he_velocity_min = keyboard_settings.he_velocity_min;
     he_velocity_max = keyboard_settings.he_velocity_max;
-    // Note: keysplit/triplesplit curves removed - now use per-key or global fallback
+    keysplit_he_velocity_curve = keyboard_settings.keysplit_he_velocity_curve;
     keysplit_he_velocity_min = keyboard_settings.keysplit_he_velocity_min;
     keysplit_he_velocity_max = keyboard_settings.keysplit_he_velocity_max;
+    triplesplit_he_velocity_curve = keyboard_settings.triplesplit_he_velocity_curve;
     triplesplit_he_velocity_min = keyboard_settings.triplesplit_he_velocity_min;
     triplesplit_he_velocity_max = keyboard_settings.triplesplit_he_velocity_max;
     base_sustain = keyboard_settings.base_sustain;
@@ -3320,9 +3338,9 @@ void handle_copy_layer_actuations(const uint8_t* data) {
         return;  // Invalid parameters
     }
 
-    // Copy all 70 actuation values from source to dest
+    // Copy all 70 per-key actuation settings from source to dest
     for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuations[dest].actuation[i] = per_key_actuations[source].actuation[i];
+        per_key_actuations[dest].keys[i] = per_key_actuations[source].keys[i];
     }
 
     save_per_key_actuations();
@@ -3718,7 +3736,7 @@ void keyboard_post_init_user(void) {
 	// Initialize per-key actuations
 	load_per_key_actuations();
 	// If EEPROM is uninitialized (all 0xFF), set defaults
-	if (per_key_actuations[0].actuation[0] == 0xFF) {
+	if (per_key_actuations[0].keys[0].actuation == 0xFF) {
 		initialize_per_key_actuations();
 		save_per_key_actuations();
 	}

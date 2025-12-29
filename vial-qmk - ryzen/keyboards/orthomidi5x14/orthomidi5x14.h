@@ -128,6 +128,12 @@ typedef enum {
 extern velocity_curve_t he_velocity_curve;
 extern uint8_t he_velocity_min;  // 1-127
 extern uint8_t he_velocity_max;  // 1-127
+extern velocity_curve_t keysplit_he_velocity_curve;
+extern uint8_t keysplit_he_velocity_min;  // 1-127
+extern uint8_t keysplit_he_velocity_max;  // 1-127
+extern velocity_curve_t triplesplit_he_velocity_curve;
+extern uint8_t triplesplit_he_velocity_min;  // 1-127
+extern uint8_t triplesplit_he_velocity_max;  // 1-127
 
 uint8_t apply_he_velocity_curve(uint8_t travel_value);
 void cycle_he_velocity_curve(bool forward);
