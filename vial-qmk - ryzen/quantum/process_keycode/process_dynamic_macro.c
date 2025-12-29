@@ -13171,9 +13171,7 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t midi = data[2];
     // data[3] is aftertouch (now global, not per-layer)
     uint8_t velocity = data[4];
-    uint8_t rapid = data[5];
-    uint8_t midi_rapid_sens = data[6];
-    uint8_t midi_rapid_vel = data[7];
+    // data[5-7] were rapidfire parameters (now per-key, ignored)
     uint8_t vel_speed = data[8];
     // data[9] is aftertouch_cc (now global, not per-layer)
     uint8_t flags = data[10];
@@ -13184,11 +13182,10 @@ __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
         return;
     }
 
-    set_layer_actuation(layer, normal, midi, velocity, rapid,
-                       midi_rapid_sens, midi_rapid_vel, vel_speed, flags);
+    set_layer_actuation(layer, normal, midi, velocity, vel_speed, flags);
     save_layer_actuations();
 
-    dprintf("HID: Set layer %d actuation (velocity settings now global)\n", layer);
+    dprintf("HID: Set layer %d actuation (rapidfire now per-key, velocity settings now global)\n", layer);
 }
 
 __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
