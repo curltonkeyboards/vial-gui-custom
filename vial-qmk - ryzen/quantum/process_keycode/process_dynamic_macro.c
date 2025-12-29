@@ -13083,15 +13083,7 @@ __attribute__((weak)) void load_layer_actuations(void) {
         if (layer_actuations[layer].velocity_mode > 3) {
             layer_actuations[layer].velocity_mode = 2;
         }
-        if (layer_actuations[layer].rapidfire_sensitivity < 1 || layer_actuations[layer].rapidfire_sensitivity > 100) {
-            layer_actuations[layer].rapidfire_sensitivity = 4;
-        }
-        if (layer_actuations[layer].midi_rapidfire_sensitivity < 1 || layer_actuations[layer].midi_rapidfire_sensitivity > 100) {
-            layer_actuations[layer].midi_rapidfire_sensitivity = 10;
-        }
-        if (layer_actuations[layer].midi_rapidfire_velocity > 20) {
-            layer_actuations[layer].midi_rapidfire_velocity = 10;
-        }
+        // Note: rapidfire settings moved to per-key actuations
         if (layer_actuations[layer].velocity_speed_scale < 1 || layer_actuations[layer].velocity_speed_scale > 20) {
             layer_actuations[layer].velocity_speed_scale = 10;
         }
@@ -13106,9 +13098,7 @@ __attribute__((weak)) void reset_layer_actuations(void) {
         layer_actuations[layer].normal_actuation = 80;
         layer_actuations[layer].midi_actuation = 80;
         layer_actuations[layer].velocity_mode = 2;
-        layer_actuations[layer].rapidfire_sensitivity = 4;
-        layer_actuations[layer].midi_rapidfire_sensitivity = 10;
-        layer_actuations[layer].midi_rapidfire_velocity = 10;
+        // Note: rapidfire settings moved to per-key actuations
         layer_actuations[layer].velocity_speed_scale = 10;
         layer_actuations[layer].flags = 0;
     }
@@ -13118,7 +13108,6 @@ __attribute__((weak)) void reset_layer_actuations(void) {
 
 // Set actuation for a specific layer
 __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t rapid, uint8_t midi_rapid_sens, uint8_t midi_rapid_vel,
                          uint8_t vel_speed, uint8_t flags) {
     if (layer >= 12) return;
 
@@ -13126,42 +13115,27 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     if (normal > 100) normal = 100;
     if (midi > 100) midi = 100;
     if (velocity > 3) velocity = 3;
-    if (rapid < 1) rapid = 1;
-    if (rapid > 100) rapid = 100;
-    if (midi_rapid_sens < 1) midi_rapid_sens = 1;
-    if (midi_rapid_sens > 100) midi_rapid_sens = 100;
-    if (midi_rapid_vel > 20) midi_rapid_vel = 20;
     if (vel_speed < 1) vel_speed = 1;
     if (vel_speed > 20) vel_speed = 20;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
     layer_actuations[layer].velocity_mode = velocity;
-    layer_actuations[layer].rapidfire_sensitivity = rapid;
-    layer_actuations[layer].midi_rapidfire_sensitivity = midi_rapid_sens;
-    layer_actuations[layer].midi_rapidfire_velocity = midi_rapid_vel;
+    // Note: rapidfire settings moved to per-key actuations
     layer_actuations[layer].velocity_speed_scale = vel_speed;
     layer_actuations[layer].flags = flags;
 
-    dprintf("Set layer %d: n=%d m=%d vel=%d rf=%d(%s) mrfs=%d mrfv=%d(%s) vs=%d\n",
-            layer, normal, midi, velocity, rapid,
-            (flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) ? "ON" : "OFF",
-            midi_rapid_sens, midi_rapid_vel,
-            (flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) ? "ON" : "OFF",
-            vel_speed);
+    dprintf("Set layer %d: n=%d m=%d vel=%d vs=%d flags=%d\n",
+            layer, normal, midi, velocity, vel_speed, flags);
 }
 
 // Get actuation for a specific layer
 __attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *rapid, uint8_t *midi_rapid_sens, uint8_t *midi_rapid_vel,
                          uint8_t *vel_speed, uint8_t *flags) {
     if (layer >= 12) {
         *normal = 80;
         *midi = 80;
         *velocity = 2;
-        *rapid = 4;
-        *midi_rapid_sens = 10;
-        *midi_rapid_vel = 10;
         *vel_speed = 10;
         *flags = 0;
         return;
@@ -13170,22 +13144,21 @@ __attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, u
     *normal = layer_actuations[layer].normal_actuation;
     *midi = layer_actuations[layer].midi_actuation;
     *velocity = layer_actuations[layer].velocity_mode;
-    *rapid = layer_actuations[layer].rapidfire_sensitivity;
-    *midi_rapid_sens = layer_actuations[layer].midi_rapidfire_sensitivity;
-    *midi_rapid_vel = layer_actuations[layer].midi_rapidfire_velocity;
+    // Note: rapidfire settings moved to per-key actuations
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
     *flags = layer_actuations[layer].flags;
 }
 
 // Helper functions to check flags
+// Note: Rapidfire is now per-key, not layer-based - these functions always return false
 __attribute__((weak)) bool layer_rapidfire_enabled(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_RAPIDFIRE_ENABLED) != 0;
+    (void)layer;  // Unused
+    return false;  // Rapidfire moved to per-key actuations
 }
 
 __attribute__((weak)) bool layer_midi_rapidfire_enabled(uint8_t layer) {
-    if (layer >= 12) return false;
-    return (layer_actuations[layer].flags & LAYER_ACTUATION_FLAG_MIDI_RAPIDFIRE_ENABLED) != 0;
+    (void)layer;  // Unused
+    return false;  // MIDI rapidfire moved to per-key actuations
 }
 
 // ============================================================================
@@ -13236,72 +13209,48 @@ __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer, uint8_t* re
 __attribute__((weak)) void handle_get_all_layer_actuations(void) {
     load_layer_actuations();
 
-    // Send data in chunks (12 layers × 8 bytes = 96 bytes, 4 packets of 24 bytes each)
+    // Send data in chunks (12 layers × 5 bytes = 60 bytes, 3 packets of 20 bytes each)
+    // Note: Rapidfire fields removed - now per-key
 
-    // Packet 0: Layers 0-2 complete (24 bytes)
-    uint8_t response0[24];
+    // Packet 0: Layers 0-3 (20 bytes)
+    uint8_t response0[20];
     uint8_t idx = 0;
-    for (uint8_t layer = 0; layer < 3; layer++) {
+    for (uint8_t layer = 0; layer < 4; layer++) {
         response0[idx++] = layer_actuations[layer].normal_actuation;
         response0[idx++] = layer_actuations[layer].midi_actuation;
         response0[idx++] = layer_actuations[layer].velocity_mode;
-        response0[idx++] = layer_actuations[layer].rapidfire_sensitivity;
-        response0[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
-        response0[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
         response0[idx++] = layer_actuations[layer].velocity_speed_scale;
         response0[idx++] = layer_actuations[layer].flags;
     }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, 0, response0, 24);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, 0, response0, 20);
     wait_ms(10);
-    
-    // Packet 1: Layers 3-5 complete (24 bytes)
-    uint8_t response1[24];
+
+    // Packet 1: Layers 4-7 (20 bytes)
+    uint8_t response1[20];
     idx = 0;
-    for (uint8_t layer = 3; layer < 6; layer++) {
+    for (uint8_t layer = 4; layer < 8; layer++) {
         response1[idx++] = layer_actuations[layer].normal_actuation;
         response1[idx++] = layer_actuations[layer].midi_actuation;
         response1[idx++] = layer_actuations[layer].velocity_mode;
-        response1[idx++] = layer_actuations[layer].rapidfire_sensitivity;
-        response1[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
-        response1[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
         response1[idx++] = layer_actuations[layer].velocity_speed_scale;
         response1[idx++] = layer_actuations[layer].flags;
     }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 1, 0, response1, 24);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 1, 0, response1, 20);
     wait_ms(10);
-    
-    // Packet 2: Layers 6-8 complete (24 bytes)
-    uint8_t response2[24];
+
+    // Packet 2: Layers 8-11 (20 bytes)
+    uint8_t response2[20];
     idx = 0;
-    for (uint8_t layer = 6; layer < 9; layer++) {
+    for (uint8_t layer = 8; layer < 12; layer++) {
         response2[idx++] = layer_actuations[layer].normal_actuation;
         response2[idx++] = layer_actuations[layer].midi_actuation;
         response2[idx++] = layer_actuations[layer].velocity_mode;
-        response2[idx++] = layer_actuations[layer].rapidfire_sensitivity;
-        response2[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
-        response2[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
         response2[idx++] = layer_actuations[layer].velocity_speed_scale;
         response2[idx++] = layer_actuations[layer].flags;
     }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 2, 0, response2, 24);
-    wait_ms(10);
-    
-    // Packet 3: Layers 9-11 complete (24 bytes)
-    uint8_t response3[24];
-    idx = 0;
-    for (uint8_t layer = 9; layer < 12; layer++) {
-        response3[idx++] = layer_actuations[layer].normal_actuation;
-        response3[idx++] = layer_actuations[layer].midi_actuation;
-        response3[idx++] = layer_actuations[layer].velocity_mode;
-        response3[idx++] = layer_actuations[layer].rapidfire_sensitivity;
-        response3[idx++] = layer_actuations[layer].midi_rapidfire_sensitivity;
-        response3[idx++] = layer_actuations[layer].midi_rapidfire_velocity;
-        response3[idx++] = layer_actuations[layer].velocity_speed_scale;
-        response3[idx++] = layer_actuations[layer].flags;
-    }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 3, 0, response3, 24);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 2, 0, response2, 20);
 
-    dprintf("HID: Sent all layer actuations (4 packets)\n");
+    dprintf("HID: Sent all layer actuations (3 packets, 5 bytes/layer)\n");
 }
 __attribute__((weak)) void handle_reset_layer_actuations(void) {
     reset_layer_actuations();
