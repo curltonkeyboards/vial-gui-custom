@@ -93,9 +93,10 @@ uint8_t modified_note;
 uint8_t original_note;
 
 // MIDI velocity and sustain settings (defined here, declared extern in process_dynamic_macro.h)
-// Note: Keysplit/Triplesplit curves now use per-key or global fallback - only min/max remain
+velocity_curve_t keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
 uint8_t keysplit_he_velocity_min = 1;
 uint8_t keysplit_he_velocity_max = 127;
+velocity_curve_t triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
 uint8_t triplesplit_he_velocity_min = 1;
 uint8_t triplesplit_he_velocity_max = 127;
 uint8_t base_sustain = 0;
@@ -352,12 +353,6 @@ static const char* clock_source_names[] = {
 velocity_curve_t he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
 uint8_t he_velocity_min = 1;    // Default: 1
 uint8_t he_velocity_max = 127;  // Default: 127
-velocity_curve_t keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
-uint8_t keysplit_he_velocity_min = 1;    // Default: 1
-uint8_t keysplit_he_velocity_max = 127;  // Default: 127
-velocity_curve_t triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
-uint8_t triplesplit_he_velocity_min = 1;    // Default: 1
-uint8_t triplesplit_he_velocity_max = 127;  // Default: 127
 
 // Velocity curve names for display
 __attribute__((unused)) static const char* velocity_curve_names[] = {

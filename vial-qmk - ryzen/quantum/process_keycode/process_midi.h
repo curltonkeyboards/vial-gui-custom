@@ -984,7 +984,7 @@ void reset_per_key_actuations(void);
 // Per-key lookup functions
 uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col);
 per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col);
-uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col);
+uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t split_type);
 
 // HID handlers for per-key actuation
 void handle_set_per_key_actuation(const uint8_t* data);
