@@ -493,21 +493,20 @@ class TriggerSettingsTab(BasicEditor):
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
         curve_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Velocity curve dropdown (no label, directly next to checkbox)
-        self.velocity_curve_combo = QComboBox()
-        self.velocity_curve_combo.addItem("Softest", 0)
-        self.velocity_curve_combo.addItem("Soft", 1)
-        self.velocity_curve_combo.addItem("Medium", 2)
-        self.velocity_curve_combo.addItem("Hard", 3)
-        self.velocity_curve_combo.addItem("Hardest", 4)
-        self.velocity_curve_combo.setCurrentIndex(2)
-        self.velocity_curve_combo.setEnabled(False)
-        self.velocity_curve_combo.currentIndexChanged.connect(self.on_velocity_curve_changed)
-        curve_layout.addWidget(self.velocity_curve_combo)
-
-        curve_layout.addStretch()  # Push everything to the left
+        curve_layout.addStretch()  # Push checkbox to the left
 
         main_layout.addLayout(curve_layout)
+
+        # Velocity Curve Editor (replaces old dropdown)
+        from widgets.curve_editor import CurveEditorWidget
+        curve_editor_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
+        main_layout.addWidget(curve_editor_label)
+
+        self.velocity_curve_editor = CurveEditorWidget(show_save_button=True)
+        self.velocity_curve_editor.setEnabled(False)
+        self.velocity_curve_editor.curve_changed.connect(self.on_velocity_curve_changed)
+        self.velocity_curve_editor.save_to_user_requested.connect(self.on_save_velocity_curve_to_user)
+        main_layout.addWidget(self.velocity_curve_editor)
 
         widget.setLayout(main_layout)
         return widget
@@ -642,8 +641,9 @@ class TriggerSettingsTab(BasicEditor):
         self.actuation_value_label.setText(self.value_to_mm(settings['actuation']))
         self.deadzone_top_value_label.setText(self.value_to_mm(settings['deadzone_top']))
 
-        # Load velocity curve
-        self.velocity_curve_combo.setCurrentIndex(settings['velocity_curve'])
+        # Load velocity curve (now supports 0-16 instead of 0-4)
+        curve_index = settings.get('velocity_curve', 0)
+        self.velocity_curve_editor.select_curve(curve_index)
 
         # Load rapidfire settings (extract bit 0 from flags)
         rapidfire_enabled = (settings['flags'] & 0x01) != 0
@@ -669,7 +669,7 @@ class TriggerSettingsTab(BasicEditor):
         key_selected = self.container.active_key is not None
         self.trigger_slider.setEnabled(key_selected and self.mode_enabled)
         self.use_per_key_curve_checkbox.setEnabled(key_selected)
-        self.velocity_curve_combo.setEnabled(key_selected and use_per_key_curve)
+        self.velocity_curve_editor.setEnabled(key_selected and use_per_key_curve)
         self.rapidfire_checkbox.setEnabled(key_selected)
         self.rapid_trigger_slider.setEnabled(key_selected and rapidfire_enabled)
         self.rf_widget.setVisible(rapidfire_enabled)
@@ -678,7 +678,7 @@ class TriggerSettingsTab(BasicEditor):
     def on_key_deselected(self):
         """Handle key deselection - disable all controls"""
         self.trigger_slider.setEnabled(False)
-        self.velocity_curve_combo.setEnabled(False)
+        self.velocity_curve_editor.setEnabled(False)
         self.rapidfire_checkbox.setEnabled(False)
         self.rapid_trigger_slider.setEnabled(False)
         self.rf_vel_mod_slider.setEnabled(False)
@@ -735,10 +735,15 @@ class TriggerSettingsTab(BasicEditor):
 
         self.refresh_layer_display()
 
-    def on_velocity_curve_changed(self, index):
-        """Handle velocity curve dropdown change - applies to all selected keys"""
+    def on_velocity_curve_changed(self, points):
+        """Handle velocity curve change - applies to all selected keys (NO AUTO-SAVE)"""
         if self.syncing:
             return
+
+        # Get curve index from preset combo (0-16 or -1 for custom)
+        curve_index = self.velocity_curve_editor.preset_combo.currentData()
+        if curve_index is None or curve_index < 0:
+            curve_index = 0  # Default to linear if custom
 
         # Get all selected keys (or just active key if none selected)
         selected_keys = self.container.get_selected_keys()
@@ -747,20 +752,50 @@ class TriggerSettingsTab(BasicEditor):
 
         layer = self.current_layer if self.per_layer_enabled else 0
 
-        # Apply to all selected keys
+        # Apply to all selected keys (in memory only - no auto-save)
         for key in selected_keys:
             if key.desc.row is not None:
                 row, col = key.desc.row, key.desc.col
                 key_index = row * 14 + col
 
                 if key_index < 70:
-                    self.per_key_values[layer][key_index]['velocity_curve'] = index
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    self.per_key_values[layer][key_index]['velocity_curve'] = curve_index
+
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
 
         self.refresh_layer_display()
+
+    def on_save_velocity_curve_to_user(self, slot_index, curve_name):
+        """Called when user wants to save current velocity curve to a user slot"""
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+
+        try:
+            # Get current curve points from editor
+            points = self.velocity_curve_editor.get_points()
+
+            # Save to keyboard
+            success = self.device.keyboard.set_user_curve(slot_index, points, curve_name)
+
+            if success:
+                from PyQt5.QtWidgets import QMessageBox
+                QMessageBox.information(None, "Success", f"Velocity curve saved to {curve_name}")
+
+                # Reload user curve names
+                user_curve_names = self.device.keyboard.get_all_user_curve_names()
+                if user_curve_names and len(user_curve_names) == 10:
+                    self.velocity_curve_editor.set_user_curve_names(user_curve_names)
+
+                # Select the newly saved curve (curve index = 7 + slot_index)
+                self.velocity_curve_editor.select_curve(7 + slot_index)
+
+                # Update the velocity curve index for selected keys
+                self.on_velocity_curve_changed(points)
+        except Exception as e:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.critical(None, "Error", f"Error saving velocity curve: {str(e)}")
 
     def on_deadzone_top_changed(self, value):
         """Handle top deadzone slider change - applies to all selected keys"""
@@ -1002,8 +1037,8 @@ class TriggerSettingsTab(BasicEditor):
                         settings = self.per_key_values[layer][key_index]
                         self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
-        # Enable/disable velocity curve dropdown based on this flag
-        self.velocity_curve_combo.setEnabled(enabled)
+        # Enable/disable velocity curve editor based on this flag
+        self.velocity_curve_editor.setEnabled(enabled)
         self.refresh_layer_display()
 
     def send_layer_actuation(self, layer):
@@ -1346,6 +1381,14 @@ class TriggerSettingsTab(BasicEditor):
             self.load_layer_controls()
 
             self.refresh_layer_display()
+
+            # Load user curve names for velocity curve editor
+            try:
+                user_curve_names = self.keyboard.get_all_user_curve_names()
+                if user_curve_names and len(user_curve_names) == 10:
+                    self.velocity_curve_editor.set_user_curve_names(user_curve_names)
+            except Exception as e:
+                print(f"Error loading user curve names: {e}")
 
         self.container.setEnabled(self.valid())
 
