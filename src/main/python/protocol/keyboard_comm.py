@@ -1433,6 +1433,166 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except:
             self.gaming_settings = None
 
+    # =========================================================================
+    # USER CURVE METHODS
+    # =========================================================================
+
+    def set_user_curve(self, slot, points, name):
+        """
+        Set a user curve slot with custom Bezier points and name.
+
+        Args:
+            slot: Slot index (0-9 for User 1-10)
+            points: List of 4 points [[x0,y0], [x1,y1], [x2,y2], [x3,y3]] (0-255 range)
+            name: Curve name (max 16 characters)
+
+        Returns:
+            bool: True if successful
+        """
+        if slot < 0 or slot >= 10:
+            return False
+
+        if len(points) != 4 or any(len(p) != 2 for p in points):
+            return False
+
+        # Prepare data: [cmd, slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
+        data = bytearray([slot])
+
+        # Add 4 points (8 bytes)
+        for point in points:
+            data.append(int(point[0]) & 0xFF)
+            data.append(int(point[1]) & 0xFF)
+
+        # Add name (16 bytes, null-padded)
+        name_bytes = name.encode('utf-8')[:16]
+        name_bytes += b'\x00' * (16 - len(name_bytes))
+        data.extend(name_bytes)
+
+        packet = self._create_hid_packet(0xD9, 0, data)  # HID_CMD_USER_CURVE_SET
+        response = self.usb_send(self.dev, packet, retries=20)
+        return response and len(response) > 5 and response[5] == 0x01
+
+    def get_user_curve(self, slot):
+        """
+        Get a user curve from the keyboard.
+
+        Args:
+            slot: Slot index (0-9)
+
+        Returns:
+            dict: {'points': [[x0,y0], ...], 'name': str} or None
+        """
+        if slot < 0 or slot >= 10:
+            return None
+
+        data = bytearray([slot])
+        packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_USER_CURVE_GET
+        response = self.usb_send(self.dev, packet, retries=20)
+
+        if not response or len(response) < 26 or response[5] != 0x01:
+            return None
+
+        # Parse response: [status, slot, p0x, p0y, ..., name[16]]
+        points = []
+        for i in range(4):
+            x = response[7 + i*2]
+            y = response[8 + i*2]
+            points.append([x, y])
+
+        # Parse name (16 bytes starting at offset 15)
+        name_bytes = bytes(response[15:31])
+        name = name_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
+
+        return {'points': points, 'name': name}
+
+    def get_all_user_curve_names(self):
+        """
+        Get all user curve names from the keyboard.
+
+        Returns:
+            list: 10 curve names (may be truncated to 10 chars each)
+        """
+        packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
+        response = self.usb_send(self.dev, packet, retries=20)
+
+        if not response or len(response) < 106 or response[5] != 0x01:
+            # Return defaults if failed
+            return [f"User {i+1}" for i in range(10)]
+
+        # Parse 10 names (10 bytes each, starting at offset 6)
+        names = []
+        for i in range(10):
+            name_bytes = bytes(response[6 + i*10:6 + (i+1)*10])
+            name = name_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
+            if not name:
+                name = f"User {i+1}"
+            names.append(name)
+
+        return names
+
+    def reset_user_curves(self):
+        """Reset all user curves to defaults (linear)."""
+        packet = self._create_hid_packet(0xDC, 0, bytearray())  # HID_CMD_USER_CURVE_RESET
+        response = self.usb_send(self.dev, packet, retries=20)
+        return response and len(response) > 5 and response[5] == 0x01
+
+    # =========================================================================
+    # GAMING RESPONSE SETTINGS
+    # =========================================================================
+
+    def set_gaming_response(self, angle_adj_enabled, diagonal_angle, square_output, snappy_joystick, curve_index):
+        """
+        Set gamepad response transformation settings.
+
+        Args:
+            angle_adj_enabled: bool - Enable diagonal angle adjustment
+            diagonal_angle: int (0-90) - Angle in degrees
+            square_output: bool - Use square joystick output
+            snappy_joystick: bool - Use snappy joystick mode
+            curve_index: int (0-16) - Analog curve index (0-6 factory, 7-16 user)
+
+        Returns:
+            bool: True if successful
+        """
+        data = bytearray([
+            1 if angle_adj_enabled else 0,
+            int(diagonal_angle) & 0xFF,
+            1 if square_output else 0,
+            1 if snappy_joystick else 0,
+            int(curve_index) & 0xFF
+        ])
+
+        packet = self._create_hid_packet(0xDD, 0, data)  # HID_CMD_GAMING_SET_RESPONSE
+        response = self.usb_send(self.dev, packet, retries=20)
+        return response and len(response) > 5 and response[5] == 0x01
+
+    def get_gaming_response(self):
+        """
+        Get gamepad response transformation settings.
+
+        Returns:
+            dict: {
+                'angle_adj_enabled': bool,
+                'diagonal_angle': int,
+                'square_output': bool,
+                'snappy_joystick': bool,
+                'curve_index': int
+            } or None
+        """
+        packet = self._create_hid_packet(0xDE, 0, bytearray())  # HID_CMD_GAMING_GET_RESPONSE
+        response = self.usb_send(self.dev, packet, retries=20)
+
+        if not response or len(response) < 11 or response[5] != 0x01:
+            return None
+
+        return {
+            'angle_adj_enabled': response[6] != 0,
+            'diagonal_angle': response[7],
+            'square_output': response[8] != 0,
+            'snappy_joystick': response[9] != 0,
+            'curve_index': response[10]
+        }
+
     def set_per_key_actuation(self, layer, key_index, settings):
         """Set per-key actuation settings for a specific key
 
