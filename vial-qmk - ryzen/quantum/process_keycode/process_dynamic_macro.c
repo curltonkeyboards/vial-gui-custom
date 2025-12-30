@@ -6,6 +6,7 @@
 #include "qmk_midi.h"
 #include "raw_hid.h"
 #include <math.h>
+#include "keyboards/orthomidi5x14/orthomidi5x14.h"
 
 // External functions to mark/unmark notes from macros
 extern void mark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
