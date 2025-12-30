@@ -355,12 +355,62 @@ typedef struct {
     gaming_analog_config_t rs_config;      // Right stick calibration
     gaming_analog_config_t trigger_config; // Trigger calibration
 
+    // NEW: Analog Curve and Gamepad Response Settings
+    uint8_t analog_curve_index;        // 0-6=Factory presets, 7-16=User curves 1-10
+    bool angle_adjustment_enabled;     // Enable diagonal angle adjustment
+    uint8_t diagonal_angle;            // 0-90 degrees for diagonal adjustment
+    bool use_square_output;            // Square vs circular joystick output
+    bool snappy_joystick_enabled;      // Use max instead of combining opposite inputs
+
     uint16_t magic;  // 0x47A3 (GAME) for validation
 } gaming_settings_t;
 
 // EEPROM address for gaming settings (100 bytes allocated) - MOVED to avoid overlap with expanded per-key actuation
 #define GAMING_SETTINGS_EEPROM_ADDR 74100
 #define GAMING_SETTINGS_MAGIC 0x47A3
+
+// =============================================================================
+// CURVE SYSTEM (For Gaming Analog & Velocity Curves)
+// =============================================================================
+
+// User-defined curve (24 bytes each)
+// Used for both gaming analog curves and per-key velocity curves
+typedef struct {
+    uint8_t points[4][2];  // 4 control points: (x, y) each 0-255
+    char name[16];         // User-friendly name (e.g., "My FPS Curve")
+} user_curve_t;
+
+// Global user curves array (10 slots × 24 bytes = 240 bytes + 2 magic = 242 bytes)
+typedef struct {
+    user_curve_t curves[10];
+    uint16_t magic;  // 0xCF01 (CurVe1) for validation
+} user_curves_t;
+
+// EEPROM address for user curves
+#define USER_CURVES_EEPROM_ADDR 68100
+#define USER_CURVES_MAGIC 0xCF01
+
+extern user_curves_t user_curves;
+
+// Curve system functions
+void user_curves_init(void);
+void user_curves_save(void);
+void user_curves_load(void);
+void user_curves_reset(void);
+uint8_t apply_curve(uint8_t input, uint8_t curve_index);
+
+// Curve indices:
+// 0-6:   Factory presets (Linear, Aggro, Slow, Smooth, Steep, Instant, Turbo)
+// 7-16:  User curves 1-10
+#define CURVE_FACTORY_LINEAR    0
+#define CURVE_FACTORY_AGGRO     1
+#define CURVE_FACTORY_SLOW      2
+#define CURVE_FACTORY_SMOOTH    3
+#define CURVE_FACTORY_STEEP     4
+#define CURVE_FACTORY_INSTANT   5
+#define CURVE_FACTORY_TURBO     6
+#define CURVE_USER_START        7
+#define CURVE_USER_END          16
 
 // Gaming mode global state
 extern bool gaming_mode_active;
@@ -372,6 +422,11 @@ void gaming_save_settings(void);
 void gaming_load_settings(void);
 void gaming_reset_settings(void);
 void gaming_update_joystick(void);
+
+// Gamepad response transformation functions
+void apply_angle_adjustment(int16_t* x, int16_t* y, uint8_t angle_deg);
+void apply_square_output(int16_t* x, int16_t* y);
+void apply_snappy_joystick(int16_t* axis_val, int16_t pos, int16_t neg);
 //int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert);
 bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
