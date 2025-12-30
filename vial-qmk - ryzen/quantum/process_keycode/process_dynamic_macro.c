@@ -741,35 +741,12 @@ static uint8_t apply_velocity_transformations(uint8_t raw_travel, int8_t velocit
         uint8_t min_vel = macro_recording_min[macro_idx];
         uint8_t max_vel = macro_recording_max[macro_idx];
 
-        // Normalize raw_travel to 0.0-1.0 range
-        float normalized = (float)raw_travel / 255.0f;
+        // Apply Bezier curve to raw_travel (0-255 input -> 0-255 output)
+        uint8_t curved_travel = apply_curve(raw_travel, curve);
 
-        // Apply velocity curve
-        float curved;
-        switch (curve) {
-            case 0:  // VELOCITY_CURVE_SOFTEST
-                curved = normalized * normalized * normalized;
-                break;
-            case 1:  // VELOCITY_CURVE_SOFT
-                curved = normalized * normalized;
-                break;
-            case 2:  // VELOCITY_CURVE_MEDIUM (linear)
-                curved = normalized;
-                break;
-            case 3:  // VELOCITY_CURVE_HARD
-                curved = sqrtf(normalized);
-                break;
-            case 4:  // VELOCITY_CURVE_HARDEST
-                curved = powf(normalized, 1.0f/3.0f);
-                break;
-            default:
-                curved = normalized;
-                break;
-        }
-
-        // Map curved value to velocity range
+        // Map curved travel to velocity range (min_vel to max_vel)
         uint8_t range = max_vel - min_vel;
-        int16_t velocity_from_curve = min_vel + (int16_t)(curved * range);
+        int16_t velocity_from_curve = min_vel + ((int16_t)curved_travel * range) / 255;
 
         // Clamp to valid MIDI velocity range (1-127)
         if (velocity_from_curve < 1) velocity_from_curve = 1;
@@ -811,35 +788,12 @@ static uint8_t apply_overdub_velocity_transformations(uint8_t raw_travel, int8_t
         uint8_t min_vel = overdub_recording_min[macro_idx];
         uint8_t max_vel = overdub_recording_max[macro_idx];
 
-        // Normalize raw_travel to 0.0-1.0 range
-        float normalized = (float)raw_travel / 255.0f;
+        // Apply Bezier curve to raw_travel (0-255 input -> 0-255 output)
+        uint8_t curved_travel = apply_curve(raw_travel, curve);
 
-        // Apply velocity curve
-        float curved;
-        switch (curve) {
-            case 0:  // VELOCITY_CURVE_SOFTEST
-                curved = normalized * normalized * normalized;
-                break;
-            case 1:  // VELOCITY_CURVE_SOFT
-                curved = normalized * normalized;
-                break;
-            case 2:  // VELOCITY_CURVE_MEDIUM (linear)
-                curved = normalized;
-                break;
-            case 3:  // VELOCITY_CURVE_HARD
-                curved = sqrtf(normalized);
-                break;
-            case 4:  // VELOCITY_CURVE_HARDEST
-                curved = powf(normalized, 1.0f/3.0f);
-                break;
-            default:
-                curved = normalized;
-                break;
-        }
-
-        // Map curved value to velocity range
+        // Map curved travel to velocity range (min_vel to max_vel)
         uint8_t range = max_vel - min_vel;
-        int16_t velocity_from_curve = min_vel + (int16_t)(curved * range);
+        int16_t velocity_from_curve = min_vel + ((int16_t)curved_travel * range) / 255;
 
         // Clamp to valid MIDI velocity range (1-127)
         if (velocity_from_curve < 1) velocity_from_curve = 1;
