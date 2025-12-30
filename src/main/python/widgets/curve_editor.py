@@ -1,0 +1,400 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+"""
+Curve Editor Widget
+A reusable widget for editing analog curves with 4 Bezier control points.
+Used for both gaming analog curves and per-key velocity curves.
+"""
+
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+                             QComboBox, QDialog, QListWidget, QDialogButtonBox, QMessageBox)
+from PyQt5.QtCore import Qt, QPoint, QPointF, pyqtSignal
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QPainterPath, QPolygonF
+
+from util import tr
+
+
+class CurveEditorWidget(QWidget):
+    """
+    Interactive Bezier curve editor with 4 control points.
+
+    Features:
+    - Visual curve display (300x300 canvas)
+    - 4 draggable points (points 0 and 3 fixed at corners)
+    - Real-time Bezier curve rendering
+    - Preset loading (factory + user curves)
+    - "Save to User" functionality
+
+    Signals:
+    - curve_changed: Emitted when curve points change
+    - save_to_user_requested: Emitted when user wants to save curve to a slot
+    """
+
+    curve_changed = pyqtSignal(list)  # [[x0,y0], [x1,y1], [x2,y2], [x3,y3]]
+    save_to_user_requested = pyqtSignal(int, str)  # (slot_index, curve_name)
+
+    # Factory curve names (indices 0-6)
+    FACTORY_CURVES = [
+        "Linear",
+        "Aggro",
+        "Slow",
+        "Smooth",
+        "Steep",
+        "Instant",
+        "Turbo"
+    ]
+
+    # Factory curve presets (same as firmware)
+    FACTORY_CURVE_POINTS = [
+        # Linear
+        [[0, 0], [85, 85], [170, 170], [255, 255]],
+        # Aggro
+        [[0, 0], [30, 120], [100, 200], [255, 255]],
+        # Slow
+        [[0, 0], [150, 50], [200, 100], [255, 255]],
+        # Smooth
+        [[0, 0], [85, 50], [170, 200], [255, 255]],
+        # Steep
+        [[0, 0], [100, 30], [150, 220], [255, 255]],
+        # Instant
+        [[0, 0], [10, 250], [20, 255], [255, 255]],
+        # Turbo
+        [[0, 0], [50, 150], [120, 240], [255, 255]]
+    ]
+
+    def __init__(self, parent=None, show_save_button=True):
+        super().__init__(parent)
+        self.show_save_button = show_save_button
+        self.user_curve_names = ["User 1", "User 2", "User 3", "User 4", "User 5",
+                                 "User 6", "User 7", "User 8", "User 9", "User 10"]
+
+        # Initialize with linear curve
+        self.points = [[0, 0], [85, 85], [170, 170], [255, 255]]
+        self.dragging_point = -1  # Which point is being dragged (-1 = none)
+
+        # Canvas settings
+        self.canvas_size = 300
+        self.margin = 20
+        self.grid_divisions = 10
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Preset selector
+        preset_layout = QHBoxLayout()
+        preset_label = QLabel(tr("CurveEditor", "Preset:"))
+        self.preset_combo = QComboBox()
+
+        # Add factory curves
+        for i, name in enumerate(self.FACTORY_CURVES):
+            self.preset_combo.addItem(name, i)
+
+        # Add separator
+        self.preset_combo.insertSeparator(len(self.FACTORY_CURVES))
+
+        # Add user curves (indices 7-16)
+        for i, name in enumerate(self.user_curve_names):
+            self.preset_combo.addItem(name, 7 + i)
+
+        # Add custom option
+        self.preset_combo.insertSeparator(self.preset_combo.count())
+        self.preset_combo.addItem("Custom", -1)
+
+        self.preset_combo.currentIndexChanged.connect(self.on_preset_changed)
+
+        preset_layout.addWidget(preset_label)
+        preset_layout.addWidget(self.preset_combo, 1)
+
+        if self.show_save_button:
+            self.save_to_user_btn = QPushButton(tr("CurveEditor", "Save to User..."))
+            self.save_to_user_btn.clicked.connect(self.on_save_to_user_clicked)
+            preset_layout.addWidget(self.save_to_user_btn)
+
+        layout.addLayout(preset_layout)
+
+        # Canvas (drawing area)
+        self.canvas = CurveCanvas(self, self.points, self.canvas_size, self.margin, self.grid_divisions)
+        self.canvas.point_moved.connect(self.on_point_moved)
+        layout.addWidget(self.canvas)
+
+        self.setLayout(layout)
+
+    def on_preset_changed(self, index):
+        """Load selected preset curve"""
+        curve_index = self.preset_combo.currentData()
+
+        if curve_index == -1:
+            # Custom - don't change anything
+            return
+        elif curve_index < 7:
+            # Factory curve
+            self.set_points(self.FACTORY_CURVE_POINTS[curve_index])
+        # User curves are loaded externally via set_points()
+
+    def on_point_moved(self, point_index, x, y):
+        """Called when user drags a point"""
+        if point_index >= 0 and point_index < 4:
+            self.points[point_index] = [x, y]
+
+            # Switch to "Custom" preset
+            custom_index = self.preset_combo.findData(-1)
+            if custom_index >= 0:
+                self.preset_combo.blockSignals(True)
+                self.preset_combo.setCurrentIndex(custom_index)
+                self.preset_combo.blockSignals(False)
+
+            self.curve_changed.emit(self.points)
+
+    def on_save_to_user_clicked(self):
+        """Show dialog to save current curve to a user slot"""
+        dialog = SaveToUserDialog(self, self.user_curve_names)
+        if dialog.exec_() == QDialog.Accepted:
+            slot_index = dialog.get_selected_slot()
+            slot_name = dialog.get_curve_name()
+            if slot_index >= 0 and slot_index < 10:
+                self.save_to_user_requested.emit(slot_index, slot_name)
+
+    def set_points(self, points):
+        """Set curve points programmatically"""
+        if len(points) == 4:
+            self.points = [list(p) for p in points]  # Deep copy
+            self.canvas.set_points(self.points)
+            self.canvas.update()
+            self.curve_changed.emit(self.points)
+
+    def get_points(self):
+        """Get current curve points"""
+        return [list(p) for p in self.points]  # Deep copy
+
+    def set_user_curve_names(self, names):
+        """Update user curve names in dropdown"""
+        if len(names) == 10:
+            self.user_curve_names = list(names)
+
+            # Update combo box
+            self.preset_combo.blockSignals(True)
+            for i in range(10):
+                # User curves start after factory curves + separator
+                combo_index = len(self.FACTORY_CURVES) + 1 + i
+                self.preset_combo.setItemText(combo_index, names[i])
+            self.preset_combo.blockSignals(False)
+
+    def select_curve(self, curve_index):
+        """Select a curve by index (0-16 or -1 for custom)"""
+        for i in range(self.preset_combo.count()):
+            if self.preset_combo.itemData(i) == curve_index:
+                self.preset_combo.blockSignals(True)
+                self.preset_combo.setCurrentIndex(i)
+                self.preset_combo.blockSignals(False)
+                break
+
+
+class CurveCanvas(QWidget):
+    """
+    Canvas widget for drawing and interacting with the Bezier curve
+    """
+
+    point_moved = pyqtSignal(int, int, int)  # (point_index, x, y)
+
+    def __init__(self, parent, points, size, margin, grid_divisions):
+        super().__init__(parent)
+        self.points = points
+        self.canvas_size = size
+        self.margin = margin
+        self.grid_divisions = grid_divisions
+        self.dragging_point = -1
+
+        self.setFixedSize(size, size)
+        self.setMouseTracking(True)
+
+        # Visual settings
+        self.point_radius = 6
+        self.hover_point = -1
+
+    def set_points(self, points):
+        self.points = points
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Background
+        painter.fillRect(self.rect(), QColor(30, 30, 30))
+
+        # Draw grid
+        self.draw_grid(painter)
+
+        # Draw curve
+        self.draw_curve(painter)
+
+        # Draw control points
+        self.draw_control_points(painter)
+
+    def draw_grid(self, painter):
+        """Draw grid background"""
+        pen = QPen(QColor(50, 50, 50))
+        painter.setPen(pen)
+
+        draw_area = self.canvas_size - 2 * self.margin
+        step = draw_area // self.grid_divisions
+
+        # Vertical lines
+        for i in range(self.grid_divisions + 1):
+            x = self.margin + i * step
+            painter.drawLine(x, self.margin, x, self.canvas_size - self.margin)
+
+        # Horizontal lines
+        for i in range(self.grid_divisions + 1):
+            y = self.margin + i * step
+            painter.drawLine(self.margin, y, self.canvas_size - self.margin, y)
+
+        # Draw axes labels
+        painter.setPen(QPen(QColor(150, 150, 150)))
+        painter.drawText(self.margin - 15, self.canvas_size - self.margin + 15, "0%")
+        painter.drawText(self.canvas_size - self.margin - 20, self.canvas_size - self.margin + 15, "100%")
+        painter.drawText(5, self.margin + 5, "100%")
+        painter.drawText(5, self.canvas_size - self.margin + 5, "0%")
+
+    def draw_curve(self, painter):
+        """Draw the Bezier curve"""
+        pen = QPen(QColor(255, 165, 0), 2)  # Orange
+        painter.setPen(pen)
+
+        # Convert points to canvas coordinates
+        p0 = self.value_to_canvas(self.points[0])
+        p1 = self.value_to_canvas(self.points[1])
+        p2 = self.value_to_canvas(self.points[2])
+        p3 = self.value_to_canvas(self.points[3])
+
+        # Draw Bezier curve using QPainterPath
+        path = QPainterPath()
+        path.moveTo(p0)
+        path.cubicTo(p1, p2, p3)
+        painter.drawPath(path)
+
+        # Draw control lines (dashed)
+        pen.setStyle(Qt.DashLine)
+        pen.setColor(QColor(100, 100, 100))
+        painter.setPen(pen)
+        painter.drawLine(p0, p1)
+        painter.drawLine(p2, p3)
+
+    def draw_control_points(self, painter):
+        """Draw draggable control points"""
+        for i, point in enumerate(self.points):
+            canvas_point = self.value_to_canvas(point)
+
+            # Point 0 and 3 are fixed (corners)
+            if i == 0 or i == 3:
+                color = QColor(100, 100, 100)  # Gray (fixed)
+            elif i == self.hover_point or i == self.dragging_point:
+                color = QColor(255, 200, 0)  # Bright yellow (hover/dragging)
+            else:
+                color = QColor(255, 165, 0)  # Orange
+
+            painter.setBrush(QBrush(color))
+            painter.setPen(QPen(Qt.white, 2))
+            painter.drawEllipse(canvas_point, self.point_radius, self.point_radius)
+
+    def value_to_canvas(self, point):
+        """Convert value coordinates (0-255) to canvas coordinates"""
+        draw_area = self.canvas_size - 2 * self.margin
+        x = self.margin + (point[0] / 255.0) * draw_area
+        # Invert Y axis (0 at bottom, 255 at top)
+        y = self.canvas_size - self.margin - (point[1] / 255.0) * draw_area
+        return QPointF(x, y)
+
+    def canvas_to_value(self, pos):
+        """Convert canvas coordinates to value coordinates (0-255)"""
+        draw_area = self.canvas_size - 2 * self.margin
+        x = ((pos.x() - self.margin) / draw_area) * 255.0
+        # Invert Y axis
+        y = ((self.canvas_size - self.margin - pos.y()) / draw_area) * 255.0
+
+        # Clamp to 0-255
+        x = max(0, min(255, x))
+        y = max(0, min(255, y))
+
+        return [int(x), int(y)]
+
+    def mousePressEvent(self, event):
+        """Start dragging a point"""
+        if event.button() == Qt.LeftButton:
+            for i in range(1, 3):  # Only points 1 and 2 are draggable
+                canvas_point = self.value_to_canvas(self.points[i])
+                dist = (event.pos() - canvas_point.toPoint()).manhattanLength()
+                if dist <= self.point_radius + 5:
+                    self.dragging_point = i
+                    break
+
+    def mouseMoveEvent(self, event):
+        """Drag point or update hover state"""
+        if self.dragging_point >= 0:
+            # Update dragged point
+            new_value = self.canvas_to_value(event.pos())
+            self.points[self.dragging_point] = new_value
+            self.point_moved.emit(self.dragging_point, new_value[0], new_value[1])
+            self.update()
+        else:
+            # Update hover state
+            old_hover = self.hover_point
+            self.hover_point = -1
+            for i in range(1, 3):  # Only points 1 and 2
+                canvas_point = self.value_to_canvas(self.points[i])
+                dist = (event.pos() - canvas_point.toPoint()).manhattanLength()
+                if dist <= self.point_radius + 5:
+                    self.hover_point = i
+                    break
+
+            if old_hover != self.hover_point:
+                self.update()
+
+    def mouseReleaseEvent(self, event):
+        """Stop dragging"""
+        if event.button() == Qt.LeftButton:
+            self.dragging_point = -1
+
+
+class SaveToUserDialog(QDialog):
+    """Dialog for saving curve to a user slot"""
+
+    def __init__(self, parent, user_curve_names):
+        super().__init__(parent)
+        self.user_curve_names = user_curve_names
+        self.setWindowTitle(tr("SaveToUserDialog", "Save to User Curve"))
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout()
+
+        # Instructions
+        label = QLabel(tr("SaveToUserDialog", "Select a user curve slot to save to:"))
+        layout.addWidget(label)
+
+        # List of user slots
+        self.list_widget = QListWidget()
+        for i, name in enumerate(self.user_curve_names):
+            self.list_widget.addItem(f"User {i+1}: {name}")
+        self.list_widget.setCurrentRow(0)
+        layout.addWidget(self.list_widget)
+
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.setLayout(layout)
+        self.setMinimumWidth(350)
+
+    def get_selected_slot(self):
+        """Get selected slot index (0-9)"""
+        return self.list_widget.currentRow()
+
+    def get_curve_name(self):
+        """Get name for the curve (defaults to "User N")"""
+        slot = self.get_selected_slot()
+        return f"User {slot + 1}"
