@@ -3602,6 +3602,77 @@ class GamingConfigurator(BasicEditor):
         )
         calibration_layout.addWidget(trigger_max_widget)
 
+        # MIDDLE COLUMN: Curve Editor and Gamepad Response
+        middle_column = QWidget()
+        middle_layout = QVBoxLayout()
+        middle_layout.setSpacing(15)
+        middle_layout.setContentsMargins(0, 0, 0, 0)
+        middle_column.setLayout(middle_layout)
+
+        # Analog Curve Section
+        from widgets.curve_editor import CurveEditorWidget
+        curve_group = QGroupBox(tr("GamingConfigurator", "Analog Curve"))
+        curve_group.setMaximumWidth(350)
+        curve_group_layout = QVBoxLayout()
+        curve_group.setLayout(curve_group_layout)
+
+        self.curve_editor = CurveEditorWidget(show_save_button=True)
+        self.curve_editor.curve_changed.connect(self.on_curve_changed)
+        self.curve_editor.save_to_user_requested.connect(self.on_save_curve_to_user)
+        curve_group_layout.addWidget(self.curve_editor)
+
+        middle_layout.addWidget(curve_group)
+
+        # Gamepad Response Section
+        response_group = QGroupBox(tr("GamingConfigurator", "Gamepad Response"))
+        response_group.setMaximumWidth(350)
+        response_layout = QVBoxLayout()
+        response_group.setLayout(response_layout)
+
+        # Angle Adjustment
+        self.angle_adj_checkbox = QCheckBox(tr("GamingConfigurator", "Enable angle adjustment"))
+        response_layout.addWidget(self.angle_adj_checkbox)
+
+        # Diagonal Angle Slider
+        angle_widget = QWidget()
+        angle_layout = QVBoxLayout()
+        angle_layout.setSpacing(2)
+        angle_layout.setContentsMargins(20, 0, 0, 0)  # Indent
+        angle_widget.setLayout(angle_layout)
+
+        self.diagonal_angle_label = QLabel("Diagonal Angle: 0°")
+        angle_layout.addWidget(self.diagonal_angle_label)
+
+        self.diagonal_angle_slider = QSlider(Qt.Horizontal)
+        self.diagonal_angle_slider.setMinimum(0)
+        self.diagonal_angle_slider.setMaximum(90)
+        self.diagonal_angle_slider.setValue(0)
+        self.diagonal_angle_slider.setTickInterval(10)
+        self.diagonal_angle_slider.valueChanged.connect(
+            lambda val: self.diagonal_angle_label.setText(f"Diagonal Angle: {val}°")
+        )
+        angle_layout.addWidget(self.diagonal_angle_slider)
+
+        response_layout.addWidget(angle_widget)
+
+        # Square Output
+        self.square_output_checkbox = QCheckBox(tr("GamingConfigurator", "Use Square joystick output"))
+        self.square_output_checkbox.setToolTip(tr("GamingConfigurator",
+            "Restrict joystick movement to a square instead of circle.\n"
+            "Allows maximum axis output. Recommended for Rocket League and CS:GO."))
+        response_layout.addWidget(self.square_output_checkbox)
+
+        # Snappy Joystick
+        self.snappy_joystick_checkbox = QCheckBox(tr("GamingConfigurator", "Snappy Joystick"))
+        self.snappy_joystick_checkbox.setToolTip(tr("GamingConfigurator",
+            "Use maximum value of opposite sides of axis rather than combining them."))
+        response_layout.addWidget(self.snappy_joystick_checkbox)
+
+        middle_layout.addWidget(response_group)
+        middle_layout.addStretch()
+
+        controls_layout.addWidget(middle_column, alignment=QtCore.Qt.AlignTop)
+
         # Create gamepad widget with drawn outline
         gamepad_widget = GamepadWidget()
         gamepad_widget.setFixedSize(750, 560)
@@ -3900,7 +3971,22 @@ class GamingConfigurator(BasicEditor):
                 else:
                     self.keyboard.set_gaming_key_map(control_id, 0, 0, 0)
 
-            if success:
+            # Save gamepad response settings
+            angle_adj_enabled = self.angle_adj_checkbox.isChecked()
+            diagonal_angle = self.diagonal_angle_slider.value()
+            square_output = self.square_output_checkbox.isChecked()
+            snappy_joystick = self.snappy_joystick_checkbox.isChecked()
+
+            # Get current curve index from preset combo
+            current_curve_index = self.curve_editor.preset_combo.currentData()
+            if current_curve_index is None or current_curve_index < 0:
+                current_curve_index = 0  # Default to linear
+
+            response_success = self.keyboard.set_gaming_response(
+                angle_adj_enabled, diagonal_angle, square_output, snappy_joystick, current_curve_index
+            )
+
+            if success and response_success:
                 QMessageBox.information(None, "Success", "Gaming configuration saved successfully")
             else:
                 QMessageBox.warning(None, "Error", "Failed to save gaming configuration")
@@ -3947,6 +4033,24 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
                 self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
 
+                # Load gamepad response settings
+                response = self.keyboard.get_gaming_response()
+                if response:
+                    self.angle_adj_checkbox.setChecked(response.get('angle_adj_enabled', False))
+                    self.diagonal_angle_slider.setValue(response.get('diagonal_angle', 0))
+                    self.diagonal_angle_label.setText(f"Diagonal Angle: {response.get('diagonal_angle', 0)}°")
+                    self.square_output_checkbox.setChecked(response.get('square_output', False))
+                    self.snappy_joystick_checkbox.setChecked(response.get('snappy_joystick', False))
+
+                    # Select curve in combo box
+                    curve_index = response.get('curve_index', 0)
+                    self.curve_editor.select_curve(curve_index)
+
+                # Load user curve names
+                user_curve_names = self.keyboard.get_all_user_curve_names()
+                if user_curve_names and len(user_curve_names) == 10:
+                    self.curve_editor.set_user_curve_names(user_curve_names)
+
                 QMessageBox.information(None, "Success", "Gaming configuration loaded from keyboard")
             else:
                 QMessageBox.warning(None, "Error", "Failed to load gaming configuration")
@@ -3980,6 +4084,40 @@ class GamingConfigurator(BasicEditor):
                     QMessageBox.warning(None, "Error", "Failed to reset gaming configuration")
             except Exception as e:
                 QMessageBox.critical(None, "Error", f"Error resetting configuration: {str(e)}")
+
+    def on_curve_changed(self, points):
+        """Called when curve points are changed (not used for auto-save, just for preview)"""
+        # Curve changes are saved manually via Save button
+        pass
+
+    def on_save_curve_to_user(self, slot_index, curve_name):
+        """Called when user wants to save current curve to a user slot"""
+        if not self.keyboard:
+            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
+            return
+
+        try:
+            # Get current curve points
+            points = self.curve_editor.get_points()
+
+            # Save to keyboard
+            success = self.keyboard.set_user_curve(slot_index, points, curve_name)
+
+            if success:
+                QMessageBox.information(None, "Success",
+                                      f"Curve saved to {curve_name}")
+
+                # Reload user curve names to show the updated name
+                user_curve_names = self.keyboard.get_all_user_curve_names()
+                if user_curve_names and len(user_curve_names) == 10:
+                    self.curve_editor.set_user_curve_names(user_curve_names)
+
+                # Select the newly saved curve (curve index = 7 + slot_index)
+                self.curve_editor.select_curve(7 + slot_index)
+            else:
+                QMessageBox.warning(None, "Error", "Failed to save curve")
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"Error saving curve: {str(e)}")
 
     def rebuild(self, device):
         super().rebuild(device)
