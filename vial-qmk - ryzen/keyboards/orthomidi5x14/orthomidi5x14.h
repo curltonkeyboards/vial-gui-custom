@@ -116,22 +116,15 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 void toggle_midi_clock_source(void);
 
 // HE Velocity Curve and Range System
-typedef enum {
-    VELOCITY_CURVE_SOFTEST = 0,
-    VELOCITY_CURVE_SOFT,
-    VELOCITY_CURVE_MEDIUM,
-    VELOCITY_CURVE_HARD,
-    VELOCITY_CURVE_HARDEST,
-    VELOCITY_CURVE_COUNT
-} velocity_curve_t;
-
-extern velocity_curve_t he_velocity_curve;
-extern uint8_t he_velocity_min;  // 1-127
-extern uint8_t he_velocity_max;  // 1-127
-extern velocity_curve_t keysplit_he_velocity_curve;
-extern uint8_t keysplit_he_velocity_min;  // 1-127
-extern uint8_t keysplit_he_velocity_max;  // 1-127
-extern velocity_curve_t triplesplit_he_velocity_curve;
+// Curve indices: 0-6 = Factory presets (Linear, Aggro, Slow, Smooth, Steep, Instant, Turbo)
+//                7-16 = User curves (User 1-10)
+extern uint8_t he_velocity_curve;          // Curve index 0-16
+extern uint8_t he_velocity_min;            // 1-127
+extern uint8_t he_velocity_max;            // 1-127
+extern uint8_t keysplit_he_velocity_curve; // Curve index 0-16
+extern uint8_t keysplit_he_velocity_min;   // 1-127
+extern uint8_t keysplit_he_velocity_max;   // 1-127
+extern uint8_t triplesplit_he_velocity_curve; // Curve index 0-16
 extern uint8_t triplesplit_he_velocity_min;  // 1-127
 extern uint8_t triplesplit_he_velocity_max;  // 1-127
 

@@ -916,7 +916,7 @@ typedef struct {
     uint8_t actuation;              // 0-100 (0-2.5mm) - Default: 60 (1.5mm)
     uint8_t deadzone_top;           // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
     uint8_t deadzone_bottom;        // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
-    uint8_t velocity_curve;         // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - Default: 2
+    uint8_t velocity_curve;         // 0-16 (0-6: Factory curves, 7-16: User curves) - Default: 0 (Linear)
     uint8_t flags;                  // Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve - Default: 0
     uint8_t rapidfire_press_sens;   // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
     uint8_t rapidfire_release_sens; // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
