@@ -581,12 +581,18 @@ class QuickActuationWidget(QWidget):
         self.simple_velocity_preset_combo.setEditable(True)
         self.simple_velocity_preset_combo.lineEdit().setReadOnly(True)
         self.simple_velocity_preset_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        self.simple_velocity_preset_combo.addItem("Softest", 0)
-        self.simple_velocity_preset_combo.addItem("Soft", 1)
-        self.simple_velocity_preset_combo.addItem("Medium", 2)
-        self.simple_velocity_preset_combo.addItem("Hard", 3)
-        self.simple_velocity_preset_combo.addItem("Hardest", 4)
-        self.simple_velocity_preset_combo.setCurrentIndex(2)
+        # Factory curves (0-6)
+        self.simple_velocity_preset_combo.addItem("Linear", 0)
+        self.simple_velocity_preset_combo.addItem("Aggro", 1)
+        self.simple_velocity_preset_combo.addItem("Slow", 2)
+        self.simple_velocity_preset_combo.addItem("Smooth", 3)
+        self.simple_velocity_preset_combo.addItem("Steep", 4)
+        self.simple_velocity_preset_combo.addItem("Instant", 5)
+        self.simple_velocity_preset_combo.addItem("Turbo", 6)
+        # User curves (7-16) - will be populated when keyboard connects
+        for i in range(10):
+            self.simple_velocity_preset_combo.addItem(f"User {i+1}", 7 + i)
+        self.simple_velocity_preset_combo.setCurrentIndex(0)
         self.simple_velocity_preset_combo.currentIndexChanged.connect(self.on_velocity_preset_changed)
         preset_row.addWidget(self.simple_velocity_preset_combo)
         preset_row.addStretch()
@@ -712,12 +718,18 @@ class QuickActuationWidget(QWidget):
         self.midi_velocity_curve.setEditable(True)
         self.midi_velocity_curve.lineEdit().setReadOnly(True)
         self.midi_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
-        self.midi_velocity_curve.addItem("Softest", 0)
-        self.midi_velocity_curve.addItem("Soft", 1)
-        self.midi_velocity_curve.addItem("Medium", 2)
-        self.midi_velocity_curve.addItem("Hard", 3)
-        self.midi_velocity_curve.addItem("Hardest", 4)
-        self.midi_velocity_curve.setCurrentIndex(2)
+        # Factory curves (0-6)
+        self.midi_velocity_curve.addItem("Linear", 0)
+        self.midi_velocity_curve.addItem("Aggro", 1)
+        self.midi_velocity_curve.addItem("Slow", 2)
+        self.midi_velocity_curve.addItem("Smooth", 3)
+        self.midi_velocity_curve.addItem("Steep", 4)
+        self.midi_velocity_curve.addItem("Instant", 5)
+        self.midi_velocity_curve.addItem("Turbo", 6)
+        # User curves (7-16)
+        for i in range(10):
+            self.midi_velocity_curve.addItem(f"User {i+1}", 7 + i)
+        self.midi_velocity_curve.setCurrentIndex(0)
         self.midi_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
         curve_row.addWidget(self.midi_velocity_curve)
         curve_row.addStretch()
@@ -876,12 +888,18 @@ class QuickActuationWidget(QWidget):
         self.keysplit_velocity_curve.setEditable(True)
         self.keysplit_velocity_curve.lineEdit().setReadOnly(True)
         self.keysplit_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
-        self.keysplit_velocity_curve.addItem("Softest", 0)
-        self.keysplit_velocity_curve.addItem("Soft", 1)
-        self.keysplit_velocity_curve.addItem("Medium", 2)
-        self.keysplit_velocity_curve.addItem("Hard", 3)
-        self.keysplit_velocity_curve.addItem("Hardest", 4)
-        self.keysplit_velocity_curve.setCurrentIndex(2)
+        # Factory curves (0-6)
+        self.keysplit_velocity_curve.addItem("Linear", 0)
+        self.keysplit_velocity_curve.addItem("Aggro", 1)
+        self.keysplit_velocity_curve.addItem("Slow", 2)
+        self.keysplit_velocity_curve.addItem("Smooth", 3)
+        self.keysplit_velocity_curve.addItem("Steep", 4)
+        self.keysplit_velocity_curve.addItem("Instant", 5)
+        self.keysplit_velocity_curve.addItem("Turbo", 6)
+        # User curves (7-16)
+        for i in range(10):
+            self.keysplit_velocity_curve.addItem(f"User {i+1}", 7 + i)
+        self.keysplit_velocity_curve.setCurrentIndex(0)
         self.keysplit_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
         curve_row.addWidget(self.keysplit_velocity_curve)
         curve_row.addStretch()
@@ -1036,12 +1054,18 @@ class QuickActuationWidget(QWidget):
         self.triplesplit_velocity_curve.setEditable(True)
         self.triplesplit_velocity_curve.lineEdit().setReadOnly(True)
         self.triplesplit_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
-        self.triplesplit_velocity_curve.addItem("Softest", 0)
-        self.triplesplit_velocity_curve.addItem("Soft", 1)
-        self.triplesplit_velocity_curve.addItem("Medium", 2)
-        self.triplesplit_velocity_curve.addItem("Hard", 3)
-        self.triplesplit_velocity_curve.addItem("Hardest", 4)
-        self.triplesplit_velocity_curve.setCurrentIndex(2)
+        # Factory curves (0-6)
+        self.triplesplit_velocity_curve.addItem("Linear", 0)
+        self.triplesplit_velocity_curve.addItem("Aggro", 1)
+        self.triplesplit_velocity_curve.addItem("Slow", 2)
+        self.triplesplit_velocity_curve.addItem("Smooth", 3)
+        self.triplesplit_velocity_curve.addItem("Steep", 4)
+        self.triplesplit_velocity_curve.addItem("Instant", 5)
+        self.triplesplit_velocity_curve.addItem("Turbo", 6)
+        # User curves (7-16)
+        for i in range(10):
+            self.triplesplit_velocity_curve.addItem(f"User {i+1}", 7 + i)
+        self.triplesplit_velocity_curve.setCurrentIndex(0)
         self.triplesplit_velocity_curve.currentIndexChanged.connect(self.on_midi_settings_changed)
         curve_row.addWidget(self.triplesplit_velocity_curve)
         curve_row.addStretch()
@@ -1274,26 +1298,15 @@ class QuickActuationWidget(QWidget):
             self.save_midi_ui_to_memory()
 
     def on_velocity_preset_changed(self):
-        """Handle velocity preset changes - update curve/min/max accordingly"""
+        """Handle velocity preset changes - update curve index"""
         if self.syncing:
             return
 
-        preset = self.simple_velocity_preset_combo.currentData()
-        # Preset mappings: Softest(0), Soft(1), Medium(2), Hard(3), Hardest(4)
-        preset_map = {
-            0: {'curve': 0, 'min': 1, 'max': 90},     # Softest
-            1: {'curve': 1, 'min': 1, 'max': 110},    # Soft
-            2: {'curve': 2, 'min': 1, 'max': 127},    # Medium
-            3: {'curve': 3, 'min': 20, 'max': 127},   # Hard
-            4: {'curve': 4, 'min': 40, 'max': 127}    # Hardest
-        }
-
-        if preset in preset_map:
-            config = preset_map[preset]
-            self.midi_settings['velocity_curve'] = config['curve']
-            self.midi_settings['velocity_min'] = config['min']
-            self.midi_settings['velocity_max'] = config['max']
-            self.midi_settings['velocity_preset'] = preset
+        curve_index = self.simple_velocity_preset_combo.currentData()
+        # New curve system: 0-6 = factory curves, 7-16 = user curves
+        if curve_index is not None:
+            self.midi_settings['velocity_curve'] = curve_index
+            self.midi_settings['velocity_preset'] = curve_index
 
             # Update advanced controls (they're synced from preset)
             self.syncing = True

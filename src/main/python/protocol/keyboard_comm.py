@@ -1603,7 +1603,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 - actuation: Actuation point (0-100, where 60 = 1.5mm)
                 - deadzone_top: Top deadzone (0-100, default 4 = 0.1mm)
                 - deadzone_bottom: Bottom deadzone (0-100, default 4 = 0.1mm)
-                - velocity_curve: Velocity curve (0-4: SOFTEST, SOFT, MEDIUM, HARD, HARDEST)
+                - velocity_curve: Velocity curve (0-16: 0-6 Factory curves, 7-16 User curves)
                 - flags: Flags byte (Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve)
                 - rapidfire_press_sens: Rapidfire press sensitivity (0-100, default 4 = 0.1mm)
                 - rapidfire_release_sens: Rapidfire release sensitivity (0-100, default 4 = 0.1mm)
