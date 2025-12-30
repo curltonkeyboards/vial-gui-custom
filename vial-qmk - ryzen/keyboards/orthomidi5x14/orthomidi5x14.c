@@ -93,10 +93,10 @@ uint8_t modified_note;
 uint8_t original_note;
 
 // MIDI velocity and sustain settings (defined here, declared extern in process_dynamic_macro.h)
-velocity_curve_t keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+uint8_t keysplit_he_velocity_curve = 0;  // Default: Linear (curve index 0)
 uint8_t keysplit_he_velocity_min = 1;
 uint8_t keysplit_he_velocity_max = 127;
-velocity_curve_t triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+uint8_t triplesplit_he_velocity_curve = 0;  // Default: Linear (curve index 0)
 uint8_t triplesplit_he_velocity_min = 1;
 uint8_t triplesplit_he_velocity_max = 127;
 uint8_t base_sustain = 0;
@@ -350,7 +350,7 @@ static const char* clock_source_names[] = {
 // ============================================================================
 
 // Global velocity curve and range settings
-velocity_curve_t he_velocity_curve = VELOCITY_CURVE_MEDIUM;  // Default: medium (linear)
+uint8_t he_velocity_curve = 0;  // Default: Linear (curve index 0)
 uint8_t he_velocity_min = 1;    // Default: 1
 uint8_t he_velocity_max = 127;  // Default: 127
 
@@ -364,54 +364,17 @@ __attribute__((unused)) static const char* velocity_curve_names[] = {
 };
 
 // Apply velocity curve and range to travel value (0-255) -> MIDI velocity (1-127)
+// DEPRECATED: Use get_he_velocity_from_position() instead for per-key support
 uint8_t apply_he_velocity_curve(uint8_t travel_value) {
     // Input: travel_value is 0-255 from analog_matrix_get_travel_normalized()
     // Output: MIDI velocity 1-127 with curve applied
 
-    // Normalize travel to 0.0-1.0 range
-    float normalized = (float)travel_value / 255.0f;
+    // Apply Bezier curve to travel (0-255 input -> 0-255 output)
+    uint8_t curved_travel = apply_curve(travel_value, he_velocity_curve);
 
-    // Apply velocity curve
-    float curved;
-    switch (he_velocity_curve) {
-        case VELOCITY_CURVE_SOFTEST:
-            // Exponential curve favoring lower velocities
-            // Formula: x^3 (cubic curve, very soft)
-            curved = normalized * normalized * normalized;
-            break;
-
-        case VELOCITY_CURVE_SOFT:
-            // Exponential curve slightly favoring lower velocities
-            // Formula: x^2 (quadratic curve, soft)
-            curved = normalized * normalized;
-            break;
-
-        case VELOCITY_CURVE_MEDIUM:
-            // Linear curve (no transformation)
-            curved = normalized;
-            break;
-
-        case VELOCITY_CURVE_HARD:
-            // Exponential curve favoring higher velocities
-            // Formula: sqrt(x)
-            curved = sqrtf(normalized);
-            break;
-
-        case VELOCITY_CURVE_HARDEST:
-            // Exponential curve strongly favoring higher velocities
-            // Formula: cbrt(x) (cube root)
-            curved = powf(normalized, 1.0f/3.0f);
-            break;
-
-        default:
-            curved = normalized;
-            break;
-    }
-
-    // Map curved value to velocity range
-    // Map 0.0-1.0 to velocity_min-velocity_max
+    // Map curved travel to velocity range (he_velocity_min to he_velocity_max)
     uint8_t range = he_velocity_max - he_velocity_min;
-    int16_t velocity = he_velocity_min + (int16_t)(curved * range);
+    int16_t velocity = he_velocity_min + ((int16_t)curved_travel * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
@@ -420,13 +383,13 @@ uint8_t apply_he_velocity_curve(uint8_t travel_value) {
     return (uint8_t)velocity;
 }
 
-// Cycle through velocity curves
+// Cycle through velocity curves (0-16: 7 factory + 10 user = 17 total)
 void cycle_he_velocity_curve(bool forward) {
     if (forward) {
-        he_velocity_curve = (he_velocity_curve + 1) % VELOCITY_CURVE_COUNT;
+        he_velocity_curve = (he_velocity_curve + 1) % 17;
     } else {
         if (he_velocity_curve == 0) {
-            he_velocity_curve = VELOCITY_CURVE_COUNT - 1;
+            he_velocity_curve = 16;
         } else {
             he_velocity_curve--;
         }
@@ -2563,13 +2526,13 @@ void reset_keyboard_settings(void) {
     // Reset Global MIDI Settings (velocity curves, aftertouch, sustain)
     aftertouch_mode = 0;
     aftertouch_cc = 74;
-    he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    he_velocity_curve = 0;  // Linear (curve index 0)
     he_velocity_min = 1;
     he_velocity_max = 127;
-    keysplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    keysplit_he_velocity_curve = 0;  // Linear (curve index 0)
     keysplit_he_velocity_min = 1;
     keysplit_he_velocity_max = 127;
-    triplesplit_he_velocity_curve = VELOCITY_CURVE_MEDIUM;
+    triplesplit_he_velocity_curve = 0;  // Linear (curve index 0)
     triplesplit_he_velocity_min = 1;
     triplesplit_he_velocity_max = 127;
     base_sustain = 0;
