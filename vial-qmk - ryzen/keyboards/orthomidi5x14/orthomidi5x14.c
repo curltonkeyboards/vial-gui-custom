@@ -492,39 +492,16 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
     // Get velocity curve (per-key or global) and global min/max
-    uint8_t curve = get_key_velocity_curve(current_layer, row, col, 0);  // split_type=0 (base)
+    uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 0);  // split_type=0 (base)
     uint8_t min_vel = keyboard_settings.he_velocity_min;
     uint8_t max_vel = keyboard_settings.he_velocity_max;
 
-    // Normalize travel to 0.0-1.0 range
-    float normalized = (float)travel / 255.0f;
+    // Apply Bezier curve to travel (0-255 input, 0-255 output)
+    uint8_t curved_travel = apply_curve(travel, curve_index);
 
-    // Apply per-layer velocity curve
-    float curved;
-    switch (curve) {
-        case 0:  // VELOCITY_CURVE_SOFTEST
-            curved = normalized * normalized * normalized;
-            break;
-        case 1:  // VELOCITY_CURVE_SOFT
-            curved = normalized * normalized;
-            break;
-        case 2:  // VELOCITY_CURVE_MEDIUM
-            curved = normalized;
-            break;
-        case 3:  // VELOCITY_CURVE_HARD
-            curved = sqrtf(normalized);
-            break;
-        case 4:  // VELOCITY_CURVE_HARDEST
-            curved = powf(normalized, 1.0f/3.0f);
-            break;
-        default:
-            curved = normalized;
-            break;
-    }
-
-    // Map curved value to per-layer velocity range
+    // Map curved travel to per-layer velocity range (min_vel to max_vel)
     uint8_t range = max_vel - min_vel;
-    int16_t velocity = min_vel + (int16_t)(curved * range);
+    int16_t velocity = min_vel + ((int16_t)curved_travel * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
@@ -541,39 +518,16 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
     // Get velocity curve (per-key or global) and keysplit min/max
-    uint8_t curve = get_key_velocity_curve(current_layer, row, col, 1);  // split_type=1 (keysplit)
+    uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 1);  // split_type=1 (keysplit)
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
-    // Normalize travel to 0.0-1.0 range
-    float normalized = (float)travel / 255.0f;
+    // Apply Bezier curve to travel (0-255 input, 0-255 output)
+    uint8_t curved_travel = apply_curve(travel, curve_index);
 
-    // Apply per-layer velocity curve
-    float curved;
-    switch (curve) {
-        case 0:  // VELOCITY_CURVE_SOFTEST
-            curved = normalized * normalized * normalized;
-            break;
-        case 1:  // VELOCITY_CURVE_SOFT
-            curved = normalized * normalized;
-            break;
-        case 2:  // VELOCITY_CURVE_MEDIUM
-            curved = normalized;
-            break;
-        case 3:  // VELOCITY_CURVE_HARD
-            curved = sqrtf(normalized);
-            break;
-        case 4:  // VELOCITY_CURVE_HARDEST
-            curved = powf(normalized, 1.0f/3.0f);
-            break;
-        default:
-            curved = normalized;
-            break;
-    }
-
-    // Map curved value to per-layer velocity range
+    // Map curved travel to per-layer velocity range (min_vel to max_vel)
     uint8_t range = max_vel - min_vel;
-    int16_t velocity = min_vel + (int16_t)(curved * range);
+    int16_t velocity = min_vel + ((int16_t)curved_travel * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
@@ -590,39 +544,16 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t travel = analog_matrix_get_travel_normalized(row, col);
 
     // Get velocity curve (per-key or global) and triplesplit min/max
-    uint8_t curve = get_key_velocity_curve(current_layer, row, col, 2);  // split_type=2 (triplesplit)
+    uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 2);  // split_type=2 (triplesplit)
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
-    // Normalize travel to 0.0-1.0 range
-    float normalized = (float)travel / 255.0f;
+    // Apply Bezier curve to travel (0-255 input, 0-255 output)
+    uint8_t curved_travel = apply_curve(travel, curve_index);
 
-    // Apply per-layer velocity curve
-    float curved;
-    switch (curve) {
-        case 0:  // VELOCITY_CURVE_SOFTEST
-            curved = normalized * normalized * normalized;
-            break;
-        case 1:  // VELOCITY_CURVE_SOFT
-            curved = normalized * normalized;
-            break;
-        case 2:  // VELOCITY_CURVE_MEDIUM
-            curved = normalized;
-            break;
-        case 3:  // VELOCITY_CURVE_HARD
-            curved = sqrtf(normalized);
-            break;
-        case 4:  // VELOCITY_CURVE_HARDEST
-            curved = powf(normalized, 1.0f/3.0f);
-            break;
-        default:
-            curved = normalized;
-            break;
-    }
-
-    // Map curved value to per-layer velocity range
+    // Map curved travel to per-layer velocity range (min_vel to max_vel)
     uint8_t range = max_vel - min_vel;
-    int16_t velocity = min_vel + (int16_t)(curved * range);
+    int16_t velocity = min_vel + ((int16_t)curved_travel * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
@@ -3800,18 +3731,26 @@ int16_t gaming_analog_to_axis(uint8_t row, uint8_t col, bool invert, gaming_anal
     // Below minimum threshold = no input
     if (travel_norm < min_threshold) return 0;
 
-    // Above maximum threshold = full deflection
+    // Above maximum threshold = full deflection (apply curve to 255)
     if (travel_norm > max_threshold) {
-        return invert ? -32767 : 32767;
+        uint8_t curved_max = apply_curve(255, gaming_settings.analog_curve_index);
+        int16_t axis_value = ((int32_t)curved_max * 32767) / 255;
+        return invert ? -axis_value : axis_value;
     }
 
-    // Linear interpolation between min and max
+    // Normalize travel to 0-255 range within min/max thresholds
     uint32_t range = max_threshold - min_threshold;
     if (range == 0) return 0;  // Avoid division by zero
 
-    uint32_t value = ((uint32_t)(travel_norm - min_threshold) * 32767) / range;
+    uint8_t normalized_travel = ((uint32_t)(travel_norm - min_threshold) * 255) / range;
 
-    return invert ? -(int16_t)value : (int16_t)value;
+    // Apply analog curve (0-255 input -> 0-255 output)
+    uint8_t curved_travel = apply_curve(normalized_travel, gaming_settings.analog_curve_index);
+
+    // Convert curved travel to axis value (-32767 to +32767)
+    int16_t value = ((int32_t)curved_travel * 32767) / 255;
+
+    return invert ? -value : value;
 }
 
 // Convert analog travel to trigger value (0 to +32767)
@@ -3829,7 +3768,9 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
     }
 
     if (travel_norm > max_threshold) {
-        *value = 32767;
+        // Apply curve to maximum value
+        uint8_t curved_max = apply_curve(255, gaming_settings.analog_curve_index);
+        *value = ((int32_t)curved_max * 32767) / 255;
         return true;
     }
 
@@ -3839,7 +3780,14 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
         return false;
     }
 
-    *value = (int16_t)(((uint32_t)(travel_norm - min_threshold) * 32767) / range);
+    // Normalize travel to 0-255 range within min/max thresholds
+    uint8_t normalized_travel = ((uint32_t)(travel_norm - min_threshold) * 255) / range;
+
+    // Apply analog curve (0-255 input -> 0-255 output)
+    uint8_t curved_travel = apply_curve(normalized_travel, gaming_settings.analog_curve_index);
+
+    // Convert curved travel to trigger value (0 to +32767)
+    *value = ((int32_t)curved_travel * 32767) / 255;
     return true;
 }
 
@@ -3848,43 +3796,93 @@ void gaming_update_joystick(void) {
     if (!gaming_mode_active) return;
 
     // Left stick X axis (left/right) - use LS config
-    int16_t ls_x = 0;
-    if (gaming_settings.ls_left.enabled) {
-        ls_x += gaming_analog_to_axis(gaming_settings.ls_left.row, gaming_settings.ls_left.col, true, &gaming_settings.ls_config);
-    }
+    int16_t ls_x_pos = 0, ls_x_neg = 0;
     if (gaming_settings.ls_right.enabled) {
-        ls_x += gaming_analog_to_axis(gaming_settings.ls_right.row, gaming_settings.ls_right.col, false, &gaming_settings.ls_config);
+        ls_x_pos = gaming_analog_to_axis(gaming_settings.ls_right.row, gaming_settings.ls_right.col, false, &gaming_settings.ls_config);
     }
-    joystick_set_axis(0, ls_x);  // Axis 0 = Left Stick X
+    if (gaming_settings.ls_left.enabled) {
+        int16_t left_val = gaming_analog_to_axis(gaming_settings.ls_left.row, gaming_settings.ls_left.col, true, &gaming_settings.ls_config);
+        ls_x_neg = -left_val;  // Store as positive for snappy joystick
+    }
+
+    int16_t ls_x = ls_x_pos + (ls_x_neg > 0 ? -ls_x_neg : 0);
+
+    // Apply snappy joystick to left stick X if enabled
+    if (gaming_settings.snappy_joystick_enabled) {
+        apply_snappy_joystick(&ls_x, ls_x_pos, ls_x_neg);
+    }
 
     // Left stick Y axis (up/down) - use LS config
-    int16_t ls_y = 0;
-    if (gaming_settings.ls_up.enabled) {
-        ls_y += gaming_analog_to_axis(gaming_settings.ls_up.row, gaming_settings.ls_up.col, true, &gaming_settings.ls_config);
-    }
+    int16_t ls_y_pos = 0, ls_y_neg = 0;
     if (gaming_settings.ls_down.enabled) {
-        ls_y += gaming_analog_to_axis(gaming_settings.ls_down.row, gaming_settings.ls_down.col, false, &gaming_settings.ls_config);
+        ls_y_pos = gaming_analog_to_axis(gaming_settings.ls_down.row, gaming_settings.ls_down.col, false, &gaming_settings.ls_config);
     }
+    if (gaming_settings.ls_up.enabled) {
+        int16_t up_val = gaming_analog_to_axis(gaming_settings.ls_up.row, gaming_settings.ls_up.col, true, &gaming_settings.ls_config);
+        ls_y_neg = -up_val;  // Store as positive for snappy joystick
+    }
+
+    int16_t ls_y = ls_y_pos + (ls_y_neg > 0 ? -ls_y_neg : 0);
+
+    // Apply snappy joystick to left stick Y if enabled
+    if (gaming_settings.snappy_joystick_enabled) {
+        apply_snappy_joystick(&ls_y, ls_y_pos, ls_y_neg);
+    }
+
+    // Apply gamepad response transformations to left stick
+    if (gaming_settings.angle_adjustment_enabled) {
+        apply_angle_adjustment(&ls_x, &ls_y, gaming_settings.diagonal_angle);
+    }
+    if (gaming_settings.use_square_output) {
+        apply_square_output(&ls_x, &ls_y);
+    }
+
+    joystick_set_axis(0, ls_x);  // Axis 0 = Left Stick X
     joystick_set_axis(1, ls_y);  // Axis 1 = Left Stick Y
 
     // Right stick X axis (left/right) - use RS config
-    int16_t rs_x = 0;
-    if (gaming_settings.rs_left.enabled) {
-        rs_x += gaming_analog_to_axis(gaming_settings.rs_left.row, gaming_settings.rs_left.col, true, &gaming_settings.rs_config);
-    }
+    int16_t rs_x_pos = 0, rs_x_neg = 0;
     if (gaming_settings.rs_right.enabled) {
-        rs_x += gaming_analog_to_axis(gaming_settings.rs_right.row, gaming_settings.rs_right.col, false, &gaming_settings.rs_config);
+        rs_x_pos = gaming_analog_to_axis(gaming_settings.rs_right.row, gaming_settings.rs_right.col, false, &gaming_settings.rs_config);
     }
-    joystick_set_axis(2, rs_x);  // Axis 2 = Right Stick X
+    if (gaming_settings.rs_left.enabled) {
+        int16_t left_val = gaming_analog_to_axis(gaming_settings.rs_left.row, gaming_settings.rs_left.col, true, &gaming_settings.rs_config);
+        rs_x_neg = -left_val;  // Store as positive for snappy joystick
+    }
+
+    int16_t rs_x = rs_x_pos + (rs_x_neg > 0 ? -rs_x_neg : 0);
+
+    // Apply snappy joystick to right stick X if enabled
+    if (gaming_settings.snappy_joystick_enabled) {
+        apply_snappy_joystick(&rs_x, rs_x_pos, rs_x_neg);
+    }
 
     // Right stick Y axis (up/down) - use RS config
-    int16_t rs_y = 0;
-    if (gaming_settings.rs_up.enabled) {
-        rs_y += gaming_analog_to_axis(gaming_settings.rs_up.row, gaming_settings.rs_up.col, true, &gaming_settings.rs_config);
-    }
+    int16_t rs_y_pos = 0, rs_y_neg = 0;
     if (gaming_settings.rs_down.enabled) {
-        rs_y += gaming_analog_to_axis(gaming_settings.rs_down.row, gaming_settings.rs_down.col, false, &gaming_settings.rs_config);
+        rs_y_pos = gaming_analog_to_axis(gaming_settings.rs_down.row, gaming_settings.rs_down.col, false, &gaming_settings.rs_config);
     }
+    if (gaming_settings.rs_up.enabled) {
+        int16_t up_val = gaming_analog_to_axis(gaming_settings.rs_up.row, gaming_settings.rs_up.col, true, &gaming_settings.rs_config);
+        rs_y_neg = -up_val;  // Store as positive for snappy joystick
+    }
+
+    int16_t rs_y = rs_y_pos + (rs_y_neg > 0 ? -rs_y_neg : 0);
+
+    // Apply snappy joystick to right stick Y if enabled
+    if (gaming_settings.snappy_joystick_enabled) {
+        apply_snappy_joystick(&rs_y, rs_y_pos, rs_y_neg);
+    }
+
+    // Apply gamepad response transformations to right stick
+    if (gaming_settings.angle_adjustment_enabled) {
+        apply_angle_adjustment(&rs_x, &rs_y, gaming_settings.diagonal_angle);
+    }
+    if (gaming_settings.use_square_output) {
+        apply_square_output(&rs_x, &rs_y);
+    }
+
+    joystick_set_axis(2, rs_x);  // Axis 2 = Right Stick X
     joystick_set_axis(3, rs_y);  // Axis 3 = Right Stick Y
 
     // Left trigger
