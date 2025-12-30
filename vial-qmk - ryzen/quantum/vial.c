@@ -51,6 +51,14 @@
 #define vial_per_key_save               0xD7
 #define vial_per_key_load               0xD8
 
+// User Curve Commands (0xD9-0xDE)
+#define HID_CMD_USER_CURVE_SET          0xD9  // Set user curve points
+#define HID_CMD_USER_CURVE_GET          0xDA  // Get user curve
+#define HID_CMD_USER_CURVE_GET_ALL      0xDB  // Get all user curve names
+#define HID_CMD_USER_CURVE_RESET        0xDC  // Reset user curves
+#define HID_CMD_GAMING_SET_RESPONSE     0xDD  // Set gamepad response settings
+#define HID_CMD_GAMING_GET_RESPONSE     0xDE  // Get gamepad response settings
+
 #define HID_CMD_SET_LOOP_CONFIG 0xB0
 #define HID_CMD_SET_MAIN_LOOP_CCS 0xB1  
 #define HID_CMD_SET_OVERDUB_CCS 0xB2
@@ -647,6 +655,108 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			break;
 		}
 #endif
+
+		// User Curve Commands (0xD9-0xDE)
+		case HID_CMD_USER_CURVE_SET: {  // 0xD9
+			// Set user curve: [cmd, slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
+			extern user_curves_t user_curves;
+			extern void user_curves_save(void);
+
+			uint8_t slot = msg[2];
+			if (slot < 10) {
+				// Copy 4 points (8 bytes)
+				memcpy(user_curves.curves[slot].points, &msg[3], 8);
+
+				// Copy name (16 bytes) - msg[11] to msg[26]
+				memcpy(user_curves.curves[slot].name, &msg[11], 16);
+				user_curves.curves[slot].name[15] = '\0';  // Ensure null termination
+
+				user_curves_save();
+				msg[0] = 0x01; // Success
+			} else {
+				msg[0] = 0x00; // Error - invalid slot
+			}
+			break;
+		}
+
+		case HID_CMD_USER_CURVE_GET: {  // 0xDA
+			// Get user curve: [cmd, slot] -> [status, slot, p0x, p0y, ..., name[16]]
+			extern user_curves_t user_curves;
+
+			uint8_t slot = msg[2];
+			if (slot < 10) {
+				msg[0] = 0x01; // Success
+				msg[1] = slot;
+
+				// Copy 4 points (8 bytes)
+				memcpy(&msg[2], user_curves.curves[slot].points, 8);
+
+				// Copy name (16 bytes)
+				memcpy(&msg[10], user_curves.curves[slot].name, 16);
+			} else {
+				msg[0] = 0x00; // Error - invalid slot
+			}
+			break;
+		}
+
+		case HID_CMD_USER_CURVE_GET_ALL: {  // 0xDB
+			// Get all user curve names: [cmd] -> [status, name1[10], name2[10], ...]
+			extern user_curves_t user_curves;
+
+			msg[0] = 0x01; // Success
+
+			// Return all 10 curve names (truncated to 10 chars each = 100 bytes total)
+			for (int i = 0; i < 10; i++) {
+				memcpy(&msg[1 + i*10], user_curves.curves[i].name, 10);
+			}
+			break;
+		}
+
+		case HID_CMD_USER_CURVE_RESET: {  // 0xDC
+			// Reset all user curves to defaults
+			extern void user_curves_reset(void);
+
+			user_curves_reset();
+			msg[0] = 0x01; // Success
+			break;
+		}
+
+		case HID_CMD_GAMING_SET_RESPONSE: {  // 0xDD
+			// Set gamepad response: [cmd, angle_adj_enabled, angle, square_output, snappy_joystick, curve_index]
+#ifdef JOYSTICK_ENABLE
+			extern gaming_settings_t gaming_settings;
+			extern void gaming_save_settings(void);
+
+			gaming_settings.angle_adjustment_enabled = msg[2] != 0;
+			gaming_settings.diagonal_angle = msg[3];  // 0-90
+			gaming_settings.use_square_output = msg[4] != 0;
+			gaming_settings.snappy_joystick_enabled = msg[5] != 0;
+			gaming_settings.analog_curve_index = msg[6];  // 0-16
+
+			gaming_save_settings();
+			msg[0] = 0x01; // Success
+#else
+			msg[0] = 0x00; // Error - joystick not enabled
+#endif
+			break;
+		}
+
+		case HID_CMD_GAMING_GET_RESPONSE: {  // 0xDE
+			// Get gamepad response settings
+#ifdef JOYSTICK_ENABLE
+			extern gaming_settings_t gaming_settings;
+
+			msg[0] = 0x01; // Success
+			msg[1] = gaming_settings.angle_adjustment_enabled ? 0x01 : 0x00;
+			msg[2] = gaming_settings.diagonal_angle;
+			msg[3] = gaming_settings.use_square_output ? 0x01 : 0x00;
+			msg[4] = gaming_settings.snappy_joystick_enabled ? 0x01 : 0x00;
+			msg[5] = gaming_settings.analog_curve_index;
+#else
+			msg[0] = 0x00; // Error - joystick not enabled
+#endif
+			break;
+		}
 
 		// Per-Key RGB Commands (0xD3-0xD8)
 		case vial_per_key_get_palette: {  // 0xD3

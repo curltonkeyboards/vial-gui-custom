@@ -3514,6 +3514,140 @@ void init_custom_animations(void) {
 }
 
 // =============================================================================
+// CURVE SYSTEM IMPLEMENTATION (For Gaming & Velocity Curves)
+// =============================================================================
+
+#include <math.h>
+
+// Global user curves
+user_curves_t user_curves;
+
+// Factory curve presets (7 curves, 4 points each)
+// Points are stored as [x, y] where x and y are 0-255
+// Note: Point 0 is always (0,0) and Point 3 is always (255,255) - only points 1 and 2 vary
+const uint8_t FACTORY_CURVES[7][4][2] PROGMEM = {
+    // 0: Linear - straight 1:1 mapping
+    {{0, 0}, {85, 85}, {170, 170}, {255, 255}},
+
+    // 1: Aggro - fast response, early high output (for aggressive play)
+    {{0, 0}, {30, 120}, {100, 200}, {255, 255}},
+
+    // 2: Slow - gradual ramp, delayed response (for smooth movement)
+    {{0, 0}, {150, 50}, {200, 100}, {255, 255}},
+
+    // 3: Smooth - S-curve, smooth acceleration (balanced feel)
+    {{0, 0}, {85, 50}, {170, 200}, {255, 255}},
+
+    // 4: Steep - minimal output until threshold, then fast ramp
+    {{0, 0}, {100, 30}, {150, 220}, {255, 255}},
+
+    // 5: Instant - near-instant full output at any press
+    {{0, 0}, {10, 250}, {20, 255}, {255, 255}},
+
+    // 6: Turbo - exaggerated response, amplified output
+    {{0, 0}, {50, 150}, {120, 240}, {255, 255}}
+};
+
+const char* FACTORY_CURVE_NAMES[7] PROGMEM = {
+    "Linear", "Aggro", "Slow", "Smooth", "Steep", "Instant", "Turbo"
+};
+
+// Apply curve using cubic Bezier interpolation
+// input: 0-255 input value
+// curve_index: 0-6 = factory, 7-16 = user curves
+// returns: 0-255 output value
+uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
+    uint8_t points[4][2];
+
+    // Load curve points
+    if (curve_index <= CURVE_FACTORY_TURBO) {
+        // Factory curve - read from PROGMEM
+        memcpy_P(points, FACTORY_CURVES[curve_index], 8);
+    } else if (curve_index >= CURVE_USER_START && curve_index <= CURVE_USER_END) {
+        // User curve - read from RAM
+        uint8_t user_idx = curve_index - CURVE_USER_START;
+        if (user_idx < 10) {
+            memcpy(points, user_curves.curves[user_idx].points, 8);
+        } else {
+            // Invalid index - use linear
+            return input;
+        }
+    } else {
+        // Invalid index - use linear (1:1)
+        return input;
+    }
+
+    // Cubic Bezier evaluation
+    // B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+    float t = input / 255.0f;
+    float u = 1.0f - t;
+
+    float y = u*u*u * points[0][1] +
+              3.0f*u*u*t * points[1][1] +
+              3.0f*u*t*t * points[2][1] +
+              t*t*t * points[3][1];
+
+    // Clamp to 0-255
+    if (y < 0.0f) y = 0.0f;
+    if (y > 255.0f) y = 255.0f;
+
+    return (uint8_t)(y + 0.5f);  // Round to nearest
+}
+
+// Initialize user curves with defaults (all linear)
+void user_curves_init(void) {
+    memset(&user_curves, 0, sizeof(user_curves_t));
+
+    for (int i = 0; i < 10; i++) {
+        // Set default name
+        snprintf(user_curves.curves[i].name, 16, "User %d", i + 1);
+
+        // Set to linear curve (0,0), (85,85), (170,170), (255,255)
+        user_curves.curves[i].points[0][0] = 0;   user_curves.curves[i].points[0][1] = 0;
+        user_curves.curves[i].points[1][0] = 85;  user_curves.curves[i].points[1][1] = 85;
+        user_curves.curves[i].points[2][0] = 170; user_curves.curves[i].points[2][1] = 170;
+        user_curves.curves[i].points[3][0] = 255; user_curves.curves[i].points[3][1] = 255;
+    }
+
+    user_curves.magic = USER_CURVES_MAGIC;
+}
+
+// Save user curves to EEPROM
+void user_curves_save(void) {
+    user_curves.magic = USER_CURVES_MAGIC;
+    eeprom_update_block(&user_curves, (void*)USER_CURVES_EEPROM_ADDR, sizeof(user_curves_t));
+}
+
+// Load user curves from EEPROM
+void user_curves_load(void) {
+    eeprom_read_block(&user_curves, (void*)USER_CURVES_EEPROM_ADDR, sizeof(user_curves_t));
+
+    if (user_curves.magic != USER_CURVES_MAGIC) {
+        // First time or corrupted - initialize with defaults
+        user_curves_init();
+        user_curves_save();
+    }
+}
+
+// Reset user curves to defaults
+void user_curves_reset(void) {
+    user_curves_init();
+    user_curves_save();
+}
+
+// Migrate old velocity curve value (0-4) to new index (0-16)
+uint8_t migrate_velocity_curve(uint8_t old_value) {
+    switch(old_value) {
+        case 0: return CURVE_FACTORY_SLOW;    // Softest → Slow
+        case 1: return CURVE_FACTORY_SLOW;    // Soft → Slow
+        case 2: return CURVE_FACTORY_LINEAR;  // Medium → Linear (default)
+        case 3: return CURVE_FACTORY_AGGRO;   // Hard → Aggro
+        case 4: return CURVE_FACTORY_STEEP;   // Hardest → Steep
+        default: return CURVE_FACTORY_LINEAR; // Default to Linear
+    }
+}
+
+// =============================================================================
 // GAMING / JOYSTICK SYSTEM IMPLEMENTATION
 // =============================================================================
 
@@ -3554,6 +3688,13 @@ void gaming_reset_settings(void) {
         gaming_settings.buttons[i].enabled = 0;
     }
 
+    // Initialize new curve and gamepad response settings
+    gaming_settings.analog_curve_index = CURVE_FACTORY_LINEAR;  // Default to linear
+    gaming_settings.angle_adjustment_enabled = false;
+    gaming_settings.diagonal_angle = 0;  // 0 degrees (no adjustment)
+    gaming_settings.use_square_output = false;
+    gaming_settings.snappy_joystick_enabled = false;
+
     gaming_settings.magic = GAMING_SETTINGS_MAGIC;
 }
 
@@ -3579,6 +3720,69 @@ void gaming_load_settings(void) {
 // Initialize gaming system
 void gaming_init(void) {
     gaming_load_settings();
+}
+
+// =============================================================================
+// GAMEPAD RESPONSE TRANSFORMATION FUNCTIONS
+// =============================================================================
+
+// Apply diagonal angle adjustment
+// Rotates the input vector by the specified angle (in degrees)
+void apply_angle_adjustment(int16_t* x, int16_t* y, uint8_t angle_deg) {
+    if (angle_deg == 0) return;  // No adjustment needed
+
+    // Convert angle to radians
+    float angle_rad = (float)angle_deg * 3.14159265f / 180.0f;
+    float cos_a = cosf(angle_rad);
+    float sin_a = sinf(angle_rad);
+
+    // Normalize to -1.0 to 1.0 range for rotation
+    float fx = (float)(*x) / 32767.0f;
+    float fy = (float)(*y) / 32767.0f;
+
+    // Apply rotation matrix
+    float rotated_x = fx * cos_a - fy * sin_a;
+    float rotated_y = fx * sin_a + fy * cos_a;
+
+    // Convert back to int16_t range
+    *x = (int16_t)(rotated_x * 32767.0f);
+    *y = (int16_t)(rotated_y * 32767.0f);
+}
+
+// Apply square output transformation
+// Scales circular joystick input to square output (allows 100% on both axes simultaneously)
+void apply_square_output(int16_t* x, int16_t* y) {
+    // Normalize to -1.0 to 1.0 range
+    float fx = (float)(*x) / 32767.0f;
+    float fy = (float)(*y) / 32767.0f;
+
+    // Find the maximum absolute value of either axis
+    float max_axis = fmaxf(fabsf(fx), fabsf(fy));
+
+    if (max_axis > 0.01f) {  // Avoid division by zero
+        // Scale both axes so the maximum reaches 1.0
+        float scale = 1.0f / max_axis;
+        fx *= scale;
+        fy *= scale;
+    }
+
+    // Convert back to int16_t range
+    *x = (int16_t)(fx * 32767.0f);
+    *y = (int16_t)(fy * 32767.0f);
+}
+
+// Apply snappy joystick transformation
+// When opposing directions are pressed, use the maximum value instead of combining
+void apply_snappy_joystick(int16_t* axis_val, int16_t pos, int16_t neg) {
+    // If both positive and negative inputs are active
+    if (pos > 0 && neg > 0) {
+        // Use whichever is greater
+        if (pos > neg) {
+            *axis_val = pos;   // Positive direction wins
+        } else {
+            *axis_val = -neg;  // Negative direction wins
+        }
+    }
 }
 
 // Convert analog travel to joystick axis value (-32767 to +32767)
@@ -3735,6 +3939,9 @@ void keyboard_post_init_user(void) {
 		initialize_per_key_actuations();
 		save_per_key_actuations();
 	}
+
+	// Load user curves from EEPROM
+	user_curves_load();
 
 	dwt_init();
 
