@@ -225,20 +225,16 @@ class DKSActionEditor(QWidget):
 
     def set_action(self, keycode, actuation, behavior):
         """Set action values"""
-        # Convert keycode integer to string if needed
+        # Convert keycode integer to string qmk_id
         if isinstance(keycode, int):
             if keycode == 0:
-                keycode = "KC_NO"
+                keycode_str = "KC_NO"
             else:
-                # Find the keycode by its value
-                for kc in KEYCODES:
-                    if hasattr(kc, 'code') and kc.code == keycode:
-                        keycode = kc.qmk_id
-                        break
-                else:
-                    keycode = "KC_NO"
+                keycode_str = Keycode.serialize(keycode)
+        else:
+            keycode_str = keycode
 
-        self.key_widget.set_keycode(keycode)
+        self.key_widget.set_keycode(keycode_str)
         self.actuation_slider.setValue(actuation)
         self.behavior_combo.setCurrentIndex(behavior)
 
@@ -247,11 +243,10 @@ class DKSActionEditor(QWidget):
         keycode_str = self.key_widget.keycode
 
         # Convert keycode string to integer
-        keycode = 0
-        if keycode_str != "KC_NO":
-            kc = Keycode.find_by_qmk_id(keycode_str)
-            if kc and hasattr(kc, 'code'):
-                keycode = kc.code
+        if keycode_str == "KC_NO" or keycode_str == "":
+            keycode = 0
+        else:
+            keycode = Keycode.deserialize(keycode_str)
 
         actuation = self.actuation_slider.value()
         behavior = self.behavior_combo.currentIndex()
