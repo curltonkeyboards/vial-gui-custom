@@ -19,6 +19,9 @@
 #include "qmk_midi.h"
 #endif
 
+#include "process_keycode/process_dks.h"
+#include "dynamic_keymap.h"
+
 // ============================================================================
 // EXTERNAL DECLARATIONS
 // ============================================================================
@@ -884,8 +887,11 @@ void matrix_init_custom(void) {
             unselect_column();
         }
     }
-    
+
     analog_initialized = true;
+
+    // Initialize DKS system
+    dks_init();
 }
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
@@ -913,7 +919,20 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             }
         }
     }
-    
+
+    // Process DKS keys
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+            uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+
+            // Check if this is a DKS keycode
+            if (is_dks_keycode(keycode)) {
+                analog_key_t *key = &keys[row][col];
+                dks_process_key(row, col, key->travel, keycode);
+            }
+        }
+    }
+
     // Build matrix using cached thresholds
     uint8_t midi_threshold = active_settings.midi_actuation;
     uint8_t analog_mode = active_settings.velocity_mode;
@@ -924,11 +943,18 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             analog_key_t *key = &keys[row][col];
             bool pressed = false;
-            
-            if (midi_key_states[row][col].is_midi_key) {
+
+            // Check if this is a DKS key - if so, skip normal matrix processing
+            uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+            bool is_dks = is_dks_keycode(keycode);
+
+            if (is_dks) {
+                // DKS keys handle their own keycodes internally, don't set pressed state
+                pressed = false;
+            } else if (midi_key_states[row][col].is_midi_key) {
                 uint8_t travel = key->travel;
                 midi_key_state_t *state = &midi_key_states[row][col];
-                
+
                 switch (analog_mode) {
                     case 0:
                         pressed = (key->state == AKS_REGULAR_PRESSED || key->state == AKS_RAPID_PRESSED) &&
@@ -944,8 +970,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                         pressed = state->send_on_release;
                         break;
                 }
-                
-                if ((aftertouch_mode == 1 || aftertouch_mode == 2) && 
+
+                if ((aftertouch_mode == 1 || aftertouch_mode == 2) &&
                     aftertouch_pedal_active && state->was_pressed) {
                     pressed = true;
                 }
