@@ -76,6 +76,9 @@ typedef struct {
     // Bits 12-13: release_behavior[2]
     // Bits 14-15: release_behavior[3]
     uint16_t behaviors;
+
+    // Padding - 6 bytes (reserved for future use)
+    uint8_t  reserved[6];
 } dks_slot_t;
 
 // Compile-time size check
