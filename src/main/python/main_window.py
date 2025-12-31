@@ -22,6 +22,7 @@ from editor.key_override import KeyOverride
 from protocol.keyboard_comm import ProtocolError
 from editor.keymap_editor import KeymapEditor
 from editor.trigger_settings import TriggerSettingsTab
+from editor.dks_settings import DKSSettingsTab
 from keymaps import KEYMAPS
 from editor.layout_editor import LayoutEditor
 from editor.macro_recorder import MacroRecorder
@@ -105,6 +106,11 @@ class MainWindow(QMainWindow):
         # Connect signal for tab switching
         self.keymap_editor.quick_actuation.enable_per_key_requested.connect(self.switch_to_trigger_settings)
 
+        # Create DKS Settings tab
+        print("Creating DKSSettingsTab...")
+        self.dks_settings = DKSSettingsTab(self.layout_editor)
+        print(f"DKSSettingsTab created: {self.dks_settings}")
+
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -131,6 +137,7 @@ class MainWindow(QMainWindow):
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
+                        (self.dks_settings, "DKS Settings"),
                         (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
