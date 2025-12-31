@@ -364,7 +364,7 @@ class DKSSettingsTab(BasicEditor):
         """Handle slot selection change"""
         if self.unsaved_changes:
             reply = QMessageBox.question(
-                self, "Unsaved Changes",
+                None, "Unsaved Changes",
                 "You have unsaved changes. Load the selected slot anyway?",
                 QMessageBox.Yes | QMessageBox.No
             )
@@ -386,7 +386,7 @@ class DKSSettingsTab(BasicEditor):
 
         slot = self.dks_protocol.get_slot(self.current_slot)
         if not slot:
-            QMessageBox.warning(self, "Error", "Failed to load DKS slot from keyboard")
+            QMessageBox.warning(None, "Error", "Failed to load DKS slot from keyboard")
             return
 
         # Update UI
@@ -457,10 +457,10 @@ class DKSSettingsTab(BasicEditor):
             return
 
         if self.dks_protocol.save_to_eeprom():
-            QMessageBox.information(self, "Success", "DKS configurations saved to EEPROM")
+            QMessageBox.information(None, "Success", "DKS configurations saved to EEPROM")
             self.unsaved_changes = False
         else:
-            QMessageBox.warning(self, "Error", "Failed to save DKS configurations")
+            QMessageBox.warning(None, "Error", "Failed to save DKS configurations")
 
     def _on_load_from_eeprom(self):
         """Load all DKS configurations from EEPROM"""
@@ -468,10 +468,10 @@ class DKSSettingsTab(BasicEditor):
             return
 
         if self.dks_protocol.load_from_eeprom():
-            QMessageBox.information(self, "Success", "DKS configurations loaded from EEPROM")
+            QMessageBox.information(None, "Success", "DKS configurations loaded from EEPROM")
             self._load_slot_from_keyboard()
         else:
-            QMessageBox.warning(self, "Error", "Failed to load DKS configurations")
+            QMessageBox.warning(None, "Error", "Failed to load DKS configurations")
 
     def _on_reset_slot(self):
         """Reset current slot to defaults"""
@@ -479,17 +479,17 @@ class DKSSettingsTab(BasicEditor):
             return
 
         reply = QMessageBox.question(
-            self, "Confirm Reset",
+            None, "Confirm Reset",
             f"Reset DKS_{self.current_slot:02d} to default configuration?",
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
             if self.dks_protocol.reset_slot(self.current_slot):
-                QMessageBox.information(self, "Success", "Slot reset to defaults")
+                QMessageBox.information(None, "Success", "Slot reset to defaults")
                 self._load_slot_from_keyboard()
             else:
-                QMessageBox.warning(self, "Error", "Failed to reset slot")
+                QMessageBox.warning(None, "Error", "Failed to reset slot")
 
     def _on_reset_all(self):
         """Reset all slots to defaults"""
@@ -497,17 +497,17 @@ class DKSSettingsTab(BasicEditor):
             return
 
         reply = QMessageBox.question(
-            self, "Confirm Reset",
+            None, "Confirm Reset",
             "Reset ALL DKS slots to default configuration? This cannot be undone!",
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
             if self.dks_protocol.reset_all_slots():
-                QMessageBox.information(self, "Success", "All slots reset to defaults")
+                QMessageBox.information(None, "Success", "All slots reset to defaults")
                 self._load_slot_from_keyboard()
             else:
-                QMessageBox.warning(self, "Error", "Failed to reset slots")
+                QMessageBox.warning(None, "Error", "Failed to reset slots")
 
     def rebuild(self, device):
         """Rebuild the editor when device changes"""
