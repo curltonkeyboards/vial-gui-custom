@@ -238,19 +238,18 @@ class DKSSettingsTab(BasicEditor):
         self.current_slot = 0
         self.unsaved_changes = False
 
-        # Main layout
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
+        # Set spacing for this layout
+        self.setSpacing(10)
 
         # Top bar: Slot selector and buttons
         top_bar = self._create_top_bar()
-        main_layout.addLayout(top_bar)
+        self.addLayout(top_bar)
 
         # Separator
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
-        main_layout.addWidget(separator)
+        self.addWidget(separator)
 
         # Travel bar visualization
         travel_group = QGroupBox("Key Travel Visualization")
@@ -265,23 +264,21 @@ class DKSSettingsTab(BasicEditor):
         travel_layout.addLayout(legend_layout)
 
         travel_group.setLayout(travel_layout)
-        main_layout.addWidget(travel_group)
+        self.addWidget(travel_group)
 
         # Press actions group
         press_group = self._create_action_group("Press Actions (Downstroke)", True)
-        main_layout.addWidget(press_group)
+        self.addWidget(press_group)
 
         # Release actions group
         release_group = self._create_action_group("Release Actions (Upstroke)", False)
-        main_layout.addWidget(release_group)
+        self.addWidget(release_group)
 
         # Bottom buttons
         bottom_bar = self._create_bottom_bar()
-        main_layout.addLayout(bottom_bar)
+        self.addLayout(bottom_bar)
 
-        main_layout.addStretch()
-
-        self.setLayout(main_layout)
+        self.addStretch()
 
     def _create_top_bar(self):
         """Create top bar with slot selector and load/save buttons"""
