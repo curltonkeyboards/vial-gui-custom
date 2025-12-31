@@ -16,7 +16,7 @@ from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_BEHAVIOR_PRESS, DKS_BEHAVIOR_RELEASE,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
-from keycodes import Keycode
+from keycodes.keycodes import Keycode, KEYCODES
 from util import tr
 
 
@@ -524,15 +524,13 @@ class DKSSettingsTab(BasicEditor):
             return
 
         # Create DKS protocol handler
-        from protocol.dks_protocol import ProtocolDKS
         self.dks_protocol = ProtocolDKS(device)
 
         # Populate keycode dropdowns
-        keycodes = Keycode.all_keycodes()
         for editor in self.press_editors:
-            editor.populate_keycodes(keycodes)
+            editor.populate_keycodes(KEYCODES)
         for editor in self.release_editors:
-            editor.populate_keycodes(keycodes)
+            editor.populate_keycodes(KEYCODES)
 
         # Load current slot
         self._load_slot_from_keyboard()
