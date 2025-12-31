@@ -7,6 +7,7 @@
 #include "raw_hid.h"
 #include <math.h>
 #include "keyboards/orthomidi5x14/orthomidi5x14.h"
+#include "process_dks.h"
 
 // External functions to mark/unmark notes from macros
 extern void mark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
@@ -78,6 +79,14 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 // Additional Loop Commands (0xCE+)
 #define HID_CMD_CLEAR_ALL_LOOPS         0xCE  // Clear all loop content
 
+// DKS (Dynamic Keystroke) Commands (0xE5-0xEA)
+#define HID_CMD_DKS_GET_SLOT            0xE5  // Get DKS slot configuration
+#define HID_CMD_DKS_SET_ACTION          0xE6  // Set a single DKS action
+#define HID_CMD_DKS_SAVE_EEPROM         0xE7  // Save all DKS configs to EEPROM
+#define HID_CMD_DKS_LOAD_EEPROM         0xE8  // Load all DKS configs from EEPROM
+#define HID_CMD_DKS_RESET_SLOT          0xE9  // Reset a slot to defaults
+#define HID_CMD_DKS_RESET_ALL           0xEA  // Reset all slots to defaults
+
 // Keyboard Configuration (0xB6-0xBF)
 #define HID_CMD_SET_KEYBOARD_CONFIG         0xB6  // was 0x50
 #define HID_CMD_GET_KEYBOARD_CONFIG         0xB7  // was 0x51
@@ -128,6 +137,11 @@ static void handle_get_keyboard_config(void);
 static void handle_reset_keyboard_config(void);
 static void handle_save_keyboard_slot(const uint8_t* data);
 static void handle_load_keyboard_slot(const uint8_t* data);
+
+// DKS handler functions
+static void handle_dks_get_slot(const uint8_t* data);
+static void handle_dks_set_action(const uint8_t* data);
+static void handle_dks_reset_slot(const uint8_t* data);
 
 typedef struct {
     uint8_t type;
@@ -11692,6 +11706,105 @@ static void handle_clear_all_loops(void) {
     dprintf("HID: All loops cleared successfully\n");
 }
 
+// ============================================================================
+// DKS HID HANDLER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get DKS slot configuration and send it back via HID
+ * Packet format: [slot_num]
+ */
+static void handle_dks_get_slot(const uint8_t* data) {
+    uint8_t slot_num = data[0];
+
+    if (slot_num >= DKS_NUM_SLOTS) {
+        send_hid_response(HID_CMD_DKS_GET_SLOT, 0, 1, NULL, 0); // Error: invalid slot
+        return;
+    }
+
+    const dks_slot_t* slot = dks_get_slot(slot_num);
+    if (!slot) {
+        send_hid_response(HID_CMD_DKS_GET_SLOT, 0, 1, NULL, 0); // Error
+        return;
+    }
+
+    // Send back the 32-byte slot configuration
+    send_hid_response(HID_CMD_DKS_GET_SLOT, 0, 0, (const uint8_t*)slot, sizeof(dks_slot_t));
+}
+
+/**
+ * Set a single DKS action
+ * Packet format: [slot_num] [is_press] [action_index] [keycode_low] [keycode_high] [actuation] [behavior]
+ */
+static void handle_dks_set_action(const uint8_t* data) {
+    uint8_t slot_num = data[0];
+    uint8_t is_press = data[1];           // 0=release, 1=press
+    uint8_t action_index = data[2];       // 0-3
+    uint16_t keycode = data[3] | (data[4] << 8);
+    uint8_t actuation = data[5];
+    uint8_t behavior = data[6];
+
+    if (slot_num >= DKS_NUM_SLOTS || action_index >= DKS_ACTIONS_PER_STAGE) {
+        return; // Invalid parameters
+    }
+
+    // Get slot (we need to modify it, so cast away const)
+    dks_slot_t* slot = (dks_slot_t*)dks_get_slot(slot_num);
+    if (!slot) {
+        return;
+    }
+
+    // Set the action
+    if (is_press) {
+        slot->press_keycode[action_index] = keycode;
+        slot->press_actuation[action_index] = actuation;
+        dks_set_behavior(slot, action_index, (dks_behavior_t)behavior);
+    } else {
+        slot->release_keycode[action_index] = keycode;
+        slot->release_actuation[action_index] = actuation;
+        dks_set_behavior(slot, action_index + 4, (dks_behavior_t)behavior);
+    }
+}
+
+/**
+ * Reset a single DKS slot to defaults
+ * Packet format: [slot_num]
+ */
+static void handle_dks_reset_slot(const uint8_t* data) {
+    uint8_t slot_num = data[0];
+
+    if (slot_num >= DKS_NUM_SLOTS) {
+        send_hid_response(HID_CMD_DKS_RESET_SLOT, 0, 1, NULL, 0); // Error
+        return;
+    }
+
+    // Get slot and reset it
+    dks_slot_t* slot = (dks_slot_t*)dks_get_slot(slot_num);
+    if (!slot) {
+        send_hid_response(HID_CMD_DKS_RESET_SLOT, 0, 1, NULL, 0); // Error
+        return;
+    }
+
+    // Reset this slot
+    memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
+    memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
+
+    // Set default actuation points
+    slot->press_actuation[0] = 24;  // 0.6mm
+    slot->press_actuation[1] = 48;  // 1.2mm
+    slot->press_actuation[2] = 72;  // 1.8mm
+    slot->press_actuation[3] = 96;  // 2.4mm
+
+    slot->release_actuation[0] = 96;  // 2.4mm
+    slot->release_actuation[1] = 72;  // 1.8mm
+    slot->release_actuation[2] = 48;  // 1.2mm
+    slot->release_actuation[3] = 24;  // 0.6mm
+
+    slot->behaviors = 0x0000;  // All TAP
+
+    send_hid_response(HID_CMD_DKS_RESET_SLOT, 0, 0, NULL, 0); // Success
+}
+
 // Our HID receive handler (called from VIA's raw_hid_receive)
 void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
     // Add static variable to track the type of loading in progress
@@ -11881,6 +11994,49 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             } else {
                 send_hid_response(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, 1, NULL, 0); // Error
             }
+            break;
+
+        // DKS Commands
+        case HID_CMD_DKS_GET_SLOT: // 0xE5 - Get DKS slot configuration
+            if (length >= 7) { // Header + slot number
+                handle_dks_get_slot(&data[6]);
+            } else {
+                send_hid_response(HID_CMD_DKS_GET_SLOT, 0, 1, NULL, 0); // Error
+            }
+            break;
+
+        case HID_CMD_DKS_SET_ACTION: // 0xE6 - Set a single DKS action
+            if (length >= 14) { // Header + slot + action data
+                handle_dks_set_action(&data[6]);
+                send_hid_response(HID_CMD_DKS_SET_ACTION, 0, 0, NULL, 0); // Success
+            } else {
+                send_hid_response(HID_CMD_DKS_SET_ACTION, 0, 1, NULL, 0); // Error
+            }
+            break;
+
+        case HID_CMD_DKS_SAVE_EEPROM: // 0xE7 - Save all DKS configs to EEPROM
+            dks_save_to_eeprom();
+            send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0); // Success
+            break;
+
+        case HID_CMD_DKS_LOAD_EEPROM: // 0xE8 - Load all DKS configs from EEPROM
+            {
+                bool success = dks_load_from_eeprom();
+                send_hid_response(HID_CMD_DKS_LOAD_EEPROM, 0, success ? 0 : 1, NULL, 0);
+            }
+            break;
+
+        case HID_CMD_DKS_RESET_SLOT: // 0xE9 - Reset a slot to defaults
+            if (length >= 7) { // Header + slot number
+                handle_dks_reset_slot(&data[6]);
+            } else {
+                send_hid_response(HID_CMD_DKS_RESET_SLOT, 0, 1, NULL, 0); // Error
+            }
+            break;
+
+        case HID_CMD_DKS_RESET_ALL: // 0xEA - Reset all slots to defaults
+            dks_reset_all_slots();
+            send_hid_response(HID_CMD_DKS_RESET_ALL, 0, 0, NULL, 0); // Success
             break;
     }
 }

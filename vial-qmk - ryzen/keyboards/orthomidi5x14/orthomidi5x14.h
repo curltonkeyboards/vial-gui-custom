@@ -134,6 +134,62 @@ void set_he_velocity_range(uint8_t min, uint8_t max);
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 
 // =============================================================================
+// DKS (DYNAMIC KEYSTROKE) KEYCODES (0xED00-0xED31)
+// 50 DKS slots for multi-action analog keys
+// =============================================================================
+
+#define DKS_00  0xED00
+#define DKS_01  0xED01
+#define DKS_02  0xED02
+#define DKS_03  0xED03
+#define DKS_04  0xED04
+#define DKS_05  0xED05
+#define DKS_06  0xED06
+#define DKS_07  0xED07
+#define DKS_08  0xED08
+#define DKS_09  0xED09
+#define DKS_10  0xED0A
+#define DKS_11  0xED0B
+#define DKS_12  0xED0C
+#define DKS_13  0xED0D
+#define DKS_14  0xED0E
+#define DKS_15  0xED0F
+#define DKS_16  0xED10
+#define DKS_17  0xED11
+#define DKS_18  0xED12
+#define DKS_19  0xED13
+#define DKS_20  0xED14
+#define DKS_21  0xED15
+#define DKS_22  0xED16
+#define DKS_23  0xED17
+#define DKS_24  0xED18
+#define DKS_25  0xED19
+#define DKS_26  0xED1A
+#define DKS_27  0xED1B
+#define DKS_28  0xED1C
+#define DKS_29  0xED1D
+#define DKS_30  0xED1E
+#define DKS_31  0xED1F
+#define DKS_32  0xED20
+#define DKS_33  0xED21
+#define DKS_34  0xED22
+#define DKS_35  0xED23
+#define DKS_36  0xED24
+#define DKS_37  0xED25
+#define DKS_38  0xED26
+#define DKS_39  0xED27
+#define DKS_40  0xED28
+#define DKS_41  0xED29
+#define DKS_42  0xED2A
+#define DKS_43  0xED2B
+#define DKS_44  0xED2C
+#define DKS_45  0xED2D
+#define DKS_46  0xED2E
+#define DKS_47  0xED2F
+#define DKS_48  0xED30
+#define DKS_49  0xED31
+
+// =============================================================================
 // ARPEGGIATOR & STEP SEQUENCER KEYCODES (0xEE00-0xEEFF)
 // Moved from 0xCD00 to avoid overlap with HE Velocity Range (0xCCB5-0xEC74)
 // =============================================================================
