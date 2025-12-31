@@ -2509,6 +2509,9 @@ class keycodes_v5:
         "SEQ_GATE_UP": 0xEF0B,  # Increase sequencer gate by 10%
         "SEQ_GATE_DOWN": 0xEF0C,  # Decrease sequencer gate by 10%
 
+        # DKS (Dynamic Keystroke) Slots (0xED00-0xED31) - 50 slots
+        "DKS_00": 0xED00,  # Base for DKS slot selection
+
         "QK_KB": 0xCC57, #custom keycodes safe range
 
 
@@ -2568,6 +2571,10 @@ for x in range(68):
 # Generate Step Sequencer preset selection keycodes (48 factory + 20 user = 68 presets)
 for x in range(68):
     keycodes_v5.kc["SEQ_PRESET_{}".format(x)] = keycodes_v5.kc["SEQ_PRESET_BASE"] + x
+
+# Generate DKS (Dynamic Keystroke) slot selection keycodes (50 slots)
+for x in range(50):
+    keycodes_v5.kc["DKS_{:02d}".format(x)] = keycodes_v5.kc["DKS_00"] + x
 
 for name, val in keycodes_v5.kc.items():
     if name.endswith("(kc)"):
