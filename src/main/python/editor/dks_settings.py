@@ -233,7 +233,6 @@ class DKSSettingsTab(BasicEditor):
         super().__init__()
 
         self.layout_editor = layout_editor
-        self.keyboard = None
         self.dks_protocol = None
         self.current_slot = 0
         self.unsaved_changes = False
@@ -514,9 +513,7 @@ class DKSSettingsTab(BasicEditor):
         """Rebuild the editor when device changes"""
         super().rebuild(device)
 
-        self.keyboard = device
-
-        if device is None:
+        if not self.valid():
             self.dks_protocol = None
             return
 
@@ -535,4 +532,5 @@ class DKSSettingsTab(BasicEditor):
     def valid(self):
         """Check if this tab is valid for the current device"""
         # DKS is always available (it's a firmware feature)
-        return self.keyboard is not None
+        from vial_device import VialKeyboard
+        return isinstance(self.device, VialKeyboard)
