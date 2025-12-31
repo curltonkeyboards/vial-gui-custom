@@ -240,67 +240,6 @@ void dks_set_slot(uint8_t slot, const dks_slot_t* config) {
 }
 
 // ============================================================================
-// Action Sorting Helper
-// ============================================================================
-
-/**
- * Sort actuation points in ascending order for press actions
- * Sorts both actuation points and corresponding keycodes together
- */
-static void sort_press_actions(dks_slot_t* slot) {
-    // Simple bubble sort (only 4 elements, very fast)
-    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE - 1; i++) {
-        for (uint8_t j = 0; j < DKS_ACTIONS_PER_STAGE - 1 - i; j++) {
-            if (slot->press_actuation[j] > slot->press_actuation[j + 1]) {
-                // Swap actuation points
-                uint8_t temp_act = slot->press_actuation[j];
-                slot->press_actuation[j] = slot->press_actuation[j + 1];
-                slot->press_actuation[j + 1] = temp_act;
-
-                // Swap keycodes
-                uint16_t temp_kc = slot->press_keycode[j];
-                slot->press_keycode[j] = slot->press_keycode[j + 1];
-                slot->press_keycode[j + 1] = temp_kc;
-
-                // Swap behaviors (extract, swap, re-pack)
-                dks_behavior_t beh_j = dks_get_behavior(slot, j);
-                dks_behavior_t beh_j1 = dks_get_behavior(slot, j + 1);
-                dks_set_behavior(slot, j, beh_j1);
-                dks_set_behavior(slot, j + 1, beh_j);
-            }
-        }
-    }
-}
-
-/**
- * Sort actuation points in descending order for release actions
- * (Release triggers happen from high to low travel)
- */
-static void sort_release_actions(dks_slot_t* slot) {
-    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE - 1; i++) {
-        for (uint8_t j = 0; j < DKS_ACTIONS_PER_STAGE - 1 - i; j++) {
-            if (slot->release_actuation[j] < slot->release_actuation[j + 1]) {
-                // Swap actuation points
-                uint8_t temp_act = slot->release_actuation[j];
-                slot->release_actuation[j] = slot->release_actuation[j + 1];
-                slot->release_actuation[j + 1] = temp_act;
-
-                // Swap keycodes
-                uint16_t temp_kc = slot->release_keycode[j];
-                slot->release_keycode[j] = slot->release_keycode[j + 1];
-                slot->release_keycode[j + 1] = temp_kc;
-
-                // Swap behaviors (release actions are indices 4-7)
-                dks_behavior_t beh_j = dks_get_behavior(slot, j + 4);
-                dks_behavior_t beh_j1 = dks_get_behavior(slot, j + 5);
-                dks_set_behavior(slot, j + 4, beh_j1);
-                dks_set_behavior(slot, j + 5, beh_j);
-            }
-        }
-    }
-}
-
-// ============================================================================
 // Core DKS Processing Logic
 // ============================================================================
 
