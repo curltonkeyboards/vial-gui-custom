@@ -8,19 +8,18 @@ Users configure DKS slots (DKS_00 - DKS_49) and then assign them to keys via the
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
-                              QSizePolicy, QCheckBox, QSpinBox, QScrollArea)
+                              QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QApplication
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_BEHAVIOR_PRESS, DKS_BEHAVIOR_RELEASE,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
-from keycodes.keycodes import Keycode, KEYCODES
+from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
 from widgets.tab_widget_keycodes import TabWidgetWithKeycodes
 from tabbed_keycodes import TabbedKeycodes
-from util import tr, make_scrollable
 from vial_device import VialKeyboard
 
 
