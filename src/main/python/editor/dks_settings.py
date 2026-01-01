@@ -643,7 +643,8 @@ class DKSEntryUI(QWidget):
 
         slot = self.dks_protocol.get_slot(self.slot_idx)
         if not slot:
-            QMessageBox.warning(self, "Error", "Failed to load DKS slot from keyboard")
+            # Silently fail if firmware doesn't support DKS - don't show error popup
+            # This allows the tab to show even if firmware doesn't have DKS enabled
             return
 
         self.load_from_slot(slot)
@@ -767,6 +768,7 @@ class DKSSettingsTab(BasicEditor):
         self.layout_editor = layout_editor
         self.dks_protocol = None
         self.dks_entries = []
+        self.loaded_slots = set()  # Track which slots have been loaded
 
         # Create tab widget for DKS slots
         self.tabs = QTabWidget()
@@ -819,7 +821,7 @@ class DKSSettingsTab(BasicEditor):
         pass
 
     def _on_tab_changed(self, index):
-        """Handle tab change - connect TabbedKeycodes to new entry"""
+        """Handle tab change - connect TabbedKeycodes to new entry and lazy load slot data"""
         if index >= 0 and index < len(self.dks_entries):
             # Disconnect all previous connections (if any)
             try:
@@ -831,6 +833,11 @@ class DKSSettingsTab(BasicEditor):
             self.tabbed_keycodes.keycode_changed.connect(
                 self.dks_entries[index].on_keycode_selected
             )
+
+            # Lazy load: Only load slot data when first viewing the tab
+            if self.dks_protocol and index not in self.loaded_slots:
+                self.dks_entries[index]._on_load()
+                self.loaded_slots.add(index)
 
     def _on_reset_all(self):
         """Reset all slots to defaults"""
@@ -880,9 +887,8 @@ class DKSSettingsTab(BasicEditor):
         for entry in self.dks_entries:
             entry.set_dks_protocol(self.dks_protocol)
 
-        # Load first slot
-        if len(self.dks_entries) > 0:
-            self.dks_entries[0]._on_load()
+        # Clear loaded slots cache on device change
+        self.loaded_slots.clear()
 
     def valid(self):
         """Check if this tab is valid for the current device"""
