@@ -221,7 +221,7 @@ class KeyswitchDiagramWidget(QWidget):
 
             # Center horizontally, align to top vertically (to match travel bar alignment)
             x = (widget_width - scaled_pixmap.width()) // 2
-            y = -15  # Move 15 pixels higher
+            y = -30  # Move 30 pixels higher
 
             painter.drawPixmap(x, y, scaled_pixmap)
         else:
@@ -356,9 +356,9 @@ class DKSActionEditor(QWidget):
         layout.setSpacing(8)
 
         if is_press:
-            # Press layout: Spacer | Dropdown | Key | Slider (left to right)
-            # Add spacer before dropdown
-            layout.addSpacing(10)
+            # Press layout: Stretch | Dropdown | Key | Slider (left to right)
+            # Add stretch before dropdown to push content together
+            layout.addStretch()
 
             # Behavior selector on the outside (left)
             self.behavior_combo = QComboBox()
@@ -451,8 +451,8 @@ class DKSActionEditor(QWidget):
             self.behavior_combo.setFixedSize(70, 25)
             layout.addWidget(self.behavior_combo)
 
-            # Add spacer after dropdown
-            layout.addSpacing(10)
+            # Add stretch after dropdown to push content together
+            layout.addStretch()
 
         # Store label reference for color styling
         self.label = action_label
