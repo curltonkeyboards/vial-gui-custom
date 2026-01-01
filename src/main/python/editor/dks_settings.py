@@ -179,9 +179,9 @@ class KeyswitchDiagramWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(120)
-        self.setMinimumHeight(250)
-        self.setMaximumWidth(120)
+        self.setMinimumWidth(360)
+        self.setMinimumHeight(750)
+        self.setMaximumWidth(360)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
     def paintEvent(self, event):
