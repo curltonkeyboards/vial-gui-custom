@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap, QImage
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
@@ -190,6 +190,14 @@ class KeyswitchDiagramWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
+        # Detect dark mode
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
         # Load the switch crossection image from Qt resources
         pixmap = QPixmap(":/switchcrossection")
 
@@ -205,9 +213,15 @@ class KeyswitchDiagramWidget(QWidget):
                 Qt.SmoothTransformation
             )
 
+            # Invert colors if in dark mode
+            if is_dark:
+                image = scaled_pixmap.toImage()
+                image.invertPixels()
+                scaled_pixmap = QPixmap.fromImage(image)
+
             # Center horizontally, align to top vertically (to match travel bar alignment)
             x = (widget_width - scaled_pixmap.width()) // 2
-            y = 0  # Align to top
+            y = -15  # Move 15 pixels higher
 
             painter.drawPixmap(x, y, scaled_pixmap)
         else:
@@ -342,7 +356,10 @@ class DKSActionEditor(QWidget):
         layout.setSpacing(8)
 
         if is_press:
-            # Press layout: Dropdown | Key | Slider (left to right)
+            # Press layout: Spacer | Dropdown | Key | Slider (left to right)
+            # Add spacer before dropdown
+            layout.addSpacing(10)
+
             # Behavior selector on the outside (left)
             self.behavior_combo = QComboBox()
             self.behavior_combo.addItems(["Tap", "Press", "Release"])
@@ -433,6 +450,9 @@ class DKSActionEditor(QWidget):
             self.behavior_combo.currentIndexChanged.connect(self._on_changed)
             self.behavior_combo.setFixedSize(70, 25)
             layout.addWidget(self.behavior_combo)
+
+            # Add spacer after dropdown
+            layout.addSpacing(10)
 
         # Store label reference for color styling
         self.label = action_label
