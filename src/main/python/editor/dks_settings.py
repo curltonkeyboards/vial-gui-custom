@@ -8,7 +8,7 @@ Users configure DKS slots (DKS_00 - DKS_49) and then assign them to keys via the
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
-                              QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication)
+                              QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette
 
@@ -18,7 +18,6 @@ from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
 from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
-from widgets.tab_widget_keycodes import TabWidgetWithKeycodes
 from tabbed_keycodes import TabbedKeycodes
 from vial_device import VialKeyboard
 
@@ -659,7 +658,7 @@ class DKSSettingsTab(BasicEditor):
         self.dks_entries = []
 
         # Create tab widget for DKS slots
-        self.tabs = TabWidgetWithKeycodes()
+        self.tabs = QTabWidget()
 
         # Create all DKS entries (pre-create like TapDance does)
         for i in range(DKS_NUM_SLOTS):
