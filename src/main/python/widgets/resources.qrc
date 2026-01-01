@@ -6,5 +6,6 @@
         <file alias="ps4controller">../../resources/images/ps4_controller.png</file>
         <file alias="controllerdark">../../resources/images/ps4_controller_DARK.PNG</file>
         <file alias="controllerlight">../../resources/images/ps4_controller_LIGHT.PNG</file>
+        <file alias="switchcrossection">../../resources/images/switch crossection.png</file>
     </qresource>
 </RCC>
