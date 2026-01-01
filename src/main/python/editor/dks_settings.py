@@ -8,16 +8,56 @@ Users configure DKS slots (DKS_00 - DKS_49) and then assign them to keys via the
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
-                              QSizePolicy, QCheckBox, QSpinBox)
+                              QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_BEHAVIOR_PRESS, DKS_BEHAVIOR_RELEASE,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
-from keycodes.keycodes import Keycode, KEYCODES
-from util import tr
+from keycodes.keycodes import Keycode
+from widgets.key_widget import KeyWidget
+from tabbed_keycodes import TabbedKeycodes
+from vial_device import VialKeyboard
+
+
+class DKSKeyWidget(KeyWidget):
+    """Custom KeyWidget that doesn't open tray - parent will handle keycode selection"""
+
+    selected = pyqtSignal(object)  # Emits self when clicked
+
+    def __init__(self):
+        super().__init__()
+        self.is_selected = False
+
+    def mousePressEvent(self, ev):
+        # Set active_key properly so parent knows we're clicked
+        if len(self.widgets) > 0:
+            self.active_key = 0
+            self.active_mask = False
+
+        # Emit that we're selected (don't call parent which opens tray)
+        self.selected.emit(self)
+        ev.accept()
+
+    def mouseReleaseEvent(self, ev):
+        # Override to prevent any tray behavior
+        ev.accept()
+
+    def set_selected(self, selected):
+        """Visual feedback for selection"""
+        self.is_selected = selected
+        if selected:
+            self.setStyleSheet("""
+                QWidget {
+                    border: 2px solid palette(highlight);
+                    background: palette(highlight);
+                }
+            """)
+        else:
+            self.setStyleSheet("")
+        self.update()
 
 
 class TravelBarWidget(QWidget):
@@ -25,8 +65,8 @@ class TravelBarWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumHeight(80)
-        self.setMaximumHeight(120)
+        self.setMinimumHeight(100)
+        self.setMaximumHeight(140)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.press_actuations = []      # List of (actuation_point, enabled) tuples
@@ -47,26 +87,42 @@ class TravelBarWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Get theme colors
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
         # Calculate drawing area
         width = self.width()
         height = self.height()
-        margin = 20
+        margin = 40
         bar_height = 30
         bar_y = (height - bar_height) // 2
 
         # Draw travel bar background
-        bar_rect = painter.drawRect(margin, bar_y, width - 2 * margin, bar_height)
-        painter.setBrush(QColor(60, 60, 60))
-        painter.setPen(QPen(QColor(100, 100, 100), 2))
+        if is_dark:
+            bar_bg = QColor(60, 60, 60)
+            bar_border = QColor(100, 100, 100)
+            text_color = QColor(200, 200, 200)
+        else:
+            bar_bg = QColor(220, 220, 220)
+            bar_border = QColor(150, 150, 150)
+            text_color = QColor(60, 60, 60)
+
+        painter.setBrush(bar_bg)
+        painter.setPen(QPen(bar_border, 2))
         painter.drawRect(margin, bar_y, width - 2 * margin, bar_height)
 
         # Draw 0mm and 2.5mm labels
-        painter.setPen(QColor(200, 200, 200))
+        painter.setPen(text_color)
         font = QFont()
-        font.setPointSize(8)
+        font.setPointSize(9)
         painter.setFont(font)
-        painter.drawText(margin - 5, bar_y + bar_height + 15, "0.0mm")
-        painter.drawText(width - margin - 30, bar_y + bar_height + 15, "2.5mm")
+        painter.drawText(margin - 10, bar_y + bar_height + 20, "0.0mm")
+        painter.drawText(width - margin - 35, bar_y + bar_height + 20, "2.5mm")
 
         # Draw press actuation points (orange, above bar)
         for actuation, enabled in self.press_actuations:
@@ -77,16 +133,20 @@ class TravelBarWidget(QWidget):
 
             # Draw line
             painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
-            painter.drawLine(x, bar_y - 15, x, bar_y)
+            painter.drawLine(x, bar_y - 20, x, bar_y)
 
             # Draw circle at top
             painter.setBrush(QColor(255, 140, 0))
-            painter.drawEllipse(x - 4, bar_y - 23, 8, 8)
+            painter.drawEllipse(x - 5, bar_y - 28, 10, 10)
 
             # Draw actuation value
             mm_value = (actuation / 100.0) * 2.5
             painter.setPen(QColor(255, 140, 0))
-            painter.drawText(x - 15, bar_y - 28, f"{mm_value:.2f}")
+            font_small = QFont()
+            font_small.setPointSize(8)
+            painter.setFont(font_small)
+            painter.drawText(x - 18, bar_y - 32, f"{mm_value:.2f}")
+            painter.setFont(font)
 
         # Draw release actuation points (cyan, below bar)
         for actuation, enabled in self.release_actuations:
@@ -96,90 +156,255 @@ class TravelBarWidget(QWidget):
             x = margin + int((actuation / 100.0) * (width - 2 * margin))
 
             # Draw line
-            painter.setPen(QPen(QColor(0, 255, 255), 3))  # Cyan
-            painter.drawLine(x, bar_y + bar_height, x, bar_y + bar_height + 15)
+            painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+            painter.drawLine(x, bar_y + bar_height, x, bar_y + bar_height + 20)
 
             # Draw circle at bottom
-            painter.setBrush(QColor(0, 255, 255))
-            painter.drawEllipse(x - 4, bar_y + bar_height + 15, 8, 8)
+            painter.setBrush(QColor(0, 200, 200))
+            painter.drawEllipse(x - 5, bar_y + bar_height + 20, 10, 10)
 
             # Draw actuation value
             mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(0, 255, 255))
-            painter.drawText(x - 15, bar_y + bar_height + 35, f"{mm_value:.2f}")
+            painter.setPen(QColor(0, 200, 200))
+            font_small = QFont()
+            font_small.setPointSize(8)
+            painter.setFont(font_small)
+            painter.drawText(x - 18, bar_y + bar_height + 42, f"{mm_value:.2f}")
+            painter.setFont(font)
 
 
-class ActionEditorWidget(QWidget):
-    """Editor for a single DKS action (keycode, actuation, behavior)"""
+class VerticalTravelBarWidget(QWidget):
+    """Vertical representation of key travel with actuation points"""
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumWidth(100)
+        self.setMinimumHeight(250)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+
+        self.press_actuations = []      # List of (actuation_point, enabled) tuples
+        self.release_actuations = []    # List of (actuation_point, enabled) tuples
+
+    def set_actuations(self, press_points, release_points):
+        """Set actuation points to display"""
+        self.press_actuations = press_points
+        self.release_actuations = release_points
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Get theme colors
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
+        # Calculate drawing area
+        width = self.width()
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 20
+        bar_width = 30
+        bar_x = (width - bar_width) // 2
+
+        # Draw travel bar background (vertical)
+        if is_dark:
+            bar_bg = QColor(60, 60, 60)
+            bar_border = QColor(100, 100, 100)
+            text_color = QColor(200, 200, 200)
+        else:
+            bar_bg = QColor(220, 220, 220)
+            bar_border = QColor(150, 150, 150)
+            text_color = QColor(60, 60, 60)
+
+        painter.setBrush(bar_bg)
+        painter.setPen(QPen(bar_border, 2))
+        painter.drawRect(bar_x, margin_top, bar_width, height - margin_top - margin_bottom)
+
+        # Draw 0mm and 2.5mm labels (top and bottom)
+        painter.setPen(text_color)
+        font = QFont()
+        font.setPointSize(9)
+        painter.setFont(font)
+        painter.drawText(width // 2 - 20, margin_top - 10, "0.0mm")
+        painter.drawText(width // 2 - 20, height - margin_bottom + 15, "2.5mm")
+
+        # Draw press actuation points (orange, left side)
+        for actuation, enabled in self.press_actuations:
+            if not enabled:
+                continue
+
+            y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+            # Draw line to left
+            painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+            painter.drawLine(bar_x - 20, y, bar_x, y)
+
+            # Draw circle on left
+            painter.setBrush(QColor(255, 140, 0))
+            painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+
+            # Draw actuation value
+            mm_value = (actuation / 100.0) * 2.5
+            painter.setPen(QColor(255, 140, 0))
+            font_small = QFont()
+            font_small.setPointSize(8)
+            painter.setFont(font_small)
+            painter.drawText(bar_x - 60, y + 4, f"{mm_value:.2f}")
+            painter.setFont(font)
+
+        # Draw release actuation points (cyan, right side)
+        for actuation, enabled in self.release_actuations:
+            if not enabled:
+                continue
+
+            y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+            # Draw line to right
+            painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+            painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
+
+            # Draw circle on right
+            painter.setBrush(QColor(0, 200, 200))
+            painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+
+            # Draw actuation value
+            mm_value = (actuation / 100.0) * 2.5
+            painter.setPen(QColor(0, 200, 200))
+            font_small = QFont()
+            font_small.setPointSize(8)
+            painter.setFont(font_small)
+            painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}")
+            painter.setFont(font)
+
+
+class DKSActionEditor(QWidget):
+    """Editor for a single DKS action with DKSKeyWidget integration"""
 
     changed = pyqtSignal()
+    key_selected = pyqtSignal(object)  # Emits the DKSKeyWidget when clicked
 
-    def __init__(self, action_name, is_press=True):
+    def __init__(self, action_num, is_press=True):
         super().__init__()
+        self.action_num = action_num
         self.is_press = is_press
-        self.action_name = action_name
 
+        # Main horizontal layout
         layout = QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(8)
 
-        # Enable checkbox
-        self.enable_check = QCheckBox()
-        self.enable_check.setChecked(False)
-        self.enable_check.stateChanged.connect(self._on_enable_changed)
-        layout.addWidget(self.enable_check)
+        if is_press:
+            # Press layout: Dropdown | Key | Slider (left to right)
+            # Behavior selector on the outside (left)
+            self.behavior_combo = QComboBox()
+            self.behavior_combo.addItems(["Tap", "Press", "Release"])
+            self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
+            self.behavior_combo.currentIndexChanged.connect(self._on_changed)
+            self.behavior_combo.setFixedSize(70, 25)
+            layout.addWidget(self.behavior_combo)
 
-        # Action label
-        label = QLabel(action_name)
-        label.setMinimumWidth(60)
-        layout.addWidget(label)
+            # Key widget in middle
+            key_container = QVBoxLayout()
+            key_container.setSpacing(2)
 
-        # Keycode selector
-        layout.addWidget(QLabel("Key:"))
-        self.keycode_combo = QComboBox()
-        self.keycode_combo.setMinimumWidth(120)
-        self.keycode_combo.currentIndexChanged.connect(self._on_changed)
-        layout.addWidget(self.keycode_combo)
+            action_label = QLabel(f"Press {action_num + 1}")
+            action_label.setAlignment(Qt.AlignCenter)
+            action_label.setStyleSheet("font-weight: bold; font-size: 10px; color: rgb(255, 140, 0);")
+            key_container.addWidget(action_label)
 
-        # Actuation slider
-        layout.addWidget(QLabel("Actuation:"))
-        self.actuation_slider = QSlider(Qt.Horizontal)
-        self.actuation_slider.setMinimum(0)
-        self.actuation_slider.setMaximum(100)
-        self.actuation_slider.setValue(60)
-        self.actuation_slider.setMinimumWidth(150)
-        self.actuation_slider.valueChanged.connect(self._update_actuation_label)
-        self.actuation_slider.valueChanged.connect(self._on_changed)
-        layout.addWidget(self.actuation_slider)
+            self.key_widget = DKSKeyWidget()
+            self.key_widget.setFixedSize(60, 50)
+            self.key_widget.changed.connect(self._on_changed)
+            self.key_widget.selected.connect(self._on_key_selected)
+            key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
 
-        # Actuation value label
-        self.actuation_label = QLabel("1.50mm")
-        self.actuation_label.setMinimumWidth(50)
-        layout.addWidget(self.actuation_label)
+            layout.addLayout(key_container)
 
-        # Behavior selector
-        layout.addWidget(QLabel("Behavior:"))
-        self.behavior_combo = QComboBox()
-        self.behavior_combo.addItems(["Tap", "Press", "Release"])
-        self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
-        self.behavior_combo.currentIndexChanged.connect(self._on_changed)
-        layout.addWidget(self.behavior_combo)
+            # Slider on the inside (right) - horizontal
+            slider_container = QVBoxLayout()
+            slider_container.setSpacing(2)
 
-        layout.addStretch()
+            self.actuation_label = QLabel("1.50mm")
+            self.actuation_label.setAlignment(Qt.AlignCenter)
+            self.actuation_label.setStyleSheet("font-size: 9px;")
+            slider_container.addWidget(self.actuation_label)
+
+            self.actuation_slider = QSlider(Qt.Horizontal)
+            self.actuation_slider.setMinimum(0)
+            self.actuation_slider.setMaximum(100)
+            self.actuation_slider.setValue(60)
+            self.actuation_slider.setFixedWidth(80)
+            self.actuation_slider.valueChanged.connect(self._update_actuation_label)
+            self.actuation_slider.valueChanged.connect(self._on_changed)
+            slider_container.addWidget(self.actuation_slider)
+
+            layout.addLayout(slider_container)
+        else:
+            # Release layout: Slider | Key | Dropdown (left to right)
+            # Slider on the inside (left) - horizontal
+            slider_container = QVBoxLayout()
+            slider_container.setSpacing(2)
+
+            self.actuation_label = QLabel("1.50mm")
+            self.actuation_label.setAlignment(Qt.AlignCenter)
+            self.actuation_label.setStyleSheet("font-size: 9px;")
+            slider_container.addWidget(self.actuation_label)
+
+            self.actuation_slider = QSlider(Qt.Horizontal)
+            self.actuation_slider.setMinimum(0)
+            self.actuation_slider.setMaximum(100)
+            self.actuation_slider.setValue(60)
+            self.actuation_slider.setFixedWidth(80)
+            self.actuation_slider.valueChanged.connect(self._update_actuation_label)
+            self.actuation_slider.valueChanged.connect(self._on_changed)
+            slider_container.addWidget(self.actuation_slider)
+
+            layout.addLayout(slider_container)
+
+            # Key widget in middle
+            key_container = QVBoxLayout()
+            key_container.setSpacing(2)
+
+            action_label = QLabel(f"Release {action_num + 1}")
+            action_label.setAlignment(Qt.AlignCenter)
+            action_label.setStyleSheet("font-weight: bold; font-size: 10px; color: rgb(0, 200, 200);")
+            key_container.addWidget(action_label)
+
+            self.key_widget = DKSKeyWidget()
+            self.key_widget.setFixedSize(60, 50)
+            self.key_widget.changed.connect(self._on_changed)
+            self.key_widget.selected.connect(self._on_key_selected)
+            key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
+
+            layout.addLayout(key_container)
+
+            # Behavior selector on the outside (right)
+            self.behavior_combo = QComboBox()
+            self.behavior_combo.addItems(["Tap", "Press", "Release"])
+            self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
+            self.behavior_combo.currentIndexChanged.connect(self._on_changed)
+            self.behavior_combo.setFixedSize(70, 25)
+            layout.addWidget(self.behavior_combo)
+
+        # Store label reference for color styling
+        self.label = action_label
 
         self.setLayout(layout)
         self._update_actuation_label()
-        self._update_enabled_state()
 
-    def _on_enable_changed(self):
-        self._update_enabled_state()
-        self._on_changed()
-
-    def _update_enabled_state(self):
-        """Enable/disable controls based on checkbox"""
-        enabled = self.enable_check.isChecked()
-        self.keycode_combo.setEnabled(enabled)
-        self.actuation_slider.setEnabled(enabled)
-        self.behavior_combo.setEnabled(enabled)
+        # Style the widget with theme colors
+        self.setStyleSheet("""
+            DKSActionEditor {
+                border: 1px solid palette(mid);
+                border-radius: 5px;
+                background: palette(base);
+            }
+        """)
 
     def _update_actuation_label(self):
         """Update actuation label with mm value"""
@@ -191,211 +416,241 @@ class ActionEditorWidget(QWidget):
         """Emit changed signal"""
         self.changed.emit()
 
-    def populate_keycodes(self, keycodes):
-        """Populate keycode dropdown with available keycodes"""
-        self.keycode_combo.clear()
-        self.keycode_combo.addItem("None (KC_NO)", 0)
-
-        for kc in keycodes:
-            if kc.qmk_id and kc.label:
-                self.keycode_combo.addItem(kc.label, kc.qmk_id)
+    def _on_key_selected(self, widget):
+        """Forward key selection signal to parent"""
+        self.key_selected.emit(widget)
 
     def set_action(self, keycode, actuation, behavior):
         """Set action values"""
-        # Find keycode in combo box
-        enabled = (keycode != 0)
-        self.enable_check.setChecked(enabled)
+        # Convert keycode integer to string qmk_id
+        if isinstance(keycode, int):
+            if keycode == 0:
+                keycode_str = "KC_NO"
+            else:
+                keycode_str = Keycode.serialize(keycode)
+        else:
+            keycode_str = keycode
 
-        for i in range(self.keycode_combo.count()):
-            if self.keycode_combo.itemData(i) == keycode:
-                self.keycode_combo.setCurrentIndex(i)
-                break
-
+        self.key_widget.set_keycode(keycode_str)
         self.actuation_slider.setValue(actuation)
         self.behavior_combo.setCurrentIndex(behavior)
-        self._update_enabled_state()
 
     def get_action(self):
         """Get action values as (keycode, actuation, behavior) tuple"""
-        if not self.enable_check.isChecked():
-            return (0, self.actuation_slider.value(), self.behavior_combo.currentIndex())
+        keycode_str = self.key_widget.keycode
 
-        keycode = self.keycode_combo.currentData()
+        # Convert keycode string to integer
+        if keycode_str == "KC_NO" or keycode_str == "":
+            keycode = 0
+        else:
+            keycode = Keycode.deserialize(keycode_str)
+
         actuation = self.actuation_slider.value()
         behavior = self.behavior_combo.currentIndex()
         return (keycode, actuation, behavior)
 
 
-class DKSSettingsTab(BasicEditor):
-    """Main DKS settings editor tab"""
+class DKSVisualWidget(QWidget):
+    """Visual layout widget for DKS actions - horizontal layout"""
 
-    def __init__(self, layout_editor):
+    def __init__(self):
         super().__init__()
+        self.setMinimumSize(900, 300)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        self.layout_editor = layout_editor
+        # Will be set by parent
+        self.press_editors = []
+        self.release_editors = []
+
+        # Main horizontal layout
+        self.main_layout = QHBoxLayout()
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(20)
+        self.setLayout(self.main_layout)
+
+    def set_editors(self, press_editors, release_editors):
+        """Position the action editors in horizontal layout"""
+        self.press_editors = press_editors
+        self.release_editors = release_editors
+
+        # Clear existing layout
+        while self.main_layout.count():
+            item = self.main_layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
+
+        # Left section: Press actions (vertical stack)
+        press_container = QWidget()
+        press_layout = QVBoxLayout()
+        press_layout.setContentsMargins(0, 0, 0, 0)
+        press_layout.setSpacing(10)
+
+        press_label = QLabel("Key Press (Downstroke)")
+        press_label.setStyleSheet("font-weight: bold; font-size: 12px; color: rgb(255, 140, 0);")
+        press_label.setAlignment(Qt.AlignCenter)
+        press_layout.addWidget(press_label)
+
+        for editor in self.press_editors:
+            editor.setParent(press_container)
+            press_layout.addWidget(editor)
+            # Label styling is now done in DKSActionEditor.__init__
+
+        press_layout.addStretch()
+        press_container.setLayout(press_layout)
+        self.main_layout.addWidget(press_container)
+
+        # Middle: Vertical travel bar
+        self.main_layout.addWidget(self.create_vertical_travel_bar())
+
+        # Right section: Release actions (vertical stack)
+        release_container = QWidget()
+        release_layout = QVBoxLayout()
+        release_layout.setContentsMargins(0, 0, 0, 0)
+        release_layout.setSpacing(10)
+
+        release_label = QLabel("Key Release (Upstroke)")
+        release_label.setStyleSheet("font-weight: bold; font-size: 12px; color: rgb(0, 200, 200);")
+        release_label.setAlignment(Qt.AlignCenter)
+        release_layout.addWidget(release_label)
+
+        for editor in self.release_editors:
+            editor.setParent(release_container)
+            release_layout.addWidget(editor)
+            # Label styling is now done in DKSActionEditor.__init__
+
+        release_layout.addStretch()
+        release_container.setLayout(release_layout)
+        self.main_layout.addWidget(release_container)
+
+    def create_vertical_travel_bar(self):
+        """Create a vertical travel bar indicator"""
+        self.vertical_travel_bar = VerticalTravelBarWidget()
+        return self.vertical_travel_bar
+
+    def update_travel_bar(self, press_points, release_points):
+        """Update the vertical travel bar with actuation points"""
+        if hasattr(self, 'vertical_travel_bar'):
+            self.vertical_travel_bar.set_actuations(press_points, release_points)
+
+
+class DKSEntryUI(QWidget):
+    """UI for a single DKS slot"""
+
+    changed = pyqtSignal()
+
+    def __init__(self, slot_idx):
+        super().__init__()
+        self.slot_idx = slot_idx
         self.dks_protocol = None
-        self.current_slot = 0
-        self.unsaved_changes = False
+        self.selected_key_widget = None  # Track which key widget is selected
 
-        # Set spacing for this layout
-        self.setSpacing(10)
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(15)
 
-        # Top bar: Slot selector and buttons
-        top_bar = self._create_top_bar()
-        self.addLayout(top_bar)
+        # Info section
+        info_layout = QHBoxLayout()
+        info_text = f"Configure actions for <b>DKS_{slot_idx:02d}</b> (keycode: <code>0x{0xED00 + slot_idx:04X}</code>)"
+        info_label = QLabel(info_text)
+        info_label.setStyleSheet("color: palette(text); font-size: 11px;")
+        info_layout.addWidget(info_label)
+        info_layout.addStretch()
 
-        # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        self.addWidget(separator)
+        # Load button
+        self.load_btn = QPushButton("Load from Keyboard")
+        self.load_btn.clicked.connect(self._on_load)
+        info_layout.addWidget(self.load_btn)
 
-        # Travel bar visualization
-        travel_group = QGroupBox("Key Travel Visualization")
-        travel_layout = QVBoxLayout()
-        self.travel_bar = TravelBarWidget()
-        travel_layout.addWidget(self.travel_bar)
+        main_layout.addLayout(info_layout)
 
-        legend_layout = QHBoxLayout()
-        legend_layout.addWidget(QLabel("🟠 Press Actions (downstroke)"))
-        legend_layout.addStretch()
-        legend_layout.addWidget(QLabel("🔵 Release Actions (upstroke)"))
-        travel_layout.addLayout(legend_layout)
+        # Visual action editor (includes travel bar)
+        visual_group = QGroupBox("Action Configuration")
+        visual_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid palette(mid);
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        visual_layout = QVBoxLayout()
 
-        travel_group.setLayout(travel_layout)
-        self.addWidget(travel_group)
+        self.visual_widget = DKSVisualWidget()
 
-        # Press actions group
-        press_group = self._create_action_group("Press Actions (Downstroke)", True)
-        self.addWidget(press_group)
+        # Create action editors
+        self.press_editors = []
+        self.release_editors = []
 
-        # Release actions group
-        release_group = self._create_action_group("Release Actions (Upstroke)", False)
-        self.addWidget(release_group)
+        for i in range(DKS_ACTIONS_PER_STAGE):
+            press_editor = DKSActionEditor(i, is_press=True)
+            press_editor.changed.connect(self._on_action_changed)
+            press_editor.key_selected.connect(self._on_key_selected)
+            self.press_editors.append(press_editor)
+
+            release_editor = DKSActionEditor(i, is_press=False)
+            release_editor.changed.connect(self._on_action_changed)
+            release_editor.key_selected.connect(self._on_key_selected)
+            self.release_editors.append(release_editor)
+
+        # Set editors in visual widget
+        self.visual_widget.set_editors(self.press_editors, self.release_editors)
+
+        visual_layout.addWidget(self.visual_widget)
+        visual_group.setLayout(visual_layout)
+        main_layout.addWidget(visual_group)
 
         # Bottom buttons
-        bottom_bar = self._create_bottom_bar()
-        self.addLayout(bottom_bar)
+        bottom_layout = QHBoxLayout()
 
-        self.addStretch()
+        self.reset_btn = QPushButton("Reset Slot")
+        self.reset_btn.clicked.connect(self._on_reset)
+        bottom_layout.addWidget(self.reset_btn)
 
-    def _create_top_bar(self):
-        """Create top bar with slot selector and load/save buttons"""
-        layout = QHBoxLayout()
+        bottom_layout.addStretch()
 
-        # Slot selector
-        layout.addWidget(QLabel("DKS Slot:"))
-        self.slot_combo = QComboBox()
-        for i in range(DKS_NUM_SLOTS):
-            self.slot_combo.addItem(f"DKS_{i:02d} (0x{0xED00 + i:04X})", i)
-        self.slot_combo.setCurrentIndex(0)
-        self.slot_combo.currentIndexChanged.connect(self._on_slot_changed)
-        layout.addWidget(self.slot_combo)
+        self.save_eeprom_btn = QPushButton("Save to EEPROM")
+        self.save_eeprom_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                           stop: 0 palette(light), stop: 1 palette(button));
+                font-weight: bold;
+                padding: 5px 15px;
+                border-radius: 3px;
+            }
+        """)
+        self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
+        bottom_layout.addWidget(self.save_eeprom_btn)
 
-        layout.addSpacing(20)
+        main_layout.addLayout(bottom_layout)
 
-        # Load from keyboard button
-        self.load_btn = QPushButton("Load from Keyboard")
-        self.load_btn.clicked.connect(self._on_load_from_keyboard)
-        layout.addWidget(self.load_btn)
+        self.setLayout(main_layout)
 
-        layout.addStretch()
+    def set_dks_protocol(self, protocol):
+        """Set the DKS protocol handler"""
+        self.dks_protocol = protocol
 
-        # Info label
-        self.info_label = QLabel("Assign this DKS keycode to keys via the Keymap tab")
-        self.info_label.setStyleSheet("color: #888;")
-        layout.addWidget(self.info_label)
-
-        return layout
-
-    def _create_action_group(self, title, is_press):
-        """Create a group of 4 action editors"""
-        group = QGroupBox(title)
-        layout = QVBoxLayout()
-
-        # Create 4 action editors
-        editors = []
-        for i in range(DKS_ACTIONS_PER_STAGE):
-            action_name = f"Action {i + 1}:"
-            editor = ActionEditorWidget(action_name, is_press)
-            editor.changed.connect(self._on_action_changed)
-            layout.addWidget(editor)
-            editors.append(editor)
-
-        # Store editors
-        if is_press:
-            self.press_editors = editors
-        else:
-            self.release_editors = editors
-
-        group.setLayout(layout)
-        return group
-
-    def _create_bottom_bar(self):
-        """Create bottom bar with action buttons"""
-        layout = QHBoxLayout()
-
-        # Reset slot button
-        self.reset_slot_btn = QPushButton("Reset This Slot")
-        self.reset_slot_btn.clicked.connect(self._on_reset_slot)
-        layout.addWidget(self.reset_slot_btn)
-
-        # Reset all button
-        self.reset_all_btn = QPushButton("Reset All Slots")
-        self.reset_all_btn.clicked.connect(self._on_reset_all)
-        layout.addWidget(self.reset_all_btn)
-
-        layout.addStretch()
-
-        # Save to EEPROM button
-        self.save_btn = QPushButton("Save to EEPROM")
-        self.save_btn.setStyleSheet("background-color: #4CAF50; font-weight: bold;")
-        self.save_btn.clicked.connect(self._on_save_to_eeprom)
-        layout.addWidget(self.save_btn)
-
-        # Load from EEPROM button
-        self.load_eeprom_btn = QPushButton("Load from EEPROM")
-        self.load_eeprom_btn.clicked.connect(self._on_load_from_eeprom)
-        layout.addWidget(self.load_eeprom_btn)
-
-        return layout
-
-    def _on_slot_changed(self, index):
-        """Handle slot selection change"""
-        if self.unsaved_changes:
-            reply = QMessageBox.question(
-                self, "Unsaved Changes",
-                "You have unsaved changes. Load the selected slot anyway?",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply == QMessageBox.No:
-                self.slot_combo.setCurrentIndex(self.current_slot)
-                return
-
-        self.current_slot = index
-        self._load_slot_from_keyboard()
-
-    def _on_load_from_keyboard(self):
-        """Load current slot from keyboard"""
-        self._load_slot_from_keyboard()
-
-    def _load_slot_from_keyboard(self):
-        """Load current slot configuration from keyboard"""
+    def _on_load(self):
+        """Load slot from keyboard"""
         if not self.dks_protocol:
             return
 
-        slot = self.dks_protocol.get_slot(self.current_slot)
+        slot = self.dks_protocol.get_slot(self.slot_idx)
         if not slot:
-            QMessageBox.warning(self, "Error", "Failed to load DKS slot from keyboard")
+            # Silently fail if firmware doesn't support DKS - don't show error popup
+            # This allows the tab to show even if firmware doesn't have DKS enabled
             return
 
-        # Update UI
-        self._populate_editors_from_slot(slot)
-        self.unsaved_changes = False
-        self._update_travel_bar()
+        self.load_from_slot(slot)
 
-    def _populate_editors_from_slot(self, slot):
-        """Populate action editors from slot data"""
+    def load_from_slot(self, slot):
+        """Load UI from slot data"""
         # Press actions
         for i, editor in enumerate(self.press_editors):
             action = slot.press_actions[i]
@@ -406,16 +661,43 @@ class DKSSettingsTab(BasicEditor):
             action = slot.release_actions[i]
             editor.set_action(action.keycode, action.actuation, action.behavior)
 
-    def _on_action_changed(self):
-        """Handle action editor change"""
-        self.unsaved_changes = True
         self._update_travel_bar()
 
-        # Send to keyboard immediately
-        self._send_current_slot_to_keyboard()
+    def save_to_slot(self):
+        """Save UI to slot (returns tuple of press and release actions)"""
+        press_actions = []
+        for editor in self.press_editors:
+            press_actions.append(editor.get_action())
 
-    def _send_current_slot_to_keyboard(self):
-        """Send current slot configuration to keyboard"""
+        release_actions = []
+        for editor in self.release_editors:
+            release_actions.append(editor.get_action())
+
+        return (press_actions, release_actions)
+
+    def _on_action_changed(self):
+        """Handle action change"""
+        self._update_travel_bar()
+        self._send_to_keyboard()
+        self.changed.emit()
+
+    def _on_key_selected(self, widget):
+        """Handle key widget selection - update visual feedback"""
+        # Clear previous selection
+        if self.selected_key_widget:
+            self.selected_key_widget.set_selected(False)
+
+        # Set new selection
+        self.selected_key_widget = widget
+        widget.set_selected(True)
+
+    def on_keycode_selected(self, keycode):
+        """Handle keycode selection from TabbedKeycodes"""
+        if self.selected_key_widget:
+            self.selected_key_widget.on_keycode_changed(keycode)
+
+    def _send_to_keyboard(self):
+        """Send current configuration to keyboard"""
         if not self.dks_protocol:
             return
 
@@ -423,73 +705,139 @@ class DKSSettingsTab(BasicEditor):
         for i, editor in enumerate(self.press_editors):
             keycode, actuation, behavior = editor.get_action()
             self.dks_protocol.set_action(
-                self.current_slot, True, i, keycode, actuation, behavior
+                self.slot_idx, True, i, keycode, actuation, behavior
             )
 
         # Send release actions
         for i, editor in enumerate(self.release_editors):
             keycode, actuation, behavior = editor.get_action()
             self.dks_protocol.set_action(
-                self.current_slot, False, i, keycode, actuation, behavior
+                self.slot_idx, False, i, keycode, actuation, behavior
             )
 
     def _update_travel_bar(self):
         """Update travel bar visualization"""
-        # Get press actuations
         press_points = []
         for editor in self.press_editors:
             keycode, actuation, behavior = editor.get_action()
             enabled = (keycode != 0)
             press_points.append((actuation, enabled))
 
-        # Get release actuations
         release_points = []
         for editor in self.release_editors:
             keycode, actuation, behavior = editor.get_action()
             enabled = (keycode != 0)
             release_points.append((actuation, enabled))
 
-        self.travel_bar.set_actuations(press_points, release_points)
+        self.visual_widget.update_travel_bar(press_points, release_points)
 
-    def _on_save_to_eeprom(self):
-        """Save all DKS configurations to EEPROM"""
-        if not self.dks_protocol:
-            return
-
-        if self.dks_protocol.save_to_eeprom():
-            QMessageBox.information(self, "Success", "DKS configurations saved to EEPROM")
-            self.unsaved_changes = False
-        else:
-            QMessageBox.warning(self, "Error", "Failed to save DKS configurations")
-
-    def _on_load_from_eeprom(self):
-        """Load all DKS configurations from EEPROM"""
-        if not self.dks_protocol:
-            return
-
-        if self.dks_protocol.load_from_eeprom():
-            QMessageBox.information(self, "Success", "DKS configurations loaded from EEPROM")
-            self._load_slot_from_keyboard()
-        else:
-            QMessageBox.warning(self, "Error", "Failed to load DKS configurations")
-
-    def _on_reset_slot(self):
-        """Reset current slot to defaults"""
+    def _on_reset(self):
+        """Reset slot to defaults"""
         if not self.dks_protocol:
             return
 
         reply = QMessageBox.question(
             self, "Confirm Reset",
-            f"Reset DKS_{self.current_slot:02d} to default configuration?",
+            f"Reset DKS_{self.slot_idx:02d} to default configuration?",
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
-            if self.dks_protocol.reset_slot(self.current_slot):
+            if self.dks_protocol.reset_slot(self.slot_idx):
                 QMessageBox.information(self, "Success", "Slot reset to defaults")
-                self._load_slot_from_keyboard()
+                self._on_load()
             else:
                 QMessageBox.warning(self, "Error", "Failed to reset slot")
+
+    def _on_save_eeprom(self):
+        """Save to EEPROM"""
+        if not self.dks_protocol:
+            return
+
+        if self.dks_protocol.save_to_eeprom():
+            QMessageBox.information(self, "Success", "DKS configuration saved to EEPROM")
+        else:
+            QMessageBox.warning(self, "Error", "Failed to save to EEPROM")
+
+
+class DKSSettingsTab(BasicEditor):
+    """Main DKS settings editor tab with filtered slots"""
+
+    def __init__(self, layout_editor):
+        super().__init__()
+        self.layout_editor = layout_editor
+        self.dks_protocol = None
+        self.dks_entries = []
+        self.loaded_slots = set()  # Track which slots have been loaded
+
+        # Create tab widget for DKS slots
+        self.tabs = QTabWidget()
+
+        # Create all DKS entries (pre-create like TapDance does)
+        for i in range(DKS_NUM_SLOTS):
+            entry = DKSEntryUI(i)
+            entry.changed.connect(self.on_entry_changed)
+            self.dks_entries.append(entry)
+
+        # Add tabs to widget
+        for i, entry in enumerate(self.dks_entries):
+            scroll = QScrollArea()
+            scroll.setWidget(entry)
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.tabs.addTab(scroll, f"DKS{i}")
+
+        self.addWidget(self.tabs)
+
+        # Add TabbedKeycodes at the bottom for keycode selection
+        self.tabbed_keycodes = TabbedKeycodes()
+        self.addWidget(self.tabbed_keycodes)
+
+        # Connect tab changes to update keycode connections
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
+        # Initialize connection to first tab
+        self._on_tab_changed(0)
+
+        # Bottom action buttons
+        button_layout = QHBoxLayout()
+
+        self.reset_all_btn = QPushButton("Reset All Slots")
+        self.reset_all_btn.clicked.connect(self._on_reset_all)
+        button_layout.addWidget(self.reset_all_btn)
+
+        button_layout.addStretch()
+
+        self.load_eeprom_btn = QPushButton("Load All from EEPROM")
+        self.load_eeprom_btn.clicked.connect(self._on_load_eeprom)
+        button_layout.addWidget(self.load_eeprom_btn)
+
+        self.addLayout(button_layout)
+
+    def on_entry_changed(self):
+        """Handle entry change (can be used for modified indicators)"""
+        # Future: Add modified state tracking like TapDance
+        pass
+
+    def _on_tab_changed(self, index):
+        """Handle tab change - connect TabbedKeycodes to new entry and lazy load slot data"""
+        if index >= 0 and index < len(self.dks_entries):
+            # Disconnect all previous connections (if any)
+            try:
+                self.tabbed_keycodes.keycode_changed.disconnect()
+            except:
+                pass  # No connections yet
+
+            # Connect to current entry
+            self.tabbed_keycodes.keycode_changed.connect(
+                self.dks_entries[index].on_keycode_selected
+            )
+
+            # Lazy load: Only load slot data when first viewing the tab
+            if self.dks_protocol and index not in self.loaded_slots:
+                self.dks_entries[index]._on_load()
+                self.loaded_slots.add(index)
 
     def _on_reset_all(self):
         """Reset all slots to defaults"""
@@ -497,17 +845,32 @@ class DKSSettingsTab(BasicEditor):
             return
 
         reply = QMessageBox.question(
-            self, "Confirm Reset",
+            None, "Confirm Reset",
             "Reset ALL DKS slots to default configuration? This cannot be undone!",
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
             if self.dks_protocol.reset_all_slots():
-                QMessageBox.information(self, "Success", "All slots reset to defaults")
-                self._load_slot_from_keyboard()
+                QMessageBox.information(None, "Success", "All slots reset to defaults")
+                # Reload current tab
+                current_idx = self.tabs.currentIndex()
+                self.dks_entries[current_idx]._on_load()
             else:
-                QMessageBox.warning(self, "Error", "Failed to reset slots")
+                QMessageBox.warning(None, "Error", "Failed to reset slots")
+
+    def _on_load_eeprom(self):
+        """Load all slots from EEPROM"""
+        if not self.dks_protocol:
+            return
+
+        if self.dks_protocol.load_from_eeprom():
+            QMessageBox.information(None, "Success", "DKS configurations loaded from EEPROM")
+            # Reload current tab
+            current_idx = self.tabs.currentIndex()
+            self.dks_entries[current_idx]._on_load()
+        else:
+            QMessageBox.warning(None, "Error", "Failed to load from EEPROM")
 
     def rebuild(self, device):
         """Rebuild the editor when device changes"""
@@ -520,17 +883,13 @@ class DKSSettingsTab(BasicEditor):
         # Create DKS protocol handler
         self.dks_protocol = ProtocolDKS(device)
 
-        # Populate keycode dropdowns
-        for editor in self.press_editors:
-            editor.populate_keycodes(KEYCODES)
-        for editor in self.release_editors:
-            editor.populate_keycodes(KEYCODES)
+        # Set protocol for all entries
+        for entry in self.dks_entries:
+            entry.set_dks_protocol(self.dks_protocol)
 
-        # Load current slot
-        self._load_slot_from_keyboard()
+        # Clear loaded slots cache on device change
+        self.loaded_slots.clear()
 
     def valid(self):
         """Check if this tab is valid for the current device"""
-        # DKS is always available (it's a firmware feature)
-        from vial_device import VialKeyboard
         return isinstance(self.device, VialKeyboard)
