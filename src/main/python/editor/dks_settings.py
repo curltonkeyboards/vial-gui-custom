@@ -293,60 +293,106 @@ class DKSActionEditor(QWidget):
         self.action_num = action_num
         self.is_press = is_press
 
-        # Main layout
-        layout = QVBoxLayout()
+        # Main horizontal layout
+        layout = QHBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(8)
 
-        # Action label
-        action_type = "Press" if is_press else "Release"
-        label_text = f"{action_type} {action_num + 1}"
-        self.label = QLabel(label_text)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet("font-weight: bold; font-size: 11px;")
-        layout.addWidget(self.label)
+        if is_press:
+            # Press layout: Dropdown | Key | Slider (left to right)
+            # Behavior selector on the outside (left)
+            self.behavior_combo = QComboBox()
+            self.behavior_combo.addItems(["Tap", "Press", "Release"])
+            self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
+            self.behavior_combo.currentIndexChanged.connect(self._on_changed)
+            self.behavior_combo.setFixedSize(70, 25)
+            layout.addWidget(self.behavior_combo)
 
-        # Key widget - use custom DKSKeyWidget
-        self.key_widget = DKSKeyWidget()
-        self.key_widget.setFixedSize(60, 50)
-        self.key_widget.changed.connect(self._on_changed)
-        self.key_widget.selected.connect(self._on_key_selected)
-        layout.addWidget(self.key_widget, alignment=Qt.AlignCenter)
+            # Key widget in middle
+            key_container = QVBoxLayout()
+            key_container.setSpacing(2)
 
-        # Actuation slider with label
-        actuation_layout = QVBoxLayout()
-        actuation_layout.setSpacing(2)
+            action_label = QLabel(f"Press {action_num + 1}")
+            action_label.setAlignment(Qt.AlignCenter)
+            action_label.setStyleSheet("font-weight: bold; font-size: 10px; color: rgb(255, 140, 0);")
+            key_container.addWidget(action_label)
 
-        self.actuation_label = QLabel("1.50mm")
-        self.actuation_label.setAlignment(Qt.AlignCenter)
-        self.actuation_label.setStyleSheet("font-size: 10px;")
-        actuation_layout.addWidget(self.actuation_label)
+            self.key_widget = DKSKeyWidget()
+            self.key_widget.setFixedSize(60, 50)
+            self.key_widget.changed.connect(self._on_changed)
+            self.key_widget.selected.connect(self._on_key_selected)
+            key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
 
-        self.actuation_slider = QSlider(Qt.Vertical)
-        self.actuation_slider.setMinimum(0)
-        self.actuation_slider.setMaximum(100)
-        self.actuation_slider.setValue(60)
-        self.actuation_slider.setFixedHeight(120)
-        self.actuation_slider.valueChanged.connect(self._update_actuation_label)
-        self.actuation_slider.valueChanged.connect(self._on_changed)
-        actuation_layout.addWidget(self.actuation_slider, alignment=Qt.AlignCenter)
+            layout.addLayout(key_container)
 
-        layout.addLayout(actuation_layout)
+            # Slider on the inside (right) - horizontal
+            slider_container = QVBoxLayout()
+            slider_container.setSpacing(2)
 
-        # Behavior selector
-        behavior_label = QLabel("Behavior:")
-        behavior_label.setAlignment(Qt.AlignCenter)
-        behavior_label.setStyleSheet("font-size: 10px;")
-        layout.addWidget(behavior_label)
+            self.actuation_label = QLabel("1.50mm")
+            self.actuation_label.setAlignment(Qt.AlignCenter)
+            self.actuation_label.setStyleSheet("font-size: 9px;")
+            slider_container.addWidget(self.actuation_label)
 
-        self.behavior_combo = QComboBox()
-        self.behavior_combo.addItems(["Tap", "Press", "Release"])
-        self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
-        self.behavior_combo.currentIndexChanged.connect(self._on_changed)
-        self.behavior_combo.setFixedWidth(80)
-        layout.addWidget(self.behavior_combo, alignment=Qt.AlignCenter)
+            self.actuation_slider = QSlider(Qt.Horizontal)
+            self.actuation_slider.setMinimum(0)
+            self.actuation_slider.setMaximum(100)
+            self.actuation_slider.setValue(60)
+            self.actuation_slider.setFixedWidth(80)
+            self.actuation_slider.valueChanged.connect(self._update_actuation_label)
+            self.actuation_slider.valueChanged.connect(self._on_changed)
+            slider_container.addWidget(self.actuation_slider)
 
-        layout.addStretch()
+            layout.addLayout(slider_container)
+        else:
+            # Release layout: Slider | Key | Dropdown (left to right)
+            # Slider on the inside (left) - horizontal
+            slider_container = QVBoxLayout()
+            slider_container.setSpacing(2)
+
+            self.actuation_label = QLabel("1.50mm")
+            self.actuation_label.setAlignment(Qt.AlignCenter)
+            self.actuation_label.setStyleSheet("font-size: 9px;")
+            slider_container.addWidget(self.actuation_label)
+
+            self.actuation_slider = QSlider(Qt.Horizontal)
+            self.actuation_slider.setMinimum(0)
+            self.actuation_slider.setMaximum(100)
+            self.actuation_slider.setValue(60)
+            self.actuation_slider.setFixedWidth(80)
+            self.actuation_slider.valueChanged.connect(self._update_actuation_label)
+            self.actuation_slider.valueChanged.connect(self._on_changed)
+            slider_container.addWidget(self.actuation_slider)
+
+            layout.addLayout(slider_container)
+
+            # Key widget in middle
+            key_container = QVBoxLayout()
+            key_container.setSpacing(2)
+
+            action_label = QLabel(f"Release {action_num + 1}")
+            action_label.setAlignment(Qt.AlignCenter)
+            action_label.setStyleSheet("font-weight: bold; font-size: 10px; color: rgb(0, 200, 200);")
+            key_container.addWidget(action_label)
+
+            self.key_widget = DKSKeyWidget()
+            self.key_widget.setFixedSize(60, 50)
+            self.key_widget.changed.connect(self._on_changed)
+            self.key_widget.selected.connect(self._on_key_selected)
+            key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
+
+            layout.addLayout(key_container)
+
+            # Behavior selector on the outside (right)
+            self.behavior_combo = QComboBox()
+            self.behavior_combo.addItems(["Tap", "Press", "Release"])
+            self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
+            self.behavior_combo.currentIndexChanged.connect(self._on_changed)
+            self.behavior_combo.setFixedSize(70, 25)
+            layout.addWidget(self.behavior_combo)
+
+        # Store label reference for color styling
+        self.label = action_label
 
         self.setLayout(layout)
         self._update_actuation_label()
@@ -447,7 +493,7 @@ class DKSVisualWidget(QWidget):
         for editor in self.press_editors:
             editor.setParent(press_container)
             press_layout.addWidget(editor)
-            editor.label.setStyleSheet("font-weight: bold; font-size: 11px; color: rgb(255, 140, 0);")
+            # Label styling is now done in DKSActionEditor.__init__
 
         press_layout.addStretch()
         press_container.setLayout(press_layout)
@@ -470,7 +516,7 @@ class DKSVisualWidget(QWidget):
         for editor in self.release_editors:
             editor.setParent(release_container)
             release_layout.addWidget(editor)
-            editor.label.setStyleSheet("font-weight: bold; font-size: 11px; color: rgb(0, 200, 200);")
+            # Label styling is now done in DKSActionEditor.__init__
 
         release_layout.addStretch()
         release_container.setLayout(release_layout)
