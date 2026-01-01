@@ -173,6 +173,96 @@ class TravelBarWidget(QWidget):
             painter.setFont(font)
 
 
+class KeyswitchDiagramWidget(QWidget):
+    """Visual diagram of a mechanical keyswitch cross-section"""
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumWidth(120)
+        self.setMinimumHeight(250)
+        self.setMaximumWidth(120)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Get theme colors
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
+        # Calculate drawing area
+        width = self.width()
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 20
+
+        # Set colors based on theme
+        if is_dark:
+            stem_color = QColor(180, 180, 180)
+            housing_color = QColor(100, 100, 100)
+            spring_color = QColor(255, 140, 0)
+            text_color = QColor(200, 200, 200)
+        else:
+            stem_color = QColor(120, 120, 120)
+            housing_color = QColor(80, 80, 80)
+            spring_color = QColor(255, 100, 0)
+            text_color = QColor(60, 60, 60)
+
+        center_x = width // 2
+
+        # Draw housing (outer box)
+        housing_width = 60
+        housing_height = height - margin_top - margin_bottom
+        housing_x = center_x - housing_width // 2
+        housing_y = margin_top
+
+        painter.setPen(QPen(housing_color, 2))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(housing_x, housing_y, housing_width, housing_height)
+
+        # Draw stem (moving part - centered, rectangular)
+        stem_width = 25
+        stem_height = 40
+        stem_x = center_x - stem_width // 2
+        stem_y = margin_top
+
+        painter.setBrush(QBrush(stem_color))
+        painter.drawRect(stem_x, stem_y, stem_width, stem_height)
+
+        # Draw spring (below stem)
+        spring_start_y = stem_y + stem_height
+        spring_end_y = housing_y + housing_height - 10
+        spring_width = 15
+        spring_x = center_x
+
+        painter.setPen(QPen(spring_color, 2))
+        painter.setBrush(Qt.NoBrush)
+
+        # Draw spring as zigzag
+        num_coils = 6
+        coil_height = (spring_end_y - spring_start_y) / num_coils
+        for i in range(num_coils):
+            y1 = spring_start_y + i * coil_height
+            y2 = spring_start_y + (i + 1) * coil_height
+            if i % 2 == 0:
+                painter.drawLine(spring_x - spring_width//2, int(y1), spring_x + spring_width//2, int(y2))
+            else:
+                painter.drawLine(spring_x + spring_width//2, int(y1), spring_x - spring_width//2, int(y2))
+
+        # Add label
+        painter.setPen(text_color)
+        font = QFont()
+        font.setPointSize(8)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(10, 20, "Switch")
+
+
 class VerticalTravelBarWidget(QWidget):
     """Vertical representation of key travel with actuation points"""
 
@@ -499,8 +589,21 @@ class DKSVisualWidget(QWidget):
         press_container.setLayout(press_layout)
         self.main_layout.addWidget(press_container)
 
-        # Middle: Vertical travel bar
-        self.main_layout.addWidget(self.create_vertical_travel_bar())
+        # Middle: Keyswitch diagram + Vertical travel bar
+        middle_container = QWidget()
+        middle_layout = QHBoxLayout()
+        middle_layout.setContentsMargins(0, 0, 0, 0)
+        middle_layout.setSpacing(5)
+
+        # Add keyswitch diagram
+        self.keyswitch_diagram = KeyswitchDiagramWidget()
+        middle_layout.addWidget(self.keyswitch_diagram)
+
+        # Add vertical travel bar
+        middle_layout.addWidget(self.create_vertical_travel_bar())
+
+        middle_container.setLayout(middle_layout)
+        self.main_layout.addWidget(middle_container)
 
         # Right section: Release actions (vertical stack)
         release_container = QWidget()
@@ -549,20 +652,6 @@ class DKSEntryUI(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(15)
 
-        # Info section
-        info_layout = QHBoxLayout()
-        info_text = f"Configure actions for <b>DKS_{slot_idx:02d}</b> (keycode: <code>0x{0xED00 + slot_idx:04X}</code>)"
-        info_label = QLabel(info_text)
-        info_label.setStyleSheet("color: palette(text); font-size: 11px;")
-        info_layout.addWidget(info_label)
-        info_layout.addStretch()
-
-        # Load button
-        self.load_btn = QPushButton("Load from Keyboard")
-        self.load_btn.clicked.connect(self._on_load)
-        info_layout.addWidget(self.load_btn)
-
-        main_layout.addLayout(info_layout)
 
         # Visual action editor (includes travel bar)
         visual_group = QGroupBox("Action Configuration")
@@ -608,23 +697,15 @@ class DKSEntryUI(QWidget):
 
         # Bottom buttons
         bottom_layout = QHBoxLayout()
+        bottom_layout.addStretch()
 
         self.reset_btn = QPushButton("Reset Slot")
+        self.reset_btn.setFixedWidth(150)
         self.reset_btn.clicked.connect(self._on_reset)
         bottom_layout.addWidget(self.reset_btn)
 
-        bottom_layout.addStretch()
-
         self.save_eeprom_btn = QPushButton("Save to EEPROM")
-        self.save_eeprom_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                           stop: 0 palette(light), stop: 1 palette(button));
-                font-weight: bold;
-                padding: 5px 15px;
-                border-radius: 3px;
-            }
-        """)
+        self.save_eeprom_btn.setFixedWidth(150)
         self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
         bottom_layout.addWidget(self.save_eeprom_btn)
 
