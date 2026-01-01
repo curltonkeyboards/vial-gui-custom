@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
@@ -20,6 +20,7 @@ from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
 from tabbed_keycodes import TabbedKeycodes
 from vial_device import VialKeyboard
+import widgets.resources  # Import Qt resources for switch crossection image
 
 
 class DKSKeyWidget(KeyWidget):
@@ -174,93 +175,44 @@ class TravelBarWidget(QWidget):
 
 
 class KeyswitchDiagramWidget(QWidget):
-    """Visual diagram of a mechanical keyswitch cross-section"""
+    """Visual diagram of a mechanical keyswitch cross-section using the actual image"""
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(120)
-        self.setMinimumHeight(250)
-        self.setMaximumWidth(120)
+        self.setMinimumWidth(360)
+        self.setMinimumHeight(750)
+        self.setMaximumWidth(360)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
-        # Get theme colors
-        palette = QApplication.palette()
-        window_color = palette.color(QPalette.Window)
-        brightness = (window_color.red() * 0.299 +
-                      window_color.green() * 0.587 +
-                      window_color.blue() * 0.114)
-        is_dark = brightness < 127
+        # Load the switch crossection image from Qt resources
+        pixmap = QPixmap(":/switchcrossection")
 
-        # Calculate drawing area
-        width = self.width()
-        height = self.height()
-        margin_top = 40
-        margin_bottom = 20
+        if not pixmap.isNull():
+            # Calculate scaling to fit widget while maintaining aspect ratio
+            widget_width = self.width()
+            widget_height = self.height()
 
-        # Set colors based on theme
-        if is_dark:
-            stem_color = QColor(180, 180, 180)
-            housing_color = QColor(100, 100, 100)
-            spring_color = QColor(255, 140, 0)
-            text_color = QColor(200, 200, 200)
+            # Scale the pixmap to fit the widget
+            scaled_pixmap = pixmap.scaled(
+                widget_width, widget_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+
+            # Center the image
+            x = (widget_width - scaled_pixmap.width()) // 2
+            y = (widget_height - scaled_pixmap.height()) // 2
+
+            painter.drawPixmap(x, y, scaled_pixmap)
         else:
-            stem_color = QColor(120, 120, 120)
-            housing_color = QColor(80, 80, 80)
-            spring_color = QColor(255, 100, 0)
-            text_color = QColor(60, 60, 60)
-
-        center_x = width // 2
-
-        # Draw housing (outer box)
-        housing_width = 60
-        housing_height = height - margin_top - margin_bottom
-        housing_x = center_x - housing_width // 2
-        housing_y = margin_top
-
-        painter.setPen(QPen(housing_color, 2))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawRect(housing_x, housing_y, housing_width, housing_height)
-
-        # Draw stem (moving part - centered, rectangular)
-        stem_width = 25
-        stem_height = 40
-        stem_x = center_x - stem_width // 2
-        stem_y = margin_top
-
-        painter.setBrush(QBrush(stem_color))
-        painter.drawRect(stem_x, stem_y, stem_width, stem_height)
-
-        # Draw spring (below stem)
-        spring_start_y = stem_y + stem_height
-        spring_end_y = housing_y + housing_height - 10
-        spring_width = 15
-        spring_x = center_x
-
-        painter.setPen(QPen(spring_color, 2))
-        painter.setBrush(Qt.NoBrush)
-
-        # Draw spring as zigzag
-        num_coils = 6
-        coil_height = (spring_end_y - spring_start_y) / num_coils
-        for i in range(num_coils):
-            y1 = spring_start_y + i * coil_height
-            y2 = spring_start_y + (i + 1) * coil_height
-            if i % 2 == 0:
-                painter.drawLine(spring_x - spring_width//2, int(y1), spring_x + spring_width//2, int(y2))
-            else:
-                painter.drawLine(spring_x + spring_width//2, int(y1), spring_x - spring_width//2, int(y2))
-
-        # Add label
-        painter.setPen(text_color)
-        font = QFont()
-        font.setPointSize(8)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(10, 20, "Switch")
+            # Fallback: draw a simple placeholder if image fails to load
+            painter.setPen(QColor(128, 128, 128))
+            painter.drawText(self.rect(), Qt.AlignCenter, "Switch\nDiagram")
 
 
 class VerticalTravelBarWidget(QWidget):
