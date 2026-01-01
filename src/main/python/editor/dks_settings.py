@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap
-import os
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
@@ -21,6 +20,7 @@ from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
 from tabbed_keycodes import TabbedKeycodes
 from vial_device import VialKeyboard
+import widgets.resources  # Import Qt resources for switch crossection image
 
 
 class DKSKeyWidget(KeyWidget):
@@ -184,32 +184,21 @@ class KeyswitchDiagramWidget(QWidget):
         self.setMaximumWidth(120)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
-        # Load the switch crossection image
-        self.pixmap = None
-        self._load_image()
-
-    def _load_image(self):
-        """Load the switch crossection image from resources"""
-        # Get the path to the image file
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.join(current_dir, '..', '..', 'resources', 'images', 'switch crossection.png')
-        image_path = os.path.normpath(image_path)
-
-        if os.path.exists(image_path):
-            self.pixmap = QPixmap(image_path)
-
     def paintEvent(self, event):
-        if self.pixmap and not self.pixmap.isNull():
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
+        # Load the switch crossection image from Qt resources
+        pixmap = QPixmap(":/switchcrossection")
+
+        if not pixmap.isNull():
             # Calculate scaling to fit widget while maintaining aspect ratio
             widget_width = self.width()
             widget_height = self.height()
 
             # Scale the pixmap to fit the widget
-            scaled_pixmap = self.pixmap.scaled(
+            scaled_pixmap = pixmap.scaled(
                 widget_width, widget_height,
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
@@ -222,7 +211,6 @@ class KeyswitchDiagramWidget(QWidget):
             painter.drawPixmap(x, y, scaled_pixmap)
         else:
             # Fallback: draw a simple placeholder if image fails to load
-            painter = QPainter(self)
             painter.setPen(QColor(128, 128, 128))
             painter.drawText(self.rect(), Qt.AlignCenter, "Switch\nDiagram")
 
