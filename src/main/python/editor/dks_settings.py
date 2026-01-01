@@ -32,9 +32,17 @@ class DKSKeyWidget(KeyWidget):
         self.is_selected = False
 
     def mousePressEvent(self, ev):
-        # Don't call parent's mousePressEvent which would open the tray
-        # Instead, just emit that we're selected
+        # Set active_key properly so parent knows we're clicked
+        if len(self.widgets) > 0:
+            self.active_key = 0
+            self.active_mask = False
+
+        # Emit that we're selected (don't call parent which opens tray)
         self.selected.emit(self)
+        ev.accept()
+
+    def mouseReleaseEvent(self, ev):
+        # Override to prevent any tray behavior
         ev.accept()
 
     def set_selected(self, selected):
@@ -165,6 +173,115 @@ class TravelBarWidget(QWidget):
             painter.setFont(font)
 
 
+class VerticalTravelBarWidget(QWidget):
+    """Vertical representation of key travel with actuation points"""
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumWidth(100)
+        self.setMinimumHeight(250)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+
+        self.press_actuations = []      # List of (actuation_point, enabled) tuples
+        self.release_actuations = []    # List of (actuation_point, enabled) tuples
+
+    def set_actuations(self, press_points, release_points):
+        """Set actuation points to display"""
+        self.press_actuations = press_points
+        self.release_actuations = release_points
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Get theme colors
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
+        # Calculate drawing area
+        width = self.width()
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 20
+        bar_width = 30
+        bar_x = (width - bar_width) // 2
+
+        # Draw travel bar background (vertical)
+        if is_dark:
+            bar_bg = QColor(60, 60, 60)
+            bar_border = QColor(100, 100, 100)
+            text_color = QColor(200, 200, 200)
+        else:
+            bar_bg = QColor(220, 220, 220)
+            bar_border = QColor(150, 150, 150)
+            text_color = QColor(60, 60, 60)
+
+        painter.setBrush(bar_bg)
+        painter.setPen(QPen(bar_border, 2))
+        painter.drawRect(bar_x, margin_top, bar_width, height - margin_top - margin_bottom)
+
+        # Draw 0mm and 2.5mm labels (top and bottom)
+        painter.setPen(text_color)
+        font = QFont()
+        font.setPointSize(9)
+        painter.setFont(font)
+        painter.drawText(width // 2 - 20, margin_top - 10, "0.0mm")
+        painter.drawText(width // 2 - 20, height - margin_bottom + 15, "2.5mm")
+
+        # Draw press actuation points (orange, left side)
+        for actuation, enabled in self.press_actuations:
+            if not enabled:
+                continue
+
+            y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+            # Draw line to left
+            painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+            painter.drawLine(bar_x - 20, y, bar_x, y)
+
+            # Draw circle on left
+            painter.setBrush(QColor(255, 140, 0))
+            painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+
+            # Draw actuation value
+            mm_value = (actuation / 100.0) * 2.5
+            painter.setPen(QColor(255, 140, 0))
+            font_small = QFont()
+            font_small.setPointSize(8)
+            painter.setFont(font_small)
+            painter.drawText(bar_x - 60, y + 4, f"{mm_value:.2f}")
+            painter.setFont(font)
+
+        # Draw release actuation points (cyan, right side)
+        for actuation, enabled in self.release_actuations:
+            if not enabled:
+                continue
+
+            y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+            # Draw line to right
+            painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+            painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
+
+            # Draw circle on right
+            painter.setBrush(QColor(0, 200, 200))
+            painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+
+            # Draw actuation value
+            mm_value = (actuation / 100.0) * 2.5
+            painter.setPen(QColor(0, 200, 200))
+            font_small = QFont()
+            font_small.setPointSize(8)
+            painter.setFont(font_small)
+            painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}")
+            painter.setFont(font)
+
+
 class DKSActionEditor(QWidget):
     """Editor for a single DKS action with DKSKeyWidget integration"""
 
@@ -288,116 +405,86 @@ class DKSActionEditor(QWidget):
 
 
 class DKSVisualWidget(QWidget):
-    """Visual layout widget for DKS actions, similar to gaming settings"""
+    """Visual layout widget for DKS actions - horizontal layout"""
 
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(900, 600)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setMinimumSize(900, 300)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         # Will be set by parent
         self.press_editors = []
         self.release_editors = []
 
+        # Main horizontal layout
+        self.main_layout = QHBoxLayout()
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setSpacing(20)
+        self.setLayout(self.main_layout)
+
     def set_editors(self, press_editors, release_editors):
-        """Position the action editors in the visual layout"""
+        """Position the action editors in horizontal layout"""
         self.press_editors = press_editors
         self.release_editors = release_editors
 
-        # Position press actions (top row, orange theme)
-        press_x_start = 50
-        press_spacing = 120
-        press_y = 50
+        # Clear existing layout
+        while self.main_layout.count():
+            item = self.main_layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
 
-        for i, editor in enumerate(self.press_editors):
-            editor.setParent(self)
-            x = press_x_start + i * press_spacing
-            editor.move(x, press_y)
-            editor.show()
-            editor.label.setStyleSheet("""
-                font-weight: bold;
-                font-size: 11px;
-                color: rgb(255, 140, 0);
-            """)
+        # Left section: Press actions (vertical stack)
+        press_container = QWidget()
+        press_layout = QVBoxLayout()
+        press_layout.setContentsMargins(0, 0, 0, 0)
+        press_layout.setSpacing(10)
 
-        # Position release actions (bottom row, cyan theme)
-        release_x_start = 50
-        release_spacing = 120
-        release_y = 350
+        press_label = QLabel("Key Press (Downstroke)")
+        press_label.setStyleSheet("font-weight: bold; font-size: 12px; color: rgb(255, 140, 0);")
+        press_label.setAlignment(Qt.AlignCenter)
+        press_layout.addWidget(press_label)
 
-        for i, editor in enumerate(self.release_editors):
-            editor.setParent(self)
-            x = release_x_start + i * release_spacing
-            editor.move(x, release_y)
-            editor.show()
-            editor.label.setStyleSheet("""
-                font-weight: bold;
-                font-size: 11px;
-                color: rgb(0, 200, 200);
-            """)
+        for editor in self.press_editors:
+            editor.setParent(press_container)
+            press_layout.addWidget(editor)
+            editor.label.setStyleSheet("font-weight: bold; font-size: 11px; color: rgb(255, 140, 0);")
 
-    def paintEvent(self, event):
-        """Draw the background and connection lines"""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        press_layout.addStretch()
+        press_container.setLayout(press_layout)
+        self.main_layout.addWidget(press_container)
 
-        # Get theme colors
-        palette = QApplication.palette()
-        window_color = palette.color(QPalette.Window)
-        brightness = (window_color.red() * 0.299 +
-                      window_color.green() * 0.587 +
-                      window_color.blue() * 0.114)
-        is_dark = brightness < 127
+        # Middle: Vertical travel bar
+        self.main_layout.addWidget(self.create_vertical_travel_bar())
 
-        # Draw background
-        if is_dark:
-            bg_color = QColor(40, 40, 40)
-        else:
-            bg_color = QColor(245, 245, 245)
+        # Right section: Release actions (vertical stack)
+        release_container = QWidget()
+        release_layout = QVBoxLayout()
+        release_layout.setContentsMargins(0, 0, 0, 0)
+        release_layout.setSpacing(10)
 
-        painter.fillRect(self.rect(), bg_color)
+        release_label = QLabel("Key Release (Upstroke)")
+        release_label.setStyleSheet("font-weight: bold; font-size: 12px; color: rgb(0, 200, 200);")
+        release_label.setAlignment(Qt.AlignCenter)
+        release_layout.addWidget(release_label)
 
-        # Draw section labels
-        if is_dark:
-            text_color = QColor(200, 200, 200)
-        else:
-            text_color = QColor(60, 60, 60)
+        for editor in self.release_editors:
+            editor.setParent(release_container)
+            release_layout.addWidget(editor)
+            editor.label.setStyleSheet("font-weight: bold; font-size: 11px; color: rgb(0, 200, 200);")
 
-        painter.setPen(text_color)
-        font = QFont()
-        font.setPointSize(12)
-        font.setBold(True)
-        painter.setFont(font)
+        release_layout.addStretch()
+        release_container.setLayout(release_layout)
+        self.main_layout.addWidget(release_container)
 
-        # Key Press section label
-        painter.setPen(QColor(255, 140, 0))
-        painter.drawText(50, 30, "Key Press (Downstroke)")
+    def create_vertical_travel_bar(self):
+        """Create a vertical travel bar indicator"""
+        self.vertical_travel_bar = VerticalTravelBarWidget()
+        return self.vertical_travel_bar
 
-        # Key Release section label
-        painter.setPen(QColor(0, 200, 200))
-        painter.drawText(50, 330, "Key Release (Upstroke)")
-
-        # Draw travel direction indicator
-        painter.setPen(QPen(text_color, 2))
-        painter.drawLine(550, 100, 550, 450)
-
-        # Draw arrow pointing down
-        painter.setBrush(text_color)
-        arrow_points = [
-            (550, 450),
-            (545, 440),
-            (555, 440)
-        ]
-        from PyQt5.QtGui import QPolygon
-        from PyQt5.QtCore import QPoint
-        painter.drawPolygon(QPolygon([QPoint(*p) for p in arrow_points]))
-
-        # Draw "Travel" label
-        painter.save()
-        painter.translate(570, 275)
-        painter.rotate(-90)
-        painter.drawText(0, 0, "Travel Direction →")
-        painter.restore()
+    def update_travel_bar(self, press_points, release_points):
+        """Update the vertical travel bar with actuation points"""
+        if hasattr(self, 'vertical_travel_bar'):
+            self.vertical_travel_bar.set_actuations(press_points, release_points)
 
 
 class DKSEntryUI(QWidget):
@@ -431,29 +518,7 @@ class DKSEntryUI(QWidget):
 
         main_layout.addLayout(info_layout)
 
-        # Travel bar visualization
-        travel_group = QGroupBox("Key Travel Visualization")
-        travel_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid palette(mid);
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
-        travel_layout = QVBoxLayout()
-        self.travel_bar = TravelBarWidget()
-        travel_layout.addWidget(self.travel_bar)
-        travel_group.setLayout(travel_layout)
-        main_layout.addWidget(travel_group)
-
-        # Visual action editor
+        # Visual action editor (includes travel bar)
         visual_group = QGroupBox("Action Configuration")
         visual_group.setStyleSheet("""
             QGroupBox {
@@ -617,7 +682,7 @@ class DKSEntryUI(QWidget):
             enabled = (keycode != 0)
             release_points.append((actuation, enabled))
 
-        self.travel_bar.set_actuations(press_points, release_points)
+        self.visual_widget.update_travel_bar(press_points, release_points)
 
     def _on_reset(self):
         """Reset slot to defaults"""
