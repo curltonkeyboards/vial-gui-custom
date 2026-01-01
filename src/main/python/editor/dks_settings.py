@@ -179,10 +179,11 @@ class KeyswitchDiagramWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(450)
         self.setMinimumHeight(750)
-        self.setMaximumWidth(360)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setMaximumWidth(450)
+        self.setMaximumHeight(750)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -204,9 +205,9 @@ class KeyswitchDiagramWidget(QWidget):
                 Qt.SmoothTransformation
             )
 
-            # Center the image
+            # Center horizontally, align to top vertically (to match travel bar alignment)
             x = (widget_width - scaled_pixmap.width()) // 2
-            y = (widget_height - scaled_pixmap.height()) // 2
+            y = 0  # Align to top
 
             painter.drawPixmap(x, y, scaled_pixmap)
         else:
