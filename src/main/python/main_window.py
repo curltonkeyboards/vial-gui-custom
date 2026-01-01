@@ -12,6 +12,7 @@ import os
 import sys
 
 from widgets.combo_box import ArrowComboBox
+from widgets.loading_banner import LoadingBanner
 from about_keyboard import AboutKeyboard
 from autorefresh.autorefresh import Autorefresh
 from editor.combos import Combos
@@ -51,6 +52,10 @@ class MainWindow(QMainWindow):
         self.appctx = appctx
 
         self.ui_lock_count = 0
+
+        # Show loading banner
+        self.loading_banner = LoadingBanner(self)
+        self.loading_banner.show_with_fade()
 
         self.settings = QSettings("Vial", "Vial")
         if self.settings.value("size", None):
@@ -213,6 +218,14 @@ class MainWindow(QMainWindow):
         if sys.platform == "emscripten":
             import vialglue
             QTimer.singleShot(100, vialglue.notify_ready)
+
+        # Hide loading banner after initialization
+        QTimer.singleShot(500, self._hide_loading_banner)
+
+    def _hide_loading_banner(self):
+        """Hide the loading banner with fade-out animation"""
+        if hasattr(self, 'loading_banner') and self.loading_banner:
+            self.loading_banner.hide_with_fade()
 
     def init_menu(self):
         layout_load_act = QAction(tr("MenuFile", "Load saved layout..."), self)

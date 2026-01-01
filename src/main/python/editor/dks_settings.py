@@ -9,8 +9,8 @@ Users configure DKS slots (DKS_00 - DKS_49) and then assign them to keys via the
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRect, QRectF
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap, QPainterPath
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
@@ -178,7 +178,7 @@ class VerticalTravelBarWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(100)
+        self.setMinimumWidth(250)  # Increased width to accommodate keyswitch image
         self.setMinimumHeight(250)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
@@ -208,8 +208,35 @@ class VerticalTravelBarWidget(QWidget):
         height = self.height()
         margin_top = 40
         margin_bottom = 20
+
+        # Draw keyswitch image on the left if available
+        keyswitch_width = 120
+        keyswitch_x = 10
+
+        # Load theme-appropriate keyswitch image
+        import os
+        base_path = os.path.dirname(os.path.dirname(__file__))
+        widgets_path = os.path.join(base_path, "widgets")
+
+        if is_dark:
+            image_path = os.path.join(widgets_path, "keyswitchdark.png")
+        else:
+            image_path = os.path.join(widgets_path, "keyswitchlight.png")
+
+        pixmap = QPixmap(image_path)
+        if not pixmap.isNull():
+            # Draw keyswitch image aligned with travel bar
+            image_rect = QRect(keyswitch_x, margin_top, keyswitch_width, height - margin_top - margin_bottom)
+            # Scale the pixmap to fit the rect while maintaining aspect ratio
+            scaled_pixmap = pixmap.scaled(image_rect.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            # Center the scaled pixmap in the rect
+            x_offset = (image_rect.width() - scaled_pixmap.width()) // 2
+            y_offset = (image_rect.height() - scaled_pixmap.height()) // 2
+            painter.drawPixmap(image_rect.x() + x_offset, image_rect.y() + y_offset, scaled_pixmap)
+
+        # Position bar to the right of the image
         bar_width = 30
-        bar_x = (width - bar_width) // 2
+        bar_x = keyswitch_x + keyswitch_width + 20
 
         # Draw travel bar background (vertical)
         if is_dark:
@@ -225,13 +252,13 @@ class VerticalTravelBarWidget(QWidget):
         painter.setPen(QPen(bar_border, 2))
         painter.drawRect(bar_x, margin_top, bar_width, height - margin_top - margin_bottom)
 
-        # Draw 0mm and 2.5mm labels (top and bottom)
+        # Draw 0mm and 2.5mm labels (top and bottom) aligned with bar
         painter.setPen(text_color)
         font = QFont()
         font.setPointSize(9)
         painter.setFont(font)
-        painter.drawText(width // 2 - 20, margin_top - 10, "0.0mm")
-        painter.drawText(width // 2 - 20, height - margin_bottom + 15, "2.5mm")
+        painter.drawText(bar_x + bar_width // 2 - 20, margin_top - 10, "0.0mm")
+        painter.drawText(bar_x + bar_width // 2 - 20, height - margin_bottom + 15, "2.5mm")
 
         # Draw press actuation points (orange, left side)
         for actuation, enabled in self.press_actuations:
@@ -549,20 +576,7 @@ class DKSEntryUI(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(15)
 
-        # Info section
-        info_layout = QHBoxLayout()
-        info_text = f"Configure actions for <b>DKS_{slot_idx:02d}</b> (keycode: <code>0x{0xED00 + slot_idx:04X}</code>)"
-        info_label = QLabel(info_text)
-        info_label.setStyleSheet("color: palette(text); font-size: 11px;")
-        info_layout.addWidget(info_label)
-        info_layout.addStretch()
-
-        # Load button
-        self.load_btn = QPushButton("Load from Keyboard")
-        self.load_btn.clicked.connect(self._on_load)
-        info_layout.addWidget(self.load_btn)
-
-        main_layout.addLayout(info_layout)
+        # Info section removed - load happens automatically now
 
         # Visual action editor (includes travel bar)
         visual_group = QGroupBox("Action Configuration")
@@ -608,23 +622,16 @@ class DKSEntryUI(QWidget):
 
         # Bottom buttons
         bottom_layout = QHBoxLayout()
+        bottom_layout.addStretch()
 
+        # Reset and Save buttons side by side with equal size
         self.reset_btn = QPushButton("Reset Slot")
+        self.reset_btn.setFixedWidth(140)
         self.reset_btn.clicked.connect(self._on_reset)
         bottom_layout.addWidget(self.reset_btn)
 
-        bottom_layout.addStretch()
-
         self.save_eeprom_btn = QPushButton("Save to EEPROM")
-        self.save_eeprom_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                           stop: 0 palette(light), stop: 1 palette(button));
-                font-weight: bold;
-                padding: 5px 15px;
-                border-radius: 3px;
-            }
-        """)
+        self.save_eeprom_btn.setFixedWidth(140)
         self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
         bottom_layout.addWidget(self.save_eeprom_btn)
 
