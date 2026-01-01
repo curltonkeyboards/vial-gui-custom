@@ -23,6 +23,36 @@ from tabbed_keycodes import TabbedKeycodes
 from vial_device import VialKeyboard
 
 
+class DKSKeyWidget(KeyWidget):
+    """Custom KeyWidget that doesn't open tray - parent will handle keycode selection"""
+
+    selected = pyqtSignal(object)  # Emits self when clicked
+
+    def __init__(self):
+        super().__init__()
+        self.is_selected = False
+
+    def mousePressEvent(self, ev):
+        # Don't call parent's mousePressEvent which would open the tray
+        # Instead, just emit that we're selected
+        self.selected.emit(self)
+        ev.accept()
+
+    def set_selected(self, selected):
+        """Visual feedback for selection"""
+        self.is_selected = selected
+        if selected:
+            self.setStyleSheet("""
+                QWidget {
+                    border: 2px solid palette(highlight);
+                    background: palette(highlight);
+                }
+            """)
+        else:
+            self.setStyleSheet("")
+        self.update()
+
+
 class TravelBarWidget(QWidget):
     """Visual representation of key travel with actuation points"""
 
@@ -137,9 +167,10 @@ class TravelBarWidget(QWidget):
 
 
 class DKSActionEditor(QWidget):
-    """Editor for a single DKS action with KeyWidget integration"""
+    """Editor for a single DKS action with DKSKeyWidget integration"""
 
     changed = pyqtSignal()
+    key_selected = pyqtSignal(object)  # Emits the DKSKeyWidget when clicked
 
     def __init__(self, action_num, is_press=True):
         super().__init__()
@@ -159,10 +190,11 @@ class DKSActionEditor(QWidget):
         self.label.setStyleSheet("font-weight: bold; font-size: 11px;")
         layout.addWidget(self.label)
 
-        # Key widget
-        self.key_widget = KeyWidget()
+        # Key widget - use custom DKSKeyWidget
+        self.key_widget = DKSKeyWidget()
         self.key_widget.setFixedSize(60, 50)
         self.key_widget.changed.connect(self._on_changed)
+        self.key_widget.selected.connect(self._on_key_selected)
         layout.addWidget(self.key_widget, alignment=Qt.AlignCenter)
 
         # Actuation slider with label
@@ -221,6 +253,10 @@ class DKSActionEditor(QWidget):
     def _on_changed(self):
         """Emit changed signal"""
         self.changed.emit()
+
+    def _on_key_selected(self, widget):
+        """Forward key selection signal to parent"""
+        self.key_selected.emit(widget)
 
     def set_action(self, keycode, actuation, behavior):
         """Set action values"""
@@ -374,6 +410,7 @@ class DKSEntryUI(QWidget):
         super().__init__()
         self.slot_idx = slot_idx
         self.dks_protocol = None
+        self.selected_key_widget = None  # Track which key widget is selected
 
         # Main layout
         main_layout = QVBoxLayout()
@@ -444,10 +481,12 @@ class DKSEntryUI(QWidget):
         for i in range(DKS_ACTIONS_PER_STAGE):
             press_editor = DKSActionEditor(i, is_press=True)
             press_editor.changed.connect(self._on_action_changed)
+            press_editor.key_selected.connect(self._on_key_selected)
             self.press_editors.append(press_editor)
 
             release_editor = DKSActionEditor(i, is_press=False)
             release_editor.changed.connect(self._on_action_changed)
+            release_editor.key_selected.connect(self._on_key_selected)
             self.release_editors.append(release_editor)
 
         # Set editors in visual widget
@@ -530,6 +569,21 @@ class DKSEntryUI(QWidget):
         self._update_travel_bar()
         self._send_to_keyboard()
         self.changed.emit()
+
+    def _on_key_selected(self, widget):
+        """Handle key widget selection - update visual feedback"""
+        # Clear previous selection
+        if self.selected_key_widget:
+            self.selected_key_widget.set_selected(False)
+
+        # Set new selection
+        self.selected_key_widget = widget
+        widget.set_selected(True)
+
+    def on_keycode_selected(self, keycode):
+        """Handle keycode selection from TabbedKeycodes"""
+        if self.selected_key_widget:
+            self.selected_key_widget.on_keycode_changed(keycode)
 
     def _send_to_keyboard(self):
         """Send current configuration to keyboard"""
@@ -628,6 +682,12 @@ class DKSSettingsTab(BasicEditor):
         self.tabbed_keycodes = TabbedKeycodes()
         self.addWidget(self.tabbed_keycodes)
 
+        # Connect tab changes to update keycode connections
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
+        # Initialize connection to first tab
+        self._on_tab_changed(0)
+
         # Bottom action buttons
         button_layout = QHBoxLayout()
 
@@ -647,6 +707,20 @@ class DKSSettingsTab(BasicEditor):
         """Handle entry change (can be used for modified indicators)"""
         # Future: Add modified state tracking like TapDance
         pass
+
+    def _on_tab_changed(self, index):
+        """Handle tab change - connect TabbedKeycodes to new entry"""
+        if index >= 0 and index < len(self.dks_entries):
+            # Disconnect all previous connections (if any)
+            try:
+                self.tabbed_keycodes.keycode_changed.disconnect()
+            except:
+                pass  # No connections yet
+
+            # Connect to current entry
+            self.tabbed_keycodes.keycode_changed.connect(
+                self.dks_entries[index].on_keycode_selected
+            )
 
     def _on_reset_all(self):
         """Reset all slots to defaults"""
