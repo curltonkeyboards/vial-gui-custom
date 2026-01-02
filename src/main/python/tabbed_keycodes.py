@@ -2975,6 +2975,274 @@ class LightingTab(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return (self.buttons1_layout.count() > 0 or self.buttons2_layout.count() > 0)
 
+class LightingTab2(QScrollArea):
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, inversion_keycodes, inversion_keycodes4, smartchord_LSB, smartchord_MSB, smartchord_LSB2):
+        super().__init__(parent)
+        self.label = label
+        self.inversion_keycodes = inversion_keycodes
+        self.inversion_keycodes4 = inversion_keycodes4
+        self.smartchord_LSB = smartchord_LSB
+        self.smartchord_MSB = smartchord_MSB
+        self.smartchord_LSB2 = smartchord_LSB2
+
+        # Import QFrame if it's not already imported
+        from PyQt5.QtWidgets import QFrame, QListView, QScrollBar
+
+        # Create a widget for the scroll area content
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+
+        # Set the scroll area properties
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        # Add a spacer at the top (20px)
+        top_spacer1 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer1)
+
+        # Add "Layer Controls" title
+        self.lighting_controls_label = QLabel("Layer Controls")
+        self.lighting_controls_label.setAlignment(Qt.AlignCenter)
+        self.lighting_controls_label.setStyleSheet("font-size: 13px;")
+        self.main_layout.addWidget(self.lighting_controls_label)
+
+        # Add another spacer (10px)
+        top_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(top_spacer2)
+
+        # Row 1: Layer Mode dropdowns
+        self.row1_layout = QHBoxLayout()
+        self.row1_layout.addStretch()  # Left spacer
+
+        # Create and add dropdowns with fixed width
+        self.layer_mode1_dropdown = self.create_layer_mode1_dropdown()
+        self.layer_mode1_dropdown.setFixedWidth(200)
+        self.row1_layout.addWidget(self.layer_mode1_dropdown)
+
+        self.layer_mode2_dropdown = self.create_layer_mode2_dropdown()
+        self.layer_mode2_dropdown.setFixedWidth(200)
+        self.row1_layout.addWidget(self.layer_mode2_dropdown)
+
+        self.row1_layout.addStretch()  # Right spacer
+        self.main_layout.addLayout(self.row1_layout)
+
+        # Row 2: Buttons from inversion_keycodes
+        self.buttons1_container = QWidget()
+        self.buttons1_layout = QGridLayout(self.buttons1_container)
+        self.buttons1_layout.setHorizontalSpacing(5)
+        self.buttons1_layout.setVerticalSpacing(5)
+
+        # Create a horizontal layout for the button container with spacers
+        self.centered_buttons1_layout = QHBoxLayout()
+        self.centered_buttons1_layout.addStretch()  # Left spacer
+        self.centered_buttons1_layout.addWidget(self.buttons1_container)
+        self.centered_buttons1_layout.addStretch()  # Right spacer
+
+        # Add the centered button layout to the main layout
+        self.main_layout.addLayout(self.centered_buttons1_layout)
+
+        # Add a small spacer between rows
+        row_spacer2 = QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(row_spacer2)
+
+        # Add "Additional Layer Controls" label
+        self.layer_lighting_label = QLabel("Additional Layer Controls")
+        self.layer_lighting_label.setAlignment(Qt.AlignCenter)
+        self.layer_lighting_label.setStyleSheet("font-size: 13px;")
+        self.main_layout.addWidget(self.layer_lighting_label)
+
+        # Small spacer after the label - REDUCED from 10 to 2 pixels
+        label_spacer = QSpacerItem(0, 2, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.main_layout.addItem(label_spacer)
+
+        # Row 3: Layer Mode 3 dropdown and buttons from inversion_keycodes4
+        self.row3_layout = QHBoxLayout()
+        self.row3_layout.addStretch()  # Left spacer
+
+        # Add Layer Mode 3 dropdown
+        self.layer_mode3_dropdown = self.create_layer_mode3_dropdown()
+        self.layer_mode3_dropdown.setFixedWidth(200)
+        self.row3_layout.addWidget(self.layer_mode3_dropdown)
+
+        # Create a container for the second set of buttons
+        self.buttons2_container = QWidget()
+        self.buttons2_layout = QGridLayout(self.buttons2_container)
+        self.buttons2_layout.setHorizontalSpacing(5)
+        self.buttons2_layout.setVerticalSpacing(5)
+
+        self.row3_layout.addWidget(self.buttons2_container)
+        self.row3_layout.addStretch()  # Right spacer
+
+        self.main_layout.addLayout(self.row3_layout)
+
+        # Populate all buttons
+        self.populate_buttons()
+
+        # Spacer to push everything to the top
+        self.main_layout.addStretch()
+
+    def create_layer_mode1_dropdown(self):
+        dropdown = ScrollableComboBox()
+        dropdown.setFixedHeight(40)
+        dropdown.addItem("Default Layer")
+        for keycode in self.smartchord_LSB:
+            label = Keycode.label(keycode.qmk_id)
+            tooltip = Keycode.description(keycode.qmk_id)
+            dropdown.addItem(label, keycode.qmk_id)
+            item = dropdown.model().item(dropdown.count() - 1)
+            item.setToolTip(tooltip)
+        dropdown.model().item(0).setEnabled(False)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown, "Default Layer"))
+        return dropdown
+
+    def create_layer_mode2_dropdown(self):
+        dropdown = ScrollableComboBox()
+        dropdown.setFixedHeight(40)
+        dropdown.addItem("Hold Layer")
+        for keycode in self.smartchord_MSB:
+            label = Keycode.label(keycode.qmk_id)
+            tooltip = Keycode.description(keycode.qmk_id)
+            dropdown.addItem(label, keycode.qmk_id)
+            item = dropdown.model().item(dropdown.count() - 1)
+            item.setToolTip(tooltip)
+        dropdown.model().item(0).setEnabled(False)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown, "Hold Layer"))
+        return dropdown
+
+    def create_layer_mode3_dropdown(self):
+        dropdown = ScrollableComboBox()
+        dropdown.setFixedHeight(40)
+        dropdown.addItem("Tap-Toggle Layer")
+        for keycode in self.smartchord_LSB2:
+            label = Keycode.label(keycode.qmk_id)
+            tooltip = Keycode.description(keycode.qmk_id)
+            dropdown.addItem(label, keycode.qmk_id)
+            item = dropdown.model().item(dropdown.count() - 1)
+            item.setToolTip(tooltip)
+        dropdown.model().item(0).setEnabled(False)
+        dropdown.currentIndexChanged.connect(self.on_selection_change)
+        dropdown.currentIndexChanged.connect(lambda _: self.reset_dropdown(dropdown, "Tap-Toggle Layer"))
+        return dropdown
+
+    def populate_buttons(self, keycode_filter=None):
+        # Clear previous widgets in buttons1 layout
+        for i in reversed(range(self.buttons1_layout.count())):
+            widget = self.buttons1_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Clear previous widgets in buttons2 layout
+        for i in reversed(range(self.buttons2_layout.count())):
+            widget = self.buttons2_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # Add buttons from inversion_keycodes to the first button grid
+        row = 0
+        col = 0
+        max_columns = 15  # Maximum number of columns
+
+        for keycode in self.inversion_keycodes:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setFixedHeight(50)
+                btn.setFixedWidth(50)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+
+                self.buttons1_layout.addWidget(btn, row, col)
+                col += 1
+                # Move to the next row if we reach max columns
+                if col >= max_columns:
+                    col = 0
+                    row += 1
+
+        # Add buttons from inversion_keycodes4 to the second button grid
+        row = 0
+        col = 0
+
+        for keycode in self.inversion_keycodes4:
+            if keycode_filter is None or keycode_filter(keycode.qmk_id):
+                btn = SquareButton()
+                btn.setFixedHeight(50)
+                btn.setFixedWidth(50)
+                btn.setText(Keycode.label(keycode.qmk_id))
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+
+                self.buttons2_layout.addWidget(btn, row, col)
+                col += 1
+                # Move to the next row if we reach max columns
+                if col >= max_columns:
+                    col = 0
+                    row += 1
+
+    def recreate_buttons(self, keycode_filter=None):
+        # Clear and recreate the dropdowns in row 1
+        self.row1_layout.removeWidget(self.layer_mode1_dropdown)
+        self.row1_layout.removeWidget(self.layer_mode2_dropdown)
+
+        self.layer_mode1_dropdown.deleteLater()
+        self.layer_mode2_dropdown.deleteLater()
+
+        self.layer_mode1_dropdown = self.create_layer_mode1_dropdown()
+        self.layer_mode1_dropdown.setFixedWidth(200)
+        self.row1_layout.insertWidget(1, self.layer_mode1_dropdown)
+
+        self.layer_mode2_dropdown = self.create_layer_mode2_dropdown()
+        self.layer_mode2_dropdown.setFixedWidth(200)
+        self.row1_layout.insertWidget(2, self.layer_mode2_dropdown)
+
+        # Clear and recreate the dropdown in row 3
+        self.row3_layout.removeWidget(self.layer_mode3_dropdown)
+        self.layer_mode3_dropdown.deleteLater()
+
+        self.layer_mode3_dropdown = self.create_layer_mode3_dropdown()
+        self.layer_mode3_dropdown.setFixedWidth(200)
+        self.row3_layout.insertWidget(1, self.layer_mode3_dropdown)
+
+        # Repopulate all buttons
+        self.populate_buttons(keycode_filter)
+
+    def reset_dropdown(self, dropdown, header_text):
+        selected_index = dropdown.currentIndex()
+        if selected_index > 0:
+            selected_value = dropdown.itemData(selected_index)
+        dropdown.setCurrentIndex(0)
+
+    def on_selection_change(self, index):
+        selected_qmk_id = self.sender().itemData(index)
+        if selected_qmk_id:
+            self.keycode_changed.emit(selected_qmk_id)
+
+    def relabel_buttons(self):
+        # Handle relabeling for buttons in first grid
+        for i in range(self.buttons1_layout.count()):
+            widget = self.buttons1_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
+
+        # Handle relabeling for buttons in second grid
+        for i in range(self.buttons2_layout.count()):
+            widget = self.buttons2_layout.itemAt(i).widget()
+            if isinstance(widget, SquareButton):
+                keycode = widget.keycode
+                if keycode:
+                    widget.setText(Keycode.label(keycode.qmk_id))
+
+    def has_buttons(self):
+        """Check if there are buttons or dropdown items."""
+        return (self.buttons1_layout.count() > 0 or self.buttons2_layout.count() > 0)
+
 class MacroTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
 
