@@ -19,17 +19,19 @@ from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
 from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
 from tabbed_keycodes import TabbedKeycodes, FilteredTabbedKeycodes, keycode_filter_any, keycode_filter_masked
-from tabbed_keycodes import KeyboardTab, MusicTab, GamingTab, MacroTab, LightingTab, MIDITab, SimpleTab
+from tabbed_keycodes import KeyboardTab, MusicTab, GamingTab, MacroTab, LayerTab, LightingTab, MIDITab, SimpleTab
 from keycodes.keycodes import (KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE, KEYCODES_BACKLIGHT,
                                KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR,
-                               KEYCODES_RGB_KC_CUSTOM2, KEYCODES_CLEAR, KEYCODES_GAMING)
+                               KEYCODES_RGB_KC_CUSTOM2, KEYCODES_CLEAR, KEYCODES_GAMING, KEYCODES_LAYERS,
+                               KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG,
+                               KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO)
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
 import widgets.resources  # Import Qt resources for switch crossection image
 
 
 class FilteredTabbedKeycodesNoLayers(QTabWidget):
-    """Custom FilteredTabbedKeycodes without LayerTab to avoid overlay issues"""
+    """Custom FilteredTabbedKeycodes for DKS settings with LayerTab included"""
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
@@ -39,13 +41,13 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
 
         self.keycode_filter = keycode_filter
 
-        # Create tabs WITHOUT LayerTab
+        # Create all tabs including LayerTab
         self.tabs = [
             KeyboardTab(self),
             MusicTab(self),
             GamingTab(self, "Gaming", KEYCODES_GAMING),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            # LayerTab intentionally EXCLUDED to prevent overlay issue
+            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
             MIDITab(self),
             SimpleTab(self, " ", KEYCODES_CLEAR),
@@ -90,7 +92,7 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
 
 
 class TabbedKeycodesNoLayers(QWidget):
-    """Custom TabbedKeycodes without LayerTab for DKS settings"""
+    """Custom TabbedKeycodes for DKS settings (includes all tabs including Layers)"""
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
@@ -103,7 +105,7 @@ class TabbedKeycodesNoLayers(QWidget):
 
         self.layout = QVBoxLayout()
 
-        # Use our custom FilteredTabbedKeycodes without layers
+        # Use our custom FilteredTabbedKeycodes with all tabs
         self.all_keycodes = FilteredTabbedKeycodesNoLayers()
         self.basic_keycodes = FilteredTabbedKeycodesNoLayers(keycode_filter=keycode_filter_masked)
         for opt in [self.all_keycodes, self.basic_keycodes]:
@@ -974,7 +976,7 @@ class DKSSettingsTab(BasicEditor):
         self.addLayout(button_layout)
 
         # Add TabbedKeycodes at the bottom like in GamingConfigurator
-        # Use custom version without LayerTab to prevent overlay issue
+        # Use custom self-contained version to prevent overlay issues
         self.tabbed_keycodes = TabbedKeycodesNoLayers()
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
