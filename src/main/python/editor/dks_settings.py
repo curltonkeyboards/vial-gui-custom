@@ -974,8 +974,8 @@ class DKSSettingsTab(BasicEditor):
         self.addLayout(button_layout)
 
         # Add TabbedKeycodes at the bottom like in Macros tab
-        from tabbed_keycodes import TabbedKeycodes
-        self.tabbed_keycodes = TabbedKeycodes()
+        # Use TabbedKeycodesNoLayers to avoid LayerTab z-order issues with nested QTabWidgets
+        self.tabbed_keycodes = TabbedKeycodesNoLayers()
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
 
