@@ -2628,48 +2628,90 @@ class LayerTab(QScrollArea):
                     row += 1
 
     def recreate_buttons(self, keycode_filter=None):
-        # Recreate the dropdowns in row 1
+        # CRITICAL FIX: Close all popup windows BEFORE deleting dropdowns
+        # to prevent zombie popup windows from floating above the UI
+
+        # Close row 1 dropdown popups
+        self.active_default_dropdown.hidePopup()
+        if self.active_default_dropdown.view():
+            self.active_default_dropdown.view().hide()
+            self.active_default_dropdown.view().close()
+
+        self.hold_layer_dropdown.hidePopup()
+        if self.hold_layer_dropdown.view():
+            self.hold_layer_dropdown.view().hide()
+            self.hold_layer_dropdown.view().close()
+
+        self.toggle_layer_dropdown.hidePopup()
+        if self.toggle_layer_dropdown.view():
+            self.toggle_layer_dropdown.view().hide()
+            self.toggle_layer_dropdown.view().close()
+
+        # Close row 2 dropdown popups
+        self.tap_toggle_dropdown.hidePopup()
+        if self.tap_toggle_dropdown.view():
+            self.tap_toggle_dropdown.view().hide()
+            self.tap_toggle_dropdown.view().close()
+
+        self.one_shot_dropdown.hidePopup()
+        if self.one_shot_dropdown.view():
+            self.one_shot_dropdown.view().hide()
+            self.one_shot_dropdown.view().close()
+
+        self.double_layer_dropdown.hidePopup()
+        if self.double_layer_dropdown.view():
+            self.double_layer_dropdown.view().hide()
+            self.double_layer_dropdown.view().close()
+
+        # Force immediate processing to ensure popups are closed
+        QApplication.processEvents()
+
+        # Now safely remove and delete row 1 dropdowns
         self.row1_layout.removeWidget(self.active_default_dropdown)
         self.row1_layout.removeWidget(self.hold_layer_dropdown)
         self.row1_layout.removeWidget(self.toggle_layer_dropdown)
-        
+
         self.active_default_dropdown.deleteLater()
         self.hold_layer_dropdown.deleteLater()
         self.toggle_layer_dropdown.deleteLater()
-        
-        self.active_default_dropdown = self.create_dropdown("Active/Default Layer", self.smartchord_CC_toggle, keycode_filter)
-        self.active_default_dropdown.setFixedWidth(200)
-        self.row1_layout.insertWidget(1, self.active_default_dropdown)
-        
-        self.hold_layer_dropdown = self.create_dropdown("Hold Layer", self.smartchord_program_change, keycode_filter)
-        self.hold_layer_dropdown.setFixedWidth(200)
-        self.row1_layout.insertWidget(2, self.hold_layer_dropdown)
-        
-        self.toggle_layer_dropdown = self.create_dropdown("Toggle Layer", self.smartchord_LSB, keycode_filter)
-        self.toggle_layer_dropdown.setFixedWidth(200)
-        self.row1_layout.insertWidget(3, self.toggle_layer_dropdown)
-        
-        # Recreate the dropdowns in row 2
+
+        # Remove and delete row 2 dropdowns
         self.row2_layout.removeWidget(self.tap_toggle_dropdown)
         self.row2_layout.removeWidget(self.one_shot_dropdown)
         self.row2_layout.removeWidget(self.double_layer_dropdown)
-        
+
         self.tap_toggle_dropdown.deleteLater()
         self.one_shot_dropdown.deleteLater()
         self.double_layer_dropdown.deleteLater()
-        
+
+        # Force immediate processing of deletion events to clear old widgets
+        QApplication.processEvents()
+
+        # NOW create new dropdowns after old ones are scheduled for deletion
+        self.active_default_dropdown = self.create_dropdown("Active/Default Layer", self.smartchord_CC_toggle, keycode_filter)
+        self.active_default_dropdown.setFixedWidth(200)
+        self.row1_layout.insertWidget(1, self.active_default_dropdown)
+
+        self.hold_layer_dropdown = self.create_dropdown("Hold Layer", self.smartchord_program_change, keycode_filter)
+        self.hold_layer_dropdown.setFixedWidth(200)
+        self.row1_layout.insertWidget(2, self.hold_layer_dropdown)
+
+        self.toggle_layer_dropdown = self.create_dropdown("Toggle Layer", self.smartchord_LSB, keycode_filter)
+        self.toggle_layer_dropdown.setFixedWidth(200)
+        self.row1_layout.insertWidget(3, self.toggle_layer_dropdown)
+
         self.tap_toggle_dropdown = self.create_dropdown("Tap-Toggle Layer", self.smartchord_MSB, keycode_filter)
         self.tap_toggle_dropdown.setFixedWidth(200)
         self.row2_layout.insertWidget(1, self.tap_toggle_dropdown)
-        
+
         self.one_shot_dropdown = self.create_dropdown("One Shot Layer", self.smartchord_LSB2, keycode_filter)
         self.one_shot_dropdown.setFixedWidth(200)
         self.row2_layout.insertWidget(2, self.one_shot_dropdown)
-        
+
         self.double_layer_dropdown = self.create_dropdown("Double Layer", self.smartchord_CC_toggle2, keycode_filter)
         self.double_layer_dropdown.setFixedWidth(200)
         self.row2_layout.insertWidget(3, self.double_layer_dropdown)
-        
+
         # Repopulate the buttons
         self.populate_buttons(keycode_filter)
 
