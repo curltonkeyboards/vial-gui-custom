@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap, QImage
 
 from editor.basic_editor import BasicEditor
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
@@ -18,8 +18,115 @@ from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
 from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
-from tabbed_keycodes import TabbedKeycodes
+from tabbed_keycodes import TabbedKeycodes, FilteredTabbedKeycodes, keycode_filter_any, keycode_filter_masked
+from tabbed_keycodes import KeyboardTab, MusicTab, GamingTab, MacroTab, LightingTab, MIDITab, SimpleTab
+from keycodes.keycodes import (KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE, KEYCODES_BACKLIGHT,
+                               KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR,
+                               KEYCODES_RGB_KC_CUSTOM2, KEYCODES_CLEAR, KEYCODES_GAMING)
+from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
+import widgets.resources  # Import Qt resources for switch crossection image
+
+
+class FilteredTabbedKeycodesNoLayers(QTabWidget):
+    """Custom FilteredTabbedKeycodes without LayerTab to avoid overlay issues"""
+
+    keycode_changed = pyqtSignal(str)
+    anykey = pyqtSignal()
+
+    def __init__(self, parent=None, keycode_filter=keycode_filter_any):
+        super().__init__(parent)
+
+        self.keycode_filter = keycode_filter
+
+        # Create tabs WITHOUT LayerTab
+        self.tabs = [
+            KeyboardTab(self),
+            MusicTab(self),
+            GamingTab(self, "Gaming", KEYCODES_GAMING),
+            MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
+            # LayerTab intentionally EXCLUDED to prevent overlay issue
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
+            MIDITab(self),
+            SimpleTab(self, " ", KEYCODES_CLEAR),
+        ]
+
+        for tab in self.tabs:
+            tab.keycode_changed.connect(self.on_keycode_changed)
+
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
+
+    def on_keycode_changed(self, code):
+        """Handle keycode changes from tabs"""
+        if code == "Any":
+            self.anykey.emit()
+        else:
+            self.keycode_changed.emit(Keycode.normalize(code))
+
+    def recreate_keycode_buttons(self):
+        """Recreate all keycode buttons based on filter"""
+        prev_tab = self.tabText(self.currentIndex()) if self.currentIndex() >= 0 else ""
+        while self.count() > 0:
+            self.removeTab(0)
+
+        for tab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+
+    def on_keymap_override(self):
+        """Update button labels when keymap overrides change"""
+        for tab in self.tabs:
+            tab.relabel_buttons()
+
+    def set_keyboard(self, keyboard):
+        """Set keyboard reference for tabs that need it"""
+        for tab in self.tabs:
+            if hasattr(tab, 'keyboard'):
+                tab.keyboard = keyboard
+
+
+class TabbedKeycodesNoLayers(QWidget):
+    """Custom TabbedKeycodes without LayerTab for DKS settings"""
+
+    keycode_changed = pyqtSignal(str)
+    anykey = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+
+        self.target = None
+        self.is_tray = False
+
+        self.layout = QVBoxLayout()
+
+        # Use our custom FilteredTabbedKeycodes without layers
+        self.all_keycodes = FilteredTabbedKeycodesNoLayers()
+        self.basic_keycodes = FilteredTabbedKeycodesNoLayers(keycode_filter=keycode_filter_masked)
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.keycode_changed.connect(self.keycode_changed)
+            opt.anykey.connect(self.anykey)
+            self.layout.addWidget(opt)
+
+        self.setLayout(self.layout)
+        self.set_keycode_filter(keycode_filter_any)
+
+    def set_keycode_filter(self, keycode_filter):
+        """Show/hide filtered keycode widgets"""
+        if keycode_filter == keycode_filter_masked:
+            self.all_keycodes.hide()
+            self.basic_keycodes.show()
+        else:
+            self.all_keycodes.show()
+            self.basic_keycodes.hide()
+
+    def set_keyboard(self, keyboard):
+        """Set keyboard reference for all tab widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.set_keyboard(keyboard)
 
 
 class DKSKeyWidget(KeyWidget):
@@ -173,6 +280,62 @@ class TravelBarWidget(QWidget):
             painter.setFont(font)
 
 
+class KeyswitchDiagramWidget(QWidget):
+    """Visual diagram of a mechanical keyswitch cross-section using the actual image"""
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumWidth(450)
+        self.setMinimumHeight(750)
+        self.setMaximumWidth(450)
+        self.setMaximumHeight(750)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        # Detect dark mode
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
+        # Load the switch crossection image from Qt resources
+        pixmap = QPixmap(":/switchcrossection")
+
+        if not pixmap.isNull():
+            # Calculate scaling to fit widget while maintaining aspect ratio
+            widget_width = self.width()
+            widget_height = self.height()
+
+            # Scale the pixmap to fit the widget
+            scaled_pixmap = pixmap.scaled(
+                widget_width, widget_height,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+
+            # Invert colors if in dark mode
+            if is_dark:
+                image = scaled_pixmap.toImage()
+                image.invertPixels()
+                scaled_pixmap = QPixmap.fromImage(image)
+
+            # Center horizontally, align to top vertically (to match travel bar alignment)
+            x = (widget_width - scaled_pixmap.width()) // 2 - 35  # Move 35 pixels left
+            y = -30  # Move 30 pixels higher
+
+            painter.drawPixmap(x, y, scaled_pixmap)
+        else:
+            # Fallback: draw a simple placeholder if image fails to load
+            painter.setPen(QColor(128, 128, 128))
+            painter.drawText(self.rect(), Qt.AlignCenter, "Switch\nDiagram")
+
+
 class VerticalTravelBarWidget(QWidget):
     """Vertical representation of key travel with actuation points"""
 
@@ -299,7 +462,10 @@ class DKSActionEditor(QWidget):
         layout.setSpacing(8)
 
         if is_press:
-            # Press layout: Dropdown | Key | Slider (left to right)
+            # Press layout: Stretch | Dropdown | Key | Slider (left to right)
+            # Add stretch before dropdown to push content together
+            layout.addStretch()
+
             # Behavior selector on the outside (left)
             self.behavior_combo = QComboBox()
             self.behavior_combo.addItems(["Tap", "Press", "Release"])
@@ -391,6 +557,9 @@ class DKSActionEditor(QWidget):
             self.behavior_combo.setFixedSize(70, 25)
             layout.addWidget(self.behavior_combo)
 
+            # Add stretch after dropdown to push content together
+            layout.addStretch()
+
         # Store label reference for color styling
         self.label = action_label
 
@@ -456,6 +625,7 @@ class DKSVisualWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(900, 300)
+        self.setMaximumWidth(1100)  # Keep layout tight even when window is wider
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         # Will be set by parent
@@ -499,8 +669,21 @@ class DKSVisualWidget(QWidget):
         press_container.setLayout(press_layout)
         self.main_layout.addWidget(press_container)
 
-        # Middle: Vertical travel bar
-        self.main_layout.addWidget(self.create_vertical_travel_bar())
+        # Middle: Keyswitch diagram + Vertical travel bar
+        middle_container = QWidget()
+        middle_layout = QHBoxLayout()
+        middle_layout.setContentsMargins(0, 0, 0, 0)
+        middle_layout.setSpacing(5)
+
+        # Add keyswitch diagram
+        self.keyswitch_diagram = KeyswitchDiagramWidget()
+        middle_layout.addWidget(self.keyswitch_diagram)
+
+        # Add vertical travel bar
+        middle_layout.addWidget(self.create_vertical_travel_bar())
+
+        middle_container.setLayout(middle_layout)
+        self.main_layout.addWidget(middle_container)
 
         # Right section: Release actions (vertical stack)
         release_container = QWidget()
@@ -549,20 +732,6 @@ class DKSEntryUI(QWidget):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(15)
 
-        # Info section
-        info_layout = QHBoxLayout()
-        info_text = f"Configure actions for <b>DKS_{slot_idx:02d}</b> (keycode: <code>0x{0xED00 + slot_idx:04X}</code>)"
-        info_label = QLabel(info_text)
-        info_label.setStyleSheet("color: palette(text); font-size: 11px;")
-        info_layout.addWidget(info_label)
-        info_layout.addStretch()
-
-        # Load button
-        self.load_btn = QPushButton("Load from Keyboard")
-        self.load_btn.clicked.connect(self._on_load)
-        info_layout.addWidget(self.load_btn)
-
-        main_layout.addLayout(info_layout)
 
         # Visual action editor (includes travel bar)
         visual_group = QGroupBox("Action Configuration")
@@ -580,7 +749,8 @@ class DKSEntryUI(QWidget):
                 padding: 0 5px 0 5px;
             }
         """)
-        visual_layout = QVBoxLayout()
+        visual_layout = QHBoxLayout()
+        visual_layout.setContentsMargins(0, 0, 0, 0)
 
         self.visual_widget = DKSVisualWidget()
 
@@ -602,29 +772,24 @@ class DKSEntryUI(QWidget):
         # Set editors in visual widget
         self.visual_widget.set_editors(self.press_editors, self.release_editors)
 
+        # Center the visual widget with stretches on both sides
+        visual_layout.addStretch()
         visual_layout.addWidget(self.visual_widget)
+        visual_layout.addStretch()
         visual_group.setLayout(visual_layout)
         main_layout.addWidget(visual_group)
 
         # Bottom buttons
         bottom_layout = QHBoxLayout()
+        bottom_layout.addStretch()
 
         self.reset_btn = QPushButton("Reset Slot")
+        self.reset_btn.setFixedWidth(150)
         self.reset_btn.clicked.connect(self._on_reset)
         bottom_layout.addWidget(self.reset_btn)
 
-        bottom_layout.addStretch()
-
         self.save_eeprom_btn = QPushButton("Save to EEPROM")
-        self.save_eeprom_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                           stop: 0 palette(light), stop: 1 palette(button));
-                font-weight: bold;
-                padding: 5px 15px;
-                border-radius: 3px;
-            }
-        """)
+        self.save_eeprom_btn.setFixedWidth(150)
         self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
         bottom_layout.addWidget(self.save_eeprom_btn)
 
@@ -692,7 +857,7 @@ class DKSEntryUI(QWidget):
         widget.set_selected(True)
 
     def on_keycode_selected(self, keycode):
-        """Handle keycode selection from TabbedKeycodes"""
+        """Called when a keycode is selected from TabbedKeycodes"""
         if self.selected_key_widget:
             self.selected_key_widget.on_keycode_changed(keycode)
 
@@ -790,15 +955,8 @@ class DKSSettingsTab(BasicEditor):
 
         self.addWidget(self.tabs)
 
-        # Add TabbedKeycodes at the bottom for keycode selection
-        self.tabbed_keycodes = TabbedKeycodes()
-        self.addWidget(self.tabbed_keycodes)
-
-        # Connect tab changes to update keycode connections
+        # Connect tab changes for lazy loading
         self.tabs.currentChanged.connect(self._on_tab_changed)
-
-        # Initialize connection to first tab
-        self._on_tab_changed(0)
 
         # Bottom action buttons
         button_layout = QHBoxLayout()
@@ -815,25 +973,26 @@ class DKSSettingsTab(BasicEditor):
 
         self.addLayout(button_layout)
 
+        # Add TabbedKeycodes at the bottom like in GamingConfigurator
+        # Use custom version without LayerTab to prevent overlay issue
+        self.tabbed_keycodes = TabbedKeycodesNoLayers()
+        self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
+        self.addWidget(self.tabbed_keycodes)
+
     def on_entry_changed(self):
         """Handle entry change (can be used for modified indicators)"""
         # Future: Add modified state tracking like TapDance
         pass
 
+    def on_keycode_selected(self, keycode):
+        """Called when a keycode is selected from TabbedKeycodes"""
+        current_idx = self.tabs.currentIndex()
+        if current_idx >= 0 and current_idx < len(self.dks_entries):
+            self.dks_entries[current_idx].on_keycode_selected(keycode)
+
     def _on_tab_changed(self, index):
-        """Handle tab change - connect TabbedKeycodes to new entry and lazy load slot data"""
+        """Handle tab change - lazy load slot data"""
         if index >= 0 and index < len(self.dks_entries):
-            # Disconnect all previous connections (if any)
-            try:
-                self.tabbed_keycodes.keycode_changed.disconnect()
-            except:
-                pass  # No connections yet
-
-            # Connect to current entry
-            self.tabbed_keycodes.keycode_changed.connect(
-                self.dks_entries[index].on_keycode_selected
-            )
-
             # Lazy load: Only load slot data when first viewing the tab
             if self.dks_protocol and index not in self.loaded_slots:
                 self.dks_entries[index]._on_load()
