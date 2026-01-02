@@ -643,7 +643,8 @@ class DKSEntryUI(QWidget):
                 padding: 0 5px 0 5px;
             }
         """)
-        visual_layout = QVBoxLayout()
+        visual_layout = QHBoxLayout()
+        visual_layout.setContentsMargins(0, 0, 0, 0)
 
         self.visual_widget = DKSVisualWidget()
 
@@ -665,7 +666,10 @@ class DKSEntryUI(QWidget):
         # Set editors in visual widget
         self.visual_widget.set_editors(self.press_editors, self.release_editors)
 
+        # Center the visual widget with stretches on both sides
+        visual_layout.addStretch()
         visual_layout.addWidget(self.visual_widget)
+        visual_layout.addStretch()
         visual_group.setLayout(visual_layout)
         main_layout.addWidget(visual_group)
 
@@ -847,13 +851,11 @@ class DKSSettingsTab(BasicEditor):
 
         # Add TabbedKeycodes at the bottom for keycode selection
         self.tabbed_keycodes = TabbedKeycodes()
+        self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
 
-        # Connect tab changes to update keycode connections
+        # Connect tab changes for lazy loading
         self.tabs.currentChanged.connect(self._on_tab_changed)
-
-        # Initialize connection to first tab
-        self._on_tab_changed(0)
 
         # Bottom action buttons
         button_layout = QHBoxLayout()
@@ -875,20 +877,15 @@ class DKSSettingsTab(BasicEditor):
         # Future: Add modified state tracking like TapDance
         pass
 
+    def on_keycode_selected(self, keycode):
+        """Handle keycode selection from TabbedKeycodes - route to current tab's entry"""
+        current_idx = self.tabs.currentIndex()
+        if current_idx >= 0 and current_idx < len(self.dks_entries):
+            self.dks_entries[current_idx].on_keycode_selected(keycode)
+
     def _on_tab_changed(self, index):
-        """Handle tab change - connect TabbedKeycodes to new entry and lazy load slot data"""
+        """Handle tab change - lazy load slot data"""
         if index >= 0 and index < len(self.dks_entries):
-            # Disconnect all previous connections (if any)
-            try:
-                self.tabbed_keycodes.keycode_changed.disconnect()
-            except:
-                pass  # No connections yet
-
-            # Connect to current entry
-            self.tabbed_keycodes.keycode_changed.connect(
-                self.dks_entries[index].on_keycode_selected
-            )
-
             # Lazy load: Only load slot data when first viewing the tab
             if self.dks_protocol and index not in self.loaded_slots:
                 self.dks_entries[index]._on_load()
