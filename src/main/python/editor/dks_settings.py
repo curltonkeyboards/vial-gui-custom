@@ -220,7 +220,7 @@ class KeyswitchDiagramWidget(QWidget):
                 scaled_pixmap = QPixmap.fromImage(image)
 
             # Center horizontally, align to top vertically (to match travel bar alignment)
-            x = (widget_width - scaled_pixmap.width()) // 2
+            x = (widget_width - scaled_pixmap.width()) // 2 - 35  # Move 35 pixels left
             y = -30  # Move 30 pixels higher
 
             painter.drawPixmap(x, y, scaled_pixmap)
@@ -519,6 +519,7 @@ class DKSVisualWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(900, 300)
+        self.setMaximumWidth(1100)  # Keep layout tight even when window is wider
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         # Will be set by parent
