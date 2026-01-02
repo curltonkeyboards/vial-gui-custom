@@ -5545,11 +5545,15 @@ class FilteredTabbedKeycodes(QTabWidget):
     def recreate_keycode_buttons(self):
         prev_tab = self.tabText(self.currentIndex()) if self.currentIndex() >= 0 else ""
         while self.count() > 0:
+            widget = self.widget(0)
             self.removeTab(0)
+            if widget:
+                widget.hide()
 
         for tab in self.tabs:
             tab.recreate_buttons(self.keycode_filter)
             if tab.has_buttons():
+                tab.show()
                 self.addTab(tab, tr("TabbedKeycodes", tab.label))
                 if tab.label == prev_tab:
                     self.setCurrentIndex(self.count() - 1)
