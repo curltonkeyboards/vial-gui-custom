@@ -18,7 +18,7 @@ from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
 from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
-from tabbed_keycodes import TabbedKeycodes
+# from tabbed_keycodes import TabbedKeycodes  # REMOVED: Testing overlay issue
 from vial_device import VialKeyboard
 import widgets.resources  # Import Qt resources for switch crossection image
 
@@ -750,10 +750,11 @@ class DKSEntryUI(QWidget):
         self.selected_key_widget = widget
         widget.set_selected(True)
 
-    def on_keycode_selected(self, keycode):
-        """Handle keycode selection from TabbedKeycodes"""
-        if self.selected_key_widget:
-            self.selected_key_widget.on_keycode_changed(keycode)
+    # REMOVED: TabbedKeycodes handler - testing overlay issue
+    # def on_keycode_selected(self, keycode):
+    #     """Handle keycode selection from TabbedKeycodes"""
+    #     if self.selected_key_widget:
+    #         self.selected_key_widget.on_keycode_changed(keycode)
 
     def _send_to_keyboard(self):
         """Send current configuration to keyboard"""
@@ -849,10 +850,10 @@ class DKSSettingsTab(BasicEditor):
 
         self.addWidget(self.tabs)
 
-        # Add TabbedKeycodes at the bottom for keycode selection
-        self.tabbed_keycodes = TabbedKeycodes()
-        self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
-        self.addWidget(self.tabbed_keycodes)
+        # REMOVED: TabbedKeycodes to test overlay issue
+        # self.tabbed_keycodes = TabbedKeycodes()
+        # self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
+        # self.addWidget(self.tabbed_keycodes)
 
         # Connect tab changes for lazy loading
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -877,11 +878,12 @@ class DKSSettingsTab(BasicEditor):
         # Future: Add modified state tracking like TapDance
         pass
 
-    def on_keycode_selected(self, keycode):
-        """Handle keycode selection from TabbedKeycodes - route to current tab's entry"""
-        current_idx = self.tabs.currentIndex()
-        if current_idx >= 0 and current_idx < len(self.dks_entries):
-            self.dks_entries[current_idx].on_keycode_selected(keycode)
+    # REMOVED: TabbedKeycodes handler - testing overlay issue
+    # def on_keycode_selected(self, keycode):
+    #     """Handle keycode selection from TabbedKeycodes - route to current tab's entry"""
+    #     current_idx = self.tabs.currentIndex()
+    #     if current_idx >= 0 and current_idx < len(self.dks_entries):
+    #         self.dks_entries[current_idx].on_keycode_selected(keycode)
 
     def _on_tab_changed(self, index):
         """Handle tab change - lazy load slot data"""
