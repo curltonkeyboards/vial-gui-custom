@@ -52,8 +52,8 @@ class DKSKeyWidget(KeyWidget):
         if selected:
             self.setStyleSheet("""
                 QWidget {
-                    border: 2px solid palette(highlight);
-                    background: palette(highlight);
+                    border: 3px solid palette(highlight);
+                    border-radius: 4px;
                 }
             """)
         else:
@@ -852,6 +852,10 @@ class DKSSettingsTab(BasicEditor):
         # Add TabbedKeycodes at the bottom for keycode selection
         self.tabbed_keycodes = TabbedKeycodes()
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
+
+        # Remove the "Layers" tab from TabbedKeycodes (we don't need Layer Selection/Function Buttons in DKS settings)
+        self._remove_layers_tab()
+
         self.addWidget(self.tabbed_keycodes)
 
         # Connect tab changes for lazy loading
@@ -882,6 +886,16 @@ class DKSSettingsTab(BasicEditor):
         current_idx = self.tabs.currentIndex()
         if current_idx >= 0 and current_idx < len(self.dks_entries):
             self.dks_entries[current_idx].on_keycode_selected(keycode)
+
+    def _remove_layers_tab(self):
+        """Remove the Layers tab from TabbedKeycodes to hide Layer Selection/Function Buttons"""
+        # Access the FilteredTabbedKeycodes widgets inside TabbedKeycodes
+        for tabbed_widget in [self.tabbed_keycodes.all_keycodes, self.tabbed_keycodes.basic_keycodes]:
+            # Find and remove the "Layers" tab
+            for i in range(tabbed_widget.count()):
+                if tabbed_widget.tabText(i) == "Layers":
+                    tabbed_widget.removeTab(i)
+                    break
 
     def _on_tab_changed(self, index):
         """Handle tab change - lazy load slot data"""
