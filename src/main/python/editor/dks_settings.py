@@ -93,7 +93,7 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
 
 
 class TabbedKeycodesNoLayers(QWidget):
-    """Custom TabbedKeycodes without LayerTab for DKS settings"""
+    """Custom TabbedKeycodes for DKS settings with single instance to avoid overlay issues"""
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
@@ -103,33 +103,64 @@ class TabbedKeycodesNoLayers(QWidget):
 
         self.target = None
         self.is_tray = False
+        self.keyboard = None
+        self.current_keycode_filter = None
+        self.current_keycodes = None
 
         self.layout = QVBoxLayout()
-
-        # Use our custom FilteredTabbedKeycodes without layers
-        self.all_keycodes = FilteredTabbedKeycodesNoLayers()
-        self.basic_keycodes = FilteredTabbedKeycodesNoLayers(keycode_filter=keycode_filter_masked)
-        for opt in [self.all_keycodes, self.basic_keycodes]:
-            opt.keycode_changed.connect(self.keycode_changed)
-            opt.anykey.connect(self.anykey)
-            self.layout.addWidget(opt)
-
         self.setLayout(self.layout)
+
+        # Create initial instance with default filter
         self.set_keycode_filter(keycode_filter_any)
 
     def set_keycode_filter(self, keycode_filter):
-        """Show/hide filtered keycode widgets"""
-        if keycode_filter == keycode_filter_masked:
-            self.all_keycodes.hide()
-            self.basic_keycodes.show()
-        else:
-            self.all_keycodes.show()
-            self.basic_keycodes.hide()
+        """Create/recreate filtered keycode widget with proper cleanup"""
+        # Only recreate if filter actually changed
+        if keycode_filter == self.current_keycode_filter:
+            return
+
+        # Clean up existing instance
+        if self.current_keycodes is not None:
+            # Disconnect signals
+            try:
+                self.current_keycodes.keycode_changed.disconnect(self.keycode_changed)
+                self.current_keycodes.anykey.disconnect(self.anykey)
+            except:
+                pass
+
+            # Remove from layout
+            self.layout.removeWidget(self.current_keycodes)
+
+            # Explicitly destroy all child widgets to prevent overlay
+            for tab in self.current_keycodes.tabs:
+                tab.setParent(None)
+                tab.deleteLater()
+
+            # Delete the widget
+            self.current_keycodes.setParent(None)
+            self.current_keycodes.deleteLater()
+            self.current_keycodes = None
+
+        # Create new instance with the specified filter
+        self.current_keycodes = FilteredTabbedKeycodesNoLayers(keycode_filter=keycode_filter)
+        self.current_keycodes.keycode_changed.connect(self.keycode_changed)
+        self.current_keycodes.anykey.connect(self.anykey)
+
+        # Set keyboard if we have one
+        if self.keyboard is not None:
+            self.current_keycodes.set_keyboard(self.keyboard)
+
+        # Add to layout
+        self.layout.addWidget(self.current_keycodes)
+
+        # Update current filter
+        self.current_keycode_filter = keycode_filter
 
     def set_keyboard(self, keyboard):
-        """Set keyboard reference for all tab widgets"""
-        for opt in [self.all_keycodes, self.basic_keycodes]:
-            opt.set_keyboard(keyboard)
+        """Set keyboard reference for the current tab widget"""
+        self.keyboard = keyboard
+        if self.current_keycodes is not None:
+            self.current_keycodes.set_keyboard(keyboard)
 
 
 class DKSKeyWidget(KeyWidget):
