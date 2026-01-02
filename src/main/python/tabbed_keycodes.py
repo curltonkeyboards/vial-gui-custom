@@ -2485,16 +2485,16 @@ class LayerTab(QScrollArea):
 
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        
+
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
         # Add a spacer at the top to push everything down by 100 pixels
         top_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer)
-        
+
                 # Add "Layer Controls" title
         self.lighting_controls_label = QLabel("Layer Selection")
         self.lighting_controls_label.setAlignment(Qt.AlignCenter)
