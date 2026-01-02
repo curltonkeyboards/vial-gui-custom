@@ -9,7 +9,7 @@ Users configure DKS slots (DKS_00 - DKS_49) and then assign them to keys via the
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QEvent
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap, QImage
 
 from editor.basic_editor import BasicEditor
@@ -31,8 +31,99 @@ from vial_device import VialKeyboard
 import widgets.resources  # Import Qt resources for switch crossection image
 
 
+class ConstrainedLayerTab(QWidget):
+    """Wrapper for LayerTab that aggressively prevents floating/overlay behavior"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, *args):
+        super().__init__(parent)
+        self.label = label
+
+        # Set aggressive window flags to prevent floating
+        self.setWindowFlags(Qt.Widget)
+        self.setAttribute(Qt.WA_DontCreateNativeAncestors)
+        self.setAttribute(Qt.WA_NativeWindow, False)
+
+        # Create the actual LayerTab
+        self.layer_tab = LayerTab(self, label, *args)
+        self.layer_tab.keycode_changed.connect(self._on_keycode_changed)
+
+        # Force parent relationship
+        self.layer_tab.setParent(self)
+        self.layer_tab.setWindowFlags(Qt.Widget)
+        self.layer_tab.setAttribute(Qt.WA_DontCreateNativeAncestors)
+
+        # Set layout to contain the LayerTab
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.layer_tab)
+        self.setLayout(layout)
+
+        # Install event filter to catch and suppress any popup/floating attempts
+        self.layer_tab.installEventFilter(self)
+        self._suppress_popups()
+
+    def _suppress_popups(self):
+        """Recursively find and constrain all dropdown widgets"""
+        def constrain_widget(widget):
+            # Constrain the widget itself
+            widget.setWindowFlags(Qt.Widget)
+            widget.setAttribute(Qt.WA_DontCreateNativeAncestors)
+
+            # If it's a QComboBox, override its popup behavior
+            if isinstance(widget, QComboBox):
+                # Set maximum visible items to prevent huge popups
+                widget.setMaxVisibleItems(10)
+                # Ensure popup is child of this widget
+                try:
+                    widget.view().setWindowFlags(Qt.Popup)
+                    widget.view().setParent(self)
+                except:
+                    pass
+
+            # Recursively constrain children
+            for child in widget.findChildren(QWidget):
+                constrain_widget(child)
+
+        constrain_widget(self.layer_tab)
+
+    def eventFilter(self, obj, event):
+        """Filter events to prevent floating windows"""
+        # Suppress window show events that might create floating windows
+        if event.type() in [QEvent.Show, QEvent.WindowActivate, QEvent.WindowDeactivate]:
+            if obj != self.layer_tab and obj != self:
+                # Check if this is a popup trying to show
+                if hasattr(obj, 'windowFlags'):
+                    flags = obj.windowFlags()
+                    if flags & (Qt.Window | Qt.Dialog | Qt.Popup):
+                        # Force it to be a child widget
+                        obj.setWindowFlags(Qt.Widget)
+                        obj.setParent(self)
+
+        return super().eventFilter(obj, event)
+
+    def _on_keycode_changed(self, code):
+        """Forward keycode changes"""
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter=None):
+        """Pass through to wrapped LayerTab"""
+        self.layer_tab.recreate_buttons(keycode_filter)
+        # Re-suppress popups after recreation
+        self._suppress_popups()
+
+    def relabel_buttons(self):
+        """Pass through to wrapped LayerTab"""
+        self.layer_tab.relabel_buttons()
+
+    def has_buttons(self):
+        """Pass through to wrapped LayerTab"""
+        return self.layer_tab.has_buttons()
+
+
 class FilteredTabbedKeycodesNoLayers(QTabWidget):
-    """Custom FilteredTabbedKeycodes for DKS settings"""
+    """Custom FilteredTabbedKeycodes for DKS settings with aggressive overlay prevention"""
 
     keycode_changed = pyqtSignal(str)
     anykey = pyqtSignal()
@@ -40,15 +131,19 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
     def __init__(self, parent=None, keycode_filter=keycode_filter_any):
         super().__init__(parent)
 
+        # Aggressively prevent floating behavior
+        self.setWindowFlags(Qt.Widget)
+        self.setAttribute(Qt.WA_DontCreateNativeAncestors)
+
         self.keycode_filter = keycode_filter
 
-        # Create tabs including LayerTab
+        # Create tabs using ConstrainedLayerTab to prevent overlay issues
         self.tabs = [
             KeyboardTab(self),
             MusicTab(self),
             GamingTab(self, "Gaming", KEYCODES_GAMING),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
-            LayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
+            ConstrainedLayerTab(self, "Layers", KEYCODES_LAYERS, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO),
             LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
             MIDITab(self),
             SimpleTab(self, " ", KEYCODES_CLEAR),
@@ -57,8 +152,29 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
         for tab in self.tabs:
             tab.keycode_changed.connect(self.on_keycode_changed)
 
+        # Connect to tab changes to aggressively hide inactive tabs
+        self.currentChanged.connect(self._on_tab_changed)
+
         self.recreate_keycode_buttons()
         KeycodeDisplay.notify_keymap_override(self)
+
+    def _on_tab_changed(self, index):
+        """Aggressively hide all tabs except the active one and close their popups"""
+        for i, tab in enumerate(self.tabs):
+            if i != index:
+                # Close any open popups in inactive tabs
+                self._close_tab_popups(tab)
+
+    def _close_tab_popups(self, tab):
+        """Close all popups in a tab"""
+        # Find all QComboBox widgets and close their popups
+        for combo in tab.findChildren(QComboBox):
+            try:
+                combo.hidePopup()
+                if combo.view():
+                    combo.view().hide()
+            except:
+                pass
 
     def on_keycode_changed(self, code):
         """Handle keycode changes from tabs"""
@@ -121,6 +237,9 @@ class TabbedKeycodesNoLayers(QWidget):
 
         # Clean up existing instance
         if self.current_keycodes is not None:
+            # AGGRESSIVE CLEANUP: Close all open popups and comboboxes
+            self._close_all_popups(self.current_keycodes)
+
             # Disconnect signals
             try:
                 self.current_keycodes.keycode_changed.disconnect(self.keycode_changed)
@@ -133,6 +252,9 @@ class TabbedKeycodesNoLayers(QWidget):
 
             # Explicitly destroy all child widgets to prevent overlay
             for tab in self.current_keycodes.tabs:
+                # Close any popups in this tab
+                self._close_all_popups(tab)
+                # Remove parent and schedule deletion
                 tab.setParent(None)
                 tab.deleteLater()
 
@@ -140,6 +262,9 @@ class TabbedKeycodesNoLayers(QWidget):
             self.current_keycodes.setParent(None)
             self.current_keycodes.deleteLater()
             self.current_keycodes = None
+
+            # Force immediate processing of deletion events
+            QApplication.processEvents()
 
         # Create new instance with the specified filter
         self.current_keycodes = FilteredTabbedKeycodesNoLayers(keycode_filter=keycode_filter)
@@ -161,6 +286,38 @@ class TabbedKeycodesNoLayers(QWidget):
         self.keyboard = keyboard
         if self.current_keycodes is not None:
             self.current_keycodes.set_keyboard(keyboard)
+
+    def _close_all_popups(self, widget):
+        """Recursively close all QComboBox popups and any floating windows"""
+        if widget is None:
+            return
+
+        # Close all QComboBox popups
+        for combo in widget.findChildren(QComboBox):
+            try:
+                combo.hidePopup()
+                # Also try to close the view
+                if combo.view():
+                    combo.view().hide()
+                    combo.view().close()
+            except:
+                pass
+
+        # Close any QScrollArea that might be floating
+        for scroll in widget.findChildren(QScrollArea):
+            try:
+                scroll.hide()
+            except:
+                pass
+
+        # Close any top-level widgets that are children
+        for child in widget.findChildren(QWidget):
+            if child.isWindow():
+                try:
+                    child.hide()
+                    child.close()
+                except:
+                    pass
 
 
 class DKSKeyWidget(KeyWidget):
