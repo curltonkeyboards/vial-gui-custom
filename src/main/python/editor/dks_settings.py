@@ -973,9 +973,9 @@ class DKSSettingsTab(BasicEditor):
 
         self.addLayout(button_layout)
 
-        # Add TabbedKeycodes at the bottom like in GamingConfigurator
-        # Use custom version without LayerTab to prevent overlay issue
-        self.tabbed_keycodes = TabbedKeycodesNoLayers()
+        # Add TabbedKeycodes at the bottom like in Macros tab
+        from tabbed_keycodes import TabbedKeycodes
+        self.tabbed_keycodes = TabbedKeycodes()
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
 
