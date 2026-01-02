@@ -28,6 +28,107 @@ from vial_device import VialKeyboard
 import widgets.resources  # Import Qt resources for switch crossection image
 
 
+class FilteredTabbedKeycodesNoLayers(QTabWidget):
+    """Custom FilteredTabbedKeycodes without LayerTab to avoid overlay issues"""
+
+    keycode_changed = pyqtSignal(str)
+    anykey = pyqtSignal()
+
+    def __init__(self, parent=None, keycode_filter=keycode_filter_any):
+        super().__init__(parent)
+
+        self.keycode_filter = keycode_filter
+
+        # Create tabs WITHOUT LayerTab
+        self.tabs = [
+            KeyboardTab(self),
+            MusicTab(self),
+            GamingTab(self, "Gaming", KEYCODES_GAMING),
+            MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
+            # LayerTab intentionally EXCLUDED to prevent overlay issue
+            LightingTab(self, "Lighting", KEYCODES_BACKLIGHT, KEYCODES_RGBSAVE, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_COLOR, KEYCODES_RGB_KC_CUSTOM2),
+            MIDITab(self),
+            SimpleTab(self, " ", KEYCODES_CLEAR),
+        ]
+
+        for tab in self.tabs:
+            tab.keycode_changed.connect(self.on_keycode_changed)
+
+        self.recreate_keycode_buttons()
+        KeycodeDisplay.notify_keymap_override(self)
+
+    def on_keycode_changed(self, code):
+        """Handle keycode changes from tabs"""
+        if code == "Any":
+            self.anykey.emit()
+        else:
+            self.keycode_changed.emit(Keycode.normalize(code))
+
+    def recreate_keycode_buttons(self):
+        """Recreate all keycode buttons based on filter"""
+        prev_tab = self.tabText(self.currentIndex()) if self.currentIndex() >= 0 else ""
+        while self.count() > 0:
+            self.removeTab(0)
+
+        for tab in self.tabs:
+            tab.recreate_buttons(self.keycode_filter)
+            if tab.has_buttons():
+                self.addTab(tab, tr("TabbedKeycodes", tab.label))
+                if tab.label == prev_tab:
+                    self.setCurrentIndex(self.count() - 1)
+
+    def on_keymap_override(self):
+        """Update button labels when keymap overrides change"""
+        for tab in self.tabs:
+            tab.relabel_buttons()
+
+    def set_keyboard(self, keyboard):
+        """Set keyboard reference for tabs that need it"""
+        for tab in self.tabs:
+            if hasattr(tab, 'keyboard'):
+                tab.keyboard = keyboard
+
+
+class TabbedKeycodesNoLayers(QWidget):
+    """Custom TabbedKeycodes without LayerTab for DKS settings"""
+
+    keycode_changed = pyqtSignal(str)
+    anykey = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+
+        self.target = None
+        self.is_tray = False
+
+        self.layout = QVBoxLayout()
+
+        # Use our custom FilteredTabbedKeycodes without layers
+        self.all_keycodes = FilteredTabbedKeycodesNoLayers()
+        self.basic_keycodes = FilteredTabbedKeycodesNoLayers(keycode_filter=keycode_filter_masked)
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.keycode_changed.connect(self.keycode_changed)
+            opt.anykey.connect(self.anykey)
+            self.layout.addWidget(opt)
+
+        self.setLayout(self.layout)
+        self.set_keycode_filter(keycode_filter_any)
+
+    def set_keycode_filter(self, keycode_filter):
+        """Show/hide filtered keycode widgets"""
+        if keycode_filter == keycode_filter_masked:
+            self.all_keycodes.hide()
+            self.basic_keycodes.show()
+        else:
+            self.all_keycodes.show()
+            self.basic_keycodes.hide()
+
+    def set_keyboard(self, keyboard):
+        """Set keyboard reference for all tab widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.set_keyboard(keyboard)
+
+
 class DKSKeyWidget(KeyWidget):
     """Custom KeyWidget that doesn't open tray - parent will handle keycode selection"""
 
@@ -872,9 +973,9 @@ class DKSSettingsTab(BasicEditor):
 
         self.addLayout(button_layout)
 
-        # Add TabbedKeycodes at the bottom like in Macros tab
-        from tabbed_keycodes import TabbedKeycodes
-        self.tabbed_keycodes = TabbedKeycodes()
+        # Add TabbedKeycodes at the bottom like in GamingConfigurator
+        # Use custom version without LayerTab to prevent overlay issue
+        self.tabbed_keycodes = TabbedKeycodesNoLayers()
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
 
