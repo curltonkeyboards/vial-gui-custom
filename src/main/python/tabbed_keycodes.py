@@ -2474,7 +2474,7 @@ class LayerTab(QScrollArea):
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_CC_toggle, smartchord_program_change, smartchord_LSB, smartchord_MSB, smartchord_LSB2, smartchord_CC_toggle2):
         super().__init__(parent)
-        self.label = label     
+        self.label = label
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_program_change = smartchord_program_change
         self.smartchord_LSB = smartchord_LSB
@@ -2483,7 +2483,7 @@ class LayerTab(QScrollArea):
         self.smartchord_LSB2 = smartchord_LSB2
         self.smartchord_CC_toggle2 = smartchord_CC_toggle2
 
-        self.scroll_content = QWidget()
+        self.scroll_content = QWidget(self)
         self.main_layout = QVBoxLayout(self.scroll_content)
         
         self.setWidget(self.scroll_content)
@@ -2559,9 +2559,9 @@ class LayerTab(QScrollArea):
         self.function_label.setStyleSheet("font-size: 13px;")
         self.main_layout.addWidget(self.function_label)
         
-        
+
         # Function Buttons container
-        self.button_container = QWidget()
+        self.button_container = QWidget(self.scroll_content)
         self.button_layout = QGridLayout(self.button_container)
         self.button_layout.setHorizontalSpacing(5)
         self.button_layout.setVerticalSpacing(5)
@@ -5578,8 +5578,8 @@ class TabbedKeycodes(QWidget):
 
         self.layout = QVBoxLayout()
 
-        self.all_keycodes = FilteredTabbedKeycodes()
-        self.basic_keycodes = FilteredTabbedKeycodes(keycode_filter=keycode_filter_masked)
+        self.all_keycodes = FilteredTabbedKeycodes(self)
+        self.basic_keycodes = FilteredTabbedKeycodes(self, keycode_filter=keycode_filter_masked)
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.keycode_changed.connect(self.keycode_changed)
             opt.anykey.connect(self.anykey)
