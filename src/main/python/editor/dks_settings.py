@@ -32,7 +32,11 @@ import widgets.resources  # Import Qt resources for switch crossection image
 
 
 class ConstrainedLayerTab(QWidget):
-    """Wrapper for LayerTab that aggressively prevents floating/overlay behavior"""
+    """Wrapper for LayerTab that aggressively prevents floating/overlay behavior
+
+    NUCLEAR OPTION: Completely removes all dropdown widgets from LayerTab to prevent
+    the floating window overlay issue. Only shows the layer buttons.
+    """
 
     keycode_changed = pyqtSignal(str)
 
@@ -54,64 +58,71 @@ class ConstrainedLayerTab(QWidget):
         self.layer_tab.setWindowFlags(Qt.Widget)
         self.layer_tab.setAttribute(Qt.WA_DontCreateNativeAncestors)
 
+        # NUCLEAR OPTION: Destroy all dropdown widgets to prevent floating popups
+        self._destroy_all_dropdowns()
+
         # Set layout to contain the LayerTab
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.layer_tab)
         self.setLayout(layout)
 
-        # Install event filter to catch and suppress any popup/floating attempts
-        self.layer_tab.installEventFilter(self)
-        self._suppress_popups()
+    def _destroy_all_dropdowns(self):
+        """NUCLEAR OPTION: Find and completely destroy all QComboBox dropdowns
 
-    def _suppress_popups(self):
-        """Recursively find and constrain all dropdown widgets"""
-        def constrain_widget(widget):
-            # Constrain the widget itself
-            widget.setWindowFlags(Qt.Widget)
-            widget.setAttribute(Qt.WA_DontCreateNativeAncestors)
+        The dropdowns create floating popup windows that cannot be constrained.
+        The only solution is to remove them entirely from LayerTab.
+        """
+        # Find the scroll content widget that contains all LayerTab content
+        scroll_content = self.layer_tab.scroll_content if hasattr(self.layer_tab, 'scroll_content') else None
+        if not scroll_content:
+            return
 
-            # If it's a QComboBox, override its popup behavior
-            if isinstance(widget, QComboBox):
-                # Set maximum visible items to prevent huge popups
-                widget.setMaxVisibleItems(10)
-                # Ensure popup is child of this widget
-                try:
-                    widget.view().setWindowFlags(Qt.Popup)
-                    widget.view().setParent(self)
-                except:
-                    pass
+        # Find and destroy the "Layer Selection" label
+        if hasattr(self.layer_tab, 'lighting_controls_label'):
+            self.layer_tab.lighting_controls_label.setParent(None)
+            self.layer_tab.lighting_controls_label.deleteLater()
 
-            # Recursively constrain children
-            for child in widget.findChildren(QWidget):
-                constrain_widget(child)
+        # Find and destroy all the dropdown rows
+        if hasattr(self.layer_tab, 'row1_layout'):
+            # Remove all widgets from row1_layout
+            while self.layer_tab.row1_layout.count():
+                item = self.layer_tab.row1_layout.takeAt(0)
+                if item.widget():
+                    item.widget().setParent(None)
+                    item.widget().deleteLater()
+            # Remove the layout itself from parent
+            self.layer_tab.main_layout.removeItem(self.layer_tab.row1_layout)
+            self.layer_tab.row1_layout.deleteLater()
 
-        constrain_widget(self.layer_tab)
+        if hasattr(self.layer_tab, 'row2_layout'):
+            # Remove all widgets from row2_layout
+            while self.layer_tab.row2_layout.count():
+                item = self.layer_tab.row2_layout.takeAt(0)
+                if item.widget():
+                    item.widget().setParent(None)
+                    item.widget().deleteLater()
+            # Remove the layout itself from parent
+            self.layer_tab.main_layout.removeItem(self.layer_tab.row2_layout)
+            self.layer_tab.row2_layout.deleteLater()
 
-    def eventFilter(self, obj, event):
-        """Filter events to prevent floating windows"""
-        # Suppress window show events that might create floating windows
-        if event.type() in [QEvent.Show, QEvent.WindowActivate, QEvent.WindowDeactivate]:
-            if obj != self.layer_tab and obj != self:
-                # Check if this is a popup trying to show
-                if hasattr(obj, 'windowFlags'):
-                    flags = obj.windowFlags()
-                    if flags & (Qt.Window | Qt.Dialog | Qt.Popup):
-                        # Force it to be a child widget
-                        obj.setWindowFlags(Qt.Widget)
-                        obj.setParent(self)
+        # Destroy all QComboBox widgets (in case any remain)
+        for combo in self.layer_tab.findChildren(QComboBox):
+            combo.setParent(None)
+            combo.deleteLater()
 
-        return super().eventFilter(obj, event)
+        # Force immediate deletion
+        QApplication.processEvents()
 
     def _on_keycode_changed(self, code):
         """Forward keycode changes"""
         self.keycode_changed.emit(code)
 
     def recreate_buttons(self, keycode_filter=None):
-        """Pass through to wrapped LayerTab"""
+        """Pass through to wrapped LayerTab, then destroy dropdowns again"""
         self.layer_tab.recreate_buttons(keycode_filter)
-        # Re-suppress popups after recreation
-        self._suppress_popups()
+        # Destroy any dropdowns that were recreated
+        self._destroy_all_dropdowns()
 
     def relabel_buttons(self):
         """Pass through to wrapped LayerTab"""
