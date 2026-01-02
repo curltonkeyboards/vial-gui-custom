@@ -1663,96 +1663,217 @@ class LoopTab(QScrollArea):
         super().__init__(parent)
         self.label = label
         self.loop_keycodes = loop_keycodes
-        
-        # Define basic keycodes (now includes sample mode and global edit modifier)
+
+        # Define basic keycodes
         self.basic_keycode_ids = [
             # Main loop keys (4)
             "DM_MACRO_1", "DM_MACRO_2", "DM_MACRO_3", "DM_MACRO_4",
-            # Global control buttons (6)
-            "DM_MUTE", "DM_OVERDUB", "DM_UNSYNC", "DM_OCT_MOD", "DM_SAMPLE", "DM_EDIT_MOD"
+            # Mute loop buttons (4)
+            "DM_MUTE_1", "DM_MUTE_2", "DM_MUTE_3", "DM_MUTE_4"
         ]
-        
+
         # Separate basic and advanced keycodes
         self.basic_keycodes = []
         self.advanced_keycodes = []
-        
+
         for keycode in loop_keycodes:
             if keycode.qmk_id in self.basic_keycode_ids:
                 self.basic_keycodes.append(keycode)
             else:
                 self.advanced_keycodes.append(keycode)
-        
+
         # Sort basic keycodes by the order defined in basic_keycode_ids
-        self.basic_keycodes.sort(key=lambda x: self.basic_keycode_ids.index(x.qmk_id))
-        
+        self.basic_keycodes.sort(key=lambda x: self.basic_keycode_ids.index(x.qmk_id) if x.qmk_id in self.basic_keycode_ids else 999)
+
         # Track current state
         self.current_keycode_filter = None
-        self.is_advanced_mode = False
-        
+        self.is_advanced_visible = False
+
         self.scroll_content = QWidget()
         self.main_layout = QVBoxLayout(self.scroll_content)
-        self.main_layout.setSpacing(20)  # Spacing between major sections only
+        self.main_layout.setSpacing(15)
         self.main_layout.setContentsMargins(20, 15, 20, 15)
         self.main_layout.setAlignment(Qt.AlignTop)
-        
-        # Toggle buttons matching ear trainer format
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(0)  # No spacing between buttons
-        
-        # Add stretch before buttons
-        button_layout.addStretch(1)
-        
-        self.toggle_basic = QPushButton("Basic Controls")
-        self.toggle_basic.clicked.connect(self.show_basic)
-        self.toggle_basic.setFixedSize(120, 40)
-        button_layout.addWidget(self.toggle_basic)
-        
-        self.toggle_advanced = QPushButton("Advanced Controls")
-        self.toggle_advanced.clicked.connect(self.show_advanced)
-        self.toggle_advanced.setFixedSize(120, 40)
-        button_layout.addWidget(self.toggle_advanced)
-        
-        # Add stretch after buttons
-        button_layout.addStretch(1)
-        
-        self.main_layout.addLayout(button_layout)
-        
-        # Basic container with horizontal layout - reduced spacing
+
+        # Basic section - shown by default
         self.basic_container = QWidget()
-        self.basic_layout = QHBoxLayout(self.basic_container)  # Changed to horizontal
-        self.basic_layout.setSpacing(30)  # Fixed spacing between left and right sections
-        self.basic_layout.setContentsMargins(20, 10, 20, 10)
+        self.basic_layout = QVBoxLayout(self.basic_container)
+        self.basic_layout.setSpacing(20)
+        self.basic_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addWidget(self.basic_container)
-        
-        # Advanced container with sophisticated layout
+
+        # Create basic controls
+        self.create_basic_controls()
+
+        # Show/Hide Advanced button
+        toggle_layout = QHBoxLayout()
+        toggle_layout.setAlignment(Qt.AlignCenter)
+        self.toggle_advanced_btn = QPushButton("▼ Show Advanced")
+        self.toggle_advanced_btn.setFixedSize(150, 30)
+        self.toggle_advanced_btn.clicked.connect(self.toggle_advanced)
+        toggle_layout.addWidget(self.toggle_advanced_btn)
+        self.main_layout.addLayout(toggle_layout)
+
+        # Advanced container - hidden by default
         self.advanced_container = QWidget()
         self.advanced_layout = QVBoxLayout(self.advanced_container)
-        self.advanced_layout.setSpacing(20)  # Space between major advanced sections
-        self.advanced_layout.setContentsMargins(20, 10, 20, 10)
+        self.advanced_layout.setSpacing(15)
+        self.advanced_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addWidget(self.advanced_container)
         self.advanced_container.hide()
-        
+
+        # Create advanced controls
+        self.create_advanced_controls()
+
         self.setWidget(self.scroll_content)
         self.setWidgetResizable(True)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        
-        # Show basic by default and highlight its button
-        self.show_basic()
-        self.recreate_buttons()
 
     def create_section_header(self, title):
         """Create a simple section header with just the title"""
-        header_layout = QVBoxLayout()
-        header_layout.setSpacing(0)  # No extra spacing in header
-        header_layout.setContentsMargins(0, 0, 0, 0)  # No margins
-        
         title_label = QLabel(title)
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 13px;")
-        header_layout.addWidget(title_label)
-        
-        return header_layout
+        title_label.setStyleSheet("font-size: 13px; font-weight: bold;")
+        return title_label
+
+    def toggle_advanced(self):
+        """Toggle visibility of advanced controls"""
+        if self.is_advanced_visible:
+            self.advanced_container.hide()
+            self.toggle_advanced_btn.setText("▼ Show Advanced")
+            self.is_advanced_visible = False
+        else:
+            self.advanced_container.show()
+            self.toggle_advanced_btn.setText("▲ Hide Advanced")
+            self.is_advanced_visible = True
+
+    def create_basic_controls(self):
+        """Create the basic controls section"""
+        # Create a horizontal layout for the 3 subsections
+        sections_row = QHBoxLayout()
+        sections_row.setSpacing(30)
+        sections_row.addStretch(1)
+
+        # 1. Main loop controls - loop and mute loop buttons
+        main_loop_section = QVBoxLayout()
+        main_loop_section.setSpacing(8)
+        main_loop_section.setAlignment(Qt.AlignTop)
+
+        main_loop_header = self.create_section_header("Main Loop Controls")
+        main_loop_section.addWidget(main_loop_header)
+
+        # Get loop and mute buttons
+        loop_buttons = [kc for kc in self.basic_keycodes if kc.qmk_id in ["DM_MACRO_1", "DM_MACRO_2", "DM_MACRO_3", "DM_MACRO_4"]]
+        mute_buttons = [kc for kc in self.basic_keycodes if kc.qmk_id.startswith("DM_MUTE_")]
+
+        # Add loop buttons row
+        if loop_buttons:
+            loop_row = self.create_button_row(loop_buttons, 4)
+            main_loop_section.addWidget(loop_row)
+
+        # Add mute buttons row
+        if mute_buttons:
+            mute_row = self.create_button_row(mute_buttons, 4)
+            main_loop_section.addWidget(mute_row)
+
+        sections_row.addLayout(main_loop_section)
+
+        # 2. Octave doubler - octave loop buttons
+        octave_section = QVBoxLayout()
+        octave_section.setSpacing(8)
+        octave_section.setAlignment(Qt.AlignTop)
+
+        octave_header = self.create_section_header("Octave Doubler")
+        octave_section.addWidget(octave_header)
+
+        octave_buttons = [kc for kc in self.advanced_keycodes if kc.qmk_id.startswith("DM_OCT_") and kc.qmk_id != "DM_OCT_MOD"]
+        if octave_buttons:
+            octave_row = self.create_button_row(octave_buttons, 4)
+            octave_section.addWidget(octave_row)
+
+        sections_row.addLayout(octave_section)
+
+        # 3. Overdub buttons - Overdub loop, overdub mute buttons, and advanced overdub button
+        overdub_section = QVBoxLayout()
+        overdub_section.setSpacing(8)
+        overdub_section.setAlignment(Qt.AlignTop)
+
+        overdub_header = self.create_section_header("Overdub Buttons")
+        overdub_section.addWidget(overdub_header)
+
+        # Get overdub buttons
+        overdub_loop_buttons = [kc for kc in self.advanced_keycodes if kc.qmk_id.startswith("DM_OVERDUB_") and not kc.qmk_id.startswith("DM_OVERDUB_MUTE_")]
+        overdub_mute_buttons = [kc for kc in self.advanced_keycodes if kc.qmk_id.startswith("DM_OVERDUB_MUTE_")]
+        advanced_overdub = [kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_ADVANCED_OVERDUB"]
+
+        # Add overdub loop buttons row
+        if overdub_loop_buttons:
+            overdub_row = self.create_button_row(overdub_loop_buttons, 4)
+            overdub_section.addWidget(overdub_row)
+
+        # Add overdub mute buttons row
+        if overdub_mute_buttons:
+            overdub_mute_row = self.create_button_row(overdub_mute_buttons, 4)
+            overdub_section.addWidget(overdub_mute_row)
+
+        # Add advanced overdub button
+        if advanced_overdub:
+            adv_overdub_row = self.create_button_row(advanced_overdub, 1)
+            overdub_section.addWidget(adv_overdub_row)
+
+        sections_row.addLayout(overdub_section)
+
+        sections_row.addStretch(1)
+        self.basic_layout.addLayout(sections_row)
+
+    def create_advanced_controls(self):
+        """Create the advanced controls sections in rows"""
+        # Row 1: Mode Select, Modifier Buttons
+        row1 = QHBoxLayout()
+        row1.setSpacing(30)
+        row1.addStretch(1)
+
+        # Mode Select section - includes Sync, Sample Mode, Loop Quantize
+        mode_section = self.create_mode_select_section()
+        if mode_section:
+            row1.addLayout(mode_section)
+
+        # Modifier Buttons section (formerly Loop Advanced)
+        modifier_section = self.create_modifier_buttons_section()
+        if modifier_section:
+            row1.addLayout(modifier_section)
+
+        row1.addStretch(1)
+        self.advanced_layout.addLayout(row1)
+
+        # Row 2: BeatSkip, Speed Controls
+        row2 = QHBoxLayout()
+        row2.setSpacing(30)
+        row2.addStretch(1)
+
+        beatskip_section = self.create_beatskip_section()
+        if beatskip_section:
+            row2.addLayout(beatskip_section)
+
+        speed_section = self.create_speed_controls_section()
+        if speed_section:
+            row2.addLayout(speed_section)
+
+        row2.addStretch(1)
+        self.advanced_layout.addLayout(row2)
+
+        # Row 3: Navigation
+        row3 = QHBoxLayout()
+        row3.setSpacing(30)
+        row3.addStretch(1)
+
+        nav_section = self.create_nav_save_section()
+        if nav_section:
+            row3.addLayout(nav_section)
+
+        row3.addStretch(1)
+        self.advanced_layout.addLayout(row3)
 
     def create_button_row(self, keycodes, buttons_per_row=4):
         """Create a centered row of buttons with proper spacing"""
@@ -1798,257 +1919,75 @@ class LoopTab(QScrollArea):
         main_layout.addStretch(1)
         return container
 
-    def show_basic(self):
-        self.basic_container.show()
-        self.advanced_container.hide()
-        self.is_advanced_mode = False
-        
-        # Restore original basic layout
-        self.recreate_basic_for_basic()
-        
-        self.toggle_basic.setStyleSheet("""
-            background-color: #B8D8EB;
-            color: #395968;
-        """)
-        self.toggle_advanced.setStyleSheet("")  # Reset to default
-    
-    def recreate_basic_for_basic(self):
-        """Recreate the basic container with original layout for basic mode"""
-        # Clear the basic layout
-        while self.basic_layout.count():
-            item = self.basic_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-            elif item.layout():
-                self.clear_layout(item.layout())
-        
-        # Add stretch before sections to center them
-        self.basic_layout.addStretch(1)
-        
-        # Only Main Loop Controls (with mute and overdub added)
-        main_section = QVBoxLayout()
-        main_section.setSpacing(8)
-        
-        header = self.create_section_header("Main Loop Controls")
-        main_section.addLayout(header)
-        
-        # Get main loop keycodes + mute, overdub, and sync mode
-        main_loop_keycodes = [kc for kc in self.basic_keycodes[:4]]  # Loop 1-4
-        mute_keycode = next((kc for kc in self.basic_keycodes if kc.qmk_id == "DM_MUTE"), None)
-        overdub_keycode = next((kc for kc in self.basic_keycodes if kc.qmk_id == "DM_OVERDUB"), None)
-        sync_keycode = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_UNSYNC"), None)
 
-        # Combine all controls for basic mode
-        all_basic_keycodes = main_loop_keycodes[:]
-        if mute_keycode:
-            all_basic_keycodes.append(mute_keycode)
-        if overdub_keycode:
-            all_basic_keycodes.append(overdub_keycode)
-        if sync_keycode:
-            all_basic_keycodes.append(sync_keycode)
-        
-        if all_basic_keycodes:
-            # Display as 2 rows: 4 buttons (loops) then 3 buttons (mute/overdub/sync)
-            main_container = QWidget()
-            main_layout = QVBoxLayout(main_container)
-            main_layout.setSpacing(8)
-            main_layout.setContentsMargins(0, 0, 0, 0)
-
-            # Row 1: Main loop controls (4 buttons)
-            if len(main_loop_keycodes) > 0:
-                loop_row = self.create_button_row(main_loop_keycodes, 4)
-                main_layout.addWidget(loop_row)
-
-            # Row 2: Mute, Overdub, and Sync Mode (3 buttons)
-            mute_overdub_sync = []
-            if mute_keycode:
-                mute_overdub_sync.append(mute_keycode)
-            if overdub_keycode:
-                mute_overdub_sync.append(overdub_keycode)
-            if sync_keycode:
-                mute_overdub_sync.append(sync_keycode)
-
-            if mute_overdub_sync:
-                mute_overdub_sync_row = self.create_button_row(mute_overdub_sync, 3)
-                main_layout.addWidget(mute_overdub_sync_row)
-            
-            main_section.addWidget(main_container)
-        
-        # Add main section with no stretch factor
-        self.basic_layout.addLayout(main_section, 0)
-        
-        # Add stretch after sections to center them
-        self.basic_layout.addStretch(1)
-
-    def show_advanced(self):
-        self.basic_container.hide()  # Hide basic controls in advanced mode
-        self.advanced_container.show()  # Show advanced controls
-        self.is_advanced_mode = True
-        
-        # Rebuild advanced container with responsive layout
-        self.recreate_advanced_responsive()
-        
-        self.toggle_advanced.setStyleSheet("""
-            background-color: #C9E4CA;
-            color: #4A654B;
-        """)
-        self.toggle_basic.setStyleSheet("")  # Reset to default
-
-    def create_main_loop_section(self):
-        """Create the Main Loop Controls section"""
-        section = QVBoxLayout()
-        section.setSpacing(8)
-        section.setAlignment(Qt.AlignTop)
-        
-        header = self.create_section_header("Main Loop Controls")
-        section.addLayout(header)
-        
-        # Get keycodes
-        main_loop_keycodes = [kc for kc in self.basic_keycodes[:4]]  # Loop 1-4
-        mute_keycodes = [kc for kc in self.advanced_keycodes 
-                        if kc.qmk_id.startswith("DM_MUTE_")]
-        octave_keycodes = [kc for kc in self.advanced_keycodes 
-                          if kc.qmk_id.startswith("DM_OCT_") and kc.qmk_id != "DM_OCT_MOD"]
-        
-        # Get overdub keycodes (without advanced overdub)
-        overdub_keycodes = [kc for kc in self.advanced_keycodes 
-                           if kc.qmk_id.startswith("DM_OVERDUB_") and not kc.qmk_id.startswith("DM_OVERDUB_MUTE_")]
-        overdub_mute_keycodes = [kc for kc in self.advanced_keycodes 
-                                if kc.qmk_id.startswith("DM_OVERDUB_MUTE_")]
-        
-        if main_loop_keycodes or mute_keycodes or octave_keycodes or overdub_keycodes or overdub_mute_keycodes:
-            container = QWidget()
-            layout = QVBoxLayout(container)
-            layout.setSpacing(8)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setAlignment(Qt.AlignTop)
-            
-            # Row 1: Main loop controls
-            if main_loop_keycodes:
-                main_row = self.create_button_row(main_loop_keycodes, 4)
-                layout.addWidget(main_row)
-            
-            # Row 2: Individual mute controls
-            if mute_keycodes:
-                mute_row = self.create_button_row(mute_keycodes, 4)
-                layout.addWidget(mute_row)
-            
-            # Row 3: Octave controls
-            if octave_keycodes:
-                octave_row = self.create_button_row(octave_keycodes, 4)
-                layout.addWidget(octave_row)
-            
-            # Row 4: Overdub operations
-            if overdub_keycodes:
-                overdub_row = self.create_button_row(overdub_keycodes, 4)
-                layout.addWidget(overdub_row)
-            
-            # Row 5: Overdub mute operations
-            if overdub_mute_keycodes:
-                overdub_mute_row = self.create_button_row(overdub_mute_keycodes, 4)
-                layout.addWidget(overdub_mute_row)
-            
-            section.addWidget(container)
-            return section
-        return None 
-        
     def create_mode_select_section(self):
-        """Create the Mode Select section"""
+        """Create the Mode Select section - includes Sync, Sample Mode, Loop Quantize"""
         section = QVBoxLayout()
         section.setSpacing(8)
         section.setAlignment(Qt.AlignTop)
-        
+
         header = self.create_section_header("Mode Select")
-        section.addLayout(header)
-        
-        # Get mode keycodes
+        section.addWidget(header)
+
+        # Get mode keycodes - Sync, Sample Mode, Loop Quantize
         mode_keycodes = []
-        
-        # Add 8 Track Mode (renamed from Advanced Overdub)
-        advanced_overdub = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_ADVANCED_OVERDUB"), None)
-        if advanced_overdub and (self.current_keycode_filter is None or self.current_keycode_filter(advanced_overdub.qmk_id)):
-            mode_keycodes.append(advanced_overdub)
-        
-        # Add Unsynced Mode
+
+        # Add Sync/Unsync
         unsync = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_UNSYNC"), None)
         if unsync and (self.current_keycode_filter is None or self.current_keycode_filter(unsync.qmk_id)):
             mode_keycodes.append(unsync)
-        
+
         # Add Sample Mode
         sample = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "DM_SAMPLE"), None)
         if sample and (self.current_keycode_filter is None or self.current_keycode_filter(sample.qmk_id)):
             mode_keycodes.append(sample)
-        
+
+        # Add Loop Quantize
+        loop_quantize = next((kc for kc in self.advanced_keycodes if kc.qmk_id == "LOOP_QUANTIZE"), None)
+        if loop_quantize and (self.current_keycode_filter is None or self.current_keycode_filter(loop_quantize.qmk_id)):
+            mode_keycodes.append(loop_quantize)
+
         if mode_keycodes:
-            container = QWidget()
-            layout = QVBoxLayout(container)
-            layout.setSpacing(8)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setAlignment(Qt.AlignTop)
-            
-            mode_row = self.create_button_row(mode_keycodes, 3)
-            layout.addWidget(mode_row)
-            
-            section.addWidget(container)
+            mode_row = self.create_button_row(mode_keycodes, len(mode_keycodes))
+            section.addWidget(mode_row)
+            return section
+        return None
+
+    def create_modifier_buttons_section(self):
+        """Create the Modifier Buttons section (formerly Loop Advanced)"""
+        section = QVBoxLayout()
+        section.setSpacing(8)
+        section.setAlignment(Qt.AlignTop)
+
+        header = self.create_section_header("Modifier Buttons")
+        section.addWidget(header)
+
+        # Get loop modifier keycodes
+        modifier_keycodes = [kc for kc in self.advanced_keycodes
+                            if kc.qmk_id in ["DM_LOOP_MOD_1", "DM_LOOP_MOD_2", "DM_LOOP_MOD_3", "DM_LOOP_MOD_4"]
+                            and (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
+
+        if modifier_keycodes:
+            modifier_row = self.create_button_row(modifier_keycodes, 4)
+            section.addWidget(modifier_row)
             return section
         return None
     
-    def create_global_controls_section(self):
-        """Create the Global Controls section"""
-        section = QVBoxLayout()
-        section.setSpacing(8)
-        section.setAlignment(Qt.AlignTop)
-
-        header = self.create_section_header("Global Controls")
-        section.addLayout(header)
-
-        # Get global control keycodes, excluding the ones moved to Mode Select
-        global_keycodes = [kc for kc in self.basic_keycodes[4:]
-                          if kc.qmk_id not in ["DM_UNSYNC", "DM_SAMPLE"]]
-
-        # Add macro modifiers from advanced keycodes (Speed and Slow modifiers)
-        modifier_keycodes = [kc for kc in self.advanced_keycodes
-                            if kc.qmk_id in ["DM_SPEED_MOD", "DM_SLOW_MOD"]]
-
-        # Combine global controls with modifiers
-        all_global_keycodes = global_keycodes + modifier_keycodes
-
-        if all_global_keycodes:
-            container = QWidget()
-            layout = QVBoxLayout(container)
-            layout.setSpacing(8)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setAlignment(Qt.AlignTop)
-
-            # Display all global controls and modifiers (Mute, Overdub, Oct Mod, Edit Mod, Speed Mod, Slow Mod)
-            if len(all_global_keycodes) > 3:
-                row1 = self.create_button_row(all_global_keycodes[:3], 3)
-                layout.addWidget(row1)
-                row2 = self.create_button_row(all_global_keycodes[3:], 3)
-                layout.addWidget(row2)
-            else:
-                row = self.create_button_row(all_global_keycodes, len(all_global_keycodes))
-                layout.addWidget(row)
-
-            section.addWidget(container)
-            return section
-        return None
-        
     def create_beatskip_section(self):
         """Create the BeatSkip section"""
-        skip_keycodes = [kc for kc in self.advanced_keycodes 
-                        if kc.qmk_id.startswith("DM_SKIP_") and 
+        skip_keycodes = [kc for kc in self.advanced_keycodes
+                        if kc.qmk_id.startswith("DM_SKIP_") and
                         (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        
+
         if not skip_keycodes:
             return None
-            
+
         section = QVBoxLayout()
         section.setSpacing(8)
         section.setAlignment(Qt.AlignTop)
-        
+
         header = self.create_section_header("BeatSkip")
-        section.addLayout(header)
+        section.addWidget(header)
         
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -2071,25 +2010,25 @@ class LoopTab(QScrollArea):
 
     def create_speed_controls_section(self):
         """Create the Speed Controls section"""
-        speed_modifier_keycodes = [kc for kc in self.advanced_keycodes 
-                                 if kc.qmk_id in ["DM_SPEED_MOD", "DM_SLOW_MOD", "DM_RESET_SPEED"] and 
+        speed_modifier_keycodes = [kc for kc in self.advanced_keycodes
+                                 if kc.qmk_id in ["DM_SPEED_MOD", "DM_SLOW_MOD", "DM_RESET_SPEED"] and
                                  (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        speed_individual_keycodes = [kc for kc in self.advanced_keycodes 
-                                   if kc.qmk_id.startswith("DM_SPEED_") and kc.qmk_id != "DM_SPEED_MOD" and 
+        speed_individual_keycodes = [kc for kc in self.advanced_keycodes
+                                   if kc.qmk_id.startswith("DM_SPEED_") and kc.qmk_id != "DM_SPEED_MOD" and
                                    (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        slow_individual_keycodes = [kc for kc in self.advanced_keycodes 
-                                  if kc.qmk_id.startswith("DM_SLOW_") and kc.qmk_id != "DM_SLOW_MOD" and 
+        slow_individual_keycodes = [kc for kc in self.advanced_keycodes
+                                  if kc.qmk_id.startswith("DM_SLOW_") and kc.qmk_id != "DM_SLOW_MOD" and
                                   (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-        
+
         if not (speed_modifier_keycodes or speed_individual_keycodes or slow_individual_keycodes):
             return None
-            
+
         section = QVBoxLayout()
         section.setSpacing(8)
         section.setAlignment(Qt.AlignTop)
-        
+
         header = self.create_section_header("Speed Controls")
-        section.addLayout(header)
+        section.addWidget(header)
         
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -2115,56 +2054,6 @@ class LoopTab(QScrollArea):
         section.addWidget(container)
         return section
 
-    def create_loop_advanced_section(self):
-        """Create the Loop Advanced section"""
-        # Get loop modifiers (from advanced keycodes)
-        loop_modifier_keycodes = [kc for kc in self.advanced_keycodes
-                                  if kc.qmk_id in ["DM_LOOP_MOD_1", "DM_LOOP_MOD_2", "DM_LOOP_MOD_3", "DM_LOOP_MOD_4"] and
-                                  (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-
-        # Get sync and sample mode (from basic keycodes since they're in basic_keycode_ids)
-        sync_sample_keycodes = [kc for kc in self.basic_keycodes
-                               if kc.qmk_id in ["DM_UNSYNC", "DM_SAMPLE"] and
-                               (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-
-        # Get other loop advanced keycodes
-        loop_advanced_keycodes = [kc for kc in self.advanced_keycodes
-                                 if kc.qmk_id in ["LOOP_QUANTIZE", "LOOP_BPM_DOUBLE"] and
-                                 (self.current_keycode_filter is None or self.current_keycode_filter(kc.qmk_id))]
-
-        if not (loop_modifier_keycodes or sync_sample_keycodes or loop_advanced_keycodes):
-            return None
-
-        section = QVBoxLayout()
-        section.setSpacing(8)
-        section.setAlignment(Qt.AlignTop)
-
-        header = self.create_section_header("Loop Advanced")
-        section.addLayout(header)
-
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setSpacing(8)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(Qt.AlignTop)
-
-        # Row 1: Loop modifier keys (4 buttons)
-        if loop_modifier_keycodes:
-            loop_mod_row = self.create_button_row(loop_modifier_keycodes, 4)
-            layout.addWidget(loop_mod_row)
-
-        # Row 2: Sync and Sample mode (2 buttons)
-        if sync_sample_keycodes:
-            sync_sample_row = self.create_button_row(sync_sample_keycodes, 2)
-            layout.addWidget(sync_sample_row)
-
-        # Row 3: Loop quantize and BPM double (2 buttons)
-        if loop_advanced_keycodes:
-            loop_row = self.create_button_row(loop_advanced_keycodes, 2)
-            layout.addWidget(loop_row)
-
-        section.addWidget(container)
-        return section
 
     def create_nav_save_section(self):
         """Create the Navigation section"""
@@ -2183,7 +2072,7 @@ class LoopTab(QScrollArea):
         section.setAlignment(Qt.AlignTop)
 
         header = self.create_section_header("Navigation")
-        section.addLayout(header)
+        section.addWidget(header)
 
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -2216,96 +2105,11 @@ class LoopTab(QScrollArea):
         section.addWidget(container)
         return section
 
-    def recreate_advanced_responsive(self):
-        """Create responsive layout that wraps sections based on available width"""
-        # Clear the advanced layout
-        while self.advanced_layout.count():
-            item = self.advanced_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-            elif item.layout():
-                self.clear_layout(item.layout())
-        
-        # Create responsive container
-        responsive_container = QWidget()
-        responsive_layout = QVBoxLayout(responsive_container)
-        responsive_layout.setSpacing(20)
-        responsive_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Get all sections
-        sections = []
-        main_loop = self.create_main_loop_section()
-        if main_loop: sections.append(("Main Loop Controls", main_loop))
-        
-        global_controls = self.create_global_controls_section()
-        if global_controls: sections.append(("Global Controls", global_controls))
-        
-        mode_select = self.create_mode_select_section()
-        if mode_select: sections.append(("Mode Select", mode_select))
-        
-        beatskip = self.create_beatskip_section()
-        if beatskip: sections.append(("BeatSkip", beatskip))
-        
-        speed = self.create_speed_controls_section()
-        if speed: sections.append(("Speed Controls", speed))
-
-        loop_advanced = self.create_loop_advanced_section()
-        if loop_advanced: sections.append(("Loop Advanced", loop_advanced))
-
-        nav_save = self.create_nav_save_section()
-        if nav_save: sections.append(("Navigation", nav_save))
-
-        # Calculate approximate section widths
-        section_widths = {
-            "Main Loop Controls": 200,
-            "Global Controls": 160,
-            "Mode Select": 150,
-            "BeatSkip": 200,
-            "Speed Controls": 180,
-            "Loop Advanced": 220,
-            "Navigation": 220
-        }
-        
-        # Responsive layout logic
-        available_width = self.width() - 120
-        current_row_width = 0
-        current_row = QHBoxLayout()
-        current_row.setSpacing(40)
-        current_row.addStretch(1)
-        
-        for section_name, section_layout in sections:
-            section_width = section_widths.get(section_name, 180)
-            
-            if current_row_width + section_width + 40 > available_width and current_row_width > 0:
-                current_row.addStretch(1)
-                responsive_layout.addLayout(current_row)
-                
-                current_row = QHBoxLayout()
-                current_row.setSpacing(40)
-                current_row.addStretch(1)
-                current_row_width = 0
-            
-            current_row.addLayout(section_layout)
-            current_row_width += section_width + 40
-        
-        if current_row_width > 0:
-            current_row.addStretch(1)
-            responsive_layout.addLayout(current_row)
-        
-        responsive_layout.addStretch()
-        self.advanced_layout.addWidget(responsive_container)
-
-    def resizeEvent(self, event):
-        """Handle window resize to update responsive layout"""
-        super().resizeEvent(event)
-        if self.is_advanced_mode:
-            # Delay the recreation slightly to avoid excessive updates during resize
-            QTimer.singleShot(100, self.recreate_advanced_responsive)
 
     def recreate_buttons(self, keycode_filter=None):
         # Store the current filter
         self.current_keycode_filter = keycode_filter
-        
+
         # Clear existing layouts
         while self.basic_layout.count():
             item = self.basic_layout.takeAt(0)
@@ -2313,7 +2117,7 @@ class LoopTab(QScrollArea):
                 item.widget().deleteLater()
             elif item.layout():
                 self.clear_layout(item.layout())
-                
+
         while self.advanced_layout.count():
             item = self.advanced_layout.takeAt(0)
             if item.widget():
@@ -2321,11 +2125,9 @@ class LoopTab(QScrollArea):
             elif item.layout():
                 self.clear_layout(item.layout())
 
-        # Recreate layouts based on current mode
-        if self.is_advanced_mode:
-            self.recreate_advanced_responsive()
-        else:
-            self.recreate_basic_for_basic()
+        # Recreate both basic and advanced sections
+        self.create_basic_controls()
+        self.create_advanced_controls()
 
     def clear_layout(self, layout):
         """Helper method to clear a layout completely"""
@@ -2440,11 +2242,11 @@ class EarTrainerTab(QScrollArea):
                 btn.keycode = keycode
                 self.intervals_grid.addWidget(btn, row, col)
 
-        # Create Chord Trainer buttons (4 columns to match interval spacing)
+        # Create Chord Trainer buttons (5 columns x 4 rows)
         for i, keycode in enumerate(self.chordtrainer_keycodes):
             if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                row = i // 4
-                col = i % 4
+                row = i // 5
+                col = i % 5
                 btn = QPushButton(Keycode.label(keycode.qmk_id))
                 btn.setFixedSize(80, 50)
                 btn.setStyleSheet("""
@@ -3081,37 +2883,22 @@ class MacroTab(QScrollArea):
         top_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.main_layout.addItem(top_spacer2)
 
-        # Row 1: Value buttons (Macro and Tapdance Selection)
+        # Row 1: Value buttons (Macro, Tapdance, and DKS Selection)
         self.value_buttons_layout = QHBoxLayout()
-        
+
         # Add horizontal spacer on the left to center the value buttons
         self.value_buttons_layout.addStretch()
-        
+
         # Add the value buttons
         self.add_value_button("Macro Selection", self.value_buttons_layout)
         self.add_value_button("Tapdance Selection", self.value_buttons_layout)
-        
+        self.add_value_button("DKS Selection", self.value_buttons_layout)
+
         # Add horizontal spacer on the right to center the value buttons
         self.value_buttons_layout.addStretch()
-        
+
         # Add the value buttons layout to the main layout
         self.main_layout.addLayout(self.value_buttons_layout)
-        
-        # Row 2: Regular buttons
-        self.button_container = QWidget()
-        self.button_layout = QGridLayout(self.button_container)
-        
-        # Create a horizontal layout for the button container with spacers
-        self.centered_button_layout = QHBoxLayout()
-        self.centered_button_layout.addStretch()  # Left spacer
-        self.centered_button_layout.addWidget(self.button_container)
-        self.centered_button_layout.addStretch()  # Right spacer
-        
-        # Add the centered button layout to the main layout
-        self.main_layout.addLayout(self.centered_button_layout)
-
-        # Populate all buttons
-        self.recreate_buttons()
 
         # Spacer to push everything to the top
         self.main_layout.addStretch()
@@ -3131,7 +2918,12 @@ class MacroTab(QScrollArea):
         dialog.setFixedSize(300, 150)
 
         # Set max value based on the button type
-        max_value = 100 if label == "Tapdance Selection" else 255
+        if label == "Tapdance Selection":
+            max_value = 100
+        elif label == "DKS Selection":
+            max_value = 49
+        else:  # Macro Selection
+            max_value = 255
         
         layout = QVBoxLayout(dialog)
         label_widget = QLabel(f"Enter value for {label} (0-{max_value}):")
@@ -3155,48 +2947,28 @@ class MacroTab(QScrollArea):
     def confirm_value(self, dialog, label):
         """Confirm the value input and emit the corresponding keycode."""
         value = self.value_input.text()
-        max_value = 100 if label == "Tapdance Selection" else 255
-        
+        if label == "Tapdance Selection":
+            max_value = 100
+        elif label == "DKS Selection":
+            max_value = 49
+        else:  # Macro Selection
+            max_value = 255
+
         if value.isdigit() and 0 <= int(value) <= max_value:
             keycode_map = {
                 "Tapdance Selection": f"TD({value})",
-                "Macro Selection": f"M{value}"
+                "Macro Selection": f"M{value}",
+                "DKS Selection": f"DKS_{int(value):02d}"
             }
-            
+
             if label in keycode_map:
                 selected_keycode = keycode_map[label]
                 self.keycode_changed.emit(selected_keycode)
                 dialog.accept()
 
     def recreate_buttons(self, keycode_filter=None):
-        # Clear previous widgets in the button layout
-        for i in reversed(range(self.button_layout.count())):
-            widget = self.button_layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-    
-        row = 0
-        col = 0
-        max_columns = 15  # Maximum number of columns
-    
-        # Add regular buttons
-        for keycode in self.inversion_keycodes:
-            if keycode_filter is None or keycode_filter(keycode.qmk_id):
-                btn = SquareButton()
-                btn.setFixedHeight(50)
-                btn.setFixedWidth(50)
-                btn.setText(Keycode.label(keycode.qmk_id))
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-
-                # Add button to the grid layout
-                self.button_layout.addWidget(btn, row, col)
-
-                # Move to the next column
-                col += 1
-                if col >= max_columns:
-                    col = 0
-                    row += 1
+        # No regular buttons to create - only selection boxes remain
+        pass
 
     def on_selection_change(self, index):
         selected_qmk_id = self.sender().itemData(index)
@@ -3204,17 +2976,12 @@ class MacroTab(QScrollArea):
             self.keycode_changed.emit(selected_qmk_id)
 
     def relabel_buttons(self):
-        # Handle relabeling only for buttons in the grid layout
-        for i in range(self.button_layout.count()):
-            widget = self.button_layout.itemAt(i).widget()
-            if isinstance(widget, SquareButton):
-                keycode = widget.keycode
-                if keycode:
-                    widget.setText(Keycode.label(keycode.qmk_id))
+        # No buttons to relabel - only selection boxes
+        pass
 
     def has_buttons(self):
-        """Check if there are buttons or dropdown items."""
-        return (self.button_layout.count() > 0)
+        """Check if there are selection boxes."""
+        return True  # Always has selection boxes
 
 class KeySplitTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -3291,38 +3058,18 @@ class KeySplitTab(QScrollArea):
         content_layout.addWidget(self.ts_controls)
         self.ts_controls.hide()
 
-        # Add the split buttons at the bottom
-        split_buttons_container = QWidget()
-        split_buttons_layout = QHBoxLayout(split_buttons_container)
-        split_buttons_layout.setAlignment(Qt.AlignCenter)
-        
-        split_buttons = [
-            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
-            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
-            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE")
-        ]
-        
-        for text, code in split_buttons:
-            btn = QPushButton(text)
-            btn.setFixedSize(60, 60)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background: palette(button);
-                    border: 1px solid palette(mid);
-                    border-radius: 8px;
-                }
-                QPushButton:hover {
-                    background: palette(light);
-                }
-                QPushButton:pressed {
-                    background: palette(highlight);
-                    color: palette(highlighted-text);
-                }
-            """)
-            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
-            split_buttons_layout.addWidget(btn)
+        # Add the modifier button at the bottom
+        modifier_button_container = QWidget()
+        modifier_button_layout = QHBoxLayout(modifier_button_container)
+        modifier_button_layout.setAlignment(Qt.AlignCenter)
 
-        content_layout.addWidget(split_buttons_container)
+        modifier_btn = QPushButton("KeySplit\nModifier")
+        modifier_btn.setFixedSize(80, 50)
+        modifier_btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
+        modifier_btn.clicked.connect(lambda: self.keycode_changed.emit("KS_MODIFIER"))
+        modifier_button_layout.addWidget(modifier_btn)
+
+        content_layout.addWidget(modifier_button_container)
         content_layout.addStretch(1)
         main_layout.addWidget(content_wrapper)
 
@@ -3376,13 +3123,13 @@ class KeySplitTab(QScrollArea):
             btn = QPushButton(text)
             btn.setFixedSize(80, 50)
             btn.midi_id = code
-            
-            # Set only background color and text color
+
+            # Make buttons theme-related
             if prefix == 'KS':
                 btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
             else:
                 btn.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
-                
+
             btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
             layout.addWidget(btn)
 
@@ -3451,39 +3198,18 @@ class KeySplitOnlyTab(QScrollArea):
         self.create_control_buttons(ks_control_layout, 'KS')
         main_layout.addLayout(ks_control_layout)
 
-        # Split buttons at the bottom
-        split_buttons_container = QWidget()
-        split_buttons_layout = QHBoxLayout(split_buttons_container)
-        split_buttons_layout.setAlignment(Qt.AlignCenter)
+        # Modifier button at the bottom
+        modifier_button_container = QWidget()
+        modifier_button_layout = QHBoxLayout(modifier_button_container)
+        modifier_button_layout.setAlignment(Qt.AlignCenter)
 
-        split_buttons = [
-            ("Enable\nChannel\nKeySplit", "KS_TOGGLE"),
-            ("Enable\nVelocity\nKeySplit", "KS_VELOCITY_TOGGLE"),
-            ("Enable\nTranspose\nKeySplit", "KS_TRANSPOSE_TOGGLE"),
-            ("KeySplit\nModifier", "KS_MODIFIER")
-        ]
+        modifier_btn = QPushButton("KeySplit\nModifier")
+        modifier_btn.setFixedSize(80, 50)
+        modifier_btn.setStyleSheet("background-color: rgba(243, 209, 209, 1); color: rgba(128, 87, 87, 1);")
+        modifier_btn.clicked.connect(lambda: self.keycode_changed.emit("KS_MODIFIER"))
+        modifier_button_layout.addWidget(modifier_btn)
 
-        for text, code in split_buttons:
-            btn = QPushButton(text)
-            btn.setFixedSize(60, 60)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background: palette(button);
-                    border: 1px solid palette(mid);
-                    border-radius: 8px;
-                }
-                QPushButton:hover {
-                    background: palette(light);
-                }
-                QPushButton:pressed {
-                    background: palette(highlight);
-                    color: palette(highlighted-text);
-                }
-            """)
-            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
-            split_buttons_layout.addWidget(btn)
-
-        main_layout.addWidget(split_buttons_container)
+        main_layout.addWidget(modifier_button_container)
         main_layout.addStretch(1)
 
         self.setWidget(self.scroll_content)
@@ -3546,39 +3272,18 @@ class TripleSplitTab(QScrollArea):
         self.create_control_buttons(ts_control_layout, 'TS')
         main_layout.addLayout(ts_control_layout)
 
-        # Split buttons at the bottom
-        split_buttons_container = QWidget()
-        split_buttons_layout = QHBoxLayout(split_buttons_container)
-        split_buttons_layout.setAlignment(Qt.AlignCenter)
+        # Modifier button at the bottom
+        modifier_button_container = QWidget()
+        modifier_button_layout = QHBoxLayout(modifier_button_container)
+        modifier_button_layout.setAlignment(Qt.AlignCenter)
 
-        split_buttons = [
-            ("Enable\nChannel\nTripleSplit", "KS_TOGGLE"),
-            ("Enable\nVelocity\nTripleSplit", "KS_VELOCITY_TOGGLE"),
-            ("Enable\nTranspose\nTripleSplit", "KS_TRANSPOSE_TOGGLE"),
-            ("TripleSplit\nModifier", "TS_MODIFIER")
-        ]
+        modifier_btn = QPushButton("TripleSplit\nModifier")
+        modifier_btn.setFixedSize(80, 50)
+        modifier_btn.setStyleSheet("background-color: rgba(209, 243, 215, 1); color: rgba(128, 128, 87, 1);")
+        modifier_btn.clicked.connect(lambda: self.keycode_changed.emit("TS_MODIFIER"))
+        modifier_button_layout.addWidget(modifier_btn)
 
-        for text, code in split_buttons:
-            btn = QPushButton(text)
-            btn.setFixedSize(60, 60)
-            btn.setStyleSheet("""
-                QPushButton {
-                    background: palette(button);
-                    border: 1px solid palette(mid);
-                    border-radius: 8px;
-                }
-                QPushButton:hover {
-                    background: palette(light);
-                }
-                QPushButton:pressed {
-                    background: palette(highlight);
-                    color: palette(highlighted-text);
-                }
-            """)
-            btn.clicked.connect(lambda _, k=code: self.keycode_changed.emit(k))
-            split_buttons_layout.addWidget(btn)
-
-        main_layout.addWidget(split_buttons_container)
+        main_layout.addWidget(modifier_button_container)
         main_layout.addStretch(1)
 
         self.setWidget(self.scroll_content)
@@ -3920,17 +3625,17 @@ class ChordProgressionTab(QScrollArea):
         # Control buttons section at the bottom
         self.controls_container = QWidget()
         controls_layout = QHBoxLayout(self.controls_container)
-        
+
         # Add stretch before controls
         controls_layout.addStretch(1)
-        
-        self.controls_grid = QGridLayout()
-        self.controls_grid.setSpacing(10)
-        controls_layout.addLayout(self.controls_grid)
-        
+
+        self.controls_layout_inner = QHBoxLayout()
+        self.controls_layout_inner.setSpacing(10)
+        controls_layout.addLayout(self.controls_layout_inner)
+
         # Add stretch after controls
         controls_layout.addStretch(1)
-        
+
         self.main_layout.addWidget(self.controls_container)
         
         # Add the toggle button at the bottom
@@ -3999,20 +3704,18 @@ class ChordProgressionTab(QScrollArea):
 
     def populate_controls(self):
         # Clear existing controls
-        while self.controls_grid.count():
-            item = self.controls_grid.takeAt(0)
+        while self.controls_layout_inner.count():
+            item = self.controls_layout_inner.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        
-        # Create control buttons (10 columns)
-        for i, keycode in enumerate(self.control_keycodes):
-            row = i // 10
-            col = i % 10
+
+        # Create control buttons (all in same row)
+        for keycode in self.control_keycodes:
             btn = QPushButton(Keycode.label(keycode.qmk_id))
             btn.setFixedSize(50, 50)  # 50x50 as requested
             btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
             btn.keycode = keycode
-            self.controls_grid.addWidget(btn, row, col)
+            self.controls_layout_inner.addWidget(btn)
 
     def recreate_buttons(self, keycode_filter=None):
         # Clear existing layouts
