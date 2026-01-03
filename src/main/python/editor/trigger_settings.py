@@ -1464,9 +1464,9 @@ class TriggerSettingsTab(BasicEditor):
                         if rapidfire_enabled:
                             press_mm = self.value_to_mm(settings['rapidfire_press_sens'])
                             release_mm = self.value_to_mm(settings['rapidfire_release_sens'])
-                            key.setText(press_mm)
-                            key.setMaskText(release_mm)
-                            key.masked = True
+                            # Use same format as normal/midi display
+                            key.setText(f"{press_mm}\n{release_mm}")
+                            key.masked = False
                             key.setColor(None)
                         else:
                             key.setText("")
