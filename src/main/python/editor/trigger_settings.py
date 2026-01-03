@@ -3,14 +3,14 @@
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
                               QSizePolicy, QScrollArea, QTabWidget)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QEvent
 from PyQt5.QtGui import QColor
 
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
 from widgets.square_button import SquareButton
 from widgets.range_slider import TriggerSlider, RapidTriggerSlider, StyledSlider
-from util import tr
+from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
 
 
@@ -35,6 +35,10 @@ class TriggerSettingsTab(BasicEditor):
         self.current_layer = 0
         self.syncing = False
         self.actuation_widget_ref = None  # Reference to QuickActuationWidget for synchronization
+
+        # Track which container is being hovered over
+        # Possible values: None, 'trigger', 'rapidfire', 'velocity', 'keyboard'
+        self.hover_state = None
 
         # Cache for per-key actuation values (70 keys × 12 layers)
         # Each key now stores 8 fields
@@ -90,6 +94,7 @@ class TriggerSettingsTab(BasicEditor):
         self.container = KeyboardWidget2(layout_editor)
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
+        self.container.installEventFilter(self)
 
         # Selection buttons column (left of keyboard)
         selection_buttons_layout = QVBoxLayout()
@@ -177,6 +182,30 @@ class TriggerSettingsTab(BasicEditor):
         # Add widgets to BasicEditor layout (QVBoxLayout)
         self.addWidget(scroll_area)
         self.addWidget(control_panel)
+
+    def eventFilter(self, obj, event):
+        """Filter events to track hover state for containers"""
+        if event.type() == QEvent.Enter:
+            # Determine which container was entered
+            if obj == self.trigger_container:
+                self.hover_state = 'trigger'
+                self.refresh_layer_display()
+            elif obj == self.rapidfire_container:
+                self.hover_state = 'rapidfire'
+                self.refresh_layer_display()
+            elif obj == self.velocity_curve_editor:
+                self.hover_state = 'velocity'
+                self.refresh_layer_display()
+            elif obj == self.container:
+                self.hover_state = 'keyboard'
+                self.refresh_layer_display()
+        elif event.type() == QEvent.Leave:
+            # Reset hover state when leaving a container
+            if obj in [self.trigger_container, self.rapidfire_container, self.velocity_curve_editor, self.container]:
+                self.hover_state = None
+                self.refresh_layer_display()
+
+        return super().eventFilter(obj, event)
 
     def create_control_panel(self):
         """Create the bottom control panel"""
@@ -472,12 +501,14 @@ class TriggerSettingsTab(BasicEditor):
         content_layout.setContentsMargins(10, 10, 10, 10)
 
         # Left side: Trigger travel configuration
-        trigger_container = self.create_trigger_container()
-        content_layout.addWidget(trigger_container, 1)
+        self.trigger_container = self.create_trigger_container()
+        self.trigger_container.installEventFilter(self)
+        content_layout.addWidget(self.trigger_container, 1)
 
         # Right side: Rapidfire configuration
-        rapidfire_container = self.create_rapidfire_container()
-        content_layout.addWidget(rapidfire_container, 1)
+        self.rapidfire_container = self.create_rapidfire_container()
+        self.rapidfire_container.installEventFilter(self)
+        content_layout.addWidget(self.rapidfire_container, 1)
 
         content_container.setLayout(content_layout)
         main_layout.addWidget(content_container)
@@ -506,6 +537,7 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_editor.setEnabled(False)
         self.velocity_curve_editor.curve_changed.connect(self.on_velocity_curve_changed)
         self.velocity_curve_editor.save_to_user_requested.connect(self.on_save_velocity_curve_to_user)
+        self.velocity_curve_editor.installEventFilter(self)
         main_layout.addWidget(self.velocity_curve_editor)
 
         widget.setLayout(main_layout)
@@ -1399,7 +1431,7 @@ class TriggerSettingsTab(BasicEditor):
         return result
 
     def refresh_layer_display(self):
-        """Refresh keyboard display with actuation values"""
+        """Refresh keyboard display based on hover state"""
         if not self.valid():
             return
 
@@ -1419,29 +1451,66 @@ class TriggerSettingsTab(BasicEditor):
                 key_index = row * 14 + col
 
                 if key_index < 70:
-                    # Check if rapidfire is enabled for this key
+                    # Get settings for this key
                     settings = self.per_key_values[layer][key_index]
                     rapidfire_enabled = (settings['flags'] & 0x01) != 0
 
-                    # Set background color if rapidfire is enabled
-                    if rapidfire_enabled:
-                        # Use orange color with transparency (handled by keyboard_widget)
-                        key.setColor(QColor(255, 140, 50))
-                    else:
-                        # Clear color if rapidfire is disabled
-                        key.setColor(None)
+                    # Default: clear mask text
+                    key.setMaskText("")
 
-                    if self.mode_enabled:
-                        # Per-key mode: show per-key actuation value
-                        key.setText(self.value_to_mm(settings['actuation']))
-                    else:
-                        # Global mode: show both Normal and MIDI actuation values
-                        layer_to_use = self.current_layer if self.per_layer_enabled else 0
-                        normal_value = data_source[layer_to_use]['normal']
-                        midi_value = data_source[layer_to_use]['midi']
+                    # Display content based on hover state
+                    if self.hover_state == 'rapidfire':
+                        # Hovering over rapidfire: show press/release values or nothing
+                        if rapidfire_enabled:
+                            press_mm = self.value_to_mm(settings['rapidfire_press_sens'])
+                            release_mm = self.value_to_mm(settings['rapidfire_release_sens'])
+                            # Use same format as normal/midi display
+                            key.setText(f"{press_mm}\n{release_mm}")
+                            key.masked = False
+                            key.setColor(None)
+                        else:
+                            key.setText("")
+                            key.setColor(None)
+                    elif self.hover_state == 'velocity':
+                        # Hovering over velocity curve: show assigned curve or nothing
+                        use_per_key_curve = (settings['flags'] & 0x02) != 0
+                        if use_per_key_curve:
+                            curve_idx = settings['velocity_curve']
+                            if curve_idx == 0:
+                                curve_name = "Linear"
+                            elif curve_idx <= 6:
+                                curve_name = f"F{curve_idx}"
+                            else:
+                                curve_name = f"U{curve_idx-6}"
+                            key.setText(curve_name)
+                            key.setColor(None)
+                        else:
+                            key.setText("")
+                            key.setColor(None)
+                    elif self.hover_state == 'trigger':
+                        # Hovering over trigger travel: show actuation values (current behavior)
+                        if rapidfire_enabled:
+                            key.setColor(QColor(255, 140, 50))
+                        else:
+                            key.setColor(None)
 
-                        # Show both values on separate lines
-                        key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
+                        if self.mode_enabled:
+                            # Per-key mode: show per-key actuation value
+                            key.setText(self.value_to_mm(settings['actuation']))
+                        else:
+                            # Global mode: show both Normal and MIDI actuation values
+                            layer_to_use = self.current_layer if self.per_layer_enabled else 0
+                            normal_value = data_source[layer_to_use]['normal']
+                            midi_value = data_source[layer_to_use]['midi']
+                            key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
+                    else:
+                        # Default (None or 'keyboard'): show keycodes like keymap tab
+                        if self.keyboard and hasattr(self.keyboard, 'layout'):
+                            code = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                            KeycodeDisplay.display_keycode(key, code)
+                        else:
+                            key.setText("")
+                            key.setColor(None)
                 else:
                     key.setText("")
 
