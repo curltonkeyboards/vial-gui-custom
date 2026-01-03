@@ -3147,11 +3147,11 @@ KEYCODES_LOOP_BUTTONS = [
     K("DM_MUTE_4", "Mute\nLoop 4", "Dedicated mute for loop 4"),
     
     # Octave doubler controls
-    K("DM_OCT_1", "Octave\nLoop 1", "Octave doubler toggle for loop 1"),
-    K("DM_OCT_2", "Octave\nLoop 2", "Octave doubler toggle for loop 2"),
-    K("DM_OCT_3", "Octave\nLoop 3", "Octave doubler toggle for loop 3"),
-    K("DM_OCT_4", "Octave\nLoop 4", "Octave doubler toggle for loop 4"),
-    K("DM_OCT_MOD", "Octave\nModifier", "Octave doubler modifier button"),
+    K("DM_OCT_1", "Octave\nDouble 1", "Octave doubler toggle for loop 1"),
+    K("DM_OCT_2", "Octave\nDouble 2", "Octave doubler toggle for loop 2"),
+    K("DM_OCT_3", "Octave\nDouble 3", "Octave doubler toggle for loop 3"),
+    K("DM_OCT_4", "Octave\nDouble 4", "Octave doubler toggle for loop 4"),
+    K("DM_OCT_MOD", "Octave\nDouble\nModifier", "Octave doubler modifier button"),
     
     # Speed controls
     K("DM_SPEED_MOD", "Speed\nModifier", "Speed modifier button (hold + loop)"),
