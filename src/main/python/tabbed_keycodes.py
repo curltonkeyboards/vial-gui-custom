@@ -3865,13 +3865,13 @@ class ChordProgressionTab(QScrollArea):
                     widget.setText(prog_name)
                 else:  # Key & Number (mode 3)
                     widget.setText(label.replace("\n", " "))
-                
+
                 # When setting tooltip
                 clean_label = label.replace("\n", " ")
                 widget.setToolTip(f"{clean_label} - {description}")
-        
-        for i in range(self.controls_grid.count()):
-            widget = self.controls_grid.itemAt(i).widget()
+
+        for i in range(self.controls_layout_inner.count()):
+            widget = self.controls_layout_inner.itemAt(i).widget()
             if hasattr(widget, 'keycode'):
                 widget.setText(Keycode.label(widget.keycode.qmk_id))
 
