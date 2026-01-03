@@ -1689,11 +1689,11 @@ class LoopTab(QScrollArea):
             if child.widget():
                 child.widget().deleteLater()
 
-        # Main Loop Controls section
+        # Main Loop Controls section - includes main loops and modifier buttons
         main_loop_group = QGroupBox("Main Loop Controls")
         main_loop_layout = FlowLayout()
         for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id in ["DM_MACRO_1", "DM_MACRO_2", "DM_MACRO_3", "DM_MACRO_4"]:
+            if keycode_filter(keycode) and keycode.qmk_id in ["DM_MACRO_1", "DM_MACRO_2", "DM_MACRO_3", "DM_MACRO_4", "DM_MUTE", "DM_OVERDUB", "DM_OCT_MOD"]:
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -1704,86 +1704,45 @@ class LoopTab(QScrollArea):
         main_loop_group.setLayout(main_loop_layout)
         self.main_layout.addWidget(main_loop_group)
 
-        # Mute Loop Buttons section
-        mute_group = QGroupBox("Mute Loop Buttons")
-        mute_layout = FlowLayout()
+        # Extra Loop Buttons section - combines overdub loop, mute loop, overdub mute, and octave doubler
+        extra_loop_group = QGroupBox("Extra Loop Buttons")
+        extra_loop_layout = FlowLayout()
+        # Order: Overdub Loop, Mute Loop, Overdub Mute, Octave Doubler
+        button_order = []
+        # Overdub Loop buttons
         for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id.startswith("DM_MUTE_"):
+            if keycode.qmk_id.startswith("DM_OVERDUB_") and not keycode.qmk_id.startswith("DM_OVERDUB_MUTE_") and keycode.qmk_id != "DM_OVERDUB":
+                button_order.append(keycode)
+        # Mute Loop buttons
+        for keycode in self.loop_keycodes:
+            if keycode.qmk_id.startswith("DM_MUTE_") and keycode.qmk_id != "DM_MUTE":
+                button_order.append(keycode)
+        # Overdub Mute buttons
+        for keycode in self.loop_keycodes:
+            if keycode.qmk_id.startswith("DM_OVERDUB_MUTE_"):
+                button_order.append(keycode)
+        # Octave Doubler buttons
+        for keycode in self.loop_keycodes:
+            if keycode.qmk_id.startswith("DM_OCT_") and keycode.qmk_id != "DM_OCT_MOD":
+                button_order.append(keycode)
+        # Add all buttons to layout
+        for keycode in button_order:
+            if keycode_filter(keycode):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
                 btn.setText(keycode.label)
                 btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                mute_layout.addWidget(btn)
-        mute_group.setLayout(mute_layout)
-        self.main_layout.addWidget(mute_group)
+                extra_loop_layout.addWidget(btn)
+        extra_loop_group.setLayout(extra_loop_layout)
+        self.main_layout.addWidget(extra_loop_group)
 
-        # Overdub Loop Buttons section
-        overdub_group = QGroupBox("Overdub Loop Buttons")
-        overdub_layout = FlowLayout()
-        for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id.startswith("DM_OVERDUB_") and not keycode.qmk_id.startswith("DM_OVERDUB_MUTE_"):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                btn.setText(keycode.label)
-                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                overdub_layout.addWidget(btn)
-        overdub_group.setLayout(overdub_layout)
-        self.main_layout.addWidget(overdub_group)
-
-        # Overdub Mute Buttons section
-        overdub_mute_group = QGroupBox("Overdub Mute Buttons")
-        overdub_mute_layout = FlowLayout()
-        for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id.startswith("DM_OVERDUB_MUTE_"):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                btn.setText(keycode.label)
-                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                overdub_mute_layout.addWidget(btn)
-        overdub_mute_group.setLayout(overdub_mute_layout)
-        self.main_layout.addWidget(overdub_mute_group)
-
-        # Octave Doubler section
-        octave_group = QGroupBox("Octave Doubler")
-        octave_layout = FlowLayout()
-        for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id.startswith("DM_OCT_") and keycode.qmk_id != "DM_OCT_MOD":
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                btn.setText(keycode.label)
-                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                octave_layout.addWidget(btn)
-        octave_group.setLayout(octave_layout)
-        self.main_layout.addWidget(octave_group)
-
-        # Advanced Overdub section
-        advanced_overdub_group = QGroupBox("Advanced Overdub")
-        advanced_overdub_layout = FlowLayout()
-        for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id == "DM_ADVANCED_OVERDUB":
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                btn.setText(keycode.label)
-                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                advanced_overdub_layout.addWidget(btn)
-        advanced_overdub_group.setLayout(advanced_overdub_layout)
-        self.main_layout.addWidget(advanced_overdub_group)
-
-        # Mode Select section (Sync, Sample Mode, Loop Quantize)
+        # Mode Select section - includes Sync, Sample Mode, Loop Quantize, Advanced Overdub
         mode_group = QGroupBox("Mode Select")
         mode_layout = FlowLayout()
         for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id in ["DM_UNSYNC", "DM_SAMPLE", "LOOP_QUANTIZE"]:
+            if keycode_filter(keycode) and keycode.qmk_id in ["DM_UNSYNC", "DM_SAMPLE", "LOOP_QUANTIZE", "DM_ADVANCED_OVERDUB"]:
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -1794,11 +1753,11 @@ class LoopTab(QScrollArea):
         mode_group.setLayout(mode_layout)
         self.main_layout.addWidget(mode_group)
 
-        # Modifier Buttons section
+        # Modifier Buttons section - includes loop modifiers, speed/slow modifiers, octave modifier, mute, overdub
         modifier_group = QGroupBox("Modifier Buttons")
         modifier_layout = FlowLayout()
         for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and keycode.qmk_id in ["DM_LOOP_MOD_1", "DM_LOOP_MOD_2", "DM_LOOP_MOD_3", "DM_LOOP_MOD_4", "DM_OCT_MOD"]:
+            if keycode_filter(keycode) and keycode.qmk_id in ["DM_LOOP_MOD_1", "DM_LOOP_MOD_2", "DM_LOOP_MOD_3", "DM_LOOP_MOD_4", "DM_OCT_MOD", "DM_SPEED_MOD", "DM_SLOW_MOD", "DM_MUTE", "DM_OVERDUB"]:
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -1824,11 +1783,11 @@ class LoopTab(QScrollArea):
         beatskip_group.setLayout(beatskip_layout)
         self.main_layout.addWidget(beatskip_group)
 
-        # Speed Controls section
+        # Speed Controls section - only individual speed/slow buttons and reset
         speed_group = QGroupBox("Speed Controls")
         speed_layout = FlowLayout()
         for keycode in self.loop_keycodes:
-            if keycode_filter(keycode) and (keycode.qmk_id.startswith("DM_SPEED_") or keycode.qmk_id.startswith("DM_SLOW_") or keycode.qmk_id == "DM_RESET_SPEED"):
+            if keycode_filter(keycode) and (keycode.qmk_id.startswith("DM_SPEED_") or keycode.qmk_id.startswith("DM_SLOW_") or keycode.qmk_id == "DM_RESET_SPEED") and keycode.qmk_id not in ["DM_SPEED_MOD", "DM_SLOW_MOD"]:
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
