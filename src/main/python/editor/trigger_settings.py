@@ -369,9 +369,11 @@ class TriggerSettingsTab(BasicEditor):
         elif index == 2:
             self.current_tab = 'velocity'
 
-        # Update visualization and keyboard display
-        self.update_visualization()
-        self.refresh_layer_display()
+        # Update visualization and keyboard display (only if initialized)
+        if hasattr(self, 'travel_bar'):
+            self.update_visualization()
+        if self.valid():
+            self.refresh_layer_display()
 
     def update_visualization(self):
         """Update the travel bar visualization based on current tab and selected key"""
@@ -1666,7 +1668,7 @@ class TriggerSettingsTab(BasicEditor):
         return result
 
     def refresh_layer_display(self):
-        """Refresh keyboard display based on hover state"""
+        """Refresh keyboard display based on active tab"""
         if not self.valid():
             return
 
