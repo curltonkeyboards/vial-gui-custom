@@ -343,7 +343,7 @@ class VerticalTravelBarWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(100)
+        self.setMinimumWidth(150)  # Increased from 100 to accommodate labels
         self.setMinimumHeight(250)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
@@ -407,11 +407,11 @@ class VerticalTravelBarWidget(QWidget):
             # Draw "First Activation" label
             painter.setPen(text_color)
             font = QFont()
-            font.setPointSize(8)
+            font.setPointSize(7)
             font.setBold(True)
             painter.setFont(font)
-            painter.drawText(bar_x + bar_width + 5, middle_y - 5, "First")
-            painter.drawText(bar_x + bar_width + 5, middle_y + 10, "Activation")
+            # Draw as single line to avoid cutoff
+            painter.drawText(bar_x + bar_width + 5, middle_y + 3, "First Activation")
         else:
             # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
             painter.setPen(text_color)
@@ -443,13 +443,13 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(255, 140, 0))
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                # Draw actuation value
+                # Draw actuation value - positioned further left to avoid cutoff
                 mm_value = (actuation / 100.0) * 2.5
                 painter.setPen(QColor(255, 140, 0))
                 font_small = QFont()
-                font_small.setPointSize(8)
+                font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x - 60, y + 4, f"{mm_value:.2f}")
+                painter.drawText(bar_x - 70, y + 4, f"{mm_value:.2f}mm")
 
             # Draw release actuation points (cyan, above middle line)
             for actuation, enabled in self.release_actuations:
@@ -471,9 +471,9 @@ class VerticalTravelBarWidget(QWidget):
                 mm_value = (actuation / 100.0) * 2.5
                 painter.setPen(QColor(0, 200, 200))
                 font_small = QFont()
-                font_small.setPointSize(8)
+                font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}")
+                painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}mm")
         else:
             # Normal mode: draw from top to bottom
             font = QFont()
@@ -494,13 +494,13 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(255, 140, 0))
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                # Draw actuation value
+                # Draw actuation value - positioned further left to avoid cutoff
                 mm_value = (actuation / 100.0) * 2.5
                 painter.setPen(QColor(255, 140, 0))
                 font_small = QFont()
-                font_small.setPointSize(8)
+                font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x - 60, y + 4, f"{mm_value:.2f}")
+                painter.drawText(bar_x - 70, y + 4, f"{mm_value:.2f}mm")
                 painter.setFont(font)
 
             # Draw release actuation points (cyan, right side)
@@ -522,9 +522,9 @@ class VerticalTravelBarWidget(QWidget):
                 mm_value = (actuation / 100.0) * 2.5
                 painter.setPen(QColor(0, 200, 200))
                 font_small = QFont()
-                font_small.setPointSize(8)
+                font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}")
+                painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}mm")
                 painter.setFont(font)
 
 

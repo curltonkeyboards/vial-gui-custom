@@ -558,15 +558,18 @@ class TriggerSettingsTab(BasicEditor):
         viz_container.setFrameShape(QFrame.StyledPanel)
         viz_container.setStyleSheet("QFrame { background-color: palette(base); }")
         viz_container.setMaximumHeight(325)  # Set maximum height for visualization container
+        viz_container.setMaximumWidth(400)  # Set maximum width for visualization container
         viz_layout = QVBoxLayout()
-        viz_layout.setContentsMargins(10, 10, 10, 10)
-        viz_layout.setSpacing(10)
+        viz_layout.setContentsMargins(5, 10, 5, 10)  # Reduced horizontal margins
+        viz_layout.setSpacing(5)  # Reduced spacing
 
         # Import widgets from dks_settings
         from editor.dks_settings import KeyswitchDiagramWidget, VerticalTravelBarWidget
 
         # Horizontal layout for diagram and travel bar
         viz_h_layout = QHBoxLayout()
+        viz_h_layout.setSpacing(2)  # Reduce spacing between diagram and visualizer
+        viz_h_layout.setContentsMargins(0, 0, 0, 0)
 
         # Keyswitch diagram
         self.keyswitch_diagram = KeyswitchDiagramWidget()
