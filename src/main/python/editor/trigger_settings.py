@@ -110,11 +110,6 @@ class TriggerSettingsTab(BasicEditor):
         selection_buttons_layout = QVBoxLayout()
         selection_buttons_layout.setSpacing(8)  # Add spacing between buttons
 
-        # Add checkboxes at the top
-        selection_buttons_layout.addWidget(self.enable_checkbox)
-        selection_buttons_layout.addWidget(self.per_layer_checkbox)
-        selection_buttons_layout.addSpacing(15)  # Add space after checkboxes
-
         self.select_all_btn = QPushButton(tr("TriggerSettings", "Select All"))
         self.select_all_btn.setMinimumHeight(32)  # Make buttons bigger
         self.select_all_btn.clicked.connect(self.on_select_all)
@@ -464,6 +459,7 @@ class TriggerSettingsTab(BasicEditor):
     def create_settings_content(self):
         """Create the settings content with tabbed layout and visualization"""
         widget = QWidget()
+        widget.setMaximumHeight(430)  # Set maximum height for entire container
         main_layout = QHBoxLayout()
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(5, 3, 5, 5)
@@ -485,6 +481,13 @@ class TriggerSettingsTab(BasicEditor):
         actuation_layout = QVBoxLayout()
         actuation_layout.setContentsMargins(8, 8, 8, 8)
 
+        # Add checkboxes at top of Actuation tab
+        actuation_checkboxes = QHBoxLayout()
+        actuation_checkboxes.addWidget(self.enable_checkbox)
+        actuation_checkboxes.addWidget(self.per_layer_checkbox)
+        actuation_checkboxes.addStretch()
+        actuation_layout.addLayout(actuation_checkboxes)
+
         self.trigger_container = self.create_trigger_container()
         actuation_layout.addWidget(self.trigger_container)
         actuation_layout.addStretch()
@@ -496,6 +499,13 @@ class TriggerSettingsTab(BasicEditor):
         rapidfire_tab = QWidget()
         rapidfire_layout = QVBoxLayout()
         rapidfire_layout.setContentsMargins(8, 8, 8, 8)
+
+        # Add checkboxes at top of Rapidfire tab (clone references)
+        rapidfire_checkboxes = QHBoxLayout()
+        rapidfire_checkboxes.addWidget(self.enable_checkbox)
+        rapidfire_checkboxes.addWidget(self.per_layer_checkbox)
+        rapidfire_checkboxes.addStretch()
+        rapidfire_layout.addLayout(rapidfire_checkboxes)
 
         self.rapidfire_container = self.create_rapidfire_container()
         rapidfire_layout.addWidget(self.rapidfire_container)
@@ -509,6 +519,13 @@ class TriggerSettingsTab(BasicEditor):
         velocity_layout = QVBoxLayout()
         velocity_layout.setContentsMargins(8, 8, 8, 8)
 
+        # Add checkboxes at top of Velocity tab
+        velocity_checkboxes = QHBoxLayout()
+        velocity_checkboxes.addWidget(self.enable_checkbox)
+        velocity_checkboxes.addWidget(self.per_layer_checkbox)
+        velocity_checkboxes.addStretch()
+        velocity_layout.addLayout(velocity_checkboxes)
+
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
@@ -516,13 +533,17 @@ class TriggerSettingsTab(BasicEditor):
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
         velocity_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        # Velocity Curve Editor
+        # Velocity Curve Editor - centered
         from widgets.curve_editor import CurveEditorWidget
+        curve_editor_container = QHBoxLayout()
+        curve_editor_container.addStretch()
         self.velocity_curve_editor = CurveEditorWidget(show_save_button=True)
         self.velocity_curve_editor.setEnabled(False)
         self.velocity_curve_editor.curve_changed.connect(self.on_velocity_curve_changed)
         self.velocity_curve_editor.save_to_user_requested.connect(self.on_save_velocity_curve_to_user)
-        velocity_layout.addWidget(self.velocity_curve_editor)
+        curve_editor_container.addWidget(self.velocity_curve_editor)
+        curve_editor_container.addStretch()
+        velocity_layout.addLayout(curve_editor_container)
         velocity_layout.addStretch()
 
         velocity_tab.setLayout(velocity_layout)
@@ -536,6 +557,7 @@ class TriggerSettingsTab(BasicEditor):
         viz_container = QFrame()
         viz_container.setFrameShape(QFrame.StyledPanel)
         viz_container.setStyleSheet("QFrame { background-color: palette(base); }")
+        viz_container.setMaximumHeight(325)  # Set maximum height for visualization container
         viz_layout = QVBoxLayout()
         viz_layout.setContentsMargins(10, 10, 10, 10)
         viz_layout.setSpacing(10)
@@ -592,6 +614,7 @@ class TriggerSettingsTab(BasicEditor):
                     press_points = [(settings['actuation'], True)]
                     # Deadzones aren't shown as separate actuation points in the visualizer
                     release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
                 elif self.active_tab == 'rapidfire':
                     # Show rapidfire press/release sensitivities if enabled
                     rapidfire_enabled = (settings['flags'] & 0x01) != 0
@@ -601,15 +624,16 @@ class TriggerSettingsTab(BasicEditor):
                     else:
                         press_points = []
                         release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=True)
                 elif self.active_tab == 'velocity':
                     # Show actuation point for velocity curve reference
                     press_points = [(settings['actuation'], True)]
                     release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
                 else:
                     press_points = []
                     release_points = []
-
-                self.actuation_visualizer.set_actuations(press_points, release_points)
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
                 return
 
         # No key selected or in global mode - show global actuation
@@ -624,15 +648,16 @@ class TriggerSettingsTab(BasicEditor):
                     (data_source[layer_to_use]['midi'], True)
                 ]
                 release_points = []
+                self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
             else:
                 # Rapidfire and velocity tabs don't apply to global mode
                 press_points = []
                 release_points = []
-
-            self.actuation_visualizer.set_actuations(press_points, release_points)
+                rapidfire_mode = (self.active_tab == 'rapidfire')
+                self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=rapidfire_mode)
         else:
             # Per-key mode but no key selected - clear visualizer
-            self.actuation_visualizer.set_actuations([], [])
+            self.actuation_visualizer.set_actuations([], [], rapidfire_mode=False)
 
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
