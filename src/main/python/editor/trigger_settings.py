@@ -623,7 +623,13 @@ class TriggerSettingsTab(BasicEditor):
                     else:
                         press_points = []
                         release_points = []
-                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=True)
+                    # Pass deadzone and actuation values for visualization
+                    self.actuation_visualizer.set_actuations(
+                        press_points, release_points, rapidfire_mode=True,
+                        deadzone_top=settings['deadzone_top'],
+                        deadzone_bottom=settings['deadzone_bottom'],
+                        actuation_point=settings['actuation']
+                    )
                 elif self.active_tab == 'velocity':
                     # Show actuation point for velocity curve reference
                     press_points = [(settings['actuation'], True)]
