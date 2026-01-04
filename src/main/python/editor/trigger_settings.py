@@ -464,7 +464,21 @@ class TriggerSettingsTab(BasicEditor):
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(5, 3, 5, 5)
 
-        # Left side: Tabbed settings container
+        # Left side: Tabbed settings container with checkboxes above
+        left_container = QWidget()
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(6)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Checkboxes above tabs - always visible
+        checkboxes_layout = QHBoxLayout()
+        checkboxes_layout.setContentsMargins(10, 5, 10, 5)
+        checkboxes_layout.addWidget(self.enable_checkbox)
+        checkboxes_layout.addWidget(self.per_layer_checkbox)
+        checkboxes_layout.addStretch()
+        left_layout.addLayout(checkboxes_layout)
+
+        # Tabbed settings container
         tabs_container = QFrame()
         tabs_container.setFrameShape(QFrame.StyledPanel)
         tabs_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
@@ -481,13 +495,6 @@ class TriggerSettingsTab(BasicEditor):
         actuation_layout = QVBoxLayout()
         actuation_layout.setContentsMargins(8, 8, 8, 8)
 
-        # Add checkboxes at top of Actuation tab
-        actuation_checkboxes = QHBoxLayout()
-        actuation_checkboxes.addWidget(self.enable_checkbox)
-        actuation_checkboxes.addWidget(self.per_layer_checkbox)
-        actuation_checkboxes.addStretch()
-        actuation_layout.addLayout(actuation_checkboxes)
-
         self.trigger_container = self.create_trigger_container()
         actuation_layout.addWidget(self.trigger_container)
         actuation_layout.addStretch()
@@ -500,13 +507,6 @@ class TriggerSettingsTab(BasicEditor):
         rapidfire_layout = QVBoxLayout()
         rapidfire_layout.setContentsMargins(8, 8, 8, 8)
 
-        # Add checkboxes at top of Rapidfire tab (clone references)
-        rapidfire_checkboxes = QHBoxLayout()
-        rapidfire_checkboxes.addWidget(self.enable_checkbox)
-        rapidfire_checkboxes.addWidget(self.per_layer_checkbox)
-        rapidfire_checkboxes.addStretch()
-        rapidfire_layout.addLayout(rapidfire_checkboxes)
-
         self.rapidfire_container = self.create_rapidfire_container()
         rapidfire_layout.addWidget(self.rapidfire_container)
         rapidfire_layout.addStretch()
@@ -518,13 +518,6 @@ class TriggerSettingsTab(BasicEditor):
         velocity_tab = QWidget()
         velocity_layout = QVBoxLayout()
         velocity_layout.setContentsMargins(8, 8, 8, 8)
-
-        # Add checkboxes at top of Velocity tab
-        velocity_checkboxes = QHBoxLayout()
-        velocity_checkboxes.addWidget(self.enable_checkbox)
-        velocity_checkboxes.addWidget(self.per_layer_checkbox)
-        velocity_checkboxes.addStretch()
-        velocity_layout.addLayout(velocity_checkboxes)
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
@@ -551,14 +544,17 @@ class TriggerSettingsTab(BasicEditor):
 
         tabs_layout.addWidget(self.settings_tabs)
         tabs_container.setLayout(tabs_layout)
-        main_layout.addWidget(tabs_container, 2)
+        left_layout.addWidget(tabs_container)
+
+        left_container.setLayout(left_layout)
+        main_layout.addWidget(left_container, 2)
 
         # Right side: Visualization container (crossection + actuation visualizer)
         viz_container = QFrame()
         viz_container.setFrameShape(QFrame.StyledPanel)
         viz_container.setStyleSheet("QFrame { background-color: palette(base); }")
         viz_container.setMaximumHeight(325)  # Set maximum height for visualization container
-        viz_container.setMaximumWidth(400)  # Set maximum width for visualization container
+        viz_container.setMaximumWidth(450)  # Set maximum width for visualization container
         viz_layout = QVBoxLayout()
         viz_layout.setContentsMargins(5, 10, 5, 10)  # Reduced horizontal margins
         viz_layout.setSpacing(5)  # Reduced spacing

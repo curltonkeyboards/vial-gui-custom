@@ -343,7 +343,7 @@ class VerticalTravelBarWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(150)  # Increased from 100 to accommodate labels
+        self.setMinimumWidth(180)  # Increased from 150 to 180 to accommodate all labels
         self.setMinimumHeight(250)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
@@ -449,7 +449,8 @@ class VerticalTravelBarWidget(QWidget):
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x - 70, y + 4, f"{mm_value:.2f}mm")
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x - 75, y + 4, f"{mm_value:.2f}mm")
 
             # Draw release actuation points (cyan, above middle line)
             for actuation, enabled in self.release_actuations:
@@ -467,13 +468,14 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(0, 200, 200))
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                # Draw actuation value
+                # Draw actuation value - ensure mm is visible
                 mm_value = (actuation / 100.0) * 2.5
                 painter.setPen(QColor(0, 200, 200))
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}mm")
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x + bar_width + 35, y + 4, f"{mm_value:.2f}mm")
         else:
             # Normal mode: draw from top to bottom
             font = QFont()
@@ -500,7 +502,8 @@ class VerticalTravelBarWidget(QWidget):
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x - 70, y + 4, f"{mm_value:.2f}mm")
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x - 75, y + 4, f"{mm_value:.2f}mm")
                 painter.setFont(font)
 
             # Draw release actuation points (cyan, right side)
@@ -518,13 +521,14 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(0, 200, 200))
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                # Draw actuation value
+                # Draw actuation value - ensure mm is visible
                 mm_value = (actuation / 100.0) * 2.5
                 painter.setPen(QColor(0, 200, 200))
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
-                painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}mm")
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x + bar_width + 35, y + 4, f"{mm_value:.2f}mm")
                 painter.setFont(font)
 
 
