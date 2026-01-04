@@ -36,9 +36,10 @@ class TriggerSettingsTab(BasicEditor):
         self.syncing = False
         self.actuation_widget_ref = None  # Reference to QuickActuationWidget for synchronization
 
-        # Track which container is being hovered over
-        # Possible values: None, 'trigger', 'rapidfire', 'velocity', 'keyboard'
-        self.hover_state = None
+        # Track which tab is active (replaces hover_state)
+        # Possible values: 'actuation', 'rapidfire', 'velocity'
+        self.active_tab = 'actuation'
+        self.showing_keymap = False  # Track if hovering over keyboard
 
         # Cache for per-key actuation values (70 keys × 12 layers)
         # Each key now stores 8 fields
@@ -95,6 +96,15 @@ class TriggerSettingsTab(BasicEditor):
         self.container.clicked.connect(self.on_key_clicked)
         self.container.deselected.connect(self.on_key_deselected)
         self.container.installEventFilter(self)
+
+        # Checkboxes for enable modes (will be placed left of keyboard)
+        self.enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
+        self.enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.enable_checkbox.stateChanged.connect(self.on_enable_changed)
+
+        self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
+        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
 
         # Selection buttons column (left of keyboard)
         selection_buttons_layout = QVBoxLayout()
@@ -184,25 +194,16 @@ class TriggerSettingsTab(BasicEditor):
         self.addWidget(control_panel)
 
     def eventFilter(self, obj, event):
-        """Filter events to track hover state for containers"""
+        """Filter events to track hover state for keyboard widget"""
         if event.type() == QEvent.Enter:
-            # Determine which container was entered
-            if obj == self.trigger_container:
-                self.hover_state = 'trigger'
-                self.refresh_layer_display()
-            elif obj == self.rapidfire_container:
-                self.hover_state = 'rapidfire'
-                self.refresh_layer_display()
-            elif obj == self.velocity_curve_editor:
-                self.hover_state = 'velocity'
-                self.refresh_layer_display()
-            elif obj == self.container:
-                self.hover_state = 'keyboard'
+            if obj == self.container:
+                # Show keymap when hovering over keyboard
+                self.showing_keymap = True
                 self.refresh_layer_display()
         elif event.type() == QEvent.Leave:
-            # Reset hover state when leaving a container
-            if obj in [self.trigger_container, self.rapidfire_container, self.velocity_curve_editor, self.container]:
-                self.hover_state = None
+            if obj == self.container:
+                # Revert to tab-based display when leaving keyboard
+                self.showing_keymap = False
                 self.refresh_layer_display()
 
         return super().eventFilter(obj, event)
@@ -456,92 +457,206 @@ class TriggerSettingsTab(BasicEditor):
         return container
 
     def create_settings_content(self):
-        """Create the settings content"""
+        """Create the settings content with tabbed layout and visualization"""
         widget = QWidget()
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(6)
+        widget.setMaximumHeight(430)  # Set maximum height for entire container
+        main_layout = QHBoxLayout()
+        main_layout.setSpacing(10)
         main_layout.setContentsMargins(5, 3, 5, 5)
 
-        # Top checkboxes in a styled container with theme background
-        checkbox_container = QFrame()
-        checkbox_container.setFrameShape(QFrame.StyledPanel)
-        checkbox_container_layout = QVBoxLayout()
-        checkbox_container_layout.setSpacing(6)
-        checkbox_container_layout.setContentsMargins(8, 8, 8, 8)
+        # Left side: Tabbed settings container with checkboxes above
+        left_container = QWidget()
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(6)
+        left_layout.setContentsMargins(0, 0, 0, 0)
 
-        checkbox_row = QHBoxLayout()
+        # Checkboxes above tabs - always visible
+        checkboxes_layout = QHBoxLayout()
+        checkboxes_layout.setContentsMargins(10, 5, 10, 5)
+        checkboxes_layout.addWidget(self.enable_checkbox)
+        checkboxes_layout.addWidget(self.per_layer_checkbox)
+        checkboxes_layout.addStretch()
+        left_layout.addLayout(checkboxes_layout)
 
-        self.enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
-        self.enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
-        self.enable_checkbox.stateChanged.connect(self.on_enable_changed)
-        checkbox_row.addWidget(self.enable_checkbox)
+        # Tabbed settings container
+        tabs_container = QFrame()
+        tabs_container.setFrameShape(QFrame.StyledPanel)
+        tabs_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        tabs_layout = QVBoxLayout()
+        tabs_layout.setSpacing(6)
+        tabs_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
-        self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
-        self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
-        checkbox_row.addWidget(self.per_layer_checkbox)
+        # Create tab widget
+        self.settings_tabs = QTabWidget()
+        self.settings_tabs.currentChanged.connect(self.on_tab_changed)
 
-        checkbox_row.addStretch()
-        checkbox_container_layout.addLayout(checkbox_row)
+        # Actuation Tab
+        actuation_tab = QWidget()
+        actuation_layout = QVBoxLayout()
+        actuation_layout.setContentsMargins(8, 8, 8, 8)
 
-        # Info label inside the container
-        info_label = QLabel(tr("TriggerSettings", "Select a key to configure its settings"))
-        info_label.setStyleSheet("QLabel { font-style: italic; color: gray; font-size: 8pt; }")
-        checkbox_container_layout.addWidget(info_label)
-
-        checkbox_container.setLayout(checkbox_container_layout)
-        main_layout.addWidget(checkbox_container)
-
-        # Main content container with theme background
-        content_container = QFrame()
-        content_container.setFrameShape(QFrame.StyledPanel)
-        content_container.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(10, 10, 10, 10)
-
-        # Left side: Trigger travel configuration
         self.trigger_container = self.create_trigger_container()
-        self.trigger_container.installEventFilter(self)
-        content_layout.addWidget(self.trigger_container, 1)
+        actuation_layout.addWidget(self.trigger_container)
+        actuation_layout.addStretch()
 
-        # Right side: Rapidfire configuration
+        actuation_tab.setLayout(actuation_layout)
+        self.settings_tabs.addTab(actuation_tab, "Actuation")
+
+        # Rapidfire Tab
+        rapidfire_tab = QWidget()
+        rapidfire_layout = QVBoxLayout()
+        rapidfire_layout.setContentsMargins(8, 8, 8, 8)
+
         self.rapidfire_container = self.create_rapidfire_container()
-        self.rapidfire_container.installEventFilter(self)
-        content_layout.addWidget(self.rapidfire_container, 1)
+        rapidfire_layout.addWidget(self.rapidfire_container)
+        rapidfire_layout.addStretch()
 
-        content_container.setLayout(content_layout)
-        main_layout.addWidget(content_container)
+        rapidfire_tab.setLayout(rapidfire_layout)
+        self.settings_tabs.addTab(rapidfire_tab, "Rapidfire")
 
-        # Velocity curve section - checkbox and dropdown in horizontal layout
-        curve_layout = QHBoxLayout()
-        curve_layout.setSpacing(8)  # Reduced spacing for tighter layout
+        # Velocity Curve Tab
+        velocity_tab = QWidget()
+        velocity_layout = QVBoxLayout()
+        velocity_layout.setContentsMargins(8, 8, 8, 8)
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        curve_layout.addWidget(self.use_per_key_curve_checkbox)
+        velocity_layout.addWidget(self.use_per_key_curve_checkbox)
 
-        curve_layout.addStretch()  # Push checkbox to the left
-
-        main_layout.addLayout(curve_layout)
-
-        # Velocity Curve Editor (replaces old dropdown)
+        # Velocity Curve Editor - centered
         from widgets.curve_editor import CurveEditorWidget
-        curve_editor_label = QLabel(tr("TriggerSettings", "Velocity Curve:"))
-        main_layout.addWidget(curve_editor_label)
-
+        curve_editor_container = QHBoxLayout()
+        curve_editor_container.addStretch()
         self.velocity_curve_editor = CurveEditorWidget(show_save_button=True)
         self.velocity_curve_editor.setEnabled(False)
         self.velocity_curve_editor.curve_changed.connect(self.on_velocity_curve_changed)
         self.velocity_curve_editor.save_to_user_requested.connect(self.on_save_velocity_curve_to_user)
-        self.velocity_curve_editor.installEventFilter(self)
-        main_layout.addWidget(self.velocity_curve_editor)
+        curve_editor_container.addWidget(self.velocity_curve_editor)
+        curve_editor_container.addStretch()
+        velocity_layout.addLayout(curve_editor_container)
+        velocity_layout.addStretch()
+
+        velocity_tab.setLayout(velocity_layout)
+        self.settings_tabs.addTab(velocity_tab, "Velocity Curve")
+
+        tabs_layout.addWidget(self.settings_tabs)
+        tabs_container.setLayout(tabs_layout)
+        left_layout.addWidget(tabs_container)
+
+        left_container.setLayout(left_layout)
+        main_layout.addWidget(left_container, 2)
+
+        # Right side: Visualization container (crossection + actuation visualizer)
+        viz_container = QFrame()
+        viz_container.setFrameShape(QFrame.StyledPanel)
+        viz_container.setStyleSheet("QFrame { background-color: palette(base); }")
+        viz_container.setMaximumHeight(325)  # Set maximum height for visualization container
+        viz_container.setMaximumWidth(450)  # Set maximum width for visualization container
+        viz_layout = QVBoxLayout()
+        viz_layout.setContentsMargins(5, 10, 5, 10)  # Reduced horizontal margins
+        viz_layout.setSpacing(5)  # Reduced spacing
+
+        # Import widgets from dks_settings
+        from editor.dks_settings import KeyswitchDiagramWidget, VerticalTravelBarWidget
+
+        # Horizontal layout for diagram and travel bar
+        viz_h_layout = QHBoxLayout()
+        viz_h_layout.setSpacing(2)  # Reduce spacing between diagram and visualizer
+        viz_h_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Keyswitch diagram
+        self.keyswitch_diagram = KeyswitchDiagramWidget()
+        viz_h_layout.addWidget(self.keyswitch_diagram)
+
+        # Vertical travel bar
+        self.actuation_visualizer = VerticalTravelBarWidget()
+        viz_h_layout.addWidget(self.actuation_visualizer)
+
+        viz_layout.addLayout(viz_h_layout)
+        viz_layout.addStretch()
+
+        viz_container.setLayout(viz_layout)
+        main_layout.addWidget(viz_container, 1)
 
         widget.setLayout(main_layout)
         return widget
+
+    def on_tab_changed(self, index):
+        """Handle tab change - update active_tab and refresh display"""
+        tab_names = ['actuation', 'rapidfire', 'velocity']
+        if index >= 0 and index < len(tab_names):
+            self.active_tab = tab_names[index]
+            self.refresh_layer_display()
+            self.update_actuation_visualizer()
+
+    def update_actuation_visualizer(self):
+        """Update the actuation visualizer based on current tab and selected key"""
+        if not hasattr(self, 'actuation_visualizer'):
+            return
+
+        # Get current layer
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Get active key if selected
+        if self.container.active_key and self.container.active_key.desc.row is not None:
+            row, col = self.container.active_key.desc.row, self.container.active_key.desc.col
+            key_index = row * 14 + col
+            if key_index < 70:
+                settings = self.per_key_values[layer][key_index]
+
+                # Build actuation points based on active tab
+                if self.active_tab == 'actuation':
+                    # Show actuation point and deadzones
+                    press_points = [(settings['actuation'], True)]
+                    # Deadzones aren't shown as separate actuation points in the visualizer
+                    release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+                elif self.active_tab == 'rapidfire':
+                    # Show rapidfire press/release sensitivities if enabled
+                    rapidfire_enabled = (settings['flags'] & 0x01) != 0
+                    if rapidfire_enabled:
+                        press_points = [(settings['rapidfire_press_sens'], True)]
+                        release_points = [(settings['rapidfire_release_sens'], True)]
+                    else:
+                        press_points = []
+                        release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=True)
+                elif self.active_tab == 'velocity':
+                    # Show actuation point for velocity curve reference
+                    press_points = [(settings['actuation'], True)]
+                    release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+                else:
+                    press_points = []
+                    release_points = []
+                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+                return
+
+        # No key selected or in global mode - show global actuation
+        if not self.mode_enabled:
+            data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
+            layer_to_use = self.current_layer if self.per_layer_enabled else 0
+
+            if self.active_tab == 'actuation':
+                # Show both normal and MIDI actuation points
+                press_points = [
+                    (data_source[layer_to_use]['normal'], True),
+                    (data_source[layer_to_use]['midi'], True)
+                ]
+                release_points = []
+                self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+            else:
+                # Rapidfire and velocity tabs don't apply to global mode
+                press_points = []
+                release_points = []
+                rapidfire_mode = (self.active_tab == 'rapidfire')
+                self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=rapidfire_mode)
+        else:
+            # Per-key mode but no key selected - clear visualizer
+            self.actuation_visualizer.set_actuations([], [], rapidfire_mode=False)
 
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
@@ -578,6 +693,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Update display to show pending value
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_global_midi_changed(self, value):
         """Handle global MIDI actuation slider change"""
@@ -609,6 +725,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Update display to show pending value
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_save(self):
         """Save pending global actuation changes to device"""
@@ -707,6 +824,9 @@ class TriggerSettingsTab(BasicEditor):
         self.rf_widget.setVisible(rapidfire_enabled)
         self.rf_vel_mod_slider.setEnabled(key_selected and rapidfire_enabled)
 
+        # Update actuation visualizer
+        self.update_actuation_visualizer()
+
     def on_key_deselected(self):
         """Handle key deselection - disable all controls"""
         self.trigger_slider.setEnabled(False)
@@ -715,6 +835,9 @@ class TriggerSettingsTab(BasicEditor):
         self.rapid_trigger_slider.setEnabled(False)
         self.rf_vel_mod_slider.setEnabled(False)
         self.rf_widget.setVisible(False)
+
+        # Update actuation visualizer
+        self.update_actuation_visualizer()
 
     def save_current_key_settings(self):
         """Helper to save current key's settings to device"""
@@ -798,6 +921,7 @@ class TriggerSettingsTab(BasicEditor):
         self.save_btn.setEnabled(True)
 
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_save_velocity_curve_to_user(self, slot_index, curve_name):
         """Called when user wants to save current velocity curve to a user slot"""
@@ -857,6 +981,7 @@ class TriggerSettingsTab(BasicEditor):
                         self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_deadzone_bottom_changed(self, value):
         """Handle bottom deadzone slider change - applies to all selected keys"""
@@ -886,6 +1011,7 @@ class TriggerSettingsTab(BasicEditor):
                         self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_rapidfire_toggled(self, state):
         """Handle rapidfire checkbox toggle"""
@@ -949,6 +1075,7 @@ class TriggerSettingsTab(BasicEditor):
                             self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
             self.refresh_layer_display()
+            self.update_actuation_visualizer()
 
     def on_rf_press_changed(self, value):
         """Handle rapidfire press sensitivity slider change - applies to all selected keys"""
@@ -978,6 +1105,7 @@ class TriggerSettingsTab(BasicEditor):
                         self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_rf_release_changed(self, value):
         """Handle rapidfire release sensitivity slider change - applies to all selected keys"""
@@ -1007,6 +1135,7 @@ class TriggerSettingsTab(BasicEditor):
                         self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
         self.refresh_layer_display()
+        self.update_actuation_visualizer()
 
     def on_rf_vel_mod_changed(self, value):
         """Handle rapidfire velocity modifier slider change - applies to all selected keys"""
@@ -1431,7 +1560,7 @@ class TriggerSettingsTab(BasicEditor):
         return result
 
     def refresh_layer_display(self):
-        """Refresh keyboard display based on hover state"""
+        """Refresh keyboard display based on active tab and hover state"""
         if not self.valid():
             return
 
@@ -1458,9 +1587,17 @@ class TriggerSettingsTab(BasicEditor):
                     # Default: clear mask text
                     key.setMaskText("")
 
-                    # Display content based on hover state
-                    if self.hover_state == 'rapidfire':
-                        # Hovering over rapidfire: show press/release values or nothing
+                    # Display content based on showing_keymap flag and active tab
+                    if self.showing_keymap:
+                        # Hovering over keyboard: show keycodes like keymap tab
+                        if self.keyboard and hasattr(self.keyboard, 'layout'):
+                            code = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                            KeycodeDisplay.display_keycode(key, code)
+                        else:
+                            key.setText("")
+                            key.setColor(None)
+                    elif self.active_tab == 'rapidfire':
+                        # Rapidfire tab: show press/release values or nothing
                         if rapidfire_enabled:
                             press_mm = self.value_to_mm(settings['rapidfire_press_sens'])
                             release_mm = self.value_to_mm(settings['rapidfire_release_sens'])
@@ -1471,8 +1608,8 @@ class TriggerSettingsTab(BasicEditor):
                         else:
                             key.setText("")
                             key.setColor(None)
-                    elif self.hover_state == 'velocity':
-                        # Hovering over velocity curve: show assigned curve or nothing
+                    elif self.active_tab == 'velocity':
+                        # Velocity curve tab: show assigned curve or nothing
                         use_per_key_curve = (settings['flags'] & 0x02) != 0
                         if use_per_key_curve:
                             curve_idx = settings['velocity_curve']
@@ -1487,8 +1624,8 @@ class TriggerSettingsTab(BasicEditor):
                         else:
                             key.setText("")
                             key.setColor(None)
-                    elif self.hover_state == 'trigger':
-                        # Hovering over trigger travel: show actuation values (current behavior)
+                    else:  # self.active_tab == 'actuation'
+                        # Actuation tab: show actuation values
                         if rapidfire_enabled:
                             key.setColor(QColor(255, 140, 50))
                         else:
@@ -1503,14 +1640,6 @@ class TriggerSettingsTab(BasicEditor):
                             normal_value = data_source[layer_to_use]['normal']
                             midi_value = data_source[layer_to_use]['midi']
                             key.setText(f"{self.value_to_mm(normal_value)}\n{self.value_to_mm(midi_value)}")
-                    else:
-                        # Default (None or 'keyboard'): show keycodes like keymap tab
-                        if self.keyboard and hasattr(self.keyboard, 'layout'):
-                            code = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
-                            KeycodeDisplay.display_keycode(key, code)
-                        else:
-                            key.setText("")
-                            key.setColor(None)
                 else:
                     key.setText("")
 

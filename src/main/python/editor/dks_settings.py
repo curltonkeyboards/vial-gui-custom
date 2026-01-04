@@ -343,17 +343,25 @@ class VerticalTravelBarWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(100)
+        self.setMinimumWidth(180)  # Increased from 150 to 180 to accommodate all labels
         self.setMinimumHeight(250)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
 
         self.press_actuations = []      # List of (actuation_point, enabled) tuples
         self.release_actuations = []    # List of (actuation_point, enabled) tuples
+        self.rapidfire_mode = False     # Flag to enable rapidfire visualization mode
 
-    def set_actuations(self, press_points, release_points):
-        """Set actuation points to display"""
+    def set_actuations(self, press_points, release_points, rapidfire_mode=False):
+        """Set actuation points to display
+
+        Args:
+            press_points: List of (actuation, enabled) tuples for press actions
+            release_points: List of (actuation, enabled) tuples for release actions
+            rapidfire_mode: If True, show relative to middle with first activation line
+        """
         self.press_actuations = press_points
         self.release_actuations = release_points
+        self.rapidfire_mode = rapidfire_mode
         self.update()
 
     def paintEvent(self, event):
@@ -390,61 +398,138 @@ class VerticalTravelBarWidget(QWidget):
         painter.setPen(QPen(bar_border, 2))
         painter.drawRect(bar_x, margin_top, bar_width, height - margin_top - margin_bottom)
 
-        # Draw 0mm and 2.5mm labels (top and bottom)
-        painter.setPen(text_color)
-        font = QFont()
-        font.setPointSize(9)
-        painter.setFont(font)
-        painter.drawText(width // 2 - 20, margin_top - 10, "0.0mm")
-        painter.drawText(width // 2 - 20, height - margin_bottom + 15, "2.5mm")
+        if self.rapidfire_mode:
+            # Draw middle line for "First Activation" in rapidfire mode
+            middle_y = margin_top + (height - margin_top - margin_bottom) // 2
+            painter.setPen(QPen(QColor(255, 200, 0), 2, Qt.DashLine))  # Yellow dashed line
+            painter.drawLine(bar_x, middle_y, bar_x + bar_width, middle_y)
 
-        # Draw press actuation points (orange, left side)
-        for actuation, enabled in self.press_actuations:
-            if not enabled:
-                continue
-
-            y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
-
-            # Draw line to left
-            painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
-            painter.drawLine(bar_x - 20, y, bar_x, y)
-
-            # Draw circle on left
-            painter.setBrush(QColor(255, 140, 0))
-            painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
-
-            # Draw actuation value
-            mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(255, 140, 0))
-            font_small = QFont()
-            font_small.setPointSize(8)
-            painter.setFont(font_small)
-            painter.drawText(bar_x - 60, y + 4, f"{mm_value:.2f}")
+            # Draw "First Activation" label
+            painter.setPen(text_color)
+            font = QFont()
+            font.setPointSize(7)
+            font.setBold(True)
             painter.setFont(font)
-
-        # Draw release actuation points (cyan, right side)
-        for actuation, enabled in self.release_actuations:
-            if not enabled:
-                continue
-
-            y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
-
-            # Draw line to right
-            painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
-            painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
-
-            # Draw circle on right
-            painter.setBrush(QColor(0, 200, 200))
-            painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
-
-            # Draw actuation value
-            mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(0, 200, 200))
-            font_small = QFont()
-            font_small.setPointSize(8)
-            painter.setFont(font_small)
-            painter.drawText(bar_x + bar_width + 32, y + 4, f"{mm_value:.2f}")
+            # Draw as single line to avoid cutoff
+            painter.drawText(bar_x + bar_width + 5, middle_y + 3, "First Activation")
+        else:
+            # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
+            painter.setPen(text_color)
+            font = QFont()
+            font.setPointSize(9)
             painter.setFont(font)
+            painter.drawText(width // 2 - 20, margin_top - 10, "0.0mm")
+            painter.drawText(width // 2 - 20, height - margin_bottom + 15, "2.5mm")
+
+        # Draw press and release actuation points
+        if self.rapidfire_mode:
+            # In rapidfire mode: press goes down from middle, release goes up from middle
+            middle_y = margin_top + (height - margin_top - margin_bottom) // 2
+            bar_range = (height - margin_top - margin_bottom) // 2
+
+            # Draw press actuation points (orange, below middle line)
+            for actuation, enabled in self.press_actuations:
+                if not enabled:
+                    continue
+
+                # Map actuation from 0-100 to downward from middle
+                y = middle_y + int((actuation / 100.0) * bar_range)
+
+                # Draw line to left
+                painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+                painter.drawLine(bar_x - 20, y, bar_x, y)
+
+                # Draw circle on left
+                painter.setBrush(QColor(255, 140, 0))
+                painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+
+                # Draw actuation value - positioned further left to avoid cutoff
+                mm_value = (actuation / 100.0) * 2.5
+                painter.setPen(QColor(255, 140, 0))
+                font_small = QFont()
+                font_small.setPointSize(7)
+                painter.setFont(font_small)
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x - 75, y + 4, f"{mm_value:.2f}mm")
+
+            # Draw release actuation points (cyan, above middle line)
+            for actuation, enabled in self.release_actuations:
+                if not enabled:
+                    continue
+
+                # Map actuation from 0-100 to upward from middle
+                y = middle_y - int((actuation / 100.0) * bar_range)
+
+                # Draw line to right
+                painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+                painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
+
+                # Draw circle on right
+                painter.setBrush(QColor(0, 200, 200))
+                painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+
+                # Draw actuation value - ensure mm is visible
+                mm_value = (actuation / 100.0) * 2.5
+                painter.setPen(QColor(0, 200, 200))
+                font_small = QFont()
+                font_small.setPointSize(7)
+                painter.setFont(font_small)
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x + bar_width + 35, y + 4, f"{mm_value:.2f}mm")
+        else:
+            # Normal mode: draw from top to bottom
+            font = QFont()
+            font.setPointSize(9)
+
+            # Draw press actuation points (orange, left side)
+            for actuation, enabled in self.press_actuations:
+                if not enabled:
+                    continue
+
+                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+                # Draw line to left
+                painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+                painter.drawLine(bar_x - 20, y, bar_x, y)
+
+                # Draw circle on left
+                painter.setBrush(QColor(255, 140, 0))
+                painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+
+                # Draw actuation value - positioned further left to avoid cutoff
+                mm_value = (actuation / 100.0) * 2.5
+                painter.setPen(QColor(255, 140, 0))
+                font_small = QFont()
+                font_small.setPointSize(7)
+                painter.setFont(font_small)
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x - 75, y + 4, f"{mm_value:.2f}mm")
+                painter.setFont(font)
+
+            # Draw release actuation points (cyan, right side)
+            for actuation, enabled in self.release_actuations:
+                if not enabled:
+                    continue
+
+                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+                # Draw line to right
+                painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+                painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
+
+                # Draw circle on right
+                painter.setBrush(QColor(0, 200, 200))
+                painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+
+                # Draw actuation value - ensure mm is visible
+                mm_value = (actuation / 100.0) * 2.5
+                painter.setPen(QColor(0, 200, 200))
+                font_small = QFont()
+                font_small.setPointSize(7)
+                painter.setFont(font_small)
+                # Use explicit formatting to ensure decimal is shown
+                painter.drawText(bar_x + bar_width + 35, y + 4, f"{mm_value:.2f}mm")
+                painter.setFont(font)
 
 
 class DKSActionEditor(QWidget):
