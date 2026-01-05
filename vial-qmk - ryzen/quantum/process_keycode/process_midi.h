@@ -901,10 +901,6 @@ typedef struct {
     uint8_t velocity_mode;                 // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
     uint8_t velocity_speed_scale;          // 1-20 (velocity scale multiplier)
     uint8_t flags;                         // Bit 2: use_fixed_velocity (per-key velocity curve now moved to per-key flags)
-    uint8_t normal_deadzone_top;           // 0-20 (0-0.5mm) - Default: 4 (0.1mm)
-    uint8_t normal_deadzone_bottom;        // 0-20 (0-0.5mm) - Default: 4 (0.1mm)
-    uint8_t midi_deadzone_top;             // 0-20 (0-0.5mm) - Default: 4 (0.1mm)
-    uint8_t midi_deadzone_bottom;          // 0-20 (0-0.5mm) - Default: 4 (0.1mm)
 } layer_actuation_t;
 
 
@@ -938,12 +934,8 @@ typedef struct {
 
 // Default values
 #define DEFAULT_ACTUATION_VALUE 60              // 1.5mm
-#define DEFAULT_DEADZONE_TOP 4                  // 0.1mm (per-key)
-#define DEFAULT_DEADZONE_BOTTOM 4               // 0.1mm (per-key)
-#define DEFAULT_NORMAL_DEADZONE_TOP 4           // 0.1mm (layer-wide normal keys)
-#define DEFAULT_NORMAL_DEADZONE_BOTTOM 4        // 0.1mm (layer-wide normal keys)
-#define DEFAULT_MIDI_DEADZONE_TOP 4             // 0.1mm (layer-wide MIDI keys)
-#define DEFAULT_MIDI_DEADZONE_BOTTOM 4          // 0.1mm (layer-wide MIDI keys)
+#define DEFAULT_DEADZONE_TOP 4                  // 0.1mm
+#define DEFAULT_DEADZONE_BOTTOM 4               // 0.1mm
 #define DEFAULT_VELOCITY_CURVE 2                // MEDIUM (linear)
 #define DEFAULT_PER_KEY_FLAGS 0                 // All flags off (rapidfire off, use global velocity curve)
 #define DEFAULT_RAPIDFIRE_PRESS_SENS 4          // 0.1mm
@@ -965,12 +957,10 @@ void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t vel_speed, uint8_t flags, uint8_t normal_dz_top,
-                         uint8_t normal_dz_bottom, uint8_t midi_dz_top, uint8_t midi_dz_bottom);
+                         uint8_t vel_speed, uint8_t flags);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *vel_speed, uint8_t *flags, uint8_t *normal_dz_top,
-                         uint8_t *normal_dz_bottom, uint8_t *midi_dz_top, uint8_t *midi_dz_bottom);
+                         uint8_t *vel_speed, uint8_t *flags);
 
 bool layer_use_fixed_velocity(uint8_t layer);
 bool layer_use_per_key_velocity_curve(uint8_t layer);

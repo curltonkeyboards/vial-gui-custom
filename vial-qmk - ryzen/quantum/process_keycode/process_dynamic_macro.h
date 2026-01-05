@@ -227,19 +227,17 @@ void set_custom_animations_eeprom_initialized(void);
 
 // Layer Actuation EEPROM addresses (MOVED to avoid overlap)
 #define LAYER_ACTUATION_EEPROM_ADDR 74000
-#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 108 bytes for 12 layers (9 bytes per layer: 5 base + 4 deadzone fields)
+#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 60 bytes for 12 layers (5 bytes per layer after removing rapidfire fields)
 
 // Function declarations (updated signatures - removed rapidfire params)
 void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t vel_speed, uint8_t flags, uint8_t normal_dz_top,
-                         uint8_t normal_dz_bottom, uint8_t midi_dz_top, uint8_t midi_dz_bottom);
+                         uint8_t vel_speed, uint8_t flags);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *vel_speed, uint8_t *flags, uint8_t *normal_dz_top,
-                         uint8_t *normal_dz_bottom, uint8_t *midi_dz_top, uint8_t *midi_dz_bottom);
+                         uint8_t *vel_speed, uint8_t *flags);
 
 bool layer_use_fixed_velocity(uint8_t layer);
 // Add these HID command definitions to vial.c (around line with other HID_CMD defines)

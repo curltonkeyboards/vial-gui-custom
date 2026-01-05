@@ -13317,77 +13317,48 @@ __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer, uint8_t* re
 __attribute__((weak)) void handle_get_all_layer_actuations(void) {
     load_layer_actuations();
 
-    // Send data in chunks (12 layers × 9 bytes = 108 bytes, 4 packets of 27 bytes each)
-    // Now includes deadzone fields: normal_dz_top, normal_dz_bottom, midi_dz_top, midi_dz_bottom
+    // Send data in chunks (12 layers × 5 bytes = 60 bytes, 3 packets of 20 bytes each)
+    // Note: Rapidfire fields removed - now per-key
 
-    // Packet 0: Layers 0-2 (27 bytes)
-    uint8_t response0[27];
+    // Packet 0: Layers 0-3 (20 bytes)
+    uint8_t response0[20];
     uint8_t idx = 0;
-    for (uint8_t layer = 0; layer < 3; layer++) {
+    for (uint8_t layer = 0; layer < 4; layer++) {
         response0[idx++] = layer_actuations[layer].normal_actuation;
         response0[idx++] = layer_actuations[layer].midi_actuation;
         response0[idx++] = layer_actuations[layer].velocity_mode;
         response0[idx++] = layer_actuations[layer].velocity_speed_scale;
         response0[idx++] = layer_actuations[layer].flags;
-        response0[idx++] = layer_actuations[layer].normal_deadzone_top;
-        response0[idx++] = layer_actuations[layer].normal_deadzone_bottom;
-        response0[idx++] = layer_actuations[layer].midi_deadzone_top;
-        response0[idx++] = layer_actuations[layer].midi_deadzone_bottom;
     }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, 0, response0, 27);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, 0, response0, 20);
     wait_ms(10);
 
-    // Packet 1: Layers 3-5 (27 bytes)
-    uint8_t response1[27];
+    // Packet 1: Layers 4-7 (20 bytes)
+    uint8_t response1[20];
     idx = 0;
-    for (uint8_t layer = 3; layer < 6; layer++) {
+    for (uint8_t layer = 4; layer < 8; layer++) {
         response1[idx++] = layer_actuations[layer].normal_actuation;
         response1[idx++] = layer_actuations[layer].midi_actuation;
         response1[idx++] = layer_actuations[layer].velocity_mode;
         response1[idx++] = layer_actuations[layer].velocity_speed_scale;
         response1[idx++] = layer_actuations[layer].flags;
-        response1[idx++] = layer_actuations[layer].normal_deadzone_top;
-        response1[idx++] = layer_actuations[layer].normal_deadzone_bottom;
-        response1[idx++] = layer_actuations[layer].midi_deadzone_top;
-        response1[idx++] = layer_actuations[layer].midi_deadzone_bottom;
     }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 1, 0, response1, 27);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 1, 0, response1, 20);
     wait_ms(10);
 
-    // Packet 2: Layers 6-8 (27 bytes)
-    uint8_t response2[27];
+    // Packet 2: Layers 8-11 (20 bytes)
+    uint8_t response2[20];
     idx = 0;
-    for (uint8_t layer = 6; layer < 9; layer++) {
+    for (uint8_t layer = 8; layer < 12; layer++) {
         response2[idx++] = layer_actuations[layer].normal_actuation;
         response2[idx++] = layer_actuations[layer].midi_actuation;
         response2[idx++] = layer_actuations[layer].velocity_mode;
         response2[idx++] = layer_actuations[layer].velocity_speed_scale;
         response2[idx++] = layer_actuations[layer].flags;
-        response2[idx++] = layer_actuations[layer].normal_deadzone_top;
-        response2[idx++] = layer_actuations[layer].normal_deadzone_bottom;
-        response2[idx++] = layer_actuations[layer].midi_deadzone_top;
-        response2[idx++] = layer_actuations[layer].midi_deadzone_bottom;
     }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 2, 0, response2, 27);
-    wait_ms(10);
+    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 2, 0, response2, 20);
 
-    // Packet 3: Layers 9-11 (27 bytes)
-    uint8_t response3[27];
-    idx = 0;
-    for (uint8_t layer = 9; layer < 12; layer++) {
-        response3[idx++] = layer_actuations[layer].normal_actuation;
-        response3[idx++] = layer_actuations[layer].midi_actuation;
-        response3[idx++] = layer_actuations[layer].velocity_mode;
-        response3[idx++] = layer_actuations[layer].velocity_speed_scale;
-        response3[idx++] = layer_actuations[layer].flags;
-        response3[idx++] = layer_actuations[layer].normal_deadzone_top;
-        response3[idx++] = layer_actuations[layer].normal_deadzone_bottom;
-        response3[idx++] = layer_actuations[layer].midi_deadzone_top;
-        response3[idx++] = layer_actuations[layer].midi_deadzone_bottom;
-    }
-    send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 3, 0, response3, 27);
-
-    dprintf("HID: Sent all layer actuations (4 packets, 9 bytes/layer)\n");
+    dprintf("HID: Sent all layer actuations (3 packets, 5 bytes/layer)\n");
 }
 __attribute__((weak)) void handle_reset_layer_actuations(void) {
     reset_layer_actuations();
