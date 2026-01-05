@@ -510,7 +510,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		// (around where you have the other custom commands like vial_layer_rgb_save)
 
 		case 0xCA: {  // HID_CMD_SET_LAYER_ACTUATION
-			if (length >= 8) {  // Magic (1) + Cmd (1) + layer (1) + 5 params = 8 bytes minimum
+			if (length >= 12) {  // Magic (1) + Cmd (1) + layer (1) + 9 params = 12 bytes minimum
 				handle_set_layer_actuation(&msg[2]);
 				msg[0] = 0x01; // Success
 			} else {

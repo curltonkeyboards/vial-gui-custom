@@ -71,7 +71,11 @@ class TriggerSettingsTab(BasicEditor):
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'vel_speed': 10  # Velocity speed scale
+                'vel_speed': 10,  # Velocity speed scale
+                'normal_deadzone_top': 4,  # 0-20 (0-0.5mm)
+                'normal_deadzone_bottom': 4,  # 0-20 (0-0.5mm)
+                'midi_deadzone_top': 4,  # 0-20 (0-0.5mm)
+                'midi_deadzone_bottom': 4  # 0-20 (0-0.5mm)
             })
 
         # Track unsaved changes for global actuation settings
@@ -241,41 +245,71 @@ class TriggerSettingsTab(BasicEditor):
         global_actuation_layout.setSpacing(6)
         global_actuation_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Normal Keys Actuation slider
+        # Normal Keys Actuation slider (with deadzones)
         normal_layout = QVBoxLayout()
         normal_header = QHBoxLayout()
         normal_label = QLabel(tr("TriggerSettings", "Normal Keys"))
         normal_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
         normal_header.addWidget(normal_label)
         normal_header.addStretch()
+
+        # Value labels
+        self.global_normal_dz_bottom_label = QLabel("DZ:0.1mm")
+        self.global_normal_dz_bottom_label.setStyleSheet("QLabel { font-size: 7pt; color: gray; }")
+        normal_header.addWidget(self.global_normal_dz_bottom_label)
+
         self.global_normal_value_label = QLabel("2.00mm")
         self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
         normal_header.addWidget(self.global_normal_value_label)
+
+        self.global_normal_dz_top_label = QLabel("DZ:0.1mm")
+        self.global_normal_dz_top_label.setStyleSheet("QLabel { font-size: 7pt; color: gray; }")
+        normal_header.addWidget(self.global_normal_dz_top_label)
+
         normal_layout.addLayout(normal_header)
 
-        self.global_normal_slider = StyledSlider(minimum=0, maximum=100)
-        self.global_normal_slider.setValue(80)
-        self.global_normal_slider.valueChanged.connect(self.on_global_normal_changed)
+        self.global_normal_slider = TriggerSlider(minimum=0, maximum=100)
+        self.global_normal_slider.set_actuation(80)
+        self.global_normal_slider.set_deadzone_bottom(4)
+        self.global_normal_slider.set_deadzone_top(4)
+        self.global_normal_slider.actuationChanged.connect(self.on_global_normal_changed)
+        self.global_normal_slider.deadzoneBottomChanged.connect(self.on_global_normal_deadzone_bottom_changed)
+        self.global_normal_slider.deadzoneTopChanged.connect(self.on_global_normal_deadzone_top_changed)
         self.global_normal_slider.setMinimumHeight(50)
         normal_layout.addWidget(self.global_normal_slider)
 
         global_actuation_layout.addLayout(normal_layout)
 
-        # MIDI Keys Actuation slider
+        # MIDI Keys Actuation slider (with deadzones)
         midi_layout = QVBoxLayout()
         midi_header = QHBoxLayout()
         midi_label = QLabel(tr("TriggerSettings", "MIDI Keys"))
         midi_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
         midi_header.addWidget(midi_label)
         midi_header.addStretch()
+
+        # Value labels
+        self.global_midi_dz_bottom_label = QLabel("DZ:0.1mm")
+        self.global_midi_dz_bottom_label.setStyleSheet("QLabel { font-size: 7pt; color: gray; }")
+        midi_header.addWidget(self.global_midi_dz_bottom_label)
+
         self.global_midi_value_label = QLabel("2.00mm")
         self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
         midi_header.addWidget(self.global_midi_value_label)
+
+        self.global_midi_dz_top_label = QLabel("DZ:0.1mm")
+        self.global_midi_dz_top_label.setStyleSheet("QLabel { font-size: 7pt; color: gray; }")
+        midi_header.addWidget(self.global_midi_dz_top_label)
+
         midi_layout.addLayout(midi_header)
 
-        self.global_midi_slider = StyledSlider(minimum=0, maximum=100)
-        self.global_midi_slider.setValue(80)
-        self.global_midi_slider.valueChanged.connect(self.on_global_midi_changed)
+        self.global_midi_slider = TriggerSlider(minimum=0, maximum=100)
+        self.global_midi_slider.set_actuation(80)
+        self.global_midi_slider.set_deadzone_bottom(4)
+        self.global_midi_slider.set_deadzone_top(4)
+        self.global_midi_slider.actuationChanged.connect(self.on_global_midi_changed)
+        self.global_midi_slider.deadzoneBottomChanged.connect(self.on_global_midi_deadzone_bottom_changed)
+        self.global_midi_slider.deadzoneTopChanged.connect(self.on_global_midi_deadzone_top_changed)
         self.global_midi_slider.setMinimumHeight(50)
         midi_layout.addWidget(self.global_midi_slider)
 
@@ -770,6 +804,114 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
         self.update_actuation_visualizer()
 
+    def on_global_normal_deadzone_bottom_changed(self, value):
+        """Handle global normal key bottom deadzone slider change"""
+        self.global_normal_dz_bottom_label.setText(f"DZ:{self.value_to_mm(value)}")
+
+        if self.syncing:
+            return
+
+        # Initialize pending data if not already
+        if self.pending_layer_data is None:
+            self.pending_layer_data = []
+            for layer_data in self.layer_data:
+                self.pending_layer_data.append(layer_data.copy())
+
+        # Update pending_layer_data for current layer (or all layers if not per-layer)
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        if self.per_layer_enabled:
+            self.pending_layer_data[layer]['normal_deadzone_bottom'] = value
+        else:
+            for i in range(12):
+                self.pending_layer_data[i]['normal_deadzone_bottom'] = value
+
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+        self.refresh_layer_display()
+        self.update_actuation_visualizer()
+
+    def on_global_normal_deadzone_top_changed(self, value):
+        """Handle global normal key top deadzone slider change"""
+        self.global_normal_dz_top_label.setText(f"DZ:{self.value_to_mm(value)}")
+
+        if self.syncing:
+            return
+
+        # Initialize pending data if not already
+        if self.pending_layer_data is None:
+            self.pending_layer_data = []
+            for layer_data in self.layer_data:
+                self.pending_layer_data.append(layer_data.copy())
+
+        # Update pending_layer_data for current layer (or all layers if not per-layer)
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        if self.per_layer_enabled:
+            self.pending_layer_data[layer]['normal_deadzone_top'] = value
+        else:
+            for i in range(12):
+                self.pending_layer_data[i]['normal_deadzone_top'] = value
+
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+        self.refresh_layer_display()
+        self.update_actuation_visualizer()
+
+    def on_global_midi_deadzone_bottom_changed(self, value):
+        """Handle global MIDI key bottom deadzone slider change"""
+        self.global_midi_dz_bottom_label.setText(f"DZ:{self.value_to_mm(value)}")
+
+        if self.syncing:
+            return
+
+        # Initialize pending data if not already
+        if self.pending_layer_data is None:
+            self.pending_layer_data = []
+            for layer_data in self.layer_data:
+                self.pending_layer_data.append(layer_data.copy())
+
+        # Update pending_layer_data for current layer (or all layers if not per-layer)
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        if self.per_layer_enabled:
+            self.pending_layer_data[layer]['midi_deadzone_bottom'] = value
+        else:
+            for i in range(12):
+                self.pending_layer_data[i]['midi_deadzone_bottom'] = value
+
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+        self.refresh_layer_display()
+        self.update_actuation_visualizer()
+
+    def on_global_midi_deadzone_top_changed(self, value):
+        """Handle global MIDI key top deadzone slider change"""
+        self.global_midi_dz_top_label.setText(f"DZ:{self.value_to_mm(value)}")
+
+        if self.syncing:
+            return
+
+        # Initialize pending data if not already
+        if self.pending_layer_data is None:
+            self.pending_layer_data = []
+            for layer_data in self.layer_data:
+                self.pending_layer_data.append(layer_data.copy())
+
+        # Update pending_layer_data for current layer (or all layers if not per-layer)
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        if self.per_layer_enabled:
+            self.pending_layer_data[layer]['midi_deadzone_top'] = value
+        else:
+            for i in range(12):
+                self.pending_layer_data[i]['midi_deadzone_top'] = value
+
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+        self.refresh_layer_display()
+        self.update_actuation_visualizer()
+
     def on_save(self):
         """Save pending global actuation changes to device"""
         if not self.has_unsaved_changes or self.pending_layer_data is None:
@@ -779,6 +921,10 @@ class TriggerSettingsTab(BasicEditor):
         for i in range(12):
             self.layer_data[i]['normal'] = self.pending_layer_data[i]['normal']
             self.layer_data[i]['midi'] = self.pending_layer_data[i]['midi']
+            self.layer_data[i]['normal_deadzone_top'] = self.pending_layer_data[i]['normal_deadzone_top']
+            self.layer_data[i]['normal_deadzone_bottom'] = self.pending_layer_data[i]['normal_deadzone_bottom']
+            self.layer_data[i]['midi_deadzone_top'] = self.pending_layer_data[i]['midi_deadzone_top']
+            self.layer_data[i]['midi_deadzone_bottom'] = self.pending_layer_data[i]['midi_deadzone_bottom']
 
         # Send to device
         if self.device and isinstance(self.device, VialKeyboard):
@@ -1253,18 +1399,19 @@ class TriggerSettingsTab(BasicEditor):
         flags = 0
         # Bit 2 (use_fixed_velocity) is set in the actuation settings tab, not here
 
-        # Build payload: [layer, normal, midi, velocity, vel_speed, flags] (6 bytes)
-        payload = bytes([
-            layer,
-            data['normal'],
-            data['midi'],
-            data['velocity'],
-            data['vel_speed'],
-            flags
-        ])
-
-        # Send to device
-        self.device.keyboard.set_layer_actuation(payload)
+        # Send to device with new deadzone parameters
+        self.device.keyboard.set_layer_actuation(
+            layer=layer,
+            normal_act=data['normal'],
+            midi_act=data['midi'],
+            vel_mode=data['velocity'],
+            vel_speed=data['vel_speed'],
+            flags=flags,
+            normal_dz_top=data['normal_deadzone_top'],
+            normal_dz_bottom=data['normal_deadzone_bottom'],
+            midi_dz_top=data['midi_deadzone_top'],
+            midi_dz_bottom=data['midi_deadzone_bottom']
+        )
 
     def on_enable_changed(self, state):
         """Handle enable checkbox toggle"""
@@ -1485,12 +1632,21 @@ class TriggerSettingsTab(BasicEditor):
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
 
-        # Load normal and MIDI actuation values
-        self.global_normal_slider.setValue(data_source[layer]['normal'])
+        # Load normal actuation and deadzone values
+        self.global_normal_slider.set_actuation(data_source[layer]['normal'])
+        self.global_normal_slider.set_deadzone_bottom(data_source[layer]['normal_deadzone_bottom'])
+        self.global_normal_slider.set_deadzone_top(data_source[layer]['normal_deadzone_top'])
         self.global_normal_value_label.setText(self.value_to_mm(data_source[layer]['normal']))
+        self.global_normal_dz_bottom_label.setText(f"DZ:{self.value_to_mm(data_source[layer]['normal_deadzone_bottom'])}")
+        self.global_normal_dz_top_label.setText(f"DZ:{self.value_to_mm(data_source[layer]['normal_deadzone_top'])}")
 
-        self.global_midi_slider.setValue(data_source[layer]['midi'])
+        # Load MIDI actuation and deadzone values
+        self.global_midi_slider.set_actuation(data_source[layer]['midi'])
+        self.global_midi_slider.set_deadzone_bottom(data_source[layer]['midi_deadzone_bottom'])
+        self.global_midi_slider.set_deadzone_top(data_source[layer]['midi_deadzone_top'])
         self.global_midi_value_label.setText(self.value_to_mm(data_source[layer]['midi']))
+        self.global_midi_dz_bottom_label.setText(f"DZ:{self.value_to_mm(data_source[layer]['midi_deadzone_bottom'])}")
+        self.global_midi_dz_top_label.setText(f"DZ:{self.value_to_mm(data_source[layer]['midi_deadzone_top'])}")
 
         self.syncing = False
 
@@ -1558,7 +1714,7 @@ class TriggerSettingsTab(BasicEditor):
                             'rapidfire_velocity_mod': 0         # No modifier
                         }
 
-            # Load layer actuation data from device (6 bytes per layer)
+            # Load layer actuation data from device (now with deadzones - 9 bytes per layer)
             try:
                 for layer in range(12):
                     data = self.keyboard.get_layer_actuation(layer)
@@ -1567,8 +1723,11 @@ class TriggerSettingsTab(BasicEditor):
                             'normal': data['normal'],
                             'midi': data['midi'],
                             'velocity': data['velocity'],
-                            'vel_speed': data['vel_speed']
-                            # Removed: 'use_per_key_velocity_curve' - now per-key
+                            'vel_speed': data['vel_speed'],
+                            'normal_deadzone_top': data.get('normal_deadzone_top', 4),
+                            'normal_deadzone_bottom': data.get('normal_deadzone_bottom', 4),
+                            'midi_deadzone_top': data.get('midi_deadzone_top', 4),
+                            'midi_deadzone_bottom': data.get('midi_deadzone_bottom', 4)
                         }
             except Exception as e:
                 print(f"Error loading layer actuations: {e}")
