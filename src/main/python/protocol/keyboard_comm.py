@@ -1206,17 +1206,37 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             return None
             
-    def set_layer_actuation(self, data):
+    def set_layer_actuation(self, layer, normal_act, midi_act, vel_mode, vel_speed, flags,
+                            normal_dz_top=4, normal_dz_bottom=4, midi_dz_top=4, midi_dz_bottom=4):
         """Set actuation for a specific layer
 
         Args:
-            data: bytearray [layer, normal_actuation, midi_actuation, velocity_mode,
-                            velocity_speed_scale, flags] (6 bytes total)
+            layer: Layer number (0-11)
+            normal_act: Normal key actuation point (0-100)
+            midi_act: MIDI key actuation point (0-100)
+            vel_mode: Velocity mode (0-3)
+            vel_speed: Velocity speed scale (1-20)
+            flags: Layer flags
+            normal_dz_top: Normal key top deadzone (0-20, default 4)
+            normal_dz_bottom: Normal key bottom deadzone (0-20, default 4)
+            midi_dz_top: MIDI key top deadzone (0-20, default 4)
+            midi_dz_bottom: MIDI key bottom deadzone (0-20, default 4)
 
-        Note: Rapidfire settings are now per-key only (removed from layer settings).
-              Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings.
+        Note: Now includes deadzone configuration for normal and MIDI keys.
         """
         try:
+            data = bytearray([
+                layer,
+                normal_act,
+                midi_act,
+                vel_mode,
+                vel_speed,
+                flags,
+                normal_dz_top,
+                normal_dz_bottom,
+                midi_dz_top,
+                midi_dz_bottom
+            ])
             packet = self._create_hid_packet(0xCA, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
             return response and len(response) > 0 and response[5] == 0x01
@@ -1230,16 +1250,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             layer: Layer number (0-11)
 
         Returns:
-            dict: {normal, midi, velocity, vel_speed, use_per_key_velocity_curve} or None
+            dict: {normal, midi, velocity, vel_speed, use_per_key_velocity_curve,
+                   normal_deadzone_top, normal_deadzone_bottom, midi_deadzone_top, midi_deadzone_bottom} or None
 
-        Note: Rapidfire settings are now per-key only (removed from layer settings).
-              Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings.
+        Note: Now includes deadzone configuration for normal and MIDI keys.
         """
         try:
             packet = self._create_hid_packet(0xCB, layer, None)
             response = self.usb_send(self.dev, packet, retries=20)
 
-            if not response or len(response) < 11:
+            if not response or len(response) < 15:  # Was 11, now 15 (header 5 + success 1 + data 9)
                 return None
 
             flags = response[10]
@@ -1248,7 +1268,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'midi': response[7],
                 'velocity': response[8],
                 'vel_speed': response[9],
-                'use_per_key_velocity_curve': (flags & 0x08) != 0  # Bit 3 = LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE
+                'use_per_key_velocity_curve': (flags & 0x08) != 0,  # Bit 3 = LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE
+                'normal_deadzone_top': response[11],
+                'normal_deadzone_bottom': response[12],
+                'midi_deadzone_top': response[13],
+                'midi_deadzone_bottom': response[14]
             }
         except Exception as e:
             return None
@@ -1257,15 +1281,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once
 
         Returns:
-            list: 96 bytes (12 layers × 8 bytes) or None on error
+            list: 108 bytes (12 layers × 9 bytes) or None on error
 
-        Note: Global MIDI settings moved to keyboard settings
+        Note: Now includes deadzone fields for each layer
         """
         try:
             packet = self._create_hid_packet(0xCC, 0, None)
             self.usb_send(self.dev, packet, retries=20)
 
-            # Collect 4 packets (96 bytes total, 26 bytes per packet except last)
+            # Collect 4 packets (108 bytes total, 27 bytes per packet)
             packets = []
             for attempt in range(40):
                 try:
@@ -1277,7 +1301,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
                         if packet_num < 4:
-                            packets.append((packet_num, data[6:32]))
+                            packets.append((packet_num, data[6:33]))  # Was data[6:32], now data[6:33] for 27 bytes
 
                     if len(packets) >= 4:
                         break
@@ -1294,7 +1318,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             for _, packet_data in packets:
                 actuations.extend(packet_data)
 
-            return actuations[:96]  # 12 layers × 8 bytes
+            return actuations[:108]  # 12 layers × 9 bytes (was 96)
         except Exception as e:
             return None
 

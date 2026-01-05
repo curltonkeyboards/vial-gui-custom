@@ -326,24 +326,48 @@ static uint8_t calculate_travel(uint8_t row, uint8_t col, uint16_t raw_value) {
 // STATE MACHINE
 // ============================================================================
 
-static bool process_key_state(analog_key_t *key) {
+static bool process_key_state(analog_key_t *key, uint8_t row, uint8_t col) {
     bool changed = false;
-    
+
     if (key->travel != key->last_travel) {
-        switch (key->mode) {
-            case AKM_REGULAR:
-                if (key->state == AKS_REGULAR_RELEASED) {
-                    if (key->travel >= key->regular.actn_pt) {
-                        key->state = AKS_REGULAR_PRESSED;
-                        changed = true;
+        // Check layer-wide deadzones (when per-key mode is NOT enabled)
+        bool in_layer_deadzone = false;
+        if (!per_key_mode_enabled) {
+            uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+            if (current_layer >= 12) current_layer = 0;
+
+            // Determine if this is a MIDI key by checking keymap
+            uint16_t keycode = keymap_key_to_keycode(current_layer, (keypos_t){.row=row, .col=col});
+            bool is_midi_key = (keycode >= MI_C && keycode <= MI_B_5);
+
+            // Get appropriate deadzones
+            uint8_t deadzone_top = is_midi_key ?
+                layer_actuations[current_layer].midi_deadzone_top :
+                layer_actuations[current_layer].normal_deadzone_top;
+            uint8_t deadzone_bottom = is_midi_key ?
+                layer_actuations[current_layer].midi_deadzone_bottom :
+                layer_actuations[current_layer].normal_deadzone_bottom;
+
+            // Check if in deadzone
+            in_layer_deadzone = is_in_deadzone(key->travel, deadzone_top, deadzone_bottom);
+        }
+
+        // Only process state changes if NOT in deadzone
+        if (!in_layer_deadzone) {
+            switch (key->mode) {
+                case AKM_REGULAR:
+                    if (key->state == AKS_REGULAR_RELEASED) {
+                        if (key->travel >= key->regular.actn_pt) {
+                            key->state = AKS_REGULAR_PRESSED;
+                            changed = true;
+                        }
+                    } else {
+                        if (key->travel <= key->regular.deactn_pt) {
+                            key->state = AKS_REGULAR_RELEASED;
+                            changed = true;
+                        }
                     }
-                } else {
-                    if (key->travel <= key->regular.deactn_pt) {
-                        key->state = AKS_REGULAR_RELEASED;
-                        changed = true;
-                    }
-                }
-                break;
+                    break;
                 
             case AKM_RAPID:
                 if (key->state == AKS_RAPID_RELEASED) {
@@ -376,9 +400,10 @@ static bool process_key_state(analog_key_t *key) {
                     }
                 }
                 break;
+            }
         }
     }
-    
+
     key->last_travel = key->travel;
     return changed;
 }
@@ -779,11 +804,11 @@ static void analog_matrix_task_internal(void) {
         for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
             analog_key_t *key = &keys[row][col];
             uint16_t raw_value = samples[row];
-            
+
             key->raw_value = raw_value;
             key->travel = calculate_travel(row, col, raw_value);
             update_calibration(row, col, raw_value);
-            process_key_state(key);
+            process_key_state(key, row, col);
         }
         
         unselect_column();

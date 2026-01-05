@@ -2179,6 +2179,10 @@ void initialize_layer_actuations(void) {
         layer_actuations[i].velocity_mode = 0;      // Fixed
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
+        layer_actuations[i].normal_deadzone_top = DEFAULT_NORMAL_DEADZONE_TOP;        // 0.1mm
+        layer_actuations[i].normal_deadzone_bottom = DEFAULT_NORMAL_DEADZONE_BOTTOM;  // 0.1mm
+        layer_actuations[i].midi_deadzone_top = DEFAULT_MIDI_DEADZONE_TOP;            // 0.1mm
+        layer_actuations[i].midi_deadzone_bottom = DEFAULT_MIDI_DEADZONE_BOTTOM;      // 0.1mm
         // Note: Rapidfire settings are now per-key in per_key_actuations
         // Note: Velocity curve/min/max settings and aftertouch are now global in keyboard_settings
     }
@@ -2972,7 +2976,8 @@ void reset_layer_actuations(void) {
 
 // Set layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t vel_speed, uint8_t flags) {
+                         uint8_t vel_speed, uint8_t flags, uint8_t normal_dz_top,
+                         uint8_t normal_dz_bottom, uint8_t midi_dz_top, uint8_t midi_dz_bottom) {
     if (layer >= 12) return;
 
     layer_actuations[layer].normal_actuation = normal;
@@ -2980,11 +2985,16 @@ void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t ve
     layer_actuations[layer].velocity_mode = velocity;
     layer_actuations[layer].velocity_speed_scale = vel_speed;
     layer_actuations[layer].flags = flags;
+    layer_actuations[layer].normal_deadzone_top = normal_dz_top;
+    layer_actuations[layer].normal_deadzone_bottom = normal_dz_bottom;
+    layer_actuations[layer].midi_deadzone_top = midi_dz_top;
+    layer_actuations[layer].midi_deadzone_bottom = midi_dz_bottom;
 }
 
 // Get layer actuation parameters (per-layer settings only, velocity settings are global in keyboard_settings)
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *vel_speed, uint8_t *flags) {
+                         uint8_t *vel_speed, uint8_t *flags, uint8_t *normal_dz_top,
+                         uint8_t *normal_dz_bottom, uint8_t *midi_dz_top, uint8_t *midi_dz_bottom) {
     if (layer >= 12) return;
 
     *normal = layer_actuations[layer].normal_actuation;
@@ -2992,6 +3002,10 @@ void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t 
     *velocity = layer_actuations[layer].velocity_mode;
     *vel_speed = layer_actuations[layer].velocity_speed_scale;
     *flags = layer_actuations[layer].flags;
+    *normal_dz_top = layer_actuations[layer].normal_deadzone_top;
+    *normal_dz_bottom = layer_actuations[layer].normal_deadzone_bottom;
+    *midi_dz_top = layer_actuations[layer].midi_deadzone_top;
+    *midi_dz_bottom = layer_actuations[layer].midi_deadzone_bottom;
 }
 
 // Helper function for flag checking (already defined in orthomidi5x14.c earlier - this is the implementation)
@@ -3012,13 +3026,13 @@ void handle_set_layer_actuation(const uint8_t* data) {
     uint8_t layer = data[0];
     if (layer >= 12) return;
 
-    // 6 bytes: layer + 5 params (normal, midi, velocity_mode, vel_speed, flags)
-    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5]);
+    // 10 bytes: layer + 9 params (normal, midi, velocity_mode, vel_speed, flags, normal_dz_top, normal_dz_bottom, midi_dz_top, midi_dz_bottom)
+    set_layer_actuation(layer, data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9]);
     save_layer_actuations();
 }
 
 // Get layer actuation and send back via HID
-// Response format: [normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags] (5 bytes)
+// Response format: [success, normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags, normal_dz_top, normal_dz_bottom, midi_dz_top, midi_dz_bottom] (10 bytes)
 void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
     if (layer >= 12) {
         response[0] = 0;  // Error indicator
@@ -3031,6 +3045,10 @@ void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
     response[3] = layer_actuations[layer].velocity_mode;
     response[4] = layer_actuations[layer].velocity_speed_scale;
     response[5] = layer_actuations[layer].flags;
+    response[6] = layer_actuations[layer].normal_deadzone_top;
+    response[7] = layer_actuations[layer].normal_deadzone_bottom;
+    response[8] = layer_actuations[layer].midi_deadzone_top;
+    response[9] = layer_actuations[layer].midi_deadzone_bottom;
 }
 
 // Get all layer actuations
