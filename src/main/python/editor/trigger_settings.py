@@ -613,7 +613,12 @@ class TriggerSettingsTab(BasicEditor):
                     press_points = [(settings['actuation'], True)]
                     # Deadzones aren't shown as separate actuation points in the visualizer
                     release_points = []
-                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+                    self.actuation_visualizer.set_actuations(
+                        press_points, release_points, rapidfire_mode=False,
+                        deadzone_top=settings['deadzone_top'],
+                        deadzone_bottom=settings['deadzone_bottom'],
+                        actuation_point=settings['actuation']
+                    )
                 elif self.active_tab == 'rapidfire':
                     # Show rapidfire press/release sensitivities if enabled
                     rapidfire_enabled = (settings['flags'] & 0x01) != 0
@@ -634,11 +639,21 @@ class TriggerSettingsTab(BasicEditor):
                     # Show actuation point for velocity curve reference
                     press_points = [(settings['actuation'], True)]
                     release_points = []
-                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+                    self.actuation_visualizer.set_actuations(
+                        press_points, release_points, rapidfire_mode=False,
+                        deadzone_top=settings['deadzone_top'],
+                        deadzone_bottom=settings['deadzone_bottom'],
+                        actuation_point=settings['actuation']
+                    )
                 else:
                     press_points = []
                     release_points = []
-                    self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
+                    self.actuation_visualizer.set_actuations(
+                        press_points, release_points, rapidfire_mode=False,
+                        deadzone_top=settings['deadzone_top'],
+                        deadzone_bottom=settings['deadzone_bottom'],
+                        actuation_point=settings['actuation']
+                    )
                 return
 
         # No key selected or in global mode - show global actuation
@@ -653,16 +668,38 @@ class TriggerSettingsTab(BasicEditor):
                     (data_source[layer_to_use]['midi'], True)
                 ]
                 release_points = []
-                self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=False)
-            else:
-                # Rapidfire and velocity tabs don't apply to global mode
+                # Global mode doesn't have deadzones, pass 0
+                self.actuation_visualizer.set_actuations(
+                    press_points, release_points, rapidfire_mode=False,
+                    deadzone_top=0, deadzone_bottom=0,
+                    actuation_point=data_source[layer_to_use]['normal']
+                )
+            elif self.active_tab == 'rapidfire':
+                # Show First Activation line using normal actuation in rapidfire mode
+                # Rapidfire sensitivity controls not shown in global mode
                 press_points = []
                 release_points = []
-                rapidfire_mode = (self.active_tab == 'rapidfire')
-                self.actuation_visualizer.set_actuations(press_points, release_points, rapidfire_mode=rapidfire_mode)
+                # Use normal actuation as the First Activation reference
+                self.actuation_visualizer.set_actuations(
+                    press_points, release_points, rapidfire_mode=True,
+                    deadzone_top=0, deadzone_bottom=0,
+                    actuation_point=data_source[layer_to_use]['normal']
+                )
+            else:
+                # Velocity and other tabs in global mode
+                press_points = []
+                release_points = []
+                self.actuation_visualizer.set_actuations(
+                    press_points, release_points, rapidfire_mode=False,
+                    deadzone_top=0, deadzone_bottom=0,
+                    actuation_point=data_source[layer_to_use]['normal']
+                )
         else:
             # Per-key mode but no key selected - clear visualizer
-            self.actuation_visualizer.set_actuations([], [], rapidfire_mode=False)
+            self.actuation_visualizer.set_actuations(
+                [], [], rapidfire_mode=False,
+                deadzone_top=0, deadzone_bottom=0, actuation_point=60
+            )
 
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""

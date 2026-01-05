@@ -408,29 +408,92 @@ class VerticalTravelBarWidget(QWidget):
         painter.setPen(QPen(bar_border, 2))
         painter.drawRect(bar_x, margin_top, bar_width, height - margin_top - margin_bottom)
 
+        # Calculate bar height for vertical positioning
+        bar_height = height - margin_top - margin_bottom
+
+        # Draw deadzone fills (light grey) - shown in all modes
+        deadzone_color = QColor(128, 128, 128, 80)  # Light grey with transparency
+
+        # Top deadzone: from top to deadzone_bottom value
+        # deadzone_bottom is 0-20 (0-0.5mm from bottom of range)
+        # Convert to 0-100 range: deadzone_bottom * 5 = percentage from top
+        if self.deadzone_bottom > 0:
+            deadzone_bottom_percent = (self.deadzone_bottom / 20.0) * 12.5  # 0-20 maps to 0-12.5%
+            deadzone_bottom_height = int(bar_height * deadzone_bottom_percent / 100.0)
+            painter.fillRect(bar_x, margin_top, bar_width, deadzone_bottom_height, deadzone_color)
+
+            # Draw "Top Deadzone" label
+            font_small = QFont()
+            font_small.setPointSize(7)
+            painter.setFont(font_small)
+
+            label_text = "Top Deadzone"
+            label_x = bar_x + bar_width + 5
+            label_y = margin_top + deadzone_bottom_height // 2 - 6
+
+            # Theme background
+            if is_dark:
+                label_bg = palette.color(QPalette.Window).darker(110)
+                label_border = palette.color(QPalette.Mid)
+            else:
+                label_bg = palette.color(QPalette.Base)
+                label_border = palette.color(QPalette.Mid)
+
+            fm = painter.fontMetrics()
+            text_width = fm.width(label_text)
+            text_height = fm.height()
+            padding = 2
+
+            painter.fillRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding, label_bg)
+            painter.setPen(QPen(label_border, 1))
+            painter.drawRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding)
+
+            painter.setPen(text_color)
+            painter.drawText(label_x, label_y + text_height - 4, label_text)
+
+        # Bottom deadzone: from bottom up to (max_travel - deadzone_top)
+        # deadzone_top is 0-20 (0-0.5mm from top, internally inverted)
+        # For visualization: fill from bottom upward
+        if self.deadzone_top > 0:
+            deadzone_top_percent = (self.deadzone_top / 20.0) * 12.5  # 0-20 maps to 0-12.5%
+            deadzone_top_height = int(bar_height * deadzone_top_percent / 100.0)
+            deadzone_top_y = margin_top + bar_height - deadzone_top_height
+            painter.fillRect(bar_x, deadzone_top_y, bar_width, deadzone_top_height, deadzone_color)
+
+            # Draw "Bottom Deadzone" label
+            font_small = QFont()
+            font_small.setPointSize(7)
+            painter.setFont(font_small)
+
+            label_text = "Bottom Deadzone"
+            label_x = bar_x + bar_width + 5
+            label_y = deadzone_top_y + deadzone_top_height // 2 - 6
+
+            # Theme background
+            if is_dark:
+                label_bg = palette.color(QPalette.Window).darker(110)
+                label_border = palette.color(QPalette.Mid)
+            else:
+                label_bg = palette.color(QPalette.Base)
+                label_border = palette.color(QPalette.Mid)
+
+            fm = painter.fontMetrics()
+            text_width = fm.width(label_text)
+            text_height = fm.height()
+            padding = 2
+
+            painter.fillRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding, label_bg)
+            painter.setPen(QPen(label_border, 1))
+            painter.drawRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding)
+
+            painter.setPen(text_color)
+            painter.drawText(label_x, label_y + text_height - 4, label_text)
+
         if self.rapidfire_mode:
-            # Calculate bar height for vertical positioning
-            bar_height = height - margin_top - margin_bottom
-
-            # Draw deadzone fills (light grey)
-            deadzone_color = QColor(128, 128, 128, 80)  # Light grey with transparency
-
-            # Top deadzone: from top to deadzone_bottom value
-            # deadzone_bottom is 0-20 (0-0.5mm from bottom of range)
-            # Convert to 0-100 range: deadzone_bottom * 5 = percentage from top
-            if self.deadzone_bottom > 0:
-                deadzone_bottom_percent = (self.deadzone_bottom / 20.0) * 12.5  # 0-20 maps to 0-12.5%
-                deadzone_bottom_height = int(bar_height * deadzone_bottom_percent / 100.0)
-                painter.fillRect(bar_x, margin_top, bar_width, deadzone_bottom_height, deadzone_color)
-
-            # Bottom deadzone: from bottom up to (max_travel - deadzone_top)
-            # deadzone_top is 0-20 (0-0.5mm from top, internally inverted)
-            # For visualization: fill from bottom upward
-            if self.deadzone_top > 0:
-                deadzone_top_percent = (self.deadzone_top / 20.0) * 12.5  # 0-20 maps to 0-12.5%
-                deadzone_top_height = int(bar_height * deadzone_top_percent / 100.0)
-                deadzone_top_y = margin_top + bar_height - deadzone_top_height
-                painter.fillRect(bar_x, deadzone_top_y, bar_width, deadzone_top_height, deadzone_color)
 
             # Draw actuation line for "First Activation" at actual actuation point
             actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
@@ -438,7 +501,6 @@ class VerticalTravelBarWidget(QWidget):
             painter.drawLine(bar_x, actuation_y, bar_x + bar_width, actuation_y)
 
             # Draw "First Activation" label with background box
-            painter.setPen(text_color)
             font = QFont()
             font.setPointSize(7)
             font.setBold(True)
@@ -451,11 +513,11 @@ class VerticalTravelBarWidget(QWidget):
 
             # Draw themed background box for label
             if is_dark:
-                label_bg = QColor(50, 50, 50, 200)
-                label_border = QColor(255, 200, 0, 180)
+                label_bg = palette.color(QPalette.Window).darker(110)
+                label_border = palette.color(QPalette.Highlight)
             else:
-                label_bg = QColor(255, 255, 255, 200)
-                label_border = QColor(255, 200, 0, 180)
+                label_bg = palette.color(QPalette.Base)
+                label_border = palette.color(QPalette.Highlight)
 
             # Measure text to size the box
             fm = painter.fontMetrics()
@@ -507,55 +569,51 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(0, 200, 200))
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                # Draw actuation value with background box
+                # Draw "Release Threshold" identifier and mm value
                 mm_value = (actuation / 100.0) * 2.5
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
 
-                # Draw themed background box for label
-                label_text = f"{mm_value:.2f}mm"
-                label_x = bar_x + bar_width + 35
-                label_y = y - 6
-
+                # Theme background colors
                 if is_dark:
-                    label_bg = QColor(50, 50, 50, 200)
-                    label_border = QColor(0, 200, 200, 180)
+                    label_bg = palette.color(QPalette.Window).darker(110)
+                    label_border = palette.color(QPalette.Mid)
                 else:
-                    label_bg = QColor(255, 255, 255, 200)
-                    label_border = QColor(0, 200, 200, 180)
+                    label_bg = palette.color(QPalette.Base)
+                    label_border = palette.color(QPalette.Mid)
 
                 fm = painter.fontMetrics()
-                text_width = fm.width(label_text)
-                text_height = fm.height()
                 padding = 2
-
-                painter.fillRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding)
-
-                painter.setPen(QColor(0, 200, 200))
-                painter.drawText(label_x, y + 4, label_text)
-
-                # Draw "Release" label with background
-                label_text = "Release"
                 label_x = bar_x + bar_width + 35
-                label_y = y - text_height - 10
 
-                fm = painter.fontMetrics()
-                text_width = fm.width(label_text)
-                text_height = fm.height()
+                # Draw "Release Threshold" identifier
+                id_text = "Release Threshold"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                id_y = y - id_height - 8
 
-                painter.fillRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding, label_bg)
+                painter.fillRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
                 painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding)
-
+                painter.drawRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding)
                 painter.setPen(QColor(0, 200, 200))
-                painter.drawText(label_x, label_y + text_height - 4, label_text)
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                # Draw mm value below identifier
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_y = y + 4
+
+                painter.fillRect(label_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
+                painter.setPen(QPen(label_border, 1))
+                painter.drawRect(label_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QColor(0, 200, 200))
+                painter.drawText(label_x, mm_y, mm_text)
 
             # Draw press actuation points (orange, below release line)
             for actuation, enabled in self.press_actuations:
@@ -574,62 +632,61 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(255, 140, 0))
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                # Draw actuation value with background box
+                # Draw "Press Threshold" identifier and mm value
                 mm_value = (actuation / 100.0) * 2.5
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
 
-                # Draw themed background box for label
-                label_text = f"{mm_value:.2f}mm"
-                label_x = bar_x - 75
-                label_y = y - 6
-
+                # Theme background colors
                 if is_dark:
-                    label_bg = QColor(50, 50, 50, 200)
-                    label_border = QColor(255, 140, 0, 180)
+                    label_bg = palette.color(QPalette.Window).darker(110)
+                    label_border = palette.color(QPalette.Mid)
                 else:
-                    label_bg = QColor(255, 255, 255, 200)
-                    label_border = QColor(255, 140, 0, 180)
+                    label_bg = palette.color(QPalette.Base)
+                    label_border = palette.color(QPalette.Mid)
 
                 fm = painter.fontMetrics()
-                text_width = fm.width(label_text)
-                text_height = fm.height()
                 padding = 2
 
-                painter.fillRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding, label_bg)
+                # Draw "Press Threshold" identifier
+                id_text = "Press Threshold"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                label_x = bar_x - id_width - 7
+                id_y = y - id_height - 8
+
+                painter.fillRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
                 painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding)
-
+                painter.drawRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding)
                 painter.setPen(QColor(255, 140, 0))
-                painter.drawText(label_x, y + 4, label_text)
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
 
-                # Draw "Press" label with background
-                label_text = "Press"
-                label_x = bar_x - 75
-                label_y = y - text_height - 10
+                # Draw mm value below identifier
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_x = bar_x - mm_width - 7
+                mm_y = y + 4
 
-                fm = painter.fontMetrics()
-                text_width = fm.width(label_text)
-                text_height = fm.height()
-
-                painter.fillRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding, label_bg)
+                painter.fillRect(mm_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
                 painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, label_y - padding,
-                               text_width + 2 * padding, text_height + 2 * padding)
-
+                painter.drawRect(mm_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding)
                 painter.setPen(QColor(255, 140, 0))
-                painter.drawText(label_x, label_y + text_height - 4, label_text)
+                painter.drawText(mm_x, mm_y, mm_text)
         else:
             # Normal mode: draw from top to bottom
             font = QFont()
             font.setPointSize(9)
 
             # Draw press actuation points (orange, left side)
-            for actuation, enabled in self.press_actuations:
+            # These represent Normal and MIDI actuation points
+            actuation_labels = ["Normal Actuation", "MIDI Actuation"]
+            for idx, (actuation, enabled) in enumerate(self.press_actuations):
                 if not enabled:
                     continue
 
@@ -643,15 +700,52 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(255, 140, 0))
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                # Draw actuation value - positioned further left to avoid cutoff
+                # Draw identifier and mm value with theme backgrounds
                 mm_value = (actuation / 100.0) * 2.5
-                painter.setPen(QColor(255, 140, 0))
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
-                # Use explicit formatting to ensure decimal is shown
-                painter.drawText(bar_x - 75, y + 4, f"{mm_value:.2f}mm")
-                painter.setFont(font)
+
+                # Theme background colors
+                if is_dark:
+                    label_bg = palette.color(QPalette.Window).darker(110)
+                    label_border = palette.color(QPalette.Mid)
+                else:
+                    label_bg = palette.color(QPalette.Base)
+                    label_border = palette.color(QPalette.Mid)
+
+                fm = painter.fontMetrics()
+                padding = 2
+
+                # Draw identifier label
+                id_text = actuation_labels[idx] if idx < len(actuation_labels) else "Actuation"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                label_x = bar_x - id_width - 7
+                id_y = y - id_height - 8
+
+                painter.fillRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
+                painter.setPen(QPen(label_border, 1))
+                painter.drawRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding)
+                painter.setPen(QColor(255, 140, 0))
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                # Draw mm value below identifier
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_x = bar_x - mm_width - 7
+                mm_y = y + 4
+
+                painter.fillRect(mm_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
+                painter.setPen(QPen(label_border, 1))
+                painter.drawRect(mm_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QColor(255, 140, 0))
+                painter.drawText(mm_x, mm_y, mm_text)
 
             # Draw release actuation points (cyan, right side)
             for actuation, enabled in self.release_actuations:
@@ -668,15 +762,51 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setBrush(QColor(0, 200, 200))
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                # Draw actuation value - ensure mm is visible
+                # Draw identifier and mm value with theme backgrounds
                 mm_value = (actuation / 100.0) * 2.5
-                painter.setPen(QColor(0, 200, 200))
                 font_small = QFont()
                 font_small.setPointSize(7)
                 painter.setFont(font_small)
-                # Use explicit formatting to ensure decimal is shown
-                painter.drawText(bar_x + bar_width + 35, y + 4, f"{mm_value:.2f}mm")
-                painter.setFont(font)
+
+                # Theme background colors
+                if is_dark:
+                    label_bg = palette.color(QPalette.Window).darker(110)
+                    label_border = palette.color(QPalette.Mid)
+                else:
+                    label_bg = palette.color(QPalette.Base)
+                    label_border = palette.color(QPalette.Mid)
+
+                fm = painter.fontMetrics()
+                padding = 2
+                label_x = bar_x + bar_width + 35
+
+                # Draw identifier label
+                id_text = "Release Point"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                id_y = y - id_height - 8
+
+                painter.fillRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
+                painter.setPen(QPen(label_border, 1))
+                painter.drawRect(label_x - padding, id_y - padding,
+                               id_width + 2 * padding, id_height + 2 * padding)
+                painter.setPen(QColor(0, 200, 200))
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                # Draw mm value below identifier
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_y = y + 4
+
+                painter.fillRect(label_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
+                painter.setPen(QPen(label_border, 1))
+                painter.drawRect(label_x - padding, mm_y - mm_height,
+                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QColor(0, 200, 200))
+                painter.drawText(label_x, mm_y, mm_text)
 
 
 class DKSActionEditor(QWidget):
