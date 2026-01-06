@@ -235,9 +235,11 @@ void analog_matrix_reset_all_calibration(void);
 // ============================================================================
 
 // Key direction states (libhmk 3-state FSM)
-#define KEY_DIR_INACTIVE 0  // Key at rest or below actuation
-#define KEY_DIR_DOWN     1  // Key pressed, tracking deepest point
-#define KEY_DIR_UP       2  // Key released by RT, tracking highest point
+typedef enum {
+    KEY_DIR_INACTIVE = 0,  // Key at rest or below actuation
+    KEY_DIR_DOWN     = 1,  // Key pressed, tracking deepest point
+    KEY_DIR_UP       = 2   // Key released by RT, tracking highest point
+} key_dir_t;
 
 // Get key distance (0-255 scale, libhmk compatible)
 uint8_t analog_matrix_get_distance(uint8_t row, uint8_t col);
