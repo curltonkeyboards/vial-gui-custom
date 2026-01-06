@@ -1085,11 +1085,12 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['actuation'] = value
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
         self.refresh_layer_display()
 
     def on_velocity_curve_changed(self, points):
@@ -1117,6 +1118,8 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['velocity_curve'] = curve_index
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
         # Mark as having unsaved changes
         self.has_unsaved_changes = True
@@ -1177,10 +1180,12 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['deadzone_top'] = value
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
+
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
 
         self.refresh_layer_display()
         self.update_actuation_visualizer()
@@ -1207,11 +1212,12 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['deadzone_bottom'] = value
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
         self.refresh_layer_display()
         self.update_actuation_visualizer()
 
@@ -1271,11 +1277,12 @@ class TriggerSettingsTab(BasicEditor):
                         else:
                             self.per_key_values[layer][key_index]['flags'] &= ~0x01  # Clear bit 0
 
-                        # Send to device
-                        if self.device and isinstance(self.device, VialKeyboard):
-                            settings = self.per_key_values[layer][key_index]
-                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                        # Track for deferred save (no immediate HID)
+                        self.pending_per_key_keys.add((layer, key_index))
 
+            # Mark as having unsaved changes
+            self.has_unsaved_changes = True
+            self.save_btn.setEnabled(True)
             self.refresh_layer_display()
             self.update_actuation_visualizer()
 
@@ -1301,11 +1308,12 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['rapidfire_press_sens'] = value
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
         self.refresh_layer_display()
         self.update_actuation_visualizer()
 
@@ -1331,11 +1339,12 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['rapidfire_release_sens'] = value
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
         self.refresh_layer_display()
         self.update_actuation_visualizer()
 
@@ -1361,11 +1370,12 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['rapidfire_velocity_mod'] = value
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
         self.refresh_layer_display()
 
     def on_use_per_key_curve_changed(self, state):
@@ -1395,11 +1405,12 @@ class TriggerSettingsTab(BasicEditor):
                     else:
                         self.per_key_values[layer][key_index]['flags'] &= ~0x02  # Clear bit 1
 
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
 
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
         # Enable/disable velocity curve editor based on this flag
         self.velocity_curve_editor.setEnabled(enabled)
         self.refresh_layer_display()
