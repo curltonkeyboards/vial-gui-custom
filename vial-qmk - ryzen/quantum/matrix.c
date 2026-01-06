@@ -66,15 +66,7 @@ extern bool per_key_per_layer_enabled;
 // Speed threshold for modes 1 & 3 (travel units per millisecond)
 #define SPEED_TRIGGER_THRESHOLD 20
 
-// ============================================================================
-// KEY DIRECTION ENUM (libhmk 3-state FSM)
-// ============================================================================
-
-typedef enum {
-    KEY_DIR_INACTIVE = 0,  // Key at rest or below actuation
-    KEY_DIR_DOWN     = 1,  // Key pressed, tracking deepest point
-    KEY_DIR_UP       = 2   // Key released by RT, tracking highest point
-} key_dir_t;
+// Key direction enum (key_dir_t) is defined in matrix.h
 
 // ============================================================================
 // UNIFIED KEY STATE (replaces analog_key_t + calibration_t)
