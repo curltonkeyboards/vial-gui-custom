@@ -77,6 +77,7 @@ class TriggerSettingsTab(BasicEditor):
         # Track unsaved changes for global actuation settings
         self.has_unsaved_changes = False
         self.pending_layer_data = None  # Will store pending changes before save
+        self.pending_per_key_keys = set()  # Track (layer, key_index) tuples with pending per-key changes
 
         # Top bar with layer selection
         self.layout_layers = QHBoxLayout()
@@ -246,65 +247,31 @@ class TriggerSettingsTab(BasicEditor):
         normal_section_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; }")
         global_actuation_layout.addWidget(normal_section_label)
 
-        # Normal Keys Actuation slider
-        normal_layout = QVBoxLayout()
+        # Normal Keys header with values
         normal_header = QHBoxLayout()
-        normal_act_label = QLabel(tr("TriggerSettings", "Actuation"))
-        normal_act_label.setStyleSheet("QLabel { font-size: 9pt; }")
-        normal_header.addWidget(normal_act_label)
+        self.global_normal_dz_min_value_label = QLabel("DZ: 0.10mm")
+        self.global_normal_dz_min_value_label.setStyleSheet("QLabel { font-size: 8pt; }")
+        normal_header.addWidget(self.global_normal_dz_min_value_label)
         normal_header.addStretch()
-        self.global_normal_value_label = QLabel("2.00mm")
+        self.global_normal_value_label = QLabel("Act: 2.00mm")
         self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
         normal_header.addWidget(self.global_normal_value_label)
-        normal_layout.addLayout(normal_header)
+        normal_header.addStretch()
+        self.global_normal_dz_max_value_label = QLabel("DZ: 0.10mm")
+        self.global_normal_dz_max_value_label.setStyleSheet("QLabel { font-size: 8pt; }")
+        normal_header.addWidget(self.global_normal_dz_max_value_label)
+        global_actuation_layout.addLayout(normal_header)
 
-        self.global_normal_slider = StyledSlider(minimum=0, maximum=100)
-        self.global_normal_slider.setValue(80)
-        self.global_normal_slider.valueChanged.connect(self.on_global_normal_changed)
-        self.global_normal_slider.setMinimumHeight(40)
-        normal_layout.addWidget(self.global_normal_slider)
-
-        global_actuation_layout.addLayout(normal_layout)
-
-        # Normal Keys Deadzone Min slider
-        normal_dz_min_layout = QVBoxLayout()
-        normal_dz_min_header = QHBoxLayout()
-        normal_dz_min_label = QLabel(tr("TriggerSettings", "Deadzone Min"))
-        normal_dz_min_label.setStyleSheet("QLabel { font-size: 9pt; }")
-        normal_dz_min_header.addWidget(normal_dz_min_label)
-        normal_dz_min_header.addStretch()
-        self.global_normal_dz_min_value_label = QLabel("0.10mm")
-        self.global_normal_dz_min_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        normal_dz_min_header.addWidget(self.global_normal_dz_min_value_label)
-        normal_dz_min_layout.addLayout(normal_dz_min_header)
-
-        self.global_normal_dz_min_slider = StyledSlider(minimum=0, maximum=20)
-        self.global_normal_dz_min_slider.setValue(4)  # 0.1mm default
-        self.global_normal_dz_min_slider.valueChanged.connect(self.on_global_normal_dz_min_changed)
-        self.global_normal_dz_min_slider.setMinimumHeight(30)
-        normal_dz_min_layout.addWidget(self.global_normal_dz_min_slider)
-
-        global_actuation_layout.addLayout(normal_dz_min_layout)
-
-        # Normal Keys Deadzone Max slider
-        normal_dz_max_layout = QVBoxLayout()
-        normal_dz_max_header = QHBoxLayout()
-        normal_dz_max_label = QLabel(tr("TriggerSettings", "Deadzone Max"))
-        normal_dz_max_label.setStyleSheet("QLabel { font-size: 9pt; }")
-        normal_dz_max_header.addWidget(normal_dz_max_label)
-        normal_dz_max_header.addStretch()
-        self.global_normal_dz_max_value_label = QLabel("0.10mm")
-        self.global_normal_dz_max_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        normal_dz_max_header.addWidget(self.global_normal_dz_max_value_label)
-        normal_dz_max_layout.addLayout(normal_dz_max_header)
-
-        self.global_normal_dz_max_slider = StyledSlider(minimum=0, maximum=20)
-        self.global_normal_dz_max_slider.setValue(4)  # 0.1mm default
-        self.global_normal_dz_max_slider.valueChanged.connect(self.on_global_normal_dz_max_changed)
-        self.global_normal_dz_max_slider.setMinimumHeight(30)
-        normal_dz_max_layout.addWidget(self.global_normal_dz_max_slider)
-
-        global_actuation_layout.addLayout(normal_dz_max_layout)
+        # Normal Keys TriggerSlider (combines deadzone min, actuation, deadzone max)
+        self.global_normal_slider = TriggerSlider(minimum=0, maximum=100)
+        self.global_normal_slider.set_deadzone_bottom(4)  # 0.1mm default
+        self.global_normal_slider.set_actuation(80)       # 2.0mm default
+        self.global_normal_slider.set_deadzone_top(4)     # 0.1mm default
+        self.global_normal_slider.deadzoneBottomChanged.connect(self.on_global_normal_dz_min_changed)
+        self.global_normal_slider.actuationChanged.connect(self.on_global_normal_changed)
+        self.global_normal_slider.deadzoneTopChanged.connect(self.on_global_normal_dz_max_changed)
+        self.global_normal_slider.setMinimumHeight(50)
+        global_actuation_layout.addWidget(self.global_normal_slider)
 
         # Add separator
         separator1 = QFrame()
@@ -317,65 +284,31 @@ class TriggerSettingsTab(BasicEditor):
         midi_section_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; }")
         global_actuation_layout.addWidget(midi_section_label)
 
-        # MIDI Keys Actuation slider
-        midi_layout = QVBoxLayout()
+        # MIDI Keys header with values
         midi_header = QHBoxLayout()
-        midi_act_label = QLabel(tr("TriggerSettings", "Actuation"))
-        midi_act_label.setStyleSheet("QLabel { font-size: 9pt; }")
-        midi_header.addWidget(midi_act_label)
+        self.global_midi_dz_min_value_label = QLabel("DZ: 0.10mm")
+        self.global_midi_dz_min_value_label.setStyleSheet("QLabel { font-size: 8pt; }")
+        midi_header.addWidget(self.global_midi_dz_min_value_label)
         midi_header.addStretch()
-        self.global_midi_value_label = QLabel("2.00mm")
+        self.global_midi_value_label = QLabel("Act: 2.00mm")
         self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; color: #64c8ff; }")
         midi_header.addWidget(self.global_midi_value_label)
-        midi_layout.addLayout(midi_header)
+        midi_header.addStretch()
+        self.global_midi_dz_max_value_label = QLabel("DZ: 0.10mm")
+        self.global_midi_dz_max_value_label.setStyleSheet("QLabel { font-size: 8pt; }")
+        midi_header.addWidget(self.global_midi_dz_max_value_label)
+        global_actuation_layout.addLayout(midi_header)
 
-        self.global_midi_slider = StyledSlider(minimum=0, maximum=100)
-        self.global_midi_slider.setValue(80)
-        self.global_midi_slider.valueChanged.connect(self.on_global_midi_changed)
-        self.global_midi_slider.setMinimumHeight(40)
-        midi_layout.addWidget(self.global_midi_slider)
-
-        global_actuation_layout.addLayout(midi_layout)
-
-        # MIDI Keys Deadzone Min slider
-        midi_dz_min_layout = QVBoxLayout()
-        midi_dz_min_header = QHBoxLayout()
-        midi_dz_min_label = QLabel(tr("TriggerSettings", "Deadzone Min"))
-        midi_dz_min_label.setStyleSheet("QLabel { font-size: 9pt; }")
-        midi_dz_min_header.addWidget(midi_dz_min_label)
-        midi_dz_min_header.addStretch()
-        self.global_midi_dz_min_value_label = QLabel("0.10mm")
-        self.global_midi_dz_min_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_dz_min_header.addWidget(self.global_midi_dz_min_value_label)
-        midi_dz_min_layout.addLayout(midi_dz_min_header)
-
-        self.global_midi_dz_min_slider = StyledSlider(minimum=0, maximum=20)
-        self.global_midi_dz_min_slider.setValue(4)  # 0.1mm default
-        self.global_midi_dz_min_slider.valueChanged.connect(self.on_global_midi_dz_min_changed)
-        self.global_midi_dz_min_slider.setMinimumHeight(30)
-        midi_dz_min_layout.addWidget(self.global_midi_dz_min_slider)
-
-        global_actuation_layout.addLayout(midi_dz_min_layout)
-
-        # MIDI Keys Deadzone Max slider
-        midi_dz_max_layout = QVBoxLayout()
-        midi_dz_max_header = QHBoxLayout()
-        midi_dz_max_label = QLabel(tr("TriggerSettings", "Deadzone Max"))
-        midi_dz_max_label.setStyleSheet("QLabel { font-size: 9pt; }")
-        midi_dz_max_header.addWidget(midi_dz_max_label)
-        midi_dz_max_header.addStretch()
-        self.global_midi_dz_max_value_label = QLabel("0.10mm")
-        self.global_midi_dz_max_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        midi_dz_max_header.addWidget(self.global_midi_dz_max_value_label)
-        midi_dz_max_layout.addLayout(midi_dz_max_header)
-
-        self.global_midi_dz_max_slider = StyledSlider(minimum=0, maximum=20)
-        self.global_midi_dz_max_slider.setValue(4)  # 0.1mm default
-        self.global_midi_dz_max_slider.valueChanged.connect(self.on_global_midi_dz_max_changed)
-        self.global_midi_dz_max_slider.setMinimumHeight(30)
-        midi_dz_max_layout.addWidget(self.global_midi_dz_max_slider)
-
-        global_actuation_layout.addLayout(midi_dz_max_layout)
+        # MIDI Keys TriggerSlider (combines deadzone min, actuation, deadzone max)
+        self.global_midi_slider = TriggerSlider(minimum=0, maximum=100)
+        self.global_midi_slider.set_deadzone_bottom(4)  # 0.1mm default
+        self.global_midi_slider.set_actuation(80)       # 2.0mm default
+        self.global_midi_slider.set_deadzone_top(4)     # 0.1mm default
+        self.global_midi_slider.deadzoneBottomChanged.connect(self.on_global_midi_dz_min_changed)
+        self.global_midi_slider.actuationChanged.connect(self.on_global_midi_changed)
+        self.global_midi_slider.deadzoneTopChanged.connect(self.on_global_midi_dz_max_changed)
+        self.global_midi_slider.setMinimumHeight(50)
+        global_actuation_layout.addWidget(self.global_midi_slider)
 
         self.global_actuation_widget.setLayout(global_actuation_layout)
         self.global_actuation_widget.setVisible(True)
@@ -804,7 +737,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def on_global_normal_changed(self, value):
         """Handle global normal actuation slider change - updates all normal keys' per-key values"""
-        self.global_normal_value_label.setText(self.value_to_mm(value))
+        self.global_normal_value_label.setText(f"Act: {self.value_to_mm(value)}")
 
         if self.syncing:
             return
@@ -839,7 +772,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def on_global_midi_changed(self, value):
         """Handle global MIDI actuation slider change - updates all MIDI keys' per-key values"""
-        self.global_midi_value_label.setText(self.value_to_mm(value))
+        self.global_midi_value_label.setText(f"Act: {self.value_to_mm(value)}")
 
         if self.syncing:
             return
@@ -873,7 +806,7 @@ class TriggerSettingsTab(BasicEditor):
         self.update_actuation_visualizer()
 
     def apply_actuation_to_keys(self, is_midi, value):
-        """Apply actuation value to all normal or MIDI keys based on keymap"""
+        """Apply actuation value to all normal or MIDI keys based on keymap (local only, no HID)"""
         if not self.valid() or not self.keyboard:
             return
 
@@ -883,7 +816,7 @@ class TriggerSettingsTab(BasicEditor):
         else:
             layers_to_update = list(range(12))
 
-        # Scan all keys and update matching type
+        # Scan all keys and update matching type (local state only)
         for layer in layers_to_update:
             for key in self.container.widgets:
                 if key.desc.row is not None:
@@ -897,13 +830,10 @@ class TriggerSettingsTab(BasicEditor):
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
                         if key_is_midi == is_midi:
-                            # Update the actuation value
+                            # Update the actuation value locally (HID sent on Save)
                             self.per_key_values[layer][key_index]['actuation'] = value
-
-                            # Send to device
-                            if self.device and isinstance(self.device, VialKeyboard):
-                                settings = self.per_key_values[layer][key_index]
-                                self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                            # Track that this key has pending changes
+                            self.pending_per_key_keys.add((layer, key_index))
 
     def deadzone_to_mm(self, value):
         """Convert 0-20 deadzone value to millimeters string"""
@@ -912,46 +842,50 @@ class TriggerSettingsTab(BasicEditor):
 
     def on_global_normal_dz_min_changed(self, value):
         """Handle global normal keys deadzone min slider change"""
-        self.global_normal_dz_min_value_label.setText(self.deadzone_to_mm(value))
+        self.global_normal_dz_min_value_label.setText(f"DZ: {self.deadzone_to_mm(value)}")
 
         if self.syncing:
             return
 
         # Apply deadzone_bottom to all normal keys
         self.apply_deadzone_to_keys(is_midi=False, is_min=True, value=value)
+        self.save_btn.setEnabled(True)
 
     def on_global_normal_dz_max_changed(self, value):
         """Handle global normal keys deadzone max slider change"""
-        self.global_normal_dz_max_value_label.setText(self.deadzone_to_mm(value))
+        self.global_normal_dz_max_value_label.setText(f"DZ: {self.deadzone_to_mm(value)}")
 
         if self.syncing:
             return
 
         # Apply deadzone_top to all normal keys
         self.apply_deadzone_to_keys(is_midi=False, is_min=False, value=value)
+        self.save_btn.setEnabled(True)
 
     def on_global_midi_dz_min_changed(self, value):
         """Handle global MIDI keys deadzone min slider change"""
-        self.global_midi_dz_min_value_label.setText(self.deadzone_to_mm(value))
+        self.global_midi_dz_min_value_label.setText(f"DZ: {self.deadzone_to_mm(value)}")
 
         if self.syncing:
             return
 
         # Apply deadzone_bottom to all MIDI keys
         self.apply_deadzone_to_keys(is_midi=True, is_min=True, value=value)
+        self.save_btn.setEnabled(True)
 
     def on_global_midi_dz_max_changed(self, value):
         """Handle global MIDI keys deadzone max slider change"""
-        self.global_midi_dz_max_value_label.setText(self.deadzone_to_mm(value))
+        self.global_midi_dz_max_value_label.setText(f"DZ: {self.deadzone_to_mm(value)}")
 
         if self.syncing:
             return
 
         # Apply deadzone_top to all MIDI keys
         self.apply_deadzone_to_keys(is_midi=True, is_min=False, value=value)
+        self.save_btn.setEnabled(True)
 
     def apply_deadzone_to_keys(self, is_midi, is_min, value):
-        """Apply deadzone value to all normal or MIDI keys"""
+        """Apply deadzone value to all normal or MIDI keys (local only, no HID)"""
         if not self.valid() or not self.keyboard:
             return
 
@@ -961,7 +895,7 @@ class TriggerSettingsTab(BasicEditor):
         else:
             layers_to_update = list(range(12))
 
-        # Scan all keys and update matching type
+        # Scan all keys and update matching type (local state only)
         for layer in layers_to_update:
             for key in self.container.widgets:
                 if key.desc.row is not None:
@@ -975,43 +909,49 @@ class TriggerSettingsTab(BasicEditor):
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
                         if key_is_midi == is_midi:
-                            # Update the appropriate deadzone value
+                            # Update the appropriate deadzone value locally (HID sent on Save)
                             if is_min:
                                 self.per_key_values[layer][key_index]['deadzone_bottom'] = value
                             else:
                                 self.per_key_values[layer][key_index]['deadzone_top'] = value
-
-                            # Send to device
-                            if self.device and isinstance(self.device, VialKeyboard):
-                                settings = self.per_key_values[layer][key_index]
-                                self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                            # Track that this key has pending changes
+                            self.pending_per_key_keys.add((layer, key_index))
 
         self.refresh_layer_display()
         self.update_actuation_visualizer()
 
     def on_save(self):
-        """Save pending global actuation changes to device"""
-        if not self.has_unsaved_changes or self.pending_layer_data is None:
+        """Save pending global actuation and per-key changes to device"""
+        has_layer_changes = self.has_unsaved_changes and self.pending_layer_data is not None
+        has_per_key_changes = len(self.pending_per_key_keys) > 0
+
+        if not has_layer_changes and not has_per_key_changes:
             return
 
-        # Apply pending changes to layer_data
-        for i in range(12):
-            self.layer_data[i]['normal'] = self.pending_layer_data[i]['normal']
-            self.layer_data[i]['midi'] = self.pending_layer_data[i]['midi']
+        # Apply pending layer changes
+        if has_layer_changes:
+            for i in range(12):
+                self.layer_data[i]['normal'] = self.pending_layer_data[i]['normal']
+                self.layer_data[i]['midi'] = self.pending_layer_data[i]['midi']
 
-        # Send to device
-        if self.device and isinstance(self.device, VialKeyboard):
-            if self.per_layer_enabled:
-                # Send all layers if per-layer is enabled
-                for layer in range(12):
-                    self.send_layer_actuation(layer)
-            else:
-                # Send only layer 0 if not per-layer
-                self.send_layer_actuation(0)
+            # Send layer actuation to device
+            if self.device and isinstance(self.device, VialKeyboard):
+                if self.per_layer_enabled:
+                    for layer in range(12):
+                        self.send_layer_actuation(layer)
+                else:
+                    self.send_layer_actuation(0)
 
-        # Clear unsaved changes flag
+        # Send pending per-key changes to device
+        if has_per_key_changes and self.device and isinstance(self.device, VialKeyboard):
+            for layer, key_index in self.pending_per_key_keys:
+                settings = self.per_key_values[layer][key_index]
+                self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        # Clear all unsaved changes flags
         self.has_unsaved_changes = False
         self.pending_layer_data = None
+        self.pending_per_key_keys.clear()
         self.save_btn.setEnabled(False)
 
     def on_empty_space_clicked(self):
@@ -1490,6 +1430,20 @@ class TriggerSettingsTab(BasicEditor):
         if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
             return False
 
+        # Check for MI_SPLIT_ (keysplit) and MI_SPLIT2_ (triplesplit) first
+        if keycode.startswith("MI_SPLIT2_") or keycode.startswith("MI_SPLIT_"):
+            # These are keysplit/triplesplit MIDI notes - check for note suffix
+            # Format: MI_SPLIT_C, MI_SPLIT_Cs, MI_SPLIT_C_1, MI_SPLIT2_C, etc.
+            if keycode.startswith("MI_SPLIT2_"):
+                remaining = keycode[10:]  # After "MI_SPLIT2_"
+            else:
+                remaining = keycode[9:]   # After "MI_SPLIT_"
+
+            # Check if it starts with a note letter (C, D, E, F, G, A, B)
+            if remaining and remaining[0] in 'CDEFGAB':
+                return True
+            return False
+
         # Check for MI_ prefix (base MIDI notes like MI_C, MI_C_1, MI_Cs, etc.)
         if keycode.startswith("MI_"):
             # Filter out non-note MIDI keycodes (controls, channels, etc.)
@@ -1788,12 +1742,15 @@ class TriggerSettingsTab(BasicEditor):
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
 
-        # Load normal and MIDI actuation values
-        self.global_normal_slider.setValue(data_source[layer]['normal'])
-        self.global_normal_value_label.setText(self.value_to_mm(data_source[layer]['normal']))
+        # Load normal actuation values using TriggerSlider methods
+        normal_act = data_source[layer]['normal']
+        self.global_normal_slider.set_actuation(normal_act)
+        self.global_normal_value_label.setText(f"Act: {self.value_to_mm(normal_act)}")
 
-        self.global_midi_slider.setValue(data_source[layer]['midi'])
-        self.global_midi_value_label.setText(self.value_to_mm(data_source[layer]['midi']))
+        # Load MIDI actuation values using TriggerSlider methods
+        midi_act = data_source[layer]['midi']
+        self.global_midi_slider.set_actuation(midi_act)
+        self.global_midi_value_label.setText(f"Act: {self.value_to_mm(midi_act)}")
 
         self.syncing = False
 
