@@ -250,7 +250,7 @@ class TravelBarWidget(QWidget):
 
             # Draw actuation value
             mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(255, 140, 0))
+            painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
             painter.setFont(font_small)
@@ -274,7 +274,7 @@ class TravelBarWidget(QWidget):
 
             # Draw actuation value
             mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(0, 200, 200))
+            painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
             painter.setFont(font_small)
@@ -598,7 +598,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -612,7 +612,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, mm_y, mm_text)
 
             # Draw press actuation points (orange, below release line)
@@ -661,7 +661,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -676,7 +676,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(mm_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(mm_x, mm_y, mm_text)
         else:
             # Normal mode: draw from top to bottom
@@ -729,7 +729,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -744,7 +744,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(mm_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(mm_x, mm_y, mm_text)
 
             # Draw release actuation points (cyan, right side)
@@ -791,7 +791,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -805,7 +805,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, mm_y, mm_text)
 
 
