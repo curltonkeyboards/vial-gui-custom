@@ -230,6 +230,30 @@ void analog_matrix_reset_calibration(uint8_t row, uint8_t col);
 // Reset all calibration
 void analog_matrix_reset_all_calibration(void);
 
+// ============================================================================
+// LIBHMK-STYLE API (new in architecture migration)
+// ============================================================================
+
+// Key direction states (libhmk 3-state FSM)
+#define KEY_DIR_INACTIVE 0  // Key at rest or below actuation
+#define KEY_DIR_DOWN     1  // Key pressed, tracking deepest point
+#define KEY_DIR_UP       2  // Key released by RT, tracking highest point
+
+// Get key distance (0-255 scale, libhmk compatible)
+uint8_t analog_matrix_get_distance(uint8_t row, uint8_t col);
+
+// Get RT direction state (KEY_DIR_INACTIVE, KEY_DIR_DOWN, KEY_DIR_UP)
+uint8_t analog_matrix_get_key_direction(uint8_t row, uint8_t col);
+
+// Get RT extremum value (peak or trough being tracked)
+uint8_t analog_matrix_get_extremum(uint8_t row, uint8_t col);
+
+// Get EMA-filtered ADC value
+uint16_t analog_matrix_get_filtered_adc(uint8_t row, uint8_t col);
+
+// Refresh cached layer settings (call when layer actuations change)
+void analog_matrix_refresh_settings(void);
+
 #ifdef __cplusplus
 }
 #endif
