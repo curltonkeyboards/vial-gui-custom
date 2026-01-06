@@ -412,3 +412,53 @@ return per_key_actuations[target_layer].keys[key_index].actuation;  // ← Each 
 ```
 
 This single boolean flag completely changes how actuation points (and related settings like velocity curves) are retrieved throughout the firmware's matrix scanning and MIDI processing pipeline.
+
+---
+
+## DKS Keys: A Third Pathway
+
+In addition to per-key and non per-key actuation modes, the firmware also supports **DKS (Dynamic Keystroke)** keys, which represent a completely different approach:
+
+### DKS vs Actuation Modes
+
+| Feature | Regular Keys (Per-Key or Non Per-Key) | DKS Keys |
+|---------|---------------------------------------|----------|
+| **Purpose** | Single action with configurable actuation | Multi-action based on travel depth |
+| **Actuation System** | Uses get_key_actuation_point() | Uses zone-based thresholds |
+| **Actions per key** | 1 | Up to 8 (4 press + 4 release) |
+| **Matrix Processing** | Normal (sets pressed/released state) | Bypassed (DKS manages own keycodes) |
+| **Integration Point** | `get_key_actuation_point()` in actuation check | `dks_process_key()` in matrix_scan_custom() |
+| **Keycode Range** | All regular/MIDI keycodes | 0xED00-0xED31 (50 slots) |
+
+### DKS Processing in Matrix Scan (quantum/matrix.c)
+
+```c
+// After normal actuation processing...
+for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+        uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+
+        if (is_dks_keycode(keycode)) {  // 0xED00-0xED31
+            // DKS key detected!
+            analog_key_t *key = &keys[row][col];
+            dks_process_key(row, col, key->travel, keycode);
+
+            // Later, DKS keys are marked as NOT pressed in matrix
+            // (They handle their own keycode registration internally)
+        }
+    }
+}
+```
+
+**See `DKS_complete_flowchart.md` for full DKS implementation details.**
+
+### Key Differences:
+
+1. **Per-Key Actuation**: Fine-tunes WHERE a key actuates (single threshold)
+2. **DKS Keys**: Defines WHAT happens at MULTIPLE depths (8 thresholds with different actions)
+
+Both systems coexist in the firmware:
+- Regular keys use `get_key_actuation_point()` → per-key or layer-wide
+- DKS keys use `dks_process_key()` → multi-zone actions
+
+They don't interfere with each other - if a keycode is in the DKS range (0xED00-0xED31), it uses DKS processing; otherwise, it uses normal actuation processing.
