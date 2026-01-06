@@ -1266,12 +1266,96 @@ class TriggerSettingsTab(BasicEditor):
         # Send to device
         self.device.keyboard.set_layer_actuation(payload)
 
+    def is_midi_keycode(self, keycode):
+        """Check if a keycode is a MIDI note keycode (base, keysplit, or triplesplit)"""
+        if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
+            return False
+
+        # Check for MI_ prefix (base MIDI notes like MI_C, MI_C_1, MI_Cs, etc.)
+        if keycode.startswith("MI_"):
+            # Filter out non-note MIDI keycodes (controls, channels, etc.)
+            # Note keycodes are: MI_C, MI_Cs/MI_Db, MI_D, MI_Ds/MI_Eb, MI_E, MI_F, MI_Fs/MI_Gb,
+            #                    MI_G, MI_Gs/MI_Ab, MI_A, MI_As/MI_Bb, MI_B
+            # And their octave variants: MI_C_1, MI_C1, MI_C_2, MI_C2, etc.
+            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
+            for prefix in note_prefixes:
+                if keycode.startswith(prefix):
+                    # Make sure it's actually a note (not MI_CH1, MI_CHORD, etc.)
+                    remaining = keycode[len(prefix):]
+                    if remaining == '' or remaining.startswith('s') or remaining.startswith('b'):
+                        return True  # MI_C, MI_Cs, MI_Cb, MI_Db, etc.
+                    if remaining.startswith('_') or remaining[0].isdigit():
+                        return True  # MI_C_1, MI_C1, MI_Cs_1, etc.
+            return False
+
+        return False
+
+    def apply_keymap_based_actuations(self):
+        """When disabling per-key mode, scan keymap and assign actuation values based on key type"""
+        if not self.valid() or not self.keyboard:
+            return
+
+        # Get current layer actuation values
+        layer = self.current_layer if self.per_layer_enabled else 0
+        data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
+        normal_actuation = data_source[layer]['normal']
+        midi_actuation = data_source[layer]['midi']
+
+        # Scan all keys in the current keymap and assign actuation values
+        for key in self.container.widgets:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    # Get the keycode for this key from the keymap
+                    keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+
+                    # Determine actuation value based on whether it's a MIDI key
+                    if self.is_midi_keycode(keycode):
+                        actuation_value = midi_actuation
+                    else:
+                        actuation_value = normal_actuation
+
+                    # Update per-key value in memory
+                    self.per_key_values[layer][key_index]['actuation'] = actuation_value
+
+                    # Send to device
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
     def on_enable_changed(self, state):
         """Handle enable checkbox toggle"""
         if self.syncing:
             return
 
-        self.mode_enabled = (state == Qt.Checked)
+        new_mode_enabled = (state == Qt.Checked)
+
+        # If user is disabling per-key mode, show confirmation dialog
+        if self.mode_enabled and not new_mode_enabled:
+            ret = QMessageBox.warning(
+                self.widget(),
+                tr("TriggerSettings", "Disable Per-Key Actuation"),
+                tr("TriggerSettings", "Are you sure? You will lose all custom per-key values you have set.\n\n"
+                   "The system will automatically assign actuation values based on your keymap:\n"
+                   "- Normal keys will use the 'Normal Keys' actuation value\n"
+                   "- MIDI keys will use the 'MIDI Keys' actuation value"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if ret != QMessageBox.Yes:
+                # User cancelled - revert checkbox state
+                self.syncing = True
+                self.enable_checkbox.setChecked(True)
+                self.syncing = False
+                return
+
+            # User confirmed - apply keymap-based actuations before disabling
+            self.apply_keymap_based_actuations()
+
+        self.mode_enabled = new_mode_enabled
         # Keep per_layer_checkbox always enabled (arrays are not mutually exclusive)
         self.copy_layer_btn.setEnabled(self.mode_enabled)
         self.copy_all_layers_btn.setEnabled(self.mode_enabled)
