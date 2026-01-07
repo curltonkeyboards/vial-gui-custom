@@ -926,6 +926,7 @@ typedef struct {
 // Per-key flag bit definitions
 #define PER_KEY_FLAG_RAPIDFIRE_ENABLED          (1 << 0)
 #define PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE (1 << 1)
+#define PER_KEY_FLAG_CONTINUOUS_RT              (1 << 2)  // Continuous rapid trigger (reset at 0 instead of actuation point)
 
 // Per-key actuation storage (70 keys × 8 bytes = 560 bytes per layer)
 typedef struct {
