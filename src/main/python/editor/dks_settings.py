@@ -340,11 +340,14 @@ class KeyswitchDiagramWidget(QWidget):
 class VerticalTravelBarWidget(QWidget):
     """Vertical representation of key travel with actuation points"""
 
-    def __init__(self):
+    def __init__(self, bar_offset=20):
         super().__init__()
         self.setMinimumWidth(400)  # Wide enough for all labels without cutoff
         self.setMinimumHeight(250)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Configurable bar position (distance from left edge)
+        self.bar_offset = bar_offset
 
         self.press_actuations = []      # List of (actuation_point, enabled) tuples
         self.release_actuations = []    # List of (actuation_point, enabled) tuples
@@ -391,9 +394,8 @@ class VerticalTravelBarWidget(QWidget):
         margin_top = 40
         margin_bottom = 20
         bar_width = 30
-        # Position bar more to the left to be closer to cross-section diagram
-        # Leave 120px on left for labels, rest for right labels
-        bar_x = 120
+        # Position bar using configurable offset
+        bar_x = self.bar_offset
 
         # Draw travel bar background (vertical) - use theme colors
         bar_bg = palette.color(QPalette.AlternateBase)
@@ -1115,7 +1117,7 @@ class DKSVisualWidget(QWidget):
 
     def create_vertical_travel_bar(self):
         """Create a vertical travel bar indicator"""
-        self.vertical_travel_bar = VerticalTravelBarWidget()
+        self.vertical_travel_bar = VerticalTravelBarWidget(bar_offset=-10)  # Close to diagram
         return self.vertical_travel_bar
 
     def update_travel_bar(self, press_points, release_points):

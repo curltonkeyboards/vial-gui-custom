@@ -422,22 +422,10 @@ class TriggerSettingsTab(BasicEditor):
         rf_title.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; }")
         rf_layout.addWidget(rf_title)
 
-        # Value display row
+        # Value display row - Release on left, Press on right (matches slider layout)
         rf_values_layout = QHBoxLayout()
 
-        # Press sensitivity
-        press_container = QVBoxLayout()
-        press_title = QLabel("Press")
-        press_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
-        self.rf_press_value_label = QLabel("0.1mm")
-        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: palette(highlight); }")
-        press_container.addWidget(press_title, 0, Qt.AlignCenter)
-        press_container.addWidget(self.rf_press_value_label, 0, Qt.AlignCenter)
-        rf_values_layout.addLayout(press_container)
-
-        rf_values_layout.addStretch()
-
-        # Release sensitivity
+        # Release sensitivity (LEFT side of slider)
         release_container = QVBoxLayout()
         release_title = QLabel("Release")
         release_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
@@ -446,6 +434,18 @@ class TriggerSettingsTab(BasicEditor):
         release_container.addWidget(release_title, 0, Qt.AlignCenter)
         release_container.addWidget(self.rf_release_value_label, 0, Qt.AlignCenter)
         rf_values_layout.addLayout(release_container)
+
+        rf_values_layout.addStretch()
+
+        # Press sensitivity (RIGHT side of slider)
+        press_container = QVBoxLayout()
+        press_title = QLabel("Press")
+        press_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.rf_press_value_label = QLabel("0.1mm")
+        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: palette(highlight); }")
+        press_container.addWidget(press_title, 0, Qt.AlignCenter)
+        press_container.addWidget(self.rf_press_value_label, 0, Qt.AlignCenter)
+        rf_values_layout.addLayout(press_container)
 
         rf_layout.addLayout(rf_values_layout)
 
@@ -583,7 +583,7 @@ class TriggerSettingsTab(BasicEditor):
         viz_container.setFrameShape(QFrame.StyledPanel)
         viz_container.setStyleSheet("QFrame { background-color: palette(base); }")
         viz_container.setMaximumHeight(325)  # Set maximum height for visualization container
-        viz_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
+        viz_container.setMaximumWidth(580)  # Max width for trigger settings
         viz_layout = QVBoxLayout()
         viz_layout.setContentsMargins(0, 10, 0, 10)  # Minimal horizontal margins
         viz_layout.setSpacing(0)  # No spacing
@@ -600,8 +600,8 @@ class TriggerSettingsTab(BasicEditor):
         self.keyswitch_diagram = KeyswitchDiagramWidget()
         viz_h_layout.addWidget(self.keyswitch_diagram)
 
-        # Vertical travel bar
-        self.actuation_visualizer = VerticalTravelBarWidget()
+        # Vertical travel bar - positioned closer to diagram
+        self.actuation_visualizer = VerticalTravelBarWidget(bar_offset=20)
         viz_h_layout.addWidget(self.actuation_visualizer)
 
         viz_layout.addLayout(viz_h_layout)

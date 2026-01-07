@@ -547,11 +547,15 @@ class TriggerSlider(MultiHandleSlider):
 class RapidTriggerSlider(MultiHandleSlider):
     """
     Specialized slider for rapid trigger settings with 2 handles:
-    - Press sensitivity (from left: 1-50, where 1=0.025mm, 50=1.25mm MAX)
-    - Release sensitivity (from right: 1-50, where 1=0.025mm from right, inverted, 50=1.25mm MAX)
+    - Release sensitivity (LEFT side: 0 at center, increases going left)
+    - Press sensitivity (RIGHT side: 0 at center, increases going right)
 
-    Release is inverted - stored internally as (101 - user_value)
-    Each side has a maximum of 1.25mm (50 units) with a divider exactly in the middle at 50%
+    Layout:
+    [Release zone 0-40] [Dead zone 40-60] [Press zone 60-100]
+
+    The center (50) is the 0 point. Moving away from center increases value.
+    Max value is 50 on each side (representing 1.25mm).
+    Dead zone (40-60) keeps handles separated.
     """
 
     pressSensChanged = pyqtSignal(int)
@@ -560,48 +564,68 @@ class RapidTriggerSlider(MultiHandleSlider):
     def __init__(self, minimum=1, maximum=100, parent=None):
         super().__init__(num_handles=2, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: press=4 (0.1mm), release=97 (which is 4 from right = 0.1mm)
-        # Internal representation: [press, 101 - release]
-        self.values = [4, 97]  # 97 = 101 - 4
-
-        # Store the actual user-facing release value (inverted)
+        # Internal values: [release_handle, press_handle]
+        # Release: internal 0-40 maps to user 50-0 (40=center=0, 0=max=50)
+        # Press: internal 60-100 maps to user 0-50 (60=center=0, 100=max=50)
+        # Default: both at minimum (4 user value = close to center)
         self._user_release = 4
+        self._user_press = 4
+        self.values = [self._user_to_internal_release(4), self._user_to_internal_press(4)]
 
         # Connect to emit individual signals
         self.valuesChanged.connect(self._on_values_changed)
 
+    def _user_to_internal_release(self, user_value):
+        """Convert user release value (0-50) to internal position (40-0)"""
+        # user=0 → internal=40, user=50 → internal=0
+        return 40 - (user_value * 40 / 50)
+
+    def _internal_to_user_release(self, internal_value):
+        """Convert internal release position (0-40) to user value (50-0)"""
+        # internal=40 → user=0, internal=0 → user=50
+        return int((40 - internal_value) * 50 / 40)
+
+    def _user_to_internal_press(self, user_value):
+        """Convert user press value (0-50) to internal position (60-100)"""
+        # user=0 → internal=60, user=50 → internal=100
+        return 60 + (user_value * 40 / 50)
+
+    def _internal_to_user_press(self, internal_value):
+        """Convert internal press position (60-100) to user value (0-50)"""
+        # internal=60 → user=0, internal=100 → user=50
+        return int((internal_value - 60) * 50 / 40)
+
     def _on_values_changed(self, values):
         """Emit individual signals for each handle"""
-        self.pressSensChanged.emit(int(values[0]))
-        # For release, emit the inverted value (distance from right)
-        inverted_release = 101 - int(values[1])  # 101 because minimum is 1
-        self._user_release = inverted_release
-        self.releaseSensChanged.emit(inverted_release)
+        self._user_release = self._internal_to_user_release(values[0])
+        self._user_press = self._internal_to_user_press(values[1])
+        self.releaseSensChanged.emit(self._user_release)
+        self.pressSensChanged.emit(self._user_press)
 
     def set_press_sens(self, value):
         """Set press sensitivity value (1-50 max)"""
         clamped_value = max(1, min(value, 50))
-        self.set_value(0, clamped_value)
+        self._user_press = clamped_value
+        internal_value = self._user_to_internal_press(clamped_value)
+        self.set_value(1, internal_value)
 
     def set_release_sens(self, value):
-        """Set release sensitivity value (1-50 max, inverted internally)"""
-        # Convert user value (distance from right) to internal position
+        """Set release sensitivity value (1-50 max)"""
         clamped_value = max(1, min(value, 50))
         self._user_release = clamped_value
-        internal_value = 101 - clamped_value
-        self.set_value(1, internal_value)
+        internal_value = self._user_to_internal_release(clamped_value)
+        self.set_value(0, internal_value)
 
     def get_press_sens(self):
         """Get press sensitivity value"""
-        return int(self.values[0])
+        return self._user_press
 
     def get_release_sens(self):
-        """Get release sensitivity value (user-facing, inverted)"""
+        """Get release sensitivity value"""
         return self._user_release
 
     def paintEvent(self, event):
-        """Override to draw sections and center divider"""
-        # Call grandparent paintEvent but not parent to customize section drawing
+        """Override to draw sections with release on left, press on right"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
@@ -629,41 +653,40 @@ class RapidTriggerSlider(MultiHandleSlider):
         painter.setBrush(QBrush(track_bg_color))
         painter.drawRoundedRect(track_x, track_y, track_width, self.track_height, 4, 4)
 
-        # Draw 3 colored sections: press (theme highlight), middle (gray), release (theme link)
-        press_x = self._value_to_pixel(self.values[0])  # Press handle position
-        release_x = self._value_to_pixel(self.values[1])  # Release handle position
+        # Get handle positions
+        release_x = self._value_to_pixel(self.values[0])  # Release handle (left side)
+        press_x = self._value_to_pixel(self.values[1])    # Press handle (right side)
+        center_x = self._value_to_pixel(50)               # Center point
 
-        # Section 1: Press (from left to press handle) - theme highlight
-        painter.setBrush(QBrush(press_color))
-        painter.drawRoundedRect(int(track_x), track_y, int(press_x - track_x), self.track_height, 4, 4)
-        painter.drawRect(int(press_x - 4), track_y, 4, self.track_height)  # Square off right edge
-
-        # Section 2: Gray (from press handle to release handle - unused middle)
-        painter.setBrush(QBrush(QColor(100, 100, 105)))  # Keep gray for middle section
-        painter.drawRect(int(press_x), track_y, int(release_x - press_x), self.track_height)
-
-        # Section 3: Release (from release handle to right) - theme link
+        # Section 1: Release zone (from left edge to release handle) - theme link color
         painter.setBrush(QBrush(release_color))
-        painter.drawRoundedRect(int(release_x), track_y, int(track_x + track_width - release_x), self.track_height, 4, 4)
-        painter.drawRect(int(release_x), track_y, 4, self.track_height)  # Square off left edge
+        painter.drawRoundedRect(int(track_x), track_y, int(release_x - track_x), self.track_height, 4, 4)
+        if release_x - track_x > 4:
+            painter.drawRect(int(release_x - 4), track_y, 4, self.track_height)  # Square off right edge
+
+        # Section 2: Dead zone (from release handle to press handle) - gray
+        painter.setBrush(QBrush(QColor(100, 100, 105)))
+        painter.drawRect(int(release_x), track_y, int(press_x - release_x), self.track_height)
+
+        # Section 3: Press zone (from press handle to right edge) - theme highlight color
+        painter.setBrush(QBrush(press_color))
+        if track_x + track_width - press_x > 0:
+            painter.drawRoundedRect(int(press_x), track_y, int(track_x + track_width - press_x), self.track_height, 4, 4)
+            painter.drawRect(int(press_x), track_y, 4, self.track_height)  # Square off left edge
+
+        # Draw center divider line (thicker for visibility)
+        painter.setPen(QPen(divider_color, 3))
+        painter.drawLine(int(center_x), track_y - 8, int(center_x), track_y + self.track_height + 8)
 
         # Draw handles
         for i, value in enumerate(self.values):
             pos_x = self._value_to_pixel(value)
             self._draw_handle(painter, pos_x, height // 2, i)
 
-        # Draw center divider line at exactly 50% (middle)
-        divider_x = track_x + (50.0 / 100.0) * track_width
-        painter.setPen(QPen(divider_color, 2))
-        painter.drawLine(int(divider_x), track_y - 5, int(divider_x), track_y + self.track_height + 5)
-
     def _apply_constraints(self, handle_index, new_value):
-        """Apply constraints to prevent overlap - max 50 units per side, divider at 50%"""
-        if handle_index == 0:  # Press sensitivity (from left)
-            # Max 50 units and must not exceed center (50)
-            return max(self.minimum, min(new_value, 50))
-        elif handle_index == 1:  # Release sensitivity (from right, inverted)
-            # Internal values from 51-100 (representing user values 50-1)
-            # Minimum internal value is 51 (= 101 - 50)
-            return max(51, min(new_value, self.maximum))
+        """Apply constraints: release on left (0-40), press on right (60-100)"""
+        if handle_index == 0:  # Release handle (left side, 0-40)
+            return max(0, min(new_value, 40))
+        elif handle_index == 1:  # Press handle (right side, 60-100)
+            return max(60, min(new_value, 100))
         return max(self.minimum, min(new_value, self.maximum))
