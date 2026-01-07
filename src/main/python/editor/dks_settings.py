@@ -342,9 +342,9 @@ class VerticalTravelBarWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumWidth(180)  # Increased from 150 to 180 to accommodate all labels
+        self.setMinimumWidth(400)  # Wide enough for all labels without cutoff
         self.setMinimumHeight(250)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.press_actuations = []      # List of (actuation_point, enabled) tuples
         self.release_actuations = []    # List of (actuation_point, enabled) tuples
@@ -391,7 +391,9 @@ class VerticalTravelBarWidget(QWidget):
         margin_top = 40
         margin_bottom = 20
         bar_width = 30
-        bar_x = (width - bar_width) // 2
+        # Position bar more to the left to be closer to cross-section diagram
+        # Leave 120px on left for labels, rest for right labels
+        bar_x = 120
 
         # Draw travel bar background (vertical) - use theme colors
         bar_bg = palette.color(QPalette.AlternateBase)
@@ -506,7 +508,7 @@ class VerticalTravelBarWidget(QWidget):
 
             # Calculate label background
             label_text = "First Activation"
-            label_x = bar_x + bar_width + 8
+            label_x = bar_x + bar_width + 15  # Closer to bar, consistent with other labels
             label_y = actuation_y - 10
 
             # Button-like styling with highlight color (active button)
@@ -533,8 +535,8 @@ class VerticalTravelBarWidget(QWidget):
             font = QFont()
             font.setPointSize(9)
             painter.setFont(font)
-            painter.drawText(width // 2 - 20, margin_top - 10, "0.0mm")
-            painter.drawText(width // 2 - 20, height - margin_bottom + 15, "2.5mm")
+            painter.drawText(bar_x + bar_width // 2 - 15, margin_top - 10, "0.0mm")
+            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "2.5mm")
 
         # Draw press and release actuation points
         if self.rapidfire_mode:
@@ -574,7 +576,7 @@ class VerticalTravelBarWidget(QWidget):
 
                 fm = painter.fontMetrics()
                 padding = 6  # Bigger padding for button-like appearance
-                label_x = bar_x + bar_width + 35
+                label_x = bar_x + bar_width + 15  # Closer to bar
 
                 # Button-like background
                 button_bg = palette.color(QPalette.Button)
@@ -776,7 +778,7 @@ class VerticalTravelBarWidget(QWidget):
 
                 fm = painter.fontMetrics()
                 padding = 6  # Bigger padding for button-like appearance
-                label_x = bar_x + bar_width + 35
+                label_x = bar_x + bar_width + 15  # Closer to bar
 
                 # Button-like background
                 button_bg = palette.color(QPalette.Button)
@@ -1012,8 +1014,7 @@ class DKSVisualWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(900, 300)
-        self.setMaximumWidth(1100)  # Keep layout tight even when window is wider
+        self.setMinimumSize(1100, 300)  # Wide enough for labels
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         # Will be set by parent
@@ -1068,9 +1069,10 @@ class DKSVisualWidget(QWidget):
 
         # Middle: Keyswitch diagram + Vertical travel bar
         middle_container = QWidget()
+        middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
         middle_layout = QHBoxLayout()
         middle_layout.setContentsMargins(0, 0, 0, 0)
-        middle_layout.setSpacing(5)
+        middle_layout.setSpacing(0)  # No spacing between diagram and bar
 
         # Add keyswitch diagram
         self.keyswitch_diagram = KeyswitchDiagramWidget()
