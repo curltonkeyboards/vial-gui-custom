@@ -563,6 +563,7 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_editor.setEnabled(False)
         self.velocity_curve_editor.curve_changed.connect(self.on_velocity_curve_changed)
         self.velocity_curve_editor.save_to_user_requested.connect(self.on_save_velocity_curve_to_user)
+        self.velocity_curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
         curve_editor_container.addWidget(self.velocity_curve_editor)
         curve_editor_container.addStretch()
         velocity_layout.addLayout(curve_editor_container)
@@ -996,6 +997,17 @@ class TriggerSettingsTab(BasicEditor):
         curve_index = settings.get('velocity_curve', 0)
         self.velocity_curve_editor.select_curve(curve_index)
 
+        # If it's a user curve (7-16), load the actual points from keyboard
+        if curve_index >= 7 and curve_index <= 16:
+            slot_index = curve_index - 7
+            if self.device and isinstance(self.device, VialKeyboard):
+                try:
+                    curve_data = self.device.keyboard.get_user_curve(slot_index)
+                    if curve_data and 'points' in curve_data:
+                        self.velocity_curve_editor.load_user_curve_points(curve_data['points'])
+                except Exception as e:
+                    print(f"Error loading user curve points: {e}")
+
         # Load rapidfire settings (extract bit 0 from flags)
         rapidfire_enabled = (settings['flags'] & 0x01) != 0
         self.rapidfire_checkbox.setChecked(rapidfire_enabled)
@@ -1094,14 +1106,16 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
 
     def on_velocity_curve_changed(self, points):
-        """Handle velocity curve change - applies to all selected keys (NO AUTO-SAVE)"""
+        """Handle velocity curve change - applies to all selected keys with IMMEDIATE SAVE"""
         if self.syncing:
             return
 
         # Get curve index from preset combo (0-16 or -1 for custom)
         curve_index = self.velocity_curve_editor.preset_combo.currentData()
         if curve_index is None or curve_index < 0:
-            curve_index = 0  # Default to linear if custom
+            # Custom curve - user needs to save to a user slot first
+            # Don't auto-assign, just return (user must use "Save to User" button)
+            return
 
         # Get all selected keys (or just active key if none selected)
         selected_keys = self.container.get_selected_keys()
@@ -1110,7 +1124,7 @@ class TriggerSettingsTab(BasicEditor):
 
         layer = self.current_layer if self.per_layer_enabled else 0
 
-        # Apply to all selected keys (in memory only - no auto-save)
+        # Apply to all selected keys with IMMEDIATE SAVE to keyboard
         for key in selected_keys:
             if key.desc.row is not None:
                 row, col = key.desc.row, key.desc.col
@@ -1118,15 +1132,52 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['velocity_curve'] = curve_index
-                    # Track for deferred save (no immediate HID)
-                    self.pending_per_key_keys.add((layer, key_index))
-
-        # Mark as having unsaved changes
-        self.has_unsaved_changes = True
-        self.save_btn.setEnabled(True)
+                    # Immediate save to keyboard
+                    if self.device and isinstance(self.device, VialKeyboard):
+                        settings = self.per_key_values[layer][key_index]
+                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
         self.refresh_layer_display()
         self.update_actuation_visualizer()
+
+    def on_user_curve_selected(self, slot_index):
+        """Handle user curve selection - load curve points from keyboard"""
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+
+        try:
+            # Fetch user curve from keyboard
+            curve_data = self.device.keyboard.get_user_curve(slot_index)
+            if curve_data and 'points' in curve_data:
+                # Load points into editor and cache for later (pass slot_index for caching)
+                self.velocity_curve_editor.load_user_curve_points(curve_data['points'], slot_index)
+
+                # Now trigger the save with the correct curve index (7 + slot_index)
+                curve_index = 7 + slot_index
+
+                # Get all selected keys (or just active key if none selected)
+                selected_keys = self.container.get_selected_keys()
+                if not selected_keys and self.container.active_key:
+                    selected_keys = [self.container.active_key]
+
+                layer = self.current_layer if self.per_layer_enabled else 0
+
+                # Apply to all selected keys with IMMEDIATE SAVE
+                for key in selected_keys:
+                    if key.desc.row is not None:
+                        row, col = key.desc.row, key.desc.col
+                        key_index = row * 14 + col
+
+                        if key_index < 70:
+                            self.per_key_values[layer][key_index]['velocity_curve'] = curve_index
+                            # Immediate save to keyboard
+                            settings = self.per_key_values[layer][key_index]
+                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+                self.refresh_layer_display()
+                self.update_actuation_visualizer()
+        except Exception as e:
+            print(f"Error loading user curve: {e}")
 
     def on_save_velocity_curve_to_user(self, slot_index, curve_name):
         """Called when user wants to save current velocity curve to a user slot"""
@@ -1152,8 +1203,27 @@ class TriggerSettingsTab(BasicEditor):
                 # Select the newly saved curve (curve index = 7 + slot_index)
                 self.velocity_curve_editor.select_curve(7 + slot_index)
 
-                # Update the velocity curve index for selected keys
-                self.on_velocity_curve_changed(points)
+                # Immediately assign the new curve to selected keys
+                curve_index = 7 + slot_index
+                selected_keys = self.container.get_selected_keys()
+                if not selected_keys and self.container.active_key:
+                    selected_keys = [self.container.active_key]
+
+                layer = self.current_layer if self.per_layer_enabled else 0
+
+                for key in selected_keys:
+                    if key.desc.row is not None:
+                        row, col = key.desc.row, key.desc.col
+                        key_index = row * 14 + col
+
+                        if key_index < 70:
+                            self.per_key_values[layer][key_index]['velocity_curve'] = curve_index
+                            # Immediate save to keyboard
+                            settings = self.per_key_values[layer][key_index]
+                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+                self.refresh_layer_display()
+                self.update_actuation_visualizer()
         except Exception as e:
             from PyQt5.QtWidgets import QMessageBox
             QMessageBox.critical(None, "Error", f"Error saving velocity curve: {str(e)}")
