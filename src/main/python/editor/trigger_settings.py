@@ -53,7 +53,7 @@ class TriggerSettingsTab(BasicEditor):
                     'deadzone_top': 4,                  # 0-20 = 0-0.5mm, default 0.1mm (4/40 = 0.1) - FROM RIGHT
                     'deadzone_bottom': 4,               # 0-20 = 0-0.5mm, default 0.1mm (4/40 = 0.1) - FROM LEFT
                     'velocity_curve': 0,                # 0-16 (0-6: Factory curves, 7-16: User curves), default Linear
-                    'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve
+                    'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve, Bit 2: continuous_rt
                     'rapidfire_press_sens': 4,          # 1-100 = 0.025-2.5mm, default 0.1mm (4/40 = 0.1) - FROM LEFT
                     'rapidfire_release_sens': 4,        # 1-100 = 0.025-2.5mm, default 0.1mm (4/40 = 0.1) - FROM RIGHT
                     'rapidfire_velocity_mod': 0         # -64 to +64, default 0
@@ -477,6 +477,16 @@ class TriggerSettingsTab(BasicEditor):
         rf_vel_layout.addWidget(self.rf_vel_mod_slider)
 
         rf_layout.addLayout(rf_vel_layout)
+
+        # Continuous mode checkbox
+        self.continuous_rt_checkbox = QCheckBox(tr("TriggerSettings", "Continuous Rapid Trigger"))
+        self.continuous_rt_checkbox.setToolTip(
+            tr("TriggerSettings",
+               "When enabled, rapid trigger only resets when the key is fully released.\n"
+               "When disabled, rapid trigger resets when the key goes above the actuation point."))
+        self.continuous_rt_checkbox.setEnabled(False)
+        self.continuous_rt_checkbox.stateChanged.connect(self.on_continuous_rt_toggled)
+        rf_layout.addWidget(self.continuous_rt_checkbox)
 
         self.rf_widget.setLayout(rf_layout)
         self.rf_widget.setVisible(False)
@@ -1022,6 +1032,10 @@ class TriggerSettingsTab(BasicEditor):
         self.rf_vel_mod_slider.setValue(settings['rapidfire_velocity_mod'])
         self.rf_vel_mod_value_label.setText(str(settings['rapidfire_velocity_mod']))
 
+        # Load continuous rapid trigger checkbox (extract bit 2 from flags)
+        continuous_rt = (settings['flags'] & 0x04) != 0
+        self.continuous_rt_checkbox.setChecked(continuous_rt)
+
         # Load per-key velocity curve checkbox (extract bit 1 from flags)
         use_per_key_curve = (settings['flags'] & 0x02) != 0
         self.use_per_key_curve_checkbox.setChecked(use_per_key_curve)
@@ -1037,6 +1051,7 @@ class TriggerSettingsTab(BasicEditor):
         self.rapid_trigger_slider.setEnabled(key_selected and rapidfire_enabled)
         self.rf_widget.setVisible(rapidfire_enabled)
         self.rf_vel_mod_slider.setEnabled(key_selected and rapidfire_enabled)
+        self.continuous_rt_checkbox.setEnabled(key_selected and rapidfire_enabled)
 
         # Update actuation visualizer
         self.update_actuation_visualizer()
@@ -1048,6 +1063,7 @@ class TriggerSettingsTab(BasicEditor):
         self.rapidfire_checkbox.setEnabled(False)
         self.rapid_trigger_slider.setEnabled(False)
         self.rf_vel_mod_slider.setEnabled(False)
+        self.continuous_rt_checkbox.setEnabled(False)
         self.rf_widget.setVisible(False)
 
         # Update actuation visualizer
@@ -1326,6 +1342,7 @@ class TriggerSettingsTab(BasicEditor):
             self.rf_widget.setVisible(enabled)
             self.rapid_trigger_slider.setEnabled(enabled)
             self.rf_vel_mod_slider.setEnabled(enabled)
+            self.continuous_rt_checkbox.setEnabled(enabled)
 
             # Get all selected keys (or just active key if none selected)
             selected_keys = self.container.get_selected_keys()
@@ -1440,6 +1457,41 @@ class TriggerSettingsTab(BasicEditor):
 
                 if key_index < 70:
                     self.per_key_values[layer][key_index]['rapidfire_velocity_mod'] = value
+                    # Track for deferred save (no immediate HID)
+                    self.pending_per_key_keys.add((layer, key_index))
+
+        # Mark as having unsaved changes
+        self.has_unsaved_changes = True
+        self.save_btn.setEnabled(True)
+        self.refresh_layer_display()
+
+    def on_continuous_rt_toggled(self, state):
+        """Handle continuous rapid trigger checkbox toggle - applies to all selected keys"""
+        if self.syncing:
+            return
+
+        enabled = (state == Qt.Checked)
+
+        # Get all selected keys (or just active key if none selected)
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys and self.container.active_key:
+            selected_keys = [self.container.active_key]
+
+        layer = self.current_layer if self.per_layer_enabled else 0
+
+        # Apply to all selected keys
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    # Update flags field: set or clear bit 2
+                    if enabled:
+                        self.per_key_values[layer][key_index]['flags'] |= 0x04  # Set bit 2
+                    else:
+                        self.per_key_values[layer][key_index]['flags'] &= ~0x04  # Clear bit 2
+
                     # Track for deferred save (no immediate HID)
                     self.pending_per_key_keys.add((layer, key_index))
 

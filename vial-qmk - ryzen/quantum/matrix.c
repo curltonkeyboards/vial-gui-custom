@@ -402,10 +402,10 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     get_key_actuation_config(key_idx, current_layer,
                             &actuation_point, &rt_down, &rt_up, &flags);
 
-    // Determine reset point (continuous mode = 0, normal = actuation_point)
-    // Note: continuous RT uses flag bit 0 in the new system
-    // For compatibility, we check the rapidfire flag
-    uint8_t reset_point = actuation_point;  // Normal mode: reset at actuation
+    // Determine reset point based on continuous mode flag
+    // Continuous mode: reset only when key fully released (distance = 0)
+    // Normal mode: reset when key goes above actuation point
+    uint8_t reset_point = (flags & PER_KEY_FLAG_CONTINUOUS_RT) ? 0 : actuation_point;
 
     if (rt_down == 0) {
         // RT disabled - simple threshold mode
