@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from PyQt5.QtWidgets import QWidget, QSlider
+from PyQt5.QtWidgets import QWidget, QSlider, QApplication
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QLinearGradient
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QLinearGradient, QPalette
 
 
 class StyledSlider(QWidget):
@@ -24,11 +24,11 @@ class StyledSlider(QWidget):
         self.track_height = 8
         self.margin = 25
 
-        # Color scheme (matching MultiHandleSlider)
-        self.track_bg_color = QColor(45, 45, 50)
-        self.handle_color = QColor(255, 255, 255)
-        self.handle_border_color = QColor(120, 120, 130)
-        self.fill_color = QColor(255, 140, 50)  # Orange fill
+        # Color scheme will be fetched from palette at paint time
+        self.track_bg_color = None  # Will use palette
+        self.handle_color = None  # Will use palette
+        self.handle_border_color = None  # Will use palette
+        self.fill_color = None  # Will use palette highlight
 
         self.setMinimumHeight(40)
         self.setMinimumWidth(200)
@@ -46,6 +46,11 @@ class StyledSlider(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Get theme colors from palette
+        palette = QApplication.palette()
+        track_bg_color = palette.color(QPalette.AlternateBase)
+        fill_color = palette.color(QPalette.Highlight)
+
         width = self.width()
         height = self.height()
 
@@ -60,12 +65,12 @@ class StyledSlider(QWidget):
         painter.drawRoundedRect(track_x + 1, track_y + 1, track_width, self.track_height, 4, 4)
 
         # Draw background track
-        painter.setBrush(QBrush(self.track_bg_color))
+        painter.setBrush(QBrush(track_bg_color))
         painter.drawRoundedRect(track_x, track_y, track_width, self.track_height, 4, 4)
 
         # Draw filled section (from left to handle)
         handle_x = self._value_to_pixel(self.value)
-        painter.setBrush(QBrush(self.fill_color))
+        painter.setBrush(QBrush(fill_color))
         painter.drawRoundedRect(int(track_x), track_y, int(handle_x - track_x), self.track_height, 4, 4)
         # Square off right edge
         painter.drawRect(int(handle_x - 4), track_y, 4, self.track_height)
@@ -75,6 +80,12 @@ class StyledSlider(QWidget):
 
     def _draw_handle(self, painter, x, y):
         """Draw handle with depth and modern styling (matching MultiHandleSlider)"""
+        # Get theme colors from palette
+        palette = QApplication.palette()
+        handle_border_color = palette.color(QPalette.Mid)
+        highlight_color = palette.color(QPalette.Highlight)
+        button_color = palette.color(QPalette.Button)
+
         # Draw shadow
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(0, 0, 0, 80)))
@@ -82,22 +93,24 @@ class StyledSlider(QWidget):
 
         # Draw outer glow for active handle
         if self.active:
-            painter.setBrush(QBrush(QColor(100, 150, 255, 60)))
+            glow_color = QColor(highlight_color)
+            glow_color.setAlpha(60)
+            painter.setBrush(QBrush(glow_color))
             painter.drawEllipse(QPointF(x, y), self.handle_radius + 3, self.handle_radius + 3)
 
         # Draw handle with gradient
         gradient = QLinearGradient(x, y - self.handle_radius, x, y + self.handle_radius)
-        gradient.setColorAt(0, QColor(255, 255, 255))
-        gradient.setColorAt(1, QColor(230, 230, 235))
+        gradient.setColorAt(0, palette.color(QPalette.Light))
+        gradient.setColorAt(1, button_color)
         painter.setBrush(QBrush(gradient))
-        painter.setPen(QPen(self.handle_border_color, 2))
+        painter.setPen(QPen(handle_border_color, 2))
         painter.drawEllipse(QPointF(x, y), self.handle_radius, self.handle_radius)
 
         # Draw inner indicator/grip
         if self.active:
-            painter.setBrush(QBrush(QColor(100, 150, 255)))
+            painter.setBrush(QBrush(highlight_color))
         else:
-            painter.setBrush(QBrush(QColor(140, 140, 145)))
+            painter.setBrush(QBrush(palette.color(QPalette.Mid)))
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(QPointF(x, y), self.handle_radius - 4, self.handle_radius - 4)
 
@@ -179,27 +192,16 @@ class MultiHandleSlider(QWidget):
         self.track_height = 8
         self.margin = 25  # Space on left/right for handles
 
-        # Color scheme
-        self.track_bg_color = QColor(45, 45, 50)
-        self.handle_color = QColor(255, 255, 255)
-        self.handle_border_color = QColor(120, 120, 130)
+        # Color scheme will be fetched from palette at paint time
+        self.track_bg_color = None  # Will use palette
+        self.handle_color = None  # Will use palette
+        self.handle_border_color = None  # Will use palette
 
-        # Section colors (for 3-handle mode)
-        # Gray - Deadzone Bottom - Orange (Trigger) - Cyan (Reset) - Deadzone Top - Gray
-        self.section_colors = [
-            QColor(80, 80, 85),     # Before deadzone bottom (gray)
-            QColor(255, 140, 50),   # Orange - trigger zone (between deadzone_bottom and actuation)
-            QColor(100, 200, 255),  # Cyan - release zone (between actuation and deadzone_top)
-            QColor(80, 80, 85),     # After deadzone top (gray)
-        ]
-
-        # For 2-handle mode (rapid trigger)
-        # Layout: Orange (press from left) - Gray (middle unused) - Blue (release from right)
-        self.rf_section_colors = [
-            QColor(255, 140, 50),   # Orange - press zone (from left)
-            QColor(100, 100, 105),  # Gray - unused middle section
-            QColor(100, 200, 255),  # Blue - release zone (from right)
-        ]
+        # Section colors will be set dynamically using theme colors
+        # Gray deadzone color is kept constant as requested
+        self.deadzone_gray = QColor(80, 80, 85)  # Keep deadzone gray constant
+        self.section_colors = None  # Will be set at paint time
+        self.rf_section_colors = None  # Will be set at paint time
 
         self.setMinimumHeight(40)
         self.setMinimumWidth(200)
@@ -233,6 +235,26 @@ class MultiHandleSlider(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Get theme colors from palette
+        palette = QApplication.palette()
+        track_bg_color = palette.color(QPalette.AlternateBase)
+        press_color = palette.color(QPalette.Highlight)
+        release_color = palette.color(QPalette.Link)
+
+        # Set up section colors dynamically with theme colors (keep deadzone gray constant)
+        self.section_colors = [
+            self.deadzone_gray,  # Before deadzone bottom (gray)
+            press_color,  # Theme highlight - trigger zone (between deadzone_bottom and actuation)
+            release_color,  # Theme link - release zone (between actuation and deadzone_top)
+            self.deadzone_gray,  # After deadzone top (gray)
+        ]
+
+        self.rf_section_colors = [
+            press_color,  # Theme highlight - press zone (from left)
+            QColor(100, 100, 105),  # Gray - unused middle section
+            release_color,  # Theme link - release zone (from right)
+        ]
+
         width = self.width()
         height = self.height()
 
@@ -247,7 +269,7 @@ class MultiHandleSlider(QWidget):
         painter.drawRoundedRect(track_x + 1, track_y + 1, track_width, self.track_height, 4, 4)
 
         # Draw background track
-        painter.setBrush(QBrush(self.track_bg_color))
+        painter.setBrush(QBrush(track_bg_color))
         painter.drawRoundedRect(track_x, track_y, track_width, self.track_height, 4, 4)
 
         # Draw colored sections
@@ -260,7 +282,7 @@ class MultiHandleSlider(QWidget):
 
         # Draw labels
         if self.handle_labels and len(self.handle_labels) == self.num_handles:
-            painter.setPen(QPen(QColor(180, 180, 180)))
+            painter.setPen(QPen(palette.color(QPalette.Text)))
             font = painter.font()
             font.setPointSize(8)
             painter.setFont(font)
@@ -304,6 +326,12 @@ class MultiHandleSlider(QWidget):
 
     def _draw_handle(self, painter, x, y, index):
         """Draw a single handle with depth and modern styling"""
+        # Get theme colors from palette
+        palette = QApplication.palette()
+        handle_border_color = palette.color(QPalette.Mid)
+        highlight_color = palette.color(QPalette.Highlight)
+        button_color = palette.color(QPalette.Button)
+
         # Draw shadow
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(QColor(0, 0, 0, 80)))
@@ -311,22 +339,24 @@ class MultiHandleSlider(QWidget):
 
         # Draw outer glow for active handle
         if index == self.active_handle:
-            painter.setBrush(QBrush(QColor(100, 150, 255, 60)))
+            glow_color = QColor(highlight_color)
+            glow_color.setAlpha(60)
+            painter.setBrush(QBrush(glow_color))
             painter.drawEllipse(QPointF(x, y), self.handle_radius + 3, self.handle_radius + 3)
 
         # Draw handle with gradient
         gradient = QLinearGradient(x, y - self.handle_radius, x, y + self.handle_radius)
-        gradient.setColorAt(0, QColor(255, 255, 255))
-        gradient.setColorAt(1, QColor(230, 230, 235))
+        gradient.setColorAt(0, palette.color(QPalette.Light))
+        gradient.setColorAt(1, button_color)
         painter.setBrush(QBrush(gradient))
-        painter.setPen(QPen(self.handle_border_color, 2))
+        painter.setPen(QPen(handle_border_color, 2))
         painter.drawEllipse(QPointF(x, y), self.handle_radius, self.handle_radius)
 
         # Draw inner indicator/grip
         if index == self.active_handle:
-            painter.setBrush(QBrush(QColor(100, 150, 255)))
+            painter.setBrush(QBrush(highlight_color))
         else:
-            painter.setBrush(QBrush(QColor(140, 140, 145)))
+            painter.setBrush(QBrush(palette.color(QPalette.Mid)))
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(QPointF(x, y), self.handle_radius - 4, self.handle_radius - 4)
 
@@ -481,12 +511,16 @@ class TriggerSlider(MultiHandleSlider):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Get theme highlight color
+        palette = QApplication.palette()
+        marker_color = palette.color(QPalette.Highlight)
+
         height = self.height()
         track_y = height // 2 - self.track_height // 2
         actuation_x = self._value_to_pixel(self.values[1])
 
         # Draw marker line above and below the actuation point
-        painter.setPen(QPen(QColor(255, 140, 50), 3))  # Orange color
+        painter.setPen(QPen(marker_color, 3))  # Theme highlight color
         painter.drawLine(int(actuation_x), track_y - 10, int(actuation_x), track_y - 2)
         painter.drawLine(int(actuation_x), track_y + self.track_height + 2, int(actuation_x), track_y + self.track_height + 10)
 
@@ -571,6 +605,13 @@ class RapidTriggerSlider(MultiHandleSlider):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        # Get theme colors from palette
+        palette = QApplication.palette()
+        track_bg_color = palette.color(QPalette.AlternateBase)
+        press_color = palette.color(QPalette.Highlight)
+        release_color = palette.color(QPalette.Link)
+        divider_color = palette.color(QPalette.Mid)
+
         width = self.width()
         height = self.height()
 
@@ -585,24 +626,24 @@ class RapidTriggerSlider(MultiHandleSlider):
         painter.drawRoundedRect(track_x + 1, track_y + 1, track_width, self.track_height, 4, 4)
 
         # Draw background track
-        painter.setBrush(QBrush(self.track_bg_color))
+        painter.setBrush(QBrush(track_bg_color))
         painter.drawRoundedRect(track_x, track_y, track_width, self.track_height, 4, 4)
 
-        # Draw 3 colored sections: press (orange), middle (gray), release (blue)
+        # Draw 3 colored sections: press (theme highlight), middle (gray), release (theme link)
         press_x = self._value_to_pixel(self.values[0])  # Press handle position
         release_x = self._value_to_pixel(self.values[1])  # Release handle position
 
-        # Section 1: Orange (from left to press handle)
-        painter.setBrush(QBrush(self.rf_section_colors[0]))
+        # Section 1: Press (from left to press handle) - theme highlight
+        painter.setBrush(QBrush(press_color))
         painter.drawRoundedRect(int(track_x), track_y, int(press_x - track_x), self.track_height, 4, 4)
         painter.drawRect(int(press_x - 4), track_y, 4, self.track_height)  # Square off right edge
 
         # Section 2: Gray (from press handle to release handle - unused middle)
-        painter.setBrush(QBrush(self.rf_section_colors[1]))
+        painter.setBrush(QBrush(QColor(100, 100, 105)))  # Keep gray for middle section
         painter.drawRect(int(press_x), track_y, int(release_x - press_x), self.track_height)
 
-        # Section 3: Blue (from release handle to right)
-        painter.setBrush(QBrush(self.rf_section_colors[2]))
+        # Section 3: Release (from release handle to right) - theme link
+        painter.setBrush(QBrush(release_color))
         painter.drawRoundedRect(int(release_x), track_y, int(track_x + track_width - release_x), self.track_height, 4, 4)
         painter.drawRect(int(release_x), track_y, 4, self.track_height)  # Square off left edge
 
@@ -613,7 +654,7 @@ class RapidTriggerSlider(MultiHandleSlider):
 
         # Draw center divider line at exactly 50% (middle)
         divider_x = track_x + (50.0 / 100.0) * track_width
-        painter.setPen(QPen(QColor(150, 150, 150), 2))
+        painter.setPen(QPen(divider_color, 2))
         painter.drawLine(int(divider_x), track_y - 5, int(divider_x), track_y + self.track_height + 5)
 
     def _apply_constraints(self, handle_index, new_value):

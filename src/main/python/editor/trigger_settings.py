@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWid
                               QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
                               QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QEvent
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QPalette
 
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
@@ -148,7 +148,7 @@ class TriggerSettingsTab(BasicEditor):
         self.save_btn = QPushButton(tr("TriggerSettings", "Save"))
         self.save_btn.setMinimumHeight(32)  # Make buttons bigger
         self.save_btn.setEnabled(False)
-        self.save_btn.setStyleSheet("QPushButton:enabled { font-weight: bold; color: #ff8c32; }")
+        self.save_btn.setStyleSheet("QPushButton:enabled { font-weight: bold; color: palette(highlight); }")
         self.save_btn.clicked.connect(self.on_save)
         selection_buttons_layout.addWidget(self.save_btn)
 
@@ -254,7 +254,7 @@ class TriggerSettingsTab(BasicEditor):
         normal_header.addWidget(self.global_normal_dz_min_value_label)
         normal_header.addStretch()
         self.global_normal_value_label = QLabel("Act: 2.00mm")
-        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; }")
+        self.global_normal_value_label.setStyleSheet("QLabel { font-weight: bold; color: palette(highlight); }")
         normal_header.addWidget(self.global_normal_value_label)
         normal_header.addStretch()
         self.global_normal_dz_max_value_label = QLabel("DZ: 0.10mm")
@@ -291,7 +291,7 @@ class TriggerSettingsTab(BasicEditor):
         midi_header.addWidget(self.global_midi_dz_min_value_label)
         midi_header.addStretch()
         self.global_midi_value_label = QLabel("Act: 2.00mm")
-        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; color: #64c8ff; }")
+        self.global_midi_value_label.setStyleSheet("QLabel { font-weight: bold; color: palette(link); }")
         midi_header.addWidget(self.global_midi_value_label)
         midi_header.addStretch()
         self.global_midi_dz_max_value_label = QLabel("DZ: 0.10mm")
@@ -345,7 +345,7 @@ class TriggerSettingsTab(BasicEditor):
         actuation_title = QLabel("Actuation")
         actuation_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
         self.actuation_value_label = QLabel("1.5mm")
-        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; color: #ff8c32; }")
+        self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; color: palette(highlight); }")
         actuation_container.addWidget(actuation_title, 0, Qt.AlignCenter)
         actuation_container.addWidget(self.actuation_value_label, 0, Qt.AlignCenter)
         values_layout.addLayout(actuation_container)
@@ -430,7 +430,7 @@ class TriggerSettingsTab(BasicEditor):
         press_title = QLabel("Press")
         press_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
         self.rf_press_value_label = QLabel("0.1mm")
-        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: #ff8c32; }")
+        self.rf_press_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: palette(highlight); }")
         press_container.addWidget(press_title, 0, Qt.AlignCenter)
         press_container.addWidget(self.rf_press_value_label, 0, Qt.AlignCenter)
         rf_values_layout.addLayout(press_container)
@@ -442,7 +442,7 @@ class TriggerSettingsTab(BasicEditor):
         release_title = QLabel("Release")
         release_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
         self.rf_release_value_label = QLabel("0.1mm")
-        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: #64c8ff; }")
+        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: palette(link); }")
         release_container.addWidget(release_title, 0, Qt.AlignCenter)
         release_container.addWidget(self.rf_release_value_label, 0, Qt.AlignCenter)
         rf_values_layout.addLayout(release_container)
@@ -464,7 +464,7 @@ class TriggerSettingsTab(BasicEditor):
         rf_vel_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
         rf_vel_header.addWidget(rf_vel_label)
         self.rf_vel_mod_value_label = QLabel("0")
-        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; color: #ff8c32; margin-left: 8px; }")
+        self.rf_vel_mod_value_label.setStyleSheet("QLabel { font-weight: bold; color: palette(highlight); margin-left: 8px; }")
         rf_vel_header.addWidget(self.rf_vel_mod_value_label)
         rf_vel_header.addStretch()
         rf_vel_layout.addLayout(rf_vel_header)
@@ -1944,11 +1944,13 @@ class TriggerSettingsTab(BasicEditor):
                         keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO") if self.keyboard else "KC_NO"
                         is_midi_key = self.is_midi_keycode(keycode)
 
-                        # Color keys based on type and rapidfire state
+                        # Color keys based on type and rapidfire state - use theme colors
+                        from PyQt5.QtWidgets import QApplication
+                        palette = QApplication.palette()
                         if rapidfire_enabled:
-                            key.setColor(QColor(255, 140, 50))  # Orange for rapidfire
+                            key.setColor(palette.color(QPalette.Highlight))  # Theme highlight for rapidfire
                         elif is_midi_key:
-                            key.setColor(QColor(100, 200, 255))  # Blue tint for MIDI keys
+                            key.setColor(palette.color(QPalette.Link))  # Theme link color for MIDI keys
                         else:
                             key.setColor(None)  # Default for normal keys
 
