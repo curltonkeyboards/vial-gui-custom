@@ -1149,8 +1149,8 @@ class TriggerSettingsTab(BasicEditor):
             # Fetch user curve from keyboard
             curve_data = self.device.keyboard.get_user_curve(slot_index)
             if curve_data and 'points' in curve_data:
-                # Load points into editor without triggering curve_changed
-                self.velocity_curve_editor.load_user_curve_points(curve_data['points'])
+                # Load points into editor and cache for later (pass slot_index for caching)
+                self.velocity_curve_editor.load_user_curve_points(curve_data['points'], slot_index)
 
                 # Now trigger the save with the correct curve index (7 + slot_index)
                 curve_index = 7 + slot_index

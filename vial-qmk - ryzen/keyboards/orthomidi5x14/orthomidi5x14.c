@@ -369,7 +369,7 @@ uint8_t apply_he_velocity_curve(uint8_t travel_value) {
     // Input: travel_value is 0-255 from analog_matrix_get_travel_normalized()
     // Output: MIDI velocity 1-127 with curve applied
 
-    // Apply Bezier curve to travel (0-255 input -> 0-255 output)
+    // Apply curve to travel (0-255 input -> 0-255 output)
     uint8_t curved_travel = apply_curve(travel_value, he_velocity_curve);
 
     // Map curved travel to velocity range (he_velocity_min to he_velocity_max)
@@ -459,7 +459,7 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t min_vel = keyboard_settings.he_velocity_min;
     uint8_t max_vel = keyboard_settings.he_velocity_max;
 
-    // Apply Bezier curve to travel (0-255 input, 0-255 output)
+    // Apply curve to travel (0-255 input, 0-255 output)
     uint8_t curved_travel = apply_curve(travel, curve_index);
 
     // Map curved travel to per-layer velocity range (min_vel to max_vel)
@@ -485,7 +485,7 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
-    // Apply Bezier curve to travel (0-255 input, 0-255 output)
+    // Apply curve to travel (0-255 input, 0-255 output)
     uint8_t curved_travel = apply_curve(travel, curve_index);
 
     // Map curved travel to per-layer velocity range (min_vel to max_vel)
@@ -511,7 +511,7 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
-    // Apply Bezier curve to travel (0-255 input, 0-255 output)
+    // Apply curve to travel (0-255 input, 0-255 output)
     uint8_t curved_travel = apply_curve(travel, curve_index);
 
     // Map curved travel to per-layer velocity range (min_vel to max_vel)
@@ -3418,35 +3418,36 @@ user_curves_t user_curves;
 
 // Factory curve presets (7 curves, 4 points each)
 // Points are stored as [x, y] where x and y are 0-255
-// Note: Point 0 is always (0,0) and Point 3 is always (255,255) - only points 1 and 2 vary
+// All 4 points are on the curve, connected by straight line segments (piecewise linear)
+// Point 0 x is always 0, Point 3 x is always 255
 const uint8_t FACTORY_CURVES[7][4][2] PROGMEM = {
     // 0: Softest - very gentle, output much lower than input
-    {{0, 0}, {120, 40}, {200, 100}, {255, 255}},
+    {{0, 0}, {85, 28}, {170, 85}, {255, 255}},
 
     // 1: Soft - gentle curve, gradual response
-    {{0, 0}, {100, 50}, {200, 120}, {255, 255}},
+    {{0, 0}, {85, 42}, {170, 128}, {255, 255}},
 
     // 2: Linear - straight 1:1 mapping
     {{0, 0}, {85, 85}, {170, 170}, {255, 255}},
 
     // 3: Hard - steeper curve, faster response
-    {{0, 0}, {60, 100}, {150, 200}, {255, 255}},
+    {{0, 0}, {85, 128}, {170, 213}, {255, 255}},
 
     // 4: Hardest - very steep, aggressive response
-    {{0, 0}, {40, 130}, {120, 220}, {255, 255}},
+    {{0, 0}, {64, 160}, {128, 230}, {255, 255}},
 
     // 5: Aggro - rapid acceleration
-    {{0, 0}, {50, 150}, {100, 220}, {255, 255}},
+    {{0, 0}, {42, 170}, {85, 220}, {255, 255}},
 
     // 6: Digital - binary-like instant response
-    {{0, 0}, {5, 255}, {10, 255}, {255, 255}}
+    {{0, 0}, {10, 255}, {20, 255}, {255, 255}}
 };
 
 const char* FACTORY_CURVE_NAMES[7] PROGMEM = {
     "Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"
 };
 
-// Apply curve using cubic Bezier interpolation
+// Apply curve using piecewise linear interpolation through 4 points
 // input: 0-255 input value
 // curve_index: 0-6 = factory, 7-16 = user curves
 // returns: 0-255 output value
@@ -3471,21 +3472,36 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
         return input;
     }
 
-    // Cubic Bezier evaluation
-    // B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
-    float t = input / 255.0f;
-    float u = 1.0f - t;
+    // Piecewise linear interpolation through all 4 points
+    // Find which segment the input falls into and interpolate
+    for (int i = 0; i < 3; i++) {
+        uint8_t x0 = points[i][0];
+        uint8_t x1 = points[i + 1][0];
+        uint8_t y0 = points[i][1];
+        uint8_t y1 = points[i + 1][1];
 
-    float y = u*u*u * points[0][1] +
-              3.0f*u*u*t * points[1][1] +
-              3.0f*u*t*t * points[2][1] +
-              t*t*t * points[3][1];
+        if (input <= x1 || i == 2) {
+            // Found the segment - linearly interpolate
+            if (x1 == x0) {
+                // Avoid division by zero - return start point y
+                return y0;
+            }
+            // Linear interpolation: y = y0 + (y1 - y0) * (input - x0) / (x1 - x0)
+            int16_t dy = (int16_t)y1 - (int16_t)y0;
+            int16_t dx = (int16_t)x1 - (int16_t)x0;
+            int16_t offset = (int16_t)input - (int16_t)x0;
+            int16_t result = (int16_t)y0 + (dy * offset) / dx;
 
-    // Clamp to 0-255
-    if (y < 0.0f) y = 0.0f;
-    if (y > 255.0f) y = 255.0f;
+            // Clamp to 0-255
+            if (result < 0) result = 0;
+            if (result > 255) result = 255;
 
-    return (uint8_t)(y + 0.5f);  // Round to nearest
+            return (uint8_t)result;
+        }
+    }
+
+    // Fallback (shouldn't reach here)
+    return input;
 }
 
 // Initialize user curves with defaults (all linear)

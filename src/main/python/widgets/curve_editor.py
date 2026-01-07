@@ -2,7 +2,8 @@
 
 """
 Curve Editor Widget
-A reusable widget for editing analog curves with 4 Bezier control points.
+A reusable widget for editing analog curves with 4 coordinate points.
+The curve passes through all 4 points using linear interpolation.
 Used for both gaming analog curves and per-key velocity curves.
 """
 
@@ -16,18 +17,19 @@ from util import tr
 
 class CurveEditorWidget(QWidget):
     """
-    Interactive Bezier curve editor with 4 control points.
+    Interactive curve editor with 4 coordinate points.
 
     Features:
     - Visual curve display (300x300 canvas)
-    - 4 draggable points (points 0 and 3 fixed at corners)
-    - Real-time Bezier curve rendering
+    - 4 draggable points (all on the curve, points 0/3 x-constrained)
+    - Real-time polyline curve rendering through all points
     - Preset loading (factory + user curves)
-    - "Save to User" functionality
+    - "Save to User" functionality with local caching
 
     Signals:
     - curve_changed: Emitted when curve points change
     - save_to_user_requested: Emitted when user wants to save curve to a slot
+    - user_curve_selected: Emitted when user curve is selected from dropdown
     """
 
     curve_changed = pyqtSignal(list)  # [[x0,y0], [x1,y1], [x2,y2], [x3,y3]]
@@ -46,22 +48,22 @@ class CurveEditorWidget(QWidget):
     ]
 
     # Factory curve presets (same as firmware)
-    # Based on hmkconf reference with adjustments for our 0-255 range
+    # All 4 points are on the curve, connected by straight line segments (piecewise linear)
     FACTORY_CURVE_POINTS = [
         # Softest - Very gentle, output much lower than input
-        [[0, 0], [120, 40], [200, 100], [255, 255]],
+        [[0, 0], [85, 28], [170, 85], [255, 255]],
         # Soft - Gentle curve, gradual response
-        [[0, 0], [100, 50], [200, 120], [255, 255]],
+        [[0, 0], [85, 42], [170, 128], [255, 255]],
         # Linear - 1:1 response
         [[0, 0], [85, 85], [170, 170], [255, 255]],
         # Hard - Steeper curve, faster response
-        [[0, 0], [60, 100], [150, 200], [255, 255]],
+        [[0, 0], [85, 128], [170, 213], [255, 255]],
         # Hardest - Very steep, aggressive response
-        [[0, 0], [40, 130], [120, 220], [255, 255]],
+        [[0, 0], [64, 160], [128, 230], [255, 255]],
         # Aggro - Rapid acceleration
-        [[0, 0], [50, 150], [100, 220], [255, 255]],
+        [[0, 0], [42, 170], [85, 220], [255, 255]],
         # Digital - Binary-like instant response
-        [[0, 0], [5, 255], [10, 255], [255, 255]]
+        [[0, 0], [10, 255], [20, 255], [255, 255]]
     ]
 
     def __init__(self, parent=None, show_save_button=True):
@@ -69,6 +71,10 @@ class CurveEditorWidget(QWidget):
         self.show_save_button = show_save_button
         self.user_curve_names = ["User 1", "User 2", "User 3", "User 4", "User 5",
                                  "User 6", "User 7", "User 8", "User 9", "User 10"]
+
+        # Local cache for user curves (persists when switching presets)
+        # Key: slot_index (0-9), Value: [[x0,y0], [x1,y1], [x2,y2], [x3,y3]]
+        self.user_curves_cache = {}
 
         # Initialize with linear curve
         self.points = [[0, 0], [85, 85], [170, 170], [255, 255]]
@@ -135,9 +141,14 @@ class CurveEditorWidget(QWidget):
             # Factory curve - load points directly
             self.set_points(self.FACTORY_CURVE_POINTS[curve_index])
         else:
-            # User curve (7-16) - emit signal for parent to load from keyboard
+            # User curve (7-16) - check local cache first, then ask parent
             slot_index = curve_index - 7  # Convert to 0-9 slot index
-            self.user_curve_selected.emit(slot_index)
+            if slot_index in self.user_curves_cache:
+                # Load from local cache
+                self.load_user_curve_points(self.user_curves_cache[slot_index])
+            else:
+                # Emit signal for parent to load from keyboard
+                self.user_curve_selected.emit(slot_index)
 
     def on_point_moved(self, point_index, x, y):
         """Called when user drags a point"""
@@ -160,7 +171,14 @@ class CurveEditorWidget(QWidget):
             slot_index = dialog.get_selected_slot()
             slot_name = dialog.get_curve_name()
             if slot_index >= 0 and slot_index < 10:
+                # Cache the curve locally so it persists when switching presets
+                self.cache_user_curve(slot_index, self.points)
                 self.save_to_user_requested.emit(slot_index, slot_name)
+
+    def cache_user_curve(self, slot_index, points):
+        """Cache a user curve locally for quick access when switching presets"""
+        if 0 <= slot_index < 10 and len(points) == 4:
+            self.user_curves_cache[slot_index] = [list(p) for p in points]  # Deep copy
 
     def set_points(self, points):
         """Set curve points programmatically"""
@@ -200,18 +218,24 @@ class CurveEditorWidget(QWidget):
         """Get the currently selected curve index (0-16 or -1 for custom)"""
         return self.preset_combo.currentData()
 
-    def load_user_curve_points(self, points):
+    def load_user_curve_points(self, points, slot_index=None):
         """Load user curve points without emitting curve_changed signal.
-        Used when loading curve data from keyboard for display."""
+        Used when loading curve data from keyboard for display.
+        Optionally caches the curve if slot_index is provided."""
         if len(points) == 4:
             self.points = [list(p) for p in points]  # Deep copy
             self.canvas.set_points(self.points)
             self.canvas.update()
+            # Cache the curve if slot_index is provided
+            if slot_index is not None:
+                self.cache_user_curve(slot_index, points)
 
 
 class CurveCanvas(QWidget):
     """
-    Canvas widget for drawing and interacting with the Bezier curve
+    Canvas widget for drawing and interacting with the curve.
+    All 4 points are on the curve and connected by straight lines (polyline).
+    Points 0 and 3 have x-axis constraints (0 and 255 respectively).
     """
 
     point_moved = pyqtSignal(int, int, int)  # (point_index, x, y)
@@ -276,39 +300,27 @@ class CurveCanvas(QWidget):
         painter.drawText(5, self.canvas_size - self.margin + 5, "0%")
 
     def draw_curve(self, painter):
-        """Draw the Bezier curve"""
+        """Draw the curve as polyline through all 4 points"""
         pen = QPen(QColor(255, 165, 0), 2)  # Orange
         painter.setPen(pen)
 
         # Convert points to canvas coordinates
-        p0 = self.value_to_canvas(self.points[0])
-        p1 = self.value_to_canvas(self.points[1])
-        p2 = self.value_to_canvas(self.points[2])
-        p3 = self.value_to_canvas(self.points[3])
+        canvas_points = [self.value_to_canvas(p) for p in self.points]
 
-        # Draw Bezier curve using QPainterPath
-        path = QPainterPath()
-        path.moveTo(p0)
-        path.cubicTo(p1, p2, p3)
-        painter.drawPath(path)
-
-        # Draw control lines (dashed)
-        pen.setStyle(Qt.DashLine)
-        pen.setColor(QColor(100, 100, 100))
-        painter.setPen(pen)
-        painter.drawLine(p0, p1)
-        painter.drawLine(p2, p3)
+        # Draw polyline connecting all points
+        for i in range(len(canvas_points) - 1):
+            painter.drawLine(canvas_points[i], canvas_points[i + 1])
 
     def draw_control_points(self, painter):
-        """Draw draggable control points"""
+        """Draw draggable control points - all 4 points are draggable"""
         for i, point in enumerate(self.points):
             canvas_point = self.value_to_canvas(point)
 
-            # Point 0 and 3 are fixed (corners)
-            if i == 0 or i == 3:
-                color = QColor(100, 100, 100)  # Gray (fixed)
-            elif i == self.hover_point or i == self.dragging_point:
+            # All points are draggable (0 and 3 are x-constrained but still draggable)
+            if i == self.hover_point or i == self.dragging_point:
                 color = QColor(255, 200, 0)  # Bright yellow (hover/dragging)
+            elif i == 0 or i == 3:
+                color = QColor(200, 100, 50)  # Darker orange for constrained points
             else:
                 color = QColor(255, 165, 0)  # Orange
 
@@ -338,9 +350,9 @@ class CurveCanvas(QWidget):
         return [int(x), int(y)]
 
     def mousePressEvent(self, event):
-        """Start dragging a point"""
+        """Start dragging a point - all 4 points are draggable"""
         if event.button() == Qt.LeftButton:
-            for i in range(1, 3):  # Only points 1 and 2 are draggable
+            for i in range(4):  # All 4 points are draggable
                 canvas_point = self.value_to_canvas(self.points[i])
                 dist = (event.pos() - canvas_point.toPoint()).manhattanLength()
                 if dist <= self.point_radius + 5:
@@ -350,8 +362,15 @@ class CurveCanvas(QWidget):
     def mouseMoveEvent(self, event):
         """Drag point or update hover state"""
         if self.dragging_point >= 0:
-            # Update dragged point
+            # Update dragged point with constraints
             new_value = self.canvas_to_value(event.pos())
+
+            # Apply x-axis constraints for points 0 and 3
+            if self.dragging_point == 0:
+                new_value[0] = 0  # Point 0 fixed at x=0
+            elif self.dragging_point == 3:
+                new_value[0] = 255  # Point 3 fixed at x=255
+
             self.points[self.dragging_point] = new_value
             self.point_moved.emit(self.dragging_point, new_value[0], new_value[1])
             self.update()
@@ -359,7 +378,7 @@ class CurveCanvas(QWidget):
             # Update hover state
             old_hover = self.hover_point
             self.hover_point = -1
-            for i in range(1, 3):  # Only points 1 and 2
+            for i in range(4):  # All 4 points
                 canvas_point = self.value_to_canvas(self.points[i])
                 dist = (event.pos() - canvas_point.toPoint()).manhattanLength()
                 if dist <= self.point_radius + 5:
