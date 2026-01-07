@@ -422,22 +422,10 @@ class TriggerSettingsTab(BasicEditor):
         rf_title.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; }")
         rf_layout.addWidget(rf_title)
 
-        # Value display row - Release on left, Press on right (matches slider layout)
+        # Value display row
         rf_values_layout = QHBoxLayout()
 
-        # Release sensitivity (LEFT side of slider)
-        release_container = QVBoxLayout()
-        release_title = QLabel("Release")
-        release_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
-        self.rf_release_value_label = QLabel("0.1mm")
-        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: palette(link); }")
-        release_container.addWidget(release_title, 0, Qt.AlignCenter)
-        release_container.addWidget(self.rf_release_value_label, 0, Qt.AlignCenter)
-        rf_values_layout.addLayout(release_container)
-
-        rf_values_layout.addStretch()
-
-        # Press sensitivity (RIGHT side of slider)
+        # Press sensitivity
         press_container = QVBoxLayout()
         press_title = QLabel("Press")
         press_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
@@ -446,6 +434,18 @@ class TriggerSettingsTab(BasicEditor):
         press_container.addWidget(press_title, 0, Qt.AlignCenter)
         press_container.addWidget(self.rf_press_value_label, 0, Qt.AlignCenter)
         rf_values_layout.addLayout(press_container)
+
+        rf_values_layout.addStretch()
+
+        # Release sensitivity
+        release_container = QVBoxLayout()
+        release_title = QLabel("Release")
+        release_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
+        self.rf_release_value_label = QLabel("0.1mm")
+        self.rf_release_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; color: palette(link); }")
+        release_container.addWidget(release_title, 0, Qt.AlignCenter)
+        release_container.addWidget(self.rf_release_value_label, 0, Qt.AlignCenter)
+        rf_values_layout.addLayout(release_container)
 
         rf_layout.addLayout(rf_values_layout)
 
