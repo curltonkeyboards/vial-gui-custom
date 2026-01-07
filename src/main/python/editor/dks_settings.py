@@ -211,15 +211,14 @@ class TravelBarWidget(QWidget):
         bar_height = 30
         bar_y = (height - bar_height) // 2
 
-        # Draw travel bar background
-        if is_dark:
-            bar_bg = QColor(60, 60, 60)
-            bar_border = QColor(100, 100, 100)
-            text_color = QColor(200, 200, 200)
-        else:
-            bar_bg = QColor(220, 220, 220)
-            bar_border = QColor(150, 150, 150)
-            text_color = QColor(60, 60, 60)
+        # Draw travel bar background - use theme colors
+        bar_bg = palette.color(QPalette.AlternateBase)
+        bar_border = palette.color(QPalette.Mid)
+        text_color = palette.color(QPalette.Text)
+
+        # Get theme accent colors for press/release
+        press_color = palette.color(QPalette.Highlight)
+        release_color = palette.color(QPalette.Link)
 
         painter.setBrush(bar_bg)
         painter.setPen(QPen(bar_border, 2))
@@ -233,7 +232,7 @@ class TravelBarWidget(QWidget):
         painter.drawText(margin - 10, bar_y + bar_height + 20, "0.0mm")
         painter.drawText(width - margin - 35, bar_y + bar_height + 20, "2.5mm")
 
-        # Draw press actuation points (orange, above bar)
+        # Draw press actuation points (theme press color, above bar)
         for actuation, enabled in self.press_actuations:
             if not enabled:
                 continue
@@ -241,11 +240,11 @@ class TravelBarWidget(QWidget):
             x = margin + int((actuation / 100.0) * (width - 2 * margin))
 
             # Draw line
-            painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+            painter.setPen(QPen(press_color, 3))  # Theme press color
             painter.drawLine(x, bar_y - 20, x, bar_y)
 
             # Draw circle at top
-            painter.setBrush(QColor(255, 140, 0))
+            painter.setBrush(press_color)
             painter.drawEllipse(x - 5, bar_y - 28, 10, 10)
 
             # Draw actuation value
@@ -257,7 +256,7 @@ class TravelBarWidget(QWidget):
             painter.drawText(x - 18, bar_y - 32, f"{mm_value:.2f}")
             painter.setFont(font)
 
-        # Draw release actuation points (cyan, below bar)
+        # Draw release actuation points (theme release color, below bar)
         for actuation, enabled in self.release_actuations:
             if not enabled:
                 continue
@@ -265,11 +264,11 @@ class TravelBarWidget(QWidget):
             x = margin + int((actuation / 100.0) * (width - 2 * margin))
 
             # Draw line
-            painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+            painter.setPen(QPen(release_color, 3))  # Theme release color
             painter.drawLine(x, bar_y + bar_height, x, bar_y + bar_height + 20)
 
             # Draw circle at bottom
-            painter.setBrush(QColor(0, 200, 200))
+            painter.setBrush(release_color)
             painter.drawEllipse(x - 5, bar_y + bar_height + 20, 10, 10)
 
             # Draw actuation value
@@ -394,15 +393,14 @@ class VerticalTravelBarWidget(QWidget):
         bar_width = 30
         bar_x = (width - bar_width) // 2
 
-        # Draw travel bar background (vertical)
-        if is_dark:
-            bar_bg = QColor(60, 60, 60)
-            bar_border = QColor(100, 100, 100)
-            text_color = QColor(200, 200, 200)
-        else:
-            bar_bg = QColor(220, 220, 220)
-            bar_border = QColor(150, 150, 150)
-            text_color = QColor(60, 60, 60)
+        # Draw travel bar background (vertical) - use theme colors
+        bar_bg = palette.color(QPalette.AlternateBase)
+        bar_border = palette.color(QPalette.Mid)
+        text_color = palette.color(QPalette.Text)
+
+        # Get theme accent colors for press/release
+        press_color = palette.color(QPalette.Highlight)
+        release_color = palette.color(QPalette.Link)
 
         painter.setBrush(bar_bg)
         painter.setPen(QPen(bar_border, 2))
@@ -450,7 +448,7 @@ class VerticalTravelBarWidget(QWidget):
             painter.drawRect(label_x - padding, label_y - padding,
                            text_width + 2 * padding, text_height + 2 * padding)
 
-            painter.setPen(QColor(0, 0, 0))  # Always black font for deadzone labels
+            painter.setPen(text_color)  # Use theme text color for deadzone labels
             painter.drawText(label_x, label_y + text_height - 4, label_text)
 
         # Bottom deadzone: from bottom up to (max_travel - deadzone_top)
@@ -490,7 +488,7 @@ class VerticalTravelBarWidget(QWidget):
             painter.drawRect(label_x - padding, label_y - padding,
                            text_width + 2 * padding, text_height + 2 * padding)
 
-            painter.setPen(QColor(0, 0, 0))  # Always black font for deadzone labels
+            painter.setPen(text_color)  # Use theme text color for deadzone labels
             painter.drawText(label_x, label_y + text_height - 4, label_text)
 
         if self.rapidfire_mode:
@@ -500,38 +498,34 @@ class VerticalTravelBarWidget(QWidget):
             painter.setPen(QPen(QColor(255, 200, 0), 2, Qt.DashLine))  # Yellow dashed line
             painter.drawLine(bar_x, actuation_y, bar_x + bar_width, actuation_y)
 
-            # Draw "First Activation" label with background box
+            # Draw "First Activation" label with button-like styling
             font = QFont()
-            font.setPointSize(7)
+            font.setPointSize(9)
             font.setBold(True)
             painter.setFont(font)
 
             # Calculate label background
             label_text = "First Activation"
-            label_x = bar_x + bar_width + 5
-            label_y = actuation_y - 8
+            label_x = bar_x + bar_width + 8
+            label_y = actuation_y - 10
 
-            # Draw themed background box for label
-            if is_dark:
-                label_bg = palette.color(QPalette.Window).darker(110)
-                label_border = palette.color(QPalette.Highlight)
-            else:
-                label_bg = palette.color(QPalette.Base)
-                label_border = palette.color(QPalette.Highlight)
+            # Button-like styling with highlight color (active button)
+            button_bg = palette.color(QPalette.Highlight)
+            button_border = palette.color(QPalette.Highlight)
 
             # Measure text to size the box
             fm = painter.fontMetrics()
             text_width = fm.width(label_text)
             text_height = fm.height()
-            padding = 3
+            padding = 6
 
-            painter.fillRect(label_x - padding, label_y - padding,
-                           text_width + 2 * padding, text_height + 2 * padding, label_bg)
-            painter.setPen(QPen(label_border, 1))
-            painter.drawRect(label_x - padding, label_y - padding,
-                           text_width + 2 * padding, text_height + 2 * padding)
+            # Draw rounded button background
+            painter.setPen(QPen(button_border, 1))
+            painter.setBrush(button_bg)
+            painter.drawRoundedRect(label_x - padding, label_y - padding,
+                                   text_width + 2 * padding, text_height + 2 * padding, 6, 6)
 
-            painter.setPen(QColor(0, 0, 0))  # Always black font for first activation label
+            painter.setPen(palette.color(QPalette.HighlightedText))  # Use theme highlighted text for first activation label
             painter.drawText(label_x, actuation_y + 3, label_text)
         else:
             # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
@@ -550,7 +544,7 @@ class VerticalTravelBarWidget(QWidget):
             bar_height = height - margin_top - margin_bottom
             actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
 
-            # Draw release actuation points first (cyan, above actuation line)
+            # Draw release actuation points first (theme release color, above actuation line)
             release_y = actuation_y  # Default to actuation line
             for actuation, enabled in self.release_actuations:
                 if not enabled:
@@ -562,60 +556,63 @@ class VerticalTravelBarWidget(QWidget):
                 release_y = y
 
                 # Draw line to right
-                painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+                painter.setPen(QPen(release_color, 3))  # Theme release color
                 painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
 
                 # Draw circle on right
-                painter.setBrush(QColor(0, 200, 200))
+                painter.setBrush(release_color)
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                # Draw "Release Threshold" identifier and mm value
+                # Draw "Release Threshold" identifier and mm value with button-like styling
                 mm_value = (actuation / 100.0) * 2.5
-                font_small = QFont()
-                font_small.setPointSize(7)
-                painter.setFont(font_small)
 
-                # Theme background colors
-                if is_dark:
-                    label_bg = palette.color(QPalette.Window).darker(110)
-                    label_border = palette.color(QPalette.Mid)
-                else:
-                    label_bg = palette.color(QPalette.Base)
-                    label_border = palette.color(QPalette.Mid)
+                # Use bigger font for button-like appearance
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
 
                 fm = painter.fontMetrics()
-                padding = 2
+                padding = 6  # Bigger padding for button-like appearance
                 label_x = bar_x + bar_width + 35
 
-                # Draw "Release Threshold" identifier
+                # Button-like background
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                # Draw "Release Threshold" identifier (button-like)
                 id_text = "Release Threshold"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
-                id_y = y - id_height - 8
+                id_y = y - id_height - 10
 
-                painter.fillRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(text_color)  # Use theme text color for readability
+                # Draw rounded button background
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))  # Use button text color
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
-                # Draw mm value below identifier
+                # Draw mm value below identifier (smaller, secondary label)
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
                 mm_text = f"{mm_value:.2f}mm"
                 mm_width = fm.width(mm_text)
                 mm_height = fm.height()
-                mm_y = y + 4
+                mm_y = y + 6
 
-                painter.fillRect(label_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(label_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
                 painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, mm_y, mm_text)
 
-            # Draw press actuation points (orange, below release line)
+            # Draw press actuation points (theme press color, below release line)
             for actuation, enabled in self.press_actuations:
                 if not enabled:
                     continue
@@ -625,57 +622,60 @@ class VerticalTravelBarWidget(QWidget):
                 y = release_y + int((actuation / 100.0) * bar_height)
 
                 # Draw line to left
-                painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+                painter.setPen(QPen(press_color, 3))  # Theme press color
                 painter.drawLine(bar_x - 20, y, bar_x, y)
 
                 # Draw circle on left
-                painter.setBrush(QColor(255, 140, 0))
+                painter.setBrush(press_color)
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                # Draw "Press Threshold" identifier and mm value
+                # Draw "Press Threshold" identifier and mm value with button-like styling
                 mm_value = (actuation / 100.0) * 2.5
-                font_small = QFont()
-                font_small.setPointSize(7)
-                painter.setFont(font_small)
 
-                # Theme background colors
-                if is_dark:
-                    label_bg = palette.color(QPalette.Window).darker(110)
-                    label_border = palette.color(QPalette.Mid)
-                else:
-                    label_bg = palette.color(QPalette.Base)
-                    label_border = palette.color(QPalette.Mid)
+                # Use bigger font for button-like appearance
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
 
                 fm = painter.fontMetrics()
-                padding = 2
+                padding = 6  # Bigger padding for button-like appearance
 
-                # Draw "Press Threshold" identifier
+                # Button-like background
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                # Draw "Press Threshold" identifier (button-like)
                 id_text = "Press Threshold"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
-                label_x = bar_x - id_width - 7
-                id_y = y - id_height - 8
+                label_x = bar_x - id_width - 15
+                id_y = y - id_height - 10
 
-                painter.fillRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(text_color)  # Use theme text color for readability
+                # Draw rounded button background
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))  # Use button text color
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
-                # Draw mm value below identifier
+                # Draw mm value below identifier (smaller, secondary label)
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
                 mm_text = f"{mm_value:.2f}mm"
                 mm_width = fm.width(mm_text)
                 mm_height = fm.height()
-                mm_x = bar_x - mm_width - 7
-                mm_y = y + 4
+                mm_x = bar_x - mm_width - 12
+                mm_y = y + 6
 
-                painter.fillRect(mm_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(mm_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(mm_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
                 painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(mm_x, mm_y, mm_text)
         else:
@@ -683,7 +683,7 @@ class VerticalTravelBarWidget(QWidget):
             font = QFont()
             font.setPointSize(9)
 
-            # Draw press actuation points (orange, left side)
+            # Draw press actuation points (theme press color, left side)
             # These represent Normal and MIDI actuation points
             actuation_labels = ["Normal Actuation", "MIDI Actuation"]
             for idx, (actuation, enabled) in enumerate(self.press_actuations):
@@ -693,61 +693,64 @@ class VerticalTravelBarWidget(QWidget):
                 y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
 
                 # Draw line to left
-                painter.setPen(QPen(QColor(255, 140, 0), 3))  # Orange
+                painter.setPen(QPen(press_color, 3))  # Theme press color
                 painter.drawLine(bar_x - 20, y, bar_x, y)
 
                 # Draw circle on left
-                painter.setBrush(QColor(255, 140, 0))
+                painter.setBrush(press_color)
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                # Draw identifier and mm value with theme backgrounds
+                # Draw identifier and mm value with button-like styling
                 mm_value = (actuation / 100.0) * 2.5
-                font_small = QFont()
-                font_small.setPointSize(7)
-                painter.setFont(font_small)
 
-                # Theme background colors
-                if is_dark:
-                    label_bg = palette.color(QPalette.Window).darker(110)
-                    label_border = palette.color(QPalette.Mid)
-                else:
-                    label_bg = palette.color(QPalette.Base)
-                    label_border = palette.color(QPalette.Mid)
+                # Use bigger font for button-like appearance
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
 
                 fm = painter.fontMetrics()
-                padding = 2
+                padding = 6  # Bigger padding for button-like appearance
 
-                # Draw identifier label
+                # Draw identifier label (button-like)
                 id_text = actuation_labels[idx] if idx < len(actuation_labels) else "Actuation"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
-                label_x = bar_x - id_width - 7
-                id_y = y - id_height - 8
+                label_x = bar_x - id_width - 15
+                id_y = y - id_height - 10
 
-                painter.fillRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(text_color)  # Use theme text color for readability
+                # Button-like background with highlight color
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                # Draw rounded button background
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))  # Use button text color
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
-                # Draw mm value below identifier
+                # Draw mm value below identifier (smaller, secondary label)
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
                 mm_text = f"{mm_value:.2f}mm"
                 mm_width = fm.width(mm_text)
                 mm_height = fm.height()
-                mm_x = bar_x - mm_width - 7
-                mm_y = y + 4
+                mm_x = bar_x - mm_width - 12
+                mm_y = y + 6
 
-                painter.fillRect(mm_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(mm_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(mm_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
                 painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(mm_x, mm_y, mm_text)
 
-            # Draw release actuation points (cyan, right side)
+            # Draw release actuation points (theme release color, right side)
             for actuation, enabled in self.release_actuations:
                 if not enabled:
                     continue
@@ -755,56 +758,59 @@ class VerticalTravelBarWidget(QWidget):
                 y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
 
                 # Draw line to right
-                painter.setPen(QPen(QColor(0, 200, 200), 3))  # Cyan
+                painter.setPen(QPen(release_color, 3))  # Theme release color
                 painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
 
                 # Draw circle on right
-                painter.setBrush(QColor(0, 200, 200))
+                painter.setBrush(release_color)
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                # Draw identifier and mm value with theme backgrounds
+                # Draw identifier and mm value with button-like styling
                 mm_value = (actuation / 100.0) * 2.5
-                font_small = QFont()
-                font_small.setPointSize(7)
-                painter.setFont(font_small)
 
-                # Theme background colors
-                if is_dark:
-                    label_bg = palette.color(QPalette.Window).darker(110)
-                    label_border = palette.color(QPalette.Mid)
-                else:
-                    label_bg = palette.color(QPalette.Base)
-                    label_border = palette.color(QPalette.Mid)
+                # Use bigger font for button-like appearance
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
 
                 fm = painter.fontMetrics()
-                padding = 2
+                padding = 6  # Bigger padding for button-like appearance
                 label_x = bar_x + bar_width + 35
 
-                # Draw identifier label
+                # Button-like background
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                # Draw identifier label (button-like)
                 id_text = "Release Point"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
-                id_y = y - id_height - 8
+                id_y = y - id_height - 10
 
-                painter.fillRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, id_y - padding,
-                               id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(text_color)  # Use theme text color for readability
+                # Draw rounded button background
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))  # Use button text color
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
-                # Draw mm value below identifier
+                # Draw mm value below identifier (smaller, secondary label)
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
                 mm_text = f"{mm_value:.2f}mm"
                 mm_width = fm.width(mm_text)
                 mm_height = fm.height()
-                mm_y = y + 4
+                mm_y = y + 6
 
-                painter.fillRect(label_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding, label_bg)
-                painter.setPen(QPen(label_border, 1))
-                painter.drawRect(label_x - padding, mm_y - mm_height,
-                               mm_width + 2 * padding, mm_height + 2 * padding)
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(label_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
                 painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, mm_y, mm_text)
 
