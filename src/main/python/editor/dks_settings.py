@@ -250,7 +250,7 @@ class TravelBarWidget(QWidget):
 
             # Draw actuation value
             mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(255, 140, 0))
+            painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
             painter.setFont(font_small)
@@ -274,7 +274,7 @@ class TravelBarWidget(QWidget):
 
             # Draw actuation value
             mm_value = (actuation / 100.0) * 2.5
-            painter.setPen(QColor(0, 200, 200))
+            painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
             painter.setFont(font_small)
@@ -450,7 +450,7 @@ class VerticalTravelBarWidget(QWidget):
             painter.drawRect(label_x - padding, label_y - padding,
                            text_width + 2 * padding, text_height + 2 * padding)
 
-            painter.setPen(text_color)
+            painter.setPen(QColor(0, 0, 0))  # Always black font for deadzone labels
             painter.drawText(label_x, label_y + text_height - 4, label_text)
 
         # Bottom deadzone: from bottom up to (max_travel - deadzone_top)
@@ -490,7 +490,7 @@ class VerticalTravelBarWidget(QWidget):
             painter.drawRect(label_x - padding, label_y - padding,
                            text_width + 2 * padding, text_height + 2 * padding)
 
-            painter.setPen(text_color)
+            painter.setPen(QColor(0, 0, 0))  # Always black font for deadzone labels
             painter.drawText(label_x, label_y + text_height - 4, label_text)
 
         if self.rapidfire_mode:
@@ -531,7 +531,7 @@ class VerticalTravelBarWidget(QWidget):
             painter.drawRect(label_x - padding, label_y - padding,
                            text_width + 2 * padding, text_height + 2 * padding)
 
-            painter.setPen(text_color)
+            painter.setPen(QColor(0, 0, 0))  # Always black font for first activation label
             painter.drawText(label_x, actuation_y + 3, label_text)
         else:
             # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
@@ -598,7 +598,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -612,7 +612,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, mm_y, mm_text)
 
             # Draw press actuation points (orange, below release line)
@@ -661,7 +661,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -676,7 +676,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(mm_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(mm_x, mm_y, mm_text)
         else:
             # Normal mode: draw from top to bottom
@@ -729,7 +729,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -744,7 +744,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(mm_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(255, 140, 0))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(mm_x, mm_y, mm_text)
 
             # Draw release actuation points (cyan, right side)
@@ -791,7 +791,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, id_y - padding,
                                id_width + 2 * padding, id_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, id_y + id_height - 4, id_text)
 
                 # Draw mm value below identifier
@@ -805,7 +805,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.setPen(QPen(label_border, 1))
                 painter.drawRect(label_x - padding, mm_y - mm_height,
                                mm_width + 2 * padding, mm_height + 2 * padding)
-                painter.setPen(QColor(0, 200, 200))
+                painter.setPen(text_color)  # Use theme text color for readability
                 painter.drawText(label_x, mm_y, mm_text)
 
 
@@ -844,7 +844,16 @@ class DKSActionEditor(QWidget):
 
             action_label = QLabel(f"Press {action_num + 1}")
             action_label.setAlignment(Qt.AlignCenter)
-            action_label.setStyleSheet("font-weight: bold; font-size: 10px; color: rgb(255, 140, 0);")
+            action_label.setStyleSheet("""
+                QLabel {
+                    font-weight: bold;
+                    font-size: 10px;
+                    color: palette(highlighted-text);
+                    background-color: palette(highlight);
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                }
+            """)
             key_container.addWidget(action_label)
 
             self.key_widget = DKSKeyWidget()
@@ -902,7 +911,16 @@ class DKSActionEditor(QWidget):
 
             action_label = QLabel(f"Release {action_num + 1}")
             action_label.setAlignment(Qt.AlignCenter)
-            action_label.setStyleSheet("font-weight: bold; font-size: 10px; color: rgb(0, 200, 200);")
+            action_label.setStyleSheet("""
+                QLabel {
+                    font-weight: bold;
+                    font-size: 10px;
+                    color: palette(highlighted-text);
+                    background-color: palette(highlight);
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                }
+            """)
             key_container.addWidget(action_label)
 
             self.key_widget = DKSKeyWidget()
@@ -1020,7 +1038,16 @@ class DKSVisualWidget(QWidget):
         press_layout.setSpacing(10)
 
         press_label = QLabel("Key Press (Downstroke)")
-        press_label.setStyleSheet("font-weight: bold; font-size: 12px; color: rgb(255, 140, 0);")
+        press_label.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                font-size: 12px;
+                color: palette(highlighted-text);
+                background-color: palette(highlight);
+                border-radius: 6px;
+                padding: 4px 10px;
+            }
+        """)
         press_label.setAlignment(Qt.AlignCenter)
         press_layout.addWidget(press_label)
 
@@ -1056,7 +1083,16 @@ class DKSVisualWidget(QWidget):
         release_layout.setSpacing(10)
 
         release_label = QLabel("Key Release (Upstroke)")
-        release_label.setStyleSheet("font-weight: bold; font-size: 12px; color: rgb(0, 200, 200);")
+        release_label.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                font-size: 12px;
+                color: palette(highlighted-text);
+                background-color: palette(highlight);
+                border-radius: 6px;
+                padding: 4px 10px;
+            }
+        """)
         release_label.setAlignment(Qt.AlignCenter)
         release_layout.addWidget(release_label)
 
