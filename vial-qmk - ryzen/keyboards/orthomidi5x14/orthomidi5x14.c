@@ -102,6 +102,8 @@ uint8_t triplesplit_he_velocity_max = 127;
 uint8_t base_sustain = 0;
 uint8_t keysplit_sustain = 0;
 uint8_t triplesplit_sustain = 0;
+// Hall Effect Sensor Linearization LUT
+uint8_t lut_correction_strength = 0;  // 0=linear (no correction), 100=full logarithmic LUT
 
 /* KEYLOGREND */
 #include <stdio.h>
@@ -2538,6 +2540,8 @@ void reset_keyboard_settings(void) {
     base_sustain = 0;
     keysplit_sustain = 0;
     triplesplit_sustain = 0;
+    // Hall Effect Sensor Linearization
+    lut_correction_strength = 0;  // Default: linear (no correction)
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -2583,6 +2587,8 @@ void reset_keyboard_settings(void) {
     keyboard_settings.base_sustain = base_sustain;
     keyboard_settings.keysplit_sustain = keysplit_sustain;
     keyboard_settings.triplesplit_sustain = triplesplit_sustain;
+    // Hall Effect Sensor Linearization
+    keyboard_settings.lut_correction_strength = lut_correction_strength;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -2643,6 +2649,8 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     base_sustain = keyboard_settings.base_sustain;
     keysplit_sustain = keyboard_settings.keysplit_sustain;
     triplesplit_sustain = keyboard_settings.triplesplit_sustain;
+    // Hall Effect Sensor Linearization
+    lut_correction_strength = keyboard_settings.lut_correction_strength;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }

@@ -380,6 +380,8 @@ typedef struct {
     uint8_t base_sustain;                 // Base/main MIDI sustain
     uint8_t keysplit_sustain;             // Keysplit MIDI sustain
     uint8_t triplesplit_sustain;          // Triplesplit MIDI sustain
+    // Hall Effect Sensor Linearization
+    uint8_t lut_correction_strength;      // 0-100: 0=linear (no correction), 100=full logarithmic LUT
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
@@ -423,6 +425,8 @@ extern uint8_t triplesplit_he_velocity_max;
 extern uint8_t base_sustain;
 extern uint8_t keysplit_sustain;
 extern uint8_t triplesplit_sustain;
+// Hall Effect Sensor Linearization
+extern uint8_t lut_correction_strength;
 
 // Keyboard settings instance
 extern keyboard_settings_t keyboard_settings;

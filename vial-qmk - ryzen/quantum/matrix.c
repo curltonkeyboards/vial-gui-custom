@@ -21,6 +21,7 @@
 
 #include "process_keycode/process_dks.h"
 #include "dynamic_keymap.h"
+#include "distance_lut.h"
 
 // ============================================================================
 // CONSTANTS (libhmk-inspired)
@@ -246,22 +247,16 @@ static void unselect_column(void) {
 }
 
 // ============================================================================
-// DISTANCE CALCULATION (libhmk style)
+// DISTANCE CALCULATION (libhmk style with LUT linearization)
 // ============================================================================
 
+// Global LUT correction strength (defined in orthomidi5x14.c, declared in process_dynamic_macro.h)
+// 0 = linear (no correction), 100 = full logarithmic LUT correction
+
 static inline uint8_t adc_to_distance(uint16_t adc, uint16_t rest, uint16_t bottom) {
-    // Handle inverted ADC (rest > bottom for Hall Effect)
-    if (rest > bottom) {
-        // Hall effect: higher ADC = less pressed
-        if (adc >= rest) return 0;
-        if (adc <= bottom) return DISTANCE_MAX;
-        return ((uint32_t)(rest - adc) * DISTANCE_MAX) / (rest - bottom);
-    } else {
-        // Normal case: higher ADC = more pressed
-        if (adc <= rest) return 0;
-        if (adc >= bottom) return DISTANCE_MAX;
-        return ((uint32_t)(adc - rest) * DISTANCE_MAX) / (bottom - rest);
-    }
+    // Use the LUT-corrected distance calculation with global strength setting
+    // This compensates for Hall effect sensor non-linearity
+    return adc_to_distance_corrected(adc, rest, bottom, lut_correction_strength);
 }
 
 // Convert actuation point from 0-100 scale to 0-255 distance
