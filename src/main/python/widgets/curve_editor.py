@@ -32,34 +32,36 @@ class CurveEditorWidget(QWidget):
 
     curve_changed = pyqtSignal(list)  # [[x0,y0], [x1,y1], [x2,y2], [x3,y3]]
     save_to_user_requested = pyqtSignal(int, str)  # (slot_index, curve_name)
+    user_curve_selected = pyqtSignal(int)  # slot_index (0-9) when user curve is selected
 
     # Factory curve names (indices 0-6)
     FACTORY_CURVES = [
+        "Softest",
+        "Soft",
         "Linear",
+        "Hard",
+        "Hardest",
         "Aggro",
-        "Slow",
-        "Smooth",
-        "Steep",
-        "Instant",
-        "Turbo"
+        "Digital"
     ]
 
     # Factory curve presets (same as firmware)
+    # Based on hmkconf reference with adjustments for our 0-255 range
     FACTORY_CURVE_POINTS = [
-        # Linear
+        # Softest - Very gentle, output much lower than input
+        [[0, 0], [120, 40], [200, 100], [255, 255]],
+        # Soft - Gentle curve, gradual response
+        [[0, 0], [100, 50], [200, 120], [255, 255]],
+        # Linear - 1:1 response
         [[0, 0], [85, 85], [170, 170], [255, 255]],
-        # Aggro
-        [[0, 0], [30, 120], [100, 200], [255, 255]],
-        # Slow
-        [[0, 0], [150, 50], [200, 100], [255, 255]],
-        # Smooth
-        [[0, 0], [85, 50], [170, 200], [255, 255]],
-        # Steep
-        [[0, 0], [100, 30], [150, 220], [255, 255]],
-        # Instant
-        [[0, 0], [10, 250], [20, 255], [255, 255]],
-        # Turbo
-        [[0, 0], [50, 150], [120, 240], [255, 255]]
+        # Hard - Steeper curve, faster response
+        [[0, 0], [60, 100], [150, 200], [255, 255]],
+        # Hardest - Very steep, aggressive response
+        [[0, 0], [40, 130], [120, 220], [255, 255]],
+        # Aggro - Rapid acceleration
+        [[0, 0], [50, 150], [100, 220], [255, 255]],
+        # Digital - Binary-like instant response
+        [[0, 0], [5, 255], [10, 255], [255, 255]]
     ]
 
     def __init__(self, parent=None, show_save_button=True):
@@ -130,9 +132,12 @@ class CurveEditorWidget(QWidget):
             # Custom - don't change anything
             return
         elif curve_index < 7:
-            # Factory curve
+            # Factory curve - load points directly
             self.set_points(self.FACTORY_CURVE_POINTS[curve_index])
-        # User curves are loaded externally via set_points()
+        else:
+            # User curve (7-16) - emit signal for parent to load from keyboard
+            slot_index = curve_index - 7  # Convert to 0-9 slot index
+            self.user_curve_selected.emit(slot_index)
 
     def on_point_moved(self, point_index, x, y):
         """Called when user drags a point"""
@@ -190,6 +195,18 @@ class CurveEditorWidget(QWidget):
                 self.preset_combo.setCurrentIndex(i)
                 self.preset_combo.blockSignals(False)
                 break
+
+    def get_selected_curve_index(self):
+        """Get the currently selected curve index (0-16 or -1 for custom)"""
+        return self.preset_combo.currentData()
+
+    def load_user_curve_points(self, points):
+        """Load user curve points without emitting curve_changed signal.
+        Used when loading curve data from keyboard for display."""
+        if len(points) == 4:
+            self.points = [list(p) for p in points]  # Deep copy
+            self.canvas.set_points(self.points)
+            self.canvas.update()
 
 
 class CurveCanvas(QWidget):

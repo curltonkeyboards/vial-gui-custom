@@ -3420,30 +3420,30 @@ user_curves_t user_curves;
 // Points are stored as [x, y] where x and y are 0-255
 // Note: Point 0 is always (0,0) and Point 3 is always (255,255) - only points 1 and 2 vary
 const uint8_t FACTORY_CURVES[7][4][2] PROGMEM = {
-    // 0: Linear - straight 1:1 mapping
+    // 0: Softest - very gentle, output much lower than input
+    {{0, 0}, {120, 40}, {200, 100}, {255, 255}},
+
+    // 1: Soft - gentle curve, gradual response
+    {{0, 0}, {100, 50}, {200, 120}, {255, 255}},
+
+    // 2: Linear - straight 1:1 mapping
     {{0, 0}, {85, 85}, {170, 170}, {255, 255}},
 
-    // 1: Aggro - fast response, early high output (for aggressive play)
-    {{0, 0}, {30, 120}, {100, 200}, {255, 255}},
+    // 3: Hard - steeper curve, faster response
+    {{0, 0}, {60, 100}, {150, 200}, {255, 255}},
 
-    // 2: Slow - gradual ramp, delayed response (for smooth movement)
-    {{0, 0}, {150, 50}, {200, 100}, {255, 255}},
+    // 4: Hardest - very steep, aggressive response
+    {{0, 0}, {40, 130}, {120, 220}, {255, 255}},
 
-    // 3: Smooth - S-curve, smooth acceleration (balanced feel)
-    {{0, 0}, {85, 50}, {170, 200}, {255, 255}},
+    // 5: Aggro - rapid acceleration
+    {{0, 0}, {50, 150}, {100, 220}, {255, 255}},
 
-    // 4: Steep - minimal output until threshold, then fast ramp
-    {{0, 0}, {100, 30}, {150, 220}, {255, 255}},
-
-    // 5: Instant - near-instant full output at any press
-    {{0, 0}, {10, 250}, {20, 255}, {255, 255}},
-
-    // 6: Turbo - exaggerated response, amplified output
-    {{0, 0}, {50, 150}, {120, 240}, {255, 255}}
+    // 6: Digital - binary-like instant response
+    {{0, 0}, {5, 255}, {10, 255}, {255, 255}}
 };
 
 const char* FACTORY_CURVE_NAMES[7] PROGMEM = {
-    "Linear", "Aggro", "Slow", "Smooth", "Steep", "Instant", "Turbo"
+    "Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"
 };
 
 // Apply curve using cubic Bezier interpolation
@@ -3454,7 +3454,7 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
     uint8_t points[4][2];
 
     // Load curve points
-    if (curve_index <= CURVE_FACTORY_TURBO) {
+    if (curve_index <= CURVE_FACTORY_DIGITAL) {
         // Factory curve - read from PROGMEM
         memcpy_P(points, FACTORY_CURVES[curve_index], 8);
     } else if (curve_index >= CURVE_USER_START && curve_index <= CURVE_USER_END) {
@@ -3530,14 +3530,15 @@ void user_curves_reset(void) {
 }
 
 // Migrate old velocity curve value (0-4) to new index (0-16)
+// New curve order: Softest(0), Soft(1), Linear(2), Hard(3), Hardest(4), Aggro(5), Digital(6)
 uint8_t migrate_velocity_curve(uint8_t old_value) {
     switch(old_value) {
-        case 0: return CURVE_FACTORY_SLOW;    // Softest → Slow
-        case 1: return CURVE_FACTORY_SLOW;    // Soft → Slow
-        case 2: return CURVE_FACTORY_LINEAR;  // Medium → Linear (default)
-        case 3: return CURVE_FACTORY_AGGRO;   // Hard → Aggro
-        case 4: return CURVE_FACTORY_STEEP;   // Hardest → Steep
-        default: return CURVE_FACTORY_LINEAR; // Default to Linear
+        case 0: return CURVE_FACTORY_SOFTEST;  // Softest → Softest
+        case 1: return CURVE_FACTORY_SOFT;     // Soft → Soft
+        case 2: return CURVE_FACTORY_LINEAR;   // Medium → Linear (default)
+        case 3: return CURVE_FACTORY_HARD;     // Hard → Hard
+        case 4: return CURVE_FACTORY_HARDEST;  // Hardest → Hardest
+        default: return CURVE_FACTORY_LINEAR;  // Default to Linear
     }
 }
 

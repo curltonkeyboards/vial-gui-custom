@@ -3649,6 +3649,7 @@ class GamingConfigurator(BasicEditor):
         self.curve_editor = CurveEditorWidget(show_save_button=True)
         self.curve_editor.curve_changed.connect(self.on_curve_changed)
         self.curve_editor.save_to_user_requested.connect(self.on_save_curve_to_user)
+        self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
         curve_group_layout.addWidget(self.curve_editor)
 
         middle_layout.addWidget(curve_group)
@@ -4063,6 +4064,11 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
                 self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
 
+                # Load user curve names first (so dropdown is populated)
+                user_curve_names = self.keyboard.get_all_user_curve_names()
+                if user_curve_names and len(user_curve_names) == 10:
+                    self.curve_editor.set_user_curve_names(user_curve_names)
+
                 # Load gamepad response settings
                 response = self.keyboard.get_gaming_response()
                 if response:
@@ -4076,10 +4082,12 @@ class GamingConfigurator(BasicEditor):
                     curve_index = response.get('curve_index', 0)
                     self.curve_editor.select_curve(curve_index)
 
-                # Load user curve names
-                user_curve_names = self.keyboard.get_all_user_curve_names()
-                if user_curve_names and len(user_curve_names) == 10:
-                    self.curve_editor.set_user_curve_names(user_curve_names)
+                    # If it's a user curve (7-16), load the actual points
+                    if curve_index >= 7 and curve_index <= 16:
+                        slot_index = curve_index - 7
+                        curve_data = self.keyboard.get_user_curve(slot_index)
+                        if curve_data and 'points' in curve_data:
+                            self.curve_editor.load_user_curve_points(curve_data['points'])
 
                 QMessageBox.information(None, "Success", "Gaming configuration loaded from keyboard")
             else:
@@ -4116,9 +4124,55 @@ class GamingConfigurator(BasicEditor):
                 QMessageBox.critical(None, "Error", f"Error resetting configuration: {str(e)}")
 
     def on_curve_changed(self, points):
-        """Called when curve points are changed (not used for auto-save, just for preview)"""
-        # Curve changes are saved manually via Save button
-        pass
+        """Called when curve points are changed - IMMEDIATE SAVE for analog curves"""
+        if not self.keyboard:
+            return
+
+        # Get curve index from preset combo (0-16 or -1 for custom)
+        curve_index = self.curve_editor.get_selected_curve_index()
+        if curve_index is None or curve_index < 0:
+            # Custom curve - user needs to save to a user slot first
+            return
+
+        try:
+            # Get current response settings and update with new curve index
+            response = self.keyboard.get_gaming_response()
+            if response:
+                self.keyboard.set_gaming_response(
+                    response['angle_adj_enabled'],
+                    response['diagonal_angle'],
+                    response['square_output'],
+                    response['snappy_joystick'],
+                    curve_index
+                )
+        except Exception as e:
+            print(f"Error saving analog curve: {e}")
+
+    def on_user_curve_selected(self, slot_index):
+        """Handle user curve selection - load curve points from keyboard and save immediately"""
+        if not self.keyboard:
+            return
+
+        try:
+            # Fetch user curve from keyboard
+            curve_data = self.keyboard.get_user_curve(slot_index)
+            if curve_data and 'points' in curve_data:
+                # Load points into editor without triggering curve_changed
+                self.curve_editor.load_user_curve_points(curve_data['points'])
+
+                # Save with the correct curve index (7 + slot_index)
+                curve_index = 7 + slot_index
+                response = self.keyboard.get_gaming_response()
+                if response:
+                    self.keyboard.set_gaming_response(
+                        response['angle_adj_enabled'],
+                        response['diagonal_angle'],
+                        response['square_output'],
+                        response['snappy_joystick'],
+                        curve_index
+                    )
+        except Exception as e:
+            print(f"Error loading user curve: {e}")
 
     def on_save_curve_to_user(self, slot_index, curve_name):
         """Called when user wants to save current curve to a user slot"""
@@ -4144,6 +4198,18 @@ class GamingConfigurator(BasicEditor):
 
                 # Select the newly saved curve (curve index = 7 + slot_index)
                 self.curve_editor.select_curve(7 + slot_index)
+
+                # Immediately save to gaming response
+                curve_index = 7 + slot_index
+                response = self.keyboard.get_gaming_response()
+                if response:
+                    self.keyboard.set_gaming_response(
+                        response['angle_adj_enabled'],
+                        response['diagonal_angle'],
+                        response['square_output'],
+                        response['snappy_joystick'],
+                        curve_index
+                    )
             else:
                 QMessageBox.warning(None, "Error", "Failed to save curve")
         except Exception as e:
@@ -4190,6 +4256,41 @@ class GamingConfigurator(BasicEditor):
                     self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
                     self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
                     self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+
+                # Load user curve names (so dropdown is populated)
+                user_curve_names = self.keyboard.get_all_user_curve_names()
+                if user_curve_names and len(user_curve_names) == 10:
+                    self.curve_editor.set_user_curve_names(user_curve_names)
+
+                # Load gamepad response settings including curve
+                response = self.keyboard.get_gaming_response()
+                if response:
+                    self.angle_adj_checkbox.blockSignals(True)
+                    self.diagonal_angle_slider.blockSignals(True)
+                    self.square_output_checkbox.blockSignals(True)
+                    self.snappy_joystick_checkbox.blockSignals(True)
+
+                    self.angle_adj_checkbox.setChecked(response.get('angle_adj_enabled', False))
+                    self.diagonal_angle_slider.setValue(response.get('diagonal_angle', 0))
+                    self.diagonal_angle_label.setText(f"Diagonal Angle: {response.get('diagonal_angle', 0)}°")
+                    self.square_output_checkbox.setChecked(response.get('square_output', False))
+                    self.snappy_joystick_checkbox.setChecked(response.get('snappy_joystick', False))
+
+                    self.angle_adj_checkbox.blockSignals(False)
+                    self.diagonal_angle_slider.blockSignals(False)
+                    self.square_output_checkbox.blockSignals(False)
+                    self.snappy_joystick_checkbox.blockSignals(False)
+
+                    # Select curve in combo box
+                    curve_index = response.get('curve_index', 0)
+                    self.curve_editor.select_curve(curve_index)
+
+                    # If it's a user curve (7-16), load the actual points
+                    if curve_index >= 7 and curve_index <= 16:
+                        slot_index = curve_index - 7
+                        curve_data = self.keyboard.get_user_curve(slot_index)
+                        if curve_data and 'points' in curve_data:
+                            self.curve_editor.load_user_curve_points(curve_data['points'])
             except:
                 # Silently fail during rebuild - user can manually load if needed
                 pass

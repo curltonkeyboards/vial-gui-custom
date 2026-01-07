@@ -116,7 +116,7 @@ void route_usb_midi_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t nu
 void toggle_midi_clock_source(void);
 
 // HE Velocity Curve and Range System
-// Curve indices: 0-6 = Factory presets (Linear, Aggro, Slow, Smooth, Steep, Instant, Turbo)
+// Curve indices: 0-6 = Factory presets (Softest, Soft, Linear, Hard, Hardest, Aggro, Digital)
 //                7-16 = User curves (User 1-10)
 extern uint8_t he_velocity_curve;          // Curve index 0-16
 extern uint8_t he_velocity_min;            // 1-127
@@ -449,15 +449,15 @@ void user_curves_reset(void);
 uint8_t apply_curve(uint8_t input, uint8_t curve_index);
 
 // Curve indices:
-// 0-6:   Factory presets (Linear, Aggro, Slow, Smooth, Steep, Instant, Turbo)
+// 0-6:   Factory presets (Softest, Soft, Linear, Hard, Hardest, Aggro, Digital)
 // 7-16:  User curves 1-10
-#define CURVE_FACTORY_LINEAR    0
-#define CURVE_FACTORY_AGGRO     1
-#define CURVE_FACTORY_SLOW      2
-#define CURVE_FACTORY_SMOOTH    3
-#define CURVE_FACTORY_STEEP     4
-#define CURVE_FACTORY_INSTANT   5
-#define CURVE_FACTORY_TURBO     6
+#define CURVE_FACTORY_SOFTEST   0
+#define CURVE_FACTORY_SOFT      1
+#define CURVE_FACTORY_LINEAR    2
+#define CURVE_FACTORY_HARD      3
+#define CURVE_FACTORY_HARDEST   4
+#define CURVE_FACTORY_AGGRO     5
+#define CURVE_FACTORY_DIGITAL   6
 #define CURVE_USER_START        7
 #define CURVE_USER_END          16
 
