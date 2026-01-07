@@ -600,8 +600,8 @@ class TriggerSettingsTab(BasicEditor):
         self.keyswitch_diagram = KeyswitchDiagramWidget()
         viz_h_layout.addWidget(self.keyswitch_diagram)
 
-        # Vertical travel bar - positioned closer to diagram
-        self.actuation_visualizer = VerticalTravelBarWidget(bar_offset=20)
+        # Vertical travel bar
+        self.actuation_visualizer = VerticalTravelBarWidget()
         viz_h_layout.addWidget(self.actuation_visualizer)
 
         viz_layout.addLayout(viz_h_layout)
