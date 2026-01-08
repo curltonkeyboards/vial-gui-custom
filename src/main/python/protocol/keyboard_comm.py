@@ -67,8 +67,8 @@ PARAM_KEYSPLIT_HE_VELOCITY_MAX = 9
 PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE = 10
 PARAM_TRIPLESPLIT_HE_VELOCITY_MIN = 11
 PARAM_TRIPLESPLIT_HE_VELOCITY_MAX = 12
-PARAM_AFTERTOUCH_MODE = 13
-PARAM_AFTERTOUCH_CC = 14
+# PARAM_AFTERTOUCH_MODE (13) and PARAM_AFTERTOUCH_CC (14) are now per-layer
+# Use set_layer_actuation() instead
 PARAM_BASE_SUSTAIN = 15
 PARAM_KEYSPLIT_SUSTAIN = 16
 PARAM_TRIPLESPLIT_SUSTAIN = 17
@@ -1181,25 +1181,23 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "colorblindmode": data[12],
                     "cclooprecording": data[13] != 0,
                     "truesustain": data[14] != 0,
-                    # Global MIDI Settings (moved from per-layer)
-                    "aftertouch_mode": data[15] if len(data) > 15 else 0,
-                    "aftertouch_cc": data[16] if len(data) > 16 else 255,  # 255 = off (no CC sent)
+                    # aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
                     # Base/Main MIDI velocity settings
-                    "he_velocity_curve": data[17] if len(data) > 17 else 2,
-                    "he_velocity_min": data[18] if len(data) > 18 else 1,
-                    "he_velocity_max": data[19] if len(data) > 19 else 127,
+                    "he_velocity_curve": data[15] if len(data) > 15 else 2,
+                    "he_velocity_min": data[16] if len(data) > 16 else 1,
+                    "he_velocity_max": data[17] if len(data) > 17 else 127,
                     # KeySplit velocity settings
-                    "keysplit_he_velocity_curve": data[20] if len(data) > 20 else 2,
-                    "keysplit_he_velocity_min": data[21] if len(data) > 21 else 1,
-                    "keysplit_he_velocity_max": data[22] if len(data) > 22 else 127,
+                    "keysplit_he_velocity_curve": data[18] if len(data) > 18 else 2,
+                    "keysplit_he_velocity_min": data[19] if len(data) > 19 else 1,
+                    "keysplit_he_velocity_max": data[20] if len(data) > 20 else 127,
                     # TripleSplit velocity settings
-                    "triplesplit_he_velocity_curve": data[23] if len(data) > 23 else 2,
-                    "triplesplit_he_velocity_min": data[24] if len(data) > 24 else 1,
-                    "triplesplit_he_velocity_max": data[25] if len(data) > 25 else 127,
+                    "triplesplit_he_velocity_curve": data[21] if len(data) > 21 else 2,
+                    "triplesplit_he_velocity_min": data[22] if len(data) > 22 else 1,
+                    "triplesplit_he_velocity_max": data[23] if len(data) > 23 else 127,
                     # Sustain settings (0=Ignore, 1=ON)
-                    "base_sustain": data[26] if len(data) > 26 else 0,
-                    "keysplit_sustain": data[27] if len(data) > 27 else 0,
-                    "triplesplit_sustain": data[28] if len(data) > 28 else 0
+                    "base_sustain": data[24] if len(data) > 24 else 0,
+                    "keysplit_sustain": data[25] if len(data) > 25 else 0,
+                    "triplesplit_sustain": data[26] if len(data) > 26 else 0
                 })
                 
             return config if config else None
@@ -1212,10 +1210,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         Args:
             data: bytearray [layer, normal_actuation, midi_actuation, velocity_mode,
-                            velocity_speed_scale, flags] (6 bytes total)
+                            velocity_speed_scale, flags, aftertouch_mode, aftertouch_cc,
+                            vibrato_sensitivity, vibrato_decay_time_low, vibrato_decay_time_high]
+                  (11 bytes total)
 
         Note: Rapidfire settings are now per-key only (removed from layer settings).
-              Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings.
+              Aftertouch settings (mode, cc, vibrato_sensitivity, vibrato_decay_time) are per-layer.
         """
         try:
             packet = self._create_hid_packet(0xCA, 0, data)
@@ -1231,25 +1231,32 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             layer: Layer number (0-11)
 
         Returns:
-            dict: {normal, midi, velocity, vel_speed, use_per_key_velocity_curve} or None
+            dict: {normal, midi, velocity, vel_speed, flags, aftertouch_mode, aftertouch_cc,
+                   vibrato_sensitivity, vibrato_decay_time} or None
 
         Note: Rapidfire settings are now per-key only (removed from layer settings).
-              Global MIDI settings (velocity curves, aftertouch, transpose, channel) moved to keyboard settings.
+              Aftertouch settings are per-layer.
         """
         try:
             packet = self._create_hid_packet(0xCB, layer, None)
             response = self.usb_send(self.dev, packet, retries=20)
 
-            if not response or len(response) < 11:
+            if not response or len(response) < 16:  # 5 header + 11 data bytes
                 return None
 
             flags = response[10]
+            vibrato_decay_time = response[14] | (response[15] << 8)
             return {
                 'normal': response[6],
                 'midi': response[7],
                 'velocity': response[8],
                 'vel_speed': response[9],
-                'use_per_key_velocity_curve': (flags & 0x08) != 0  # Bit 3 = LAYER_ACTUATION_FLAG_USE_PER_KEY_VELOCITY_CURVE
+                'flags': flags,
+                'use_per_key_velocity_curve': (flags & 0x08) != 0,
+                'aftertouch_mode': response[11],
+                'aftertouch_cc': response[12],
+                'vibrato_sensitivity': response[13],
+                'vibrato_decay_time': vibrato_decay_time
             }
         except Exception as e:
             return None
@@ -1258,17 +1265,20 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once
 
         Returns:
-            list: 96 bytes (12 layers × 8 bytes) or None on error
+            list: 120 bytes (12 layers × 10 bytes) or None on error
+            Each layer: [normal, midi, velocity_mode, vel_speed, flags,
+                        aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+                        vibrato_decay_time_low, vibrato_decay_time_high]
 
-        Note: Global MIDI settings moved to keyboard settings
+        Note: Aftertouch settings are now per-layer.
         """
         try:
             packet = self._create_hid_packet(0xCC, 0, None)
             self.usb_send(self.dev, packet, retries=20)
 
-            # Collect 4 packets (96 bytes total, 26 bytes per packet except last)
+            # Collect 6 packets (120 bytes total, 20 bytes per packet - 2 layers each)
             packets = []
-            for attempt in range(40):
+            for attempt in range(60):
                 try:
                     if hasattr(self.dev, 'read'):
                         data = self.dev.read(32, timeout_ms=100)
@@ -1277,16 +1287,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
                     if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
                         packet_num = data[4]
-                        if packet_num < 4:
-                            packets.append((packet_num, data[6:32]))
+                        if packet_num < 6:
+                            packets.append((packet_num, data[6:26]))  # 20 bytes of data
 
-                    if len(packets) >= 4:
+                    if len(packets) >= 6:
                         break
                 except:
                     time.sleep(0.01)
                     continue
 
-            if len(packets) < 4:
+            if len(packets) < 6:
                 return None
 
             # Sort packets and combine
@@ -1295,7 +1305,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             for _, packet_data in packets:
                 actuations.extend(packet_data)
 
-            return actuations[:96]  # 12 layers × 8 bytes
+            return actuations[:120]  # 12 layers × 10 bytes
         except Exception as e:
             return None
 

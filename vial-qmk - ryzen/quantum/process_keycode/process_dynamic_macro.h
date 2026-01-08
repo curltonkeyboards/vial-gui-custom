@@ -361,9 +361,7 @@ typedef struct {
 	int colorblindmode;
 	bool cclooprecording;
 	bool truesustain;
-    // Global MIDI Settings (moved from per-layer actuation)
-    uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
-    uint8_t aftertouch_cc;                // 0-127 = CC number, 255 = off (no CC sent, only poly AT)
+    // aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuation_t)
     // Base/Main MIDI HE Velocity curve and range
     uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)
@@ -412,9 +410,7 @@ extern bool alternate_restart_mode;
 extern int colorblindmode;
 extern bool cclooprecording;
 extern bool truesustain;
-// Global MIDI Settings (moved from per-layer)
-extern uint8_t aftertouch_mode;
-extern uint8_t aftertouch_cc;
+// aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
 extern uint8_t he_velocity_curve;
 extern uint8_t he_velocity_min;
 extern uint8_t he_velocity_max;
