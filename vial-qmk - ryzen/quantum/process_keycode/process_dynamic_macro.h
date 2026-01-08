@@ -234,10 +234,14 @@ void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t vel_speed, uint8_t flags);
+                         uint8_t vel_speed, uint8_t flags, uint8_t aftertouch_mode,
+                         uint8_t aftertouch_cc, uint8_t vibrato_sensitivity,
+                         uint16_t vibrato_decay_time);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *vel_speed, uint8_t *flags);
+                         uint8_t *vel_speed, uint8_t *flags, uint8_t *aftertouch_mode,
+                         uint8_t *aftertouch_cc, uint8_t *vibrato_sensitivity,
+                         uint16_t *vibrato_decay_time);
 
 bool layer_use_fixed_velocity(uint8_t layer);
 // Add these HID command definitions to vial.c (around line with other HID_CMD defines)
