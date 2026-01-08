@@ -56,8 +56,7 @@ extern uint8_t (*optimized_midi_positions)[72][6];
 extern uint8_t (*optimized_midi_velocities)[72];
 extern uint8_t layer_to_index_map[12];
 extern uint8_t ACTUAL_MIDI_LAYERS;
-extern uint8_t aftertouch_mode;
-extern uint8_t aftertouch_cc;
+// aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
 extern uint8_t channel_number;
 extern layer_actuation_t layer_actuations[12];
 extern bool aftertouch_pedal_active;
@@ -139,6 +138,10 @@ typedef struct {
     uint8_t last_aftertouch;
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
+
+    // Vibrato decay tracking
+    uint8_t vibrato_value;       // Current vibrato value (for decay)
+    uint16_t vibrato_last_time;  // Last time vibrato was updated (for decay calculation)
 } midi_key_state_t;
 
 // ============================================================================
@@ -169,6 +172,11 @@ static struct {
     uint8_t midi_actuation;
     uint8_t velocity_mode;
     uint8_t velocity_speed_scale;
+    // Per-layer aftertouch settings
+    uint8_t aftertouch_mode;
+    uint8_t aftertouch_cc;
+    uint8_t vibrato_sensitivity;
+    uint16_t vibrato_decay_time;
 } active_settings;
 
 // ADC configuration
@@ -301,6 +309,11 @@ static inline void update_active_settings(uint8_t current_layer) {
         active_settings.midi_actuation = layer_actuations[current_layer].midi_actuation;
         active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
         active_settings.velocity_speed_scale = layer_actuations[current_layer].velocity_speed_scale;
+        // Per-layer aftertouch settings
+        active_settings.aftertouch_mode = layer_actuations[current_layer].aftertouch_mode;
+        active_settings.aftertouch_cc = layer_actuations[current_layer].aftertouch_cc;
+        active_settings.vibrato_sensitivity = layer_actuations[current_layer].vibrato_sensitivity;
+        active_settings.vibrato_decay_time = layer_actuations[current_layer].vibrato_decay_time;
         cached_layer_settings_layer = current_layer;
     }
 }
@@ -765,13 +778,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 
     // Aftertouch handling - now sends polyphonic aftertouch + optional CC
-    if (aftertouch_mode > 0 && pressed) {
+    // Uses per-layer settings from active_settings
+    if (active_settings.aftertouch_mode > 0 && pressed) {
         uint8_t aftertouch_value = 0;
         bool send_aftertouch = false;
 
         uint8_t normal_threshold = (active_settings.normal_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
 
-        switch (aftertouch_mode) {
+        switch (active_settings.aftertouch_mode) {
             case 1:  // Reverse
                 if (aftertouch_pedal_active) {
                     aftertouch_value = 127 - ((travel * 127) / 240);
@@ -797,16 +811,55 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 }
                 break;
 
-            case 4:  // Vibrato
+            case 4:  // Vibrato with sensitivity and decay
                 if (travel >= normal_threshold) {
                     uint16_t time_delta = now - state->last_time;
                     uint8_t travel_delta = abs((int)travel - (int)state->last_travel);
 
+                    // Calculate new vibrato value from movement
+                    uint8_t new_vibrato = 0;
                     if (time_delta > 0 && travel_delta > 0) {
-                        uint8_t movement_speed = (travel_delta * 100) / time_delta;
-                        aftertouch_value = (movement_speed > 127) ? 127 : movement_speed;
-                        send_aftertouch = true;
+                        // Apply sensitivity scaling (50-200, where 100 = normal)
+                        uint16_t sensitivity = active_settings.vibrato_sensitivity;
+                        if (sensitivity < 50) sensitivity = 50;
+                        if (sensitivity > 200) sensitivity = 200;
+
+                        // movement_speed with sensitivity: (travel_delta * sensitivity) / time_delta
+                        uint16_t movement_speed = ((uint16_t)travel_delta * sensitivity) / time_delta;
+                        new_vibrato = (movement_speed > 127) ? 127 : (uint8_t)movement_speed;
                     }
+
+                    // Apply decay to current vibrato value
+                    uint16_t decay_time = active_settings.vibrato_decay_time;
+                    if (decay_time > 0 && state->vibrato_value > 0) {
+                        // Calculate how much to decay based on time elapsed
+                        uint16_t decay_elapsed = now - state->vibrato_last_time;
+                        // Linear decay: reduce by (127 * elapsed_ms / decay_time) per cycle
+                        uint16_t decay_amount = ((uint32_t)127 * decay_elapsed) / decay_time;
+                        if (decay_amount >= state->vibrato_value) {
+                            state->vibrato_value = 0;
+                        } else {
+                            state->vibrato_value -= decay_amount;
+                        }
+                    } else if (decay_time == 0) {
+                        // Instant decay when no movement
+                        if (new_vibrato == 0) {
+                            state->vibrato_value = 0;
+                        }
+                    }
+
+                    // Take the max of new vibrato and decayed value
+                    if (new_vibrato > state->vibrato_value) {
+                        state->vibrato_value = new_vibrato;
+                    }
+
+                    state->vibrato_last_time = now;
+                    aftertouch_value = state->vibrato_value;
+                    send_aftertouch = true;
+                } else {
+                    // Below threshold - decay to zero
+                    state->vibrato_value = 0;
+                    state->vibrato_last_time = now;
                 }
                 break;
         }
@@ -817,15 +870,25 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, aftertouch_value);
 
             // Optionally also send CC if aftertouch_cc is not "off" (255)
-            if (aftertouch_cc != 255) {
-                midi_send_cc(&midi_device, state->note_channel, aftertouch_cc, aftertouch_value);
+            if (active_settings.aftertouch_cc != 255) {
+                midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, aftertouch_value);
             }
 
             state->last_aftertouch = aftertouch_value;
             #endif
         }
-    } else if (!pressed) {
+    } else if (!pressed && state->was_pressed) {
+        // Key released - send aftertouch reset (value 0) for all modes
+        if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
+            #ifdef MIDI_ENABLE
+            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
+            if (active_settings.aftertouch_cc != 255) {
+                midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, 0);
+            }
+            #endif
+        }
         state->last_aftertouch = 0;
+        state->vibrato_value = 0;
     }
 }
 
@@ -1086,7 +1149,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                         break;
                 }
 
-                if ((aftertouch_mode == 1 || aftertouch_mode == 2) &&
+                if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
                     aftertouch_pedal_active && state->was_pressed) {
                     pressed = true;
                 }

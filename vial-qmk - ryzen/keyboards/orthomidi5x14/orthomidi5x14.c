@@ -2202,17 +2202,20 @@ uint8_t ACTUAL_MAX_NOTES_PER_LAYER = 0;
 uint8_t layer_to_index_map[12];  // Maps layer number to array index
 uint8_t (*optimized_midi_positions)[72][6] = NULL;  // Dynamic 3D array for LED positions
 uint8_t (*optimized_midi_velocities)[72] = NULL;     // Dynamic 2D array for velocities
-uint8_t aftertouch_cc = 255;  // 255 = off (no CC sent), 0-127 = send CC alongside poly aftertouch
 
-// Aftertouch mode
-uint8_t aftertouch_mode = 0;  // 0=off, 1=reverse, 2=bottom-release, 3=post-actuation, 4=vibrato
+// Aftertouch pedal state (runtime, not saved)
 bool aftertouch_pedal_active = false;
 
-
+// Layer actuations with per-layer aftertouch settings
+// {normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags,
+//  aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time}
 layer_actuation_t layer_actuations[12] = {
-    {80, 80}, {80, 80}, {80, 80}, {80, 80},
-    {80, 80}, {80, 80}, {80, 80}, {80, 80},
-    {80, 80}, {80, 80}, {80, 80}, {80, 80}
+    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
+    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
+    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
+    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
+    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
+    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200}
 };
 
 // =============================================================================
@@ -2575,9 +2578,8 @@ void reset_keyboard_settings(void) {
     cclooprecording = false;
     truesustain = false;
 
-    // Reset Global MIDI Settings (velocity curves, aftertouch, sustain)
-    aftertouch_mode = 0;
-    aftertouch_cc = 255;  // 255 = off (no CC sent)
+    // Reset Global MIDI Settings (velocity curves, sustain)
+    // Note: aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
     he_velocity_curve = 0;  // Linear (curve index 0)
     he_velocity_min = 1;
     he_velocity_max = 127;
@@ -2622,9 +2624,7 @@ void reset_keyboard_settings(void) {
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
-    // Global MIDI Settings
-    keyboard_settings.aftertouch_mode = aftertouch_mode;
-    keyboard_settings.aftertouch_cc = aftertouch_cc;
+    // Global MIDI Settings (aftertouch settings are now per-layer)
     keyboard_settings.he_velocity_curve = he_velocity_curve;
     keyboard_settings.he_velocity_min = he_velocity_min;
     keyboard_settings.he_velocity_max = he_velocity_max;
@@ -2684,9 +2684,8 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;
 
-    // Load Global MIDI Settings (velocity curves, aftertouch, sustain)
-    aftertouch_mode = keyboard_settings.aftertouch_mode;
-    aftertouch_cc = keyboard_settings.aftertouch_cc;
+    // Load Global MIDI Settings (velocity curves, sustain)
+    // Note: aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
     he_velocity_curve = keyboard_settings.he_velocity_curve;
     he_velocity_min = keyboard_settings.he_velocity_min;
     he_velocity_max = keyboard_settings.he_velocity_max;

@@ -20,7 +20,7 @@ from protocol.keyboard_comm import (
     PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
     PARAM_KEYSPLIT_HE_VELOCITY_CURVE, PARAM_KEYSPLIT_HE_VELOCITY_MIN, PARAM_KEYSPLIT_HE_VELOCITY_MAX,
     PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, PARAM_TRIPLESPLIT_HE_VELOCITY_MAX,
-    PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
+    # PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC removed - aftertouch is now per-layer
     PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
     PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS,
     PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS
@@ -1281,39 +1281,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
 
-        # Aftertouch - REDUCED WIDTH
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch:")), 4, 3)
-        self.global_aftertouch = ArrowComboBox()
-        self.global_aftertouch.setMinimumWidth(80)  # REDUCED from 120
-        self.global_aftertouch.setMaximumWidth(120)  # Added max width
-        self.global_aftertouch.setMinimumHeight(25)
-        self.global_aftertouch.setMaximumHeight(25)
-        self.global_aftertouch.addItem("Off", 0)
-        self.global_aftertouch.addItem("Reverse", 1)
-        self.global_aftertouch.addItem("Bottom-Out", 2)
-        self.global_aftertouch.addItem("Post-Actuation", 3)
-        self.global_aftertouch.addItem("Vibrato", 4)
-        self.global_aftertouch.setCurrentIndex(0)  # Default: Off
-        self.global_aftertouch.setEditable(True)
-        self.global_aftertouch.lineEdit().setReadOnly(True)
-        self.global_aftertouch.lineEdit().setAlignment(Qt.AlignCenter)
-        advanced_layout.addWidget(self.global_aftertouch, 4, 4)
-
-        # Aftertouch CC - SAME WIDTH AS CC INTERVAL
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch CC:")), 5, 1)
-        self.global_aftertouch_cc = ArrowComboBox()
-        self.global_aftertouch_cc.setMinimumWidth(80)  # REDUCED from 120
-        self.global_aftertouch_cc.setMaximumWidth(120)  # Added max width
-        self.global_aftertouch_cc.setMinimumHeight(25)
-        self.global_aftertouch_cc.setMaximumHeight(25)
-        self.global_aftertouch_cc.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
-        for cc in range(128):
-            self.global_aftertouch_cc.addItem(f"CC#{cc}", cc)
-        self.global_aftertouch_cc.setCurrentIndex(0)  # Default: Off
-        self.global_aftertouch_cc.setEditable(True)
-        self.global_aftertouch_cc.lineEdit().setReadOnly(True)
-        self.global_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
-        advanced_layout.addWidget(self.global_aftertouch_cc, 5, 2)
+        # Aftertouch is now per-layer (configured in Layer Actuation section)
+        aftertouch_note = QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch: Per-Layer"))
+        aftertouch_note.setStyleSheet("QLabel { color: #888; font-style: italic; }")
+        advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
 
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
@@ -1471,12 +1442,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.base_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_BASE_SUSTAIN, self.base_sustain.currentData())
         )
-        self.global_aftertouch.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_AFTERTOUCH_MODE, self.global_aftertouch.currentData())
-        )
-        self.global_aftertouch_cc.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_AFTERTOUCH_CC, self.global_aftertouch_cc.currentData())
-        )
+        # global_aftertouch connections removed - aftertouch is now per-layer
 
         # KeySplit widgets
         self.key_split_channel.currentIndexChanged.connect(
@@ -1658,10 +1624,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "global_transpose": self.global_transpose.currentData(),
             "global_channel": self.global_channel.currentData(),
             "global_velocity_curve": self.global_velocity_curve.currentData(),
-            "global_aftertouch": self.global_aftertouch.currentData(),
+            # global_aftertouch removed - now per-layer
             "global_velocity_min": self.global_velocity_min.value(),  # Changed from currentData() to value()
             "global_velocity_max": self.global_velocity_max.value(),  # Changed from currentData() to value()
-            "global_aftertouch_cc": self.global_aftertouch_cc.currentData(),
+            # global_aftertouch_cc removed - now per-layer
             # Sustain settings
             "base_sustain": self.base_sustain.currentData(),
             "keysplit_sustain": self.keysplit_sustain.currentData(),
@@ -1715,10 +1681,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.global_transpose, config.get("global_transpose"), 0)
         set_combo_by_data(self.global_channel, config.get("global_channel"), 0)
         set_combo_by_data(self.global_velocity_curve, config.get("global_velocity_curve"), 2)
-        set_combo_by_data(self.global_aftertouch, config.get("global_aftertouch"), 0)
+        # global_aftertouch removed - now per-layer
         self.global_velocity_min.setValue(config.get("global_velocity_min", 1))  # Changed to slider setValue
         self.global_velocity_max.setValue(config.get("global_velocity_max", 127))  # Changed to slider setValue
-        set_combo_by_data(self.global_aftertouch_cc, config.get("global_aftertouch_cc"), 255)
+        # global_aftertouch_cc removed - now per-layer
         # Sustain settings
         set_combo_by_data(self.base_sustain, config.get("base_sustain"), 0)
         set_combo_by_data(self.keysplit_sustain, config.get("keysplit_sustain"), 0)
@@ -1775,12 +1741,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["velocity_curve3"]; offset += 1
         data[offset] = settings["velocity_min3"]; offset += 1
         data[offset] = settings["velocity_max3"]; offset += 1
-        # Global MIDI velocity and aftertouch settings
+        # Global MIDI velocity settings (aftertouch is now per-layer)
         data[offset] = settings["global_velocity_curve"]; offset += 1
         data[offset] = settings["global_velocity_min"]; offset += 1
         data[offset] = settings["global_velocity_max"]; offset += 1
-        data[offset] = settings["global_aftertouch"]; offset += 1
-        data[offset] = settings["global_aftertouch_cc"]; offset += 1
+        data[offset] = 0; offset += 1  # placeholder (aftertouch is per-layer)
+        data[offset] = 255; offset += 1  # placeholder (aftertouch_cc is per-layer, 255=off)
         # Sustain settings (bytes 26-28)
         data[offset] = settings["base_sustain"]; offset += 1
         data[offset] = settings["keysplit_sustain"]; offset += 1
@@ -1913,10 +1879,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "global_transpose": 0,
             "global_channel": 0,
             "global_velocity_curve": 2,
-            "global_aftertouch": 0,
+            # global_aftertouch removed - now per-layer
             "global_velocity_min": 1,
             "global_velocity_max": 127,
-            "global_aftertouch_cc": 255,  # 255 = off (no CC sent)
+            # global_aftertouch_cc removed - now per-layer
             "base_sustain": 0,
             "keysplit_sustain": 0,
             "triplesplit_sustain": 0
@@ -1974,6 +1940,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_vel': 10,
                 'vel_speed': 10,
                 'aftertouch_cc': 255,  # 255 = off (no CC sent)
+                'vibrato_sensitivity': 100,  # 100% = normal
+                'vibrato_decay_time': 200,   # 200ms decay
                 'rapidfire_enabled': False,
                 'midi_rapidfire_enabled': False,
                 # HE Velocity defaults
@@ -2185,7 +2153,113 @@ class LayerActuationConfigurator(BasicEditor):
         rapid_slider.valueChanged.connect(
             lambda v, lbl=rapid_value_label: self.on_master_slider_changed('rapid', v, lbl)
         )
-        
+
+        # === AFTERTOUCH CONTROLS (always visible) ===
+        # Aftertouch Mode dropdown
+        aftertouch_layout = QHBoxLayout()
+        aftertouch_label = QLabel(tr("LayerActuationConfigurator", "Aftertouch Mode:"))
+        aftertouch_label.setMinimumWidth(200)
+        aftertouch_layout.addWidget(aftertouch_label)
+
+        aftertouch_combo = ArrowComboBox()
+        aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        aftertouch_combo.addItem("Off", 0)
+        aftertouch_combo.addItem("Reverse", 1)
+        aftertouch_combo.addItem("Bottom-Out", 2)
+        aftertouch_combo.addItem("Post-Actuation", 3)
+        aftertouch_combo.addItem("Vibrato", 4)
+        aftertouch_combo.setCurrentIndex(0)
+        aftertouch_combo.setEditable(True)
+        aftertouch_combo.lineEdit().setReadOnly(True)
+        aftertouch_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        aftertouch_layout.addWidget(aftertouch_combo)
+        aftertouch_layout.addStretch()
+        layout.addLayout(aftertouch_layout)
+        aftertouch_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
+        )
+
+        # Aftertouch CC dropdown
+        aftertouch_cc_layout = QHBoxLayout()
+        aftertouch_cc_label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
+        aftertouch_cc_label.setMinimumWidth(200)
+        aftertouch_cc_layout.addWidget(aftertouch_cc_label)
+
+        aftertouch_cc_combo = ArrowComboBox()
+        aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        aftertouch_cc_combo.addItem("Off", 255)
+        for cc in range(128):
+            aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
+        aftertouch_cc_combo.setCurrentIndex(0)
+        aftertouch_cc_combo.setEditable(True)
+        aftertouch_cc_combo.lineEdit().setReadOnly(True)
+        aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        aftertouch_cc_layout.addWidget(aftertouch_cc_combo)
+        aftertouch_cc_layout.addStretch()
+        layout.addLayout(aftertouch_cc_layout)
+        aftertouch_cc_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
+        )
+
+        # Vibrato Sensitivity slider (hidden by default, shown when Vibrato mode)
+        vibrato_sens_widget = QWidget()
+        vibrato_sens_layout = QHBoxLayout()
+        vibrato_sens_layout.setContentsMargins(0, 0, 0, 0)
+        vibrato_sens_widget.setLayout(vibrato_sens_layout)
+
+        vibrato_sens_label = QLabel(tr("LayerActuationConfigurator", "Vibrato Sensitivity:"))
+        vibrato_sens_label.setMinimumWidth(200)
+        vibrato_sens_layout.addWidget(vibrato_sens_label)
+
+        vibrato_sens_slider = QSlider(Qt.Horizontal)
+        vibrato_sens_slider.setMinimum(50)
+        vibrato_sens_slider.setMaximum(200)
+        vibrato_sens_slider.setValue(100)
+        vibrato_sens_layout.addWidget(vibrato_sens_slider)
+
+        vibrato_sens_value_label = QLabel("100%")
+        vibrato_sens_value_label.setMinimumWidth(60)
+        vibrato_sens_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        vibrato_sens_layout.addWidget(vibrato_sens_value_label)
+
+        layout.addWidget(vibrato_sens_widget)
+        vibrato_sens_widget.setVisible(False)
+        vibrato_sens_slider.valueChanged.connect(
+            lambda v, lbl=vibrato_sens_value_label: self.on_master_slider_changed('vibrato_sensitivity', v, lbl)
+        )
+
+        # Vibrato Decay Time slider (hidden by default, shown when Vibrato mode)
+        vibrato_decay_widget = QWidget()
+        vibrato_decay_layout = QHBoxLayout()
+        vibrato_decay_layout.setContentsMargins(0, 0, 0, 0)
+        vibrato_decay_widget.setLayout(vibrato_decay_layout)
+
+        vibrato_decay_label = QLabel(tr("LayerActuationConfigurator", "Vibrato Decay Time:"))
+        vibrato_decay_label.setMinimumWidth(200)
+        vibrato_decay_layout.addWidget(vibrato_decay_label)
+
+        vibrato_decay_slider = QSlider(Qt.Horizontal)
+        vibrato_decay_slider.setMinimum(0)
+        vibrato_decay_slider.setMaximum(2000)
+        vibrato_decay_slider.setValue(200)
+        vibrato_decay_layout.addWidget(vibrato_decay_slider)
+
+        vibrato_decay_value_label = QLabel("200ms")
+        vibrato_decay_value_label.setMinimumWidth(60)
+        vibrato_decay_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        vibrato_decay_layout.addWidget(vibrato_decay_value_label)
+
+        layout.addWidget(vibrato_decay_widget)
+        vibrato_decay_widget.setVisible(False)
+        vibrato_decay_slider.valueChanged.connect(
+            lambda v, lbl=vibrato_decay_value_label: self.on_master_slider_changed('vibrato_decay_time', v, lbl)
+        )
+
+        # Connect aftertouch mode to show/hide vibrato controls
+        aftertouch_combo.currentIndexChanged.connect(
+            lambda idx: self.on_aftertouch_mode_changed(aftertouch_combo, vibrato_sens_widget, vibrato_decay_widget)
+        )
+
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
         advanced_layout_main = QVBoxLayout()
@@ -2252,55 +2326,9 @@ class LayerActuationConfigurator(BasicEditor):
         midi_slider.valueChanged.connect(
             lambda v, lbl=midi_value_label: self.on_master_slider_changed('midi', v, lbl)
         )
-        
-        # Aftertouch Mode (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch Mode:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        aftertouch_combo = ArrowComboBox()
-        aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        aftertouch_combo.addItem("Off", 0)
-        aftertouch_combo.addItem("Reverse", 1)
-        aftertouch_combo.addItem("Bottom-Out", 2)
-        aftertouch_combo.addItem("Post-Actuation", 3)
-        aftertouch_combo.addItem("Vibrato", 4)
-        aftertouch_combo.setCurrentIndex(0)
-        aftertouch_combo.setEditable(True)
-        aftertouch_combo.lineEdit().setReadOnly(True)
-        aftertouch_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(aftertouch_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        aftertouch_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
-        )
-        
-        # Aftertouch CC (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        aftertouch_cc_combo = ArrowComboBox()
-        aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        aftertouch_cc_combo.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
-        for cc in range(128):
-            aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
-        aftertouch_cc_combo.setCurrentIndex(0)  # Default: Off
-        aftertouch_cc_combo.setEditable(True)
-        aftertouch_cc_combo.lineEdit().setReadOnly(True)
-        aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(aftertouch_cc_combo)
-        combo_layout.addStretch()
 
-        advanced_layout.addLayout(combo_layout)
-        aftertouch_cc_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
-        )
-        
+        # Note: Aftertouch controls moved outside advanced section (always visible)
+
         # Velocity Mode (dropdown)
         combo_layout = QHBoxLayout()
         label = QLabel(tr("LayerActuationConfigurator", "Velocity Mode:"))
@@ -2565,6 +2593,12 @@ class LayerActuationConfigurator(BasicEditor):
             'midi_label': midi_value_label,
             'aftertouch_combo': aftertouch_combo,
             'aftertouch_cc_combo': aftertouch_cc_combo,
+            'vibrato_sensitivity_slider': vibrato_sens_slider,
+            'vibrato_sensitivity_label': vibrato_sens_value_label,
+            'vibrato_sensitivity_widget': vibrato_sens_widget,
+            'vibrato_decay_time_slider': vibrato_decay_slider,
+            'vibrato_decay_time_label': vibrato_decay_value_label,
+            'vibrato_decay_time_widget': vibrato_decay_widget,
             'velocity_combo': velocity_combo,
             'vel_speed_combo': vel_speed_combo,
             'rapid_checkbox': rapid_checkbox,
@@ -3120,13 +3154,24 @@ class LayerActuationConfigurator(BasicEditor):
         if not self.per_layer_enabled:
             for layer_data in self.layer_data:
                 layer_data['use_fixed_velocity'] = enabled
-    
+
+    def on_aftertouch_mode_changed(self, combo, vibrato_sens_widget, vibrato_decay_widget):
+        """Handle aftertouch mode changes - show/hide vibrato controls"""
+        mode = combo.currentData()
+        is_vibrato = (mode == 4)  # Mode 4 = Vibrato
+        vibrato_sens_widget.setVisible(is_vibrato)
+        vibrato_decay_widget.setVisible(is_vibrato)
+
     def on_master_slider_changed(self, key, value, label):
         """Handle master slider changes"""
         if key in ['normal', 'midi']:
             label.setText(f"{value * 0.025:.2f}mm ({value})")
         elif key == 'midi_rapid_vel':
             label.setText(f"±{value}")
+        elif key == 'vibrato_sensitivity':
+            label.setText(f"{value}%")
+        elif key == 'vibrato_decay_time':
+            label.setText(f"{value}ms")
         else:
             label.setText(str(value))
         
@@ -3183,6 +3228,8 @@ class LayerActuationConfigurator(BasicEditor):
             'midi_rapid_vel': self.master_widgets['midi_rapid_vel_slider'].value(),
             'vel_speed': self.master_widgets['vel_speed_combo'].currentData(),
             'aftertouch_cc': self.master_widgets['aftertouch_cc_combo'].currentData(),
+            'vibrato_sensitivity': self.master_widgets['vibrato_sensitivity_slider'].value(),
+            'vibrato_decay_time': self.master_widgets['vibrato_decay_time_slider'].value(),
             'rapidfire_enabled': self.master_widgets['rapid_checkbox'].isChecked(),
             'midi_rapidfire_enabled': self.master_widgets['midi_rapid_checkbox'].isChecked(),
             # HE Velocity settings
@@ -3211,13 +3258,15 @@ class LayerActuationConfigurator(BasicEditor):
             data_dict = {
                 'normal': layer_data['normal'],
                 'midi': layer_data['midi'],
-                'aftertouch': layer_data['aftertouch'],
+                'aftertouch': layer_data.get('aftertouch', 0),
                 'velocity': layer_data['velocity'],
                 'rapid': layer_data['rapid'],
                 'midi_rapid_sens': layer_data['midi_rapid_sens'],
                 'midi_rapid_vel': layer_data['midi_rapid_vel'],
                 'vel_speed': layer_data['vel_speed'],
-                'aftertouch_cc': layer_data['aftertouch_cc'],
+                'aftertouch_cc': layer_data.get('aftertouch_cc', 255),
+                'vibrato_sensitivity': layer_data.get('vibrato_sensitivity', 100),
+                'vibrato_decay_time': layer_data.get('vibrato_decay_time', 200),
                 'flags': flags,
                 # HE Velocity settings
                 'he_curve': layer_data['he_curve'],
@@ -3233,40 +3282,40 @@ class LayerActuationConfigurator(BasicEditor):
             # Save current layer UI to data before saving
             if self.per_layer_enabled:
                 self.save_ui_to_layer(self.current_layer)
-            
+
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
-            
+
             actuations = self.get_all_actuations()
-            
-            # Send all 12 layers (14 bytes each: layer + 10 original + 3 HE velocity)
+
+            # Send all 12 layers (11 bytes each)
+            # Protocol: [layer, normal, midi, velocity_mode, vel_speed, flags,
+            #            aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+            #            vibrato_decay_time_low, vibrato_decay_time_high]
             for layer, values in enumerate(actuations):
+                vibrato_decay = values['vibrato_decay_time']
                 data = bytearray([
                     layer,
                     values['normal'],
                     values['midi'],
-                    values['aftertouch'],
                     values['velocity'],
-                    values['rapid'],
-                    values['midi_rapid_sens'],
-                    values['midi_rapid_vel'],
                     values['vel_speed'],
-                    values['aftertouch_cc'],
                     values['flags'],
-                    # HE Velocity fields
-                    values['he_curve'],
-                    values['he_min'],
-                    values['he_max']
+                    values['aftertouch'],
+                    values['aftertouch_cc'],
+                    values['vibrato_sensitivity'],
+                    vibrato_decay & 0xFF,           # Low byte
+                    (vibrato_decay >> 8) & 0xFF     # High byte
                 ])
 
                 if not self.device.keyboard.set_layer_actuation(data):
                     raise RuntimeError(f"Failed to set actuation for layer {layer}")
-            
-            QMessageBox.information(None, "Success", 
+
+            QMessageBox.information(None, "Success",
                 "Layer actuations saved successfully!")
-                
+
         except Exception as e:
-            QMessageBox.critical(None, "Error", 
+            QMessageBox.critical(None, "Error",
                 f"Failed to save actuations: {str(e)}")
     
     def on_load_from_keyboard(self):
@@ -3274,105 +3323,113 @@ class LayerActuationConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
-            
-            # Get all actuations (156 bytes = 12 layers × 13 values)
-            # 10 original + 3 HE velocity (flags, he_curve, he_min, he_max)
+
+            # Get all actuations (120 bytes = 12 layers × 10 bytes)
+            # [normal, midi, velocity_mode, vel_speed, flags,
+            #  aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+            #  vibrato_decay_time_low, vibrato_decay_time_high]
             actuations = self.device.keyboard.get_all_layer_actuations()
 
-            if not actuations or len(actuations) != 156:
+            if not actuations or len(actuations) < 120:
                 raise RuntimeError("Failed to load actuations from keyboard")
 
             # Check if all layers are the same
             all_same = True
             first_values = {}
 
-            for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid',
-                                          'midi_rapid_sens', 'midi_rapid_vel', 'vel_speed',
-                                          'aftertouch_cc', 'flags', 'he_curve', 'he_min', 'he_max']):
+            # New protocol: 10 bytes per layer
+            keys = ['normal', 'midi', 'velocity', 'vel_speed', 'flags',
+                    'aftertouch', 'aftertouch_cc', 'vibrato_sensitivity',
+                    'vibrato_decay_low', 'vibrato_decay_high']
+
+            for key_idx, key in enumerate(keys):
                 first_values[key] = actuations[key_idx]
 
                 for layer in range(1, 12):
-                    offset = layer * 13 + key_idx
+                    offset = layer * 10 + key_idx
                     if actuations[offset] != first_values[key]:
                         all_same = False
                         break
                 if not all_same:
                     break
 
+            # Compute vibrato_decay_time from low/high bytes
+            first_values['vibrato_decay_time'] = first_values['vibrato_decay_low'] | (first_values['vibrato_decay_high'] << 8)
+
             # Load into layer data
             for layer in range(12):
-                offset = layer * 13
-                flags = actuations[offset + 9]
+                offset = layer * 10
+                flags = actuations[offset + 4]
+                vibrato_decay = actuations[offset + 8] | (actuations[offset + 9] << 8)
 
                 self.layer_data[layer] = {
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
-                    'aftertouch': actuations[offset + 2],
-                    'velocity': actuations[offset + 3],
-                    'rapid': actuations[offset + 4],
-                    'midi_rapid_sens': actuations[offset + 5],
-                    'midi_rapid_vel': actuations[offset + 6],
-                    'vel_speed': actuations[offset + 7],
-                    'aftertouch_cc': actuations[offset + 8],
+                    'velocity': actuations[offset + 2],
+                    'vel_speed': actuations[offset + 3],
+                    'aftertouch': actuations[offset + 5],
+                    'aftertouch_cc': actuations[offset + 6],
+                    'vibrato_sensitivity': actuations[offset + 7],
+                    'vibrato_decay_time': vibrato_decay,
                     'rapidfire_enabled': (flags & 0x01) != 0,
                     'midi_rapidfire_enabled': (flags & 0x02) != 0,
                     'use_fixed_velocity': (flags & 0x04) != 0,
-                    # HE Velocity fields
-                    'he_curve': actuations[offset + 10],
-                    'he_min': actuations[offset + 11],
-                    'he_max': actuations[offset + 12]
+                    # Defaults for fields not in new protocol (per-key now)
+                    'rapid': 4,
+                    'midi_rapid_sens': 4,
+                    'midi_rapid_vel': 0,
+                    'he_curve': 2,
+                    'he_min': 1,
+                    'he_max': 127
                 }
-            
+
             # Set master controls
             self.master_widgets['normal_slider'].setValue(first_values['normal'])
             self.master_widgets['midi_slider'].setValue(first_values['midi'])
-            
+
             for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed']:
                 combo = self.master_widgets[f'{key}_combo']
                 for i in range(combo.count()):
                     if combo.itemData(i) == first_values[key]:
                         combo.setCurrentIndex(i)
                         break
-            
-            # Rapidfire
+
+            # Vibrato sensitivity and decay
+            self.master_widgets['vibrato_sensitivity_slider'].setValue(first_values['vibrato_sensitivity'])
+            self.master_widgets['vibrato_decay_time_slider'].setValue(first_values['vibrato_decay_time'])
+
+            # Show/hide vibrato controls based on mode
+            is_vibrato = (first_values['aftertouch'] == 4)
+            self.master_widgets['vibrato_sensitivity_widget'].setVisible(is_vibrato)
+            self.master_widgets['vibrato_decay_time_widget'].setVisible(is_vibrato)
+
+            # Rapidfire (flags-based)
             first_flags = first_values['flags']
             rapid_enabled = (first_flags & 0x01) != 0
             self.master_widgets['rapid_checkbox'].setChecked(rapid_enabled)
             self.master_widgets['rapid_widget'].setVisible(rapid_enabled)
-            self.master_widgets['rapid_slider'].setValue(first_values['rapid'])
-            
+
             # MIDI Rapidfire
             midi_rapid_enabled = (first_flags & 0x02) != 0
             self.master_widgets['midi_rapid_checkbox'].setChecked(midi_rapid_enabled)
             self.master_widgets['midi_rapid_sens_widget'].setVisible(midi_rapid_enabled)
             self.master_widgets['midi_rapid_vel_widget'].setVisible(midi_rapid_enabled)
-            self.master_widgets['midi_rapid_sens_slider'].setValue(first_values['midi_rapid_sens'])
-            self.master_widgets['midi_rapid_vel_slider'].setValue(first_values['midi_rapid_vel'])
 
-            # HE Velocity settings
+            # HE Velocity settings (use defaults since not in layer protocol anymore)
             use_fixed_vel = (first_flags & 0x04) != 0
             self.master_widgets['use_fixed_vel_checkbox'].setChecked(use_fixed_vel)
-            self.master_widgets['he_min_slider'].setValue(first_values['he_min'])
-            self.master_widgets['he_max_slider'].setValue(first_values['he_max'])
-
-            # HE Velocity Curve combo
-            he_curve_combo = self.master_widgets['he_curve_combo']
-            for i in range(he_curve_combo.count()):
-                if he_curve_combo.itemData(i) == first_values['he_curve']:
-                    he_curve_combo.setCurrentIndex(i)
-                    break
 
             # Load current layer to UI if in per-layer mode
             if self.per_layer_enabled:
                 self.load_layer_to_ui(self.current_layer)
-            
+
             self.per_layer_checkbox.setChecked(not all_same)
-            
-            QMessageBox.information(None, "Success", 
+
+            QMessageBox.information(None, "Success",
                 "Layer actuations loaded successfully!")
-                
+
         except Exception as e:
-            QMessageBox.critical(None, "Error", 
+            QMessageBox.critical(None, "Error",
                 f"Failed to load actuations: {str(e)}")
     
     def on_reset(self):
@@ -3400,31 +3457,43 @@ class LayerActuationConfigurator(BasicEditor):
                     'midi_rapid_vel': 10,
                     'vel_speed': 10,
                     'aftertouch_cc': 255,  # 255 = off (no CC sent)
+                    'vibrato_sensitivity': 100,  # 100% = normal
+                    'vibrato_decay_time': 200,   # 200ms decay
                     'rapidfire_enabled': False,
-                    'midi_rapidfire_enabled': False
+                    'midi_rapidfire_enabled': False,
+                    'use_fixed_velocity': False,
+                    'he_curve': 2,
+                    'he_min': 1,
+                    'he_max': 127
                 }
-                
+
                 # Reset master
                 self.master_widgets['normal_slider'].setValue(defaults['normal'])
                 self.master_widgets['midi_slider'].setValue(defaults['midi'])
-                
+
                 for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed']:
                     combo = self.master_widgets[f'{key}_combo']
                     for i in range(combo.count()):
                         if combo.itemData(i) == defaults[key]:
                             combo.setCurrentIndex(i)
                             break
-                
+
+                # Vibrato controls
+                self.master_widgets['vibrato_sensitivity_slider'].setValue(defaults['vibrato_sensitivity'])
+                self.master_widgets['vibrato_decay_time_slider'].setValue(defaults['vibrato_decay_time'])
+                self.master_widgets['vibrato_sensitivity_widget'].setVisible(False)
+                self.master_widgets['vibrato_decay_time_widget'].setVisible(False)
+
                 self.master_widgets['rapid_checkbox'].setChecked(False)
                 self.master_widgets['rapid_widget'].setVisible(False)
                 self.master_widgets['rapid_slider'].setValue(defaults['rapid'])
-                
+
                 self.master_widgets['midi_rapid_checkbox'].setChecked(False)
                 self.master_widgets['midi_rapid_sens_widget'].setVisible(False)
                 self.master_widgets['midi_rapid_vel_widget'].setVisible(False)
                 self.master_widgets['midi_rapid_sens_slider'].setValue(defaults['midi_rapid_sens'])
                 self.master_widgets['midi_rapid_vel_slider'].setValue(defaults['midi_rapid_vel'])
-                
+
                 # Reset all layer data
                 for i in range(12):
                     self.layer_data[i] = defaults.copy()
