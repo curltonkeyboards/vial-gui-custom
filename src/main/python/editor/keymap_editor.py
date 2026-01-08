@@ -127,13 +127,13 @@ class QuickActuationWidget(QWidget):
         self.actuation_tab = self.create_actuation_tab()
         self.tab_widget.addTab(self.actuation_tab, "Actuation Settings")
 
-        # Create Aftertouch tab
-        self.aftertouch_tab = self.create_aftertouch_tab()
-        self.tab_widget.addTab(self.aftertouch_tab, "Aftertouch")
-
         # Create MIDI Settings tab
         self.midi_tab = self.create_midi_tab()
         self.tab_widget.addTab(self.midi_tab, "MIDI Settings")
+
+        # Create Advanced tab (formerly Aftertouch) - rightmost position
+        self.advanced_tab = self.create_advanced_tab()
+        self.tab_widget.addTab(self.advanced_tab, "Advanced")
 
     def create_actuation_tab(self):
         """Create the Actuation Settings tab"""
@@ -158,11 +158,6 @@ class QuickActuationWidget(QWidget):
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
         top_row_layout.addWidget(self.per_layer_checkbox)
 
-        self.advanced_checkbox = QCheckBox(tr("QuickActuationWidget", "Show Advanced"))
-        self.advanced_checkbox.setStyleSheet("QCheckBox { font-weight: normal; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
-        self.advanced_checkbox.stateChanged.connect(self.on_advanced_toggled)
-        top_row_layout.addWidget(self.advanced_checkbox)
-
         top_row_layout.addStretch()
         layout.addLayout(top_row_layout)
 
@@ -171,13 +166,27 @@ class QuickActuationWidget(QWidget):
         self.layer_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; color: #666; }")
         self.layer_label.setVisible(False)
         layout.addWidget(self.layer_label, alignment=Qt.AlignCenter)
-        
+
         # Separator
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line)
-        
+
+        # Per-key mode message (shown when per-key actuation is enabled)
+        self.per_key_message = QLabel(tr("QuickActuationWidget", "Per-key actuation enabled.\nChange per key actuation in Trigger Settings tab."))
+        self.per_key_message.setStyleSheet("QLabel { font-style: italic; font-size: 10px; color: #888; padding: 10px; }")
+        self.per_key_message.setAlignment(Qt.AlignCenter)
+        self.per_key_message.setVisible(False)
+        layout.addWidget(self.per_key_message)
+
+        # Container for sliders (hidden when per-key is enabled)
+        self.sliders_container = QWidget()
+        sliders_layout = QVBoxLayout()
+        sliders_layout.setContentsMargins(0, 0, 0, 0)
+        sliders_layout.setSpacing(6)
+        self.sliders_container.setLayout(sliders_layout)
+
         # Normal Keys Actuation slider - ALWAYS VISIBLE
         slider_layout = QHBoxLayout()
         slider_layout.setContentsMargins(0, 0, 0, 0)
@@ -186,25 +195,25 @@ class QuickActuationWidget(QWidget):
         label.setMinimumWidth(90)
         label.setMaximumWidth(90)
         slider_layout.addWidget(label)
-        
+
         self.normal_slider = QSlider(Qt.Horizontal)
         self.normal_slider.setMinimum(0)
         self.normal_slider.setMaximum(100)
         self.normal_slider.setValue(80)
         slider_layout.addWidget(self.normal_slider, 1)
-        
+
         self.normal_value_label = QLabel("2.00mm")
         self.normal_value_label.setMinimumWidth(50)
         self.normal_value_label.setMaximumWidth(50)
         self.normal_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
         slider_layout.addWidget(self.normal_value_label)
-        
-        layout.addLayout(slider_layout)
+
+        sliders_layout.addLayout(slider_layout)
         self.normal_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('normal', v, self.normal_value_label)
         )
 
-        # MIDI Keys Actuation slider (visible in advanced mode)
+        # MIDI Keys Actuation slider - now always visible
         midi_slider_layout = QHBoxLayout()
         midi_slider_layout.setContentsMargins(0, 0, 0, 0)
         midi_slider_layout.setSpacing(6)
@@ -225,83 +234,13 @@ class QuickActuationWidget(QWidget):
         self.midi_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9px; }")
         midi_slider_layout.addWidget(self.midi_value_label)
 
-        self.midi_widget = QWidget()
-        self.midi_widget.setLayout(midi_slider_layout)
-        self.midi_widget.setVisible(False)
-        layout.addWidget(self.midi_widget)
+        sliders_layout.addLayout(midi_slider_layout)
 
         self.midi_slider.valueChanged.connect(
             lambda v: self.on_slider_changed('midi', v, self.midi_value_label)
         )
 
-        # Note: Velocity Curve, Velocity Min/Max, Transpose, Channel, Aftertouch, and Aftertouch CC
-        # have been moved to the MIDI Settings tab as global keyboard settings
-
-        # === ADVANCED OPTIONS (hidden by default) ===
-        self.advanced_widget = QWidget()
-        advanced_layout = QVBoxLayout()
-        advanced_layout.setSpacing(6)
-        advanced_layout.setContentsMargins(0, 5, 0, 0)
-        self.advanced_widget.setLayout(advanced_layout)
-        self.advanced_widget.setVisible(False)
-        
-        # Separator
-        adv_line = QFrame()
-        adv_line.setFrameShape(QFrame.HLine)
-        adv_line.setFrameShadow(QFrame.Sunken)
-        advanced_layout.addWidget(adv_line)
-
-        # Velocity Mode combo
-        combo_layout = QHBoxLayout()
-        combo_layout.setContentsMargins(0, 0, 0, 0)
-        combo_layout.setSpacing(6)
-        label = QLabel(tr("QuickActuationWidget", "Velocity:"))
-        label.setMinimumWidth(90)
-        label.setMaximumWidth(90)
-        combo_layout.addWidget(label)
-
-        self.velocity_combo = ArrowComboBox()
-        self.velocity_combo.setMaximumHeight(30)
-        self.velocity_combo.setMaximumWidth(180)
-        self.velocity_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        self.velocity_combo.addItem("Fixed (64)", 0)
-        self.velocity_combo.addItem("Peak at Apex", 1)
-        self.velocity_combo.addItem("Speed-Based", 2)
-        self.velocity_combo.addItem("Speed + Peak", 3)
-        self.velocity_combo.setCurrentIndex(2)
-        self.velocity_combo.setEditable(True)
-        self.velocity_combo.lineEdit().setReadOnly(True)
-        self.velocity_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(self.velocity_combo, 1)
-        
-        advanced_layout.addLayout(combo_layout)
-        self.velocity_combo.currentIndexChanged.connect(self.on_combo_changed)
-        
-        # Velocity Speed Scale combo
-        combo_layout = QHBoxLayout()
-        combo_layout.setContentsMargins(0, 0, 0, 0)
-        combo_layout.setSpacing(6)
-        label = QLabel(tr("QuickActuationWidget", "Velocity Scale:"))
-        label.setMinimumWidth(90)
-        label.setMaximumWidth(90)
-        combo_layout.addWidget(label)
-
-        self.vel_speed_combo = ArrowComboBox()
-        self.vel_speed_combo.setMaximumHeight(30)
-        self.vel_speed_combo.setMaximumWidth(180)
-        self.vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 12px; text-align: center; }")
-        for i in range(1, 21):
-            self.vel_speed_combo.addItem(str(i), i)
-        self.vel_speed_combo.setCurrentIndex(9)
-        self.vel_speed_combo.setEditable(True)
-        self.vel_speed_combo.lineEdit().setReadOnly(True)
-        self.vel_speed_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(self.vel_speed_combo, 1)
-        
-        advanced_layout.addLayout(combo_layout)
-        self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
-
-        layout.addWidget(self.advanced_widget)
+        layout.addWidget(self.sliders_container)
 
         layout.addStretch()
 
@@ -314,8 +253,8 @@ class QuickActuationWidget(QWidget):
 
         return tab
 
-    def create_aftertouch_tab(self):
-        """Create the Aftertouch tab"""
+    def create_advanced_tab(self):
+        """Create the Advanced tab (velocity, aftertouch settings)"""
         tab = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(6)
@@ -323,7 +262,7 @@ class QuickActuationWidget(QWidget):
         tab.setLayout(layout)
 
         # Per-layer toggle
-        self.aftertouch_per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer Aftertouch"))
+        self.aftertouch_per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer Settings"))
         self.aftertouch_per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; }")
         self.aftertouch_per_layer_checkbox.stateChanged.connect(self.on_aftertouch_per_layer_toggled)
         layout.addWidget(self.aftertouch_per_layer_checkbox)
@@ -339,6 +278,56 @@ class QuickActuationWidget(QWidget):
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line)
+
+        # Velocity Mode combo
+        velocity_layout = QHBoxLayout()
+        velocity_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_layout.setSpacing(6)
+        velocity_label = QLabel(tr("QuickActuationWidget", "Velocity:"))
+        velocity_label.setMinimumWidth(110)
+        velocity_layout.addWidget(velocity_label)
+
+        self.velocity_combo = ArrowComboBox()
+        self.velocity_combo.setMaximumHeight(25)
+        self.velocity_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
+        self.velocity_combo.addItem("Fixed (64)", 0)
+        self.velocity_combo.addItem("Peak at Apex", 1)
+        self.velocity_combo.addItem("Speed-Based", 2)
+        self.velocity_combo.addItem("Speed + Peak", 3)
+        self.velocity_combo.setCurrentIndex(2)
+        self.velocity_combo.setEditable(True)
+        self.velocity_combo.lineEdit().setReadOnly(True)
+        self.velocity_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        self.velocity_combo.currentIndexChanged.connect(self.on_combo_changed)
+        velocity_layout.addWidget(self.velocity_combo, 1)
+        layout.addLayout(velocity_layout)
+
+        # Velocity Speed Scale combo
+        vel_speed_layout = QHBoxLayout()
+        vel_speed_layout.setContentsMargins(0, 0, 0, 0)
+        vel_speed_layout.setSpacing(6)
+        vel_speed_label = QLabel(tr("QuickActuationWidget", "Velocity Scale:"))
+        vel_speed_label.setMinimumWidth(110)
+        vel_speed_layout.addWidget(vel_speed_label)
+
+        self.vel_speed_combo = ArrowComboBox()
+        self.vel_speed_combo.setMaximumHeight(25)
+        self.vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
+        for i in range(1, 21):
+            self.vel_speed_combo.addItem(str(i), i)
+        self.vel_speed_combo.setCurrentIndex(9)
+        self.vel_speed_combo.setEditable(True)
+        self.vel_speed_combo.lineEdit().setReadOnly(True)
+        self.vel_speed_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
+        vel_speed_layout.addWidget(self.vel_speed_combo, 1)
+        layout.addLayout(vel_speed_layout)
+
+        # Separator between velocity and aftertouch
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(line2)
 
         # Aftertouch Mode dropdown
         mode_layout = QHBoxLayout()
@@ -437,23 +426,23 @@ class QuickActuationWidget(QWidget):
         layout.addStretch()
 
         # Save button
-        self.aftertouch_save_btn = QPushButton(tr("QuickActuationWidget", "Save Aftertouch Settings"))
-        self.aftertouch_save_btn.setMaximumHeight(24)
-        self.aftertouch_save_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
-        self.aftertouch_save_btn.clicked.connect(self.on_save_aftertouch)
-        layout.addWidget(self.aftertouch_save_btn)
+        self.advanced_save_btn = QPushButton(tr("QuickActuationWidget", "Save Advanced Settings"))
+        self.advanced_save_btn.setMaximumHeight(24)
+        self.advanced_save_btn.setStyleSheet("padding: 2px 6px; font-size: 9pt;")
+        self.advanced_save_btn.clicked.connect(self.on_save_advanced)
+        layout.addWidget(self.advanced_save_btn)
 
         return tab
 
     def on_aftertouch_per_layer_toggled(self, state):
-        """Handle per-layer aftertouch toggle"""
+        """Handle per-layer settings toggle in Advanced tab"""
         self.aftertouch_per_layer_enabled = (state == Qt.Checked)
         self.aftertouch_layer_label.setVisible(self.aftertouch_per_layer_enabled)
         if self.aftertouch_per_layer_enabled:
-            self.aftertouch_save_btn.setText("Save to Current Layer")
+            self.advanced_save_btn.setText("Save to Current Layer")
             self.aftertouch_layer_label.setText(f"Layer {self.current_layer}")
         else:
-            self.aftertouch_save_btn.setText("Save Aftertouch Settings")
+            self.advanced_save_btn.setText("Save Advanced Settings")
 
     def on_aftertouch_mode_changed(self, index):
         """Handle aftertouch mode change - show/hide vibrato controls"""
@@ -496,8 +485,8 @@ class QuickActuationWidget(QWidget):
             for layer_data in self.layer_data:
                 layer_data['vibrato_decay_time'] = value
 
-    def on_save_aftertouch(self):
-        """Save aftertouch settings to keyboard"""
+    def on_save_advanced(self):
+        """Save advanced settings (velocity, aftertouch) to keyboard"""
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
@@ -521,10 +510,10 @@ class QuickActuationWidget(QWidget):
                 ])
 
                 if not self.device.keyboard.set_layer_actuation(payload):
-                    raise RuntimeError(f"Failed to save aftertouch for layer {self.current_layer}")
+                    raise RuntimeError(f"Failed to save advanced settings for layer {self.current_layer}")
 
                 QMessageBox.information(None, "Success",
-                    f"Layer {self.current_layer} aftertouch saved!")
+                    f"Layer {self.current_layer} advanced settings saved!")
             else:
                 # Save to all 12 layers
                 for layer in range(12):
@@ -545,14 +534,14 @@ class QuickActuationWidget(QWidget):
                     ])
 
                     if not self.device.keyboard.set_layer_actuation(payload):
-                        raise RuntimeError(f"Failed to save aftertouch for layer {layer}")
+                        raise RuntimeError(f"Failed to save advanced settings for layer {layer}")
 
                 QMessageBox.information(None, "Success",
-                    "Aftertouch saved to all layers!")
+                    "Advanced settings saved to all layers!")
 
         except Exception as e:
             QMessageBox.critical(None, "Error",
-                f"Failed to save aftertouch: {str(e)}")
+                f"Failed to save advanced settings: {str(e)}")
 
     def create_midi_tab(self):
         """Create the MIDI Settings tab"""
@@ -1353,13 +1342,13 @@ class QuickActuationWidget(QWidget):
 
         return widget
         
-    def on_advanced_toggled(self):
-        """Toggle advanced options visibility"""
-        show_advanced = self.advanced_checkbox.isChecked()
-        self.advanced_widget.setVisible(show_advanced)
-
-        # Show/hide MIDI controls based on advanced state
-        self.midi_widget.setVisible(show_advanced)
+    def update_per_key_ui_state(self, per_key_enabled):
+        """Update UI state when per-key mode changes"""
+        # Show/hide sliders and message based on per-key state
+        self.sliders_container.setVisible(not per_key_enabled)
+        self.per_key_message.setVisible(per_key_enabled)
+        # Disable save button when per-key is enabled (managed in Trigger Settings)
+        self.save_btn.setEnabled(not per_key_enabled)
     
     def on_per_layer_toggled(self):
         """Handle per-layer mode toggle"""
@@ -1384,21 +1373,31 @@ class QuickActuationWidget(QWidget):
 
     def on_enable_per_key_toggled(self):
         """Handle enable per-key checkbox toggle"""
-        if self.enable_per_key_checkbox.isChecked():
-            # Show notification message
+        if self.syncing:
+            return
+
+        per_key_enabled = self.enable_per_key_checkbox.isChecked()
+
+        # Update UI state based on per-key mode
+        self.update_per_key_ui_state(per_key_enabled)
+
+        # Sync with Trigger Settings tab
+        if self.trigger_settings_ref:
+            self.trigger_settings_ref.syncing = True
+            self.trigger_settings_ref.enable_checkbox.setChecked(per_key_enabled)
+            self.trigger_settings_ref.syncing = False
+            # Trigger the enable_changed handler to update trigger settings UI
+            self.trigger_settings_ref.on_enable_changed(Qt.Checked if per_key_enabled else Qt.Unchecked)
+
+        if per_key_enabled:
+            # Show notification and switch to trigger settings tab
             QMessageBox.information(
                 self,
-                tr("QuickActuationWidget", "Switching to Advanced Trigger Settings"),
-                tr("QuickActuationWidget", "Switching to advanced trigger settings tab")
+                tr("QuickActuationWidget", "Per-Key Actuation Enabled"),
+                tr("QuickActuationWidget", "Per-key actuation is now enabled.\nUse Trigger Settings tab to configure individual keys.")
             )
-
             # Emit signal to request tab switch
             self.enable_per_key_requested.emit()
-
-            # Uncheck this checkbox (it will be managed in Trigger Settings tab)
-            self.syncing = True
-            self.enable_per_key_checkbox.setChecked(False)
-            self.syncing = False
 
     def on_simple_channel_changed(self, value):
         """Handle simple channel slider changes"""
@@ -1476,18 +1475,14 @@ class QuickActuationWidget(QWidget):
         """Handle slider changes"""
         if self.syncing:
             return
-            
+
         if key in ['normal', 'midi']:
             label.setText(f"{value * 0.025:.2f}mm")
-            # Sync MIDI to normal when advanced is off
-            if key == 'normal' and not self.advanced_widget.isVisible():
-                self.midi_slider.setValue(value)
-                self.midi_value_label.setText(f"{value * 0.025:.2f}mm")
         elif key == 'midi_rapid_vel':
             label.setText(f"±{value}")
         else:
             label.setText(str(value))
-        
+
         # Update memory
         self.save_ui_to_memory()
     
@@ -1940,7 +1935,7 @@ class QuickActuationWidget(QWidget):
         # Ensure checkboxes always stay enabled when widget is enabled
         if is_vial:
             self.per_layer_checkbox.setEnabled(True)
-            self.advanced_checkbox.setEnabled(True)
+            self.enable_per_key_checkbox.setEnabled(True)
 
         if self.device and isinstance(self.device, VialKeyboard):
             # Load all layers from device into memory cache
@@ -1981,9 +1976,9 @@ class QuickActuationWidget(QWidget):
                     'vibrato_decay_time': vibrato_decay
                 }
 
-            # Load aftertouch UI from layer 0 (or current layer)
+            # Load advanced settings UI from layer 0 (or current layer)
             if hasattr(self, 'aftertouch_mode_combo'):
-                self.load_aftertouch_from_memory()
+                self.load_advanced_from_memory()
 
         except Exception:
             pass
@@ -1999,23 +1994,39 @@ class QuickActuationWidget(QWidget):
             # Load from memory (fast, no device I/O)
             self.load_layer_from_memory()
 
-        # Update aftertouch tab layer indicator
+        # Update Advanced tab layer indicator
         if hasattr(self, 'aftertouch_layer_label'):
             self.aftertouch_layer_label.setText(tr("QuickActuationWidget", f"Layer {layer}"))
             if self.aftertouch_per_layer_enabled:
-                self.aftertouch_save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {layer}"))
-                # Load aftertouch settings from memory
-                self.load_aftertouch_from_memory()
+                self.advanced_save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {layer}"))
+                # Load advanced settings from memory
+                self.load_advanced_from_memory()
 
-    def load_aftertouch_from_memory(self):
-        """Load aftertouch settings from memory for current layer"""
+    def load_advanced_from_memory(self):
+        """Load advanced settings (velocity, aftertouch) from memory for current layer"""
         data = self.layer_data[self.current_layer]
 
         # Update UI without triggering callbacks
+        self.velocity_combo.blockSignals(True)
+        self.vel_speed_combo.blockSignals(True)
         self.aftertouch_mode_combo.blockSignals(True)
         self.aftertouch_cc_combo.blockSignals(True)
         self.vibrato_sens_slider.blockSignals(True)
         self.vibrato_decay_slider.blockSignals(True)
+
+        # Set velocity mode
+        velocity = data.get('velocity', 2)
+        for i in range(self.velocity_combo.count()):
+            if self.velocity_combo.itemData(i) == velocity:
+                self.velocity_combo.setCurrentIndex(i)
+                break
+
+        # Set velocity speed scale
+        vel_speed = data.get('vel_speed', 10)
+        for i in range(self.vel_speed_combo.count()):
+            if self.vel_speed_combo.itemData(i) == vel_speed:
+                self.vel_speed_combo.setCurrentIndex(i)
+                break
 
         # Set aftertouch mode
         mode = data.get('aftertouch_mode', 0)
@@ -2045,6 +2056,8 @@ class QuickActuationWidget(QWidget):
         self.vibrato_decay_slider.setValue(decay)
         self.vibrato_decay_value.setText(f"{decay}ms")
 
+        self.velocity_combo.blockSignals(False)
+        self.vel_speed_combo.blockSignals(False)
         self.aftertouch_mode_combo.blockSignals(False)
         self.aftertouch_cc_combo.blockSignals(False)
         self.vibrato_sens_slider.blockSignals(False)
