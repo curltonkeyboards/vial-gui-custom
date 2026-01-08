@@ -1940,6 +1940,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_vel': 10,
                 'vel_speed': 10,
                 'aftertouch_cc': 255,  # 255 = off (no CC sent)
+                'vibrato_sensitivity': 100,  # 100% = normal
+                'vibrato_decay_time': 200,   # 200ms decay
                 'rapidfire_enabled': False,
                 'midi_rapidfire_enabled': False,
                 # HE Velocity defaults
