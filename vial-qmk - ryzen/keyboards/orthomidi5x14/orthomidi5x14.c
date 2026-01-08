@@ -2202,7 +2202,7 @@ uint8_t ACTUAL_MAX_NOTES_PER_LAYER = 0;
 uint8_t layer_to_index_map[12];  // Maps layer number to array index
 uint8_t (*optimized_midi_positions)[72][6] = NULL;  // Dynamic 3D array for LED positions
 uint8_t (*optimized_midi_velocities)[72] = NULL;     // Dynamic 2D array for velocities
-uint8_t aftertouch_cc = 0;
+uint8_t aftertouch_cc = 255;  // 255 = off (no CC sent), 0-127 = send CC alongside poly aftertouch
 
 // Aftertouch mode
 uint8_t aftertouch_mode = 0;  // 0=off, 1=reverse, 2=bottom-release, 3=post-actuation, 4=vibrato
@@ -2577,7 +2577,7 @@ void reset_keyboard_settings(void) {
 
     // Reset Global MIDI Settings (velocity curves, aftertouch, sustain)
     aftertouch_mode = 0;
-    aftertouch_cc = 74;
+    aftertouch_cc = 255;  // 255 = off (no CC sent)
     he_velocity_curve = 0;  // Linear (curve index 0)
     he_velocity_min = 1;
     he_velocity_max = 127;

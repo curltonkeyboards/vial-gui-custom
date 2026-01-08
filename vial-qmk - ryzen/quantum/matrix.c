@@ -64,6 +64,13 @@ extern bool aftertouch_pedal_active;
 extern layer_key_actuations_t per_key_actuations[12];
 extern bool per_key_per_layer_enabled;
 
+// Keysplit/transpose variables for aftertouch channel determination
+extern uint8_t keysplitchannel;
+extern uint8_t keysplit2channel;
+extern uint8_t keysplitstatus;
+extern int8_t transpose_number;
+extern int8_t octave_number;
+
 // Speed threshold for modes 1 & 3 (travel units per millisecond)
 #define SPEED_TRIGGER_THRESHOLD 20
 
@@ -130,6 +137,8 @@ typedef struct {
 
     // Aftertouch
     uint8_t last_aftertouch;
+    uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
+    uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 } midi_key_state_t;
 
 // ============================================================================
@@ -729,7 +738,33 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
     }
 
-    // Aftertouch handling
+    // Capture channel and MIDI note when note first becomes pressed
+    if (pressed && !state->was_pressed) {
+        // Determine channel and MIDI note based on keycode
+        uint8_t row = KEY_ROW(key_idx);
+        uint8_t col = KEY_COL(key_idx);
+        uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+
+        // Determine channel based on keycode range
+        if (keycode >= 0xC600 && keycode <= 0xC647) {
+            // Keysplit note - use keysplitchannel if keysplit is enabled
+            state->note_channel = (keysplitstatus == 1 || keysplitstatus == 3) ? keysplitchannel : channel_number;
+        } else if (keycode >= 0xC670 && keycode <= 0xC6B7) {
+            // Triplesplit note - use keysplit2channel if triplesplit is enabled
+            state->note_channel = (keysplitstatus == 2 || keysplitstatus == 3) ? keysplit2channel : channel_number;
+        } else {
+            // Base note or other - use base channel
+            state->note_channel = channel_number;
+        }
+
+        // Compute actual MIDI note: note_index + transpose + octave + 24
+        state->midi_note = state->note_index + transpose_number + octave_number + 24;
+
+        // Clamp to valid MIDI range
+        if (state->midi_note > 127) state->midi_note = 127;
+    }
+
+    // Aftertouch handling - now sends polyphonic aftertouch + optional CC
     if (aftertouch_mode > 0 && pressed) {
         uint8_t aftertouch_value = 0;
         bool send_aftertouch = false;
@@ -778,7 +813,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
         if (send_aftertouch && abs((int)aftertouch_value - (int)state->last_aftertouch) > 2) {
             #ifdef MIDI_ENABLE
-            midi_send_cc(&midi_device, channel_number, aftertouch_cc, aftertouch_value);
+            // Always send polyphonic aftertouch (per-note pressure)
+            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, aftertouch_value);
+
+            // Optionally also send CC if aftertouch_cc is not "off" (255)
+            if (aftertouch_cc != 255) {
+                midi_send_cc(&midi_device, state->note_channel, aftertouch_cc, aftertouch_value);
+            }
+
             state->last_aftertouch = aftertouch_value;
             #endif
         }
