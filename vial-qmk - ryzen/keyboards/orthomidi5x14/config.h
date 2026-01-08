@@ -42,23 +42,26 @@
 
 
 #define ENCODER_MAP_KEY_DELAY 0
-#define ENCODERS_PAD_A { C14, B5}
-#define ENCODERS_PAD_B { C13, B4}
+#define ENCODERS_PAD_A { C14, C15 }
+#define ENCODERS_PAD_B { C13, B4 }
 //#define ENCODER_RESOLUTION 4
 
 // Encoder click buttons (push functionality)
-#define ENCODER_CLICK_PINS { B12, B13 }
+#define ENCODER_CLICK_PINS { B14, B15 }
 
-// Sustain pedal pin
-#define SUSTAIN_PEDAL_PIN B10
+// Sustain pedal / Footswitch pin
+#define SUSTAIN_PEDAL_PIN A9
 
 // MIDI Serial Configuration
-// Hardware MIDI In/Out on USART3 using pins 45/46 (PB8/PB9)
-// PB8: USART3_RX (AF7) - MIDI IN (pin 45)
-// PB9: USART3_TX (AF7) - MIDI OUT (pin 46)
-#define MIDI_SERIAL_PORT SD3  // Use USART3 for MIDI serial
-#define SD3_TX_PIN B9         // MIDI OUT - TX pin on PB9 (pin 46)
-#define SD3_RX_PIN B8         // MIDI IN - RX pin on PB8 (pin 45)
+// Hardware MIDI In/Out on USART1 using PA15/PB3
+// PB3: USART1_RX (AF7) - MIDI IN
+// PA15: USART1_TX (AF7) - MIDI OUT
+// Note: PA15/PB3 are JTAG pins by default, remapped to USART1
+#define MIDI_SERIAL_PORT SD1  // Use USART1 for MIDI serial
+#define SD1_TX_PIN A15        // MIDI OUT - TX pin on PA15
+#define SD1_RX_PIN B3         // MIDI IN - RX pin on PB3
+#define SD1_TX_PAL_MODE 7     // Alternate function 7 for USART1
+#define SD1_RX_PAL_MODE 7     // Alternate function 7 for USART1
 
 // Updated for CAT24C512WI-GT3 (64KB EEPROM)
 #define EEPROM_I2C_CAT24C512
@@ -82,7 +85,7 @@
 #define OLED_USE_DMA  // Enable DMA mode for OLED
 
 // The pin connected to the data pin of the LEDs
-#define WS2812_DI_PIN B3
+#define WS2812_DI_PIN B8
 #define WS2812_EXTERNAL_PULLUP 
 // The number of LEDs connected
 #define RGB_MATRIX_LED_COUNT 70
