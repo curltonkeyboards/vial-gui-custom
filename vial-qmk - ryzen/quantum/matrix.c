@@ -110,17 +110,23 @@ typedef struct {
     // Mode 1: Peak travel at apex
     uint8_t peak_travel;
     bool send_on_release;
+    bool velocity_captured;      // True when velocity has been captured for this press
 
     // Mode 2 & 3: Speed-based
     uint8_t last_travel;
     uint16_t last_time;
     uint8_t calculated_velocity;
     uint8_t peak_velocity;
+    uint8_t peak_speed;          // Peak instantaneous speed (for apex detection)
+    uint8_t travel_at_actuation; // Travel when actuation point was crossed (for Mode 2)
 
     // Mode 3: Speed threshold
     bool speed_threshold_met;
     uint8_t speed_samples[4];
     uint8_t speed_sample_idx;
+
+    // Raw velocity for curve application (0-255)
+    uint8_t raw_velocity;        // Raw velocity value before curve/scaling
 
     // Aftertouch
     uint8_t last_aftertouch;
@@ -542,149 +548,214 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     state->was_pressed = state->pressed;
     state->pressed = pressed;
 
-    // Handle RT velocity accumulation
-    if (key->key_dir != KEY_DIR_INACTIVE) {
-        // Get per-key settings for velocity modification
-        per_key_actuation_t *settings = &per_key_actuations[per_key_per_layer_enabled ? current_layer : 0].keys[key_idx];
+    // Get per-key settings for velocity modification (used by RT)
+    per_key_actuation_t *per_key_settings = &per_key_actuations[per_key_per_layer_enabled ? current_layer : 0].keys[key_idx];
 
-        // Initial press - calculate base velocity
-        if (pressed && !state->was_pressed && key->base_velocity == 0) {
-            uint16_t time_delta = now - state->last_time;
-            uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
+    // ========================================================================
+    // VELOCITY MODE PROCESSING
+    // All modes store raw_velocity (0-255) for curve application later
+    // ========================================================================
 
-            switch (analog_mode) {
-                case 0:  // Fixed
-                    key->base_velocity = 64;
-                    break;
-                case 2:  // Speed-based
-                    key->base_velocity = calculate_speed_velocity(travel_delta, time_delta);
-                    break;
-                default:
-                    key->base_velocity = 64;
-                    break;
+    switch (analog_mode) {
+        case 0:  // Fixed velocity
+            // raw_velocity stays at default (will be handled by get_he_velocity_from_position)
+            state->raw_velocity = 255;  // Max raw value, curve will determine actual velocity
+            break;
+
+        case 1:  // Peak Travel at Apex
+            // Measures peak travel distance, captures velocity when speed drastically slows
+            // Ignores actuation point - just uses deadzone to avoid misstriggers
+            {
+                uint16_t time_delta = now - state->last_time;
+                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
+
+                // Calculate current instantaneous speed (travel units per ms * 100 for precision)
+                uint8_t current_speed = (time_delta > 0) ? ((travel_delta * 100) / time_delta) : 0;
+
+                // Track peak speed during descent
+                if (current_speed > state->peak_speed) {
+                    state->peak_speed = current_speed;
+                }
+
+                // Track peak travel during descent
+                if (travel > state->peak_travel) {
+                    state->peak_travel = travel;
+                }
+
+                // Detect fast movement started
+                if (current_speed >= SPEED_TRIGGER_THRESHOLD) {
+                    state->speed_threshold_met = true;
+                }
+
+                // Apex detection: speed has dropped significantly from peak (drastic slowing)
+                // Capture velocity when:
+                // 1. We've seen fast movement (speed_threshold_met)
+                // 2. Current speed has dropped below threshold (apex reached)
+                // 3. We haven't already captured for this press
+                // 4. Key has moved past deadzone (travel > 0 means past deadzone)
+                if (state->speed_threshold_met &&
+                    current_speed < SPEED_TRIGGER_THRESHOLD &&
+                    travel > 0 &&
+                    !state->velocity_captured) {
+
+                    // Store raw velocity as normalized peak travel (0-255)
+                    // peak_travel is in 0-240 range, scale to 0-255
+                    state->raw_velocity = (state->peak_travel * 255) / 240;
+                    state->velocity_captured = true;
+
+                    // Also update base_velocity for RT accumulation (scaled to 1-127 for now)
+                    key->base_velocity = (state->raw_velocity * 127) / 255;
+                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                }
+
+                // On release, reset tracking state
+                if (state->was_pressed && !pressed) {
+                    state->peak_travel = 0;
+                    state->peak_speed = 0;
+                    state->speed_threshold_met = false;
+                    state->velocity_captured = false;
+                }
+
+                state->last_travel = travel;
+                state->last_time = now;
             }
-            store_midi_velocity(state->note_index, key->base_velocity);
-        }
-        // RT re-trigger - accumulate velocity
-        else if (pressed && !state->was_pressed && key->base_velocity > 0) {
-            int16_t new_velocity = key->base_velocity + settings->rapidfire_velocity_mod;
+            break;
 
-            if (new_velocity < MIN_VELOCITY) new_velocity = MIN_VELOCITY;
-            if (new_velocity > MAX_VELOCITY) new_velocity = MAX_VELOCITY;
+        case 2:  // Speed-based (deadzone to actuation)
+            // Measures average speed from key release/deadzone to actuation point
+            // Deeper actuation point = more travel distance = more reliable speed measurement
+            {
+                uint16_t time_delta = now - state->last_time;
 
-            key->base_velocity = (uint8_t)new_velocity;
-            store_midi_velocity(state->note_index, key->base_velocity);
-        }
+                // Track when key starts moving from rest (crosses deadzone)
+                if (state->last_travel == 0 && travel > 0) {
+                    // Key just started moving - record start time
+                    state->last_time = now;
+                    state->travel_at_actuation = 0;
+                    state->velocity_captured = false;
+                }
+
+                // Capture velocity when actuation point is crossed
+                if (!state->velocity_captured && travel >= midi_threshold && state->last_travel < midi_threshold) {
+                    // Calculate average speed from deadzone to actuation
+                    // time_delta = time from when key started moving
+                    // travel at actuation = midi_threshold
+                    if (time_delta > 0) {
+                        // Speed = distance / time, normalize to 0-255
+                        // midi_threshold is typically 80-200 (in 0-240 range)
+                        // Scale speed to give good dynamic range
+                        uint32_t avg_speed = ((uint32_t)midi_threshold * 1000) / time_delta;
+
+                        // Scale speed to 0-255 range
+                        // Typical fast press: ~50-100 travel units in 20-50ms = ~2000-5000 units/sec
+                        // Scale factor adjusts sensitivity
+                        uint32_t raw = (avg_speed * active_settings.velocity_speed_scale) / 100;
+                        if (raw > 255) raw = 255;
+
+                        state->raw_velocity = (uint8_t)raw;
+                        state->velocity_captured = true;
+
+                        // Update base_velocity for RT
+                        key->base_velocity = (state->raw_velocity * 127) / 255;
+                        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                    } else {
+                        // Instant press - max velocity
+                        state->raw_velocity = 255;
+                        state->velocity_captured = true;
+                        key->base_velocity = MAX_VELOCITY;
+                    }
+                }
+
+                // On release, reset
+                if (state->was_pressed && !pressed) {
+                    state->velocity_captured = false;
+                    state->travel_at_actuation = 0;
+                }
+
+                state->last_travel = travel;
+                // Only update last_time if key is at rest (for next press measurement)
+                if (travel == 0) {
+                    state->last_time = now;
+                }
+            }
+            break;
+
+        case 3:  // Speed + Peak Combined
+            // Measures both speed and peak travel until apex (drastic slowing)
+            // Blends speed (70%) and peak travel (30%) for final velocity
+            {
+                uint16_t time_delta = now - state->last_time;
+                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
+
+                // Calculate current instantaneous speed
+                uint8_t current_speed = (time_delta > 0) ? ((travel_delta * 100) / time_delta) : 0;
+
+                // Track peak speed during descent
+                if (current_speed > state->peak_speed) {
+                    state->peak_speed = current_speed;
+                }
+
+                // Track peak travel during descent
+                if (travel > state->peak_travel) {
+                    state->peak_travel = travel;
+                }
+
+                // Detect fast movement started
+                if (current_speed >= SPEED_TRIGGER_THRESHOLD) {
+                    state->speed_threshold_met = true;
+                }
+
+                // Apex detection: speed has dropped significantly
+                if (state->speed_threshold_met &&
+                    current_speed < SPEED_TRIGGER_THRESHOLD &&
+                    travel > 0 &&
+                    !state->velocity_captured) {
+
+                    // Calculate speed component (0-255)
+                    // peak_speed is in travel_units*100/ms, scale to 0-255
+                    uint32_t speed_raw = ((uint32_t)state->peak_speed * active_settings.velocity_speed_scale) / 10;
+                    if (speed_raw > 255) speed_raw = 255;
+
+                    // Calculate travel component (0-255)
+                    uint8_t travel_raw = (state->peak_travel * 255) / 240;
+
+                    // Blend: 70% speed + 30% travel
+                    state->raw_velocity = (uint8_t)(((uint16_t)speed_raw * 70 + (uint16_t)travel_raw * 30) / 100);
+                    state->velocity_captured = true;
+
+                    // Update base_velocity for RT
+                    key->base_velocity = (state->raw_velocity * 127) / 255;
+                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                }
+
+                // On release, reset
+                if (state->was_pressed && !pressed) {
+                    state->peak_travel = 0;
+                    state->peak_speed = 0;
+                    state->speed_threshold_met = false;
+                    state->velocity_captured = false;
+                }
+
+                state->last_travel = travel;
+                state->last_time = now;
+            }
+            break;
     }
 
-    // Standard velocity modes
-    switch (analog_mode) {
-        case 0:  // Fixed
-            break;
+    // ========================================================================
+    // RT VELOCITY ACCUMULATION
+    // Applies velocity modifier on rapid trigger re-presses
+    // ========================================================================
+    if (key->key_dir != KEY_DIR_INACTIVE && pressed && !state->was_pressed && state->velocity_captured) {
+        // RT re-trigger with existing velocity - accumulate modifier
+        int16_t new_raw = state->raw_velocity + (per_key_settings->rapidfire_velocity_mod * 2);  // Scale modifier to 0-255 range
+        if (new_raw < 0) new_raw = 0;
+        if (new_raw > 255) new_raw = 255;
+        state->raw_velocity = (uint8_t)new_raw;
 
-        case 1:  // Peak travel at apex
-            {
-                uint16_t time_delta = now - state->last_time;
-                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-
-                uint8_t current_speed = (time_delta > 0) ? ((travel_delta * 100) / time_delta) : 0;
-
-                if (current_speed >= SPEED_TRIGGER_THRESHOLD) {
-                    state->speed_threshold_met = true;
-                }
-
-                if (travel > state->peak_travel) {
-                    state->peak_travel = travel;
-                }
-
-                if (state->speed_threshold_met &&
-                    current_speed < SPEED_TRIGGER_THRESHOLD &&
-                    travel >= midi_threshold &&
-                    !state->send_on_release) {
-
-                    uint8_t velocity = (state->peak_travel * 127) / 240;
-                    if (velocity < MIN_VELOCITY) velocity = MIN_VELOCITY;
-                    if (velocity > MAX_VELOCITY) velocity = MAX_VELOCITY;
-
-                    store_midi_velocity(state->note_index, velocity);
-                    state->send_on_release = true;
-                    key->base_velocity = velocity;
-                }
-
-                if (state->was_pressed && !pressed) {
-                    state->peak_travel = 0;
-                    state->speed_threshold_met = false;
-                    state->send_on_release = false;
-                }
-
-                state->last_travel = travel;
-                state->last_time = now;
-            }
-            break;
-
-        case 2:  // Speed-based
-            if (pressed && !state->was_pressed && key->key_dir == KEY_DIR_INACTIVE) {
-                // Only on initial press (not RT re-trigger)
-                uint16_t time_delta = now - state->last_time;
-                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-
-                uint8_t velocity = calculate_speed_velocity(travel_delta, time_delta);
-                store_midi_velocity(state->note_index, velocity);
-                state->calculated_velocity = velocity;
-                key->base_velocity = velocity;
-            }
-
-            state->last_travel = travel;
-            state->last_time = now;
-            break;
-
-        case 3:  // Speed + peak combined
-            {
-                uint16_t time_delta = now - state->last_time;
-                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-
-                uint8_t current_speed = (time_delta > 0) ? ((travel_delta * 100) / time_delta) : 0;
-                uint8_t speed_velocity = calculate_speed_velocity(travel_delta, time_delta);
-
-                if (speed_velocity > state->peak_velocity) {
-                    state->peak_velocity = speed_velocity;
-                }
-
-                if (travel > state->peak_travel) {
-                    state->peak_travel = travel;
-                }
-
-                if (current_speed >= SPEED_TRIGGER_THRESHOLD) {
-                    state->speed_threshold_met = true;
-                }
-
-                if (state->speed_threshold_met &&
-                    current_speed < SPEED_TRIGGER_THRESHOLD &&
-                    travel >= midi_threshold &&
-                    !state->send_on_release) {
-
-                    uint8_t travel_vel = (state->peak_travel * 127) / 240;
-                    uint8_t final_velocity = (state->peak_velocity * 70 + travel_vel * 30) / 100;
-
-                    if (final_velocity < MIN_VELOCITY) final_velocity = MIN_VELOCITY;
-                    if (final_velocity > MAX_VELOCITY) final_velocity = MAX_VELOCITY;
-
-                    store_midi_velocity(state->note_index, final_velocity);
-                    state->send_on_release = true;
-                    key->base_velocity = final_velocity;
-                }
-
-                if (state->was_pressed && !pressed) {
-                    state->speed_threshold_met = false;
-                    state->peak_velocity = 0;
-                    state->peak_travel = 0;
-                    state->send_on_release = false;
-                }
-
-                state->last_travel = travel;
-                state->last_time = now;
-            }
-            break;
+        // Update base_velocity to match
+        key->base_velocity = (state->raw_velocity * 127) / 255;
+        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
     }
 
     // Aftertouch handling
@@ -1048,6 +1119,19 @@ uint8_t analog_matrix_get_travel_normalized(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
     uint32_t key_idx = KEY_INDEX(row, col);
     return key_matrix[key_idx].distance;  // Already 0-255
+}
+
+// Get raw velocity value (0-255) for curve application
+// This is the pre-calculated velocity from velocity modes 1-3
+uint8_t analog_matrix_get_velocity_raw(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return midi_key_states[key_idx].raw_velocity;
+}
+
+// Get current velocity mode for a key's layer
+uint8_t analog_matrix_get_velocity_mode(void) {
+    return active_settings.velocity_mode;
 }
 
 bool analog_matrix_get_key_state(uint8_t row, uint8_t col) {

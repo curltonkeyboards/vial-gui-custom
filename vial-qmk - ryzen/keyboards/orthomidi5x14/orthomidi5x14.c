@@ -10,6 +10,7 @@
 #include "via.h"
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
+#include "matrix.h"
 #include <math.h>
 extern MidiDevice midi_device;
 
@@ -445,6 +446,7 @@ uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t 
 
 // Get HE velocity from matrix position (row, col) using per-key or global settings
 // This is called when a MIDI note is triggered to get the velocity from the analog matrix
+// Now uses pre-calculated velocity from velocity modes (peak, speed, combined) in matrix.c
 uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
@@ -453,20 +455,36 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
         return velocity_number;  // Use global fixed velocity
     }
 
-    // Get normalized travel value (0-255) from analog matrix
-    uint8_t travel = analog_matrix_get_travel_normalized(row, col);
+    // Get velocity mode from layer settings
+    uint8_t velocity_mode = analog_matrix_get_velocity_mode();
 
     // Get velocity curve (per-key or global) and global min/max
     uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 0);  // split_type=0 (base)
     uint8_t min_vel = keyboard_settings.he_velocity_min;
     uint8_t max_vel = keyboard_settings.he_velocity_max;
 
-    // Apply curve to travel (0-255 input, 0-255 output)
-    uint8_t curved_travel = apply_curve(travel, curve_index);
+    uint8_t raw_value;
 
-    // Map curved travel to per-layer velocity range (min_vel to max_vel)
+    if (velocity_mode == 0) {
+        // Mode 0: Fixed velocity - use current travel with curve
+        raw_value = analog_matrix_get_travel_normalized(row, col);
+    } else {
+        // Modes 1-3: Use pre-calculated raw velocity from matrix.c
+        // This is the velocity calculated from peak travel, speed, or combined
+        raw_value = analog_matrix_get_velocity_raw(row, col);
+
+        // If raw_velocity is 0 (not yet captured), fall back to current travel
+        if (raw_value == 0) {
+            raw_value = analog_matrix_get_travel_normalized(row, col);
+        }
+    }
+
+    // Apply curve to raw value (0-255 input, 0-255 output)
+    uint8_t curved_value = apply_curve(raw_value, curve_index);
+
+    // Map curved value to velocity range (min_vel to max_vel)
     uint8_t range = max_vel - min_vel;
-    int16_t velocity = min_vel + ((int16_t)curved_travel * range) / 255;
+    int16_t velocity = min_vel + ((int16_t)curved_value * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
@@ -476,23 +494,39 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
 }
 
 // Get Keysplit HE velocity from matrix position (row, col) using per-key or global settings
+// Now uses pre-calculated velocity from velocity modes (peak, speed, combined) in matrix.c
 uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
-    // Get normalized travel value (0-255) from analog matrix
-    uint8_t travel = analog_matrix_get_travel_normalized(row, col);
+    // Get velocity mode from layer settings
+    uint8_t velocity_mode = analog_matrix_get_velocity_mode();
 
     // Get velocity curve (per-key or global) and keysplit min/max
     uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 1);  // split_type=1 (keysplit)
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
-    // Apply curve to travel (0-255 input, 0-255 output)
-    uint8_t curved_travel = apply_curve(travel, curve_index);
+    uint8_t raw_value;
 
-    // Map curved travel to per-layer velocity range (min_vel to max_vel)
+    if (velocity_mode == 0) {
+        // Mode 0: Fixed velocity - use current travel with curve
+        raw_value = analog_matrix_get_travel_normalized(row, col);
+    } else {
+        // Modes 1-3: Use pre-calculated raw velocity from matrix.c
+        raw_value = analog_matrix_get_velocity_raw(row, col);
+
+        // If raw_velocity is 0 (not yet captured), fall back to current travel
+        if (raw_value == 0) {
+            raw_value = analog_matrix_get_travel_normalized(row, col);
+        }
+    }
+
+    // Apply curve to raw value (0-255 input, 0-255 output)
+    uint8_t curved_value = apply_curve(raw_value, curve_index);
+
+    // Map curved value to velocity range (min_vel to max_vel)
     uint8_t range = max_vel - min_vel;
-    int16_t velocity = min_vel + ((int16_t)curved_travel * range) / 255;
+    int16_t velocity = min_vel + ((int16_t)curved_value * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
@@ -502,23 +536,39 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
 }
 
 // Get Triplesplit HE velocity from matrix position (row, col) using per-key or global settings
+// Now uses pre-calculated velocity from velocity modes (peak, speed, combined) in matrix.c
 uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
-    // Get normalized travel value (0-255) from analog matrix
-    uint8_t travel = analog_matrix_get_travel_normalized(row, col);
+    // Get velocity mode from layer settings
+    uint8_t velocity_mode = analog_matrix_get_velocity_mode();
 
     // Get velocity curve (per-key or global) and triplesplit min/max
     uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 2);  // split_type=2 (triplesplit)
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
-    // Apply curve to travel (0-255 input, 0-255 output)
-    uint8_t curved_travel = apply_curve(travel, curve_index);
+    uint8_t raw_value;
 
-    // Map curved travel to per-layer velocity range (min_vel to max_vel)
+    if (velocity_mode == 0) {
+        // Mode 0: Fixed velocity - use current travel with curve
+        raw_value = analog_matrix_get_travel_normalized(row, col);
+    } else {
+        // Modes 1-3: Use pre-calculated raw velocity from matrix.c
+        raw_value = analog_matrix_get_velocity_raw(row, col);
+
+        // If raw_velocity is 0 (not yet captured), fall back to current travel
+        if (raw_value == 0) {
+            raw_value = analog_matrix_get_travel_normalized(row, col);
+        }
+    }
+
+    // Apply curve to raw value (0-255 input, 0-255 output)
+    uint8_t curved_value = apply_curve(raw_value, curve_index);
+
+    // Map curved value to velocity range (min_vel to max_vel)
     uint8_t range = max_vel - min_vel;
-    int16_t velocity = min_vel + ((int16_t)curved_travel * range) / 255;
+    int16_t velocity = min_vel + ((int16_t)curved_value * range) / 255;
 
     // Clamp to valid MIDI velocity range (1-127)
     if (velocity < 1) velocity = 1;
