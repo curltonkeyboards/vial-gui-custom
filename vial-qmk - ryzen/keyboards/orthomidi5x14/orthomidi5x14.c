@@ -5604,7 +5604,7 @@ MidiDevice midi_serial_device;
 
 // Serial MIDI send function - sends data to hardware MIDI OUT
 void serial_midi_send_func(MidiDevice* device, uint16_t cnt, uint8_t byte0, uint8_t byte1, uint8_t byte2) {
-    // Send bytes to USART3 (hardware MIDI OUT)
+    // Send bytes to USART1 (hardware MIDI OUT via PA15)
     if (cnt >= 1) {
         uart_putchar(MIDI_SERIAL_PORT, byte0);
     }
@@ -5618,7 +5618,7 @@ void serial_midi_send_func(MidiDevice* device, uint16_t cnt, uint8_t byte0, uint
 
 // Serial MIDI receive function - processes incoming data from hardware MIDI IN
 void serial_midi_get_func(MidiDevice* device) {
-    // Read available bytes from USART3 (hardware MIDI IN)
+    // Read available bytes from USART1 (hardware MIDI IN via PB3)
     uint16_t available = uart_available(MIDI_SERIAL_PORT);
 
     for (uint16_t i = 0; i < available; i++) {
