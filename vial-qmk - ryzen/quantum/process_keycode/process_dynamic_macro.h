@@ -202,51 +202,53 @@ void set_custom_animations_eeprom_initialized(void);
 // =============================================================================
 // All addresses fit within 0-65535 range with no overlaps
 // Layout designed for 64KB EEPROM (CAT24C512WI-GT3)
+// 20KB allocated for VIA text macros (0-21999)
 //
 // Memory Map:
-//   0-9,999:       Reserved for QMK/VIA base (keymaps, macros, encoders)
-//   10,000-13,999: Arp User Presets (see orthomidi5x14.h)
-//   14,000-21,839: Seq User Presets (see orthomidi5x14.h)
-//   22,000-22,699: Custom Animations (700 bytes)
-//   23,000-23,199: Loop Settings (200 bytes)
-//   23,200-23,449: Keyboard Settings (250 bytes, 5 slots)
-//   23,500-23,607: Layer RGB Settings (108 bytes)
-//   23,700-23,759: Layer Actuation Settings (60 bytes)
-//   24,000-24,241: User Curves (see orthomidi5x14.h)
-//   24,500-24,599: Gaming Settings (see orthomidi5x14.h)
-//   25,000-25,889: Per-Key RGB (890 bytes)
-//   26,000-32,721: Per-Key Actuation (6722 bytes)
-//   33,000-65,535: Available for future expansion (~32KB)
+//   0-1,816:       QMK/VIA base (keymaps, encoders)
+//   1,817-21,999:  VIA Text Macros (~20KB)
+//   22,000-25,999: Arp User Presets (see orthomidi5x14.h)
+//   26,000-33,839: Seq User Presets (see orthomidi5x14.h)
+//   34,000-34,699: Custom Animations (700 bytes)
+//   35,000-35,199: Loop Settings (200 bytes)
+//   35,200-35,449: Keyboard Settings (250 bytes, 5 slots)
+//   35,500-35,607: Layer RGB Settings (108 bytes)
+//   35,700-35,759: Layer Actuation Settings (60 bytes)
+//   36,000-36,241: User Curves (see orthomidi5x14.h)
+//   36,500-36,599: Gaming Settings (see orthomidi5x14.h)
+//   37,000-37,889: Per-Key RGB (890 bytes)
+//   38,000-44,721: Per-Key Actuation (6722 bytes)
+//   45,000-65,535: Available for future expansion (~20KB)
 // =============================================================================
 
-#define EECONFIG_CUSTOM_ANIMATIONS 22000  // Custom animations (700 bytes, ends at 22699)
+#define EECONFIG_CUSTOM_ANIMATIONS 34000  // Custom animations (700 bytes, ends at 34699)
 #define EECONFIG_CUSTOM_ANIMATIONS_SIZE (sizeof(custom_animation_config_t) * NUM_CUSTOM_SLOTS)
 
 #define LOOP_SETTINGS_SIZE sizeof(loop_settings_t)
-#define LOOP_SETTINGS_EEPROM_ADDR 23000  // Loop settings (200 bytes, ends at 23199)
+#define LOOP_SETTINGS_EEPROM_ADDR 35000  // Loop settings (200 bytes, ends at 35199)
 
-#define RGB_DEFAULTS_MAGIC_ADDR 23450  // EEPROM address for magic number for the rgb custom layers
+#define RGB_DEFAULTS_MAGIC_ADDR 35450  // EEPROM address for magic number for the rgb custom layers
 #define RGB_DEFAULTS_MAGIC_NUMBER 0xC0DE
 
-#define LAYER_SETTINGS_EEPROM_ADDR 23500  // Layer RGB settings (108 bytes, ends at 23607)
+#define LAYER_SETTINGS_EEPROM_ADDR 35500  // Layer RGB settings (108 bytes, ends at 35607)
 
 // Settings storage definitions
 #define SETTINGS_SIZE sizeof(keyboard_settings_t)
-#define SETTINGS_BASE_ADDR 23200  // Keyboard settings (250 bytes for 5 slots, ends at 23449)
+#define SETTINGS_BASE_ADDR 35200  // Keyboard settings (250 bytes for 5 slots, ends at 35449)
 #define SETTINGS_EEPROM_ADDR(slot) (SETTINGS_BASE_ADDR + ((slot) * SETTINGS_SIZE))
 #define SETTINGS_EEPROM_ADDR_DEFAULT SETTINGS_EEPROM_ADDR(0)
 
 // Per-Key Actuation EEPROM addresses
-#define PER_KEY_ACTUATION_EEPROM_ADDR 26000  // Per-key actuation (6720 bytes, ends at 32719)
+#define PER_KEY_ACTUATION_EEPROM_ADDR 38000  // Per-key actuation (6720 bytes, ends at 44719)
 #define PER_KEY_ACTUATION_SIZE (sizeof(per_key_actuation_t) * 70 * 12)  // 6720 bytes (8 bytes × 70 keys × 12 layers)
 #define PER_KEY_ACTUATION_FLAGS_ADDR (PER_KEY_ACTUATION_EEPROM_ADDR + PER_KEY_ACTUATION_SIZE)
-// Flags: 2 bytes at 32720-32721
+// Flags: 2 bytes at 44720-44721
 //   - Byte 0: per_key_mode_enabled (0/1)
 //   - Byte 1: per_key_per_layer_enabled (0/1)
-// Total: 6722 bytes (26000-32721)
+// Total: 6722 bytes (38000-44721)
 
 // Layer Actuation EEPROM addresses
-#define LAYER_ACTUATION_EEPROM_ADDR 23700  // Layer actuation (60 bytes, ends at 23759)
+#define LAYER_ACTUATION_EEPROM_ADDR 35700  // Layer actuation (60 bytes, ends at 35759)
 #define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 60 bytes for 12 layers (5 bytes per layer)
 
 // Function declarations (updated signatures - removed rapidfire params)
@@ -283,19 +285,21 @@ bool layer_use_fixed_velocity(uint8_t layer);
 // The EEPROM layout has been reorganized for 64KB CAT24C512 EEPROM.
 // See the memory map comment block above (starting at line ~200) for current addresses.
 // =============================================================================
-// EEPROM ADDRESSES SUMMARY (UPDATED for 64KB CAT24C512):
-// Arp Presets:         ARP_EEPROM_ADDR               = 10000 (orthomidi5x14.h)
-// Seq Presets:         SEQ_EEPROM_ADDR               = 14000 (orthomidi5x14.h)
-// Custom Animations:   EECONFIG_CUSTOM_ANIMATIONS    = 22000
-// Loop Settings:       LOOP_SETTINGS_EEPROM_ADDR     = 23000
-// Keyboard Settings:   SETTINGS_BASE_ADDR            = 23200
-// RGB Magic:           RGB_DEFAULTS_MAGIC_ADDR       = 23450
-// Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 23500
-// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 23700
-// User Curves:         USER_CURVES_EEPROM_ADDR       = 24000 (orthomidi5x14.h)
-// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 24500 (orthomidi5x14.h)
-// Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 25000 (per_key_rgb.h)
-// Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 26000
+// EEPROM ADDRESSES SUMMARY (UPDATED for 64KB CAT24C512 with 20KB macros):
+// VIA Text Macros:     1817-21999                    (~20KB)
+// Arp Presets:         ARP_EEPROM_ADDR               = 22000 (orthomidi5x14.h)
+// Seq Presets:         SEQ_EEPROM_ADDR               = 26000 (orthomidi5x14.h)
+// Custom Animations:   EECONFIG_CUSTOM_ANIMATIONS    = 34000
+// Loop Settings:       LOOP_SETTINGS_EEPROM_ADDR     = 35000
+// Keyboard Settings:   SETTINGS_BASE_ADDR            = 35200
+// RGB Magic:           RGB_DEFAULTS_MAGIC_ADDR       = 35450
+// Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 35500
+// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 35700
+// User Curves:         USER_CURVES_EEPROM_ADDR       = 36000 (orthomidi5x14.h)
+// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 36500 (orthomidi5x14.h)
+// Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 37000 (per_key_rgb.h)
+// Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 38000
+// Available:           45000-65535                   (~20KB)
 // =============================================================================
 
 // Function declarations for layer settings
