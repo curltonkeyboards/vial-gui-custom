@@ -500,35 +500,6 @@ static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out)
 }
 
 // ============================================================================
-// VELOCITY CALCULATION
-// ============================================================================
-
-static uint8_t calculate_speed_velocity(uint8_t travel_delta, uint16_t time_delta) {
-    if (time_delta == 0) return 64;
-
-    uint32_t speed = ((uint32_t)travel_delta * 1000) / time_delta;
-    uint8_t velocity = (speed * active_settings.velocity_speed_scale) / 100;
-
-    if (velocity < MIN_VELOCITY) velocity = MIN_VELOCITY;
-    if (velocity > MAX_VELOCITY) velocity = MAX_VELOCITY;
-
-    return velocity;
-}
-
-static void store_midi_velocity(uint8_t note_index, uint8_t velocity) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    if (current_layer >= 12) return;
-
-    uint8_t array_index = layer_to_index_map[current_layer];
-    if (array_index == 255 || array_index >= ACTUAL_MIDI_LAYERS) return;
-
-    if (optimized_midi_velocities == NULL) return;
-    if (note_index >= 72) return;
-
-    optimized_midi_velocities[array_index][note_index] = velocity;
-}
-
-// ============================================================================
 // MIDI KEY ANALOG PROCESSING
 // ============================================================================
 
