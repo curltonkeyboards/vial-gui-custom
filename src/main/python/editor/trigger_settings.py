@@ -1736,6 +1736,13 @@ class TriggerSettingsTab(BasicEditor):
         if self.device and isinstance(self.device, VialKeyboard):
             self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
 
+        # Synchronize with Actuation Settings tab
+        if self.actuation_widget_ref:
+            self.actuation_widget_ref.syncing = True
+            self.actuation_widget_ref.enable_per_key_checkbox.setChecked(self.mode_enabled)
+            self.actuation_widget_ref.update_per_key_ui_state(self.mode_enabled)
+            self.actuation_widget_ref.syncing = False
+
         self.refresh_layer_display()
 
     def update_slider_states(self):
