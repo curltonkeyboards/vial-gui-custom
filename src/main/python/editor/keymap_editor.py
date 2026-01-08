@@ -86,7 +86,7 @@ class QuickActuationWidget(QWidget):
             'velocity_min': 1,
             'velocity_max': 127,
             'aftertouch': 0,
-            'aftertouch_cc': 74,
+            'aftertouch_cc': 255,  # 255 = off (no CC sent)
             'keysplit_enabled': False,
             'keysplit_channel': 0,
             'keysplit_transpose': 0,
@@ -483,9 +483,10 @@ class QuickActuationWidget(QWidget):
         self.midi_aftertouch_cc.setEditable(True)
         self.midi_aftertouch_cc.lineEdit().setReadOnly(True)
         self.midi_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
+        self.midi_aftertouch_cc.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
         for cc in range(128):
             self.midi_aftertouch_cc.addItem(f"CC#{cc}", cc)
-        self.midi_aftertouch_cc.setCurrentIndex(74)
+        self.midi_aftertouch_cc.setCurrentIndex(0)  # Default to "Off"
         self.midi_aftertouch_cc.currentIndexChanged.connect(self.on_midi_settings_changed)
         atcc_container.addWidget(self.midi_aftertouch_cc)
         at_row_layout.addLayout(atcc_container, 1)

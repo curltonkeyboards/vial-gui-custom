@@ -1183,7 +1183,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "truesustain": data[14] != 0,
                     # Global MIDI Settings (moved from per-layer)
                     "aftertouch_mode": data[15] if len(data) > 15 else 0,
-                    "aftertouch_cc": data[16] if len(data) > 16 else 74,
+                    "aftertouch_cc": data[16] if len(data) > 16 else 255,  # 255 = off (no CC sent)
                     # Base/Main MIDI velocity settings
                     "he_velocity_curve": data[17] if len(data) > 17 else 2,
                     "he_velocity_min": data[18] if len(data) > 18 else 1,

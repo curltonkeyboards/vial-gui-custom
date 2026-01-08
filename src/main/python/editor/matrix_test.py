@@ -1306,9 +1306,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_aftertouch_cc.setMaximumWidth(120)  # Added max width
         self.global_aftertouch_cc.setMinimumHeight(25)
         self.global_aftertouch_cc.setMaximumHeight(25)
+        self.global_aftertouch_cc.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
         for cc in range(128):
             self.global_aftertouch_cc.addItem(f"CC#{cc}", cc)
-        self.global_aftertouch_cc.setCurrentIndex(74)  # Default: CC#74
+        self.global_aftertouch_cc.setCurrentIndex(0)  # Default: Off
         self.global_aftertouch_cc.setEditable(True)
         self.global_aftertouch_cc.lineEdit().setReadOnly(True)
         self.global_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1717,7 +1718,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.global_aftertouch, config.get("global_aftertouch"), 0)
         self.global_velocity_min.setValue(config.get("global_velocity_min", 1))  # Changed to slider setValue
         self.global_velocity_max.setValue(config.get("global_velocity_max", 127))  # Changed to slider setValue
-        set_combo_by_data(self.global_aftertouch_cc, config.get("global_aftertouch_cc"), 74)
+        set_combo_by_data(self.global_aftertouch_cc, config.get("global_aftertouch_cc"), 255)
         # Sustain settings
         set_combo_by_data(self.base_sustain, config.get("base_sustain"), 0)
         set_combo_by_data(self.keysplit_sustain, config.get("keysplit_sustain"), 0)
@@ -1915,7 +1916,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "global_aftertouch": 0,
             "global_velocity_min": 1,
             "global_velocity_max": 127,
-            "global_aftertouch_cc": 74,
+            "global_aftertouch_cc": 255,  # 255 = off (no CC sent)
             "base_sustain": 0,
             "keysplit_sustain": 0,
             "triplesplit_sustain": 0
@@ -1972,7 +1973,7 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
                 'vel_speed': 10,
-                'aftertouch_cc': 74,
+                'aftertouch_cc': 255,  # 255 = off (no CC sent)
                 'rapidfire_enabled': False,
                 'midi_rapidfire_enabled': False,
                 # HE Velocity defaults
@@ -2285,15 +2286,16 @@ class LayerActuationConfigurator(BasicEditor):
         
         aftertouch_cc_combo = ArrowComboBox()
         aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        aftertouch_cc_combo.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
         for cc in range(128):
             aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
-        aftertouch_cc_combo.setCurrentIndex(74)
+        aftertouch_cc_combo.setCurrentIndex(0)  # Default: Off
         aftertouch_cc_combo.setEditable(True)
         aftertouch_cc_combo.lineEdit().setReadOnly(True)
         aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
         combo_layout.addWidget(aftertouch_cc_combo)
         combo_layout.addStretch()
-        
+
         advanced_layout.addLayout(combo_layout)
         aftertouch_cc_combo.currentIndexChanged.connect(
             lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
@@ -2743,9 +2745,10 @@ class LayerActuationConfigurator(BasicEditor):
         
         combo = ArrowComboBox()
         combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        combo.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
         for cc in range(128):
             combo.addItem(f"CC#{cc}", cc)
-        combo.setCurrentIndex(74)
+        combo.setCurrentIndex(0)  # Default: Off
         combo.setEditable(True)
         combo.lineEdit().setReadOnly(True)
         combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -3396,7 +3399,7 @@ class LayerActuationConfigurator(BasicEditor):
                     'midi_rapid_sens': 10,
                     'midi_rapid_vel': 10,
                     'vel_speed': 10,
-                    'aftertouch_cc': 74,
+                    'aftertouch_cc': 255,  # 255 = off (no CC sent)
                     'rapidfire_enabled': False,
                     'midi_rapidfire_enabled': False
                 }
