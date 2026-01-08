@@ -123,6 +123,8 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 // 4-byte parameters
 #define PARAM_VELOCITY_SENSITIVITY           30
 #define PARAM_CC_SENSITIVITY                 31
+// Hall Effect Sensor Linearization
+#define PARAM_LUT_CORRECTION_STRENGTH        32
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -12925,6 +12927,13 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_CC_SENSITIVITY:
             cc_sensitivity = *(int32_t*)value_ptr;
             keyboard_settings.cc_sensitivity = cc_sensitivity;
+            break;
+
+        // Hall Effect Sensor Linearization
+        case PARAM_LUT_CORRECTION_STRENGTH:
+            lut_correction_strength = *value_ptr;
+            if (lut_correction_strength > 100) lut_correction_strength = 100;
+            keyboard_settings.lut_correction_strength = lut_correction_strength;
             break;
 
         default:

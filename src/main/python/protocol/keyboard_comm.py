@@ -79,6 +79,7 @@ PARAM_KEYSPLITTRANSPOSESTATUS = 21
 PARAM_KEYSPLITVELOCITYSTATUS = 22
 PARAM_VELOCITY_SENSITIVITY = 30  # 4-byte uint32
 PARAM_CC_SENSITIVITY = 31  # 4-byte uint32
+PARAM_LUT_CORRECTION_STRENGTH = 32  # 0-100: Hall sensor linearization strength
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off

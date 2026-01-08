@@ -314,6 +314,45 @@ class TriggerSettingsTab(BasicEditor):
         self.global_actuation_widget.setVisible(True)
         layout.addWidget(self.global_actuation_widget)
 
+        # Hall Effect Sensor Linearization Section (always visible - global setting)
+        lut_section = QFrame()
+        lut_section.setFrameShape(QFrame.StyledPanel)
+        lut_section.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        lut_layout = QVBoxLayout()
+        lut_layout.setSpacing(4)
+        lut_layout.setContentsMargins(8, 6, 8, 6)
+
+        # Header with label and value
+        lut_header = QHBoxLayout()
+        lut_label = QLabel(tr("TriggerSettings", "Sensor Linearization"))
+        lut_label.setStyleSheet("QLabel { font-weight: bold; font-size: 9pt; }")
+        lut_label.setToolTip(
+            "Compensates for Hall effect sensor non-linearity.\n"
+            "0% = Linear (no correction)\n"
+            "100% = Full logarithmic correction\n\n"
+            "Higher values improve position accuracy for Hall sensors\n"
+            "like SS49E/SLSS49E3 used in magnetic keyswitches."
+        )
+        lut_header.addWidget(lut_label)
+        lut_header.addStretch()
+        self.lut_strength_value_label = QLabel("0%")
+        self.lut_strength_value_label.setStyleSheet("QLabel { font-weight: bold; color: palette(highlight); }")
+        lut_header.addWidget(self.lut_strength_value_label)
+        lut_layout.addLayout(lut_header)
+
+        # Slider
+        self.lut_strength_slider = QSlider(Qt.Horizontal)
+        self.lut_strength_slider.setMinimum(0)
+        self.lut_strength_slider.setMaximum(100)
+        self.lut_strength_slider.setValue(0)
+        self.lut_strength_slider.setTickPosition(QSlider.TicksBelow)
+        self.lut_strength_slider.setTickInterval(25)
+        self.lut_strength_slider.valueChanged.connect(self.on_lut_strength_changed)
+        lut_layout.addWidget(self.lut_strength_slider)
+
+        lut_section.setLayout(lut_layout)
+        layout.addWidget(lut_section)
+
         # Per-Key Trigger Travel widget
         self.per_key_actuation_widget = QWidget()
         per_key_layout = QVBoxLayout()
@@ -815,6 +854,18 @@ class TriggerSettingsTab(BasicEditor):
         # Update display to show pending value
         self.refresh_layer_display()
         self.update_actuation_visualizer()
+
+    def on_lut_strength_changed(self, value):
+        """Handle LUT correction strength slider change - immediate send to keyboard"""
+        self.lut_strength_value_label.setText(f"{value}%")
+
+        if self.syncing:
+            return
+
+        # Send immediately to keyboard (global setting, no save required)
+        if self.device and isinstance(self.device, VialKeyboard):
+            from protocol.keyboard_comm import PARAM_LUT_CORRECTION_STRENGTH
+            self.device.keyboard.set_keyboard_param_single(PARAM_LUT_CORRECTION_STRENGTH, value)
 
     def apply_actuation_to_keys(self, is_midi, value):
         """Apply actuation value to all normal or MIDI keys based on keymap (local only, no HID)"""
@@ -1986,6 +2037,15 @@ class TriggerSettingsTab(BasicEditor):
                     self.velocity_curve_editor.set_user_curve_names(user_curve_names)
             except Exception as e:
                 print(f"Error loading user curve names: {e}")
+
+            # Initialize LUT correction strength slider
+            # Note: Currently defaults to 0 (linear). In the future, this could be
+            # read from the keyboard configuration. The setting is saved to EEPROM
+            # automatically when changed.
+            self.syncing = True
+            self.lut_strength_slider.setValue(0)
+            self.lut_strength_value_label.setText("0%")
+            self.syncing = False
 
         self.container.setEnabled(self.valid())
 
