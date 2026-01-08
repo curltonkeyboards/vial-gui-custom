@@ -2153,7 +2153,113 @@ class LayerActuationConfigurator(BasicEditor):
         rapid_slider.valueChanged.connect(
             lambda v, lbl=rapid_value_label: self.on_master_slider_changed('rapid', v, lbl)
         )
-        
+
+        # === AFTERTOUCH CONTROLS (always visible) ===
+        # Aftertouch Mode dropdown
+        aftertouch_layout = QHBoxLayout()
+        aftertouch_label = QLabel(tr("LayerActuationConfigurator", "Aftertouch Mode:"))
+        aftertouch_label.setMinimumWidth(200)
+        aftertouch_layout.addWidget(aftertouch_label)
+
+        aftertouch_combo = ArrowComboBox()
+        aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        aftertouch_combo.addItem("Off", 0)
+        aftertouch_combo.addItem("Reverse", 1)
+        aftertouch_combo.addItem("Bottom-Out", 2)
+        aftertouch_combo.addItem("Post-Actuation", 3)
+        aftertouch_combo.addItem("Vibrato", 4)
+        aftertouch_combo.setCurrentIndex(0)
+        aftertouch_combo.setEditable(True)
+        aftertouch_combo.lineEdit().setReadOnly(True)
+        aftertouch_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        aftertouch_layout.addWidget(aftertouch_combo)
+        aftertouch_layout.addStretch()
+        layout.addLayout(aftertouch_layout)
+        aftertouch_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
+        )
+
+        # Aftertouch CC dropdown
+        aftertouch_cc_layout = QHBoxLayout()
+        aftertouch_cc_label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
+        aftertouch_cc_label.setMinimumWidth(200)
+        aftertouch_cc_layout.addWidget(aftertouch_cc_label)
+
+        aftertouch_cc_combo = ArrowComboBox()
+        aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
+        aftertouch_cc_combo.addItem("Off", 255)
+        for cc in range(128):
+            aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
+        aftertouch_cc_combo.setCurrentIndex(0)
+        aftertouch_cc_combo.setEditable(True)
+        aftertouch_cc_combo.lineEdit().setReadOnly(True)
+        aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        aftertouch_cc_layout.addWidget(aftertouch_cc_combo)
+        aftertouch_cc_layout.addStretch()
+        layout.addLayout(aftertouch_cc_layout)
+        aftertouch_cc_combo.currentIndexChanged.connect(
+            lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
+        )
+
+        # Vibrato Sensitivity slider (hidden by default, shown when Vibrato mode)
+        vibrato_sens_widget = QWidget()
+        vibrato_sens_layout = QHBoxLayout()
+        vibrato_sens_layout.setContentsMargins(0, 0, 0, 0)
+        vibrato_sens_widget.setLayout(vibrato_sens_layout)
+
+        vibrato_sens_label = QLabel(tr("LayerActuationConfigurator", "Vibrato Sensitivity:"))
+        vibrato_sens_label.setMinimumWidth(200)
+        vibrato_sens_layout.addWidget(vibrato_sens_label)
+
+        vibrato_sens_slider = QSlider(Qt.Horizontal)
+        vibrato_sens_slider.setMinimum(50)
+        vibrato_sens_slider.setMaximum(200)
+        vibrato_sens_slider.setValue(100)
+        vibrato_sens_layout.addWidget(vibrato_sens_slider)
+
+        vibrato_sens_value_label = QLabel("100%")
+        vibrato_sens_value_label.setMinimumWidth(60)
+        vibrato_sens_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        vibrato_sens_layout.addWidget(vibrato_sens_value_label)
+
+        layout.addWidget(vibrato_sens_widget)
+        vibrato_sens_widget.setVisible(False)
+        vibrato_sens_slider.valueChanged.connect(
+            lambda v, lbl=vibrato_sens_value_label: self.on_master_slider_changed('vibrato_sensitivity', v, lbl)
+        )
+
+        # Vibrato Decay Time slider (hidden by default, shown when Vibrato mode)
+        vibrato_decay_widget = QWidget()
+        vibrato_decay_layout = QHBoxLayout()
+        vibrato_decay_layout.setContentsMargins(0, 0, 0, 0)
+        vibrato_decay_widget.setLayout(vibrato_decay_layout)
+
+        vibrato_decay_label = QLabel(tr("LayerActuationConfigurator", "Vibrato Decay Time:"))
+        vibrato_decay_label.setMinimumWidth(200)
+        vibrato_decay_layout.addWidget(vibrato_decay_label)
+
+        vibrato_decay_slider = QSlider(Qt.Horizontal)
+        vibrato_decay_slider.setMinimum(0)
+        vibrato_decay_slider.setMaximum(2000)
+        vibrato_decay_slider.setValue(200)
+        vibrato_decay_layout.addWidget(vibrato_decay_slider)
+
+        vibrato_decay_value_label = QLabel("200ms")
+        vibrato_decay_value_label.setMinimumWidth(60)
+        vibrato_decay_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        vibrato_decay_layout.addWidget(vibrato_decay_value_label)
+
+        layout.addWidget(vibrato_decay_widget)
+        vibrato_decay_widget.setVisible(False)
+        vibrato_decay_slider.valueChanged.connect(
+            lambda v, lbl=vibrato_decay_value_label: self.on_master_slider_changed('vibrato_decay_time', v, lbl)
+        )
+
+        # Connect aftertouch mode to show/hide vibrato controls
+        aftertouch_combo.currentIndexChanged.connect(
+            lambda idx: self.on_aftertouch_mode_changed(aftertouch_combo, vibrato_sens_widget, vibrato_decay_widget)
+        )
+
         # === ADVANCED OPTIONS (hidden by default) ===
         self.advanced_widget = QWidget()
         advanced_layout_main = QVBoxLayout()
@@ -2220,113 +2326,8 @@ class LayerActuationConfigurator(BasicEditor):
         midi_slider.valueChanged.connect(
             lambda v, lbl=midi_value_label: self.on_master_slider_changed('midi', v, lbl)
         )
-        
-        # Aftertouch Mode (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch Mode:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        aftertouch_combo = ArrowComboBox()
-        aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        aftertouch_combo.addItem("Off", 0)
-        aftertouch_combo.addItem("Reverse", 1)
-        aftertouch_combo.addItem("Bottom-Out", 2)
-        aftertouch_combo.addItem("Post-Actuation", 3)
-        aftertouch_combo.addItem("Vibrato", 4)
-        aftertouch_combo.setCurrentIndex(0)
-        aftertouch_combo.setEditable(True)
-        aftertouch_combo.lineEdit().setReadOnly(True)
-        aftertouch_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(aftertouch_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        aftertouch_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
-        )
-        
-        # Aftertouch CC (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        aftertouch_cc_combo = ArrowComboBox()
-        aftertouch_cc_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        aftertouch_cc_combo.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
-        for cc in range(128):
-            aftertouch_cc_combo.addItem(f"CC#{cc}", cc)
-        aftertouch_cc_combo.setCurrentIndex(0)  # Default: Off
-        aftertouch_cc_combo.setEditable(True)
-        aftertouch_cc_combo.lineEdit().setReadOnly(True)
-        aftertouch_cc_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(aftertouch_cc_combo)
-        combo_layout.addStretch()
 
-        advanced_layout.addLayout(combo_layout)
-        aftertouch_cc_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('aftertouch_cc', aftertouch_cc_combo)
-        )
-
-        # Vibrato Sensitivity (slider) - only visible when Vibrato mode selected
-        vibrato_sens_widget = QWidget()
-        vibrato_sens_layout = QHBoxLayout()
-        vibrato_sens_layout.setContentsMargins(0, 0, 0, 0)
-        vibrato_sens_widget.setLayout(vibrato_sens_layout)
-
-        vibrato_sens_label = QLabel(tr("LayerActuationConfigurator", "Vibrato Sensitivity:"))
-        vibrato_sens_label.setMinimumWidth(200)
-        vibrato_sens_layout.addWidget(vibrato_sens_label)
-
-        vibrato_sens_slider = QSlider(Qt.Horizontal)
-        vibrato_sens_slider.setMinimum(50)
-        vibrato_sens_slider.setMaximum(200)
-        vibrato_sens_slider.setValue(100)
-        vibrato_sens_layout.addWidget(vibrato_sens_slider)
-
-        vibrato_sens_value_label = QLabel("100%")
-        vibrato_sens_value_label.setMinimumWidth(60)
-        vibrato_sens_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        vibrato_sens_layout.addWidget(vibrato_sens_value_label)
-
-        advanced_layout.addWidget(vibrato_sens_widget)
-        vibrato_sens_widget.setVisible(False)  # Hidden by default
-        vibrato_sens_slider.valueChanged.connect(
-            lambda v, lbl=vibrato_sens_value_label: self.on_master_slider_changed('vibrato_sensitivity', v, lbl)
-        )
-
-        # Vibrato Decay Time (slider) - only visible when Vibrato mode selected
-        vibrato_decay_widget = QWidget()
-        vibrato_decay_layout = QHBoxLayout()
-        vibrato_decay_layout.setContentsMargins(0, 0, 0, 0)
-        vibrato_decay_widget.setLayout(vibrato_decay_layout)
-
-        vibrato_decay_label = QLabel(tr("LayerActuationConfigurator", "Vibrato Decay Time:"))
-        vibrato_decay_label.setMinimumWidth(200)
-        vibrato_decay_layout.addWidget(vibrato_decay_label)
-
-        vibrato_decay_slider = QSlider(Qt.Horizontal)
-        vibrato_decay_slider.setMinimum(0)
-        vibrato_decay_slider.setMaximum(2000)
-        vibrato_decay_slider.setValue(200)
-        vibrato_decay_layout.addWidget(vibrato_decay_slider)
-
-        vibrato_decay_value_label = QLabel("200ms")
-        vibrato_decay_value_label.setMinimumWidth(60)
-        vibrato_decay_value_label.setStyleSheet("QLabel { font-weight: bold; }")
-        vibrato_decay_layout.addWidget(vibrato_decay_value_label)
-
-        advanced_layout.addWidget(vibrato_decay_widget)
-        vibrato_decay_widget.setVisible(False)  # Hidden by default
-        vibrato_decay_slider.valueChanged.connect(
-            lambda v, lbl=vibrato_decay_value_label: self.on_master_slider_changed('vibrato_decay_time', v, lbl)
-        )
-
-        # Connect aftertouch mode to show/hide vibrato controls
-        aftertouch_combo.currentIndexChanged.connect(
-            lambda idx: self.on_aftertouch_mode_changed(aftertouch_combo, vibrato_sens_widget, vibrato_decay_widget)
-        )
+        # Note: Aftertouch controls moved outside advanced section (always visible)
 
         # Velocity Mode (dropdown)
         combo_layout = QHBoxLayout()
