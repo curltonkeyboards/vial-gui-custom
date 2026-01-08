@@ -414,8 +414,9 @@ typedef struct {
     uint16_t magic;  // 0x47A3 (GAME) for validation
 } gaming_settings_t;
 
-// EEPROM address for gaming settings (100 bytes allocated) - MOVED to avoid overlap with expanded per-key actuation
-#define GAMING_SETTINGS_EEPROM_ADDR 74100
+// EEPROM address for gaming settings (100 bytes allocated)
+// REORGANIZED: Now at 24500 to fit within 64KB EEPROM limit
+#define GAMING_SETTINGS_EEPROM_ADDR 24500
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
 // =============================================================================
@@ -435,8 +436,9 @@ typedef struct {
     uint16_t magic;  // 0xCF01 (CurVe1) for validation
 } user_curves_t;
 
-// EEPROM address for user curves
-#define USER_CURVES_EEPROM_ADDR 68100
+// EEPROM address for user curves (242 bytes: 10 curves × 24 + 2 magic)
+// REORGANIZED: Now at 24000 to fit within 64KB EEPROM limit
+#define USER_CURVES_EEPROM_ADDR 24000
 #define USER_CURVES_MAGIC 0xCF01
 
 extern user_curves_t user_curves;
@@ -614,8 +616,9 @@ typedef struct {
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
-#define ARP_EEPROM_ADDR 56000       // Starting address for user arp presets in EEPROM (20 slots)
-#define SEQ_EEPROM_ADDR 60000       // Starting address for user seq presets in EEPROM (20 slots)
+// REORGANIZED: Moved to fit within 64KB EEPROM limit without overlaps
+#define ARP_EEPROM_ADDR 10000       // Starting address for user arp presets (20 × 200 = 4000 bytes, ends at 13999)
+#define SEQ_EEPROM_ADDR 14000       // Starting address for user seq presets (20 × 392 = 7840 bytes, ends at 21839)
 #define ARP_PRESET_MAGIC 0xA89F     // Magic number for preset validation
 #define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
 #define ARP_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_ARP_PRESET_NOTES * 3))  // 8 + 192 = 200 bytes

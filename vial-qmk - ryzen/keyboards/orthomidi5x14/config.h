@@ -60,7 +60,8 @@
 #define SD3_TX_PIN B9         // MIDI OUT - TX pin on PB9 (pin 46)
 #define SD3_RX_PIN B8         // MIDI IN - RX pin on PB8 (pin 45)
 
-#define EEPROM_I2C_24LC256
+// Updated for CAT24C512WI-GT3 (64KB EEPROM)
+#define EEPROM_I2C_CAT24C512
 
 // Joystick/Gaming Controller Configuration
 #define JOYSTICK_BUTTON_COUNT 16        // Face buttons, shoulder, dpad, stick clicks
