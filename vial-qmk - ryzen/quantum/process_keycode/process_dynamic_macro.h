@@ -363,7 +363,7 @@ typedef struct {
 	bool truesustain;
     // Global MIDI Settings (moved from per-layer actuation)
     uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
-    uint8_t aftertouch_cc;                // 0-127 (CC number for aftertouch)
+    uint8_t aftertouch_cc;                // 0-127 = CC number, 255 = off (no CC sent, only poly AT)
     // Base/Main MIDI HE Velocity curve and range
     uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)
