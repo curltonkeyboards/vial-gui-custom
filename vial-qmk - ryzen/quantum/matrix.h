@@ -203,6 +203,13 @@ uint8_t analog_matrix_get_travel(uint8_t row, uint8_t col);
 // Get normalized travel (0-255 for easy conversion)
 uint8_t analog_matrix_get_travel_normalized(uint8_t row, uint8_t col);
 
+// Get raw velocity value (0-255) from velocity modes 1-3
+// This is the pre-calculated velocity before curve application
+uint8_t analog_matrix_get_velocity_raw(uint8_t row, uint8_t col);
+
+// Get current velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Combined)
+uint8_t analog_matrix_get_velocity_mode(void);
+
 // Get current key state (true = pressed, false = released)
 bool analog_matrix_get_key_state(uint8_t row, uint8_t col);
 
