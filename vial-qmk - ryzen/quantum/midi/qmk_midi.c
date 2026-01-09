@@ -168,17 +168,37 @@ static void usb_get_midi(MidiDevice* device) {
         input[2] = event.Data3;
 
 #ifdef KEYBOARD_orthomidi5x14
-        // Route USB MIDI based on current mode
-        if (usb_midi_mode == USB_MIDI_TO_OUT) {
-            // Send directly to hardware MIDI OUT without processing
-            route_usb_midi_data(input[0], input[1], input[2], length);
-            // Skip all keyboard processing below
-            continue;
-        } else if (usb_midi_mode == USB_MIDI_IGNORE) {
-            // Ignore all USB MIDI data
-            continue;
+        // Route USB MIDI based on current mode (using unified routing enum)
+        switch (usb_midi_mode) {
+            case MIDI_ROUTE_THRU:
+                // THRU mode: Send to hardware MIDI OUT without processing
+                route_usb_midi_data(input[0], input[1], input[2], length);
+                continue;
+
+            case MIDI_ROUTE_CLOCK_ONLY:
+                // CLOCK_ONLY mode: Process clock messages for BPM sync, forward rest thru
+                // Clock messages will be processed below, non-clock messages forwarded
+                if (length == 1 && (input[0] == MIDI_CLOCK || input[0] == MIDI_START ||
+                                    input[0] == MIDI_STOP || input[0] == MIDI_CONTINUE)) {
+                    // Clock message - will be processed below, but also forward
+                    route_usb_midi_data(input[0], input[1], input[2], length);
+                    // Don't continue - fall through to process clock for BPM sync
+                } else {
+                    // Non-clock message - forward thru without processing
+                    route_usb_midi_data(input[0], input[1], input[2], length);
+                    continue;
+                }
+                break;
+
+            case MIDI_ROUTE_IGNORE:
+                // IGNORE mode: Drop all USB MIDI data
+                continue;
+
+            case MIDI_ROUTE_PROCESS_ALL:
+            default:
+                // PROCESS_ALL mode: Continue with normal processing below
+                break;
         }
-        // If USB_MIDI_PROCESS mode, continue with normal processing below
 #endif
 
         // Convert MIDI messages to direct function calls
@@ -293,22 +313,29 @@ static void usb_get_midi(MidiDevice* device) {
                     break;
             }
 		} else if (length == 1) {
-					// System realtime messages (no channel or note data to override)
-					switch (input[0]) {
-						case MIDI_CLOCK:  // 0xF8
-							handle_external_clock_pulse();
-							break;
-						case MIDI_START:  // 0xFA
-							handle_external_clock_start();
-							break;
-						case MIDI_STOP:   // 0xFC
-							handle_external_clock_stop();
-							break;
-						case MIDI_CONTINUE:  // 0xFB
-							handle_external_clock_continue();
-							break;
-					}
+			// System realtime messages (no channel or note data to override)
+#ifdef KEYBOARD_orthomidi5x14
+			// Only process clock if clock source is set to USB
+			if (midi_clock_source == CLOCK_SOURCE_USB) {
+#endif
+				switch (input[0]) {
+					case MIDI_CLOCK:  // 0xF8
+						handle_external_clock_pulse();
+						break;
+					case MIDI_START:  // 0xFA
+						handle_external_clock_start();
+						break;
+					case MIDI_STOP:   // 0xFC
+						handle_external_clock_stop();
+						break;
+					case MIDI_CONTINUE:  // 0xFB
+						handle_external_clock_continue();
+						break;
 				}
+#ifdef KEYBOARD_orthomidi5x14
+			}
+#endif
+		}
         
         // *** NEW SYSEX HANDLING SECTION ***
         if (length == UNDEFINED) {
