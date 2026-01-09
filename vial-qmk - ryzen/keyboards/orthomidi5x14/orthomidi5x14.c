@@ -5595,9 +5595,15 @@ bool is_internal_clock_active(void) {
 
 #ifdef MIDI_SERIAL_ENABLE
 #include "uart.h"
+#include "midi.h"          // For midi_register_* callback functions
+#include "process_midi.h"  // For midi_send_*_smartchord and recording functions
 
 // Define the serial MIDI device
 MidiDevice midi_serial_device;
+
+// =============================================================================
+// HARDWARE MIDI SEND FUNCTION
+// =============================================================================
 
 // Serial MIDI send function - sends data to hardware MIDI OUT
 void serial_midi_send_func(MidiDevice* device, uint16_t cnt, uint8_t byte0, uint8_t byte1, uint8_t byte2) {
@@ -5613,52 +5619,294 @@ void serial_midi_send_func(MidiDevice* device, uint16_t cnt, uint8_t byte0, uint
     }
 }
 
-// Serial MIDI receive function - processes incoming data from hardware MIDI IN
+// =============================================================================
+// EFFICIENT MIDI RECEIVE - BYTE-BY-BYTE WITH REALTIME PRIORITY
+// =============================================================================
+
+// Efficient serial MIDI receive with proper running status and ultra-low latency realtime thru
+// This function is called as a pre-input-process callback before midi_device_process()
 void serial_midi_get_func(MidiDevice* device) {
-    // Read available bytes from USART1 (hardware MIDI IN via PB3)
     uint16_t available = uart_available(MIDI_SERIAL_PORT);
 
     for (uint16_t i = 0; i < available; i++) {
-        uint8_t data = uart_getchar(MIDI_SERIAL_PORT);
+        uint8_t byte = uart_getchar(MIDI_SERIAL_PORT);
 
-        // Determine message length for routing
-        uint8_t length = 1;
-        uint8_t byte1 = data;
-        uint8_t byte2 = 0;
-        uint8_t byte3 = 0;
-
-        // For multi-byte messages, we need to read additional bytes
-        // This is a simplified approach - full implementation would need proper MIDI parsing
-        if ((data & 0x80) && !(data & 0x08)) {  // Status byte, not realtime
-            // Read data bytes based on message type
-            if ((data & 0xF0) != 0xC0 && (data & 0xF0) != 0xD0) {  // Not Program Change or Channel Pressure
-                // 3-byte message
-                if (uart_available(MIDI_SERIAL_PORT) >= 2) {
-                    byte2 = uart_getchar(MIDI_SERIAL_PORT);
-                    byte3 = uart_getchar(MIDI_SERIAL_PORT);
-                    length = 3;
-                }
-            } else {
-                // 2-byte message
-                if (uart_available(MIDI_SERIAL_PORT) >= 1) {
-                    byte2 = uart_getchar(MIDI_SERIAL_PORT);
-                    length = 2;
-                }
+        // =================================================================
+        // REALTIME MESSAGES (0xF8-0xFF) - ULTRA LOW LATENCY PATH
+        // These can occur ANYWHERE, even mid-message, and must be transparent
+        // Forward immediately without going through the parser for minimal latency
+        // =================================================================
+        if (byte >= 0xF8) {
+            // Handle clock messages for external sync
+            switch (byte) {
+                case MIDI_CLOCK:  // 0xF8
+                    handle_external_clock_pulse();
+                    break;
+                case MIDI_START:  // 0xFA
+                    handle_external_clock_start();
+                    break;
+                case MIDI_STOP:   // 0xFC
+                    handle_external_clock_stop();
+                    break;
+                case MIDI_CONTINUE:  // 0xFB
+                    handle_external_clock_continue();
+                    break;
             }
+
+            // Forward realtime to destinations based on mode (ultra-low latency path)
+            if (midi_in_mode == MIDI_IN_TO_USB) {
+                midi_send_data(&midi_device, 1, byte, 0, 0);  // USB out
+            } else if (midi_in_mode == MIDI_IN_TO_OUT) {
+                uart_putchar(MIDI_SERIAL_PORT, byte);  // Hardware MIDI thru (fastest path)
+            } else if (midi_in_mode == MIDI_IN_CLOCK_ONLY) {
+                // Send clock to both USB and MIDI OUT
+                midi_send_data(&midi_device, 1, byte, 0, 0);
+                uart_putchar(MIDI_SERIAL_PORT, byte);
+            }
+            // MIDI_IN_PROCESS and MIDI_IN_IGNORE: don't forward realtime
+
+            // Don't queue realtime for parser - they're handled immediately
+            // Note: QMK's midi_process_byte also handles realtime transparently (lines 91-96)
+            // but we want the fastest possible path for clock messages
+            continue;
         }
 
-        // Route the MIDI IN data based on current mode
-        route_midi_in_data(byte1, byte2, byte3, length);
+        // =================================================================
+        // ALL OTHER MESSAGES - QUEUE FOR STATE MACHINE PARSER
+        // The parser handles running status, multi-byte messages, and SysEx
+        // =================================================================
 
-        // If in PROCESS mode, feed data to the MIDI device for keyboard processing
-        if (midi_in_mode == MIDI_IN_PROCESS) {
-            uint8_t input_data[3] = {byte1, byte2, byte3};
-            midi_device_input(device, length, input_data);
+        // In IGNORE mode, don't even queue the bytes
+        if (midi_in_mode == MIDI_IN_IGNORE) {
+            continue;
         }
+
+        // Queue byte for the QMK MIDI parser (handles running status automatically)
+        // The parser will call our registered callbacks when messages are complete
+        midi_device_input(device, 1, &byte);
     }
 }
 
-// Initialize serial MIDI
+// =============================================================================
+// MIDI ROUTING CALLBACKS - Called by QMK parser when messages are complete
+// These provide feature parity with USB MIDI (overrides, smart chords, RGB)
+// =============================================================================
+
+// Note On callback - routes based on mode with full processing in PROCESS mode
+void serial_midi_noteon_callback(MidiDevice* device, uint8_t channel, uint8_t note, uint8_t velocity) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_noteon(&midi_device, channel, note, velocity);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_noteon(&midi_serial_device, channel, note, velocity);
+            break;
+
+        case MIDI_IN_PROCESS:
+            // Full processing with overrides - same as USB path
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            if (transposeoverride) {
+                int16_t transposed = note + transpose_number + octave_number;
+                note = (transposed < 0) ? 0 : (transposed > 127) ? 127 : (uint8_t)transposed;
+            }
+            if (velocityoverride) {
+                velocity = velocity_number & 0x7F;
+            }
+            midi_send_noteon_smartchord(channel, note, velocity);
+            // RGB effects for MIDI notes
+            if (velocity > 0) {
+                process_midi_basic_noteon(note);
+            } else {
+                process_midi_basic_noteoff(note);
+            }
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            // Don't forward note messages in these modes
+            break;
+    }
+}
+
+// Note Off callback
+void serial_midi_noteoff_callback(MidiDevice* device, uint8_t channel, uint8_t note, uint8_t velocity) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_noteoff(&midi_device, channel, note, velocity);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_noteoff(&midi_serial_device, channel, note, velocity);
+            break;
+
+        case MIDI_IN_PROCESS:
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            if (transposeoverride) {
+                int16_t transposed = note + transpose_number + octave_number;
+                note = (transposed < 0) ? 0 : (transposed > 127) ? 127 : (uint8_t)transposed;
+            }
+            if (velocityoverride) {
+                velocity = velocity_number & 0x7F;
+            }
+            midi_send_noteoff_smartchord(channel, note, velocity);
+            process_midi_basic_noteoff(note);
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// CC callback
+void serial_midi_cc_callback(MidiDevice* device, uint8_t channel, uint8_t control, uint8_t value) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_cc(&midi_device, channel, control, value);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_cc(&midi_serial_device, channel, control, value);
+            break;
+
+        case MIDI_IN_PROCESS:
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            midi_send_external_cc_with_recording(channel, control, value);
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// Pitch bend callback
+void serial_midi_pitchbend_callback(MidiDevice* device, uint8_t channel, uint8_t lsb, uint8_t msb) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_pitchbend(&midi_device, channel, ((msb << 7) | lsb) - 8192);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_pitchbend(&midi_serial_device, channel, ((msb << 7) | lsb) - 8192);
+            break;
+
+        case MIDI_IN_PROCESS:
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            midi_send_pitchbend_with_recording(channel, ((msb << 7) | lsb) - 8192);
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// Aftertouch (polyphonic key pressure) callback
+void serial_midi_aftertouch_callback(MidiDevice* device, uint8_t channel, uint8_t note, uint8_t pressure) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_aftertouch(&midi_device, channel, note, pressure);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_aftertouch(&midi_serial_device, channel, note, pressure);
+            break;
+
+        case MIDI_IN_PROCESS:
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            midi_send_aftertouch_with_recording(channel, note, pressure);
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// Program change callback
+void serial_midi_progchange_callback(MidiDevice* device, uint8_t channel, uint8_t program) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_programchange(&midi_device, channel, program);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_programchange(&midi_serial_device, channel, program);
+            break;
+
+        case MIDI_IN_PROCESS:
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            midi_send_program_with_recording(channel, program);
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// Channel pressure (monophonic aftertouch) callback
+void serial_midi_chanpressure_callback(MidiDevice* device, uint8_t channel, uint8_t pressure) {
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_channelpressure(&midi_device, channel, pressure);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_channelpressure(&midi_serial_device, channel, pressure);
+            break;
+
+        case MIDI_IN_PROCESS:
+            if (channeloverride) {
+                channel = channel_number & 0x0F;
+            }
+            midi_send_channel_pressure_with_recording(channel, pressure);
+            break;
+
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// Fallthrough callback - catches any messages not handled by specific callbacks
+void serial_midi_fallthrough_callback(MidiDevice* device, uint16_t cnt, uint8_t byte0, uint8_t byte1, uint8_t byte2) {
+    // Forward unhandled messages based on mode (SysEx, etc.)
+    switch (midi_in_mode) {
+        case MIDI_IN_TO_USB:
+            midi_send_data(&midi_device, cnt, byte0, byte1, byte2);
+            break;
+
+        case MIDI_IN_TO_OUT:
+            midi_send_data(&midi_serial_device, cnt, byte0, byte1, byte2);
+            break;
+
+        case MIDI_IN_PROCESS:
+        case MIDI_IN_CLOCK_ONLY:
+        case MIDI_IN_IGNORE:
+            break;
+    }
+}
+
+// =============================================================================
+// MIDI SERIAL INITIALIZATION
+// =============================================================================
+
+// Initialize serial MIDI with callbacks
 void setup_serial_midi(void) {
     // Initialize UART for MIDI (31250 baud)
     uart_init(MIDI_SERIAL_PORT, 31250);
@@ -5667,40 +5915,50 @@ void setup_serial_midi(void) {
     midi_device_init(&midi_serial_device);
     midi_device_set_send_func(&midi_serial_device, serial_midi_send_func);
     midi_device_set_pre_input_process_func(&midi_serial_device, serial_midi_get_func);
+
+    // Register callbacks for routing parsed messages
+    // These are called by midi_device_process() after the state machine parser completes messages
+    midi_register_noteon_callback(&midi_serial_device, serial_midi_noteon_callback);
+    midi_register_noteoff_callback(&midi_serial_device, serial_midi_noteoff_callback);
+    midi_register_cc_callback(&midi_serial_device, serial_midi_cc_callback);
+    midi_register_pitchbend_callback(&midi_serial_device, serial_midi_pitchbend_callback);
+    midi_register_aftertouch_callback(&midi_serial_device, serial_midi_aftertouch_callback);
+    midi_register_progchange_callback(&midi_serial_device, serial_midi_progchange_callback);
+    midi_register_chanpressure_callback(&midi_serial_device, serial_midi_chanpressure_callback);
+    midi_register_fallthrough_callback(&midi_serial_device, serial_midi_fallthrough_callback);
 }
 
+// =============================================================================
+// LEGACY ROUTE FUNCTION (kept for compatibility, now mostly handled by callbacks)
+// =============================================================================
+
 // Route MIDI data from hardware MIDI IN based on current mode
+// Note: This is now primarily used for direct routing; most routing happens via callbacks
 void route_midi_in_data(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint8_t num_bytes) {
     bool is_clock_msg = (byte1 == MIDI_CLOCK || byte1 == MIDI_START ||
                          byte1 == MIDI_STOP || byte1 == MIDI_CONTINUE);
 
     switch (midi_in_mode) {
         case MIDI_IN_TO_USB:
-            // Send to USB MIDI only
             midi_send_data(&midi_device, num_bytes, byte1, byte2, byte3);
             break;
 
         case MIDI_IN_TO_OUT:
-            // Send to MIDI OUT only
             midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
             break;
 
         case MIDI_IN_PROCESS:
-            // Send through keyboard processing (will be handled by QMK's MIDI system)
-            // This is the default behavior - data comes in via serial and gets processed
+            // Handled by callbacks now
             break;
 
         case MIDI_IN_CLOCK_ONLY:
-            // Only forward clock messages
             if (is_clock_msg) {
-                // Send clock to both USB and MIDI OUT
                 midi_send_data(&midi_device, num_bytes, byte1, byte2, byte3);
                 midi_send_data(&midi_serial_device, num_bytes, byte1, byte2, byte3);
             }
             break;
 
         case MIDI_IN_IGNORE:
-            // Ignore all MIDI In data - do nothing
             break;
     }
 }
