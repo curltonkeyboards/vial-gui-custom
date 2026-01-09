@@ -4025,18 +4025,15 @@ void keyboard_post_init_user(void) {
 	// Initialize arpeggiator system
 	arp_init();
 
-	// Initialize encoder click buttons and sustain pedal pins
-	setPinInputHigh(B12);  // Encoder 0 click
-	setPinInputHigh(B13);  // Encoder 1 click
-	setPinInputHigh(B10);  // Sustain pedal
+	// Initialize encoder click buttons and footswitch pins
+	setPinInputHigh(B14);  // Encoder 0 click (directly polled GPIO)
+	setPinInputHigh(B15);  // Encoder 1 click (directly polled GPIO)
+	setPinInputHigh(A9);   // Footswitch / Sustain pedal (directly polled GPIO)
 
 #ifdef MIDI_SERIAL_ENABLE
-	// Initialize MIDI serial pins for hardware MIDI
-	setPinInputHigh(B8);   // MIDI IN (RX) - PB8 (user specified)
-	setPinOutput(B9);      // MIDI OUT (TX) - PB9 (user specified)
-	// Note: If PB8/PB9 don't work (no UART support), switch to PC10/PC11
-
-	// Initialize serial MIDI device
+	// Initialize MIDI serial - using USART1 on PA15 (TX) and PB3 (RX)
+	// Pin configuration is handled by QMK's uart_init() via SD1_TX_PIN/SD1_RX_PIN defines in config.h
+	// PA15/PB3 are JTAG pins remapped to USART1 AF7
 	setup_serial_midi();
 #endif
 }
@@ -14308,25 +14305,38 @@ void matrix_scan_user(void) {
 	if (current_bpm > 0) {
 	midi_clock_task();}
 
-	// Handle sustain pedal (PB10) - active low (pulled high with internal pullup)
+	// Handle footswitch / sustain pedal (PA9) - active low (pulled high with internal pullup)
+	// Triggers both MIDI CC 64 (sustain) AND a key event at row 5, col 2 for Vial remapping
 	static bool sustain_pedal_prev_state = true;
-	bool sustain_pedal_state = readPin(B10);
+	bool sustain_pedal_state = readPin(A9);
 	if (sustain_pedal_state != sustain_pedal_prev_state) {
 		if (!sustain_pedal_state) {
-			// Pedal pressed
+			// Pedal pressed - send MIDI sustain ON
 			truesustain = true;
 			midi_send_cc(&midi_device, channel_number, 64, 127);
+			// Also trigger key event for Vial remapping (row 5, col 2)
+			action_exec((keyevent_t){
+				.key = (keypos_t){.row = 5, .col = 2},
+				.pressed = true,
+				.time = timer_read()
+			});
 		} else {
-			// Pedal released
+			// Pedal released - send MIDI sustain OFF
 			truesustain = false;
 			midi_send_cc(&midi_device, channel_number, 64, 0);
+			// Release key event
+			action_exec((keyevent_t){
+				.key = (keypos_t){.row = 5, .col = 2},
+				.pressed = false,
+				.time = timer_read()
+			});
 		}
 		sustain_pedal_prev_state = sustain_pedal_state;
 	}
 
-	// Handle encoder 0 click button (PB12)
+	// Handle encoder 0 click button (PB14) - triggers key at row 5, col 0
 	static bool encoder0_click_prev_state = true;
-	bool encoder0_click_state = readPin(B12);
+	bool encoder0_click_state = readPin(B14);
 	if (encoder0_click_state != encoder0_click_prev_state) {
 		if (!encoder0_click_state) {
 			// Encoder 0 click pressed
@@ -14346,9 +14356,9 @@ void matrix_scan_user(void) {
 		encoder0_click_prev_state = encoder0_click_state;
 	}
 
-	// Handle encoder 1 click button (PB13)
+	// Handle encoder 1 click button (PB15) - triggers key at row 5, col 1
 	static bool encoder1_click_prev_state = true;
-	bool encoder1_click_state = readPin(B13);
+	bool encoder1_click_state = readPin(B15);
 	if (encoder1_click_state != encoder1_click_prev_state) {
 		if (!encoder1_click_state) {
 			// Encoder 1 click pressed
