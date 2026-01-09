@@ -87,19 +87,28 @@ void update_layer_animations_setting_slot0_direct(bool new_value);
 extern bool truekey_effects_active;
 
 // MIDI Routing Mode Enums and Functions
+// Unified routing modes for both Hardware MIDI IN and USB MIDI IN
 typedef enum {
-    MIDI_IN_TO_USB,        // Send MIDI In directly to USB only
-    MIDI_IN_TO_OUT,        // Send MIDI In directly to MIDI Out only
-    MIDI_IN_PROCESS,       // Send MIDI In through keyboard processing
-    MIDI_IN_CLOCK_ONLY,    // Only forward clock messages from MIDI In
-    MIDI_IN_IGNORE         // Ignore all MIDI In data
-} midi_in_mode_t;
+    MIDI_ROUTE_PROCESS_ALL,    // Process through QMK (smartchord, LED, recording) - DEFAULT
+    MIDI_ROUTE_THRU,           // Forward to both USB out AND hardware MIDI out (bypass processing)
+    MIDI_ROUTE_CLOCK_ONLY,     // Only process clock, forward everything else thru
+    MIDI_ROUTE_IGNORE          // Ignore all input data
+} midi_route_mode_t;
 
-typedef enum {
-    USB_MIDI_TO_OUT,       // Send USB MIDI directly to MIDI Out
-    USB_MIDI_PROCESS,      // Send USB MIDI through keyboard processing
-    USB_MIDI_IGNORE        // Ignore all USB MIDI data
-} usb_midi_mode_t;
+// Legacy aliases for backwards compatibility
+#define MIDI_IN_PROCESS     MIDI_ROUTE_PROCESS_ALL
+#define MIDI_IN_TO_USB      MIDI_ROUTE_THRU  // Legacy: now sends to both
+#define MIDI_IN_TO_OUT      MIDI_ROUTE_THRU  // Legacy: now sends to both
+#define MIDI_IN_CLOCK_ONLY  MIDI_ROUTE_CLOCK_ONLY
+#define MIDI_IN_IGNORE      MIDI_ROUTE_IGNORE
+
+#define USB_MIDI_PROCESS    MIDI_ROUTE_PROCESS_ALL
+#define USB_MIDI_TO_OUT     MIDI_ROUTE_THRU  // Legacy: now sends to both
+#define USB_MIDI_IGNORE     MIDI_ROUTE_IGNORE
+
+// Use the unified type for both
+typedef midi_route_mode_t midi_in_mode_t;
+typedef midi_route_mode_t usb_midi_mode_t;
 
 typedef enum {
     CLOCK_SOURCE_LOCAL,    // Use local/internal clock generation
