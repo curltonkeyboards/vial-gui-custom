@@ -1593,10 +1593,11 @@ KEYCODES_MIDI_PEDAL = [
 ]
 
 KEYCODES_MIDI_INOUT = [
-    # MIDI Routing Controls
-    K("MIDI_IN_MODE_TOG", "MIDI IN\nMode", "Toggle MIDI IN routing (IN->USB/OUT/PROC/CLK/IGN)"),
-    K("USB_MIDI_MODE_TOG", "USB MIDI\nMode", "Toggle USB MIDI routing (USB->OUT/PROC/IGN)"),
-    K("MIDI_CLOCK_SRC_TOG", "MIDI Clock\nSource", "Toggle MIDI clock source"),
+    # MIDI Routing Controls - Both inputs have same 4 modes:
+    # PROC (process all through QMK), THRU (forward to both outputs), CLK (process clock only), IGN (ignore)
+    K("MIDI_IN_MODE_TOG", "HW MIDI\nRoute", "Toggle Hardware MIDI IN routing: PROC→THRU→CLK→IGN"),
+    K("USB_MIDI_MODE_TOG", "USB MIDI\nRoute", "Toggle USB MIDI routing: PROC→THRU→CLK→IGN"),
+    K("MIDI_CLOCK_SRC_TOG", "Clock\nSource", "Toggle MIDI clock source: LOCAL→USB→MIDI_IN"),
 
     # Override Toggles
     K("MI_CH_OVR_TOG", "Channel\nOverride", "Toggle channel override"),
