@@ -365,8 +365,9 @@ class MainWindow(QMainWindow):
 
         # Updated to include the new configurators in the rebuild process
         for e in [self.layout_editor, self.keymap_editor, self.trigger_settings, self.dks_settings,
-                  self.firmware_flasher, self.macro_recorder, self.tap_dance, self.combos, self.key_override,
-                  self.qmk_settings, self.matrix_tester, self.rgb_configurator, self.MIDIswitchSettingsConfigurator,
+                  self.toggle_settings, self.firmware_flasher, self.macro_recorder, self.tap_dance,
+                  self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
+                  self.rgb_configurator, self.MIDIswitchSettingsConfigurator,
                   self.thruloop_configurator, self.gaming_configurator, self.midi_patchbay,
                   self.loop_manager, self.arpeggiator, self.step_sequencer]:
             e.rebuild(self.autorefresh.current_device)
