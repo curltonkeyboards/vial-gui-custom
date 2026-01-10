@@ -1086,3 +1086,77 @@ void handle_nullbind_set_group(const uint8_t* data);
 void handle_nullbind_save_eeprom(void);
 void handle_nullbind_load_eeprom(void);
 void handle_nullbind_reset_all(void);
+
+// ============================================================================
+// TOGGLE KEYS SYSTEM
+// ============================================================================
+//
+// Toggle keys allow a keypress to toggle between holding and releasing a
+// target keycode. This is implemented as keybinds (TGL_00 - TGL_99) that
+// can be assigned to any physical key in the keymap.
+//
+// When a toggle key is pressed:
+// - If the target keycode is released, it becomes held
+// - If the target keycode is held, it becomes released
+//
+// This is useful for gaming scenarios where you want to toggle a key state
+// without continuously holding the physical key.
+// ============================================================================
+
+// Constants
+#define TOGGLE_NUM_SLOTS            100     // Number of toggle slots (TGL_00 - TGL_99)
+#define TOGGLE_SLOT_SIZE            4       // Bytes per slot in EEPROM/RAM
+#define TOGGLE_EEPROM_SIZE          (TOGGLE_NUM_SLOTS * TOGGLE_SLOT_SIZE)  // 400 bytes total
+
+// Toggle keycode range (100 keycodes: TGL_00 through TGL_99)
+#define TOGGLE_KEY_BASE             0xEE00
+#define TOGGLE_KEY_MAX              (TOGGLE_KEY_BASE + TOGGLE_NUM_SLOTS - 1)  // 0xEE63
+
+// Toggle slot structure (4 bytes per slot)
+typedef struct {
+    uint16_t target_keycode;            // Keycode to toggle (0 = disabled)
+    uint8_t  reserved[2];               // Reserved for future use (e.g., options/flags)
+} toggle_slot_t;
+
+// Runtime state for toggle key processing
+typedef struct {
+    bool is_held;                       // Current state: true = target is held, false = released
+} toggle_runtime_t;
+
+// External declarations
+extern toggle_slot_t toggle_slots[TOGGLE_NUM_SLOTS];
+extern toggle_runtime_t toggle_runtime[TOGGLE_NUM_SLOTS];
+extern bool toggle_enabled;  // Global enable flag
+
+// HID Command IDs (0xF5-0xF9)
+#define HID_CMD_TOGGLE_GET_SLOT         0xF5    // Get toggle slot configuration
+#define HID_CMD_TOGGLE_SET_SLOT         0xF6    // Set toggle slot configuration
+#define HID_CMD_TOGGLE_SAVE_EEPROM      0xF7    // Save all slots to EEPROM
+#define HID_CMD_TOGGLE_LOAD_EEPROM      0xF8    // Load all slots from EEPROM
+#define HID_CMD_TOGGLE_RESET_ALL        0xF9    // Reset all slots to defaults
+
+// Initialization and EEPROM functions
+void toggle_init(void);
+void toggle_save_to_eeprom(void);
+void toggle_load_from_eeprom(void);
+void toggle_reset_all(void);
+
+// Helper functions
+static inline bool is_toggle_keycode(uint16_t keycode) {
+    return (keycode >= TOGGLE_KEY_BASE && keycode <= TOGGLE_KEY_MAX);
+}
+
+static inline uint8_t toggle_keycode_to_slot(uint16_t keycode) {
+    return (uint8_t)(keycode - TOGGLE_KEY_BASE);
+}
+
+// Key processing functions (called when TGL_XX key is pressed)
+void toggle_process_key(uint16_t keycode, bool pressed);
+void toggle_release_all(void);  // Release all held toggles
+
+// HID handlers
+void handle_toggle_get_slot(uint8_t slot_num, uint8_t* response);
+void handle_toggle_set_slot(const uint8_t* data);
+void handle_toggle_save_eeprom(void);
+void handle_toggle_load_eeprom(void);
+void handle_toggle_reset_all(void);

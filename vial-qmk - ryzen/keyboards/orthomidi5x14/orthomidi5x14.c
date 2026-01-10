@@ -2239,6 +2239,13 @@ bool nullbind_enabled = true;  // Global enable flag
 // Non-static so matrix.c can update it directly for continuous distance tracking
 uint8_t nullbind_key_travel[70];  // Current travel value for each key (0-255)
 
+// =============================================================================
+// TOGGLE KEYS GLOBAL VARIABLES
+// =============================================================================
+toggle_slot_t toggle_slots[TOGGLE_NUM_SLOTS];
+toggle_runtime_t toggle_runtime[TOGGLE_NUM_SLOTS];
+bool toggle_enabled = true;  // Global enable flag
+
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
@@ -3827,6 +3834,155 @@ void handle_nullbind_reset_all(void) {
     nullbind_reset_all();
 }
 
+// =============================================================================
+// TOGGLE KEYS IMPLEMENTATION
+// =============================================================================
+
+// Initialize toggle system
+void toggle_init(void) {
+    memset(toggle_slots, 0, sizeof(toggle_slots));
+    memset(toggle_runtime, 0, sizeof(toggle_runtime));
+    toggle_enabled = true;
+}
+
+// Save toggle slots to EEPROM
+void toggle_save_to_eeprom(void) {
+    // Write magic number first
+    uint16_t magic = TOGGLE_MAGIC;
+    eeprom_update_word((uint16_t*)(TOGGLE_EEPROM_ADDR), magic);
+
+    // Write slot data
+    uint32_t addr = TOGGLE_EEPROM_ADDR + 2;
+    for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
+        eeprom_update_word((uint16_t*)addr, toggle_slots[i].target_keycode);
+        addr += 2;
+        // Reserved bytes (2 bytes)
+        eeprom_update_byte((uint8_t*)addr, toggle_slots[i].reserved[0]);
+        addr++;
+        eeprom_update_byte((uint8_t*)addr, toggle_slots[i].reserved[1]);
+        addr++;
+    }
+}
+
+// Load toggle slots from EEPROM
+void toggle_load_from_eeprom(void) {
+    // Check magic number
+    uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_EEPROM_ADDR));
+    if (magic != TOGGLE_MAGIC) {
+        // Not initialized, reset to defaults
+        toggle_init();
+        return;
+    }
+
+    // Read slot data
+    uint32_t addr = TOGGLE_EEPROM_ADDR + 2;
+    for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
+        toggle_slots[i].target_keycode = eeprom_read_word((uint16_t*)addr);
+        addr += 2;
+        // Reserved bytes (2 bytes)
+        toggle_slots[i].reserved[0] = eeprom_read_byte((uint8_t*)addr);
+        addr++;
+        toggle_slots[i].reserved[1] = eeprom_read_byte((uint8_t*)addr);
+        addr++;
+    }
+
+    // Reset runtime state
+    memset(toggle_runtime, 0, sizeof(toggle_runtime));
+}
+
+// Reset all toggle slots to defaults
+void toggle_reset_all(void) {
+    toggle_init();
+}
+
+// Process a toggle key press
+void toggle_process_key(uint16_t keycode, bool pressed) {
+    if (!toggle_enabled) return;
+    if (!is_toggle_keycode(keycode)) return;
+
+    // Only process on key press, not release
+    if (!pressed) return;
+
+    uint8_t slot_num = toggle_keycode_to_slot(keycode);
+    if (slot_num >= TOGGLE_NUM_SLOTS) return;
+
+    toggle_slot_t* slot = &toggle_slots[slot_num];
+    toggle_runtime_t* runtime = &toggle_runtime[slot_num];
+
+    // Skip if no target keycode configured
+    if (slot->target_keycode == 0) return;
+
+    // Toggle the state
+    if (runtime->is_held) {
+        // Release the target keycode
+        unregister_code16(slot->target_keycode);
+        runtime->is_held = false;
+    } else {
+        // Press and hold the target keycode
+        register_code16(slot->target_keycode);
+        runtime->is_held = true;
+    }
+}
+
+// Release all held toggle keys (call on layer change, etc.)
+void toggle_release_all(void) {
+    for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
+        if (toggle_runtime[i].is_held && toggle_slots[i].target_keycode != 0) {
+            unregister_code16(toggle_slots[i].target_keycode);
+            toggle_runtime[i].is_held = false;
+        }
+    }
+}
+
+// HID handler: Get toggle slot configuration
+void handle_toggle_get_slot(uint8_t slot_num, uint8_t* response) {
+    // Response format: [status, target_keycode_low, target_keycode_high, reserved[2]]
+    if (slot_num >= TOGGLE_NUM_SLOTS) {
+        response[0] = 1;  // Error
+        return;
+    }
+
+    response[0] = 0;  // Success
+    toggle_slot_t* slot = &toggle_slots[slot_num];
+    response[1] = slot->target_keycode & 0xFF;
+    response[2] = (slot->target_keycode >> 8) & 0xFF;
+    response[3] = slot->reserved[0];
+    response[4] = slot->reserved[1];
+}
+
+// HID handler: Set toggle slot configuration
+void handle_toggle_set_slot(const uint8_t* data) {
+    // Data format: [slot_num, target_keycode_low, target_keycode_high, reserved[2]]
+    uint8_t slot_num = data[0];
+    if (slot_num >= TOGGLE_NUM_SLOTS) return;
+
+    toggle_slot_t* slot = &toggle_slots[slot_num];
+    slot->target_keycode = data[1] | (data[2] << 8);
+    slot->reserved[0] = data[3];
+    slot->reserved[1] = data[4];
+
+    // If target keycode changed and the slot was held, release it
+    if (toggle_runtime[slot_num].is_held) {
+        unregister_code16(toggle_slots[slot_num].target_keycode);
+        toggle_runtime[slot_num].is_held = false;
+    }
+}
+
+// HID handler: Save toggle slots to EEPROM
+void handle_toggle_save_eeprom(void) {
+    toggle_save_to_eeprom();
+}
+
+// HID handler: Load toggle slots from EEPROM
+void handle_toggle_load_eeprom(void) {
+    toggle_load_from_eeprom();
+}
+
+// HID handler: Reset all toggle slots
+void handle_toggle_reset_all(void) {
+    toggle_reset_all();
+}
+
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
 }
@@ -4524,6 +4680,9 @@ void keyboard_post_init_user(void) {
 
 	// Initialize null bind (SOCD) system
 	nullbind_load_from_eeprom();
+
+	// Initialize toggle keys system
+	toggle_load_from_eeprom();
 
 	// Initialize encoder click buttons and footswitch pins
 	setPinInputHigh(B14);  // Encoder 0 click (directly polled GPIO)
@@ -12404,7 +12563,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static uint8_t base_note = 0;
     static uint8_t interval_note = 0;
 
-    
+    // =============================================================================
+    // TOGGLE KEYS (TGL_00 - TGL_99, keycodes 0xEE00-0xEE63)
+    // =============================================================================
+    if (is_toggle_keycode(keycode)) {
+        toggle_process_key(keycode, record->event.pressed);
+        set_keylog(keycode, record);
+        return false;  // Skip further processing
+    }
+
     // MIDI Routing Toggle Keycodes
     if (keycode == MIDI_IN_MODE_TOG) {
         if (record->event.pressed) {

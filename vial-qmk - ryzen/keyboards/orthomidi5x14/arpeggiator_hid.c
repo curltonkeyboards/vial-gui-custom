@@ -639,6 +639,33 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 response[4] = 0;  // Success status
                 break;
 
+            // Toggle Keys commands (0xF5-0xF9)
+            case HID_CMD_TOGGLE_GET_SLOT:  // 0xF5
+                // Format: [slot_num] at data[4]
+                handle_toggle_get_slot(data[4], &response[4]);
+                break;
+
+            case HID_CMD_TOGGLE_SET_SLOT:  // 0xF6
+                // Format: [slot_num, target_keycode_low, target_keycode_high, reserved[2]] at data[4]
+                handle_toggle_set_slot(&data[4]);
+                response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_TOGGLE_SAVE_EEPROM:  // 0xF7
+                handle_toggle_save_eeprom();
+                response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_TOGGLE_LOAD_EEPROM:  // 0xF8
+                handle_toggle_load_eeprom();
+                response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_TOGGLE_RESET_ALL:  // 0xF9
+                handle_toggle_reset_all();
+                response[4] = 0;  // Success status
+                break;
+
             default:
                 response[4] = 1;  // Error - unknown command
                 break;

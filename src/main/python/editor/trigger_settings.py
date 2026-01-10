@@ -17,6 +17,10 @@ from protocol.nullbind_protocol import (ProtocolNullBind, NullBindGroup,
                                          NULLBIND_BEHAVIOR_NEUTRAL, NULLBIND_BEHAVIOR_LAST_INPUT,
                                          NULLBIND_BEHAVIOR_DISTANCE, NULLBIND_BEHAVIOR_PRIORITY_BASE,
                                          get_behavior_name, get_behavior_choices)
+from protocol.toggle_protocol import (ProtocolToggle, ToggleSlot,
+                                       TOGGLE_NUM_SLOTS, TOGGLE_KEY_BASE,
+                                       is_toggle_keycode, toggle_keycode_to_slot,
+                                       slot_to_toggle_keycode)
 
 
 class ClickableWidget(QWidget):
@@ -89,6 +93,12 @@ class TriggerSettingsTab(BasicEditor):
         self.nullbind_groups = [NullBindGroup() for _ in range(NULLBIND_NUM_GROUPS)]
         self.current_nullbind_group = 0
         self.nullbind_pending_changes = False
+
+        # Toggle Keys state
+        self.toggle_protocol = None
+        self.toggle_slots = [ToggleSlot() for _ in range(TOGGLE_NUM_SLOTS)]
+        self.current_toggle_slot = 0
+        self.toggle_pending_changes = False
 
         # Top bar with layer selection
         self.layout_layers = QHBoxLayout()
@@ -673,6 +683,139 @@ class TriggerSettingsTab(BasicEditor):
 
         return container
 
+    def create_toggle_container(self):
+        """Create the toggle keys configuration container"""
+        container = QFrame()
+        container.setFrameShape(QFrame.StyledPanel)
+        container.setStyleSheet("QFrame { background-color: palette(base); }")
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Header with description
+        header_label = QLabel(tr("TriggerSettings", "Toggle Keys"))
+        header_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11pt; }")
+        layout.addWidget(header_label)
+
+        desc_label = QLabel(tr("TriggerSettings",
+            "Configure toggle keys that switch between holding and releasing a target keycode.\n"
+            "Assign TGL_XX keycodes to physical keys in your keymap."))
+        desc_label.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
+        desc_label.setWordWrap(True)
+        layout.addWidget(desc_label)
+
+        # Slot selection row
+        slot_row = QHBoxLayout()
+        slot_row.setSpacing(10)
+
+        slot_label = QLabel(tr("TriggerSettings", "Slot:"))
+        slot_label.setStyleSheet("QLabel { font-weight: bold; }")
+        slot_row.addWidget(slot_label)
+
+        self.toggle_slot_combo = QComboBox()
+        for i in range(TOGGLE_NUM_SLOTS):
+            self.toggle_slot_combo.addItem(f"TGL_{i:02d}", i)
+        self.toggle_slot_combo.currentIndexChanged.connect(self.on_toggle_slot_changed)
+        self.toggle_slot_combo.setFixedWidth(120)
+        slot_row.addWidget(self.toggle_slot_combo)
+
+        slot_row.addStretch()
+
+        # Keycode label
+        keycode_label = QLabel(tr("TriggerSettings", "Keycode:"))
+        keycode_label.setStyleSheet("QLabel { font-weight: bold; }")
+        slot_row.addWidget(keycode_label)
+
+        self.toggle_keycode_label = QLabel("0xEE00")
+        self.toggle_keycode_label.setStyleSheet("QLabel { font-family: monospace; background: palette(alternate-base); padding: 4px 8px; border-radius: 4px; }")
+        slot_row.addWidget(self.toggle_keycode_label)
+
+        layout.addLayout(slot_row)
+
+        # Target keycode configuration
+        target_frame = QFrame()
+        target_frame.setFrameShape(QFrame.StyledPanel)
+        target_frame.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        target_layout = QVBoxLayout()
+        target_layout.setSpacing(6)
+        target_layout.setContentsMargins(8, 8, 8, 8)
+
+        target_header = QHBoxLayout()
+        target_title = QLabel(tr("TriggerSettings", "Target Keycode:"))
+        target_title.setStyleSheet("QLabel { font-weight: bold; }")
+        target_header.addWidget(target_title)
+        target_header.addStretch()
+
+        self.toggle_status_label = QLabel("(Not configured)")
+        self.toggle_status_label.setStyleSheet("QLabel { color: gray; }")
+        target_header.addWidget(self.toggle_status_label)
+        target_layout.addLayout(target_header)
+
+        # Target keycode display/button
+        target_display_row = QHBoxLayout()
+
+        self.toggle_target_btn = SquareButton()
+        self.toggle_target_btn.setRelSize(2)
+        self.toggle_target_btn.setToolTip("Click to change target keycode")
+        self.toggle_target_btn.clicked.connect(self.on_toggle_target_clicked)
+        target_display_row.addWidget(self.toggle_target_btn)
+
+        self.toggle_target_desc = QLabel(tr("TriggerSettings", "Click the button to set the keycode that will be toggled"))
+        self.toggle_target_desc.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
+        self.toggle_target_desc.setWordWrap(True)
+        target_display_row.addWidget(self.toggle_target_desc, 1)
+
+        target_layout.addLayout(target_display_row)
+
+        # Action buttons
+        button_row = QHBoxLayout()
+        button_row.setSpacing(10)
+
+        self.toggle_clear_btn = QPushButton(tr("TriggerSettings", "Clear Slot"))
+        self.toggle_clear_btn.clicked.connect(self.on_toggle_clear_slot)
+        self.toggle_clear_btn.setMinimumHeight(28)
+        button_row.addWidget(self.toggle_clear_btn)
+
+        self.toggle_reset_all_btn = QPushButton(tr("TriggerSettings", "Reset All Slots"))
+        self.toggle_reset_all_btn.clicked.connect(self.on_toggle_reset_all)
+        self.toggle_reset_all_btn.setMinimumHeight(28)
+        button_row.addWidget(self.toggle_reset_all_btn)
+
+        button_row.addStretch()
+
+        target_layout.addLayout(button_row)
+        target_frame.setLayout(target_layout)
+        layout.addWidget(target_frame)
+
+        # Usage explanation
+        usage_label = QLabel(tr("TriggerSettings",
+            "Usage: Assign TGL_XX keycodes to keys in your keymap. When pressed, "
+            "the target keycode toggles between held and released states."))
+        usage_label.setStyleSheet("QLabel { color: palette(text); font-size: 9pt; font-style: italic; padding: 4px; }")
+        usage_label.setWordWrap(True)
+        layout.addWidget(usage_label)
+
+        # Save button
+        save_row = QHBoxLayout()
+        save_row.addStretch()
+
+        self.toggle_save_btn = QPushButton(tr("TriggerSettings", "Save Toggle Settings"))
+        self.toggle_save_btn.setEnabled(False)
+        self.toggle_save_btn.setMinimumHeight(32)
+        self.toggle_save_btn.setStyleSheet("QPushButton:enabled { font-weight: bold; color: palette(highlight); }")
+        self.toggle_save_btn.clicked.connect(self.on_toggle_save)
+        save_row.addWidget(self.toggle_save_btn)
+
+        layout.addLayout(save_row)
+        layout.addStretch()
+
+        container.setLayout(layout)
+
+        # Initialize display
+        self.update_toggle_display()
+
+        return container
+
     def create_settings_content(self):
         """Create the settings content with tabbed layout and visualization"""
         widget = QWidget()
@@ -771,6 +914,18 @@ class TriggerSettingsTab(BasicEditor):
 
         nullbind_tab.setLayout(nullbind_layout)
         self.settings_tabs.addTab(nullbind_tab, "Null Bind")
+
+        # Toggle Keys Tab
+        toggle_tab = QWidget()
+        toggle_layout = QVBoxLayout()
+        toggle_layout.setContentsMargins(8, 8, 8, 8)
+
+        self.toggle_container = self.create_toggle_container()
+        toggle_layout.addWidget(self.toggle_container)
+        toggle_layout.addStretch()
+
+        toggle_tab.setLayout(toggle_layout)
+        self.settings_tabs.addTab(toggle_tab, "Toggle Keys")
 
         tabs_layout.addWidget(self.settings_tabs)
         tabs_container.setLayout(tabs_layout)
@@ -2217,6 +2372,15 @@ class TriggerSettingsTab(BasicEditor):
                 # Reset to empty groups on error
                 self.nullbind_groups = [NullBindGroup() for _ in range(NULLBIND_NUM_GROUPS)]
 
+            # Initialize toggle protocol and load slots
+            self.toggle_protocol = ProtocolToggle(self.keyboard)
+            try:
+                self.load_toggle_slots()
+            except Exception as e:
+                print(f"Error loading toggle slots: {e}")
+                # Reset to empty slots on error
+                self.toggle_slots = [ToggleSlot() for _ in range(TOGGLE_NUM_SLOTS)]
+
         self.container.setEnabled(self.valid())
 
     def valid(self):
@@ -2647,3 +2811,130 @@ class TriggerSettingsTab(BasicEditor):
                     is_priority = (key_pos_in_group == priority_idx)
                 return (g_idx, is_priority)
         return (None, False)
+
+    # =========================================================================
+    # Toggle Keys Handler Methods
+    # =========================================================================
+
+    def on_toggle_slot_changed(self, index):
+        """Handle toggle slot selection change"""
+        self.current_toggle_slot = self.toggle_slot_combo.itemData(index)
+        self.update_toggle_display()
+
+    def on_toggle_target_clicked(self):
+        """Handle target keycode button click - open keycode selector"""
+        if not self.keyboard:
+            return
+
+        # Use the keyboard's keycode selector
+        from widgets.keyboard_widget import KeycodeSelector
+
+        current_slot = self.toggle_slots[self.current_toggle_slot]
+        selector = KeycodeSelector(current_slot.target_keycode, self.widget())
+
+        if selector.exec_():
+            new_keycode = selector.selected_keycode()
+            if new_keycode != current_slot.target_keycode:
+                current_slot.target_keycode = new_keycode
+                self.toggle_pending_changes = True
+                self.toggle_save_btn.setEnabled(True)
+                self.update_toggle_display()
+
+    def on_toggle_clear_slot(self):
+        """Clear current toggle slot"""
+        current_slot = self.toggle_slots[self.current_toggle_slot]
+        if current_slot.target_keycode != 0:
+            current_slot.target_keycode = 0
+            self.toggle_pending_changes = True
+            self.toggle_save_btn.setEnabled(True)
+            self.update_toggle_display()
+
+    def on_toggle_reset_all(self):
+        """Reset all toggle slots"""
+        reply = QMessageBox.question(
+            self.widget(),
+            tr("TriggerSettings", "Confirm Reset"),
+            tr("TriggerSettings", "Reset all toggle slots? This cannot be undone."),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            for slot in self.toggle_slots:
+                slot.target_keycode = 0
+            self.toggle_pending_changes = True
+            self.toggle_save_btn.setEnabled(True)
+            self.update_toggle_display()
+
+    def on_toggle_save(self):
+        """Save toggle settings to keyboard"""
+        if not self.toggle_protocol:
+            return
+
+        # Send all slots to keyboard
+        success = True
+        for i, slot in enumerate(self.toggle_slots):
+            if not self.toggle_protocol.set_slot(i, slot):
+                success = False
+                break
+
+        if success:
+            # Save to EEPROM
+            if self.toggle_protocol.save_to_eeprom():
+                QMessageBox.information(
+                    self.widget(),
+                    tr("TriggerSettings", "Success"),
+                    tr("TriggerSettings", "Toggle settings saved to keyboard.")
+                )
+                self.toggle_pending_changes = False
+                self.toggle_save_btn.setEnabled(False)
+            else:
+                QMessageBox.warning(
+                    self.widget(),
+                    tr("TriggerSettings", "Error"),
+                    tr("TriggerSettings", "Failed to save toggle settings to EEPROM.")
+                )
+        else:
+            QMessageBox.warning(
+                self.widget(),
+                tr("TriggerSettings", "Error"),
+                tr("TriggerSettings", "Failed to send toggle settings to keyboard.")
+            )
+
+    def update_toggle_display(self):
+        """Update toggle tab display for current slot"""
+        slot_num = self.current_toggle_slot
+        current_slot = self.toggle_slots[slot_num]
+
+        # Update keycode label
+        keycode = slot_to_toggle_keycode(slot_num)
+        self.toggle_keycode_label.setText(f"0x{keycode:04X}")
+
+        # Update target button display
+        if current_slot.target_keycode != 0:
+            keycode_display = KeycodeDisplay.display(current_slot.target_keycode)
+            self.toggle_target_btn.setText(keycode_display)
+            self.toggle_target_btn.setKeycode(current_slot.target_keycode)
+            self.toggle_status_label.setText("Configured")
+            self.toggle_status_label.setStyleSheet("QLabel { color: green; }")
+        else:
+            self.toggle_target_btn.setText("")
+            self.toggle_target_btn.setKeycode(0)
+            self.toggle_status_label.setText("(Not configured)")
+            self.toggle_status_label.setStyleSheet("QLabel { color: gray; }")
+
+    def load_toggle_slots(self):
+        """Load toggle slots from keyboard"""
+        if not self.toggle_protocol:
+            return
+
+        for i in range(TOGGLE_NUM_SLOTS):
+            slot = self.toggle_protocol.get_slot(i)
+            if slot:
+                self.toggle_slots[i] = slot
+            else:
+                self.toggle_slots[i] = ToggleSlot()
+
+        self.toggle_pending_changes = False
+        self.toggle_save_btn.setEnabled(False)
+        self.update_toggle_display()
