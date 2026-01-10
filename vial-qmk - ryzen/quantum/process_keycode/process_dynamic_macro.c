@@ -125,6 +125,13 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_CC_SENSITIVITY                 31
 // Hall Effect Sensor Linearization
 #define PARAM_LUT_CORRECTION_STRENGTH        32
+// MIDI Routing Override Settings
+#define PARAM_CHANNEL_OVERRIDE               33
+#define PARAM_VELOCITY_OVERRIDE              34
+#define PARAM_TRANSPOSE_OVERRIDE             35
+#define PARAM_MIDI_IN_MODE                   36
+#define PARAM_USB_MIDI_MODE                  37
+#define PARAM_MIDI_CLOCK_SOURCE              38
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -12798,7 +12805,15 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     colorblindmode = *ptr++;
     cclooprecording = (*ptr++ != 0);
     truesustain = (*ptr++ != 0);
-    
+
+    // Read MIDI routing override settings
+    channeloverride = (*ptr++ != 0);
+    velocityoverride = (*ptr++ != 0);
+    transposeoverride = (*ptr++ != 0);
+    midi_in_mode = (midi_in_mode_t)*ptr++;
+    usb_midi_mode = (usb_midi_mode_t)*ptr++;
+    midi_clock_source = (midi_clock_source_t)*ptr++;
+
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
     keyboard_settings.keysplit2channel = keysplit2channel;
@@ -12815,7 +12830,14 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
-    
+    // MIDI routing override settings
+    keyboard_settings.channeloverride = channeloverride;
+    keyboard_settings.velocityoverride = velocityoverride;
+    keyboard_settings.transposeoverride = transposeoverride;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
+
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
         dprintf("HID: Completed save to slot %d with both basic and advanced settings\n", pending_slot_save);
@@ -12930,6 +12952,32 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.lut_correction_strength = lut_correction_strength;
             break;
 
+        // MIDI Routing Override Settings
+        case PARAM_CHANNEL_OVERRIDE:
+            channeloverride = (*value_ptr != 0);
+            keyboard_settings.channeloverride = channeloverride;
+            break;
+        case PARAM_VELOCITY_OVERRIDE:
+            velocityoverride = (*value_ptr != 0);
+            keyboard_settings.velocityoverride = velocityoverride;
+            break;
+        case PARAM_TRANSPOSE_OVERRIDE:
+            transposeoverride = (*value_ptr != 0);
+            keyboard_settings.transposeoverride = transposeoverride;
+            break;
+        case PARAM_MIDI_IN_MODE:
+            midi_in_mode = (midi_in_mode_t)(*value_ptr);
+            keyboard_settings.midi_in_mode = midi_in_mode;
+            break;
+        case PARAM_USB_MIDI_MODE:
+            usb_midi_mode = (usb_midi_mode_t)(*value_ptr);
+            keyboard_settings.usb_midi_mode = usb_midi_mode;
+            break;
+        case PARAM_MIDI_CLOCK_SOURCE:
+            midi_clock_source = (midi_clock_source_t)(*value_ptr);
+            keyboard_settings.midi_clock_source = midi_clock_source;
+            break;
+
         default:
             dprintf("HID: Unknown param_id: %d\n", param_id);
             return;
@@ -12963,10 +13011,10 @@ static void handle_get_keyboard_config(void) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
     
-    // Packet 2: Advanced settings (15 bytes)
-    uint8_t config_packet2[15];
+    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
+    uint8_t config_packet2[21];
     ptr = config_packet2;
-    
+
     *ptr++ = keyboard_settings.keysplitchannel;
     *ptr++ = keyboard_settings.keysplit2channel;
     *ptr++ = keyboard_settings.keysplitstatus;
@@ -12982,8 +13030,15 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 15);
+    // MIDI Routing Override Settings
+    *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
+    *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
+    *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
+    *ptr++ = keyboard_settings.midi_in_mode;
+    *ptr++ = keyboard_settings.usb_midi_mode;
+    *ptr++ = keyboard_settings.midi_clock_source;
+
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
     
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
@@ -13020,7 +13075,14 @@ static void handle_reset_keyboard_config(void) {
     loop_messaging_channel = 16;  // Default to MIDI channel 16
     sync_midi_mode = false;
     alternate_restart_mode = false;
-    
+    // Reset MIDI routing override settings to defaults
+    channeloverride = false;
+    velocityoverride = false;
+    transposeoverride = false;
+    midi_in_mode = MIDI_ROUTE_PROCESS_ALL;
+    usb_midi_mode = MIDI_ROUTE_PROCESS_ALL;
+    midi_clock_source = CLOCK_SOURCE_LOCAL;
+
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
     keyboard_settings.cc_sensitivity = cc_sensitivity;
@@ -13052,7 +13114,14 @@ static void handle_reset_keyboard_config(void) {
 	keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
-    
+    // MIDI routing override settings
+    keyboard_settings.channeloverride = channeloverride;
+    keyboard_settings.velocityoverride = velocityoverride;
+    keyboard_settings.transposeoverride = transposeoverride;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
+
     // Save to EEPROM
     save_keyboard_settings();
     
@@ -13113,10 +13182,10 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
     
-    // Packet 2: Advanced settings (15 bytes) - FIXED: Actually fill and send the packet
-    uint8_t config_packet2[15];
+    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
+    uint8_t config_packet2[21];
     ptr = config_packet2;
-    
+
     *ptr++ = keyboard_settings.keysplitchannel;
     *ptr++ = keyboard_settings.keysplit2channel;
     *ptr++ = keyboard_settings.keysplitstatus;
@@ -13132,8 +13201,15 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 15);
+    // MIDI Routing Override Settings
+    *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
+    *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
+    *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
+    *ptr++ = keyboard_settings.midi_in_mode;
+    *ptr++ = keyboard_settings.usb_midi_mode;
+    *ptr++ = keyboard_settings.midi_clock_source;
+
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
     
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
@@ -13164,7 +13240,14 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     colorblindmode = keyboard_settings.colorblindmode;
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;
-    
+    // MIDI routing override settings
+    channeloverride = keyboard_settings.channeloverride;
+    velocityoverride = keyboard_settings.velocityoverride;
+    transposeoverride = keyboard_settings.transposeoverride;
+    midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
+    usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
+    midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
+
     dprintf("HID: Applied loaded settings from slot %d to active configuration\n", slot);
 }
 // ============================================================================
