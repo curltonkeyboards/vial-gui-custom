@@ -8,6 +8,7 @@
 #include QMK_KEYBOARD_H
 #include "orthomidi5x14.h"
 #include "via.h"
+#include "vial.h"
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
 #include "matrix.h"
@@ -3913,13 +3914,14 @@ void toggle_process_key(uint16_t keycode, bool pressed) {
     if (slot->target_keycode == 0) return;
 
     // Toggle the state
+    // Use vial_keycode_down/up for extended keycode support (MIDI, macros, etc.)
     if (runtime->is_held) {
         // Release the target keycode
-        unregister_code16(slot->target_keycode);
+        vial_keycode_up(slot->target_keycode);
         runtime->is_held = false;
     } else {
         // Press and hold the target keycode
-        register_code16(slot->target_keycode);
+        vial_keycode_down(slot->target_keycode);
         runtime->is_held = true;
     }
 }
@@ -3928,7 +3930,7 @@ void toggle_process_key(uint16_t keycode, bool pressed) {
 void toggle_release_all(void) {
     for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
         if (toggle_runtime[i].is_held && toggle_slots[i].target_keycode != 0) {
-            unregister_code16(toggle_slots[i].target_keycode);
+            vial_keycode_up(toggle_slots[i].target_keycode);
             toggle_runtime[i].is_held = false;
         }
     }
