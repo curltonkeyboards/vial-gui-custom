@@ -419,6 +419,7 @@ static void save_calibration_to_eeprom(void) {
 
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
+    bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
     // Get per-key actuation config
     uint8_t actuation_point, rt_down, rt_up, flags;
@@ -432,7 +433,6 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
 
     if (rt_down == 0) {
         // RT disabled - simple threshold mode
-        bool was_pressed = key->is_pressed;
         key->is_pressed = (key->distance >= actuation_point);
         key->key_dir = KEY_DIR_INACTIVE;
 
@@ -490,6 +490,34 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
                     key->extremum = key->distance;
                 }
                 break;
+        }
+    }
+
+    // Null bind integration: notify on key state transitions
+    uint8_t row = KEY_ROW(key_idx);
+    uint8_t col = KEY_COL(key_idx);
+
+    if (key->is_pressed && !was_pressed) {
+        // Key just pressed - notify null bind with current travel distance
+        nullbind_key_pressed(row, col, key->distance);
+    } else if (!key->is_pressed && was_pressed) {
+        // Key just released - notify null bind
+        nullbind_key_released(row, col);
+    } else if (key->is_pressed) {
+        // Key still pressed - update travel for distance-based null bind
+        // This is needed for DISTANCE mode to track which key is pressed further
+        uint8_t key_index = row * 14 + col;
+        if (key_index < 70) {
+            // Update the internal travel tracking (done inside nullbind_key_pressed normally,
+            // but we need to update it continuously for distance mode)
+            extern uint8_t nullbind_key_travel[70];  // Access from orthomidi5x14.c
+            nullbind_key_travel[key_index] = key->distance;
+
+            // Re-evaluate which key should be active if distance changed
+            int8_t group_num = nullbind_find_key_group(key_index);
+            if (group_num >= 0) {
+                nullbind_update_group_state(group_num);
+            }
         }
     }
 }
@@ -1159,7 +1187,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             }
 
             if (pressed) {
-                current_row_value |= (MATRIX_ROW_SHIFTER << col);
+                // Check if null bind wants to block this key (SOCD handling)
+                if (!nullbind_should_null_key(row, col)) {
+                    current_row_value |= (MATRIX_ROW_SHIFTER << col);
+                }
             }
         }
 

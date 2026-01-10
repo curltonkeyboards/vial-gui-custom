@@ -12,6 +12,11 @@ from widgets.square_button import SquareButton
 from widgets.range_slider import TriggerSlider, RapidTriggerSlider, StyledSlider
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
+from protocol.nullbind_protocol import (ProtocolNullBind, NullBindGroup,
+                                         NULLBIND_NUM_GROUPS, NULLBIND_MAX_KEYS_PER_GROUP,
+                                         NULLBIND_BEHAVIOR_NEUTRAL, NULLBIND_BEHAVIOR_LAST_INPUT,
+                                         NULLBIND_BEHAVIOR_DISTANCE, NULLBIND_BEHAVIOR_PRIORITY_BASE,
+                                         get_behavior_name, get_behavior_choices)
 
 
 class ClickableWidget(QWidget):
@@ -78,6 +83,12 @@ class TriggerSettingsTab(BasicEditor):
         self.has_unsaved_changes = False
         self.pending_layer_data = None  # Will store pending changes before save
         self.pending_per_key_keys = set()  # Track (layer, key_index) tuples with pending per-key changes
+
+        # Null Bind state
+        self.nullbind_protocol = None
+        self.nullbind_groups = [NullBindGroup() for _ in range(NULLBIND_NUM_GROUPS)]
+        self.current_nullbind_group = 0
+        self.nullbind_pending_changes = False
 
         # Top bar with layer selection
         self.layout_layers = QHBoxLayout()
@@ -534,6 +545,134 @@ class TriggerSettingsTab(BasicEditor):
         container.setLayout(layout)
         return container
 
+    def create_nullbind_container(self):
+        """Create the null bind (SOCD) configuration container"""
+        container = QFrame()
+        container.setFrameShape(QFrame.StyledPanel)
+        container.setStyleSheet("QFrame { background-color: palette(base); }")
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        # Header with description
+        header_label = QLabel(tr("TriggerSettings", "Null Bind (SOCD Handling)"))
+        header_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11pt; }")
+        layout.addWidget(header_label)
+
+        desc_label = QLabel(tr("TriggerSettings",
+            "Configure how simultaneous key presses are resolved.\n"
+            "Select keys on the keyboard above and add them to a group."))
+        desc_label.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
+        desc_label.setWordWrap(True)
+        layout.addWidget(desc_label)
+
+        # Group selection row
+        group_row = QHBoxLayout()
+        group_row.setSpacing(10)
+
+        group_label = QLabel(tr("TriggerSettings", "Group:"))
+        group_label.setStyleSheet("QLabel { font-weight: bold; }")
+        group_row.addWidget(group_label)
+
+        self.nullbind_group_combo = QComboBox()
+        for i in range(NULLBIND_NUM_GROUPS):
+            self.nullbind_group_combo.addItem(f"Group {i + 1}", i)
+        self.nullbind_group_combo.currentIndexChanged.connect(self.on_nullbind_group_changed)
+        self.nullbind_group_combo.setFixedWidth(120)
+        group_row.addWidget(self.nullbind_group_combo)
+
+        group_row.addStretch()
+
+        # Behavior selection
+        behavior_label = QLabel(tr("TriggerSettings", "Behavior:"))
+        behavior_label.setStyleSheet("QLabel { font-weight: bold; }")
+        group_row.addWidget(behavior_label)
+
+        self.nullbind_behavior_combo = QComboBox()
+        self.nullbind_behavior_combo.setFixedWidth(200)
+        self.nullbind_behavior_combo.currentIndexChanged.connect(self.on_nullbind_behavior_changed)
+        group_row.addWidget(self.nullbind_behavior_combo)
+
+        layout.addLayout(group_row)
+
+        # Keys in group display
+        keys_frame = QFrame()
+        keys_frame.setFrameShape(QFrame.StyledPanel)
+        keys_frame.setStyleSheet("QFrame { background-color: palette(alternate-base); }")
+        keys_layout = QVBoxLayout()
+        keys_layout.setSpacing(6)
+        keys_layout.setContentsMargins(8, 8, 8, 8)
+
+        keys_header = QHBoxLayout()
+        keys_title = QLabel(tr("TriggerSettings", "Keys in Group:"))
+        keys_title.setStyleSheet("QLabel { font-weight: bold; }")
+        keys_header.addWidget(keys_title)
+        keys_header.addStretch()
+
+        self.nullbind_key_count_label = QLabel("0 / 8 keys")
+        self.nullbind_key_count_label.setStyleSheet("QLabel { color: gray; }")
+        keys_header.addWidget(self.nullbind_key_count_label)
+        keys_layout.addLayout(keys_header)
+
+        # Keys display (will show key names/positions)
+        self.nullbind_keys_display = QLabel(tr("TriggerSettings", "(No keys assigned)"))
+        self.nullbind_keys_display.setStyleSheet("QLabel { font-size: 10pt; padding: 8px; background: palette(base); border-radius: 4px; }")
+        self.nullbind_keys_display.setWordWrap(True)
+        self.nullbind_keys_display.setMinimumHeight(40)
+        keys_layout.addWidget(self.nullbind_keys_display)
+
+        # Action buttons
+        button_row = QHBoxLayout()
+        button_row.setSpacing(10)
+
+        self.nullbind_add_btn = QPushButton(tr("TriggerSettings", "Add Selected Keys"))
+        self.nullbind_add_btn.clicked.connect(self.on_nullbind_add_keys)
+        self.nullbind_add_btn.setMinimumHeight(28)
+        button_row.addWidget(self.nullbind_add_btn)
+
+        self.nullbind_remove_btn = QPushButton(tr("TriggerSettings", "Remove Selected"))
+        self.nullbind_remove_btn.clicked.connect(self.on_nullbind_remove_keys)
+        self.nullbind_remove_btn.setMinimumHeight(28)
+        button_row.addWidget(self.nullbind_remove_btn)
+
+        self.nullbind_clear_btn = QPushButton(tr("TriggerSettings", "Clear Group"))
+        self.nullbind_clear_btn.clicked.connect(self.on_nullbind_clear_group)
+        self.nullbind_clear_btn.setMinimumHeight(28)
+        button_row.addWidget(self.nullbind_clear_btn)
+
+        button_row.addStretch()
+
+        keys_layout.addLayout(button_row)
+        keys_frame.setLayout(keys_layout)
+        layout.addWidget(keys_frame)
+
+        # Behavior explanation
+        self.nullbind_behavior_desc = QLabel("")
+        self.nullbind_behavior_desc.setStyleSheet("QLabel { color: palette(text); font-size: 9pt; font-style: italic; padding: 4px; }")
+        self.nullbind_behavior_desc.setWordWrap(True)
+        layout.addWidget(self.nullbind_behavior_desc)
+
+        # Save button for null bind
+        save_row = QHBoxLayout()
+        save_row.addStretch()
+
+        self.nullbind_save_btn = QPushButton(tr("TriggerSettings", "Save Null Bind Settings"))
+        self.nullbind_save_btn.setEnabled(False)
+        self.nullbind_save_btn.setMinimumHeight(32)
+        self.nullbind_save_btn.setStyleSheet("QPushButton:enabled { font-weight: bold; color: palette(highlight); }")
+        self.nullbind_save_btn.clicked.connect(self.on_nullbind_save)
+        save_row.addWidget(self.nullbind_save_btn)
+
+        layout.addLayout(save_row)
+        layout.addStretch()
+
+        container.setLayout(layout)
+
+        # Initialize behavior choices for empty group
+        self.update_nullbind_behavior_choices()
+
+        return container
+
     def create_settings_content(self):
         """Create the settings content with tabbed layout and visualization"""
         widget = QWidget()
@@ -621,6 +760,18 @@ class TriggerSettingsTab(BasicEditor):
         velocity_tab.setLayout(velocity_layout)
         self.settings_tabs.addTab(velocity_tab, "Velocity Curve")
 
+        # Null Bind Tab
+        nullbind_tab = QWidget()
+        nullbind_layout = QVBoxLayout()
+        nullbind_layout.setContentsMargins(8, 8, 8, 8)
+
+        self.nullbind_container = self.create_nullbind_container()
+        nullbind_layout.addWidget(self.nullbind_container)
+        nullbind_layout.addStretch()
+
+        nullbind_tab.setLayout(nullbind_layout)
+        self.settings_tabs.addTab(nullbind_tab, "Null Bind")
+
         tabs_layout.addWidget(self.settings_tabs)
         tabs_container.setLayout(tabs_layout)
         left_layout.addWidget(tabs_container)
@@ -665,11 +816,14 @@ class TriggerSettingsTab(BasicEditor):
 
     def on_tab_changed(self, index):
         """Handle tab change - update active_tab and refresh display"""
-        tab_names = ['actuation', 'rapidfire', 'velocity']
+        tab_names = ['actuation', 'rapidfire', 'velocity', 'nullbind']
         if index >= 0 and index < len(tab_names):
             self.active_tab = tab_names[index]
             self.refresh_layer_display()
             self.update_actuation_visualizer()
+            # Update null bind display when switching to that tab
+            if self.active_tab == 'nullbind':
+                self.update_nullbind_display()
 
     def update_actuation_visualizer(self):
         """Update the actuation visualizer based on current tab and selected key"""
@@ -2054,6 +2208,15 @@ class TriggerSettingsTab(BasicEditor):
             self.lut_strength_value_label.setText("0%")
             self.syncing = False
 
+            # Initialize null bind protocol and load groups
+            self.nullbind_protocol = ProtocolNullBind(self.keyboard)
+            try:
+                self.load_nullbind_groups()
+            except Exception as e:
+                print(f"Error loading null bind groups: {e}")
+                # Reset to empty groups on error
+                self.nullbind_groups = [NullBindGroup() for _ in range(NULLBIND_NUM_GROUPS)]
+
         self.container.setEnabled(self.valid())
 
     def valid(self):
@@ -2127,6 +2290,28 @@ class TriggerSettingsTab(BasicEditor):
                         else:
                             key.setText("")
                             key.setColor(None)
+                    elif self.active_tab == 'nullbind':
+                        # Null bind tab: show group number and highlight keys in groups
+                        from PyQt5.QtWidgets import QApplication
+                        palette = QApplication.palette()
+                        group_idx, is_priority = self.get_key_nullbind_group(key_index)
+                        if group_idx is not None:
+                            # Key is in a null bind group
+                            if group_idx == self.current_nullbind_group:
+                                # Key is in current group - highlight it
+                                if is_priority:
+                                    key.setColor(palette.color(QPalette.Highlight))  # Priority key
+                                    key.setText(f"G{group_idx + 1}*")
+                                else:
+                                    key.setColor(palette.color(QPalette.Link))  # Normal group member
+                                    key.setText(f"G{group_idx + 1}")
+                            else:
+                                # Key is in different group - show group number dimmed
+                                key.setColor(None)
+                                key.setText(f"G{group_idx + 1}")
+                        else:
+                            key.setText("")
+                            key.setColor(None)
                     else:  # self.active_tab == 'actuation'
                         # Actuation tab: always show per-key actuation value
                         # Get keycode to determine if this is a MIDI key
@@ -2161,3 +2346,304 @@ class TriggerSettingsTab(BasicEditor):
     def on_invert_selection(self):
         """Handle Invert Selection button click"""
         self.container.invert_selection()
+
+    # ========== Null Bind Methods ==========
+
+    def get_key_label(self, key_index):
+        """Get a human-readable label for a key index"""
+        if not self.keyboard:
+            return f"Key {key_index}"
+
+        row = key_index // 14
+        col = key_index % 14
+
+        # Try to get the keycode from the current layer's keymap
+        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+        if keycode and keycode != "KC_NO" and keycode != "KC_TRNS":
+            # Simplify keycode display
+            if keycode.startswith("KC_"):
+                return keycode[3:]
+            elif keycode.startswith("MI_"):
+                return keycode
+            return keycode
+        return f"R{row}C{col}"
+
+    def update_nullbind_behavior_choices(self):
+        """Update behavior combo box based on keys in current group"""
+        group = self.nullbind_groups[self.current_nullbind_group]
+
+        # Block signals while updating
+        self.nullbind_behavior_combo.blockSignals(True)
+        self.nullbind_behavior_combo.clear()
+
+        # Add base behaviors
+        self.nullbind_behavior_combo.addItem("Neutral (All Null)", NULLBIND_BEHAVIOR_NEUTRAL)
+        self.nullbind_behavior_combo.addItem("Last Input Priority", NULLBIND_BEHAVIOR_LAST_INPUT)
+        self.nullbind_behavior_combo.addItem("Distance Priority", NULLBIND_BEHAVIOR_DISTANCE)
+
+        # Add absolute priority options for each key in the group
+        for i, key_index in enumerate(group.keys):
+            key_label = self.get_key_label(key_index)
+            behavior = NULLBIND_BEHAVIOR_PRIORITY_BASE + i
+            self.nullbind_behavior_combo.addItem(f"Absolute Priority: {key_label}", behavior)
+
+        # Select current behavior
+        index = self.nullbind_behavior_combo.findData(group.behavior)
+        if index >= 0:
+            self.nullbind_behavior_combo.setCurrentIndex(index)
+        else:
+            self.nullbind_behavior_combo.setCurrentIndex(0)
+
+        self.nullbind_behavior_combo.blockSignals(False)
+
+        # Update behavior description
+        self.update_nullbind_behavior_description()
+
+    def update_nullbind_behavior_description(self):
+        """Update the behavior description text"""
+        behavior = self.nullbind_behavior_combo.currentData()
+        if behavior is None:
+            behavior = NULLBIND_BEHAVIOR_NEUTRAL
+
+        if behavior == NULLBIND_BEHAVIOR_NEUTRAL:
+            desc = "When 2+ keys in this group are pressed simultaneously, all keys are nulled (no output)."
+        elif behavior == NULLBIND_BEHAVIOR_LAST_INPUT:
+            desc = "Only the last pressed key is active. Other keys in the group are nulled."
+        elif behavior == NULLBIND_BEHAVIOR_DISTANCE:
+            desc = "The key pressed furthest down (most travel) wins. Other keys are nulled."
+        elif behavior >= NULLBIND_BEHAVIOR_PRIORITY_BASE:
+            group = self.nullbind_groups[self.current_nullbind_group]
+            priority_idx = behavior - NULLBIND_BEHAVIOR_PRIORITY_BASE
+            if priority_idx < len(group.keys):
+                key_label = self.get_key_label(group.keys[priority_idx])
+                desc = f"{key_label} has absolute priority. It cannot be nulled by other keys. Other keys are nulled when {key_label} is held, and activate when it releases."
+            else:
+                desc = ""
+        else:
+            desc = ""
+
+        self.nullbind_behavior_desc.setText(desc)
+
+    def update_nullbind_display(self):
+        """Update the null bind display for current group"""
+        group = self.nullbind_groups[self.current_nullbind_group]
+
+        # Update key count
+        self.nullbind_key_count_label.setText(f"{len(group.keys)} / {NULLBIND_MAX_KEYS_PER_GROUP} keys")
+
+        # Update keys display
+        if len(group.keys) == 0:
+            self.nullbind_keys_display.setText(tr("TriggerSettings", "(No keys assigned)"))
+        else:
+            key_labels = []
+            for i, key_index in enumerate(group.keys):
+                label = self.get_key_label(key_index)
+                # Add priority indicator if this key is the priority key
+                if group.behavior >= NULLBIND_BEHAVIOR_PRIORITY_BASE:
+                    priority_idx = group.behavior - NULLBIND_BEHAVIOR_PRIORITY_BASE
+                    if i == priority_idx:
+                        label = f"[{label}]"  # Highlight priority key
+                key_labels.append(label)
+            self.nullbind_keys_display.setText("  ".join(key_labels))
+
+        # Update behavior combo choices (in case keys changed)
+        self.update_nullbind_behavior_choices()
+
+    def on_nullbind_group_changed(self, index):
+        """Handle null bind group selection change"""
+        self.current_nullbind_group = index
+        self.update_nullbind_display()
+        self.refresh_layer_display()
+
+    def on_nullbind_behavior_changed(self, index):
+        """Handle null bind behavior selection change"""
+        if index < 0:
+            return
+
+        behavior = self.nullbind_behavior_combo.currentData()
+        if behavior is None:
+            return
+
+        group = self.nullbind_groups[self.current_nullbind_group]
+        if group.behavior != behavior:
+            group.behavior = behavior
+            self.nullbind_pending_changes = True
+            self.nullbind_save_btn.setEnabled(True)
+            self.update_nullbind_behavior_description()
+            self.update_nullbind_display()
+
+    def on_nullbind_add_keys(self):
+        """Add selected keys to current null bind group"""
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys:
+            # Try active key if no selection
+            if self.container.active_key and self.container.active_key.desc.row is not None:
+                selected_keys = [self.container.active_key]
+
+        if not selected_keys:
+            QMessageBox.information(
+                self.widget(),
+                tr("TriggerSettings", "No Keys Selected"),
+                tr("TriggerSettings", "Please select keys on the keyboard above to add to this group.")
+            )
+            return
+
+        group = self.nullbind_groups[self.current_nullbind_group]
+        added_count = 0
+
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if key_index < 70:
+                    # Check if key is already in another group
+                    already_in_group = None
+                    for g_idx, g in enumerate(self.nullbind_groups):
+                        if g_idx != self.current_nullbind_group and g.has_key(key_index):
+                            already_in_group = g_idx
+                            break
+
+                    if already_in_group is not None:
+                        # Key already in another group - ask user what to do
+                        key_label = self.get_key_label(key_index)
+                        ret = QMessageBox.question(
+                            self.widget(),
+                            tr("TriggerSettings", "Key Already Assigned"),
+                            tr("TriggerSettings", f"{key_label} is already in Group {already_in_group + 1}.\nMove it to Group {self.current_nullbind_group + 1}?"),
+                            QMessageBox.Yes | QMessageBox.No
+                        )
+                        if ret == QMessageBox.Yes:
+                            # Remove from old group
+                            self.nullbind_groups[already_in_group].remove_key(key_index)
+                            # Add to current group
+                            if group.add_key(key_index):
+                                added_count += 1
+                    else:
+                        # Key not in any group - add it
+                        if group.add_key(key_index):
+                            added_count += 1
+
+        if added_count > 0:
+            self.nullbind_pending_changes = True
+            self.nullbind_save_btn.setEnabled(True)
+            self.update_nullbind_display()
+            self.refresh_layer_display()
+        elif len(group.keys) >= NULLBIND_MAX_KEYS_PER_GROUP:
+            QMessageBox.warning(
+                self.widget(),
+                tr("TriggerSettings", "Group Full"),
+                tr("TriggerSettings", f"This group already has {NULLBIND_MAX_KEYS_PER_GROUP} keys (maximum).")
+            )
+
+    def on_nullbind_remove_keys(self):
+        """Remove selected keys from current null bind group"""
+        selected_keys = self.container.get_selected_keys()
+        if not selected_keys:
+            if self.container.active_key and self.container.active_key.desc.row is not None:
+                selected_keys = [self.container.active_key]
+
+        group = self.nullbind_groups[self.current_nullbind_group]
+        removed_count = 0
+
+        for key in selected_keys:
+            if key.desc.row is not None:
+                row, col = key.desc.row, key.desc.col
+                key_index = row * 14 + col
+
+                if group.remove_key(key_index):
+                    removed_count += 1
+
+        if removed_count > 0:
+            self.nullbind_pending_changes = True
+            self.nullbind_save_btn.setEnabled(True)
+            self.update_nullbind_display()
+            self.refresh_layer_display()
+
+    def on_nullbind_clear_group(self):
+        """Clear all keys from current null bind group"""
+        group = self.nullbind_groups[self.current_nullbind_group]
+
+        if len(group.keys) == 0:
+            return
+
+        ret = QMessageBox.question(
+            self.widget(),
+            tr("TriggerSettings", "Clear Group"),
+            tr("TriggerSettings", f"Remove all {len(group.keys)} keys from Group {self.current_nullbind_group + 1}?"),
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if ret == QMessageBox.Yes:
+            group.clear()
+            self.nullbind_pending_changes = True
+            self.nullbind_save_btn.setEnabled(True)
+            self.update_nullbind_display()
+            self.refresh_layer_display()
+
+    def on_nullbind_save(self):
+        """Save null bind settings to keyboard"""
+        if not self.nullbind_protocol:
+            return
+
+        # Send all groups to keyboard
+        success = True
+        for i, group in enumerate(self.nullbind_groups):
+            if not self.nullbind_protocol.set_group(i, group):
+                success = False
+                break
+
+        if success:
+            # Save to EEPROM
+            if self.nullbind_protocol.save_to_eeprom():
+                QMessageBox.information(
+                    self.widget(),
+                    tr("TriggerSettings", "Success"),
+                    tr("TriggerSettings", "Null bind settings saved to keyboard.")
+                )
+                self.nullbind_pending_changes = False
+                self.nullbind_save_btn.setEnabled(False)
+            else:
+                QMessageBox.warning(
+                    self.widget(),
+                    tr("TriggerSettings", "Error"),
+                    tr("TriggerSettings", "Failed to save null bind settings to EEPROM.")
+                )
+        else:
+            QMessageBox.warning(
+                self.widget(),
+                tr("TriggerSettings", "Error"),
+                tr("TriggerSettings", "Failed to send null bind settings to keyboard.")
+            )
+
+    def load_nullbind_groups(self):
+        """Load null bind groups from keyboard"""
+        if not self.nullbind_protocol:
+            return
+
+        for i in range(NULLBIND_NUM_GROUPS):
+            group = self.nullbind_protocol.get_group(i)
+            if group:
+                self.nullbind_groups[i] = group
+            else:
+                self.nullbind_groups[i] = NullBindGroup()
+
+        self.nullbind_pending_changes = False
+        self.nullbind_save_btn.setEnabled(False)
+        self.update_nullbind_display()
+
+    def get_key_nullbind_group(self, key_index):
+        """Find which null bind group a key belongs to
+
+        Returns:
+            (group_index, is_priority) or (None, False) if not in any group
+        """
+        for g_idx, group in enumerate(self.nullbind_groups):
+            if group.has_key(key_index):
+                is_priority = False
+                if group.behavior >= NULLBIND_BEHAVIOR_PRIORITY_BASE:
+                    priority_idx = group.behavior - NULLBIND_BEHAVIOR_PRIORITY_BASE
+                    key_pos_in_group = group.keys.index(key_index)
+                    is_priority = (key_pos_in_group == priority_idx)
+                return (g_idx, is_priority)
+        return (None, False)
