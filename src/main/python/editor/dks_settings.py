@@ -159,14 +159,16 @@ class DKSKeyWidget(KeyWidget):
         self.is_selected = selected
         if selected:
             self.setStyleSheet("""
-                QWidget {
-                    border: 2px solid palette(highlight);
-                    background: palette(highlight);
+                DKSKeyWidget {
+                    border: 3px solid #0078d4;
+                    border-radius: 4px;
+                    background-color: rgba(0, 120, 212, 0.3);
                 }
             """)
         else:
             self.setStyleSheet("")
         self.update()
+        self.repaint()
 
 
 class TravelBarWidget(QWidget):
@@ -1068,7 +1070,7 @@ class DKSVisualWidget(QWidget):
 
         # Middle: Keyswitch diagram + Vertical travel bar
         middle_container = QWidget()
-        middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
+        middle_container.setMinimumWidth(700)  # Wide enough for all labels without cutoff
         middle_layout = QHBoxLayout()
         middle_layout.setContentsMargins(0, 0, 0, 0)
         middle_layout.setSpacing(0)  # No spacing between diagram and bar
