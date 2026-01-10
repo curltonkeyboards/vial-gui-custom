@@ -2236,7 +2236,8 @@ nullbind_runtime_t nullbind_runtime[NULLBIND_NUM_GROUPS];
 bool nullbind_enabled = true;  // Global enable flag
 
 // Key travel values for distance-based null bind (updated during matrix scan)
-static uint8_t nullbind_key_travel[70];  // Current travel value for each key (0-100)
+// Non-static so matrix.c can update it directly for continuous distance tracking
+uint8_t nullbind_key_travel[70];  // Current travel value for each key (0-255)
 
 // Initialize default values
 void initialize_layer_actuations(void) {
