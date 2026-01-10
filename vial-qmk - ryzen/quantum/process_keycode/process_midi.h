@@ -1003,3 +1003,86 @@ void handle_set_per_key_mode(const uint8_t* data);
 void handle_get_per_key_mode(uint8_t* response);
 void handle_reset_per_key_actuations_hid(void);
 void handle_copy_layer_actuations(const uint8_t* data);
+
+// ============================================================================
+// NULL BIND (SOCD HANDLING) SYSTEM
+// ============================================================================
+// Null bind groups allow multiple keys to be assigned together with a
+// behavior that resolves simultaneous key presses (SOCD - Simultaneous
+// Opposing Cardinal Directions).
+//
+// Behaviors:
+//   NEUTRAL (0):      All keys nulled when 2+ pressed simultaneously
+//   LAST_INPUT (1):   Last pressed key wins, others nulled
+//   DISTANCE (2):     Key with most travel (pressed furthest) wins
+//   PRIORITY_X (3+):  Absolute priority for key at index X in group
+//                     (3 = key 0 priority, 4 = key 1 priority, etc.)
+// ============================================================================
+
+// Constants
+#define NULLBIND_NUM_GROUPS         20      // Number of null bind groups
+#define NULLBIND_MAX_KEYS_PER_GROUP 8       // Maximum keys per group
+#define NULLBIND_GROUP_SIZE         18      // Bytes per group in EEPROM/RAM
+#define NULLBIND_EEPROM_SIZE        (NULLBIND_NUM_GROUPS * NULLBIND_GROUP_SIZE)  // 360 bytes total
+
+// Behavior enumeration
+typedef enum {
+    NULLBIND_BEHAVIOR_NEUTRAL = 0,      // All keys nulled when 2+ pressed
+    NULLBIND_BEHAVIOR_LAST_INPUT = 1,   // Last pressed key wins
+    NULLBIND_BEHAVIOR_DISTANCE = 2,     // Key with most travel wins
+    NULLBIND_BEHAVIOR_PRIORITY_BASE = 3 // Priority behaviors start here (3 + key_index)
+} nullbind_behavior_t;
+
+// Null bind group structure (18 bytes per group)
+typedef struct {
+    uint8_t behavior;                               // nullbind_behavior_t
+    uint8_t key_count;                              // Number of keys in this group (0-8)
+    uint8_t keys[NULLBIND_MAX_KEYS_PER_GROUP];      // Key indices (row * 14 + col), 0xFF = unused
+    uint8_t reserved[8];                            // Reserved for future use (e.g., per-key priority order)
+} nullbind_group_t;
+
+// Runtime state for null bind processing
+typedef struct {
+    bool keys_pressed[NULLBIND_MAX_KEYS_PER_GROUP]; // Which keys in group are currently pressed
+    uint8_t last_pressed_key;                       // Index of last pressed key in group (for LAST_INPUT)
+    uint8_t active_key;                             // Currently active (non-nulled) key index, 0xFF = none
+    uint32_t press_times[NULLBIND_MAX_KEYS_PER_GROUP]; // Press timestamps for LAST_INPUT
+} nullbind_runtime_t;
+
+// External declarations
+extern nullbind_group_t nullbind_groups[NULLBIND_NUM_GROUPS];
+extern nullbind_runtime_t nullbind_runtime[NULLBIND_NUM_GROUPS];
+extern bool nullbind_enabled;  // Global enable flag
+
+// HID Command IDs (0xF0-0xF4)
+#define HID_CMD_NULLBIND_GET_GROUP      0xF0    // Get null bind group configuration
+#define HID_CMD_NULLBIND_SET_GROUP      0xF1    // Set null bind group configuration
+#define HID_CMD_NULLBIND_SAVE_EEPROM    0xF2    // Save all groups to EEPROM
+#define HID_CMD_NULLBIND_LOAD_EEPROM    0xF3    // Load all groups from EEPROM
+#define HID_CMD_NULLBIND_RESET_ALL      0xF4    // Reset all groups to defaults
+
+// Initialization and EEPROM functions
+void nullbind_init(void);
+void nullbind_save_to_eeprom(void);
+void nullbind_load_from_eeprom(void);
+void nullbind_reset_all(void);
+
+// Group management functions
+bool nullbind_add_key_to_group(uint8_t group_num, uint8_t key_index);
+bool nullbind_remove_key_from_group(uint8_t group_num, uint8_t key_index);
+void nullbind_clear_group(uint8_t group_num);
+bool nullbind_key_in_group(uint8_t group_num, uint8_t key_index);
+int8_t nullbind_find_key_group(uint8_t key_index);  // Returns group num or -1
+
+// Key processing functions (called from matrix scanning)
+bool nullbind_should_null_key(uint8_t row, uint8_t col);
+void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel);
+void nullbind_key_released(uint8_t row, uint8_t col);
+void nullbind_update_group_state(uint8_t group_num);
+
+// HID handlers
+void handle_nullbind_get_group(uint8_t group_num, uint8_t* response);
+void handle_nullbind_set_group(const uint8_t* data);
+void handle_nullbind_save_eeprom(void);
+void handle_nullbind_load_eeprom(void);
+void handle_nullbind_reset_all(void);

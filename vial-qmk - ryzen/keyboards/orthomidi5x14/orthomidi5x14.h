@@ -428,6 +428,11 @@ typedef struct {
 #define GAMING_SETTINGS_EEPROM_ADDR 36500
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
+// EEPROM address for null bind settings (360 bytes: 20 groups × 18 bytes each)
+// Located at 45000 (after per-key actuations which end around 44722)
+#define NULLBIND_EEPROM_ADDR 45000
+#define NULLBIND_MAGIC 0x4E42  // "NB" for Null Bind
+
 // =============================================================================
 // CURVE SYSTEM (For Gaming Analog & Velocity Curves)
 // =============================================================================

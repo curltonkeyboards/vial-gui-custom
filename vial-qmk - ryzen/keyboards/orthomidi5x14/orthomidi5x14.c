@@ -2228,6 +2228,16 @@ layer_key_actuations_t per_key_actuations[12];  // 840 bytes total (70 keys × 1
 bool per_key_mode_enabled = false;
 bool per_key_per_layer_enabled = false;
 
+// =============================================================================
+// NULL BIND (SOCD) GLOBAL VARIABLES
+// =============================================================================
+nullbind_group_t nullbind_groups[NULLBIND_NUM_GROUPS];
+nullbind_runtime_t nullbind_runtime[NULLBIND_NUM_GROUPS];
+bool nullbind_enabled = true;  // Global enable flag
+
+// Key travel values for distance-based null bind (updated during matrix scan)
+static uint8_t nullbind_key_travel[70];  // Current travel value for each key (0-100)
+
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
@@ -3346,6 +3356,476 @@ void handle_copy_layer_actuations(const uint8_t* data) {
     save_per_key_actuations();
 }
 
+// =============================================================================
+// NULL BIND (SOCD) IMPLEMENTATION
+// =============================================================================
+
+// Initialize null bind system to defaults
+void nullbind_init(void) {
+    for (uint8_t g = 0; g < NULLBIND_NUM_GROUPS; g++) {
+        nullbind_groups[g].behavior = NULLBIND_BEHAVIOR_NEUTRAL;
+        nullbind_groups[g].key_count = 0;
+        for (uint8_t k = 0; k < NULLBIND_MAX_KEYS_PER_GROUP; k++) {
+            nullbind_groups[g].keys[k] = 0xFF;  // 0xFF = unused
+            nullbind_groups[g].reserved[k] = 0;
+        }
+
+        // Initialize runtime state
+        nullbind_runtime[g].last_pressed_key = 0xFF;
+        nullbind_runtime[g].active_key = 0xFF;
+        for (uint8_t k = 0; k < NULLBIND_MAX_KEYS_PER_GROUP; k++) {
+            nullbind_runtime[g].keys_pressed[k] = false;
+            nullbind_runtime[g].press_times[k] = 0;
+        }
+    }
+
+    // Initialize key travel tracking
+    for (uint8_t k = 0; k < 70; k++) {
+        nullbind_key_travel[k] = 0;
+    }
+
+    nullbind_enabled = true;
+}
+
+// Save null bind groups to EEPROM
+void nullbind_save_to_eeprom(void) {
+    eeprom_update_block(nullbind_groups,
+                        (uint8_t*)NULLBIND_EEPROM_ADDR,
+                        sizeof(nullbind_groups));
+
+    // Write magic number at end for validation
+    eeprom_update_word((uint16_t*)(NULLBIND_EEPROM_ADDR + sizeof(nullbind_groups)),
+                       NULLBIND_MAGIC);
+}
+
+// Load null bind groups from EEPROM
+void nullbind_load_from_eeprom(void) {
+    // Check magic number first
+    uint16_t magic = eeprom_read_word((uint16_t*)(NULLBIND_EEPROM_ADDR + sizeof(nullbind_groups)));
+
+    if (magic != NULLBIND_MAGIC) {
+        // Invalid or uninitialized - use defaults
+        nullbind_init();
+        nullbind_save_to_eeprom();
+        return;
+    }
+
+    // Load groups
+    eeprom_read_block(nullbind_groups,
+                      (uint8_t*)NULLBIND_EEPROM_ADDR,
+                      sizeof(nullbind_groups));
+
+    // Initialize runtime state
+    for (uint8_t g = 0; g < NULLBIND_NUM_GROUPS; g++) {
+        nullbind_runtime[g].last_pressed_key = 0xFF;
+        nullbind_runtime[g].active_key = 0xFF;
+        for (uint8_t k = 0; k < NULLBIND_MAX_KEYS_PER_GROUP; k++) {
+            nullbind_runtime[g].keys_pressed[k] = false;
+            nullbind_runtime[g].press_times[k] = 0;
+        }
+    }
+}
+
+// Reset all null bind groups to defaults
+void nullbind_reset_all(void) {
+    nullbind_init();
+    nullbind_save_to_eeprom();
+}
+
+// Add a key to a null bind group
+bool nullbind_add_key_to_group(uint8_t group_num, uint8_t key_index) {
+    if (group_num >= NULLBIND_NUM_GROUPS || key_index >= 70) {
+        return false;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+
+    // Check if group is full
+    if (group->key_count >= NULLBIND_MAX_KEYS_PER_GROUP) {
+        return false;
+    }
+
+    // Check if key already in group
+    for (uint8_t i = 0; i < group->key_count; i++) {
+        if (group->keys[i] == key_index) {
+            return false;  // Already in group
+        }
+    }
+
+    // Add key
+    group->keys[group->key_count] = key_index;
+    group->key_count++;
+    return true;
+}
+
+// Remove a key from a null bind group
+bool nullbind_remove_key_from_group(uint8_t group_num, uint8_t key_index) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return false;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+
+    // Find the key
+    for (uint8_t i = 0; i < group->key_count; i++) {
+        if (group->keys[i] == key_index) {
+            // Shift remaining keys down
+            for (uint8_t j = i; j < group->key_count - 1; j++) {
+                group->keys[j] = group->keys[j + 1];
+            }
+            group->keys[group->key_count - 1] = 0xFF;
+            group->key_count--;
+
+            // Adjust behavior if it was priority for removed key
+            if (group->behavior >= NULLBIND_BEHAVIOR_PRIORITY_BASE) {
+                uint8_t priority_idx = group->behavior - NULLBIND_BEHAVIOR_PRIORITY_BASE;
+                if (priority_idx >= group->key_count) {
+                    // Priority key was removed or index now invalid - reset to neutral
+                    group->behavior = NULLBIND_BEHAVIOR_NEUTRAL;
+                }
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+// Clear all keys from a null bind group
+void nullbind_clear_group(uint8_t group_num) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+    group->behavior = NULLBIND_BEHAVIOR_NEUTRAL;
+    group->key_count = 0;
+    for (uint8_t i = 0; i < NULLBIND_MAX_KEYS_PER_GROUP; i++) {
+        group->keys[i] = 0xFF;
+    }
+}
+
+// Check if a key is in a specific null bind group
+bool nullbind_key_in_group(uint8_t group_num, uint8_t key_index) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return false;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+    for (uint8_t i = 0; i < group->key_count; i++) {
+        if (group->keys[i] == key_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Find which null bind group a key belongs to
+// Returns group number (0-19) or -1 if not in any group
+int8_t nullbind_find_key_group(uint8_t key_index) {
+    for (uint8_t g = 0; g < NULLBIND_NUM_GROUPS; g++) {
+        if (nullbind_key_in_group(g, key_index)) {
+            return (int8_t)g;
+        }
+    }
+    return -1;
+}
+
+// Get the index of a key within its group (0-7)
+// Returns 0xFF if not found
+static uint8_t nullbind_get_key_index_in_group(uint8_t group_num, uint8_t key_index) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return 0xFF;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+    for (uint8_t i = 0; i < group->key_count; i++) {
+        if (group->keys[i] == key_index) {
+            return i;
+        }
+    }
+    return 0xFF;
+}
+
+// Count how many keys in a group are currently pressed
+static uint8_t nullbind_count_pressed_keys(uint8_t group_num) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return 0;
+    }
+
+    uint8_t count = 0;
+    nullbind_runtime_t* rt = &nullbind_runtime[group_num];
+    nullbind_group_t* group = &nullbind_groups[group_num];
+
+    for (uint8_t i = 0; i < group->key_count; i++) {
+        if (rt->keys_pressed[i]) {
+            count++;
+        }
+    }
+    return count;
+}
+
+// Update the active key for a group based on current behavior
+void nullbind_update_group_state(uint8_t group_num) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+    nullbind_runtime_t* rt = &nullbind_runtime[group_num];
+
+    if (group->key_count == 0) {
+        rt->active_key = 0xFF;
+        return;
+    }
+
+    uint8_t pressed_count = nullbind_count_pressed_keys(group_num);
+
+    // No keys pressed - no active key
+    if (pressed_count == 0) {
+        rt->active_key = 0xFF;
+        return;
+    }
+
+    // Only one key pressed - that key is active (no conflict)
+    if (pressed_count == 1) {
+        for (uint8_t i = 0; i < group->key_count; i++) {
+            if (rt->keys_pressed[i]) {
+                rt->active_key = i;
+                return;
+            }
+        }
+    }
+
+    // Multiple keys pressed - apply behavior
+    uint8_t behavior = group->behavior;
+
+    if (behavior == NULLBIND_BEHAVIOR_NEUTRAL) {
+        // All keys nulled
+        rt->active_key = 0xFF;
+    }
+    else if (behavior == NULLBIND_BEHAVIOR_LAST_INPUT) {
+        // Last pressed key wins (already tracked in last_pressed_key)
+        rt->active_key = rt->last_pressed_key;
+    }
+    else if (behavior == NULLBIND_BEHAVIOR_DISTANCE) {
+        // Key with most travel wins
+        uint8_t max_travel = 0;
+        uint8_t max_travel_key = 0xFF;
+
+        for (uint8_t i = 0; i < group->key_count; i++) {
+            if (rt->keys_pressed[i]) {
+                uint8_t key_idx = group->keys[i];
+                if (key_idx < 70) {
+                    uint8_t travel = nullbind_key_travel[key_idx];
+                    if (travel > max_travel) {
+                        max_travel = travel;
+                        max_travel_key = i;
+                    }
+                }
+            }
+        }
+        rt->active_key = max_travel_key;
+    }
+    else if (behavior >= NULLBIND_BEHAVIOR_PRIORITY_BASE) {
+        // Absolute priority for specific key
+        uint8_t priority_idx = behavior - NULLBIND_BEHAVIOR_PRIORITY_BASE;
+
+        if (priority_idx < group->key_count && rt->keys_pressed[priority_idx]) {
+            // Priority key is pressed - it wins
+            rt->active_key = priority_idx;
+        } else {
+            // Priority key not pressed - find first non-priority pressed key
+            // (other keys activate when priority key releases)
+            for (uint8_t i = 0; i < group->key_count; i++) {
+                if (rt->keys_pressed[i] && i != priority_idx) {
+                    rt->active_key = i;
+                    return;
+                }
+            }
+            rt->active_key = 0xFF;
+        }
+    }
+}
+
+// Called when a key is pressed - updates null bind state
+void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel) {
+    if (!nullbind_enabled) return;
+
+    uint8_t key_index = row * 14 + col;
+    if (key_index >= 70) return;
+
+    // Update travel for distance-based null bind
+    nullbind_key_travel[key_index] = travel;
+
+    // Find which group this key belongs to
+    int8_t group_num = nullbind_find_key_group(key_index);
+    if (group_num < 0) return;  // Key not in any null bind group
+
+    // Get key's index within the group
+    uint8_t key_idx_in_group = nullbind_get_key_index_in_group(group_num, key_index);
+    if (key_idx_in_group == 0xFF) return;
+
+    nullbind_runtime_t* rt = &nullbind_runtime[group_num];
+
+    // Mark key as pressed
+    rt->keys_pressed[key_idx_in_group] = true;
+    rt->last_pressed_key = key_idx_in_group;
+    rt->press_times[key_idx_in_group] = timer_read32();
+
+    // Update which key should be active
+    nullbind_update_group_state(group_num);
+}
+
+// Called when a key is released - updates null bind state
+void nullbind_key_released(uint8_t row, uint8_t col) {
+    if (!nullbind_enabled) return;
+
+    uint8_t key_index = row * 14 + col;
+    if (key_index >= 70) return;
+
+    // Clear travel
+    nullbind_key_travel[key_index] = 0;
+
+    // Find which group this key belongs to
+    int8_t group_num = nullbind_find_key_group(key_index);
+    if (group_num < 0) return;
+
+    // Get key's index within the group
+    uint8_t key_idx_in_group = nullbind_get_key_index_in_group(group_num, key_index);
+    if (key_idx_in_group == 0xFF) return;
+
+    nullbind_runtime_t* rt = &nullbind_runtime[group_num];
+
+    // Mark key as released
+    rt->keys_pressed[key_idx_in_group] = false;
+
+    // If this was the last pressed key, find new last pressed
+    if (rt->last_pressed_key == key_idx_in_group) {
+        // Find most recently pressed key still held
+        uint32_t latest_time = 0;
+        rt->last_pressed_key = 0xFF;
+
+        nullbind_group_t* group = &nullbind_groups[group_num];
+        for (uint8_t i = 0; i < group->key_count; i++) {
+            if (rt->keys_pressed[i] && rt->press_times[i] > latest_time) {
+                latest_time = rt->press_times[i];
+                rt->last_pressed_key = i;
+            }
+        }
+    }
+
+    // Update which key should be active
+    nullbind_update_group_state(group_num);
+}
+
+// Check if a key should be nulled (blocked from registering)
+// Returns true if key should be nulled, false if it should register normally
+bool nullbind_should_null_key(uint8_t row, uint8_t col) {
+    if (!nullbind_enabled) return false;
+
+    uint8_t key_index = row * 14 + col;
+    if (key_index >= 70) return false;
+
+    // Find which group this key belongs to
+    int8_t group_num = nullbind_find_key_group(key_index);
+    if (group_num < 0) return false;  // Key not in any null bind group - don't null
+
+    // Get key's index within the group
+    uint8_t key_idx_in_group = nullbind_get_key_index_in_group(group_num, key_index);
+    if (key_idx_in_group == 0xFF) return false;
+
+    nullbind_runtime_t* rt = &nullbind_runtime[group_num];
+
+    // If this key is not the active key, null it
+    // If active_key is 0xFF (no active key), all keys should be nulled
+    if (rt->active_key != key_idx_in_group) {
+        return true;  // Null this key
+    }
+
+    return false;  // Don't null - this is the active key
+}
+
+// =============================================================================
+// NULL BIND HID HANDLERS
+// =============================================================================
+
+// Get null bind group configuration
+// Response: [status, behavior, key_count, keys[8], reserved[8]]
+void handle_nullbind_get_group(uint8_t group_num, uint8_t* response) {
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        response[0] = 1;  // Error status
+        return;
+    }
+
+    response[0] = 0;  // Success status
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+    response[1] = group->behavior;
+    response[2] = group->key_count;
+
+    // Copy keys
+    for (uint8_t i = 0; i < NULLBIND_MAX_KEYS_PER_GROUP; i++) {
+        response[3 + i] = group->keys[i];
+    }
+
+    // Copy reserved bytes
+    for (uint8_t i = 0; i < 8; i++) {
+        response[11 + i] = group->reserved[i];
+    }
+}
+
+// Set null bind group configuration
+// Format: [group_num, behavior, key_count, keys[8], reserved[8]]
+void handle_nullbind_set_group(const uint8_t* data) {
+    uint8_t group_num = data[0];
+
+    if (group_num >= NULLBIND_NUM_GROUPS) {
+        return;
+    }
+
+    nullbind_group_t* group = &nullbind_groups[group_num];
+
+    group->behavior = data[1];
+    group->key_count = data[2];
+    if (group->key_count > NULLBIND_MAX_KEYS_PER_GROUP) {
+        group->key_count = NULLBIND_MAX_KEYS_PER_GROUP;
+    }
+
+    // Copy keys
+    for (uint8_t i = 0; i < NULLBIND_MAX_KEYS_PER_GROUP; i++) {
+        group->keys[i] = data[3 + i];
+    }
+
+    // Copy reserved bytes
+    for (uint8_t i = 0; i < 8; i++) {
+        group->reserved[i] = data[11 + i];
+    }
+
+    // Reset runtime state for this group
+    nullbind_runtime_t* rt = &nullbind_runtime[group_num];
+    rt->last_pressed_key = 0xFF;
+    rt->active_key = 0xFF;
+    for (uint8_t i = 0; i < NULLBIND_MAX_KEYS_PER_GROUP; i++) {
+        rt->keys_pressed[i] = false;
+        rt->press_times[i] = 0;
+    }
+}
+
+// Save all groups to EEPROM (wrapper for HID handler)
+void handle_nullbind_save_eeprom(void) {
+    nullbind_save_to_eeprom();
+}
+
+// Load all groups from EEPROM (wrapper for HID handler)
+void handle_nullbind_load_eeprom(void) {
+    nullbind_load_from_eeprom();
+}
+
+// Reset all groups (wrapper for HID handler)
+void handle_nullbind_reset_all(void) {
+    nullbind_reset_all();
+}
+
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
 }
@@ -4040,6 +4520,9 @@ void keyboard_post_init_user(void) {
 
 	// Initialize arpeggiator system
 	arp_init();
+
+	// Initialize null bind (SOCD) system
+	nullbind_load_from_eeprom();
 
 	// Initialize encoder click buttons and footswitch pins
 	setPinInputHigh(B14);  // Encoder 0 click (directly polled GPIO)

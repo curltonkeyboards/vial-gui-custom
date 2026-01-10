@@ -3,6 +3,7 @@
 #include QMK_KEYBOARD_H
 #include "orthomidi5x14.h"
 #include "raw_hid.h"
+#include "process_midi.h"
 #include <string.h>
 
 // =============================================================================
@@ -585,6 +586,61 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             default:
                 response[4] = 0x00;  // Error - unknown command
+                break;
+        }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a null bind command (0xF0-0xF4)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xF0 && data[3] <= 0xF4) {
+
+        dprintf("raw_hid_receive_kb: Null bind command detected (0x%02X)\n", data[3]);
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case HID_CMD_NULLBIND_GET_GROUP:  // 0xF0
+                // Format: [group_num] at data[4]
+                handle_nullbind_get_group(data[4], &response[4]);
+                break;
+
+            case HID_CMD_NULLBIND_SET_GROUP:  // 0xF1
+                // Format: [group_num, behavior, key_count, keys[8], reserved[8]] at data[4]
+                handle_nullbind_set_group(&data[4]);
+                response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_NULLBIND_SAVE_EEPROM:  // 0xF2
+                handle_nullbind_save_eeprom();
+                response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_NULLBIND_LOAD_EEPROM:  // 0xF3
+                handle_nullbind_load_eeprom();
+                response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_NULLBIND_RESET_ALL:  // 0xF4
+                handle_nullbind_reset_all();
+                response[4] = 0;  // Success status
+                break;
+
+            default:
+                response[4] = 1;  // Error - unknown command
                 break;
         }
 
