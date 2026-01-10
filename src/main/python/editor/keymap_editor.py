@@ -24,7 +24,10 @@ from protocol.keyboard_comm import (
     # PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC removed - aftertouch is now per-layer
     PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
     PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS, PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS,
-    PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY
+    PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY,
+    # MIDI Override and Routing settings
+    PARAM_CHANNEL_OVERRIDE, PARAM_VELOCITY_OVERRIDE, PARAM_TRANSPOSE_OVERRIDE,
+    PARAM_MIDI_IN_MODE, PARAM_USB_MIDI_MODE, PARAM_MIDI_CLOCK_SOURCE
 )
 
 
@@ -106,7 +109,15 @@ class QuickActuationWidget(QWidget):
             'triplesplit_sustain': 0,  # Allow
             'triplesplit_velocity_curve': 2,
             'triplesplit_velocity_min': 1,
-            'triplesplit_velocity_max': 127
+            'triplesplit_velocity_max': 127,
+            # MIDI Override settings
+            'channel_override': False,
+            'velocity_override': False,
+            'transpose_override': False,
+            # MIDI Routing settings
+            'midi_in_mode': 0,
+            'usb_midi_mode': 0,
+            'midi_clock_source': 0
         }
 
         self.setMinimumWidth(320)
@@ -817,7 +828,7 @@ class QuickActuationWidget(QWidget):
         self.simple_velocity_preset_combo = ArrowComboBox()
         self.simple_velocity_preset_combo.setFixedWidth(70)
         self.simple_velocity_preset_combo.setMaximumHeight(35)
-        self.simple_velocity_preset_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.simple_velocity_preset_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.simple_velocity_preset_combo.setEditable(True)
         self.simple_velocity_preset_combo.lineEdit().setReadOnly(True)
         self.simple_velocity_preset_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -952,9 +963,9 @@ class QuickActuationWidget(QWidget):
         curve_row.addWidget(curve_label)
 
         self.midi_velocity_curve = ArrowComboBox()
-        self.midi_velocity_curve.setMaximumWidth(120)
+        self.midi_velocity_curve.setMaximumWidth(130)
         self.midi_velocity_curve.setMaximumHeight(30)
-        self.midi_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.midi_velocity_curve.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.midi_velocity_curve.setEditable(True)
         self.midi_velocity_curve.lineEdit().setReadOnly(True)
         self.midi_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
@@ -990,9 +1001,9 @@ class QuickActuationWidget(QWidget):
         sustain_row.addWidget(sustain_label)
 
         self.midi_sustain_combo = ArrowComboBox()
-        self.midi_sustain_combo.setMaximumWidth(120)
+        self.midi_sustain_combo.setMaximumWidth(130)
         self.midi_sustain_combo.setMaximumHeight(30)
-        self.midi_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.midi_sustain_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.midi_sustain_combo.setEditable(True)
         self.midi_sustain_combo.lineEdit().setReadOnly(True)
         self.midi_sustain_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1007,6 +1018,138 @@ class QuickActuationWidget(QWidget):
         self.midi_sustain_widget.setLayout(sustain_row)
         self.midi_sustain_widget.setVisible(False)  # Hidden by default
         layout.addWidget(self.midi_sustain_widget)
+
+        # Add separator before MIDI Override settings
+        layout.addSpacing(10)
+        override_separator = QFrame()
+        override_separator.setFrameShape(QFrame.HLine)
+        override_separator.setStyleSheet("QFrame { color: palette(mid); }")
+        layout.addWidget(override_separator)
+        layout.addSpacing(5)
+
+        # MIDI Override section label
+        override_label = QLabel(tr("QuickActuationWidget", "MIDI Input Overrides:"))
+        override_label.setStyleSheet("QLabel { font-size: 12px; font-weight: bold; }")
+        layout.addWidget(override_label)
+
+        # Override checkboxes row
+        override_row = QHBoxLayout()
+        override_row.setContentsMargins(0, 0, 0, 0)
+        override_row.setSpacing(10)
+
+        self.channel_override_checkbox = QCheckBox(tr("QuickActuationWidget", "Channel"))
+        self.channel_override_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
+        self.channel_override_checkbox.stateChanged.connect(self.on_midi_settings_changed)
+        override_row.addWidget(self.channel_override_checkbox)
+
+        self.velocity_override_checkbox = QCheckBox(tr("QuickActuationWidget", "Velocity"))
+        self.velocity_override_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
+        self.velocity_override_checkbox.stateChanged.connect(self.on_midi_settings_changed)
+        override_row.addWidget(self.velocity_override_checkbox)
+
+        self.transpose_override_checkbox = QCheckBox(tr("QuickActuationWidget", "Transpose"))
+        self.transpose_override_checkbox.setStyleSheet("QCheckBox { font-size: 12px; }")
+        self.transpose_override_checkbox.stateChanged.connect(self.on_midi_settings_changed)
+        override_row.addWidget(self.transpose_override_checkbox)
+
+        override_row.addStretch()
+        layout.addLayout(override_row)
+
+        # Add separator before MIDI Routing settings
+        layout.addSpacing(10)
+        routing_separator = QFrame()
+        routing_separator.setFrameShape(QFrame.HLine)
+        routing_separator.setStyleSheet("QFrame { color: palette(mid); }")
+        layout.addWidget(routing_separator)
+        layout.addSpacing(5)
+
+        # MIDI Routing section label
+        routing_label = QLabel(tr("QuickActuationWidget", "MIDI Routing:"))
+        routing_label.setStyleSheet("QLabel { font-size: 12px; font-weight: bold; }")
+        layout.addWidget(routing_label)
+
+        # MIDI In Mode
+        midi_in_row = QHBoxLayout()
+        midi_in_row.setContentsMargins(0, 0, 0, 0)
+        midi_in_row.setSpacing(6)
+
+        midi_in_label = QLabel(tr("QuickActuationWidget", "MIDI In:"))
+        midi_in_label.setStyleSheet("QLabel { font-size: 12px; }")
+        midi_in_label.setMinimumWidth(70)
+        midi_in_label.setMaximumWidth(70)
+        midi_in_row.addWidget(midi_in_label)
+
+        self.midi_in_mode_combo = ArrowComboBox()
+        self.midi_in_mode_combo.setMaximumWidth(110)
+        self.midi_in_mode_combo.setMaximumHeight(26)
+        self.midi_in_mode_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 12px; } QComboBox QAbstractItemView { padding: 0px; }")
+        self.midi_in_mode_combo.setEditable(True)
+        self.midi_in_mode_combo.lineEdit().setReadOnly(True)
+        self.midi_in_mode_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        self.midi_in_mode_combo.addItem("Process All", 0)
+        self.midi_in_mode_combo.addItem("Thru", 1)
+        self.midi_in_mode_combo.addItem("Clock Only", 2)
+        self.midi_in_mode_combo.addItem("Ignore", 3)
+        self.midi_in_mode_combo.setCurrentIndex(0)
+        self.midi_in_mode_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
+        midi_in_row.addWidget(self.midi_in_mode_combo)
+        midi_in_row.addStretch()
+        layout.addLayout(midi_in_row)
+
+        # USB MIDI Mode
+        usb_midi_row = QHBoxLayout()
+        usb_midi_row.setContentsMargins(0, 0, 0, 0)
+        usb_midi_row.setSpacing(6)
+
+        usb_midi_label = QLabel(tr("QuickActuationWidget", "USB MIDI:"))
+        usb_midi_label.setStyleSheet("QLabel { font-size: 12px; }")
+        usb_midi_label.setMinimumWidth(70)
+        usb_midi_label.setMaximumWidth(70)
+        usb_midi_row.addWidget(usb_midi_label)
+
+        self.usb_midi_mode_combo = ArrowComboBox()
+        self.usb_midi_mode_combo.setMaximumWidth(110)
+        self.usb_midi_mode_combo.setMaximumHeight(26)
+        self.usb_midi_mode_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 12px; } QComboBox QAbstractItemView { padding: 0px; }")
+        self.usb_midi_mode_combo.setEditable(True)
+        self.usb_midi_mode_combo.lineEdit().setReadOnly(True)
+        self.usb_midi_mode_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        self.usb_midi_mode_combo.addItem("Process All", 0)
+        self.usb_midi_mode_combo.addItem("Thru", 1)
+        self.usb_midi_mode_combo.addItem("Clock Only", 2)
+        self.usb_midi_mode_combo.addItem("Ignore", 3)
+        self.usb_midi_mode_combo.setCurrentIndex(0)
+        self.usb_midi_mode_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
+        usb_midi_row.addWidget(self.usb_midi_mode_combo)
+        usb_midi_row.addStretch()
+        layout.addLayout(usb_midi_row)
+
+        # MIDI Clock Source
+        clock_row = QHBoxLayout()
+        clock_row.setContentsMargins(0, 0, 0, 0)
+        clock_row.setSpacing(6)
+
+        clock_label = QLabel(tr("QuickActuationWidget", "Clock Src:"))
+        clock_label.setStyleSheet("QLabel { font-size: 12px; }")
+        clock_label.setMinimumWidth(70)
+        clock_label.setMaximumWidth(70)
+        clock_row.addWidget(clock_label)
+
+        self.midi_clock_source_combo = ArrowComboBox()
+        self.midi_clock_source_combo.setMaximumWidth(110)
+        self.midi_clock_source_combo.setMaximumHeight(26)
+        self.midi_clock_source_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 12px; } QComboBox QAbstractItemView { padding: 0px; }")
+        self.midi_clock_source_combo.setEditable(True)
+        self.midi_clock_source_combo.lineEdit().setReadOnly(True)
+        self.midi_clock_source_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        self.midi_clock_source_combo.addItem("Local", 0)
+        self.midi_clock_source_combo.addItem("USB", 1)
+        self.midi_clock_source_combo.addItem("MIDI In", 2)
+        self.midi_clock_source_combo.setCurrentIndex(0)
+        self.midi_clock_source_combo.currentIndexChanged.connect(self.on_midi_settings_changed)
+        clock_row.addWidget(self.midi_clock_source_combo)
+        clock_row.addStretch()
+        layout.addLayout(clock_row)
 
         return widget
 
@@ -1122,9 +1265,9 @@ class QuickActuationWidget(QWidget):
         curve_row.addWidget(curve_label)
 
         self.keysplit_velocity_curve = ArrowComboBox()
-        self.keysplit_velocity_curve.setMaximumWidth(120)
+        self.keysplit_velocity_curve.setMaximumWidth(130)
         self.keysplit_velocity_curve.setMaximumHeight(30)
-        self.keysplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.keysplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.keysplit_velocity_curve.setEditable(True)
         self.keysplit_velocity_curve.lineEdit().setReadOnly(True)
         self.keysplit_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1160,9 +1303,9 @@ class QuickActuationWidget(QWidget):
         sustain_row.addWidget(sustain_label)
 
         self.keysplit_sustain_combo = ArrowComboBox()
-        self.keysplit_sustain_combo.setMaximumWidth(120)
+        self.keysplit_sustain_combo.setMaximumWidth(130)
         self.keysplit_sustain_combo.setMaximumHeight(30)
-        self.keysplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.keysplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.keysplit_sustain_combo.setEditable(True)
         self.keysplit_sustain_combo.lineEdit().setReadOnly(True)
         self.keysplit_sustain_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1288,9 +1431,9 @@ class QuickActuationWidget(QWidget):
         curve_row.addWidget(curve_label)
 
         self.triplesplit_velocity_curve = ArrowComboBox()
-        self.triplesplit_velocity_curve.setMaximumWidth(120)
+        self.triplesplit_velocity_curve.setMaximumWidth(130)
         self.triplesplit_velocity_curve.setMaximumHeight(30)
-        self.triplesplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.triplesplit_velocity_curve.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.triplesplit_velocity_curve.setEditable(True)
         self.triplesplit_velocity_curve.lineEdit().setReadOnly(True)
         self.triplesplit_velocity_curve.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1326,9 +1469,9 @@ class QuickActuationWidget(QWidget):
         sustain_row.addWidget(sustain_label)
 
         self.triplesplit_sustain_combo = ArrowComboBox()
-        self.triplesplit_sustain_combo.setMaximumWidth(120)
+        self.triplesplit_sustain_combo.setMaximumWidth(130)
         self.triplesplit_sustain_combo.setMaximumHeight(30)
-        self.triplesplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 14px; text-align: center; }")
+        self.triplesplit_sustain_combo.setStyleSheet("QComboBox { padding: 0px 2px; font-size: 14px; } QComboBox::drop-down { padding: 0px; } QComboBox QAbstractItemView { padding: 0px; }")
         self.triplesplit_sustain_combo.setEditable(True)
         self.triplesplit_sustain_combo.lineEdit().setReadOnly(True)
         self.triplesplit_sustain_combo.lineEdit().setAlignment(Qt.AlignCenter)
@@ -1741,21 +1884,19 @@ class QuickActuationWidget(QWidget):
             pass
 
     def update_midi_container_view(self):
-        """Update tabs based on split settings - always show tabs"""
+        """Update tabs - always show all tabs (Basic, KeySplit, TripleSplit)"""
         keysplit_enabled = self.keysplit_enabled_checkbox.isChecked()
         triplesplit_enabled = self.triplesplit_enabled_checkbox.isChecked()
 
-        # Show/hide sustain widget in Basic tab based on split settings
+        # Show sustain widget in Basic tab (always visible now)
         if hasattr(self, 'midi_sustain_widget'):
-            self.midi_sustain_widget.setVisible(keysplit_enabled or triplesplit_enabled)
+            self.midi_sustain_widget.setVisible(True)
 
-        # Tabs are always shown, just rebuild which tabs are visible
+        # Always show all tabs - KeySplit and TripleSplit are always visible
         self.midi_tabs.clear()
         self.midi_tabs.addTab(self.basic_tab_widget, "Basic")
-        if keysplit_enabled:
-            self.midi_tabs.addTab(self.keysplit_tab_widget, "KeySplit")
-        if triplesplit_enabled:
-            self.midi_tabs.addTab(self.triplesplit_tab_widget, "TripleSplit")
+        self.midi_tabs.addTab(self.keysplit_tab_widget, "KeySplit")
+        self.midi_tabs.addTab(self.triplesplit_tab_widget, "TripleSplit")
 
     def on_keysplit_tab_checkbox_changed(self):
         """Handle keysplit checkbox changes from tab widgets"""
@@ -1827,6 +1968,38 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['triplesplit_velocity_curve'] = self.triplesplit_velocity_curve.currentData()
         self.midi_settings['triplesplit_velocity_min'] = self.triplesplit_velocity_min.value()
         self.midi_settings['triplesplit_velocity_max'] = self.triplesplit_velocity_max.value()
+
+        # MIDI Override and Routing settings
+        self.midi_settings['channel_override'] = self.channel_override_checkbox.isChecked()
+        self.midi_settings['velocity_override'] = self.velocity_override_checkbox.isChecked()
+        self.midi_settings['transpose_override'] = self.transpose_override_checkbox.isChecked()
+        self.midi_settings['midi_in_mode'] = self.midi_in_mode_combo.currentData()
+        self.midi_settings['usb_midi_mode'] = self.usb_midi_mode_combo.currentData()
+        self.midi_settings['midi_clock_source'] = self.midi_clock_source_combo.currentData()
+
+        # Send to device in real-time
+        self.send_midi_override_routing_to_device()
+
+    def send_midi_override_routing_to_device(self):
+        """Send MIDI override and routing settings to device in real-time"""
+        try:
+            if not self.device or not isinstance(self.device, VialKeyboard):
+                return
+
+            keyboard = self.device.keyboard
+
+            # Send override settings
+            keyboard.set_keyboard_param_single(PARAM_CHANNEL_OVERRIDE, 1 if self.midi_settings['channel_override'] else 0)
+            keyboard.set_keyboard_param_single(PARAM_VELOCITY_OVERRIDE, 1 if self.midi_settings['velocity_override'] else 0)
+            keyboard.set_keyboard_param_single(PARAM_TRANSPOSE_OVERRIDE, 1 if self.midi_settings['transpose_override'] else 0)
+
+            # Send routing settings
+            keyboard.set_keyboard_param_single(PARAM_MIDI_IN_MODE, self.midi_settings['midi_in_mode'])
+            keyboard.set_keyboard_param_single(PARAM_USB_MIDI_MODE, self.midi_settings['usb_midi_mode'])
+            keyboard.set_keyboard_param_single(PARAM_MIDI_CLOCK_SOURCE, self.midi_settings['midi_clock_source'])
+
+        except Exception as e:
+            pass  # Silently fail for real-time updates
 
     def on_save_actuation(self):
         """Save actuation settings - to all layers or current layer depending on mode"""
@@ -1942,6 +2115,8 @@ class QuickActuationWidget(QWidget):
             self.load_all_layers_from_device()
             # Load current layer to UI
             self.load_layer_from_memory()
+            # Load MIDI override and routing settings from device
+            self.load_midi_override_routing_from_device()
     
     def load_all_layers_from_device(self):
         """Load all 12 layers from device into memory cache (only called once on connect)"""
@@ -1982,7 +2157,70 @@ class QuickActuationWidget(QWidget):
 
         except Exception:
             pass
-    
+
+    def load_midi_override_routing_from_device(self):
+        """Load MIDI override and routing settings from device"""
+        try:
+            if not self.device or not isinstance(self.device, VialKeyboard):
+                return
+
+            # Get MIDI config from device
+            midi_config = self.device.keyboard.midi_config
+            if not midi_config:
+                return
+
+            # Block signals while updating UI
+            self.channel_override_checkbox.blockSignals(True)
+            self.velocity_override_checkbox.blockSignals(True)
+            self.transpose_override_checkbox.blockSignals(True)
+            self.midi_in_mode_combo.blockSignals(True)
+            self.usb_midi_mode_combo.blockSignals(True)
+            self.midi_clock_source_combo.blockSignals(True)
+
+            # Load override settings
+            self.channel_override_checkbox.setChecked(midi_config.get('channel_override', False))
+            self.velocity_override_checkbox.setChecked(midi_config.get('velocity_override', False))
+            self.transpose_override_checkbox.setChecked(midi_config.get('transpose_override', False))
+
+            # Load routing settings
+            midi_in_mode = midi_config.get('midi_in_mode', 0)
+            usb_midi_mode = midi_config.get('usb_midi_mode', 0)
+            midi_clock_source = midi_config.get('midi_clock_source', 0)
+
+            for i in range(self.midi_in_mode_combo.count()):
+                if self.midi_in_mode_combo.itemData(i) == midi_in_mode:
+                    self.midi_in_mode_combo.setCurrentIndex(i)
+                    break
+
+            for i in range(self.usb_midi_mode_combo.count()):
+                if self.usb_midi_mode_combo.itemData(i) == usb_midi_mode:
+                    self.usb_midi_mode_combo.setCurrentIndex(i)
+                    break
+
+            for i in range(self.midi_clock_source_combo.count()):
+                if self.midi_clock_source_combo.itemData(i) == midi_clock_source:
+                    self.midi_clock_source_combo.setCurrentIndex(i)
+                    break
+
+            # Update local settings
+            self.midi_settings['channel_override'] = midi_config.get('channel_override', False)
+            self.midi_settings['velocity_override'] = midi_config.get('velocity_override', False)
+            self.midi_settings['transpose_override'] = midi_config.get('transpose_override', False)
+            self.midi_settings['midi_in_mode'] = midi_in_mode
+            self.midi_settings['usb_midi_mode'] = usb_midi_mode
+            self.midi_settings['midi_clock_source'] = midi_clock_source
+
+            # Unblock signals
+            self.channel_override_checkbox.blockSignals(False)
+            self.velocity_override_checkbox.blockSignals(False)
+            self.transpose_override_checkbox.blockSignals(False)
+            self.midi_in_mode_combo.blockSignals(False)
+            self.usb_midi_mode_combo.blockSignals(False)
+            self.midi_clock_source_combo.blockSignals(False)
+
+        except Exception:
+            pass
+
     def set_layer(self, layer):
         """Set current layer and load its settings if in per-layer mode"""
         self.current_layer = layer

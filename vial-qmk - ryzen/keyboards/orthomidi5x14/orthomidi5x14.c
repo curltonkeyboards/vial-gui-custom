@@ -2597,6 +2597,14 @@ void reset_keyboard_settings(void) {
     // Hall Effect Sensor Linearization
     lut_correction_strength = 0;  // Default: linear (no correction)
 
+    // MIDI Override and Routing settings
+    channeloverride = false;
+    velocityoverride = false;
+    transposeoverride = false;
+    midi_in_mode = 0;  // MIDI_ROUTE_PROCESS_ALL
+    usb_midi_mode = 0;  // MIDI_ROUTE_PROCESS_ALL
+    midi_clock_source = 0;  // CLOCK_SOURCE_LOCAL
+
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
     keyboard_settings.cc_sensitivity = cc_sensitivity;
@@ -2641,6 +2649,13 @@ void reset_keyboard_settings(void) {
     keyboard_settings.triplesplit_sustain = triplesplit_sustain;
     // Hall Effect Sensor Linearization
     keyboard_settings.lut_correction_strength = lut_correction_strength;
+    // MIDI Override and Routing settings
+    keyboard_settings.channeloverride = channeloverride;
+    keyboard_settings.velocityoverride = velocityoverride;
+    keyboard_settings.transposeoverride = transposeoverride;
+    keyboard_settings.midi_in_mode = midi_in_mode;
+    keyboard_settings.usb_midi_mode = usb_midi_mode;
+    keyboard_settings.midi_clock_source = midi_clock_source;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -2702,6 +2717,14 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     triplesplit_sustain = keyboard_settings.triplesplit_sustain;
     // Hall Effect Sensor Linearization
     lut_correction_strength = keyboard_settings.lut_correction_strength;
+
+    // MIDI Override and Routing settings
+    channeloverride = keyboard_settings.channeloverride;
+    velocityoverride = keyboard_settings.velocityoverride;
+    transposeoverride = keyboard_settings.transposeoverride;
+    midi_in_mode = keyboard_settings.midi_in_mode;
+    usb_midi_mode = keyboard_settings.usb_midi_mode;
+    midi_clock_source = keyboard_settings.midi_clock_source;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }

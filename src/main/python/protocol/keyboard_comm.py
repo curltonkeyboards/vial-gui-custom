@@ -80,6 +80,13 @@ PARAM_KEYSPLITVELOCITYSTATUS = 22
 PARAM_VELOCITY_SENSITIVITY = 30  # 4-byte uint32
 PARAM_CC_SENSITIVITY = 31  # 4-byte uint32
 PARAM_LUT_CORRECTION_STRENGTH = 32  # 0-100: Hall sensor linearization strength
+# MIDI Override and Routing settings
+PARAM_CHANNEL_OVERRIDE = 33  # bool: Override incoming MIDI channel
+PARAM_VELOCITY_OVERRIDE = 34  # bool: Override incoming MIDI velocity
+PARAM_TRANSPOSE_OVERRIDE = 35  # bool: Transpose incoming MIDI notes
+PARAM_MIDI_IN_MODE = 36  # uint8_t: MIDI IN routing mode (0=Process, 1=Thru, 2=Clock Only, 3=Ignore)
+PARAM_USB_MIDI_MODE = 37  # uint8_t: USB MIDI routing mode (0=Process, 1=Thru, 2=Clock Only, 3=Ignore)
+PARAM_MIDI_CLOCK_SOURCE = 38  # uint8_t: MIDI clock source (0=Local, 1=USB, 2=MIDI IN)
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1182,22 +1189,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "cclooprecording": data[13] != 0,
                     "truesustain": data[14] != 0,
                     # aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
-                    # Base/Main MIDI velocity settings
-                    "he_velocity_curve": data[15] if len(data) > 15 else 2,
-                    "he_velocity_min": data[16] if len(data) > 16 else 1,
-                    "he_velocity_max": data[17] if len(data) > 17 else 127,
-                    # KeySplit velocity settings
-                    "keysplit_he_velocity_curve": data[18] if len(data) > 18 else 2,
-                    "keysplit_he_velocity_min": data[19] if len(data) > 19 else 1,
-                    "keysplit_he_velocity_max": data[20] if len(data) > 20 else 127,
-                    # TripleSplit velocity settings
-                    "triplesplit_he_velocity_curve": data[21] if len(data) > 21 else 2,
-                    "triplesplit_he_velocity_min": data[22] if len(data) > 22 else 1,
-                    "triplesplit_he_velocity_max": data[23] if len(data) > 23 else 127,
-                    # Sustain settings (0=Ignore, 1=ON)
-                    "base_sustain": data[24] if len(data) > 24 else 0,
-                    "keysplit_sustain": data[25] if len(data) > 25 else 0,
-                    "triplesplit_sustain": data[26] if len(data) > 26 else 0
+                    # MIDI Override settings (positions 15-20)
+                    "channel_override": data[15] != 0 if len(data) > 15 else False,
+                    "velocity_override": data[16] != 0 if len(data) > 16 else False,
+                    "transpose_override": data[17] != 0 if len(data) > 17 else False,
+                    # MIDI Routing settings
+                    "midi_in_mode": data[18] if len(data) > 18 else 0,
+                    "usb_midi_mode": data[19] if len(data) > 19 else 0,
+                    "midi_clock_source": data[20] if len(data) > 20 else 0
+                    # Note: Velocity curve/min/max and sustain settings are handled via PARAM_SINGLE
+                    # commands, not the batch config packet
                 })
                 
             return config if config else None
