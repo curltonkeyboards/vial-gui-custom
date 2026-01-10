@@ -160,9 +160,9 @@ class DKSKeyWidget(KeyWidget):
         if selected:
             self.setStyleSheet("""
                 DKSKeyWidget {
-                    border: 3px solid #0078d4;
+                    border: 3px solid palette(highlight);
                     border-radius: 4px;
-                    background-color: rgba(0, 120, 212, 0.3);
+                    background-color: palette(highlight);
                 }
             """)
         else:
