@@ -15,19 +15,8 @@ from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
 from tabbed_keycodes import GamepadWidget, DpadButton
-from protocol.keyboard_comm import (
-    PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
-    PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
-    PARAM_KEYSPLIT_HE_VELOCITY_CURVE, PARAM_KEYSPLIT_HE_VELOCITY_MIN, PARAM_KEYSPLIT_HE_VELOCITY_MAX,
-    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, PARAM_TRIPLESPLIT_HE_VELOCITY_MAX,
-    # PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC removed - aftertouch is now per-layer
-    PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
-    PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS,
-    PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS,
-    # MIDI Routing Override Settings
-    PARAM_CHANNEL_OVERRIDE, PARAM_VELOCITY_OVERRIDE, PARAM_TRANSPOSE_OVERRIDE,
-    PARAM_MIDI_IN_MODE, PARAM_USB_MIDI_MODE, PARAM_MIDI_CLOCK_SOURCE
-)
+# PARAM_* constants removed - MIDI settings no longer sent in real-time
+# Settings are only sent when user clicks Save
 from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
 from vial_device import VialKeyboard
@@ -1522,115 +1511,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             }
         """)
 
-        # Connect widgets to real-time HID updates
-        self.global_channel.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_CHANNEL_NUMBER, self.global_channel.currentData())
-        )
-        self.global_transpose.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_TRANSPOSE_NUMBER, self.global_transpose.currentData())
-        )
-        self.global_velocity_curve.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_HE_VELOCITY_CURVE, self.global_velocity_curve.currentData())
-        )
+        # Connect slider labels to update on value change (UI feedback only, no sending)
+        # Settings are only sent to keyboard when user clicks Save
         self.global_velocity_min.valueChanged.connect(
-            lambda v: [self.velocity_min_value_label.setText(str(v)),
-                      self.send_param_update(PARAM_HE_VELOCITY_MIN, v)]
+            lambda v: self.velocity_min_value_label.setText(str(v))
         )
         self.global_velocity_max.valueChanged.connect(
-            lambda v: [self.velocity_max_value_label.setText(str(v)),
-                      self.send_param_update(PARAM_HE_VELOCITY_MAX, v)]
-        )
-        self.base_sustain.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_BASE_SUSTAIN, self.base_sustain.currentData())
-        )
-        # global_aftertouch connections removed - aftertouch is now per-layer
-
-        # KeySplit widgets
-        self.key_split_channel.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLITCHANNEL, self.key_split_channel.currentData())
-        )
-        self.transpose_number2.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_TRANSPOSE_NUMBER2, self.transpose_number2.currentData())
-        )
-        self.velocity_curve2.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_CURVE, self.velocity_curve2.currentData())
+            lambda v: self.velocity_max_value_label.setText(str(v))
         )
         self.velocity_min2.valueChanged.connect(
-            lambda v: [self.velocity_min2_value.setText(str(v)),
-                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MIN, v)]
+            lambda v: self.velocity_min2_value.setText(str(v))
         )
         self.velocity_max2.valueChanged.connect(
-            lambda v: [self.velocity_max2_value.setText(str(v)),
-                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MAX, v)]
-        )
-        self.keysplit_sustain.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLIT_SUSTAIN, self.keysplit_sustain.currentData())
-        )
-
-        # TripleSplit widgets
-        self.key_split2_channel.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLIT2CHANNEL, self.key_split2_channel.currentData())
-        )
-        self.transpose_number3.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_TRANSPOSE_NUMBER3, self.transpose_number3.currentData())
-        )
-        self.velocity_curve3.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, self.velocity_curve3.currentData())
+            lambda v: self.velocity_max2_value.setText(str(v))
         )
         self.velocity_min3.valueChanged.connect(
-            lambda v: [self.velocity_min3_value.setText(str(v)),
-                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, v)]
+            lambda v: self.velocity_min3_value.setText(str(v))
         )
         self.velocity_max3.valueChanged.connect(
-            lambda v: [self.velocity_max3_value.setText(str(v)),
-                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MAX, v)]
-        )
-        self.triplesplit_sustain.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_TRIPLESPLIT_SUSTAIN, self.triplesplit_sustain.currentData())
-        )
-
-        # Split status - send HID updates for all three status dropdowns
-        self.key_split_status.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLITSTATUS, self.key_split_status.currentData())
-        )
-        self.key_split_transpose_status.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLITTRANSPOSESTATUS, self.key_split_transpose_status.currentData())
-        )
-        self.key_split_velocity_status.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_KEYSPLITVELOCITYSTATUS, self.key_split_velocity_status.currentData())
-        )
-
-        # MIDI Routing Override Settings
-        self.channel_override.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_CHANNEL_OVERRIDE, 1 if self.channel_override.currentData() else 0)
-        )
-        self.velocity_override.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_VELOCITY_OVERRIDE, 1 if self.velocity_override.currentData() else 0)
-        )
-        self.transpose_override.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_TRANSPOSE_OVERRIDE, 1 if self.transpose_override.currentData() else 0)
-        )
-        self.midi_in_mode.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_MIDI_IN_MODE, self.midi_in_mode.currentData())
-        )
-        self.usb_midi_mode.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_USB_MIDI_MODE, self.usb_midi_mode.currentData())
-        )
-        self.midi_clock_source.currentIndexChanged.connect(
-            lambda: self.send_param_update(PARAM_MIDI_CLOCK_SOURCE, self.midi_clock_source.currentData())
+            lambda v: self.velocity_max3_value.setText(str(v))
         )
 
         # Set initial offshoot visibility based on default dropdown values (all 0, so both hidden)
         self._update_offshoot_visibility()
-
-    def send_param_update(self, param_id, value):
-        """Send real-time HID parameter update to keyboard"""
-        try:
-            if self.device and isinstance(self.device, VialKeyboard):
-                self.device.keyboard.set_keyboard_param_single(param_id, value)
-        except Exception as e:
-            # Silently fail - firmware may not support this parameter yet
-            pass
 
     def on_channel_split_mode_changed(self):
         """Handle channel split mode changes - show/hide offshoots and update UI"""
