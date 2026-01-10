@@ -1341,57 +1341,44 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.usb_midi_mode.addItem("Ignore", 3)
         midi_routing_layout.addWidget(self.usb_midi_mode, 1, 2)
 
-        # External MIDI Override Toggles
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Ext Notes Override:")), 1, 3)
-        self.ext_midi_notes_override = ArrowComboBox()
-        self.ext_midi_notes_override.setMinimumWidth(120)
-        self.ext_midi_notes_override.setMinimumHeight(25)
-        self.ext_midi_notes_override.setMaximumHeight(25)
-        self.ext_midi_notes_override.setEditable(True)
-        self.ext_midi_notes_override.lineEdit().setReadOnly(True)
-        self.ext_midi_notes_override.lineEdit().setAlignment(Qt.AlignCenter)
-        self.ext_midi_notes_override.addItem("Off", False)
-        self.ext_midi_notes_override.addItem("On", True)
-        midi_routing_layout.addWidget(self.ext_midi_notes_override, 1, 4)
+        # External MIDI Override Toggles (existing variables)
+        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel Override:")), 1, 3)
+        self.channeloverride = ArrowComboBox()
+        self.channeloverride.setMinimumWidth(120)
+        self.channeloverride.setMinimumHeight(25)
+        self.channeloverride.setMaximumHeight(25)
+        self.channeloverride.setEditable(True)
+        self.channeloverride.lineEdit().setReadOnly(True)
+        self.channeloverride.lineEdit().setAlignment(Qt.AlignCenter)
+        self.channeloverride.addItem("Off", False)
+        self.channeloverride.addItem("On", True)
+        midi_routing_layout.addWidget(self.channeloverride, 1, 4)
 
-        # Ext CC Override
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Ext CC Override:")), 2, 1)
-        self.ext_midi_cc_override = ArrowComboBox()
-        self.ext_midi_cc_override.setMinimumWidth(120)
-        self.ext_midi_cc_override.setMinimumHeight(25)
-        self.ext_midi_cc_override.setMaximumHeight(25)
-        self.ext_midi_cc_override.setEditable(True)
-        self.ext_midi_cc_override.lineEdit().setReadOnly(True)
-        self.ext_midi_cc_override.lineEdit().setAlignment(Qt.AlignCenter)
-        self.ext_midi_cc_override.addItem("Off", False)
-        self.ext_midi_cc_override.addItem("On", True)
-        midi_routing_layout.addWidget(self.ext_midi_cc_override, 2, 2)
+        # Velocity Override
+        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Override:")), 2, 1)
+        self.velocityoverride = ArrowComboBox()
+        self.velocityoverride.setMinimumWidth(120)
+        self.velocityoverride.setMinimumHeight(25)
+        self.velocityoverride.setMaximumHeight(25)
+        self.velocityoverride.setEditable(True)
+        self.velocityoverride.lineEdit().setReadOnly(True)
+        self.velocityoverride.lineEdit().setAlignment(Qt.AlignCenter)
+        self.velocityoverride.addItem("Off", False)
+        self.velocityoverride.addItem("On", True)
+        midi_routing_layout.addWidget(self.velocityoverride, 2, 2)
 
-        # Ext Clock Override
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Ext Clock Override:")), 2, 3)
-        self.ext_midi_clock_override = ArrowComboBox()
-        self.ext_midi_clock_override.setMinimumWidth(120)
-        self.ext_midi_clock_override.setMinimumHeight(25)
-        self.ext_midi_clock_override.setMaximumHeight(25)
-        self.ext_midi_clock_override.setEditable(True)
-        self.ext_midi_clock_override.lineEdit().setReadOnly(True)
-        self.ext_midi_clock_override.lineEdit().setAlignment(Qt.AlignCenter)
-        self.ext_midi_clock_override.addItem("Off", False)
-        self.ext_midi_clock_override.addItem("On", True)
-        midi_routing_layout.addWidget(self.ext_midi_clock_override, 2, 4)
-
-        # Ext Transport Override
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Ext Transport Override:")), 3, 1)
-        self.ext_midi_transport_override = ArrowComboBox()
-        self.ext_midi_transport_override.setMinimumWidth(120)
-        self.ext_midi_transport_override.setMinimumHeight(25)
-        self.ext_midi_transport_override.setMaximumHeight(25)
-        self.ext_midi_transport_override.setEditable(True)
-        self.ext_midi_transport_override.lineEdit().setReadOnly(True)
-        self.ext_midi_transport_override.lineEdit().setAlignment(Qt.AlignCenter)
-        self.ext_midi_transport_override.addItem("Off", False)
-        self.ext_midi_transport_override.addItem("On", True)
-        midi_routing_layout.addWidget(self.ext_midi_transport_override, 3, 2)
+        # Transpose Override
+        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose Override:")), 2, 3)
+        self.transposeoverride = ArrowComboBox()
+        self.transposeoverride.setMinimumWidth(120)
+        self.transposeoverride.setMinimumHeight(25)
+        self.transposeoverride.setMaximumHeight(25)
+        self.transposeoverride.setEditable(True)
+        self.transposeoverride.lineEdit().setReadOnly(True)
+        self.transposeoverride.lineEdit().setAlignment(Qt.AlignCenter)
+        self.transposeoverride.addItem("Off", False)
+        self.transposeoverride.addItem("On", True)
+        midi_routing_layout.addWidget(self.transposeoverride, 2, 4)
 
         # KeySplit Modes Group
         keysplit_modes_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Modes"))
@@ -1743,11 +1730,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "midi_in_mode": self.midi_in_mode.currentData(),
             "usb_midi_mode": self.usb_midi_mode.currentData(),
             "midi_clock_source": self.midi_clock_source.currentData(),
-            # External MIDI Override Toggles
-            "ext_midi_notes_override": self.ext_midi_notes_override.currentData(),
-            "ext_midi_cc_override": self.ext_midi_cc_override.currentData(),
-            "ext_midi_clock_override": self.ext_midi_clock_override.currentData(),
-            "ext_midi_transport_override": self.ext_midi_transport_override.currentData()
+            # External MIDI Override Toggles (existing variables)
+            "channeloverride": self.channeloverride.currentData(),
+            "velocityoverride": self.velocityoverride.currentData(),
+            "transposeoverride": self.transposeoverride.currentData()
         }
     
     def apply_settings(self, config):
@@ -1809,11 +1795,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.midi_in_mode, config.get("midi_in_mode"), 0)
         set_combo_by_data(self.usb_midi_mode, config.get("usb_midi_mode"), 0)
         set_combo_by_data(self.midi_clock_source, config.get("midi_clock_source"), 0)
-        # External MIDI Override Toggles
-        set_combo_by_data(self.ext_midi_notes_override, config.get("ext_midi_notes_override"), False)
-        set_combo_by_data(self.ext_midi_cc_override, config.get("ext_midi_cc_override"), False)
-        set_combo_by_data(self.ext_midi_clock_override, config.get("ext_midi_clock_override"), False)
-        set_combo_by_data(self.ext_midi_transport_override, config.get("ext_midi_transport_override"), False)
+        # External MIDI Override Toggles (existing variables)
+        set_combo_by_data(self.channeloverride, config.get("channeloverride"), False)
+        set_combo_by_data(self.velocityoverride, config.get("velocityoverride"), False)
+        set_combo_by_data(self.transposeoverride, config.get("transposeoverride"), False)
 
     def pack_basic_data(self, settings):
         """Pack basic settings into 17-byte structure"""
@@ -1840,8 +1825,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 22-byte structure (with MIDI routing base settings)"""
-        data = bytearray(22)
+        """Pack advanced settings into 21-byte structure (with MIDI routing base settings)"""
+        data = bytearray(21)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -1863,11 +1848,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings.get("midi_in_mode", 0); offset += 1
         data[offset] = settings.get("usb_midi_mode", 0); offset += 1
         data[offset] = settings.get("midi_clock_source", 0); offset += 1
-        # External MIDI Override Toggles (indices 18-21)
-        data[offset] = 1 if settings.get("ext_midi_notes_override", False) else 0; offset += 1
-        data[offset] = 1 if settings.get("ext_midi_cc_override", False) else 0; offset += 1
-        data[offset] = 1 if settings.get("ext_midi_clock_override", False) else 0; offset += 1
-        data[offset] = 1 if settings.get("ext_midi_transport_override", False) else 0; offset += 1
+        # External MIDI Override Toggles (indices 18-20)
+        data[offset] = 1 if settings.get("channeloverride", False) else 0; offset += 1
+        data[offset] = 1 if settings.get("velocityoverride", False) else 0; offset += 1
+        data[offset] = 1 if settings.get("transposeoverride", False) else 0; offset += 1
 
         return data
     

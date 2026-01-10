@@ -84,11 +84,10 @@ PARAM_LUT_CORRECTION_STRENGTH = 32  # 0-100: Hall sensor linearization strength
 PARAM_MIDI_IN_MODE = 33           # 0=Process, 1=Thru, 2=Clock Only, 3=Ignore
 PARAM_USB_MIDI_MODE = 34          # 0=Process, 1=Thru, 2=Clock Only, 3=Ignore
 PARAM_MIDI_CLOCK_SOURCE = 35      # 0=Local, 1=USB, 2=Hardware MIDI IN
-# External MIDI Override Toggles
-PARAM_EXT_MIDI_NOTES_OVERRIDE = 36
-PARAM_EXT_MIDI_CC_OVERRIDE = 37
-PARAM_EXT_MIDI_CLOCK_OVERRIDE = 38
-PARAM_EXT_MIDI_TRANSPORT_OVERRIDE = 39
+# External MIDI Override Toggles (existing variables)
+PARAM_CHANNEL_OVERRIDE = 36
+PARAM_VELOCITY_OVERRIDE = 37
+PARAM_TRANSPOSE_OVERRIDE = 38
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1194,11 +1193,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "midi_in_mode": data[15] if len(data) > 15 else 0,
                     "usb_midi_mode": data[16] if len(data) > 16 else 0,
                     "midi_clock_source": data[17] if len(data) > 17 else 0,
-                    # External MIDI Override Toggles (indices 18-21)
-                    "ext_midi_notes_override": data[18] != 0 if len(data) > 18 else False,
-                    "ext_midi_cc_override": data[19] != 0 if len(data) > 19 else False,
-                    "ext_midi_clock_override": data[20] != 0 if len(data) > 20 else False,
-                    "ext_midi_transport_override": data[21] != 0 if len(data) > 21 else False
+                    # External MIDI Override Toggles (indices 18-20)
+                    "channeloverride": data[18] != 0 if len(data) > 18 else False,
+                    "velocityoverride": data[19] != 0 if len(data) > 19 else False,
+                    "transposeoverride": data[20] != 0 if len(data) > 20 else False
                 })
                 
             return config if config else None

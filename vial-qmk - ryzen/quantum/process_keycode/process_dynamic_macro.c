@@ -129,11 +129,10 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_MIDI_IN_MODE                   33
 #define PARAM_USB_MIDI_MODE                  34
 #define PARAM_MIDI_CLOCK_SOURCE              35
-// External MIDI Override Toggles
-#define PARAM_EXT_MIDI_NOTES_OVERRIDE        36
-#define PARAM_EXT_MIDI_CC_OVERRIDE           37
-#define PARAM_EXT_MIDI_CLOCK_OVERRIDE        38
-#define PARAM_EXT_MIDI_TRANSPORT_OVERRIDE    39
+// External MIDI Override Toggles (existing variables)
+#define PARAM_CHANNEL_OVERRIDE               36
+#define PARAM_VELOCITY_OVERRIDE              37
+#define PARAM_TRANSPOSE_OVERRIDE             38
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -12813,11 +12812,10 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     usb_midi_mode = *ptr++;
     midi_clock_source = *ptr++;
 
-    // Read external MIDI override toggles
-    ext_midi_notes_override = (*ptr++ != 0);
-    ext_midi_cc_override = (*ptr++ != 0);
-    ext_midi_clock_override = (*ptr++ != 0);
-    ext_midi_transport_override = (*ptr++ != 0);
+    // Read external MIDI override toggles (existing variables)
+    channeloverride = (*ptr++ != 0);
+    velocityoverride = (*ptr++ != 0);
+    transposeoverride = (*ptr++ != 0);
 
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
@@ -12840,10 +12838,9 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
     // External MIDI override toggles
-    keyboard_settings.ext_midi_notes_override = ext_midi_notes_override;
-    keyboard_settings.ext_midi_cc_override = ext_midi_cc_override;
-    keyboard_settings.ext_midi_clock_override = ext_midi_clock_override;
-    keyboard_settings.ext_midi_transport_override = ext_midi_transport_override;
+    keyboard_settings.channeloverride = channeloverride;
+    keyboard_settings.velocityoverride = velocityoverride;
+    keyboard_settings.transposeoverride = transposeoverride;
 
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
@@ -12976,22 +12973,18 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.midi_clock_source = midi_clock_source;
             break;
 
-        // External MIDI Override Toggles
-        case PARAM_EXT_MIDI_NOTES_OVERRIDE:
-            ext_midi_notes_override = (*value_ptr != 0);
-            keyboard_settings.ext_midi_notes_override = ext_midi_notes_override;
+        // External MIDI Override Toggles (existing variables)
+        case PARAM_CHANNEL_OVERRIDE:
+            channeloverride = (*value_ptr != 0);
+            keyboard_settings.channeloverride = channeloverride;
             break;
-        case PARAM_EXT_MIDI_CC_OVERRIDE:
-            ext_midi_cc_override = (*value_ptr != 0);
-            keyboard_settings.ext_midi_cc_override = ext_midi_cc_override;
+        case PARAM_VELOCITY_OVERRIDE:
+            velocityoverride = (*value_ptr != 0);
+            keyboard_settings.velocityoverride = velocityoverride;
             break;
-        case PARAM_EXT_MIDI_CLOCK_OVERRIDE:
-            ext_midi_clock_override = (*value_ptr != 0);
-            keyboard_settings.ext_midi_clock_override = ext_midi_clock_override;
-            break;
-        case PARAM_EXT_MIDI_TRANSPORT_OVERRIDE:
-            ext_midi_transport_override = (*value_ptr != 0);
-            keyboard_settings.ext_midi_transport_override = ext_midi_transport_override;
+        case PARAM_TRANSPOSE_OVERRIDE:
+            transposeoverride = (*value_ptr != 0);
+            keyboard_settings.transposeoverride = transposeoverride;
             break;
 
         default:
@@ -13026,9 +13019,9 @@ static void handle_get_keyboard_config(void) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-    
-    // Packet 2: Advanced settings (22 bytes - expanded for MIDI routing)
-    uint8_t config_packet2[22];
+
+    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing)
+    uint8_t config_packet2[21];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13050,14 +13043,13 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
-    // External MIDI override toggles
-    *ptr++ = keyboard_settings.ext_midi_notes_override ? 1 : 0;
-    *ptr++ = keyboard_settings.ext_midi_cc_override ? 1 : 0;
-    *ptr++ = keyboard_settings.ext_midi_clock_override ? 1 : 0;
-    *ptr++ = keyboard_settings.ext_midi_transport_override ? 1 : 0;
+    // External MIDI override toggles (existing variables)
+    *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
+    *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
+    *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 22);
-    
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
+
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
 
@@ -13098,10 +13090,9 @@ static void handle_reset_keyboard_config(void) {
     usb_midi_mode = MIDI_ROUTE_PROCESS_ALL;
     midi_clock_source = CLOCK_SOURCE_LOCAL;
     // Reset external MIDI override toggles to defaults (all off)
-    ext_midi_notes_override = false;
-    ext_midi_cc_override = false;
-    ext_midi_clock_override = false;
-    ext_midi_transport_override = false;
+    channeloverride = false;
+    velocityoverride = false;
+    transposeoverride = false;
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -13139,10 +13130,9 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
     // External MIDI override toggles
-    keyboard_settings.ext_midi_notes_override = ext_midi_notes_override;
-    keyboard_settings.ext_midi_cc_override = ext_midi_cc_override;
-    keyboard_settings.ext_midi_clock_override = ext_midi_clock_override;
-    keyboard_settings.ext_midi_transport_override = ext_midi_transport_override;
+    keyboard_settings.channeloverride = channeloverride;
+    keyboard_settings.velocityoverride = velocityoverride;
+    keyboard_settings.transposeoverride = transposeoverride;
 
     // Save to EEPROM
     save_keyboard_settings();
@@ -13204,8 +13194,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
     
-    // Packet 2: Advanced settings (22 bytes - expanded for MIDI routing)
-    uint8_t config_packet2[22];
+    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing)
+    uint8_t config_packet2[21];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13227,13 +13217,12 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
-    // External MIDI override toggles
-    *ptr++ = keyboard_settings.ext_midi_notes_override ? 1 : 0;
-    *ptr++ = keyboard_settings.ext_midi_cc_override ? 1 : 0;
-    *ptr++ = keyboard_settings.ext_midi_clock_override ? 1 : 0;
-    *ptr++ = keyboard_settings.ext_midi_transport_override ? 1 : 0;
+    // External MIDI override toggles (existing variables)
+    *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
+    *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
+    *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 22);
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
 
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
@@ -13268,11 +13257,10 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     midi_in_mode = keyboard_settings.midi_in_mode;
     usb_midi_mode = keyboard_settings.usb_midi_mode;
     midi_clock_source = keyboard_settings.midi_clock_source;
-    // External MIDI override toggles
-    ext_midi_notes_override = keyboard_settings.ext_midi_notes_override;
-    ext_midi_cc_override = keyboard_settings.ext_midi_cc_override;
-    ext_midi_clock_override = keyboard_settings.ext_midi_clock_override;
-    ext_midi_transport_override = keyboard_settings.ext_midi_transport_override;
+    // External MIDI override toggles (existing variables)
+    channeloverride = keyboard_settings.channeloverride;
+    velocityoverride = keyboard_settings.velocityoverride;
+    transposeoverride = keyboard_settings.transposeoverride;
 
     dprintf("HID: Applied loaded settings from slot %d to active configuration\n", slot);
 }
