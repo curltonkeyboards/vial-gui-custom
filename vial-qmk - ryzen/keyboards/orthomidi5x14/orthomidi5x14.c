@@ -12158,7 +12158,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     if (keycode == SEQ_GATE_UP) {
         if (record->event.pressed) {
-            uint8_t current_gate = 80;  // Default
+            // Get current gate from first active slot, or default to 80
+            uint8_t current_gate = 80;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_state[i].active && seq_state[i].master_gate_override > 0) {
+                    current_gate = seq_state[i].master_gate_override;
+                    break;
+                }
+            }
             if (current_gate <= 90) current_gate += 10;
             seq_set_master_gate(current_gate);
             set_keylog(keycode, record);
@@ -12168,8 +12175,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     if (keycode == SEQ_GATE_DOWN) {
         if (record->event.pressed) {
-            uint8_t current_gate = 80;  // Default
-            if (current_gate >= 10) current_gate -= 10;
+            // Get current gate from first active slot, or default to 80
+            uint8_t current_gate = 80;
+            for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+                if (seq_state[i].active && seq_state[i].master_gate_override > 0) {
+                    current_gate = seq_state[i].master_gate_override;
+                    break;
+                }
+            }
+            if (current_gate >= 20) current_gate -= 10;
             seq_set_master_gate(current_gate);
             set_keylog(keycode, record);
         }
