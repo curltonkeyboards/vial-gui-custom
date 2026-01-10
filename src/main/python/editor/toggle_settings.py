@@ -138,13 +138,14 @@ class ToggleKeyWidget(KeyWidget):
         self.is_selected = False
 
     def mousePressEvent(self, ev):
-        # Set active_key properly so parent knows we're clicked
+        # Set active_key to the actual widget so KeyboardWidget draws the highlight
         if len(self.widgets) > 0:
-            self.active_key = 0
+            self.active_key = self.widgets[0]
             self.active_mask = False
 
         # Emit that we're selected (don't call parent which opens tray)
         self.selected.emit(self)
+        self.update()  # Force repaint to show highlight
         ev.accept()
 
     def mouseReleaseEvent(self, ev):
@@ -155,15 +156,14 @@ class ToggleKeyWidget(KeyWidget):
         """Visual feedback for selection"""
         self.is_selected = selected
         if selected:
-            self.setStyleSheet("""
-                QWidget {
-                    border: 3px solid #3daee9;
-                    background: rgba(61, 174, 233, 0.3);
-                    border-radius: 4px;
-                }
-            """)
+            # Set active_key to show native KeyboardWidget highlighting
+            if len(self.widgets) > 0:
+                self.active_key = self.widgets[0]
+                self.active_mask = False
         else:
-            self.setStyleSheet("")
+            # Clear active_key to remove highlighting
+            self.active_key = None
+        self.update()
 
 
 class ToggleEntryUI(QWidget):
