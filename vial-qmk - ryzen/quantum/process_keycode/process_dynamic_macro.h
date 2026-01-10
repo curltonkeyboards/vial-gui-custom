@@ -357,6 +357,15 @@ typedef struct {
     uint8_t triplesplit_sustain;          // Triplesplit MIDI sustain
     // Hall Effect Sensor Linearization
     uint8_t lut_correction_strength;      // 0-100: 0=linear (no correction), 100=full logarithmic LUT
+    // MIDI Routing Base Settings
+    uint8_t midi_in_mode;                 // 0=Process, 1=Thru, 2=Clock Only, 3=Ignore (Hardware MIDI IN routing)
+    uint8_t usb_midi_mode;                // 0=Process, 1=Thru, 2=Clock Only, 3=Ignore (USB MIDI routing)
+    uint8_t midi_clock_source;            // 0=Local, 1=USB, 2=Hardware MIDI IN
+    // External MIDI Override Toggles
+    bool ext_midi_notes_override;         // Override notes from external MIDI
+    bool ext_midi_cc_override;            // Override CC from external MIDI
+    bool ext_midi_clock_override;         // Override clock from external MIDI
+    bool ext_midi_transport_override;     // Override transport (start/stop/continue) from external MIDI
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
@@ -400,6 +409,13 @@ extern uint8_t keysplit_sustain;
 extern uint8_t triplesplit_sustain;
 // Hall Effect Sensor Linearization
 extern uint8_t lut_correction_strength;
+// MIDI Routing Base Settings (also in orthomidi5x14.h as enums)
+// midi_in_mode, usb_midi_mode, midi_clock_source already declared in orthomidi5x14.h
+// External MIDI Override Toggles
+extern bool ext_midi_notes_override;
+extern bool ext_midi_cc_override;
+extern bool ext_midi_clock_override;
+extern bool ext_midi_transport_override;
 
 // Keyboard settings instance
 extern keyboard_settings_t keyboard_settings;

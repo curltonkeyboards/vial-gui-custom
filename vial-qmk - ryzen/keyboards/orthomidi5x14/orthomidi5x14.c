@@ -248,6 +248,11 @@ bool channeloverride = false;
 bool velocityoverride = false;
 bool transposeoverride = false;
 bool truesustain = false;
+// External MIDI Override Toggles
+bool ext_midi_notes_override = false;
+bool ext_midi_cc_override = false;
+bool ext_midi_clock_override = false;
+bool ext_midi_transport_override = false;
 bool keysplitmodifierheld = false;
 bool triplesplitmodifierheld = false;
 bool global_edit_modifier_held = false;

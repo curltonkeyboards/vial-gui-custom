@@ -80,6 +80,15 @@ PARAM_KEYSPLITVELOCITYSTATUS = 22
 PARAM_VELOCITY_SENSITIVITY = 30  # 4-byte uint32
 PARAM_CC_SENSITIVITY = 31  # 4-byte uint32
 PARAM_LUT_CORRECTION_STRENGTH = 32  # 0-100: Hall sensor linearization strength
+# MIDI Routing Base Settings
+PARAM_MIDI_IN_MODE = 33           # 0=Process, 1=Thru, 2=Clock Only, 3=Ignore
+PARAM_USB_MIDI_MODE = 34          # 0=Process, 1=Thru, 2=Clock Only, 3=Ignore
+PARAM_MIDI_CLOCK_SOURCE = 35      # 0=Local, 1=USB, 2=Hardware MIDI IN
+# External MIDI Override Toggles
+PARAM_EXT_MIDI_NOTES_OVERRIDE = 36
+PARAM_EXT_MIDI_CC_OVERRIDE = 37
+PARAM_EXT_MIDI_CLOCK_OVERRIDE = 38
+PARAM_EXT_MIDI_TRANSPORT_OVERRIDE = 39
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1181,23 +1190,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "colorblindmode": data[12],
                     "cclooprecording": data[13] != 0,
                     "truesustain": data[14] != 0,
-                    # aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
-                    # Base/Main MIDI velocity settings
-                    "he_velocity_curve": data[15] if len(data) > 15 else 2,
-                    "he_velocity_min": data[16] if len(data) > 16 else 1,
-                    "he_velocity_max": data[17] if len(data) > 17 else 127,
-                    # KeySplit velocity settings
-                    "keysplit_he_velocity_curve": data[18] if len(data) > 18 else 2,
-                    "keysplit_he_velocity_min": data[19] if len(data) > 19 else 1,
-                    "keysplit_he_velocity_max": data[20] if len(data) > 20 else 127,
-                    # TripleSplit velocity settings
-                    "triplesplit_he_velocity_curve": data[21] if len(data) > 21 else 2,
-                    "triplesplit_he_velocity_min": data[22] if len(data) > 22 else 1,
-                    "triplesplit_he_velocity_max": data[23] if len(data) > 23 else 127,
-                    # Sustain settings (0=Ignore, 1=ON)
-                    "base_sustain": data[24] if len(data) > 24 else 0,
-                    "keysplit_sustain": data[25] if len(data) > 25 else 0,
-                    "triplesplit_sustain": data[26] if len(data) > 26 else 0
+                    # MIDI Routing Base Settings (indices 15-17)
+                    "midi_in_mode": data[15] if len(data) > 15 else 0,
+                    "usb_midi_mode": data[16] if len(data) > 16 else 0,
+                    "midi_clock_source": data[17] if len(data) > 17 else 0,
+                    # External MIDI Override Toggles (indices 18-21)
+                    "ext_midi_notes_override": data[18] != 0 if len(data) > 18 else False,
+                    "ext_midi_cc_override": data[19] != 0 if len(data) > 19 else False,
+                    "ext_midi_clock_override": data[20] != 0 if len(data) > 20 else False,
+                    "ext_midi_transport_override": data[21] != 0 if len(data) > 21 else False
                 })
                 
             return config if config else None
