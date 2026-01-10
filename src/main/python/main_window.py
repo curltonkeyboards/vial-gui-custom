@@ -23,6 +23,7 @@ from protocol.keyboard_comm import ProtocolError
 from editor.keymap_editor import KeymapEditor
 from editor.trigger_settings import TriggerSettingsTab
 from editor.dks_settings import DKSSettingsTab
+from editor.toggle_settings import ToggleSettingsTab
 from keymaps import KEYMAPS
 from editor.layout_editor import LayoutEditor
 from editor.macro_recorder import MacroRecorder
@@ -111,6 +112,11 @@ class MainWindow(QMainWindow):
         self.dks_settings = DKSSettingsTab(self.layout_editor)
         print(f"DKSSettingsTab created: {self.dks_settings}")
 
+        # Create Toggle Settings tab
+        print("Creating ToggleSettingsTab...")
+        self.toggle_settings = ToggleSettingsTab(self.layout_editor)
+        print(f"ToggleSettingsTab created: {self.toggle_settings}")
+
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -137,7 +143,7 @@ class MainWindow(QMainWindow):
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
-                        (self.dks_settings, "DKS Settings"),
+                        (self.dks_settings, "DKS Settings"), (self.toggle_settings, "Toggle Keys"),
                         (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
