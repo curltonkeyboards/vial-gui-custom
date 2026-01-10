@@ -145,13 +145,23 @@ class ToggleKeyWidget(KeyWidget):
 
         # Emit that we're selected (don't call parent which opens tray)
         self.selected.emit(self)
+        ev.accept()
+
+    def mouseReleaseEvent(self, ev):
+        # Override to prevent any tray behavior
+        ev.accept()
 
     def set_selected(self, selected):
-        """Set the selected state for visual highlighting"""
+        """Visual feedback for selection"""
         self.is_selected = selected
-        # Update visual state
         if selected:
-            self.setStyleSheet("QWidget { border: 2px solid palette(highlight); }")
+            self.setStyleSheet("""
+                QWidget {
+                    border: 3px solid #3daee9;
+                    background: rgba(61, 174, 233, 0.3);
+                    border-radius: 4px;
+                }
+            """)
         else:
             self.setStyleSheet("")
 
@@ -252,15 +262,11 @@ class ToggleEntryUI(QWidget):
     def on_keycode_selected(self, keycode):
         """Called when a keycode is selected from TabbedKeycodes"""
         if self.target_key.is_selected:
-            # Get keycode value
-            kc = Keycode.find_by_qmk_id(keycode)
-            if kc:
-                keycode_value = kc.code
-            else:
-                try:
-                    keycode_value = int(keycode, 16) if keycode.startswith("0x") else int(keycode)
-                except:
-                    keycode_value = 0
+            # Convert qmk_id string to integer keycode for firmware
+            try:
+                keycode_value = Keycode.deserialize(keycode)
+            except Exception:
+                keycode_value = 0
 
             self.slot.target_keycode = keycode_value
             self._update_display()
@@ -272,12 +278,13 @@ class ToggleEntryUI(QWidget):
     def _update_display(self):
         """Update the UI to reflect current slot state"""
         if self.slot.target_keycode != 0:
-            # Show keycode on target key widget
-            self.target_key.set_keycode(self.slot.target_keycode)
+            # Convert integer keycode to qmk_id string for display
+            qmk_id = Keycode.serialize(self.slot.target_keycode)
+            self.target_key.set_keycode(qmk_id)
             self.status_label.setText("Configured")
             self.status_label.setStyleSheet("color: green;")
         else:
-            self.target_key.set_keycode(0)
+            self.target_key.set_keycode("KC_NO")
             self.status_label.setText("(Not configured)")
             self.status_label.setStyleSheet("color: gray;")
 
