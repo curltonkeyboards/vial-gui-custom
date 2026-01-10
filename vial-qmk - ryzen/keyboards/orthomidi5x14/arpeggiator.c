@@ -307,6 +307,7 @@ static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpack
 }
 
 // Calculate milliseconds per 16th note based on current BPM and timing mode
+// Uses arp_state.rate_override if set, otherwise uses preset values
 static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
     uint32_t actual_bpm = get_effective_bpm() / 100000;
     if (actual_bpm == 0) actual_bpm = 120;
@@ -314,9 +315,21 @@ static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
     // Base calculation: quarter note duration / 4 = 16th note duration
     uint32_t base_ms = (60000 / actual_bpm) / 4;
 
+    // Determine note_value and timing_mode - use override if set
+    uint8_t note_value, timing_mode;
+    if (arp_state.rate_override != 0) {
+        // Extract note value and timing mode from rate_override
+        note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
+        timing_mode = arp_state.rate_override & TIMING_MODE_MASK;
+    } else {
+        // Use preset values
+        note_value = preset->note_value;
+        timing_mode = preset->timing_mode;
+    }
+
     // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
     uint8_t multiplier = 1;
-    switch (preset->note_value) {
+    switch (note_value) {
         case NOTE_VALUE_QUARTER:
             multiplier = 4;  // Quarter notes are 4× 16ths
             break;
@@ -331,10 +344,10 @@ static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
     base_ms *= multiplier;
 
     // Apply timing mode (triplet or dotted)
-    if (preset->timing_mode & TIMING_MODE_TRIPLET) {
+    if (timing_mode & TIMING_MODE_TRIPLET) {
         // Triplet timing: compress to 2/3 of normal duration
         base_ms = (base_ms * 2) / 3;
-    } else if (preset->timing_mode & TIMING_MODE_DOTTED) {
+    } else if (timing_mode & TIMING_MODE_DOTTED) {
         // Dotted timing: extend to 3/2 of normal duration
         base_ms = (base_ms * 3) / 2;
     }
@@ -343,16 +356,29 @@ static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
 }
 
 // Calculate milliseconds per 16th note for sequencer presets
-static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset) {
+// Uses seq_state[slot].rate_override if set, otherwise uses preset values
+static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
     uint32_t actual_bpm = get_effective_bpm() / 100000;
     if (actual_bpm == 0) actual_bpm = 120;
 
     // Base calculation: quarter note duration / 4 = 16th note duration
     uint32_t base_ms = (60000 / actual_bpm) / 4;
 
+    // Determine note_value and timing_mode - use override if set
+    uint8_t note_value, timing_mode;
+    if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
+        // Extract note value and timing mode from rate_override
+        note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
+        timing_mode = seq_state[slot].rate_override & TIMING_MODE_MASK;
+    } else {
+        // Use preset values
+        note_value = preset->note_value;
+        timing_mode = preset->timing_mode;
+    }
+
     // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
     uint8_t multiplier = 1;
-    switch (preset->note_value) {
+    switch (note_value) {
         case NOTE_VALUE_QUARTER:
             multiplier = 4;  // Quarter notes are 4× 16ths
             break;
@@ -367,10 +393,10 @@ static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset) {
     base_ms *= multiplier;
 
     // Apply timing mode (triplet or dotted)
-    if (preset->timing_mode & TIMING_MODE_TRIPLET) {
+    if (timing_mode & TIMING_MODE_TRIPLET) {
         // Triplet timing: compress to 2/3 of normal duration
         base_ms = (base_ms * 2) / 3;
-    } else if (preset->timing_mode & TIMING_MODE_DOTTED) {
+    } else if (timing_mode & TIMING_MODE_DOTTED) {
         // Dotted timing: extend to 3/2 of normal duration
         base_ms = (base_ms * 3) / 2;
     }
@@ -849,7 +875,7 @@ void seq_update(void) {
                                    seq_state[slot].master_gate_override :
                                    preset->gate_length_percent;
 
-            uint32_t ms_per_16th = seq_get_ms_per_16th(preset);
+            uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
             uint32_t note_duration_ms = ms_per_16th;
             uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
@@ -883,7 +909,7 @@ void seq_update(void) {
         }
 
         // Calculate next note time
-        uint32_t ms_per_16th = seq_get_ms_per_16th(preset);
+        uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
         seq_state[slot].next_note_time = current_time + ms_per_16th;
     }
 }

@@ -2173,12 +2173,13 @@ class Arpeggiator(BasicEditor):
         self.combo_preset.setEditable(True)
         self.combo_preset.lineEdit().setReadOnly(True)
         self.combo_preset.lineEdit().setAlignment(Qt.AlignCenter)
-        # Arpeggiator presets: 0-31
-        for i in range(32):
-            if i < 8:
-                self.combo_preset.addItem(f"Factory Arp {i}", i)
+        # Arpeggiator presets: 0-67 (48 factory + 20 user)
+        # Factory presets: 0-47, User presets: 48-67
+        for i in range(68):
+            if i < 48:
+                self.combo_preset.addItem(f"Factory Arp {i + 1}", i)
             else:
-                self.combo_preset.addItem(f"User Arp {i - 7}", i)
+                self.combo_preset.addItem(f"User Arp {i - 47}", i)
         self.combo_preset.currentIndexChanged.connect(self.on_preset_changed)
 
         preset_layout.addWidget(lbl_preset, 0, 0)
@@ -2603,8 +2604,16 @@ class Arpeggiator(BasicEditor):
         """Preset selection changed"""
         self.current_preset_id = index
 
-        # Update UI state
-        is_factory = (index < 48)  # Factory presets are 0-47, user presets are 48-63
+        # Update UI state - use correct threshold based on preset type
+        # Arpeggiator: factory 0-47, user 48-67
+        # Step Sequencer: factory 68-115, user 116-135
+        if self.is_step_sequencer:
+            is_factory = (index < 116)
+            factory_range = "68-115"
+        else:
+            is_factory = (index < 48)
+            factory_range = "0-47"
+
         self.btn_save.setEnabled(not is_factory)
 
         if is_factory:
@@ -2796,9 +2805,17 @@ class Arpeggiator(BasicEditor):
 
     def save_preset(self):
         """Save preset to device via HID"""
-        if self.current_preset_id < 48:  # User presets are 48-63
-            self.update_status("Cannot save to factory preset (0-47)!", error=True)
-            return
+        # Check factory preset threshold based on preset type
+        # Arpeggiator: factory 0-47, user 48-67
+        # Step Sequencer: factory 68-115, user 116-135
+        if self.is_step_sequencer:
+            if self.current_preset_id < 116:
+                self.update_status("Cannot save to factory preset (68-115)!", error=True)
+                return
+        else:
+            if self.current_preset_id < 48:
+                self.update_status("Cannot save to factory preset (0-47)!", error=True)
+                return
 
         self.gather_preset_data()
 
@@ -2906,7 +2923,7 @@ class StepSequencer(Arpeggiator):
 
         logger.info("Step Sequencer tab initialized")
 
-        self.current_preset_id = 32  # Presets 32-47 for factory seq, 48-63 user
+        self.current_preset_id = 68  # Factory seq: 68-115, User seq: 116-135
         self.is_step_sequencer = True  # This is the step sequencer tab
         self.preset_data = {
             'preset_type': 1,  # PRESET_TYPE_STEP_SEQUENCER
@@ -2954,13 +2971,14 @@ class StepSequencer(Arpeggiator):
                 child.setTitle("Step Sequencer")
                 break
 
-        # Update preset selector for step sequencer range (32-63)
+        # Update preset selector for step sequencer range (68-135)
+        # Factory presets: 68-115 (48 slots), User presets: 116-135 (20 slots)
         self.combo_preset.clear()
-        for i in range(32, 64):
-            if i < 40:
-                self.combo_preset.addItem(f"Factory Seq {i - 31}", i)
+        for i in range(68, 136):
+            if i < 116:
+                self.combo_preset.addItem(f"Factory Seq {i - 67}", i)
             else:
-                self.combo_preset.addItem(f"User Seq {i - 39}", i)
+                self.combo_preset.addItem(f"User Seq {i - 115}", i)
 
         # Set default to first step sequencer preset
         self.combo_preset.setCurrentIndex(0)
