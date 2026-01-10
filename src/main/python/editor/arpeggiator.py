@@ -75,6 +75,9 @@ class GridCell(QFrame):
         self.octave = 0  # For arpeggiator only
         self.in_scale = True  # Default to in scale (for scale filtering)
 
+        # Store reference to the grid widget (parent may change when added to layout)
+        self._grid = parent
+
         # Set size based on whether this is step sequencer or arpeggiator
         if hasattr(parent, 'is_arpeggiator') and not parent.is_arpeggiator:
             # Step sequencer - 50x50
@@ -144,7 +147,7 @@ class GridCell(QFrame):
             intensity = self.velocity / 255.0
 
             # For arpeggiator, blend with octave color
-            if hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator:
+            if hasattr(self._grid, 'is_arpeggiator') and self._grid.is_arpeggiator:
                 octave_color = self.get_octave_color()
 
                 # On light themes: darken only (no brightening)
@@ -2465,8 +2468,27 @@ class Arpeggiator(BasicEditor):
         )
 
         if reply == QMessageBox.Yes:
+            # Reset Advanced tab step widgets
             for widget in self.step_widgets:
                 widget.set_step_data([])  # Empty list of notes
+
+            # Reset Basic tab grid
+            if hasattr(self, 'basic_grid'):
+                if hasattr(self.basic_grid, 'cells'):
+                    # BasicArpeggiatorGrid - 2D list of cells
+                    for row_cells in self.basic_grid.cells:
+                        for cell in row_cells:
+                            cell.set_active(False, self.basic_grid.default_velocity, 0)
+                elif hasattr(self.basic_grid, 'rows'):
+                    # BasicStepSequencerGrid - list of row dicts with 'cells'
+                    for row_data in self.basic_grid.rows:
+                        for cell in row_data['cells']:
+                            cell.set_active(False, self.basic_grid.default_velocity, 0)
+
+            # Clear preset data
+            self.preset_data['steps'] = []
+            self.preset_data['note_count'] = 0
+
             self.update_status("All steps reset to empty")
 
     def copy_preset_to_clipboard(self):
