@@ -80,6 +80,13 @@ PARAM_KEYSPLITVELOCITYSTATUS = 22
 PARAM_VELOCITY_SENSITIVITY = 30  # 4-byte uint32
 PARAM_CC_SENSITIVITY = 31  # 4-byte uint32
 PARAM_LUT_CORRECTION_STRENGTH = 32  # 0-100: Hall sensor linearization strength
+# MIDI Routing Override Settings
+PARAM_CHANNEL_OVERRIDE = 33        # bool: Override channel with fixed channel_number
+PARAM_VELOCITY_OVERRIDE = 34       # bool: Override velocity calculation
+PARAM_TRANSPOSE_OVERRIDE = 35      # bool: Override transpose
+PARAM_MIDI_IN_MODE = 36            # 0=Process All, 1=Thru, 2=Clock Only, 3=Ignore
+PARAM_USB_MIDI_MODE = 37           # 0=Process All, 1=Thru, 2=Clock Only, 3=Ignore
+PARAM_MIDI_CLOCK_SOURCE = 38       # 0=Local, 1=USB, 2=MIDI IN
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1197,7 +1204,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     # Sustain settings (0=Ignore, 1=ON)
                     "base_sustain": data[24] if len(data) > 24 else 0,
                     "keysplit_sustain": data[25] if len(data) > 25 else 0,
-                    "triplesplit_sustain": data[26] if len(data) > 26 else 0
+                    "triplesplit_sustain": data[26] if len(data) > 26 else 0,
+                    # MIDI Routing Override Settings
+                    "channel_override": data[15] != 0 if len(data) > 15 else False,
+                    "velocity_override": data[16] != 0 if len(data) > 16 else False,
+                    "transpose_override": data[17] != 0 if len(data) > 17 else False,
+                    "midi_in_mode": data[18] if len(data) > 18 else 0,
+                    "usb_midi_mode": data[19] if len(data) > 19 else 0,
+                    "midi_clock_source": data[20] if len(data) > 20 else 0
                 })
                 
             return config if config else None

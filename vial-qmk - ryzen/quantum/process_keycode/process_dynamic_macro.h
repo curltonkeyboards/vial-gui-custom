@@ -357,6 +357,13 @@ typedef struct {
     uint8_t triplesplit_sustain;          // Triplesplit MIDI sustain
     // Hall Effect Sensor Linearization
     uint8_t lut_correction_strength;      // 0-100: 0=linear (no correction), 100=full logarithmic LUT
+    // MIDI Routing Override Settings (startup defaults)
+    bool channeloverride;                 // Override channel with fixed channel_number
+    bool velocityoverride;                // Override velocity calculation
+    bool transposeoverride;               // Override transpose
+    uint8_t midi_in_mode;                 // MIDI IN routing mode (0=Process All, 1=Thru, 2=Clock Only, 3=Ignore)
+    uint8_t usb_midi_mode;                // USB MIDI routing mode (0=Process All, 1=Thru, 2=Clock Only, 3=Ignore)
+    uint8_t midi_clock_source;            // Clock source (0=Local, 1=USB, 2=MIDI IN)
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
@@ -400,6 +407,10 @@ extern uint8_t keysplit_sustain;
 extern uint8_t triplesplit_sustain;
 // Hall Effect Sensor Linearization
 extern uint8_t lut_correction_strength;
+// MIDI Routing Override Settings
+extern bool channeloverride;
+extern bool velocityoverride;
+extern bool transposeoverride;
 
 // Keyboard settings instance
 extern keyboard_settings_t keyboard_settings;
