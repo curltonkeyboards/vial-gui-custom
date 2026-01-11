@@ -1019,6 +1019,7 @@ class DKSVisualWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(1100, 300)  # Wide enough for labels
+        self.setMaximumHeight(450)  # Cap height to prevent excessive vertical space
         # Use Minimum policy so widget never shrinks below minimum size
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
