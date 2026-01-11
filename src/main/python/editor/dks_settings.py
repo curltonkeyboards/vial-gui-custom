@@ -855,8 +855,8 @@ class DKSActionEditor(QWidget):
                 QLabel {
                     font-weight: bold;
                     font-size: 10px;
-                    color: palette(highlighted-text);
-                    background-color: palette(highlight);
+                    color: palette(button-text);
+                    background-color: palette(button);
                     border-radius: 4px;
                     padding: 2px 6px;
                 }
@@ -922,8 +922,8 @@ class DKSActionEditor(QWidget):
                 QLabel {
                     font-weight: bold;
                     font-size: 10px;
-                    color: palette(highlighted-text);
-                    background-color: palette(highlight);
+                    color: palette(button-text);
+                    background-color: palette(button);
                     border-radius: 4px;
                     padding: 2px 6px;
                 }
@@ -1048,8 +1048,8 @@ class DKSVisualWidget(QWidget):
             QLabel {
                 font-weight: bold;
                 font-size: 12px;
-                color: palette(highlighted-text);
-                background-color: palette(highlight);
+                color: palette(button-text);
+                background-color: palette(button);
                 border-radius: 6px;
                 padding: 4px 10px;
             }
@@ -1094,8 +1094,8 @@ class DKSVisualWidget(QWidget):
             QLabel {
                 font-weight: bold;
                 font-size: 12px;
-                color: palette(highlighted-text);
-                background-color: palette(highlight);
+                color: palette(button-text);
+                background-color: palette(button);
                 border-radius: 6px;
                 padding: 4px 10px;
             }
