@@ -1711,12 +1711,16 @@ class TriggerSettingsTab(BasicEditor):
                             # Track that this key has pending changes
                             self.pending_per_key_keys.add((layer, key_index))
 
-        # DEBUG: Print summary
-        print(f"\n=== apply_actuation_to_keys(is_midi={is_midi}, value={value}) ===")
-        for layer in layers_to_update:
-            info = debug_info[layer]
-            print(f"Layer {layer}: {info['normal']} normal, {info['midi']} MIDI keys")
-            print(f"  Sample keycodes: {info['sample_keycodes']}")
+        # DEBUG: Write to file instead of console
+        import os
+        debug_file = os.path.expanduser("~/actuation_debug.txt")
+        with open(debug_file, 'a') as f:
+            f.write(f"\n=== apply_actuation_to_keys(is_midi={is_midi}, value={value}) ===\n")
+            f.write(f"per_layer_enabled={self.per_layer_enabled}, current_layer={self.current_layer}\n")
+            for layer in layers_to_update:
+                info = debug_info[layer]
+                f.write(f"Layer {layer}: {info['normal']} normal, {info['midi']} MIDI keys\n")
+                f.write(f"  Sample keycodes: {info['sample_keycodes']}\n")
 
     def deadzone_to_mm(self, value):
         """Convert 0-20 deadzone value to millimeters string"""
