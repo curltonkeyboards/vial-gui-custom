@@ -1071,14 +1071,23 @@ class DKSVisualWidget(QWidget):
         middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
         middle_layout = QHBoxLayout()
         middle_layout.setContentsMargins(100, 30, 0, 0)  # Move cross-section 100px right, 30px down
-        middle_layout.setSpacing(0)  # No spacing between diagram and bar
+        middle_layout.setSpacing(0)
 
         # Add keyswitch diagram
         self.keyswitch_diagram = KeyswitchDiagramWidget()
         middle_layout.addWidget(self.keyswitch_diagram)
 
-        # Add vertical travel bar
-        middle_layout.addWidget(self.create_vertical_travel_bar())
+        # Add vertical travel bar (visualizer) in a container with negative margin
+        # This pulls it 130px closer to the cross-section while keeping visualizer on top
+        travel_bar_container = QWidget()
+        travel_bar_layout = QHBoxLayout()
+        travel_bar_layout.setContentsMargins(-130, 0, 0, 0)  # Negative left margin pulls it closer
+        travel_bar_layout.setSpacing(0)
+        travel_bar = self.create_vertical_travel_bar()
+        travel_bar_layout.addWidget(travel_bar)
+        travel_bar_container.setLayout(travel_bar_layout)
+        travel_bar_container.raise_()  # Ensure visualizer stays on top
+        middle_layout.addWidget(travel_bar_container)
 
         middle_container.setLayout(middle_layout)
         self.main_layout.addWidget(middle_container)
