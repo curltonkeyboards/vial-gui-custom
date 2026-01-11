@@ -1070,7 +1070,7 @@ class DKSVisualWidget(QWidget):
         middle_container = QWidget()
         middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
         middle_layout = QHBoxLayout()
-        middle_layout.setContentsMargins(0, 0, 0, 0)
+        middle_layout.setContentsMargins(100, 30, 0, 0)  # Move cross-section 100px right, 30px down
         middle_layout.setSpacing(0)  # No spacing between diagram and bar
 
         # Add keyswitch diagram
