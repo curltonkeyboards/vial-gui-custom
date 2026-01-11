@@ -53,13 +53,31 @@ class MacroLine(QObject):
         self.btn_remove = QToolButton()
         self.btn_remove.setText("×")
         self.btn_remove.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.btn_remove.setStyleSheet("""
+            QToolButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 4px 8px;
+            }
+            QToolButton:hover {
+                background-color: #c82333;
+            }
+            QToolButton:pressed {
+                background-color: #bd2130;
+            }
+        """)
         self.btn_remove.clicked.connect(self.on_remove_clicked)
 
     def insert(self, row):
         self.row = row
-        self.container.addLayout(self.arrows, row, 0)
-        self.container.addWidget(self.select_type, row, 1)
-        self.container.addWidget(self.btn_remove, row, 3)
+        # Layout: [×] [▲▼] [Type] [Keys/Action]
+        self.container.addWidget(self.btn_remove, row, 0)
+        self.container.addLayout(self.arrows, row, 1)
+        self.container.addWidget(self.select_type, row, 2)
         self.action.insert(row)
 
     def remove(self):

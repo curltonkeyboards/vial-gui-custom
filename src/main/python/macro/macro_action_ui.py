@@ -86,7 +86,7 @@ class ActionTextUI(BasicActionUI):
         self.text.textChanged.connect(self.on_change)
 
     def insert(self, row):
-        self.container.addWidget(self.text, row, 2)
+        self.container.addWidget(self.text, row, 3)
 
     def remove(self):
         self.container.removeWidget(self.text)
@@ -108,8 +108,8 @@ class ActionSequenceUI(BasicActionUI):
 
         self.btn_plus = QToolButton()
         self.btn_plus.setText("+")
-        self.btn_plus.setFixedWidth(int(self.btn_plus.fontMetrics().height() * KEY_SIZE_RATIO))
-        self.btn_plus.setFixedHeight(int(self.btn_plus.fontMetrics().height() * KEY_SIZE_RATIO))
+        self.btn_plus.setFixedWidth(50)
+        self.btn_plus.setFixedHeight(50)
         self.btn_plus.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.btn_plus.clicked.connect(self.on_add)
 
@@ -148,7 +148,7 @@ class ActionSequenceUI(BasicActionUI):
         self.key_selected.emit(widget)
 
     def insert(self, row):
-        self.container.addWidget(self.layout_container, row, 2)
+        self.container.addWidget(self.layout_container, row, 3)
 
     def remove(self):
         self.container.removeWidget(self.layout_container)
@@ -209,7 +209,7 @@ class ActionDelayUI(BasicActionUI):
         self.layout.addWidget(self.value)
 
     def insert(self, row):
-        self.container.addWidget(self.layout_container, row, 2)
+        self.container.addWidget(self.layout_container, row, 3)
 
     def remove(self):
         self.container.removeWidget(self.layout_container)
