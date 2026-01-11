@@ -1040,8 +1040,9 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Get the keycode for this key from the keymap for THIS layer
+                        # (different layers may have MIDI keys in different positions)
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -1119,8 +1120,9 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Get the keycode for this key from the keymap for THIS layer
+                        # (different layers may have MIDI keys in different positions)
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -1150,13 +1152,13 @@ class TriggerSettingsTab(BasicEditor):
                 self.layer_data[i]['normal'] = self.pending_layer_data[i]['normal']
                 self.layer_data[i]['midi'] = self.pending_layer_data[i]['midi']
 
-            # Send layer actuation to device
+            # Send layer actuation to device for ALL layers
+            # Even when per_layer is disabled, each layer may have MIDI keys in different
+            # positions, so we need to send all layers (they'll have the same normal/midi
+            # values but different per-key actuations based on each layer's keymap)
             if self.device and isinstance(self.device, VialKeyboard):
-                if self.per_layer_enabled:
-                    for layer in range(12):
-                        self.send_layer_actuation(layer)
-                else:
-                    self.send_layer_actuation(0)
+                for layer in range(12):
+                    self.send_layer_actuation(layer)
 
         # Send pending per-key changes to device
         if has_per_key_changes and self.device and isinstance(self.device, VialKeyboard):
