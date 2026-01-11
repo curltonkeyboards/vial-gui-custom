@@ -1156,6 +1156,9 @@ class DKSEntryUI(QWidget):
                 padding: 0 5px 0 5px;
             }
         """)
+        # Set minimum height to prevent squishing - content should scroll instead
+        visual_group.setMinimumHeight(380)
+        visual_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         visual_group_layout = QVBoxLayout()
         visual_group_layout.setContentsMargins(10, 10, 10, 10)
 
