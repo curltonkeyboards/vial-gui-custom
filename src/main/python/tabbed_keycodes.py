@@ -12,6 +12,7 @@ from widgets.flowlayout import FlowLayout
 from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYCODES_MACRO_BASE, KEYCODES_LAYERS, KEYCODES_QUANTUM, \
     KEYCODES_BOOT, KEYCODES_MODIFIERS, KEYCODES_CLEAR, KEYCODES_RGB_KC_CUSTOM, KEYCODES_RGB_KC_CUSTOM2, KEYCODES_RGBSAVE, KEYCODES_EXWHEEL, KEYCODES_RGB_KC_COLOR, KEYCODES_MIDI_SPLIT_BUTTONS, KEYCODES_SETTINGS1, KEYCODES_SETTINGS2, KEYCODES_SETTINGS3, KEYCODES_BASIC, KEYCODES_SHIFTED, KEYCODES_CHORD_PROG_CONTROLS, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, KEYCODES_C_CHORDPROG_BASIC_MINOR, KEYCODES_C_CHORDPROG_BASIC_MAJOR, KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_C_CHORDPROG_EXPERT_MINOR, KEYCODES_C_CHORDPROG_EXPERT_MAJOR, KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR, KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR, KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_D_CHORDPROG_BASIC_MINOR, KEYCODES_D_CHORDPROG_BASIC_MAJOR, KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_D_CHORDPROG_EXPERT_MINOR, KEYCODES_D_CHORDPROG_EXPERT_MAJOR, KEYCODES_E_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_E_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_E_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_E_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_E_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_E_CHORDPROG_BASIC_MINOR, KEYCODES_E_CHORDPROG_BASIC_MAJOR, KEYCODES_E_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_E_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_E_CHORDPROG_EXPERT_MINOR, KEYCODES_E_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_CHORDPROG_BASIC_MINOR, KEYCODES_F_CHORDPROG_BASIC_MAJOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_CHORDPROG_EXPERT_MINOR, KEYCODES_F_CHORDPROG_EXPERT_MAJOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR, KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR, KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR, KEYCODES_G_CHORDPROG_BASIC_MINOR, KEYCODES_G_CHORDPROG_BASIC_MAJOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_G_CHORDPROG_EXPERT_MINOR, KEYCODES_G_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_A_CHORDPROG_BASIC_MINOR, KEYCODES_A_CHORDPROG_BASIC_MAJOR, KEYCODES_A_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_A_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_A_CHORDPROG_EXPERT_MINOR, KEYCODES_A_CHORDPROG_EXPERT_MAJOR, KEYCODES_B_FLAT_CHORDPROG_BASIC_MINOR, KEYCODES_B_FLAT_CHORDPROG_BASIC_MAJOR, KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR, KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR, KEYCODES_B_CHORDPROG_BASIC_MINOR, KEYCODES_B_CHORDPROG_BASIC_MAJOR, KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR, KEYCODES_B_CHORDPROG_INTERMEDIATE_MAJOR, KEYCODES_B_CHORDPROG_EXPERT_MINOR, KEYCODES_B_CHORDPROG_EXPERT_MAJOR, \
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
+    KEYCODES_DAW_ABLETON, KEYCODES_DAW_FL, KEYCODES_DAW_LOGIC, KEYCODES_DAW_PROTOOLS, KEYCODES_DAW_GARAGEBAND, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
     KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
@@ -4979,6 +4980,283 @@ class MIDITab(midiadvancedTab):
         self.label = "MIDI"
 
 
+# =============================================================================
+# DAW (Digital Audio Workstation) Shortcut Tabs
+# =============================================================================
+
+class DAWSimpleTab(QScrollArea):
+    """Simple scrollable tab for DAW shortcuts with organized sections"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.keycodes = keycodes
+        self.buttons = []
+        self.current_keycode_filter = None
+
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setWidgetResizable(True)
+
+        self.container = QWidget()
+        self.container_layout = QVBoxLayout(self.container)
+        self.container_layout.setContentsMargins(10, 10, 10, 10)
+        self.container_layout.setSpacing(15)
+
+        self.setWidget(self.container)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing buttons
+        for btn in self.buttons:
+            btn.setParent(None)
+            btn.deleteLater()
+        self.buttons.clear()
+
+        # Clear layout
+        while self.container_layout.count():
+            item = self.container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                while item.layout().count():
+                    sub_item = item.layout().takeAt(0)
+                    if sub_item.widget():
+                        sub_item.widget().deleteLater()
+
+        # Create sections based on keycode categories
+        current_section = None
+        current_flow = None
+        current_group = None
+
+        for kc in self.keycodes:
+            if keycode_filter and not keycode_filter(kc.qmk_id):
+                continue
+
+            # Determine section from tooltip
+            tooltip = kc.tooltip or ""
+            if "Transport" in tooltip or any(x in kc.qmk_id for x in ["PLAY", "STOP", "RECORD", "LOOP", "REWIND", "METRO", "TAP_TEMPO", "FOLLOW", "COUNT", "PAT_MODE"]):
+                section = "Transport"
+            elif "Edit" in tooltip or any(x in kc.qmk_id for x in ["UNDO", "REDO", "CUT", "COPY", "PASTE", "DUPLICATE", "DELETE", "SPLIT", "QUANTIZE", "CONSOLIDATE", "HEAL", "SEPARATE", "JOIN", "QUICK_QUANT"]):
+                section = "Editing"
+            elif "Track" in tooltip or any(x in kc.qmk_id for x in ["SOLO", "MUTE", "ARM", "TRACK", "NEW_AUDIO", "NEW_MIDI", "GROUP", "CHANNEL", "NEW_PATTERN", "CLONE", "ADD_CHANNEL", "NEW_TRACK", "NEW_SOFTWARE", "NEW_DRUMMER", "INPUT_MON", "DUPLICATE_TRK"]):
+                section = "Track Control"
+            elif "Zoom" in tooltip or "Marker" in tooltip or any(x in kc.qmk_id for x in ["ZOOM", "MARKER"]):
+                section = "Navigation"
+            elif "View" in tooltip or any(x in kc.qmk_id for x in ["SESSION", "BROWSER", "DETAIL", "MIXER", "SENDS", "PLAYLIST", "PIANO_ROLL", "CHANNEL_RACK", "SMART_CTRL", "LIBRARY", "LOOPS", "EDITOR", "NOTE_PAD", "MIX_WIN", "EDIT_WIN", "TRANSPORT", "MIDI_EDIT"]):
+                section = "Views"
+            elif "Auto" in tooltip or any(x in kc.qmk_id for x in ["AUTO"]):
+                section = "Automation"
+            elif "Tempo" in tooltip or any(x in kc.qmk_id for x in ["BPM"]):
+                section = "Tempo"
+            else:
+                section = "Other"
+
+            if section != current_section:
+                current_section = section
+                current_group = QGroupBox(section)
+                current_group.setStyleSheet("""
+                    QGroupBox {
+                        font-weight: bold;
+                        border: 1px solid palette(mid);
+                        border-radius: 5px;
+                        margin-top: 10px;
+                        padding-top: 10px;
+                    }
+                    QGroupBox::title {
+                        subcontrol-origin: margin;
+                        left: 10px;
+                        padding: 0 5px;
+                    }
+                """)
+                current_flow = FlowLayout()
+                current_flow.setSpacing(4)
+                current_group.setLayout(current_flow)
+                self.container_layout.addWidget(current_group)
+
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setToolTip(kc.tooltip)
+            btn.clicked.connect(lambda _, k=kc: self.keycode_changed.emit(k.qmk_id))
+            btn.keycode = kc
+            self.buttons.append(btn)
+            current_flow.addWidget(btn)
+
+        self.container_layout.addStretch(1)
+        self.relabel_buttons()
+
+    def relabel_buttons(self):
+        for btn in self.buttons:
+            if hasattr(btn, 'keycode') and btn.keycode:
+                btn.setText(KeycodeDisplay.display_keycode(btn.keycode.qmk_id))
+
+    def has_buttons(self):
+        return len(self.buttons) > 0
+
+
+class DAWTab(QWidget):
+    """Nested tab container for DAW-related tabs with side-tab style"""
+
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.label = "DAW"
+        self.parent_widget = parent
+        self.current_keycode_filter = keycode_filter_any
+
+        # Create the individual DAW tabs
+        self.ableton_tab = DAWSimpleTab(parent, "Ableton Live", KEYCODES_DAW_ABLETON)
+        self.fl_studio_tab = DAWSimpleTab(parent, "FL Studio", KEYCODES_DAW_FL)
+        self.logic_tab = DAWSimpleTab(parent, "Logic Pro", KEYCODES_DAW_LOGIC)
+        self.protools_tab = DAWSimpleTab(parent, "Pro Tools", KEYCODES_DAW_PROTOOLS)
+        self.garageband_tab = DAWSimpleTab(parent, "GarageBand", KEYCODES_DAW_GARAGEBAND)
+
+        # Connect signals
+        self.ableton_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.fl_studio_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.logic_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.protools_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.garageband_tab.keycode_changed.connect(self.on_keycode_changed)
+
+        # Define sections (tab_widget, display_name)
+        self.sections = [
+            (self.ableton_tab, "Ableton Live"),
+            (self.fl_studio_tab, "FL Studio"),
+            (self.logic_tab, "Logic Pro"),
+            (self.protools_tab, "Pro Tools"),
+            (self.garageband_tab, "GarageBand"),
+        ]
+
+        # Create horizontal layout: side tabs on left, content on right
+        main_layout_h = QHBoxLayout()
+        main_layout_h.setSpacing(0)
+        main_layout_h.setContentsMargins(0, 0, 0, 0)
+
+        # Create side tabs container
+        side_tabs_container = QWidget()
+        side_tabs_container.setObjectName("daw_side_tabs_container")
+        side_tabs_container.setStyleSheet("""
+            QWidget#daw_side_tabs_container {
+                background: palette(window);
+                border: 1px solid palette(mid);
+                border-right: none;
+            }
+        """)
+        side_tabs_layout = QVBoxLayout(side_tabs_container)
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.side_tab_buttons = {}
+        for tab_widget, display_name in self.sections:
+            btn = QPushButton(display_name)
+            btn.setCheckable(True)
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(120)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid palette(mid);
+                    border-radius: 0px;
+                    border-right: none;
+                    background: palette(button);
+                    text-align: left;
+                    padding-left: 15px;
+                    font-size: 9pt;
+                }
+                QPushButton:hover:!checked {
+                    background: palette(light);
+                }
+                QPushButton:checked {
+                    background: palette(base);
+                    font-weight: 600;
+                    border-right: 1px solid palette(base);
+                }
+            """)
+            btn.clicked.connect(lambda checked, dn=display_name: self.show_section(dn))
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[display_name] = btn
+
+        side_tabs_layout.addStretch(1)
+        main_layout_h.addWidget(side_tabs_container)
+
+        # Create content container
+        self.content_wrapper = QWidget()
+        self.content_wrapper.setObjectName("daw_content_wrapper")
+        self.content_wrapper.setStyleSheet("""
+            QWidget#daw_content_wrapper {
+                border: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+            }
+        """)
+        self.content_layout = QVBoxLayout(self.content_wrapper)
+        self.content_layout.setSpacing(0)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add all section widgets to content area
+        self.section_widgets = {}
+        for tab_widget, display_name in self.sections:
+            tab_widget.hide()
+            self.content_layout.addWidget(tab_widget)
+            self.section_widgets[display_name] = tab_widget
+
+        main_layout_h.addWidget(self.content_wrapper)
+        self.setLayout(main_layout_h)
+
+        # Show first section by default
+        self.show_section("Ableton Live")
+
+    def show_section(self, section_name):
+        """Show the specified section and update tab button states"""
+        # Hide all section widgets
+        for widget in self.section_widgets.values():
+            widget.hide()
+
+        # Uncheck all tab buttons
+        for btn in self.side_tab_buttons.values():
+            btn.setChecked(False)
+
+        # Show the selected section widget and check its tab button
+        if section_name in self.section_widgets:
+            self.section_widgets[section_name].show()
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Store currently selected section before recreating
+        current_section = None
+        for section_name, widget in self.section_widgets.items():
+            if widget.isVisible():
+                current_section = section_name
+                break
+
+        # Recreate buttons for each tab
+        for tab_widget, display_name in self.sections:
+            tab_widget.recreate_buttons(keycode_filter)
+
+        # Restore the previously selected section, or default to first
+        if current_section and current_section in self.section_widgets:
+            self.show_section(current_section)
+        else:
+            self.show_section("Ableton Live")
+
+    def has_buttons(self):
+        return any(tab.has_buttons() for tab, _ in self.sections)
+
+    def relabel_buttons(self):
+        for tab_widget, _ in self.sections:
+            tab_widget.relabel_buttons()
+
+
 class FilteredTabbedKeycodes(QTabWidget):
 
     keycode_changed = pyqtSignal(str)
@@ -4992,6 +5270,7 @@ class FilteredTabbedKeycodes(QTabWidget):
         self.tabs = [
             KeyboardTab(self),
             MusicTab(self),
+            DAWTab(self),
             GamingTab(self, "Gaming", KEYCODES_GAMING),
             MacroTab(self, "Macro", KEYCODES_MACRO_BASE, KEYCODES_MACRO, KEYCODES_TAP_DANCE),
             LayerTab(self, "Layers", KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_OSL),

@@ -2514,9 +2514,284 @@ class keycodes_v6:
         "DKS_00": 0xED00,  # Base for DKS slot selection
 
         "QK_KB": 0xCC57, #custom keycodes safe range
-        
-        
-       
+
+        # =============================================================================
+        # DAW (Digital Audio Workstation) Shortcut Keycodes
+        # =============================================================================
+
+        # -----------------------------------------------------------------------------
+        # ABLETON LIVE Shortcuts (0xDA00-0xDA3F)
+        # -----------------------------------------------------------------------------
+        # Transport Controls
+        "ABL_PLAY": 0xDA00,
+        "ABL_STOP": 0xDA01,
+        "ABL_RECORD": 0xDA02,
+        "ABL_LOOP": 0xDA03,
+        "ABL_REWIND": 0xDA04,
+        "ABL_METRONOME": 0xDA05,
+        "ABL_TAP_TEMPO": 0xDA06,
+        "ABL_FOLLOW": 0xDA07,
+        # Editing
+        "ABL_UNDO": 0xDA08,
+        "ABL_REDO": 0xDA09,
+        "ABL_CUT": 0xDA0A,
+        "ABL_COPY": 0xDA0B,
+        "ABL_PASTE": 0xDA0C,
+        "ABL_DUPLICATE": 0xDA0D,
+        "ABL_DELETE": 0xDA0E,
+        "ABL_SPLIT": 0xDA0F,
+        "ABL_QUANTIZE": 0xDA10,
+        "ABL_CONSOLIDATE": 0xDA11,
+        # Track Controls
+        "ABL_SOLO": 0xDA12,
+        "ABL_MUTE": 0xDA13,
+        "ABL_ARM": 0xDA14,
+        "ABL_TRACK_UP": 0xDA15,
+        "ABL_TRACK_DOWN": 0xDA16,
+        "ABL_NEW_AUDIO": 0xDA17,
+        "ABL_NEW_MIDI": 0xDA18,
+        "ABL_GROUP": 0xDA19,
+        # Navigation & Zoom
+        "ABL_ZOOM_IN": 0xDA1A,
+        "ABL_ZOOM_OUT": 0xDA1B,
+        "ABL_ZOOM_FIT": 0xDA1C,
+        "ABL_PREV_MARKER": 0xDA1D,
+        "ABL_NEXT_MARKER": 0xDA1E,
+        "ABL_ADD_MARKER": 0xDA1F,
+        # Views
+        "ABL_SESSION": 0xDA20,
+        "ABL_BROWSER": 0xDA21,
+        "ABL_DETAIL": 0xDA22,
+        "ABL_MIXER": 0xDA23,
+        "ABL_SENDS": 0xDA24,
+        # Automation
+        "ABL_AUTO_ARM": 0xDA25,
+        "ABL_AUTO_MODE": 0xDA26,
+        # Tempo
+        "ABL_BPM_UP": 0xDA27,
+        "ABL_BPM_DOWN": 0xDA28,
+        # Additional
+        "ABL_SAVE": 0xDA29,
+        "ABL_CAPTURE": 0xDA2A,
+
+        # -----------------------------------------------------------------------------
+        # FL STUDIO Shortcuts (0xDB00-0xDB3F)
+        # -----------------------------------------------------------------------------
+        # Transport Controls
+        "FL_PLAY": 0xDB00,
+        "FL_STOP": 0xDB01,
+        "FL_RECORD": 0xDB02,
+        "FL_LOOP": 0xDB03,
+        "FL_REWIND": 0xDB04,
+        "FL_METRONOME": 0xDB05,
+        "FL_TAP_TEMPO": 0xDB06,
+        "FL_PAT_MODE": 0xDB07,
+        # Editing
+        "FL_UNDO": 0xDB08,
+        "FL_REDO": 0xDB09,
+        "FL_CUT": 0xDB0A,
+        "FL_COPY": 0xDB0B,
+        "FL_PASTE": 0xDB0C,
+        "FL_DUPLICATE": 0xDB0D,
+        "FL_DELETE": 0xDB0E,
+        "FL_SPLIT": 0xDB0F,
+        "FL_QUANTIZE": 0xDB10,
+        "FL_QUICK_QUANT": 0xDB11,
+        # Track/Channel Controls
+        "FL_SOLO": 0xDB12,
+        "FL_MUTE": 0xDB13,
+        "FL_TRACK_UP": 0xDB14,
+        "FL_TRACK_DOWN": 0xDB15,
+        "FL_NEW_PATTERN": 0xDB16,
+        "FL_CLONE_PAT": 0xDB17,
+        "FL_ADD_CHANNEL": 0xDB18,
+        "FL_CHANNEL_UP": 0xDB19,
+        "FL_CHANNEL_DOWN": 0xDB1A,
+        # Navigation & Zoom
+        "FL_ZOOM_IN": 0xDB1B,
+        "FL_ZOOM_OUT": 0xDB1C,
+        "FL_ZOOM_FIT": 0xDB1D,
+        "FL_PREV_MARKER": 0xDB1E,
+        "FL_NEXT_MARKER": 0xDB1F,
+        "FL_ADD_MARKER": 0xDB20,
+        # Views
+        "FL_PLAYLIST": 0xDB21,
+        "FL_PIANO_ROLL": 0xDB22,
+        "FL_MIXER": 0xDB23,
+        "FL_BROWSER": 0xDB24,
+        "FL_CHANNEL_RACK": 0xDB25,
+        # Automation
+        "FL_AUTO_CLIP": 0xDB26,
+        "FL_LINK_CTRL": 0xDB27,
+        # Tempo
+        "FL_BPM_UP": 0xDB28,
+        "FL_BPM_DOWN": 0xDB29,
+        # Additional
+        "FL_SAVE": 0xDB2A,
+        "FL_EXPORT": 0xDB2B,
+
+        # -----------------------------------------------------------------------------
+        # LOGIC PRO Shortcuts (0xDC00-0xDC3F)
+        # -----------------------------------------------------------------------------
+        # Transport Controls
+        "LOG_PLAY": 0xDC00,
+        "LOG_STOP": 0xDC01,
+        "LOG_RECORD": 0xDC02,
+        "LOG_LOOP": 0xDC03,
+        "LOG_REWIND": 0xDC04,
+        "LOG_METRONOME": 0xDC05,
+        "LOG_TAP_TEMPO": 0xDC06,
+        "LOG_COUNT_IN": 0xDC07,
+        # Editing
+        "LOG_UNDO": 0xDC08,
+        "LOG_REDO": 0xDC09,
+        "LOG_CUT": 0xDC0A,
+        "LOG_COPY": 0xDC0B,
+        "LOG_PASTE": 0xDC0C,
+        "LOG_DUPLICATE": 0xDC0D,
+        "LOG_DELETE": 0xDC0E,
+        "LOG_SPLIT": 0xDC0F,
+        "LOG_QUANTIZE": 0xDC10,
+        "LOG_JOIN": 0xDC11,
+        # Track Controls
+        "LOG_SOLO": 0xDC12,
+        "LOG_MUTE": 0xDC13,
+        "LOG_ARM": 0xDC14,
+        "LOG_TRACK_UP": 0xDC15,
+        "LOG_TRACK_DOWN": 0xDC16,
+        "LOG_NEW_AUDIO": 0xDC17,
+        "LOG_NEW_SOFTWARE": 0xDC18,
+        "LOG_NEW_DRUMMER": 0xDC19,
+        # Navigation & Zoom
+        "LOG_ZOOM_IN": 0xDC1A,
+        "LOG_ZOOM_OUT": 0xDC1B,
+        "LOG_ZOOM_FIT": 0xDC1C,
+        "LOG_PREV_MARKER": 0xDC1D,
+        "LOG_NEXT_MARKER": 0xDC1E,
+        "LOG_ADD_MARKER": 0xDC1F,
+        # Views
+        "LOG_PIANO_ROLL": 0xDC20,
+        "LOG_MIXER": 0xDC21,
+        "LOG_SMART_CTRL": 0xDC22,
+        "LOG_LIBRARY": 0xDC23,
+        "LOG_LOOPS": 0xDC24,
+        # Automation
+        "LOG_AUTO_READ": 0xDC25,
+        "LOG_AUTO_TOUCH": 0xDC26,
+        "LOG_AUTO_LATCH": 0xDC27,
+        "LOG_AUTO_WRITE": 0xDC28,
+        "LOG_AUTO_TOGGLE": 0xDC29,
+        # Tempo
+        "LOG_BPM_UP": 0xDC2A,
+        "LOG_BPM_DOWN": 0xDC2B,
+        # Additional
+        "LOG_SAVE": 0xDC2C,
+        "LOG_BOUNCE": 0xDC2D,
+
+        # -----------------------------------------------------------------------------
+        # PRO TOOLS Shortcuts (0xDD00-0xDD3F)
+        # -----------------------------------------------------------------------------
+        # Transport Controls
+        "PT_PLAY": 0xDD00,
+        "PT_STOP": 0xDD01,
+        "PT_RECORD": 0xDD02,
+        "PT_LOOP": 0xDD03,
+        "PT_REWIND": 0xDD04,
+        "PT_METRONOME": 0xDD05,
+        "PT_TAP_TEMPO": 0xDD06,
+        "PT_COUNT_IN": 0xDD07,
+        # Editing
+        "PT_UNDO": 0xDD08,
+        "PT_REDO": 0xDD09,
+        "PT_CUT": 0xDD0A,
+        "PT_COPY": 0xDD0B,
+        "PT_PASTE": 0xDD0C,
+        "PT_DUPLICATE": 0xDD0D,
+        "PT_DELETE": 0xDD0E,
+        "PT_SEPARATE": 0xDD0F,
+        "PT_HEAL": 0xDD10,
+        "PT_CONSOLIDATE": 0xDD11,
+        # Track Controls
+        "PT_SOLO": 0xDD12,
+        "PT_MUTE": 0xDD13,
+        "PT_ARM": 0xDD14,
+        "PT_TRACK_UP": 0xDD15,
+        "PT_TRACK_DOWN": 0xDD16,
+        "PT_NEW_TRACK": 0xDD17,
+        "PT_GROUP": 0xDD18,
+        "PT_INPUT_MON": 0xDD19,
+        # Navigation & Zoom
+        "PT_ZOOM_IN": 0xDD1A,
+        "PT_ZOOM_OUT": 0xDD1B,
+        "PT_ZOOM_FIT": 0xDD1C,
+        "PT_PREV_MARKER": 0xDD1D,
+        "PT_NEXT_MARKER": 0xDD1E,
+        "PT_ADD_MARKER": 0xDD1F,
+        # Views
+        "PT_MIX_WIN": 0xDD20,
+        "PT_EDIT_WIN": 0xDD21,
+        "PT_TRANSPORT": 0xDD22,
+        "PT_MIDI_EDIT": 0xDD23,
+        "PT_BROWSER": 0xDD24,
+        # Automation
+        "PT_AUTO_READ": 0xDD25,
+        "PT_AUTO_WRITE": 0xDD26,
+        "PT_AUTO_TOUCH": 0xDD27,
+        "PT_AUTO_LATCH": 0xDD28,
+        "PT_AUTO_OFF": 0xDD29,
+        # Tempo
+        "PT_BPM_UP": 0xDD2A,
+        "PT_BPM_DOWN": 0xDD2B,
+        # Additional
+        "PT_SAVE": 0xDD2C,
+        "PT_BOUNCE": 0xDD2D,
+
+        # -----------------------------------------------------------------------------
+        # GARAGEBAND Shortcuts (0xDE00-0xDE3F)
+        # -----------------------------------------------------------------------------
+        # Transport Controls
+        "GB_PLAY": 0xDE00,
+        "GB_STOP": 0xDE01,
+        "GB_RECORD": 0xDE02,
+        "GB_LOOP": 0xDE03,
+        "GB_REWIND": 0xDE04,
+        "GB_METRONOME": 0xDE05,
+        "GB_COUNT_IN": 0xDE06,
+        # Editing
+        "GB_UNDO": 0xDE07,
+        "GB_REDO": 0xDE08,
+        "GB_CUT": 0xDE09,
+        "GB_COPY": 0xDE0A,
+        "GB_PASTE": 0xDE0B,
+        "GB_DUPLICATE": 0xDE0C,
+        "GB_DELETE": 0xDE0D,
+        "GB_SPLIT": 0xDE0E,
+        "GB_JOIN": 0xDE0F,
+        # Track Controls
+        "GB_SOLO": 0xDE10,
+        "GB_MUTE": 0xDE11,
+        "GB_ARM": 0xDE12,
+        "GB_TRACK_UP": 0xDE13,
+        "GB_TRACK_DOWN": 0xDE14,
+        "GB_NEW_TRACK": 0xDE15,
+        "GB_DUPLICATE_TRK": 0xDE16,
+        # Navigation & Zoom
+        "GB_ZOOM_IN": 0xDE17,
+        "GB_ZOOM_OUT": 0xDE18,
+        "GB_ZOOM_FIT": 0xDE19,
+        # Views
+        "GB_SMART_CTRL": 0xDE1A,
+        "GB_LIBRARY": 0xDE1B,
+        "GB_LOOPS": 0xDE1C,
+        "GB_EDITOR": 0xDE1D,
+        "GB_NOTE_PAD": 0xDE1E,
+        # Tempo
+        "GB_BPM_UP": 0xDE1F,
+        "GB_BPM_DOWN": 0xDE20,
+        # Additional
+        "GB_SAVE": 0xDE21,
+        "GB_SHARE": 0xDE22,
+        "GB_MUSICAL_TYPING": 0xDE23,
 
     }
 

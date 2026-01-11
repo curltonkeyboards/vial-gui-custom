@@ -3435,6 +3435,330 @@ for x in range(50):
         K("DKS_{:02d}".format(x), "DKS\n{:02d}".format(x), "Dynamic Keystroke slot {} - multi-action analog key".format(x))
     )
 
+# =============================================================================
+# DAW (Digital Audio Workstation) Shortcut Keycodes
+# =============================================================================
+# These keycodes send keyboard shortcuts commonly used in popular DAWs.
+# Using LGUI (Windows key) as Command modifier since Windows keyboards map GUI to Cmd on Mac.
+
+# -----------------------------------------------------------------------------
+# ABLETON LIVE Shortcuts (0xDA00-0xDA3F)
+# -----------------------------------------------------------------------------
+KEYCODES_DAW_ABLETON = [
+    # Transport Controls
+    K("ABL_PLAY", "Play", "Ableton: Play/Pause (Space)"),
+    K("ABL_STOP", "Stop", "Ableton: Stop (Space when playing)"),
+    K("ABL_RECORD", "Record", "Ableton: Record (F9)"),
+    K("ABL_LOOP", "Loop", "Ableton: Toggle Loop (Cmd/Ctrl+L)"),
+    K("ABL_REWIND", "Rewind", "Ableton: Go to Start (Home)"),
+    K("ABL_METRONOME", "Metro", "Ableton: Toggle Metronome (Cmd/Ctrl+U)"),
+    K("ABL_TAP_TEMPO", "Tap\nTempo", "Ableton: Tap Tempo"),
+    K("ABL_FOLLOW", "Follow", "Ableton: Follow Playhead (Cmd/Ctrl+Shift+F)"),
+
+    # Editing
+    K("ABL_UNDO", "Undo", "Ableton: Undo (Cmd/Ctrl+Z)"),
+    K("ABL_REDO", "Redo", "Ableton: Redo (Cmd/Ctrl+Shift+Z)"),
+    K("ABL_CUT", "Cut", "Ableton: Cut (Cmd/Ctrl+X)"),
+    K("ABL_COPY", "Copy", "Ableton: Copy (Cmd/Ctrl+C)"),
+    K("ABL_PASTE", "Paste", "Ableton: Paste (Cmd/Ctrl+V)"),
+    K("ABL_DUPLICATE", "Dupe", "Ableton: Duplicate (Cmd/Ctrl+D)"),
+    K("ABL_DELETE", "Delete", "Ableton: Delete (Backspace)"),
+    K("ABL_SPLIT", "Split", "Ableton: Split Clip (Cmd/Ctrl+E)"),
+    K("ABL_QUANTIZE", "Quant", "Ableton: Quantize (Cmd/Ctrl+U)"),
+    K("ABL_CONSOLIDATE", "Consol", "Ableton: Consolidate (Cmd/Ctrl+J)"),
+
+    # Track Controls
+    K("ABL_SOLO", "Solo", "Ableton: Solo Track (S)"),
+    K("ABL_MUTE", "Mute", "Ableton: Mute/Activate Track (0)"),
+    K("ABL_ARM", "Arm", "Ableton: Arm Track (C)"),
+    K("ABL_TRACK_UP", "Track\nUp", "Ableton: Select Previous Track (Up)"),
+    K("ABL_TRACK_DOWN", "Track\nDown", "Ableton: Select Next Track (Down)"),
+    K("ABL_NEW_AUDIO", "New\nAudio", "Ableton: Insert Audio Track (Cmd/Ctrl+T)"),
+    K("ABL_NEW_MIDI", "New\nMIDI", "Ableton: Insert MIDI Track (Cmd/Ctrl+Shift+T)"),
+    K("ABL_GROUP", "Group", "Ableton: Group Tracks (Cmd/Ctrl+G)"),
+
+    # Navigation & Zoom
+    K("ABL_ZOOM_IN", "Zoom\nIn", "Ableton: Zoom In (+)"),
+    K("ABL_ZOOM_OUT", "Zoom\nOut", "Ableton: Zoom Out (-)"),
+    K("ABL_ZOOM_FIT", "Zoom\nFit", "Ableton: Zoom to Fit (Z)"),
+    K("ABL_PREV_MARKER", "Prev\nMarker", "Ableton: Previous Locator"),
+    K("ABL_NEXT_MARKER", "Next\nMarker", "Ableton: Next Locator"),
+    K("ABL_ADD_MARKER", "Add\nMarker", "Ableton: Add Locator"),
+
+    # Views
+    K("ABL_SESSION", "Session\nView", "Ableton: Toggle Session/Arrangement (Tab)"),
+    K("ABL_BROWSER", "Browser", "Ableton: Toggle Browser (Cmd/Ctrl+Alt+B)"),
+    K("ABL_DETAIL", "Detail", "Ableton: Toggle Detail View (Cmd/Ctrl+Alt+L)"),
+    K("ABL_MIXER", "Mixer", "Ableton: Toggle Mixer (Cmd/Ctrl+Alt+M)"),
+    K("ABL_SENDS", "Sends", "Ableton: Toggle Sends (Cmd/Ctrl+Alt+S)"),
+
+    # Automation
+    K("ABL_AUTO_ARM", "Auto\nArm", "Ableton: Toggle Automation Arm (A)"),
+    K("ABL_AUTO_MODE", "Auto\nMode", "Ableton: Cycle Automation Mode"),
+
+    # Tempo
+    K("ABL_BPM_UP", "BPM\nUp", "Ableton: Increase Tempo"),
+    K("ABL_BPM_DOWN", "BPM\nDown", "Ableton: Decrease Tempo"),
+
+    # Additional
+    K("ABL_SAVE", "Save", "Ableton: Save (Cmd/Ctrl+S)"),
+    K("ABL_CAPTURE", "Capture\nMIDI", "Ableton: Capture MIDI (Cmd/Ctrl+Shift+C)"),
+]
+
+# -----------------------------------------------------------------------------
+# FL STUDIO Shortcuts (0xDB00-0xDB3F)
+# -----------------------------------------------------------------------------
+KEYCODES_DAW_FL = [
+    # Transport Controls
+    K("FL_PLAY", "Play", "FL Studio: Play/Pause (Space)"),
+    K("FL_STOP", "Stop", "FL Studio: Stop (Space)"),
+    K("FL_RECORD", "Record", "FL Studio: Record (R)"),
+    K("FL_LOOP", "Loop", "FL Studio: Toggle Pattern/Song Mode (L)"),
+    K("FL_REWIND", "Rewind", "FL Studio: Go to Start (Home)"),
+    K("FL_METRONOME", "Metro", "FL Studio: Toggle Metronome (Ctrl+M)"),
+    K("FL_TAP_TEMPO", "Tap\nTempo", "FL Studio: Tap Tempo"),
+    K("FL_PAT_MODE", "Pattern\nMode", "FL Studio: Pattern Mode (P)"),
+
+    # Editing
+    K("FL_UNDO", "Undo", "FL Studio: Undo (Ctrl+Z)"),
+    K("FL_REDO", "Redo", "FL Studio: Redo (Ctrl+Y)"),
+    K("FL_CUT", "Cut", "FL Studio: Cut (Ctrl+X)"),
+    K("FL_COPY", "Copy", "FL Studio: Copy (Ctrl+C)"),
+    K("FL_PASTE", "Paste", "FL Studio: Paste (Ctrl+V)"),
+    K("FL_DUPLICATE", "Dupe", "FL Studio: Duplicate (Ctrl+B)"),
+    K("FL_DELETE", "Delete", "FL Studio: Delete (Delete)"),
+    K("FL_SPLIT", "Split", "FL Studio: Split at Cursor (C)"),
+    K("FL_QUANTIZE", "Quant", "FL Studio: Quantize (Ctrl+Q)"),
+    K("FL_QUICK_QUANT", "Quick\nQuant", "FL Studio: Quick Quantize (Shift+Q)"),
+
+    # Track/Channel Controls
+    K("FL_SOLO", "Solo", "FL Studio: Solo Channel (Ctrl+Click)"),
+    K("FL_MUTE", "Mute", "FL Studio: Mute Channel"),
+    K("FL_TRACK_UP", "Track\nUp", "FL Studio: Select Previous Track (Up)"),
+    K("FL_TRACK_DOWN", "Track\nDown", "FL Studio: Select Next Track (Down)"),
+    K("FL_NEW_PATTERN", "New\nPattern", "FL Studio: New Pattern (Ctrl+Shift+P)"),
+    K("FL_CLONE_PAT", "Clone\nPattern", "FL Studio: Clone Pattern"),
+    K("FL_ADD_CHANNEL", "Add\nChannel", "FL Studio: Add Channel"),
+    K("FL_CHANNEL_UP", "Chan\nUp", "FL Studio: Select Previous Channel"),
+    K("FL_CHANNEL_DOWN", "Chan\nDown", "FL Studio: Select Next Channel"),
+
+    # Navigation & Zoom
+    K("FL_ZOOM_IN", "Zoom\nIn", "FL Studio: Zoom In (Page Up)"),
+    K("FL_ZOOM_OUT", "Zoom\nOut", "FL Studio: Zoom Out (Page Down)"),
+    K("FL_ZOOM_FIT", "Zoom\nFit", "FL Studio: Zoom to Fit (Shift+0)"),
+    K("FL_PREV_MARKER", "Prev\nMarker", "FL Studio: Previous Marker"),
+    K("FL_NEXT_MARKER", "Next\nMarker", "FL Studio: Next Marker"),
+    K("FL_ADD_MARKER", "Add\nMarker", "FL Studio: Add Time Marker (Ctrl+T)"),
+
+    # Views
+    K("FL_PLAYLIST", "Playlist", "FL Studio: Toggle Playlist (F5)"),
+    K("FL_PIANO_ROLL", "Piano\nRoll", "FL Studio: Toggle Piano Roll (F7)"),
+    K("FL_MIXER", "Mixer", "FL Studio: Toggle Mixer (F9)"),
+    K("FL_BROWSER", "Browser", "FL Studio: Toggle Browser (F8)"),
+    K("FL_CHANNEL_RACK", "Channel\nRack", "FL Studio: Toggle Channel Rack (F6)"),
+
+    # Automation
+    K("FL_AUTO_CLIP", "Auto\nClip", "FL Studio: Create Automation Clip"),
+    K("FL_LINK_CTRL", "Link\nCtrl", "FL Studio: Link to Controller"),
+
+    # Tempo
+    K("FL_BPM_UP", "BPM\nUp", "FL Studio: Increase Tempo (+)"),
+    K("FL_BPM_DOWN", "BPM\nDown", "FL Studio: Decrease Tempo (-)"),
+
+    # Additional
+    K("FL_SAVE", "Save", "FL Studio: Save (Ctrl+S)"),
+    K("FL_EXPORT", "Export", "FL Studio: Export (Ctrl+R)"),
+]
+
+# -----------------------------------------------------------------------------
+# LOGIC PRO Shortcuts (0xDC00-0xDC3F)
+# -----------------------------------------------------------------------------
+KEYCODES_DAW_LOGIC = [
+    # Transport Controls
+    K("LOG_PLAY", "Play", "Logic: Play/Pause (Space)"),
+    K("LOG_STOP", "Stop", "Logic: Stop (0 or Space)"),
+    K("LOG_RECORD", "Record", "Logic: Record (R or *)"),
+    K("LOG_LOOP", "Loop", "Logic: Toggle Cycle (C)"),
+    K("LOG_REWIND", "Rewind", "Logic: Go to Start (Return)"),
+    K("LOG_METRONOME", "Metro", "Logic: Toggle Metronome (K)"),
+    K("LOG_TAP_TEMPO", "Tap\nTempo", "Logic: Tap Tempo"),
+    K("LOG_COUNT_IN", "Count\nIn", "Logic: Toggle Count-In"),
+
+    # Editing
+    K("LOG_UNDO", "Undo", "Logic: Undo (Cmd+Z)"),
+    K("LOG_REDO", "Redo", "Logic: Redo (Cmd+Shift+Z)"),
+    K("LOG_CUT", "Cut", "Logic: Cut (Cmd+X)"),
+    K("LOG_COPY", "Copy", "Logic: Copy (Cmd+C)"),
+    K("LOG_PASTE", "Paste", "Logic: Paste (Cmd+V)"),
+    K("LOG_DUPLICATE", "Dupe", "Logic: Duplicate (Cmd+D)"),
+    K("LOG_DELETE", "Delete", "Logic: Delete (Backspace)"),
+    K("LOG_SPLIT", "Split", "Logic: Split at Playhead (Cmd+T)"),
+    K("LOG_QUANTIZE", "Quant", "Logic: Quantize (Q)"),
+    K("LOG_JOIN", "Join", "Logic: Join Regions (Cmd+J)"),
+
+    # Track Controls
+    K("LOG_SOLO", "Solo", "Logic: Solo Track (S)"),
+    K("LOG_MUTE", "Mute", "Logic: Mute Track (M)"),
+    K("LOG_ARM", "Arm", "Logic: Record Enable (R)"),
+    K("LOG_TRACK_UP", "Track\nUp", "Logic: Select Previous Track (Up)"),
+    K("LOG_TRACK_DOWN", "Track\nDown", "Logic: Select Next Track (Down)"),
+    K("LOG_NEW_AUDIO", "New\nAudio", "Logic: New Audio Track (Opt+Cmd+A)"),
+    K("LOG_NEW_SOFTWARE", "New\nInstr", "Logic: New Software Instrument (Opt+Cmd+S)"),
+    K("LOG_NEW_DRUMMER", "New\nDrummer", "Logic: New Drummer Track (Opt+Cmd+D)"),
+
+    # Navigation & Zoom
+    K("LOG_ZOOM_IN", "Zoom\nIn", "Logic: Zoom In (Cmd+Arrow Right)"),
+    K("LOG_ZOOM_OUT", "Zoom\nOut", "Logic: Zoom Out (Cmd+Arrow Left)"),
+    K("LOG_ZOOM_FIT", "Zoom\nFit", "Logic: Zoom to Fit Selection (Z)"),
+    K("LOG_PREV_MARKER", "Prev\nMarker", "Logic: Go to Previous Marker (,)"),
+    K("LOG_NEXT_MARKER", "Next\nMarker", "Logic: Go to Next Marker (.)"),
+    K("LOG_ADD_MARKER", "Add\nMarker", "Logic: Create Marker (Opt+')"),
+
+    # Views
+    K("LOG_PIANO_ROLL", "Piano\nRoll", "Logic: Toggle Piano Roll (P)"),
+    K("LOG_MIXER", "Mixer", "Logic: Toggle Mixer (X)"),
+    K("LOG_SMART_CTRL", "Smart\nCtrl", "Logic: Toggle Smart Controls (B)"),
+    K("LOG_LIBRARY", "Library", "Logic: Toggle Library (Y)"),
+    K("LOG_LOOPS", "Loops", "Logic: Toggle Loop Browser (O)"),
+
+    # Automation
+    K("LOG_AUTO_READ", "Auto\nRead", "Logic: Automation Read"),
+    K("LOG_AUTO_TOUCH", "Auto\nTouch", "Logic: Automation Touch"),
+    K("LOG_AUTO_LATCH", "Auto\nLatch", "Logic: Automation Latch"),
+    K("LOG_AUTO_WRITE", "Auto\nWrite", "Logic: Automation Write"),
+    K("LOG_AUTO_TOGGLE", "Auto\nToggle", "Logic: Toggle Automation (A)"),
+
+    # Tempo
+    K("LOG_BPM_UP", "BPM\nUp", "Logic: Increase Tempo"),
+    K("LOG_BPM_DOWN", "BPM\nDown", "Logic: Decrease Tempo"),
+
+    # Additional
+    K("LOG_SAVE", "Save", "Logic: Save (Cmd+S)"),
+    K("LOG_BOUNCE", "Bounce", "Logic: Bounce Project (Cmd+B)"),
+]
+
+# -----------------------------------------------------------------------------
+# PRO TOOLS Shortcuts (0xDD00-0xDD3F)
+# -----------------------------------------------------------------------------
+KEYCODES_DAW_PROTOOLS = [
+    # Transport Controls
+    K("PT_PLAY", "Play", "Pro Tools: Play (Space)"),
+    K("PT_STOP", "Stop", "Pro Tools: Stop (. numpad or Space)"),
+    K("PT_RECORD", "Record", "Pro Tools: Record (F12 or Cmd+Space)"),
+    K("PT_LOOP", "Loop", "Pro Tools: Toggle Loop Playback (Cmd/Ctrl+Shift+L)"),
+    K("PT_REWIND", "Rewind", "Pro Tools: Return to Zero (Enter numpad)"),
+    K("PT_METRONOME", "Metro", "Pro Tools: Toggle Click (7 numpad)"),
+    K("PT_TAP_TEMPO", "Tap\nTempo", "Pro Tools: Tap Tempo"),
+    K("PT_COUNT_IN", "Count\nIn", "Pro Tools: Toggle Count-Off (8 numpad)"),
+
+    # Editing
+    K("PT_UNDO", "Undo", "Pro Tools: Undo (Cmd/Ctrl+Z)"),
+    K("PT_REDO", "Redo", "Pro Tools: Redo (Cmd/Ctrl+Shift+Z)"),
+    K("PT_CUT", "Cut", "Pro Tools: Cut (Cmd/Ctrl+X)"),
+    K("PT_COPY", "Copy", "Pro Tools: Copy (Cmd/Ctrl+C)"),
+    K("PT_PASTE", "Paste", "Pro Tools: Paste (Cmd/Ctrl+V)"),
+    K("PT_DUPLICATE", "Dupe", "Pro Tools: Duplicate (Cmd/Ctrl+D)"),
+    K("PT_DELETE", "Delete", "Pro Tools: Clear (Delete)"),
+    K("PT_SEPARATE", "Separate", "Pro Tools: Separate Region (Cmd/Ctrl+E or B)"),
+    K("PT_HEAL", "Heal", "Pro Tools: Heal Separation (Cmd/Ctrl+H)"),
+    K("PT_CONSOLIDATE", "Consol", "Pro Tools: Consolidate (Opt/Alt+Shift+3)"),
+
+    # Track Controls
+    K("PT_SOLO", "Solo", "Pro Tools: Solo Track (S)"),
+    K("PT_MUTE", "Mute", "Pro Tools: Mute Track (M)"),
+    K("PT_ARM", "Arm", "Pro Tools: Record Arm (Shift+R)"),
+    K("PT_TRACK_UP", "Track\nUp", "Pro Tools: Select Previous Track (Up/;)"),
+    K("PT_TRACK_DOWN", "Track\nDown", "Pro Tools: Select Next Track (Down/P)"),
+    K("PT_NEW_TRACK", "New\nTrack", "Pro Tools: New Track (Cmd/Ctrl+Shift+N)"),
+    K("PT_GROUP", "Group", "Pro Tools: Create Group (Cmd/Ctrl+G)"),
+    K("PT_INPUT_MON", "Input\nMon", "Pro Tools: Toggle Input Monitor"),
+
+    # Navigation & Zoom
+    K("PT_ZOOM_IN", "Zoom\nIn", "Pro Tools: Zoom In (Cmd/Ctrl+])"),
+    K("PT_ZOOM_OUT", "Zoom\nOut", "Pro Tools: Zoom Out (Cmd/Ctrl+[)"),
+    K("PT_ZOOM_FIT", "Zoom\nFit", "Pro Tools: Zoom to Fit (Opt/Alt+A)"),
+    K("PT_PREV_MARKER", "Prev\nMarker", "Pro Tools: Previous Memory Location (.)"),
+    K("PT_NEXT_MARKER", "Next\nMarker", "Pro Tools: Next Memory Location (.)"),
+    K("PT_ADD_MARKER", "Add\nMarker", "Pro Tools: Create Memory Location (Enter)"),
+
+    # Views
+    K("PT_MIX_WIN", "Mix\nWindow", "Pro Tools: Toggle Mix Window (Cmd/Ctrl+=)"),
+    K("PT_EDIT_WIN", "Edit\nWindow", "Pro Tools: Toggle Edit Window (Cmd/Ctrl+=)"),
+    K("PT_TRANSPORT", "Transport", "Pro Tools: Toggle Transport (Cmd/Ctrl+1 numpad)"),
+    K("PT_MIDI_EDIT", "MIDI\nEdit", "Pro Tools: Open MIDI Editor"),
+    K("PT_BROWSER", "Browser", "Pro Tools: Toggle Workspace Browser"),
+
+    # Automation
+    K("PT_AUTO_READ", "Auto\nRead", "Pro Tools: Automation Read"),
+    K("PT_AUTO_WRITE", "Auto\nWrite", "Pro Tools: Automation Write"),
+    K("PT_AUTO_TOUCH", "Auto\nTouch", "Pro Tools: Automation Touch"),
+    K("PT_AUTO_LATCH", "Auto\nLatch", "Pro Tools: Automation Latch"),
+    K("PT_AUTO_OFF", "Auto\nOff", "Pro Tools: Automation Off"),
+
+    # Tempo
+    K("PT_BPM_UP", "BPM\nUp", "Pro Tools: Increase Tempo"),
+    K("PT_BPM_DOWN", "BPM\nDown", "Pro Tools: Decrease Tempo"),
+
+    # Additional
+    K("PT_SAVE", "Save", "Pro Tools: Save (Cmd/Ctrl+S)"),
+    K("PT_BOUNCE", "Bounce", "Pro Tools: Bounce to Disk (Cmd/Ctrl+Opt/Alt+B)"),
+]
+
+# -----------------------------------------------------------------------------
+# GARAGEBAND Shortcuts (0xDE00-0xDE3F)
+# -----------------------------------------------------------------------------
+KEYCODES_DAW_GARAGEBAND = [
+    # Transport Controls
+    K("GB_PLAY", "Play", "GarageBand: Play/Pause (Space)"),
+    K("GB_STOP", "Stop", "GarageBand: Stop (Space)"),
+    K("GB_RECORD", "Record", "GarageBand: Record (R)"),
+    K("GB_LOOP", "Loop", "GarageBand: Toggle Cycle (C)"),
+    K("GB_REWIND", "Rewind", "GarageBand: Go to Beginning (Return)"),
+    K("GB_METRONOME", "Metro", "GarageBand: Toggle Metronome (K)"),
+    K("GB_COUNT_IN", "Count\nIn", "GarageBand: Toggle Count-In (Shift+K)"),
+
+    # Editing
+    K("GB_UNDO", "Undo", "GarageBand: Undo (Cmd+Z)"),
+    K("GB_REDO", "Redo", "GarageBand: Redo (Cmd+Shift+Z)"),
+    K("GB_CUT", "Cut", "GarageBand: Cut (Cmd+X)"),
+    K("GB_COPY", "Copy", "GarageBand: Copy (Cmd+C)"),
+    K("GB_PASTE", "Paste", "GarageBand: Paste (Cmd+V)"),
+    K("GB_DUPLICATE", "Dupe", "GarageBand: Duplicate (Cmd+D)"),
+    K("GB_DELETE", "Delete", "GarageBand: Delete (Backspace)"),
+    K("GB_SPLIT", "Split", "GarageBand: Split at Playhead (Cmd+T)"),
+    K("GB_JOIN", "Join", "GarageBand: Join Regions (Cmd+J)"),
+
+    # Track Controls
+    K("GB_SOLO", "Solo", "GarageBand: Solo Track (S)"),
+    K("GB_MUTE", "Mute", "GarageBand: Mute Track (M)"),
+    K("GB_ARM", "Arm", "GarageBand: Record Enable"),
+    K("GB_TRACK_UP", "Track\nUp", "GarageBand: Select Previous Track (Up)"),
+    K("GB_TRACK_DOWN", "Track\nDown", "GarageBand: Select Next Track (Down)"),
+    K("GB_NEW_TRACK", "New\nTrack", "GarageBand: New Track (Opt+Cmd+N)"),
+    K("GB_DUPLICATE_TRK", "Dupe\nTrack", "GarageBand: Duplicate Track (Cmd+D)"),
+
+    # Navigation & Zoom
+    K("GB_ZOOM_IN", "Zoom\nIn", "GarageBand: Zoom In (Cmd++)"),
+    K("GB_ZOOM_OUT", "Zoom\nOut", "GarageBand: Zoom Out (Cmd+-)"),
+    K("GB_ZOOM_FIT", "Zoom\nFit", "GarageBand: Zoom to Fit (Shift+Z)"),
+
+    # Views
+    K("GB_SMART_CTRL", "Smart\nCtrl", "GarageBand: Toggle Smart Controls (B)"),
+    K("GB_LIBRARY", "Library", "GarageBand: Toggle Library (Y)"),
+    K("GB_LOOPS", "Loops", "GarageBand: Toggle Loop Browser (O)"),
+    K("GB_EDITOR", "Editor", "GarageBand: Toggle Editor (E)"),
+    K("GB_NOTE_PAD", "Note\nPad", "GarageBand: Toggle Note Pad (Cmd+Opt+P)"),
+
+    # Tempo
+    K("GB_BPM_UP", "BPM\nUp", "GarageBand: Increase Tempo"),
+    K("GB_BPM_DOWN", "BPM\nDown", "GarageBand: Decrease Tempo"),
+
+    # Additional
+    K("GB_SAVE", "Save", "GarageBand: Save (Cmd+S)"),
+    K("GB_SHARE", "Share", "GarageBand: Share Song to Music"),
+    K("GB_MUSICAL_TYPING", "Musical\nTyping", "GarageBand: Toggle Musical Typing (Cmd+K)"),
+]
+
 KEYCODES_HIDDEN = []
 for x in range(256):
     KEYCODES_HIDDEN.append(K("TD({})".format(x), "TD({})".format(x)))
@@ -3561,7 +3885,8 @@ def recreate_keycodes():
                     KEYCODES_F_CHORDPROG_BASIC_MINOR + KEYCODES_F_CHORDPROG_BASIC_MAJOR + KEYCODES_F_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_CHORDPROG_EXPERT_MINOR + KEYCODES_F_CHORDPROG_EXPERT_MAJOR + KEYCODES_LOOP_BUTTONS + KEYCODES_GAMING +
                     KEYCODES_F_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_F_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_F_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_F_SHARP_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_G_CHORDPROG_BASIC_MINOR + KEYCODES_G_CHORDPROG_BASIC_MAJOR + KEYCODES_G_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_G_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_G_CHORDPROG_EXPERT_MINOR + KEYCODES_G_CHORDPROG_EXPERT_MAJOR + KEYCODES_A_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_A_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_A_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_A_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_A_FLAT_CHORDPROG_EXPERT_MAJOR + KEYCODES_A_CHORDPROG_BASIC_MINOR + KEYCODES_A_CHORDPROG_BASIC_MAJOR + KEYCODES_A_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_A_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_A_CHORDPROG_EXPERT_MINOR + KEYCODES_A_CHORDPROG_EXPERT_MAJOR + KEYCODES_B_FLAT_CHORDPROG_BASIC_MINOR + KEYCODES_B_FLAT_CHORDPROG_BASIC_MAJOR + KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_B_FLAT_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_B_FLAT_CHORDPROG_EXPERT_MINOR + KEYCODES_B_FLAT_CHORDPROG_EXPERT_MAJOR + KEYCODES_B_CHORDPROG_BASIC_MINOR + KEYCODES_B_CHORDPROG_BASIC_MAJOR + KEYCODES_B_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_B_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_B_CHORDPROG_EXPERT_MINOR + KEYCODES_B_CHORDPROG_EXPERT_MAJOR +
-                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED+KEYCODES_MIDI_INOUT+KEYCODES_MIDI_SPLIT_BUTTONS+KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_CHORD_PROG_CONTROLS)
+                    KEYCODES_MIDI_INVERSION+KEYCODES_MIDI_SCALES+KEYCODES_MIDI_OCTAVE+KEYCODES_MIDI_KEY+KEYCODES_Program_Change_UPDOWN+KEYCODES_MIDI_BANK_LSB+KEYCODES_MIDI_BANK_MSB+KEYCODES_MIDI_PEDAL+KEYCODES_MIDI_ADVANCED+KEYCODES_MIDI_INOUT+KEYCODES_MIDI_SPLIT_BUTTONS+KEYCODES_BASIC + KEYCODES_SHIFTED + KEYCODES_CHORD_PROG_CONTROLS +
+                    KEYCODES_DAW_ABLETON + KEYCODES_DAW_FL + KEYCODES_DAW_LOGIC + KEYCODES_DAW_PROTOOLS + KEYCODES_DAW_GARAGEBAND)
     KEYCODES_MAP.clear()
     RAWCODES_MAP.clear()
     for keycode in KEYCODES:
