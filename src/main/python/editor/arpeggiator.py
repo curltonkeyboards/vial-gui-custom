@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
                              QLabel, QGroupBox, QMessageBox, QGridLayout,
                              QComboBox, QSpinBox, QLineEdit, QScrollArea,
                              QFrame, QButtonGroup, QRadioButton, QCheckBox, QSlider,
-                             QInputDialog, QTabWidget, QDialog, QDialogButtonBox)
+                             QInputDialog, QTabWidget, QDialog, QDialogButtonBox,
+                             QApplication)
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -96,8 +97,8 @@ class GridCell(QFrame):
 
     def get_octave_color(self):
         """Get color based on octave for arpeggiator - uses theme-relative hue shifts"""
-        # Get theme highlight color as base
-        palette = self.palette()
+        # Get theme highlight color as base - use QApplication.palette() for consistent theme colors
+        palette = QApplication.palette()
         highlight = palette.color(QPalette.Highlight)
 
         # Convert to HSV for hue shifting
@@ -126,8 +127,9 @@ class GridCell(QFrame):
 
     def update_style(self):
         """Update visual appearance based on state"""
-        # Get theme colors
-        palette = self.palette()
+        # Get theme colors - use QApplication.palette() for consistent theme colors
+        # Using self.palette() can return inconsistent values after stylesheets are applied
+        palette = QApplication.palette()
         bg_color = palette.color(QPalette.Window)
         highlight = palette.color(QPalette.Highlight)
 
