@@ -32,7 +32,7 @@ class TriggerVisualizerWidget(QWidget):
     """Vertical travel bar visualization for Trigger Settings with custom labels and draggable points.
 
     Labels:
-    - Global mode (per-key disabled): "Normal key actuation", "Midi key actuation"
+    - Global mode (per-key disabled): "Normal Keys", "Midi Keys"
     - Per-key mode: "Key actuation"
     - Rapidfire mode: "Press Threshold", "Release Threshold" (unchanged)
     """
@@ -43,7 +43,7 @@ class TriggerVisualizerWidget(QWidget):
     releaseSensDragged = pyqtSignal(int)  # new_value 0-100
 
     # Label mode constants
-    LABEL_MODE_GLOBAL = 0  # Show "Normal key actuation", "Midi key actuation"
+    LABEL_MODE_GLOBAL = 0  # Show "Normal Keys", "Midi Keys"
     LABEL_MODE_PER_KEY = 1  # Show "Key actuation"
 
     def __init__(self):
@@ -562,11 +562,11 @@ class TriggerVisualizerWidget(QWidget):
 
                 # Custom labels for Trigger Settings
                 if self.label_mode == self.LABEL_MODE_GLOBAL:
-                    # Global mode: "Normal key actuation", "Midi key actuation"
+                    # Global mode: "Normal Keys", "Midi Keys"
                     if idx == 0:
-                        id_text = "Normal key actuation"
+                        id_text = "Normal Keys"
                     elif idx == 1:
-                        id_text = "Midi key actuation"
+                        id_text = "Midi Keys"
                     else:
                         id_text = f"Actuation {idx + 1}"
                 else:
@@ -1532,7 +1532,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # No key selected or in global mode - show global actuation
         if not self.mode_enabled:
-            # Set label mode to global (Normal key actuation, Midi key actuation)
+            # Set label mode to global (Normal Keys, Midi Keys)
             self.actuation_visualizer.set_label_mode(TriggerVisualizerWidget.LABEL_MODE_GLOBAL)
 
             data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
@@ -2323,10 +2323,10 @@ class TriggerSettingsTab(BasicEditor):
         if not self.mode_enabled:
             # Global mode - update the appropriate slider based on point index
             if point_index == 0:
-                # Normal key actuation
+                # Normal Keys
                 self.global_normal_slider.set_actuation(value)
             elif point_index == 1:
-                # MIDI key actuation
+                # Midi Keys
                 self.global_midi_slider.set_actuation(value)
         else:
             # Per-key mode - update the per-key actuation slider
