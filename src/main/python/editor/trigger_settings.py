@@ -1619,6 +1619,20 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
         self.update_actuation_visualizer()
 
+        # Sync to QuickActuationWidget if reference exists
+        if self.actuation_widget_ref:
+            aw = self.actuation_widget_ref
+            aw.syncing = True
+            aw.normal_slider.setValue(value)
+            aw.normal_value_label.setText(f"{value * 0.025:.2f}mm")
+            # Also sync the layer_data
+            if self.per_layer_enabled:
+                aw.layer_data[self.current_layer]['normal'] = value
+            else:
+                for i in range(12):
+                    aw.layer_data[i]['normal'] = value
+            aw.syncing = False
+
     def on_global_midi_changed(self, value):
         """Handle global MIDI actuation slider change - updates all MIDI keys' per-key values"""
         self.global_midi_value_label.setText(f"Act: {self.value_to_mm(value)}")
@@ -1653,6 +1667,20 @@ class TriggerSettingsTab(BasicEditor):
         # Update display to show pending value
         self.refresh_layer_display()
         self.update_actuation_visualizer()
+
+        # Sync to QuickActuationWidget if reference exists
+        if self.actuation_widget_ref:
+            aw = self.actuation_widget_ref
+            aw.syncing = True
+            aw.midi_slider.setValue(value)
+            aw.midi_value_label.setText(f"{value * 0.025:.2f}mm")
+            # Also sync the layer_data
+            if self.per_layer_enabled:
+                aw.layer_data[self.current_layer]['midi'] = value
+            else:
+                for i in range(12):
+                    aw.layer_data[i]['midi'] = value
+            aw.syncing = False
 
     def on_lut_strength_changed(self, value):
         """Handle LUT correction strength slider change - immediate send to keyboard"""

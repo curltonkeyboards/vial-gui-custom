@@ -1485,6 +1485,35 @@ class QuickActuationWidget(QWidget):
 
         # Update memory
         self.save_ui_to_memory()
+
+        # Sync to TriggerSettingsTab if reference exists
+        if self.trigger_settings_ref and key in ['normal', 'midi']:
+            self.trigger_settings_ref.syncing = True
+            if key == 'normal':
+                self.trigger_settings_ref.global_normal_slider.set_actuation(value)
+                self.trigger_settings_ref.global_normal_value_label.setText(f"Act: {value * 0.025:.2f}mm")
+            elif key == 'midi':
+                self.trigger_settings_ref.global_midi_slider.set_actuation(value)
+                self.trigger_settings_ref.global_midi_value_label.setText(f"Act: {value * 0.025:.2f}mm")
+
+            # Also sync the layer_data in trigger_settings
+            ts = self.trigger_settings_ref
+            if ts.pending_layer_data is not None:
+                # Update pending data if it exists
+                if self.per_layer_enabled:
+                    ts.pending_layer_data[self.current_layer][key] = value
+                else:
+                    for i in range(12):
+                        ts.pending_layer_data[i][key] = value
+            else:
+                # Update layer_data directly
+                if self.per_layer_enabled:
+                    ts.layer_data[self.current_layer][key] = value
+                else:
+                    for i in range(12):
+                        ts.layer_data[i][key] = value
+
+            self.trigger_settings_ref.syncing = False
     
     def on_combo_changed(self):
         """Handle combo box changes"""
