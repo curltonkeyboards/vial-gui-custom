@@ -1677,6 +1677,9 @@ class TriggerSettingsTab(BasicEditor):
         else:
             layers_to_update = list(range(12))
 
+        # DEBUG: Track what's happening per layer
+        debug_info = {layer: {'normal': 0, 'midi': 0, 'sample_keycodes': []} for layer in layers_to_update}
+
         # Scan all keys and update matching type (local state only)
         for layer in layers_to_update:
             for key in self.container.widgets:
@@ -1689,13 +1692,31 @@ class TriggerSettingsTab(BasicEditor):
                         # Use each layer's own keymap to determine if key is MIDI or normal
                         keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
+                        # DEBUG: Collect sample keycodes for first few keys
+                        if len(debug_info[layer]['sample_keycodes']) < 5:
+                            debug_info[layer]['sample_keycodes'].append(f"({row},{col})={keycode}")
+
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
+
+                        # DEBUG: Count key types
+                        if key_is_midi:
+                            debug_info[layer]['midi'] += 1
+                        else:
+                            debug_info[layer]['normal'] += 1
+
                         if key_is_midi == is_midi:
                             # Update the actuation value locally (HID sent on Save)
                             self.per_key_values[layer][key_index]['actuation'] = value
                             # Track that this key has pending changes
                             self.pending_per_key_keys.add((layer, key_index))
+
+        # DEBUG: Print summary
+        print(f"\n=== apply_actuation_to_keys(is_midi={is_midi}, value={value}) ===")
+        for layer in layers_to_update:
+            info = debug_info[layer]
+            print(f"Layer {layer}: {info['normal']} normal, {info['midi']} MIDI keys")
+            print(f"  Sample keycodes: {info['sample_keycodes']}")
 
     def deadzone_to_mm(self, value):
         """Convert 0-20 deadzone value to millimeters string"""
