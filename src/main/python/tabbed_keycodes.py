@@ -5089,9 +5089,7 @@ class DAWSimpleTab(QScrollArea):
         self.relabel_buttons()
 
     def relabel_buttons(self):
-        for btn in self.buttons:
-            if hasattr(btn, 'keycode') and btn.keycode:
-                KeycodeDisplay.display_keycode(btn, btn.keycode.qmk_id)
+        KeycodeDisplay.relabel_buttons(self.buttons)
 
     def has_buttons(self):
         return len(self.buttons) > 0
