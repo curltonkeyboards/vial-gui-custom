@@ -344,7 +344,8 @@ class VerticalTravelBarWidget(QWidget):
         super().__init__()
         self.setMinimumWidth(400)  # Wide enough for all labels without cutoff
         self.setMinimumHeight(250)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Use Minimum policy so widget never shrinks below minimum size
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
         self.press_actuations = []      # List of (actuation_point, enabled) tuples
         self.release_actuations = []    # List of (actuation_point, enabled) tuples
@@ -964,6 +965,10 @@ class DKSActionEditor(QWidget):
             }
         """)
 
+        # Prevent squishing - maintain minimum size
+        self.setMinimumSize(250, 85)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
     def _update_actuation_label(self):
         """Update actuation label with mm value"""
         value = self.actuation_slider.value()
@@ -1014,7 +1019,8 @@ class DKSVisualWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(1100, 300)  # Wide enough for labels
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # Use Minimum policy so widget never shrinks below minimum size
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
         # Will be set by parent
         self.press_editors = []
@@ -1064,11 +1070,13 @@ class DKSVisualWidget(QWidget):
 
         press_layout.addStretch()
         press_container.setLayout(press_layout)
+        press_container.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.main_layout.addWidget(press_container)
 
         # Middle: Keyswitch diagram + Vertical travel bar
         middle_container = QWidget()
         middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
+        middle_container.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         middle_layout = QHBoxLayout()
         middle_layout.setContentsMargins(0, 0, 0, 0)
         middle_layout.setSpacing(0)  # No spacing between diagram and bar
@@ -1110,6 +1118,7 @@ class DKSVisualWidget(QWidget):
 
         release_layout.addStretch()
         release_container.setLayout(release_layout)
+        release_container.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.main_layout.addWidget(release_container)
 
     def create_vertical_travel_bar(self):
@@ -1217,9 +1226,16 @@ class DKSEntryUI(QWidget):
 
         visual_group_layout.addLayout(button_layout)
         visual_group.setLayout(visual_group_layout)
+
+        # Prevent group box from shrinking
+        visual_group.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
         main_layout.addWidget(visual_group)
 
         self.setLayout(main_layout)
+
+        # Prevent the entire entry UI from shrinking below its natural size
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
     def set_dks_protocol(self, protocol):
         """Set the DKS protocol handler"""
@@ -1401,8 +1417,10 @@ class DKSSettingsTab(BasicEditor):
         for i, entry in enumerate(self.dks_entries):
             scroll = QScrollArea()
             scroll.setWidget(entry)
-            scroll.setWidgetResizable(True)
-            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            # Don't allow resizing smaller than the widget's minimum size
+            scroll.setWidgetResizable(False)
+            # Enable scrollbars when content exceeds viewport
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             self.tabs.addTab(scroll, f"DKS{i}")
 
