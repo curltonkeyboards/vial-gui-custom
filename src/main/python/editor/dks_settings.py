@@ -1013,8 +1013,8 @@ class DKSVisualWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(1100, 300)  # Wide enough for labels
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumSize(1100, 350)  # Wide enough for labels, min height prevents squishing
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)  # Minimum allows scrolling
 
         # Will be set by parent
         self.press_editors = []
@@ -1134,30 +1134,14 @@ class DKSEntryUI(QWidget):
         self.dks_protocol = None
         self.selected_key_widget = None  # Track which key widget is selected
 
+        # Set minimum height to prevent squishing - allows scroll instead
+        self.setMinimumHeight(400)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         # Main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(15)
-
-
-        # Visual action editor (includes travel bar)
-        visual_group = QGroupBox("Action Configuration")
-        visual_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid palette(mid);
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
-        visual_group_layout = QVBoxLayout()
-        visual_group_layout.setContentsMargins(10, 10, 10, 10)
 
         # Horizontal layout for visual widget (centered)
         visual_layout = QHBoxLayout()
@@ -1187,9 +1171,9 @@ class DKSEntryUI(QWidget):
         visual_layout.addStretch()
         visual_layout.addWidget(self.visual_widget)
         visual_layout.addStretch()
-        visual_group_layout.addLayout(visual_layout)
+        main_layout.addLayout(visual_layout)
 
-        # Buttons inside the action configuration container
+        # Buttons directly in the tab
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
 
@@ -1215,9 +1199,7 @@ class DKSEntryUI(QWidget):
         self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
         button_layout.addWidget(self.save_eeprom_btn)
 
-        visual_group_layout.addLayout(button_layout)
-        visual_group.setLayout(visual_group_layout)
-        main_layout.addWidget(visual_group)
+        main_layout.addLayout(button_layout)
 
         self.setLayout(main_layout)
 
