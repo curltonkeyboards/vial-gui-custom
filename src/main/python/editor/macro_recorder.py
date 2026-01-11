@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import sys
 
-from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel
+from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QGroupBox, QTabWidget
 
 from editor.basic_editor import BasicEditor
 from macro.macro_action import ActionText, ActionTap, ActionDown, ActionUp
@@ -12,7 +12,7 @@ from macro.macro_tab import MacroTab
 from unlocker import Unlocker
 from util import tr
 from vial_device import VialKeyboard
-from widgets.tab_widget_keycodes import TabWidgetWithKeycodes
+from tabbed_keycodes import TabbedKeycodes
 
 
 class MacroRecorder(BasicEditor):
@@ -28,6 +28,7 @@ class MacroRecorder(BasicEditor):
         self.macro_tab_w = []
 
         self.recorder = None
+        self.selected_key_widget = None  # Track currently selected key widget
 
         if sys.platform.startswith("linux"):
             from macro.macro_recorder_linux import LinuxRecorder
@@ -46,7 +47,38 @@ class MacroRecorder(BasicEditor):
         self.recording_tab = None
         self.recording_append = False
 
-        self.tabs = TabWidgetWithKeycodes()
+        # Header section with title and description
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(8)
+
+        title_label = QLabel("<b>Macro Editor</b>")
+        title_label.setStyleSheet("font-size: 14pt;")
+        header_layout.addWidget(title_label)
+
+        desc = QLabel("Configure macros to send sequences of keystrokes with a single keypress.\n"
+                      "Click a key slot below, then select a keycode from the panel at the bottom.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: gray; font-size: 9pt;")
+        header_layout.addWidget(desc)
+
+        self.addLayout(header_layout)
+
+        # Macro tabs in a group box with instructions
+        macro_group = QGroupBox("Macro Slots")
+        macro_layout = QVBoxLayout()
+
+        instruction_layout = QHBoxLayout()
+        instruction_label = QLabel("← Click a key to select, then choose from keycodes below")
+        instruction_label.setStyleSheet("color: gray; font-style: italic;")
+        instruction_layout.addWidget(instruction_label)
+        instruction_layout.addStretch()
+        macro_layout.addLayout(instruction_layout)
+
+        self.tabs = QTabWidget()
+        macro_layout.addWidget(self.tabs)
+
+        macro_group.setLayout(macro_layout)
+        self.addWidget(macro_group)
 
         self.lbl_memory = QLabel()
 
@@ -68,8 +100,12 @@ class MacroRecorder(BasicEditor):
         buttons.addWidget(self.btn_save)
         buttons.addWidget(btn_revert)
 
-        self.addWidget(self.tabs)
         self.addLayout(buttons)
+
+        # TabbedKeycodes always visible at the bottom
+        self.tabbed_keycodes = TabbedKeycodes()
+        self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
+        self.addWidget(self.tabbed_keycodes)
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)
@@ -85,6 +121,7 @@ class MacroRecorder(BasicEditor):
             tab.changed.connect(self.on_change)
             tab.record.connect(self.on_record)
             tab.record_stop.connect(self.on_tab_stop)
+            tab.key_selected.connect(self.on_key_widget_selected)
             self.macro_tabs.append(tab)
             w = QWidget()
             w.setLayout(tab)
@@ -100,6 +137,23 @@ class MacroRecorder(BasicEditor):
         self.deserialize(self.keyboard.macro)
 
         self.on_change()
+
+    def on_key_widget_selected(self, widget):
+        """Handle when a key widget is selected in a macro tab"""
+        # Deselect the previously selected widget
+        if self.selected_key_widget is not None and self.selected_key_widget != widget:
+            self.selected_key_widget.set_selected(False)
+
+        # Select the new widget
+        self.selected_key_widget = widget
+        widget.set_selected(True)
+
+    def on_keycode_selected(self, keycode):
+        """Handle keycode selection from TabbedKeycodes"""
+        if self.selected_key_widget is not None:
+            self.selected_key_widget.set_keycode(keycode)
+            # Keep the widget selected for easy consecutive key assignments
+            # User can click another key to switch selection
 
     def update_tab_titles(self):
         macros = self.keyboard.macro.split(b"\x00")

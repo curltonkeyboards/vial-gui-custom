@@ -11,6 +11,7 @@ from protocol.constants import VIAL_PROTOCOL_ADVANCED_MACROS
 class MacroLine(QObject):
 
     changed = pyqtSignal()
+    key_selected = pyqtSignal(object)  # Emits the selected key widget
 
     types = ["Text", "Down", "Up", "Tap"]
     type_to_cls = [ActionTextUI, ActionDownUI, ActionUpUI, ActionTapUI]
@@ -46,6 +47,7 @@ class MacroLine(QObject):
 
         self.action = action
         self.action.changed.connect(self.on_change)
+        self.action.key_selected.connect(self.on_key_selected)
         self.row = -1
 
         self.btn_remove = QToolButton()
@@ -79,6 +81,7 @@ class MacroLine(QObject):
         self.action.delete()
         self.action = self.type_to_cls[self.select_type.currentIndex()](self.container)
         self.action.changed.connect(self.on_change)
+        self.action.key_selected.connect(self.on_key_selected)
         self.action.insert(self.row)
         self.changed.emit()
 
@@ -93,3 +96,7 @@ class MacroLine(QObject):
 
     def on_change(self):
         self.changed.emit()
+
+    def on_key_selected(self, widget):
+        """Bubble up key selection to parent"""
+        self.key_selected.emit(widget)

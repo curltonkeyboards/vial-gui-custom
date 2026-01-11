@@ -20,6 +20,7 @@ class MacroTab(QVBoxLayout):
     changed = pyqtSignal()
     record = pyqtSignal(object, bool)
     record_stop = pyqtSignal()
+    key_selected = pyqtSignal(object)  # Emits the selected key widget
 
     def __init__(self, parent, enable_recorder):
         super().__init__()
@@ -97,9 +98,14 @@ class MacroTab(QVBoxLayout):
             act.set_keycode_filter(keycode_filter_masked)
         line = MacroLine(self, act)
         line.changed.connect(self.on_change)
+        line.key_selected.connect(self.on_key_selected)
         self.lines.append(line)
         line.insert(len(self.lines) - 1)
         self.changed.emit()
+
+    def on_key_selected(self, widget):
+        """Bubble up key selection to parent MacroRecorder"""
+        self.key_selected.emit(widget)
 
     def on_add(self):
         self.add_action(ActionTextUI(self.container))
