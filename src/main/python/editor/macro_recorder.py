@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import sys
+import sip
 
-from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel, QVBoxLayout, QGroupBox, QTabWidget
+from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel, QTabWidget
 
 from editor.basic_editor import BasicEditor
 from macro.macro_action import ActionText, ActionTap, ActionDown, ActionUp
@@ -47,39 +48,11 @@ class MacroRecorder(BasicEditor):
         self.recording_tab = None
         self.recording_append = False
 
-        # Header section with title and description
-        header_layout = QVBoxLayout()
-        header_layout.setSpacing(8)
-
-        title_label = QLabel("<b>Macro Editor</b>")
-        title_label.setStyleSheet("font-size: 14pt;")
-        header_layout.addWidget(title_label)
-
-        desc = QLabel("Configure macros to send sequences of keystrokes with a single keypress.\n"
-                      "Click a key slot below, then select a keycode from the panel at the bottom.")
-        desc.setWordWrap(True)
-        desc.setStyleSheet("color: gray; font-size: 9pt;")
-        header_layout.addWidget(desc)
-
-        self.addLayout(header_layout)
-
-        # Macro tabs in a group box with instructions
-        macro_group = QGroupBox("Macro Slots")
-        macro_layout = QVBoxLayout()
-
-        instruction_layout = QHBoxLayout()
-        instruction_label = QLabel("← Click a key to select, then choose from keycodes below")
-        instruction_label.setStyleSheet("color: gray; font-style: italic;")
-        instruction_layout.addWidget(instruction_label)
-        instruction_layout.addStretch()
-        macro_layout.addLayout(instruction_layout)
-
+        # Macro tabs
         self.tabs = QTabWidget()
-        macro_layout.addWidget(self.tabs)
+        self.addWidget(self.tabs)
 
-        macro_group.setLayout(macro_layout)
-        self.addWidget(macro_group)
-
+        # Memory and save/revert buttons
         self.lbl_memory = QLabel()
 
         buttons = QHBoxLayout()
@@ -117,11 +90,12 @@ class MacroRecorder(BasicEditor):
         self.keyboard = self.device.keyboard
 
         for x in range(self.keyboard.macro_count - len(self.macro_tab_w)):
-            tab = MacroTab(self, self.recorder is not None)
+            tab = MacroTab(self, self.recorder is not None, macro_index=len(self.macro_tab_w))
             tab.changed.connect(self.on_change)
             tab.record.connect(self.on_record)
             tab.record_stop.connect(self.on_tab_stop)
             tab.key_selected.connect(self.on_key_widget_selected)
+            tab.widget_deleted.connect(self.on_widget_deleted)
             self.macro_tabs.append(tab)
             w = QWidget()
             w.setLayout(tab)
@@ -132,17 +106,30 @@ class MacroRecorder(BasicEditor):
             self.tabs.removeTab(0)
         for x, w in enumerate(self.macro_tab_w[:self.keyboard.macro_count]):
             self.tabs.addTab(w, "")
+            # Update macro index in case of reuse
+            self.macro_tabs[x].set_macro_index(x)
 
         # deserialize macros that came from keyboard
         self.deserialize(self.keyboard.macro)
 
         self.on_change()
 
+    def on_widget_deleted(self, widget):
+        """Clear reference to widget that is being deleted"""
+        if self.selected_key_widget is widget:
+            self.selected_key_widget = None
+
     def on_key_widget_selected(self, widget):
         """Handle when a key widget is selected in a macro tab"""
-        # Deselect the previously selected widget
+        # Deselect the previously selected widget (with safety check)
         if self.selected_key_widget is not None and self.selected_key_widget != widget:
-            self.selected_key_widget.set_selected(False)
+            try:
+                # Check if the widget is still valid (not deleted)
+                if not sip.isdeleted(self.selected_key_widget):
+                    self.selected_key_widget.set_selected(False)
+            except RuntimeError:
+                pass  # Widget was already deleted
+            self.selected_key_widget = None
 
         # Select the new widget
         self.selected_key_widget = widget
@@ -151,9 +138,12 @@ class MacroRecorder(BasicEditor):
     def on_keycode_selected(self, keycode):
         """Handle keycode selection from TabbedKeycodes"""
         if self.selected_key_widget is not None:
-            self.selected_key_widget.set_keycode(keycode)
-            # Keep the widget selected for easy consecutive key assignments
-            # User can click another key to switch selection
+            try:
+                # Check if the widget is still valid (not deleted)
+                if not sip.isdeleted(self.selected_key_widget):
+                    self.selected_key_widget.set_keycode(keycode)
+            except RuntimeError:
+                self.selected_key_widget = None
 
     def update_tab_titles(self):
         macros = self.keyboard.macro.split(b"\x00")
