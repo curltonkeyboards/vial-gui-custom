@@ -1040,8 +1040,10 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Get the keycode for this key from the layer's keymap
+                        # Use the layer being updated, not current_layer, so each layer's
+                        # key types are determined by that layer's own keymap
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -1119,8 +1121,10 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Get the keycode for this key from the layer's keymap
+                        # Use the layer being updated, not current_layer, so each layer's
+                        # key types are determined by that layer's own keymap
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
