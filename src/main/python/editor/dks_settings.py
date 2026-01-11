@@ -338,7 +338,11 @@ class KeyswitchDiagramWidget(QWidget):
 
 
 class VerticalTravelBarWidget(QWidget):
-    """Vertical representation of key travel with actuation points"""
+    """Vertical representation of key travel with actuation points and draggable markers"""
+
+    # Signals emitted when actuation points are dragged
+    pressActuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-100)
+    releaseActuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-100)
 
     def __init__(self):
         super().__init__()
@@ -352,6 +356,124 @@ class VerticalTravelBarWidget(QWidget):
         self.deadzone_top = 0           # Top deadzone value (0-20, representing 0-0.5mm)
         self.deadzone_bottom = 0        # Bottom deadzone value (0-20, representing 0-0.5mm)
         self.actuation_point = 60       # First activation point (0-100, representing 0-2.5mm)
+
+        # Dragging state
+        self.dragging = False
+        self.drag_point_type = None  # 'press' or 'release'
+        self.drag_point_index = 0
+
+        # Enable mouse tracking for cursor changes
+        self.setMouseTracking(True)
+
+    def _get_bar_geometry(self):
+        """Calculate bar geometry for drawing and hit testing"""
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 20
+        bar_width = 30
+        bar_x = 120
+        bar_height = height - margin_top - margin_bottom
+        return bar_x, margin_top, margin_bottom, bar_width, bar_height
+
+    def _y_to_actuation(self, y):
+        """Convert y position to actuation value (0-100)"""
+        bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+        if bar_height <= 0:
+            return 50
+        actuation = ((y - margin_top) / bar_height) * 100
+        return max(0, min(100, int(actuation)))
+
+    def _actuation_to_y(self, actuation):
+        """Convert actuation value (0-100) to y position"""
+        bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+        return margin_top + int((actuation / 100.0) * bar_height)
+
+    def mousePressEvent(self, event):
+        """Handle mouse press - start dragging if clicking on an actuation point"""
+        if event.button() == Qt.LeftButton:
+            bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+            x, y = event.x(), event.y()
+
+            # Check if clicking on a press actuation point (left side)
+            for i, (actuation, enabled) in enumerate(self.press_actuations):
+                if not enabled:
+                    continue
+                point_y = self._actuation_to_y(actuation)
+
+                # Hit test for press point (left side of bar)
+                if abs(y - point_y) < 15 and x < bar_x + bar_width // 2:
+                    self.dragging = True
+                    self.drag_point_type = 'press'
+                    self.drag_point_index = i
+                    self.setCursor(Qt.ClosedHandCursor)
+                    return
+
+            # Check if clicking on a release actuation point (right side)
+            for i, (actuation, enabled) in enumerate(self.release_actuations):
+                if not enabled:
+                    continue
+                point_y = self._actuation_to_y(actuation)
+
+                # Hit test for release point (right side of bar)
+                if abs(y - point_y) < 15 and x > bar_x + bar_width // 2:
+                    self.dragging = True
+                    self.drag_point_type = 'release'
+                    self.drag_point_index = i
+                    self.setCursor(Qt.ClosedHandCursor)
+                    return
+
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move - update dragged point position"""
+        bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+
+        if self.dragging:
+            y = event.y()
+            actuation = self._y_to_actuation(y)
+
+            if self.drag_point_type == 'press':
+                self.pressActuationDragged.emit(self.drag_point_index, actuation)
+            elif self.drag_point_type == 'release':
+                self.releaseActuationDragged.emit(self.drag_point_index, actuation)
+        else:
+            # Update cursor based on hover position
+            x, y = event.x(), event.y()
+            hovering_point = False
+
+            # Check press points
+            for i, (actuation, enabled) in enumerate(self.press_actuations):
+                if not enabled:
+                    continue
+                point_y = self._actuation_to_y(actuation)
+                if abs(y - point_y) < 15 and x < bar_x + bar_width // 2:
+                    hovering_point = True
+                    break
+
+            # Check release points
+            if not hovering_point:
+                for i, (actuation, enabled) in enumerate(self.release_actuations):
+                    if not enabled:
+                        continue
+                    point_y = self._actuation_to_y(actuation)
+                    if abs(y - point_y) < 15 and x > bar_x + bar_width // 2:
+                        hovering_point = True
+                        break
+
+            if hovering_point:
+                self.setCursor(Qt.OpenHandCursor)
+            else:
+                self.setCursor(Qt.ArrowCursor)
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release - stop dragging"""
+        if event.button() == Qt.LeftButton and self.dragging:
+            self.dragging = False
+            self.drag_point_type = None
+            self.setCursor(Qt.ArrowCursor)
+        super().mouseReleaseEvent(event)
 
     def set_actuations(self, press_points, release_points, rapidfire_mode=False,
                       deadzone_top=0, deadzone_bottom=0, actuation_point=60):
@@ -1126,7 +1248,20 @@ class DKSVisualWidget(QWidget):
     def create_vertical_travel_bar(self):
         """Create a vertical travel bar indicator"""
         self.vertical_travel_bar = VerticalTravelBarWidget()
+        # Connect drag signals to update the action editors
+        self.vertical_travel_bar.pressActuationDragged.connect(self._on_press_actuation_dragged)
+        self.vertical_travel_bar.releaseActuationDragged.connect(self._on_release_actuation_dragged)
         return self.vertical_travel_bar
+
+    def _on_press_actuation_dragged(self, index, value):
+        """Handle press actuation point dragged on visualizer"""
+        if index < len(self.press_editors):
+            self.press_editors[index].actuation_slider.setValue(value)
+
+    def _on_release_actuation_dragged(self, index, value):
+        """Handle release actuation point dragged on visualizer"""
+        if index < len(self.release_editors):
+            self.release_editors[index].actuation_slider.setValue(value)
 
     def update_travel_bar(self, press_points, release_points):
         """Update the vertical travel bar with actuation points"""

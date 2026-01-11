@@ -216,11 +216,13 @@ class MultiHandleSlider(QWidget):
         self.values = list(values)
         self.update()
 
-    def set_value(self, handle_index, value):
+    def set_value(self, handle_index, value, emit_signal=True):
         """Set a specific handle value"""
         if 0 <= handle_index < self.num_handles:
             self.values[handle_index] = max(self.minimum, min(self.maximum, value))
             self.update()
+            if emit_signal:
+                self.valuesChanged.emit(self.values)
 
     def get_values(self):
         """Get all handle values"""

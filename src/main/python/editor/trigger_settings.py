@@ -2,9 +2,9 @@
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
-                              QSizePolicy, QScrollArea, QTabWidget)
+                              QSizePolicy, QScrollArea, QTabWidget, QApplication)
 from PyQt5.QtCore import Qt, pyqtSignal, QEvent
-from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtGui import QColor, QPalette, QPainter, QPen, QBrush, QFont
 
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidget2
@@ -26,6 +26,641 @@ class ClickableWidget(QWidget):
     def mousePressEvent(self, event):
         self.clicked.emit()
         super().mousePressEvent(event)
+
+
+class TriggerVisualizerWidget(QWidget):
+    """Vertical travel bar visualization for Trigger Settings with custom labels and draggable points.
+
+    Labels:
+    - Global mode (per-key disabled): "Normal Keys", "Midi Keys"
+    - Per-key mode: "Key actuation"
+    - Rapidfire mode: "Press Threshold", "Release Threshold" (unchanged)
+    """
+
+    # Signals emitted when actuation points are dragged
+    actuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-100)
+    pressSensDragged = pyqtSignal(int)  # new_value 0-100
+    releaseSensDragged = pyqtSignal(int)  # new_value 0-100
+
+    # Label mode constants
+    LABEL_MODE_GLOBAL = 0  # Show "Normal Keys", "Midi Keys"
+    LABEL_MODE_PER_KEY = 1  # Show "Key actuation"
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumWidth(400)  # Wide enough for all labels without cutoff
+        self.setMinimumHeight(250)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        self.press_actuations = []      # List of (actuation_point, enabled) tuples
+        self.release_actuations = []    # List of (actuation_point, enabled) tuples
+        self.rapidfire_mode = False     # Flag to enable rapidfire visualization mode
+        self.deadzone_top = 0           # Top deadzone value (0-20, representing 0-0.5mm)
+        self.deadzone_bottom = 0        # Bottom deadzone value (0-20, representing 0-0.5mm)
+        self.actuation_point = 60       # First activation point (0-100, representing 0-2.5mm)
+
+        # Label mode for trigger settings
+        self.label_mode = self.LABEL_MODE_GLOBAL
+
+        # Dragging state
+        self.dragging = False
+        self.drag_point_type = None  # 'press', 'release', 'press_sens', 'release_sens'
+        self.drag_point_index = 0
+
+        # Hit areas for actuation points (populated during paint)
+        self.press_hit_areas = []  # List of (y, actuation, index) tuples
+        self.release_hit_areas = []  # List of (y, actuation, index) tuples
+
+        # Enable mouse tracking for cursor changes
+        self.setMouseTracking(True)
+
+    def set_label_mode(self, mode):
+        """Set the label mode (LABEL_MODE_GLOBAL or LABEL_MODE_PER_KEY)"""
+        self.label_mode = mode
+        self.update()
+
+    def set_actuations(self, press_points, release_points, rapidfire_mode=False,
+                      deadzone_top=0, deadzone_bottom=0, actuation_point=60):
+        """Set actuation points to display
+
+        Args:
+            press_points: List of (actuation, enabled) tuples for press actions
+            release_points: List of (actuation, enabled) tuples for release actions
+            rapidfire_mode: If True, show relative to actuation point with first activation line
+            deadzone_top: Top deadzone value (0-20, 0-0.5mm from top, internally inverted)
+            deadzone_bottom: Bottom deadzone value (0-20, 0-0.5mm from bottom)
+            actuation_point: First activation point (0-100, 0-2.5mm)
+        """
+        self.press_actuations = press_points
+        self.release_actuations = release_points
+        self.rapidfire_mode = rapidfire_mode
+        self.deadzone_top = deadzone_top
+        self.deadzone_bottom = deadzone_bottom
+        self.actuation_point = actuation_point
+        self.update()
+
+    def _get_bar_geometry(self):
+        """Calculate bar geometry for drawing and hit testing"""
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 20
+        bar_width = 30
+        bar_x = 120
+        bar_height = height - margin_top - margin_bottom
+        return bar_x, margin_top, margin_bottom, bar_width, bar_height
+
+    def _y_to_actuation(self, y):
+        """Convert y position to actuation value (0-100)"""
+        bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+        if bar_height <= 0:
+            return 50
+        actuation = ((y - margin_top) / bar_height) * 100
+        return max(0, min(100, int(actuation)))
+
+    def _actuation_to_y(self, actuation):
+        """Convert actuation value (0-100) to y position"""
+        bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+        return margin_top + int((actuation / 100.0) * bar_height)
+
+    def mousePressEvent(self, event):
+        """Handle mouse press - start dragging if clicking on an actuation point"""
+        if event.button() == Qt.LeftButton:
+            bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+            x, y = event.x(), event.y()
+
+            # Check if clicking on a press actuation point (left side)
+            for i, (actuation, enabled) in enumerate(self.press_actuations):
+                if not enabled:
+                    continue
+
+                if self.rapidfire_mode:
+                    # In rapidfire mode, press is relative to release
+                    actuation_y = self._actuation_to_y(self.actuation_point)
+                    # Get release position first
+                    release_y = actuation_y
+                    if self.release_actuations:
+                        rel_actuation, rel_enabled = self.release_actuations[0]
+                        if rel_enabled:
+                            release_y = actuation_y - int((rel_actuation / 100.0) * bar_height)
+                    point_y = release_y + int((actuation / 100.0) * bar_height)
+                else:
+                    point_y = self._actuation_to_y(actuation)
+
+                # Hit test for press point (left side of bar)
+                if abs(y - point_y) < 15 and x < bar_x + bar_width // 2:
+                    self.dragging = True
+                    self.drag_point_type = 'press_sens' if self.rapidfire_mode else 'press'
+                    self.drag_point_index = i
+                    self.setCursor(Qt.ClosedHandCursor)
+                    return
+
+            # Check if clicking on a release actuation point (right side)
+            for i, (actuation, enabled) in enumerate(self.release_actuations):
+                if not enabled:
+                    continue
+
+                if self.rapidfire_mode:
+                    actuation_y = self._actuation_to_y(self.actuation_point)
+                    point_y = actuation_y - int((actuation / 100.0) * bar_height)
+                else:
+                    point_y = self._actuation_to_y(actuation)
+
+                # Hit test for release point (right side of bar)
+                if abs(y - point_y) < 15 and x > bar_x + bar_width // 2:
+                    self.dragging = True
+                    self.drag_point_type = 'release_sens' if self.rapidfire_mode else 'release'
+                    self.drag_point_index = i
+                    self.setCursor(Qt.ClosedHandCursor)
+                    return
+
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move - update dragged point position"""
+        bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
+
+        if self.dragging:
+            y = event.y()
+
+            if self.rapidfire_mode:
+                # In rapidfire mode, calculate sensitivity relative to actuation/release point
+                actuation_y = self._actuation_to_y(self.actuation_point)
+
+                if self.drag_point_type == 'release_sens':
+                    # Release is upward from actuation point
+                    delta = actuation_y - y
+                    sensitivity = max(1, min(100, int((delta / bar_height) * 100)))
+                    self.releaseSensDragged.emit(sensitivity)
+                elif self.drag_point_type == 'press_sens':
+                    # Press is downward from release point
+                    release_y = actuation_y
+                    if self.release_actuations:
+                        rel_actuation, rel_enabled = self.release_actuations[0]
+                        if rel_enabled:
+                            release_y = actuation_y - int((rel_actuation / 100.0) * bar_height)
+                    delta = y - release_y
+                    sensitivity = max(1, min(100, int((delta / bar_height) * 100)))
+                    self.pressSensDragged.emit(sensitivity)
+            else:
+                # Normal mode - direct actuation value
+                actuation = self._y_to_actuation(y)
+                if self.drag_point_type == 'press' or self.drag_point_type == 'release':
+                    self.actuationDragged.emit(self.drag_point_index, actuation)
+        else:
+            # Update cursor based on hover position
+            x, y = event.x(), event.y()
+            hovering_point = False
+
+            # Check press points
+            for i, (actuation, enabled) in enumerate(self.press_actuations):
+                if not enabled:
+                    continue
+                if self.rapidfire_mode:
+                    actuation_y = self._actuation_to_y(self.actuation_point)
+                    release_y = actuation_y
+                    if self.release_actuations:
+                        rel_actuation, rel_enabled = self.release_actuations[0]
+                        if rel_enabled:
+                            release_y = actuation_y - int((rel_actuation / 100.0) * bar_height)
+                    point_y = release_y + int((actuation / 100.0) * bar_height)
+                else:
+                    point_y = self._actuation_to_y(actuation)
+
+                if abs(y - point_y) < 15 and x < bar_x + bar_width // 2:
+                    hovering_point = True
+                    break
+
+            # Check release points
+            if not hovering_point:
+                for i, (actuation, enabled) in enumerate(self.release_actuations):
+                    if not enabled:
+                        continue
+                    if self.rapidfire_mode:
+                        actuation_y = self._actuation_to_y(self.actuation_point)
+                        point_y = actuation_y - int((actuation / 100.0) * bar_height)
+                    else:
+                        point_y = self._actuation_to_y(actuation)
+
+                    if abs(y - point_y) < 15 and x > bar_x + bar_width // 2:
+                        hovering_point = True
+                        break
+
+            if hovering_point:
+                self.setCursor(Qt.OpenHandCursor)
+            else:
+                self.setCursor(Qt.ArrowCursor)
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release - stop dragging"""
+        if event.button() == Qt.LeftButton and self.dragging:
+            self.dragging = False
+            self.drag_point_type = None
+            self.setCursor(Qt.ArrowCursor)
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Get theme colors
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
+        # Calculate drawing area
+        width = self.width()
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 20
+        bar_width = 30
+        # Center the bar with room for labels on both sides
+        bar_x = 120
+
+        # Draw travel bar background (vertical) - use theme colors
+        bar_bg = palette.color(QPalette.AlternateBase)
+        bar_border = palette.color(QPalette.Mid)
+        text_color = palette.color(QPalette.Text)
+
+        # Get theme accent colors for press/release
+        press_color = palette.color(QPalette.Highlight)
+        release_color = palette.color(QPalette.Link)
+
+        painter.setBrush(bar_bg)
+        painter.setPen(QPen(bar_border, 2))
+        painter.drawRect(bar_x, margin_top, bar_width, height - margin_top - margin_bottom)
+
+        # Calculate bar height for vertical positioning
+        bar_height = height - margin_top - margin_bottom
+
+        # Draw deadzone fills (light grey) - shown in all modes
+        deadzone_color = QColor(128, 128, 128, 80)  # Light grey with transparency
+
+        # Top deadzone
+        if self.deadzone_bottom > 0:
+            deadzone_bottom_percent = (self.deadzone_bottom / 20.0) * 12.5
+            deadzone_bottom_height = int(bar_height * deadzone_bottom_percent / 100.0)
+            painter.fillRect(bar_x, margin_top, bar_width, deadzone_bottom_height, deadzone_color)
+
+            # Draw "Top Deadzone" label
+            font_small = QFont()
+            font_small.setPointSize(7)
+            painter.setFont(font_small)
+
+            label_text = "Top Deadzone"
+            label_x = bar_x + bar_width + 5
+            label_y = margin_top + deadzone_bottom_height // 2 - 6
+
+            if is_dark:
+                label_bg = palette.color(QPalette.Window).darker(110)
+                label_border = palette.color(QPalette.Mid)
+            else:
+                label_bg = palette.color(QPalette.Base)
+                label_border = palette.color(QPalette.Mid)
+
+            fm = painter.fontMetrics()
+            text_width = fm.width(label_text)
+            text_height = fm.height()
+            padding = 2
+
+            painter.fillRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding, label_bg)
+            painter.setPen(QPen(label_border, 1))
+            painter.drawRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding)
+
+            painter.setPen(text_color)
+            painter.drawText(label_x, label_y + text_height - 4, label_text)
+
+        # Bottom deadzone
+        if self.deadzone_top > 0:
+            deadzone_top_percent = (self.deadzone_top / 20.0) * 12.5
+            deadzone_top_height = int(bar_height * deadzone_top_percent / 100.0)
+            deadzone_top_y = margin_top + bar_height - deadzone_top_height
+            painter.fillRect(bar_x, deadzone_top_y, bar_width, deadzone_top_height, deadzone_color)
+
+            # Draw "Bottom Deadzone" label
+            font_small = QFont()
+            font_small.setPointSize(7)
+            painter.setFont(font_small)
+
+            label_text = "Bottom Deadzone"
+            label_x = bar_x + bar_width + 5
+            label_y = deadzone_top_y + deadzone_top_height // 2 - 6
+
+            if is_dark:
+                label_bg = palette.color(QPalette.Window).darker(110)
+                label_border = palette.color(QPalette.Mid)
+            else:
+                label_bg = palette.color(QPalette.Base)
+                label_border = palette.color(QPalette.Mid)
+
+            fm = painter.fontMetrics()
+            text_width = fm.width(label_text)
+            text_height = fm.height()
+            padding = 2
+
+            painter.fillRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding, label_bg)
+            painter.setPen(QPen(label_border, 1))
+            painter.drawRect(label_x - padding, label_y - padding,
+                           text_width + 2 * padding, text_height + 2 * padding)
+
+            painter.setPen(text_color)
+            painter.drawText(label_x, label_y + text_height - 4, label_text)
+
+        if self.rapidfire_mode:
+            # Draw actuation line for "First Activation" at actual actuation point
+            actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
+            painter.setPen(QPen(QColor(255, 200, 0), 2, Qt.DashLine))
+            painter.drawLine(bar_x, actuation_y, bar_x + bar_width, actuation_y)
+
+            # Draw "First Activation" label with button-like styling
+            font = QFont()
+            font.setPointSize(9)
+            font.setBold(True)
+            painter.setFont(font)
+
+            label_text = "First Activation"
+            label_x = bar_x + bar_width + 15
+            label_y = actuation_y - 10
+
+            button_bg = palette.color(QPalette.Highlight)
+            button_border = palette.color(QPalette.Highlight)
+
+            fm = painter.fontMetrics()
+            text_width = fm.width(label_text)
+            text_height = fm.height()
+            padding = 6
+
+            painter.setPen(QPen(button_border, 1))
+            painter.setBrush(button_bg)
+            painter.drawRoundedRect(label_x - padding, label_y - padding,
+                                   text_width + 2 * padding, text_height + 2 * padding, 6, 6)
+
+            painter.setPen(palette.color(QPalette.HighlightedText))
+            painter.drawText(label_x, actuation_y + 3, label_text)
+        else:
+            # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
+            painter.setPen(text_color)
+            font = QFont()
+            font.setPointSize(9)
+            painter.setFont(font)
+            painter.drawText(bar_x + bar_width // 2 - 15, margin_top - 10, "0.0mm")
+            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "2.5mm")
+
+        # Draw press and release actuation points
+        if self.rapidfire_mode:
+            # Rapidfire mode - same as original DKS widget
+            actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
+
+            # Draw release actuation points (theme release color, above actuation line)
+            release_y = actuation_y
+            for actuation, enabled in self.release_actuations:
+                if not enabled:
+                    continue
+
+                y = actuation_y - int((actuation / 100.0) * bar_height)
+                release_y = y
+
+                painter.setPen(QPen(release_color, 3))
+                painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
+
+                painter.setBrush(release_color)
+                painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+
+                mm_value = (actuation / 100.0) * 2.5
+
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
+
+                fm = painter.fontMetrics()
+                padding = 6
+                label_x = bar_x + bar_width + 15
+
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                id_text = "Release Threshold"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                id_y = y - id_height - 10
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_y = y + 6
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(label_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
+                painter.setPen(text_color)
+                painter.drawText(label_x, mm_y, mm_text)
+
+            # Draw press actuation points (theme press color, below release line)
+            for actuation, enabled in self.press_actuations:
+                if not enabled:
+                    continue
+
+                y = release_y + int((actuation / 100.0) * bar_height)
+
+                painter.setPen(QPen(press_color, 3))
+                painter.drawLine(bar_x - 20, y, bar_x, y)
+
+                painter.setBrush(press_color)
+                painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+
+                mm_value = (actuation / 100.0) * 2.5
+
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
+
+                fm = painter.fontMetrics()
+                padding = 6
+
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                id_text = "Press Threshold"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                label_x = bar_x - id_width - 15
+                id_y = y - id_height - 10
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_x = bar_x - mm_width - 12
+                mm_y = y + 6
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(mm_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
+                painter.setPen(text_color)
+                painter.drawText(mm_x, mm_y, mm_text)
+        else:
+            # Normal mode: draw from top to bottom with custom labels
+            font = QFont()
+            font.setPointSize(9)
+
+            # Draw press actuation points (theme press color, left side)
+            for idx, (actuation, enabled) in enumerate(self.press_actuations):
+                if not enabled:
+                    continue
+
+                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+                painter.setPen(QPen(press_color, 3))
+                painter.drawLine(bar_x - 20, y, bar_x, y)
+
+                painter.setBrush(press_color)
+                painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+
+                mm_value = (actuation / 100.0) * 2.5
+
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
+
+                fm = painter.fontMetrics()
+                padding = 6
+
+                # Custom labels for Trigger Settings
+                if self.label_mode == self.LABEL_MODE_GLOBAL:
+                    # Global mode: "Normal Keys", "Midi Keys"
+                    if idx == 0:
+                        id_text = "Normal Keys"
+                    elif idx == 1:
+                        id_text = "Midi Keys"
+                    else:
+                        id_text = f"Actuation {idx + 1}"
+                else:
+                    # Per-key mode: just "Key actuation"
+                    id_text = "Key actuation"
+
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                label_x = bar_x - id_width - 15
+                id_y = y - id_height - 10
+
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_x = bar_x - mm_width - 12
+                mm_y = y + 6
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(mm_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
+                painter.setPen(text_color)
+                painter.drawText(mm_x, mm_y, mm_text)
+
+            # Draw release actuation points (theme release color, right side) - if any
+            for idx, (actuation, enabled) in enumerate(self.release_actuations):
+                if not enabled:
+                    continue
+
+                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+
+                painter.setPen(QPen(release_color, 3))
+                painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
+
+                painter.setBrush(release_color)
+                painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+
+                mm_value = (actuation / 100.0) * 2.5
+
+                font_label = QFont()
+                font_label.setPointSize(9)
+                font_label.setBold(True)
+                painter.setFont(font_label)
+
+                fm = painter.fontMetrics()
+                padding = 6
+                label_x = bar_x + bar_width + 15
+
+                button_bg = palette.color(QPalette.Button)
+                button_border = palette.color(QPalette.Light)
+
+                id_text = f"Release {idx + 1}"
+                id_width = fm.width(id_text)
+                id_height = fm.height()
+                id_y = y - id_height - 10
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(button_bg)
+                painter.drawRoundedRect(label_x - padding, id_y - padding,
+                                       id_width + 2 * padding, id_height + 2 * padding, 6, 6)
+                painter.setPen(palette.color(QPalette.ButtonText))
+                painter.drawText(label_x, id_y + id_height - 4, id_text)
+
+                font_mm = QFont()
+                font_mm.setPointSize(8)
+                painter.setFont(font_mm)
+                fm = painter.fontMetrics()
+
+                mm_text = f"{mm_value:.2f}mm"
+                mm_width = fm.width(mm_text)
+                mm_height = fm.height()
+                mm_y = y + 6
+
+                painter.setPen(QPen(button_border, 1))
+                painter.setBrush(palette.color(QPalette.AlternateBase))
+                painter.drawRoundedRect(label_x - 4, mm_y - mm_height,
+                                       mm_width + 8, mm_height + 4, 4, 4)
+                painter.setPen(text_color)
+                painter.drawText(label_x, mm_y, mm_text)
 
 
 class TriggerSettingsTab(BasicEditor):
@@ -789,8 +1424,8 @@ class TriggerSettingsTab(BasicEditor):
         viz_layout.setContentsMargins(0, 10, 0, 10)  # Minimal horizontal margins
         viz_layout.setSpacing(0)  # No spacing
 
-        # Import widgets from dks_settings
-        from editor.dks_settings import KeyswitchDiagramWidget, VerticalTravelBarWidget
+        # Import keyswitch diagram from dks_settings
+        from editor.dks_settings import KeyswitchDiagramWidget
 
         # Horizontal layout for diagram and travel bar
         viz_h_layout = QHBoxLayout()
@@ -801,8 +1436,11 @@ class TriggerSettingsTab(BasicEditor):
         self.keyswitch_diagram = KeyswitchDiagramWidget()
         viz_h_layout.addWidget(self.keyswitch_diagram)
 
-        # Vertical travel bar
-        self.actuation_visualizer = VerticalTravelBarWidget()
+        # Vertical travel bar - using TriggerVisualizerWidget for custom labels and dragging
+        self.actuation_visualizer = TriggerVisualizerWidget()
+        self.actuation_visualizer.actuationDragged.connect(self.on_visualizer_actuation_dragged)
+        self.actuation_visualizer.pressSensDragged.connect(self.on_visualizer_press_sens_dragged)
+        self.actuation_visualizer.releaseSensDragged.connect(self.on_visualizer_release_sens_dragged)
         viz_h_layout.addWidget(self.actuation_visualizer)
 
         viz_layout.addLayout(viz_h_layout)
@@ -839,6 +1477,9 @@ class TriggerSettingsTab(BasicEditor):
             key_index = row * 14 + col
             if key_index < 70:
                 settings = self.per_key_values[layer][key_index]
+
+                # Set label mode to per-key when a key is selected
+                self.actuation_visualizer.set_label_mode(TriggerVisualizerWidget.LABEL_MODE_PER_KEY)
 
                 # Build actuation points based on active tab
                 if self.active_tab == 'actuation':
@@ -891,6 +1532,9 @@ class TriggerSettingsTab(BasicEditor):
 
         # No key selected or in global mode - show global actuation
         if not self.mode_enabled:
+            # Set label mode to global (Normal Keys, Midi Keys)
+            self.actuation_visualizer.set_label_mode(TriggerVisualizerWidget.LABEL_MODE_GLOBAL)
+
             data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
             layer_to_use = self.current_layer if self.per_layer_enabled else 0
 
@@ -929,6 +1573,7 @@ class TriggerSettingsTab(BasicEditor):
                 )
         else:
             # Per-key mode but no key selected - clear visualizer
+            self.actuation_visualizer.set_label_mode(TriggerVisualizerWidget.LABEL_MODE_PER_KEY)
             self.actuation_visualizer.set_actuations(
                 [], [], rapidfire_mode=False,
                 deadzone_top=0, deadzone_bottom=0, actuation_point=60
@@ -1669,6 +2314,41 @@ class TriggerSettingsTab(BasicEditor):
         self.has_unsaved_changes = True
         self.save_btn.setEnabled(True)
         self.refresh_layer_display()
+
+    def on_visualizer_actuation_dragged(self, point_index, value):
+        """Handle actuation point dragged on the visualizer - updates corresponding sliders"""
+        if self.syncing:
+            return
+
+        if not self.mode_enabled:
+            # Global mode - update the appropriate slider based on point index
+            if point_index == 0:
+                # Normal Keys
+                self.global_normal_slider.set_actuation(value)
+            elif point_index == 1:
+                # Midi Keys
+                self.global_midi_slider.set_actuation(value)
+        else:
+            # Per-key mode - update the per-key actuation slider
+            self.trigger_slider.set_actuation(value)
+
+    def on_visualizer_press_sens_dragged(self, value):
+        """Handle press threshold dragged on the visualizer in rapidfire mode"""
+        if self.syncing:
+            return
+
+        # Update the rapid trigger slider's press sensitivity
+        if hasattr(self, 'rapid_trigger_slider'):
+            self.rapid_trigger_slider.set_press_sens(value)
+
+    def on_visualizer_release_sens_dragged(self, value):
+        """Handle release threshold dragged on the visualizer in rapidfire mode"""
+        if self.syncing:
+            return
+
+        # Update the rapid trigger slider's release sensitivity
+        if hasattr(self, 'rapid_trigger_slider'):
+            self.rapid_trigger_slider.set_release_sens(value)
 
     def on_continuous_rt_toggled(self, state):
         """Handle continuous rapid trigger checkbox toggle - applies to all selected keys"""
