@@ -1019,7 +1019,7 @@ class DKSVisualWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setMinimumHeight(300)  # Minimum height for content
-        self.setMaximumHeight(350)  # Cap height to prevent excessive vertical space
+        self.setMaximumHeight(330)  # Cap height to prevent excessive vertical space
         # Allow horizontal expansion but prevent vertical squishing
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
@@ -1147,27 +1147,7 @@ class DKSEntryUI(QWidget):
         # Main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(15)
-
-
-        # Visual action editor (includes travel bar)
-        visual_group = QGroupBox("Action Configuration")
-        visual_group.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid palette(mid);
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
-        visual_group_layout = QVBoxLayout()
-        visual_group_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
 
         # Horizontal layout for visual widget (centered)
         visual_layout = QHBoxLayout()
@@ -1197,9 +1177,9 @@ class DKSEntryUI(QWidget):
         visual_layout.addStretch()
         visual_layout.addWidget(self.visual_widget)
         visual_layout.addStretch()
-        visual_group_layout.addLayout(visual_layout)
+        main_layout.addLayout(visual_layout)
 
-        # Buttons inside the action configuration container
+        # Buttons
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
 
@@ -1225,13 +1205,7 @@ class DKSEntryUI(QWidget):
         self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
         button_layout.addWidget(self.save_eeprom_btn)
 
-        visual_group_layout.addLayout(button_layout)
-        visual_group.setLayout(visual_group_layout)
-
-        # Allow horizontal expansion but prevent vertical squishing
-        visual_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        main_layout.addWidget(visual_group)
+        main_layout.addLayout(button_layout)
 
         self.setLayout(main_layout)
 
