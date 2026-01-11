@@ -685,8 +685,7 @@ class VerticalTravelBarWidget(QWidget):
             font.setPointSize(9)
 
             # Draw press actuation points (theme press color, left side)
-            # These represent Normal and MIDI actuation points
-            actuation_labels = ["Normal Actuation", "MIDI Actuation"]
+            # These represent Press 1, Press 2, etc. actuation points for DKS
             for idx, (actuation, enabled) in enumerate(self.press_actuations):
                 if not enabled:
                     continue
@@ -714,7 +713,7 @@ class VerticalTravelBarWidget(QWidget):
                 padding = 6  # Bigger padding for button-like appearance
 
                 # Draw identifier label (button-like)
-                id_text = actuation_labels[idx] if idx < len(actuation_labels) else "Actuation"
+                id_text = f"Press {idx + 1} Actuation"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
                 label_x = bar_x - id_width - 15
@@ -752,7 +751,8 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawText(mm_x, mm_y, mm_text)
 
             # Draw release actuation points (theme release color, right side)
-            for actuation, enabled in self.release_actuations:
+            # These represent Release 1, Release 2, etc. actuation points for DKS
+            for idx, (actuation, enabled) in enumerate(self.release_actuations):
                 if not enabled:
                     continue
 
@@ -784,7 +784,7 @@ class VerticalTravelBarWidget(QWidget):
                 button_border = palette.color(QPalette.Light)
 
                 # Draw identifier label (button-like)
-                id_text = "Release Point"
+                id_text = f"Release {idx + 1} Actuation"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
                 id_y = y - id_height - 10
