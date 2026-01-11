@@ -1013,8 +1013,8 @@ class DKSVisualWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(1100, 300)  # Wide enough for labels
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumSize(1100, 450)  # Wide enough for labels, min height prevents squishing
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)  # Minimum allows scrolling
 
         # Will be set by parent
         self.press_editors = []
@@ -1134,6 +1134,10 @@ class DKSEntryUI(QWidget):
         self.dks_protocol = None
         self.selected_key_widget = None  # Track which key widget is selected
 
+        # Set minimum height to prevent squishing - allows scroll instead
+        self.setMinimumHeight(550)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         # Main layout
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -1156,6 +1160,8 @@ class DKSEntryUI(QWidget):
                 padding: 0 5px 0 5px;
             }
         """)
+        visual_group.setMinimumHeight(500)  # Prevent squishing of action configuration
+        visual_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         visual_group_layout = QVBoxLayout()
         visual_group_layout.setContentsMargins(10, 10, 10, 10)
 
