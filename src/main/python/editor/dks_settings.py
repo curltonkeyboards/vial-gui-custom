@@ -352,9 +352,10 @@ class VerticalTravelBarWidget(QWidget):
         self.deadzone_top = 0           # Top deadzone value (0-20, representing 0-0.5mm)
         self.deadzone_bottom = 0        # Bottom deadzone value (0-20, representing 0-0.5mm)
         self.actuation_point = 60       # First activation point (0-100, representing 0-2.5mm)
+        self.simple_labels = False      # If True, use "Actuation Point" for all press labels
 
     def set_actuations(self, press_points, release_points, rapidfire_mode=False,
-                      deadzone_top=0, deadzone_bottom=0, actuation_point=60):
+                      deadzone_top=0, deadzone_bottom=0, actuation_point=60, simple_labels=False):
         """Set actuation points to display
 
         Args:
@@ -364,6 +365,7 @@ class VerticalTravelBarWidget(QWidget):
             deadzone_top: Top deadzone value (0-20, 0-0.5mm from top, internally inverted)
             deadzone_bottom: Bottom deadzone value (0-20, 0-0.5mm from bottom)
             actuation_point: First activation point (0-100, 0-2.5mm)
+            simple_labels: If True, use "Actuation Point" for all press labels (DKS mode)
         """
         self.press_actuations = press_points
         self.release_actuations = release_points
@@ -371,6 +373,7 @@ class VerticalTravelBarWidget(QWidget):
         self.deadzone_top = deadzone_top
         self.deadzone_bottom = deadzone_bottom
         self.actuation_point = actuation_point
+        self.simple_labels = simple_labels
         self.update()
 
     def paintEvent(self, event):
@@ -685,8 +688,11 @@ class VerticalTravelBarWidget(QWidget):
             font.setPointSize(9)
 
             # Draw press actuation points (theme press color, left side)
-            # These represent Normal and MIDI actuation points
-            actuation_labels = ["Normal Actuation", "MIDI Actuation"]
+            # These represent Normal and MIDI actuation points (or "Actuation Point" in DKS simple mode)
+            if self.simple_labels:
+                actuation_labels = ["Actuation Point", "Actuation Point"]
+            else:
+                actuation_labels = ["Normal Actuation", "MIDI Actuation"]
             for idx, (actuation, enabled) in enumerate(self.press_actuations):
                 if not enabled:
                     continue
@@ -1077,8 +1083,14 @@ class DKSVisualWidget(QWidget):
         self.keyswitch_diagram = KeyswitchDiagramWidget()
         middle_layout.addWidget(self.keyswitch_diagram)
 
-        # Add vertical travel bar
-        middle_layout.addWidget(self.create_vertical_travel_bar())
+        # Add vertical travel bar with negative left margin to move it 130px closer to diagram
+        travel_bar_container = QWidget()
+        travel_bar_layout = QHBoxLayout()
+        travel_bar_layout.setContentsMargins(-130, 0, 0, 0)  # Move 130px closer to diagram
+        travel_bar_layout.setSpacing(0)
+        travel_bar_layout.addWidget(self.create_vertical_travel_bar())
+        travel_bar_container.setLayout(travel_bar_layout)
+        middle_layout.addWidget(travel_bar_container)
 
         middle_container.setLayout(middle_layout)
         self.main_layout.addWidget(middle_container)
@@ -1120,7 +1132,7 @@ class DKSVisualWidget(QWidget):
     def update_travel_bar(self, press_points, release_points):
         """Update the vertical travel bar with actuation points"""
         if hasattr(self, 'vertical_travel_bar'):
-            self.vertical_travel_bar.set_actuations(press_points, release_points)
+            self.vertical_travel_bar.set_actuations(press_points, release_points, simple_labels=True)
 
 
 class DKSEntryUI(QWidget):
