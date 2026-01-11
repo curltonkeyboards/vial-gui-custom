@@ -337,6 +337,16 @@ class KeyswitchDiagramWidget(QWidget):
             painter.drawText(self.rect(), Qt.AlignCenter, "Switch\nDiagram")
 
 
+class DKSKeyswitchDiagramWidget(KeyswitchDiagramWidget):
+    """DKS-specific keyswitch diagram with reduced width to bring visualizer closer"""
+
+    def __init__(self):
+        super().__init__()
+        # Reduce width by 130px (from 450 to 320) for tighter spacing in DKS tab only
+        self.setMinimumWidth(320)
+        self.setMaximumWidth(320)
+
+
 class VerticalTravelBarWidget(QWidget):
     """Vertical representation of key travel with actuation points"""
 
@@ -1013,7 +1023,7 @@ class DKSVisualWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(1100, 350)  # Wide enough for labels, min height prevents squishing
+        self.setMinimumSize(970, 350)  # Reduced by 130px for tighter diagram/visualizer spacing
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)  # Minimum allows scrolling
 
         # Will be set by parent
@@ -1068,13 +1078,13 @@ class DKSVisualWidget(QWidget):
 
         # Middle: Keyswitch diagram + Vertical travel bar
         middle_container = QWidget()
-        middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
+        middle_container.setMinimumWidth(670)  # Reduced by 130px for tighter spacing
         middle_layout = QHBoxLayout()
         middle_layout.setContentsMargins(0, 0, 0, 0)
         middle_layout.setSpacing(0)  # No spacing between diagram and bar
 
-        # Add keyswitch diagram
-        self.keyswitch_diagram = KeyswitchDiagramWidget()
+        # Add DKS-specific keyswitch diagram (narrower for tighter spacing)
+        self.keyswitch_diagram = DKSKeyswitchDiagramWidget()
         middle_layout.addWidget(self.keyswitch_diagram)
 
         # Add vertical travel bar
@@ -1142,6 +1152,14 @@ class DKSEntryUI(QWidget):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(15)
+
+        # Description of how DKS works
+        desc = QLabel("Configure Dynamic Keystroke (DKS) actions based on key travel distance.\n"
+                      "Set actuation points (0-40) for each action on press (downstroke) and release (upstroke).\n"
+                      "Assign this DKS slot to a physical key using the DKS keycodes in the keymap editor.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: gray; font-size: 9pt;")
+        main_layout.addWidget(desc)
 
         # Horizontal layout for visual widget (centered)
         visual_layout = QHBoxLayout()
