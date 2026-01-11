@@ -256,7 +256,35 @@ class CurveCanvas(QWidget):
         self.hover_point = -1
 
     def set_points(self, points):
-        self.points = points
+        self.points = self._validate_points(points)
+
+    def _validate_points(self, points):
+        """Ensure points have valid, non-overlapping x values.
+        Points must maintain order: P0.x < P1.x < P2.x < P3.x"""
+        if len(points) != 4:
+            return points
+
+        validated = [list(p) for p in points]  # Deep copy
+
+        # Clamp all values to 0-255
+        for p in validated:
+            p[0] = max(0, min(255, p[0]))
+            p[1] = max(0, min(255, p[1]))
+
+        # Fix P0 and P3 x-coordinates
+        validated[0][0] = 0
+        validated[3][0] = 255
+
+        # Ensure P1.x is between P0.x and P2.x (with minimum gap of 1)
+        validated[1][0] = max(1, min(validated[2][0] - 1, validated[1][0]))
+
+        # Ensure P2.x is between P1.x and P3.x (with minimum gap of 1)
+        validated[2][0] = max(validated[1][0] + 1, min(254, validated[2][0]))
+
+        # Re-check P1 in case P2 was adjusted
+        validated[1][0] = max(1, min(validated[2][0] - 1, validated[1][0]))
+
+        return validated
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -365,9 +393,20 @@ class CurveCanvas(QWidget):
             # Update dragged point with constraints
             new_value = self.canvas_to_value(event.pos())
 
-            # Apply x-axis constraints for points 0 and 3
+            # Apply x-axis constraints to prevent points from crossing each other
+            # Points must maintain order: P0.x < P1.x < P2.x < P3.x
             if self.dragging_point == 0:
                 new_value[0] = 0  # Point 0 fixed at x=0
+            elif self.dragging_point == 1:
+                # Point 1 must stay between P0 (x=0) and P2
+                min_x = 1  # At least 1 more than P0
+                max_x = self.points[2][0] - 1  # At least 1 less than P2
+                new_value[0] = max(min_x, min(max_x, new_value[0]))
+            elif self.dragging_point == 2:
+                # Point 2 must stay between P1 and P3 (x=255)
+                min_x = self.points[1][0] + 1  # At least 1 more than P1
+                max_x = 254  # At least 1 less than P3
+                new_value[0] = max(min_x, min(max_x, new_value[0]))
             elif self.dragging_point == 3:
                 new_value[0] = 255  # Point 3 fixed at x=255
 
