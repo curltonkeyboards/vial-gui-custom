@@ -327,7 +327,7 @@ class KeyswitchDiagramWidget(QWidget):
                 scaled_pixmap = QPixmap.fromImage(image)
 
             # Center horizontally, align to top vertically (to match travel bar alignment)
-            x = (widget_width - scaled_pixmap.width()) // 2 - 35  # Move 35 pixels left
+            x = (widget_width - scaled_pixmap.width()) // 2 + 95  # Move 95 pixels right to bring visualizer closer
             y = -30  # Move 30 pixels higher
 
             painter.drawPixmap(x, y, scaled_pixmap)
@@ -685,8 +685,8 @@ class VerticalTravelBarWidget(QWidget):
             font.setPointSize(9)
 
             # Draw press actuation points (theme press color, left side)
-            # These represent Normal and MIDI actuation points
-            actuation_labels = ["Normal Actuation", "MIDI Actuation"]
+            # These represent actuation points
+            actuation_labels = ["Actuation Point", "Actuation Point"]
             for idx, (actuation, enabled) in enumerate(self.press_actuations):
                 if not enabled:
                     continue
