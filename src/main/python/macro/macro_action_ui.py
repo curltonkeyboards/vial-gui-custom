@@ -108,8 +108,8 @@ class ActionSequenceUI(BasicActionUI):
 
         self.btn_plus = QToolButton()
         self.btn_plus.setText("+")
-        self.btn_plus.setFixedWidth(50)
-        self.btn_plus.setFixedHeight(50)
+        self.btn_plus.setFixedWidth(30)
+        self.btn_plus.setFixedHeight(30)
         self.btn_plus.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.btn_plus.clicked.connect(self.on_add)
 

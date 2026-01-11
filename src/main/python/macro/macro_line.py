@@ -52,6 +52,8 @@ class MacroLine(QObject):
 
         self.btn_remove = QToolButton()
         self.btn_remove.setText("×")
+        self.btn_remove.setFixedWidth(20)
+        self.btn_remove.setFixedHeight(20)
         self.btn_remove.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.btn_remove.setStyleSheet("""
             QToolButton {
@@ -60,8 +62,7 @@ class MacroLine(QObject):
                 border: none;
                 border-radius: 3px;
                 font-weight: bold;
-                font-size: 14px;
-                padding: 4px 8px;
+                font-size: 12px;
             }
             QToolButton:hover {
                 background-color: #c82333;
