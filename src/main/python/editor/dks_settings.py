@@ -1156,6 +1156,10 @@ class DKSEntryUI(QWidget):
                 padding: 0 5px 0 5px;
             }
         """)
+        visual_group_layout = QVBoxLayout()
+        visual_group_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Horizontal layout for visual widget (centered)
         visual_layout = QHBoxLayout()
         visual_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -1183,24 +1187,37 @@ class DKSEntryUI(QWidget):
         visual_layout.addStretch()
         visual_layout.addWidget(self.visual_widget)
         visual_layout.addStretch()
-        visual_group.setLayout(visual_layout)
-        main_layout.addWidget(visual_group)
+        visual_group_layout.addLayout(visual_layout)
 
-        # Bottom buttons
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addStretch()
+        # Buttons inside the action configuration container
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        self.reset_all_btn = QPushButton("Reset All Slots")
+        self.reset_all_btn.setFixedWidth(150)
+        self.reset_all_btn.clicked.connect(self._on_reset_all)
+        button_layout.addWidget(self.reset_all_btn)
+
+        self.load_eeprom_btn = QPushButton("Load All from EEPROM")
+        self.load_eeprom_btn.setFixedWidth(150)
+        self.load_eeprom_btn.clicked.connect(self._on_load_eeprom)
+        button_layout.addWidget(self.load_eeprom_btn)
+
+        button_layout.addStretch()
 
         self.reset_btn = QPushButton("Reset Slot")
         self.reset_btn.setFixedWidth(150)
         self.reset_btn.clicked.connect(self._on_reset)
-        bottom_layout.addWidget(self.reset_btn)
+        button_layout.addWidget(self.reset_btn)
 
         self.save_eeprom_btn = QPushButton("Save to EEPROM")
         self.save_eeprom_btn.setFixedWidth(150)
         self.save_eeprom_btn.clicked.connect(self._on_save_eeprom)
-        bottom_layout.addWidget(self.save_eeprom_btn)
+        button_layout.addWidget(self.save_eeprom_btn)
 
-        main_layout.addLayout(bottom_layout)
+        visual_group_layout.addLayout(button_layout)
+        visual_group.setLayout(visual_group_layout)
+        main_layout.addWidget(visual_group)
 
         self.setLayout(main_layout)
 
@@ -1331,6 +1348,35 @@ class DKSEntryUI(QWidget):
         else:
             QMessageBox.warning(self, "Error", "Failed to save to EEPROM")
 
+    def _on_reset_all(self):
+        """Reset all slots to defaults"""
+        if not self.dks_protocol:
+            return
+
+        reply = QMessageBox.question(
+            self, "Confirm Reset",
+            "Reset ALL DKS slots to default configuration? This cannot be undone!",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            if self.dks_protocol.reset_all_slots():
+                QMessageBox.information(self, "Success", "All slots reset to defaults")
+                self._on_load()
+            else:
+                QMessageBox.warning(self, "Error", "Failed to reset slots")
+
+    def _on_load_eeprom(self):
+        """Load all slots from EEPROM"""
+        if not self.dks_protocol:
+            return
+
+        if self.dks_protocol.load_from_eeprom():
+            QMessageBox.information(self, "Success", "DKS configurations loaded from EEPROM")
+            self._on_load()
+        else:
+            QMessageBox.warning(self, "Error", "Failed to load from EEPROM")
+
 
 class DKSSettingsTab(BasicEditor):
     """Main DKS settings editor tab with filtered slots"""
@@ -1365,21 +1411,6 @@ class DKSSettingsTab(BasicEditor):
         # Connect tab changes for lazy loading
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
-        # Bottom action buttons
-        button_layout = QHBoxLayout()
-
-        self.reset_all_btn = QPushButton("Reset All Slots")
-        self.reset_all_btn.clicked.connect(self._on_reset_all)
-        button_layout.addWidget(self.reset_all_btn)
-
-        button_layout.addStretch()
-
-        self.load_eeprom_btn = QPushButton("Load All from EEPROM")
-        self.load_eeprom_btn.clicked.connect(self._on_load_eeprom)
-        button_layout.addWidget(self.load_eeprom_btn)
-
-        self.addLayout(button_layout)
-
         # Add TabbedKeycodes at the bottom like in GamingConfigurator
         # Use custom version without LayerTab to prevent overlay issue
         self.tabbed_keycodes = TabbedKeycodesNoLayers()
@@ -1404,39 +1435,6 @@ class DKSSettingsTab(BasicEditor):
             if self.dks_protocol and index not in self.loaded_slots:
                 self.dks_entries[index]._on_load()
                 self.loaded_slots.add(index)
-
-    def _on_reset_all(self):
-        """Reset all slots to defaults"""
-        if not self.dks_protocol:
-            return
-
-        reply = QMessageBox.question(
-            None, "Confirm Reset",
-            "Reset ALL DKS slots to default configuration? This cannot be undone!",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            if self.dks_protocol.reset_all_slots():
-                QMessageBox.information(None, "Success", "All slots reset to defaults")
-                # Reload current tab
-                current_idx = self.tabs.currentIndex()
-                self.dks_entries[current_idx]._on_load()
-            else:
-                QMessageBox.warning(None, "Error", "Failed to reset slots")
-
-    def _on_load_eeprom(self):
-        """Load all slots from EEPROM"""
-        if not self.dks_protocol:
-            return
-
-        if self.dks_protocol.load_from_eeprom():
-            QMessageBox.information(None, "Success", "DKS configurations loaded from EEPROM")
-            # Reload current tab
-            current_idx = self.tabs.currentIndex()
-            self.dks_entries[current_idx]._on_load()
-        else:
-            QMessageBox.warning(None, "Error", "Failed to load from EEPROM")
 
     def rebuild(self, device):
         """Rebuild the editor when device changes"""
