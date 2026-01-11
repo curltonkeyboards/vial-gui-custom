@@ -1066,22 +1066,33 @@ class DKSVisualWidget(QWidget):
         press_container.setLayout(press_layout)
         self.main_layout.addWidget(press_container)
 
-        # Middle: Keyswitch diagram + Vertical travel bar
-        middle_container = QWidget()
-        middle_container.setMinimumWidth(800)  # Wide enough for all labels without cutoff
-        middle_layout = QHBoxLayout()
-        middle_layout.setContentsMargins(0, 0, 0, 0)
-        middle_layout.setSpacing(0)  # No spacing between diagram and bar
+        # Middle: Visualization container (matching trigger settings exactly)
+        viz_container = QFrame()
+        viz_container.setFrameShape(QFrame.StyledPanel)
+        viz_container.setStyleSheet("QFrame { background-color: palette(base); }")
+        viz_container.setMaximumHeight(325)
+        viz_container.setMaximumWidth(580)
+        viz_layout = QVBoxLayout()
+        viz_layout.setContentsMargins(0, 10, 0, 10)
+        viz_layout.setSpacing(0)
+
+        # Horizontal layout for diagram and travel bar
+        viz_h_layout = QHBoxLayout()
+        viz_h_layout.setSpacing(0)
+        viz_h_layout.setContentsMargins(0, 0, 0, 0)
 
         # Add keyswitch diagram
         self.keyswitch_diagram = KeyswitchDiagramWidget()
-        middle_layout.addWidget(self.keyswitch_diagram)
+        viz_h_layout.addWidget(self.keyswitch_diagram)
 
         # Add vertical travel bar
-        middle_layout.addWidget(self.create_vertical_travel_bar())
+        viz_h_layout.addWidget(self.create_vertical_travel_bar())
 
-        middle_container.setLayout(middle_layout)
-        self.main_layout.addWidget(middle_container)
+        viz_layout.addLayout(viz_h_layout)
+        viz_layout.addStretch()
+
+        viz_container.setLayout(viz_layout)
+        self.main_layout.addWidget(viz_container)
 
         # Right section: Release actions (vertical stack)
         release_container = QWidget()
