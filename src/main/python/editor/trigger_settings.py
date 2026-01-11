@@ -1040,8 +1040,9 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Get the keycode for this key from the keymap for the layer being updated
+                        # Use 'layer' not 'current_layer' to check each layer's keymap independently
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -1119,8 +1120,9 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Get the keycode for this key from the keymap for the layer being updated
+                        # Use 'layer' not 'current_layer' to check each layer's keymap independently
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -1806,35 +1808,45 @@ class TriggerSettingsTab(BasicEditor):
         if not self.valid() or not self.keyboard:
             return
 
-        # Get current layer actuation values
-        layer = self.current_layer if self.per_layer_enabled else 0
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
-        normal_actuation = data_source[layer]['normal']
-        midi_actuation = data_source[layer]['midi']
 
-        # Scan all keys in the current keymap and assign actuation values
-        for key in self.container.widgets:
-            if key.desc.row is not None:
-                row, col = key.desc.row, key.desc.col
-                key_index = row * 14 + col
+        # Determine which layers to update
+        if self.per_layer_enabled:
+            layers_to_update = [self.current_layer]
+        else:
+            # When per-layer is disabled, update all layers but use each layer's keymap
+            layers_to_update = list(range(12))
 
-                if key_index < 70:
-                    # Get the keycode for this key from the keymap
-                    keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+        # Scan all keys and assign actuation values based on each layer's keymap
+        for layer in layers_to_update:
+            # Get actuation values for this layer (same for all layers when per-layer disabled)
+            layer_for_values = layer if self.per_layer_enabled else 0
+            normal_actuation = data_source[layer_for_values]['normal']
+            midi_actuation = data_source[layer_for_values]['midi']
 
-                    # Determine actuation value based on whether it's a MIDI key
-                    if self.is_midi_keycode(keycode):
-                        actuation_value = midi_actuation
-                    else:
-                        actuation_value = normal_actuation
+            for key in self.container.widgets:
+                if key.desc.row is not None:
+                    row, col = key.desc.row, key.desc.col
+                    key_index = row * 14 + col
 
-                    # Update per-key value in memory
-                    self.per_key_values[layer][key_index]['actuation'] = actuation_value
+                    if key_index < 70:
+                        # Get the keycode for this key from the layer's keymap
+                        # Use 'layer' to check each layer's keymap independently
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                        # Determine actuation value based on whether it's a MIDI key
+                        if self.is_midi_keycode(keycode):
+                            actuation_value = midi_actuation
+                        else:
+                            actuation_value = normal_actuation
+
+                        # Update per-key value in memory
+                        self.per_key_values[layer][key_index]['actuation'] = actuation_value
+
+                        # Send to device
+                        if self.device and isinstance(self.device, VialKeyboard):
+                            settings = self.per_key_values[layer][key_index]
+                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
     def on_enable_changed(self, state):
         """Handle enable checkbox toggle"""
