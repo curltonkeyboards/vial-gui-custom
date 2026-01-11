@@ -340,8 +340,9 @@ class KeyswitchDiagramWidget(QWidget):
 class VerticalTravelBarWidget(QWidget):
     """Vertical representation of key travel with actuation points"""
 
-    def __init__(self):
+    def __init__(self, dks_mode=False):
         super().__init__()
+        self.dks_mode = dks_mode  # DKS mode uses different labels and positioning
         self.setMinimumWidth(400)  # Wide enough for all labels without cutoff
         self.setMinimumHeight(250)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -392,7 +393,8 @@ class VerticalTravelBarWidget(QWidget):
         margin_bottom = 20
         bar_width = 30
         # Center the bar with room for labels on both sides
-        bar_x = 120
+        # In DKS mode, move 130 pixels closer to the cross-section image
+        bar_x = -10 if self.dks_mode else 120
 
         # Draw travel bar background (vertical) - use theme colors
         bar_bg = palette.color(QPalette.AlternateBase)
@@ -684,22 +686,35 @@ class VerticalTravelBarWidget(QWidget):
             font = QFont()
             font.setPointSize(9)
 
-            # Draw press actuation points (theme press color, left side)
-            # These represent Normal and MIDI actuation points
-            actuation_labels = ["Normal Actuation", "MIDI Actuation"]
+            # Draw press actuation points (theme press color)
+            # In DKS mode: use "Press X" labels on right side
+            # In normal mode: use "Normal Actuation"/"MIDI Actuation" labels on left side
+            if self.dks_mode:
+                actuation_labels = [f"Press {i+1}" for i in range(len(self.press_actuations))]
+            else:
+                actuation_labels = ["Normal Actuation", "MIDI Actuation"]
             for idx, (actuation, enabled) in enumerate(self.press_actuations):
                 if not enabled:
                     continue
 
                 y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
 
-                # Draw line to left
-                painter.setPen(QPen(press_color, 3))  # Theme press color
-                painter.drawLine(bar_x - 20, y, bar_x, y)
+                if self.dks_mode:
+                    # DKS mode: draw line and circle on right side
+                    painter.setPen(QPen(press_color, 3))  # Theme press color
+                    painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
 
-                # Draw circle on left
-                painter.setBrush(press_color)
-                painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
+                    # Draw circle on right
+                    painter.setBrush(press_color)
+                    painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
+                else:
+                    # Normal mode: draw line to left
+                    painter.setPen(QPen(press_color, 3))  # Theme press color
+                    painter.drawLine(bar_x - 20, y, bar_x, y)
+
+                    # Draw circle on left
+                    painter.setBrush(press_color)
+                    painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
                 # Draw identifier and mm value with button-like styling
                 mm_value = (actuation / 100.0) * 2.5
@@ -717,7 +732,13 @@ class VerticalTravelBarWidget(QWidget):
                 id_text = actuation_labels[idx] if idx < len(actuation_labels) else "Actuation"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
-                label_x = bar_x - id_width - 15
+
+                if self.dks_mode:
+                    # DKS mode: labels on right side
+                    label_x = bar_x + bar_width + 15
+                else:
+                    # Normal mode: labels on left side
+                    label_x = bar_x - id_width - 15
                 id_y = y - id_height - 10
 
                 # Button-like background with highlight color
@@ -741,7 +762,12 @@ class VerticalTravelBarWidget(QWidget):
                 mm_text = f"{mm_value:.2f}mm"
                 mm_width = fm.width(mm_text)
                 mm_height = fm.height()
-                mm_x = bar_x - mm_width - 12
+                if self.dks_mode:
+                    # DKS mode: mm value on right side
+                    mm_x = bar_x + bar_width + 15
+                else:
+                    # Normal mode: mm value on left side
+                    mm_x = bar_x - mm_width - 12
                 mm_y = y + 6
 
                 painter.setPen(QPen(button_border, 1))
@@ -752,7 +778,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawText(mm_x, mm_y, mm_text)
 
             # Draw release actuation points (theme release color, right side)
-            for actuation, enabled in self.release_actuations:
+            for idx, (actuation, enabled) in enumerate(self.release_actuations):
                 if not enabled:
                     continue
 
@@ -784,7 +810,12 @@ class VerticalTravelBarWidget(QWidget):
                 button_border = palette.color(QPalette.Light)
 
                 # Draw identifier label (button-like)
-                id_text = "Release Point"
+                # In DKS mode: use "Release X" labels
+                # In normal mode: use "Release Point" label
+                if self.dks_mode:
+                    id_text = f"Release {idx + 1}"
+                else:
+                    id_text = "Release Point"
                 id_width = fm.width(id_text)
                 id_height = fm.height()
                 id_y = y - id_height - 10
@@ -1113,8 +1144,8 @@ class DKSVisualWidget(QWidget):
         self.main_layout.addWidget(release_container)
 
     def create_vertical_travel_bar(self):
-        """Create a vertical travel bar indicator"""
-        self.vertical_travel_bar = VerticalTravelBarWidget()
+        """Create a vertical travel bar indicator for DKS mode"""
+        self.vertical_travel_bar = VerticalTravelBarWidget(dks_mode=True)
         return self.vertical_travel_bar
 
     def update_travel_bar(self, press_points, release_points):
