@@ -864,7 +864,7 @@ class DKSActionEditor(QWidget):
             key_container.addWidget(action_label)
 
             self.key_widget = DKSKeyWidget()
-            self.key_widget.setFixedSize(60, 50)
+            self.key_widget.setFixedSize(60, 54)
             self.key_widget.changed.connect(self._on_changed)
             self.key_widget.selected.connect(self._on_key_selected)
             key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
@@ -931,7 +931,7 @@ class DKSActionEditor(QWidget):
             key_container.addWidget(action_label)
 
             self.key_widget = DKSKeyWidget()
-            self.key_widget.setFixedSize(60, 50)
+            self.key_widget.setFixedSize(60, 54)
             self.key_widget.changed.connect(self._on_changed)
             self.key_widget.selected.connect(self._on_key_selected)
             key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)

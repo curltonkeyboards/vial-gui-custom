@@ -15,7 +15,7 @@ class KeyWidget(KeyboardWidget):
     def __init__(self, keycode_filter=None):
         super().__init__(None)
 
-        self.padding = 1
+        self.padding = 2
 
         self.keycode = "KC_NO"
         self.set_keycode_filter(keycode_filter)
