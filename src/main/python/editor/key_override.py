@@ -199,29 +199,44 @@ class KeyOverrideEntryUI(QObject):
         self.w2 = make_scrollable(l)
 
     def populate_container(self):
-        self.container.addWidget(QLabel("Enable"), 0, 0)
-        self.container.addWidget(self.enable_chk, 0, 1)
+        # Title
+        title_label = QLabel(tr("KeyOverride", "Key Overrides"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.container.addWidget(title_label, 0, 0, 1, 2)
 
-        self.container.addWidget(QLabel("Enable on layers"), 1, 0)
-        self.container.addWidget(self.layers, 1, 1)
+        # Description
+        desc_label = QLabel(tr("KeyOverride",
+            "Remap keys based on modifier combinations. Override the output of a key\n"
+            "when specific modifiers are held, allowing context-sensitive key behavior."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.container.addWidget(desc_label, 1, 0, 1, 2)
 
-        self.container.addWidget(QLabel("Trigger"), 2, 0)
-        self.container.addWidget(self.trigger_key, 2, 1)
+        self.container.addWidget(QLabel("Enable"), 2, 0)
+        self.container.addWidget(self.enable_chk, 2, 1)
 
-        self.container.addWidget(QLabel("Trigger mods"), 3, 0)
-        self.container.addWidget(self.trigger_mods, 3, 1)
+        self.container.addWidget(QLabel("Enable on layers"), 3, 0)
+        self.container.addWidget(self.layers, 3, 1)
 
-        self.container.addWidget(QLabel("Negative mods"), 4, 0)
-        self.container.addWidget(self.negative_mods, 4, 1)
+        self.container.addWidget(QLabel("Trigger"), 4, 0)
+        self.container.addWidget(self.trigger_key, 4, 1)
 
-        self.container.addWidget(QLabel("Suppressed mods"), 5, 0)
-        self.container.addWidget(self.suppressed_mods, 5, 1)
+        self.container.addWidget(QLabel("Trigger mods"), 5, 0)
+        self.container.addWidget(self.trigger_mods, 5, 1)
 
-        self.container.addWidget(QLabel("Replacement"), 6, 0)
-        self.container.addWidget(self.key_replacement, 6, 1)
+        self.container.addWidget(QLabel("Negative mods"), 6, 0)
+        self.container.addWidget(self.negative_mods, 6, 1)
 
-        self.container.addWidget(QLabel("Options"), 7, 0)
-        self.container.addWidget(self.options, 7, 1)
+        self.container.addWidget(QLabel("Suppressed mods"), 7, 0)
+        self.container.addWidget(self.suppressed_mods, 7, 1)
+
+        self.container.addWidget(QLabel("Replacement"), 8, 0)
+        self.container.addWidget(self.key_replacement, 8, 1)
+
+        self.container.addWidget(QLabel("Options"), 9, 0)
+        self.container.addWidget(self.options, 9, 1)
 
     def widget(self):
         return self.w2
@@ -263,21 +278,6 @@ class KeyOverride(BasicEditor):
     def __init__(self):
         super().__init__()
         self.keyboard = None
-
-        # Title
-        title_label = QLabel(tr("KeyOverride", "Key Overrides"))
-        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-        title_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.addWidget(title_label)
-
-        # Description
-        desc_label = QLabel(tr("KeyOverride",
-            "Remap keys based on modifier combinations. Override the output of a key when specific\n"
-            "modifiers are held, allowing context-sensitive key behavior."))
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-        desc_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.addWidget(desc_label)
 
         self.key_override_entries = []
         self.key_override_entries_available = []
