@@ -2008,78 +2008,35 @@ class Arpeggiator(BasicEditor):
         self.setup_ui()
 
     def setup_ui(self):
-        """Build the UI"""
+        """Build the UI with top tabs for presets and side tabs for Basic/Advanced"""
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(0)
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(8, 8, 8, 8)
 
-        # === Status ===
-        self.lbl_status = QLabel("Ready. Select a preset to begin.")
-        # Use theme-based info color
-        palette_status = self.lbl_status.palette()
-        info_color = palette_status.color(QPalette.Highlight)
-        self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
-        # === Header Section ===
-        header_layout = QHBoxLayout()
+        # === Top Preset Tabs (User Arp 1-20) ===
+        self.preset_tabs = QTabWidget()
 
-        # Preset selector
-        preset_group = QGroupBox("Preset")
-        preset_layout = QGridLayout()
+        # Create 20 user preset tabs (presets 48-67 for arpeggiator)
+        self.entry_widgets = []
+        for i in range(20):
+            preset_id = 48 + i  # User Arp presets start at 48
+            entry = self._create_preset_entry(i, preset_id)
+            self.entry_widgets.append(entry)
+            self.preset_tabs.addTab(entry['widget'], f"User Arp {i + 1}")
 
-        # === Sequencer Section with Tabs ===
-        sequencer_group = QGroupBox("Arpeggiator")
+        self.preset_tabs.currentChanged.connect(self.on_preset_tab_changed)
+        main_layout.addWidget(self.preset_tabs, 1)
 
-        # Create tab widget for Basic and Advanced views
-        self.tabs = QTabWidget()
-
-        # === BASIC TAB ===
-        self.basic_grid = BasicArpeggiatorGrid()
-        self.basic_grid.dataChanged.connect(self.on_basic_grid_changed)
-        self.tabs.addTab(self.basic_grid, "Basic")
-
-        # === ADVANCED TAB ===
-        advanced_tab = QWidget()
-        advanced_layout = QVBoxLayout()
-        advanced_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create scrollable area for steps (Advanced UI)
-        self.step_scroll = QScrollArea()
-        self.step_scroll.setWidgetResizable(True)
-        self.step_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.step_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.step_scroll.setMinimumHeight(300)
-
-        self.step_container = QWidget()
-        self.step_layout = QHBoxLayout()
-        self.step_layout.setSpacing(2)
-        self.step_layout.setDirection(QHBoxLayout.LeftToRight)  # Ensure left-to-right
-        self.step_container.setLayout(self.step_layout)
-        self.step_scroll.setWidget(self.step_container)
-
-        advanced_layout.addWidget(self.step_scroll)
-        advanced_tab.setLayout(advanced_layout)
-        self.tabs.addTab(advanced_tab, "Advanced")
-
-        # Connect tab change to sync data
-        self.tabs.currentChanged.connect(self.on_tab_changed)
-
-        sequencer_layout = QVBoxLayout()
-        sequencer_layout.addWidget(self.tabs)
-        sequencer_group.setLayout(sequencer_layout)
-
-        main_layout.addWidget(sequencer_group, 1)
-
-        # === Bottom Section: Two containers side by side ===
+        # === Bottom Section: Parameters and Actions ===
         bottom_layout = QHBoxLayout()
-
-        # Add left spacer to push containers closer together
         bottom_layout.addStretch(1)
 
-        # Left Container: Preset Parameters (no title)
+        # Left Container: Preset Parameters
         params_group = QGroupBox()
         params_group.setMaximumWidth(500)
         params_layout = QGridLayout()
 
-        # Arpeggiator Mode (moved from separate section)
+        # Arpeggiator Mode
         lbl_mode = QLabel("Arpeggiator Mode:")
         self.combo_mode = ArrowComboBox()
         self.combo_mode.setMinimumWidth(150)
@@ -2094,7 +2051,7 @@ class Arpeggiator(BasicEditor):
         params_layout.addWidget(lbl_mode, 0, 0)
         params_layout.addWidget(self.combo_mode, 0, 1)
 
-        # Pattern Rate (now a dropdown with timing modes)
+        # Pattern Rate
         lbl_pattern_rate = QLabel("Pattern Rate:")
         self.combo_pattern_rate = ArrowComboBox()
         self.combo_pattern_rate.setMinimumWidth(150)
@@ -2102,19 +2059,16 @@ class Arpeggiator(BasicEditor):
         self.combo_pattern_rate.setEditable(True)
         self.combo_pattern_rate.lineEdit().setReadOnly(True)
         self.combo_pattern_rate.lineEdit().setAlignment(Qt.AlignCenter)
-        # Data format: (note_value * 3) + timing_mode
-        # note_value: 0=quarter, 1=eighth, 2=sixteenth
-        # timing_mode: 0=straight, 1=triplet, 2=dotted
-        self.combo_pattern_rate.addItem("1/4", 0)       # Quarter Straight
-        self.combo_pattern_rate.addItem("1/4T", 1)      # Quarter Triplet
-        self.combo_pattern_rate.addItem("1/4.", 2)      # Quarter Dotted
-        self.combo_pattern_rate.addItem("1/8", 3)       # Eighth Straight
-        self.combo_pattern_rate.addItem("1/8T", 4)      # Eighth Triplet
-        self.combo_pattern_rate.addItem("1/8.", 5)      # Eighth Dotted
-        self.combo_pattern_rate.addItem("1/16", 6)      # Sixteenth Straight
-        self.combo_pattern_rate.addItem("1/16T", 7)     # Sixteenth Triplet
-        self.combo_pattern_rate.addItem("1/16.", 8)     # Sixteenth Dotted
-        self.combo_pattern_rate.setCurrentIndex(6)  # Default to 1/16 straight
+        self.combo_pattern_rate.addItem("1/4", 0)
+        self.combo_pattern_rate.addItem("1/4T", 1)
+        self.combo_pattern_rate.addItem("1/4.", 2)
+        self.combo_pattern_rate.addItem("1/8", 3)
+        self.combo_pattern_rate.addItem("1/8T", 4)
+        self.combo_pattern_rate.addItem("1/8.", 5)
+        self.combo_pattern_rate.addItem("1/16", 6)
+        self.combo_pattern_rate.addItem("1/16T", 7)
+        self.combo_pattern_rate.addItem("1/16.", 8)
+        self.combo_pattern_rate.setCurrentIndex(6)
         self.combo_pattern_rate.setToolTip("Note subdivision and timing mode (T=triplet, .=dotted)")
         self.combo_pattern_rate.currentIndexChanged.connect(self.on_pattern_rate_changed)
         params_layout.addWidget(lbl_pattern_rate, 1, 0)
@@ -2124,14 +2078,14 @@ class Arpeggiator(BasicEditor):
         lbl_num_steps = QLabel("Number of Steps:")
         self.spin_num_steps = QSpinBox()
         self.spin_num_steps.setRange(1, 128)
-        self.spin_num_steps.setValue(8)  # Default 8 for arpeggiator
+        self.spin_num_steps.setValue(8)
         self.spin_num_steps.setButtonSymbols(QSpinBox.UpDownArrows)
         self.spin_num_steps.setToolTip("Number of steps in the pattern")
         self.spin_num_steps.valueChanged.connect(self.on_num_steps_changed)
         params_layout.addWidget(lbl_num_steps, 2, 0)
         params_layout.addWidget(self.spin_num_steps, 2, 1)
 
-        # Pattern rhythm (auto-calculated, read-only display)
+        # Pattern rhythm
         lbl_rhythm = QLabel("Pattern Rhythm:")
         self.lbl_pattern_length = QLabel("4/16")
         self.lbl_pattern_length.setToolTip("Total pattern rhythm (auto-calculated from steps/rate)")
@@ -2163,32 +2117,12 @@ class Arpeggiator(BasicEditor):
         params_group.setLayout(params_layout)
         bottom_layout.addWidget(params_group)
 
-        # Right Container: Preset Selection (no title)
-        preset_group = QGroupBox()
-        preset_group.setMaximumWidth(500)
-        preset_layout = QGridLayout()
+        # Right Container: Actions
+        actions_group = QGroupBox()
+        actions_group.setMaximumWidth(500)
+        actions_layout = QGridLayout()
 
-        lbl_preset = QLabel("Select Preset:")
-        self.combo_preset = ArrowComboBox()
-        self.combo_preset.setMinimumWidth(150)
-        self.combo_preset.setMaximumHeight(30)
-        self.combo_preset.setEditable(True)
-        self.combo_preset.lineEdit().setReadOnly(True)
-        self.combo_preset.lineEdit().setAlignment(Qt.AlignCenter)
-        # Arpeggiator presets: 0-67 (48 factory + 20 user)
-        # Factory presets: 0-47, User presets: 48-67
-        for i in range(68):
-            if i < 48:
-                self.combo_preset.addItem(f"Factory Arp {i + 1}", i)
-            else:
-                self.combo_preset.addItem(f"User Arp {i - 47}", i)
-        self.combo_preset.currentIndexChanged.connect(self.on_preset_changed)
-
-        preset_layout.addWidget(lbl_preset, 0, 0)
-        preset_layout.addWidget(self.combo_preset, 0, 1, 1, 2)
-
-        # Preset buttons - 30px tall
-        button_style = "QPushButton { min-height: 30px; max-height: 30px; }"
+        button_style = "QPushButton { min-height: 30px; max-height: 30px; border-radius: 5px; }"
 
         self.btn_load = QPushButton("Load from Device")
         self.btn_load.setStyleSheet(button_style)
@@ -2197,10 +2131,10 @@ class Arpeggiator(BasicEditor):
         self.btn_save.setStyleSheet(button_style)
         self.btn_save.clicked.connect(self.save_preset)
 
-        preset_layout.addWidget(self.btn_load, 1, 0, 1, 3)
-        preset_layout.addWidget(self.btn_save, 2, 0, 1, 3)
+        actions_layout.addWidget(self.btn_load, 0, 0, 1, 2)
+        actions_layout.addWidget(self.btn_save, 1, 0, 1, 2)
 
-        # Copy and Paste buttons - same size
+        # Copy and Paste buttons
         copy_paste_layout = QHBoxLayout()
         copy_paste_layout.setSpacing(5)
 
@@ -2213,48 +2147,145 @@ class Arpeggiator(BasicEditor):
 
         copy_paste_layout.addWidget(self.btn_copy)
         copy_paste_layout.addWidget(self.btn_paste)
+        actions_layout.addLayout(copy_paste_layout, 2, 0, 1, 2)
 
-        preset_layout.addLayout(copy_paste_layout, 3, 0, 1, 3)
-
-        # Reset All Steps button (replacing Clear All Steps)
+        # Reset All Steps button
         self.btn_reset_all = QPushButton("Reset All Steps")
         self.btn_reset_all.setStyleSheet(button_style)
         self.btn_reset_all.clicked.connect(self.reset_all_steps)
-        preset_layout.addWidget(self.btn_reset_all, 4, 0, 1, 3)
+        actions_layout.addWidget(self.btn_reset_all, 3, 0, 1, 2)
 
-        preset_group.setLayout(preset_layout)
-        bottom_layout.addWidget(preset_group)
+        actions_group.setLayout(actions_layout)
+        bottom_layout.addWidget(actions_group)
 
-        # Add right spacer to push containers closer together
         bottom_layout.addStretch(1)
-
         main_layout.addLayout(bottom_layout)
 
-        # Build initial steps
-        self.rebuild_steps()
-
-        # === Quick Actions ===
-        actions_layout = QHBoxLayout()
-
-        main_layout.addLayout(actions_layout)
-
+        # Status label
+        self.lbl_status = QLabel("Ready. Select a preset tab to begin.")
+        palette_status = self.lbl_status.palette()
+        info_color = palette_status.color(QPalette.Highlight)
+        self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
 
         self.addLayout(main_layout)
 
-        # Initialize default velocity in basic grid from preset container
-        if hasattr(self, 'basic_grid') and hasattr(self, 'spin_default_velocity'):
+        # Initialize with first preset
+        self._setup_current_preset_entry()
+        self.rebuild_steps()
+        self.update_pattern_length_display()
+
+    def _create_preset_entry(self, index, preset_id):
+        """Create a preset entry widget with top tabs for Basic/Advanced"""
+        # Main container widget
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Header with title
+        header_layout = QHBoxLayout()
+        title_label = QLabel(f"<b>User Arp {index + 1}</b>")
+        title_label.setStyleSheet("font-size: 14pt;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+
+        # Description
+        desc = QLabel("Configure arpeggiator pattern with intervals relative to the played notes.\n"
+                      "Click cells to toggle notes on/off. Right-click for velocity and octave settings.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: gray; font-size: 9pt;")
+        layout.addWidget(desc)
+
+        # Top tabs for Basic/Advanced
+        side_tabs = QTabWidget()
+
+        # Basic tab with grid
+        basic_grid = BasicArpeggiatorGrid()
+        side_tabs.addTab(basic_grid, "Basic")
+
+        # Advanced tab with step widgets
+        advanced_tab = QWidget()
+        advanced_layout = QVBoxLayout()
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+
+        step_scroll = QScrollArea()
+        step_scroll.setWidgetResizable(True)
+        step_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        step_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        step_scroll.setMinimumHeight(300)
+
+        step_container = QWidget()
+        step_layout = QHBoxLayout()
+        step_layout.setSpacing(2)
+        step_layout.setDirection(QHBoxLayout.LeftToRight)
+        step_container.setLayout(step_layout)
+        step_scroll.setWidget(step_container)
+
+        advanced_layout.addWidget(step_scroll)
+        advanced_tab.setLayout(advanced_layout)
+        side_tabs.addTab(advanced_tab, "Advanced")
+
+        layout.addWidget(side_tabs, 1)
+        container.setLayout(layout)
+
+        return {
+            'widget': container,
+            'title_label': title_label,
+            'basic_grid': basic_grid,
+            'side_tabs': side_tabs,
+            'step_scroll': step_scroll,
+            'step_container': step_container,
+            'step_layout': step_layout,
+            'preset_id': preset_id,
+            'step_widgets': []
+        }
+
+    def _setup_current_preset_entry(self):
+        """Setup references to current preset entry's components"""
+        current_idx = self.preset_tabs.currentIndex()
+        if current_idx < 0 or current_idx >= len(self.entry_widgets):
+            return
+
+        entry = self.entry_widgets[current_idx]
+        self.basic_grid = entry['basic_grid']
+        self.basic_grid.dataChanged.connect(self.on_basic_grid_changed)
+        self.step_layout = entry['step_layout']
+        self.step_widgets = entry['step_widgets']
+        self.tabs = entry['side_tabs']
+        self.tabs.currentChanged.connect(self.on_tab_changed)
+        self.current_preset_id = entry['preset_id']
+
+        # Initialize basic grid settings
+        if hasattr(self, 'spin_default_velocity'):
             self.basic_grid.default_velocity = self.spin_default_velocity.value() * 2
 
-        # Set default tab to Basic (index 0)
-        self.tabs.setCurrentIndex(0)
+    def on_preset_tab_changed(self, index):
+        """Handle preset tab change"""
+        if index < 0 or index >= len(self.entry_widgets):
+            return
 
-        # Initialize step count from spin box to ensure basic grid is in sync
-        initial_steps = self.spin_num_steps.value()
-        self.basic_grid.on_steps_changed(initial_steps)
+        # Disconnect old signals
+        if hasattr(self, 'basic_grid') and self.basic_grid:
+            try:
+                self.basic_grid.dataChanged.disconnect(self.on_basic_grid_changed)
+            except:
+                pass
+        if hasattr(self, 'tabs') and self.tabs:
+            try:
+                self.tabs.currentChanged.disconnect(self.on_tab_changed)
+            except:
+                pass
 
-        # Initialize preset_data with current grid state (empty but with correct step count)
-        self.on_basic_grid_changed()
+        # Setup new preset entry
+        self._setup_current_preset_entry()
+
+        # Rebuild steps for this entry
+        self.rebuild_steps()
+
+        # Update status
+        self.update_status(f"User Arp {index + 1} selected")
 
     def rebuild_steps(self):
         """Rebuild step widgets based on step count - preserve existing data"""
@@ -2944,49 +2975,250 @@ class StepSequencer(Arpeggiator):
         self.setup_ui()
 
     def setup_ui(self):
-        """Build the UI - override to use step sequencer grid and customize preset selector"""
-        # Call parent setup_ui first
-        super().setup_ui()
+        """Build the UI with top tabs for User Seq 1-20 and side tabs for Basic/Advanced"""
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(8, 8, 8, 8)
 
-        # Set default steps to 16 for step sequencer
-        self.spin_num_steps.setValue(16)
+        # === Top Preset Tabs (User Seq 1-20) ===
+        self.preset_tabs = QTabWidget()
 
-        # Replace the arpeggiator grid with step sequencer grid
-        self.tabs.removeTab(0)  # Remove the Basic tab (arpeggiator grid)
+        # Create 20 user preset tabs (presets 116-135 for step sequencer)
+        self.entry_widgets = []
+        for i in range(20):
+            preset_id = 116 + i  # User Seq presets start at 116
+            entry = self._create_preset_entry(i, preset_id)
+            self.entry_widgets.append(entry)
+            self.preset_tabs.addTab(entry['widget'], f"User Seq {i + 1}")
 
-        # Create step sequencer grid
-        self.basic_grid = BasicStepSequencerGrid()
-        self.basic_grid.dataChanged.connect(self.on_basic_grid_changed)
-        self.tabs.insertTab(0, self.basic_grid, "Basic")
+        self.preset_tabs.currentChanged.connect(self.on_preset_tab_changed)
+        main_layout.addWidget(self.preset_tabs, 1)
 
-        # Sync the default rows from Basic grid to preset_data
-        # This prevents them from being cleared when setCurrentIndex triggers on_tab_changed
-        rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
-        grid_data = self.basic_grid.get_grid_data(rate_16ths)
-        self.preset_data['steps'] = grid_data
-        self.preset_data['note_count'] = len(grid_data)
+        # === Bottom Section: Parameters and Actions ===
+        bottom_layout = QHBoxLayout()
+        bottom_layout.addStretch(1)
 
-        # Update group box title
-        sequencer_group = self.findChild(QGroupBox, "")
-        for child in self.findChildren(QGroupBox):
-            if child.title() == "Arpeggiator":
-                child.setTitle("Step Sequencer")
-                break
+        # Left Container: Preset Parameters
+        params_group = QGroupBox()
+        params_group.setMaximumWidth(500)
+        params_layout = QGridLayout()
 
-        # Update preset selector for step sequencer range (68-135)
-        # Factory presets: 68-115 (48 slots), User presets: 116-135 (20 slots)
-        self.combo_preset.clear()
-        for i in range(68, 136):
-            if i < 116:
-                self.combo_preset.addItem(f"Factory Seq {i - 67}", i)
-            else:
-                self.combo_preset.addItem(f"User Seq {i - 115}", i)
+        # Pattern Rate
+        lbl_pattern_rate = QLabel("Pattern Rate:")
+        self.combo_pattern_rate = ArrowComboBox()
+        self.combo_pattern_rate.setMinimumWidth(150)
+        self.combo_pattern_rate.setMaximumHeight(30)
+        self.combo_pattern_rate.setEditable(True)
+        self.combo_pattern_rate.lineEdit().setReadOnly(True)
+        self.combo_pattern_rate.lineEdit().setAlignment(Qt.AlignCenter)
+        self.combo_pattern_rate.addItem("1/4", 0)
+        self.combo_pattern_rate.addItem("1/4T", 1)
+        self.combo_pattern_rate.addItem("1/4.", 2)
+        self.combo_pattern_rate.addItem("1/8", 3)
+        self.combo_pattern_rate.addItem("1/8T", 4)
+        self.combo_pattern_rate.addItem("1/8.", 5)
+        self.combo_pattern_rate.addItem("1/16", 6)
+        self.combo_pattern_rate.addItem("1/16T", 7)
+        self.combo_pattern_rate.addItem("1/16.", 8)
+        self.combo_pattern_rate.setCurrentIndex(6)
+        self.combo_pattern_rate.setToolTip("Note subdivision and timing mode (T=triplet, .=dotted)")
+        self.combo_pattern_rate.currentIndexChanged.connect(self.on_pattern_rate_changed)
+        params_layout.addWidget(lbl_pattern_rate, 0, 0)
+        params_layout.addWidget(self.combo_pattern_rate, 0, 1)
 
-        # Set default to first step sequencer preset
-        self.combo_preset.setCurrentIndex(0)
+        # Number of steps
+        lbl_num_steps = QLabel("Number of Steps:")
+        self.spin_num_steps = QSpinBox()
+        self.spin_num_steps.setRange(1, 128)
+        self.spin_num_steps.setValue(16)  # Default 16 for step sequencer
+        self.spin_num_steps.setButtonSymbols(QSpinBox.UpDownArrows)
+        self.spin_num_steps.setToolTip("Number of steps in the pattern")
+        self.spin_num_steps.valueChanged.connect(self.on_num_steps_changed)
+        params_layout.addWidget(lbl_num_steps, 1, 0)
+        params_layout.addWidget(self.spin_num_steps, 1, 1)
 
-        # Set default tab to Basic (index 0)
-        self.tabs.setCurrentIndex(0)
+        # Pattern rhythm
+        lbl_rhythm = QLabel("Pattern Rhythm:")
+        self.lbl_pattern_length = QLabel("16/16")
+        self.lbl_pattern_length.setToolTip("Total pattern rhythm (auto-calculated from steps/rate)")
+        params_layout.addWidget(lbl_rhythm, 2, 0)
+        params_layout.addWidget(self.lbl_pattern_length, 2, 1)
+
+        # Gate length
+        lbl_gate = QLabel("Gate Length:")
+        self.spin_gate = QSpinBox()
+        self.spin_gate.setRange(10, 100)
+        self.spin_gate.setValue(80)
+        self.spin_gate.setSuffix("%")
+        self.spin_gate.setButtonSymbols(QSpinBox.UpDownArrows)
+        self.spin_gate.setToolTip("Note gate length percentage")
+        params_layout.addWidget(lbl_gate, 3, 0)
+        params_layout.addWidget(self.spin_gate, 3, 1)
+
+        # Default velocity
+        lbl_default_velocity = QLabel("Default Velocity:")
+        self.spin_default_velocity = QSpinBox()
+        self.spin_default_velocity.setRange(1, 127)
+        self.spin_default_velocity.setValue(127)
+        self.spin_default_velocity.setButtonSymbols(QSpinBox.UpDownArrows)
+        self.spin_default_velocity.setToolTip("Default velocity for new notes in basic grid")
+        self.spin_default_velocity.valueChanged.connect(self.on_default_velocity_changed)
+        params_layout.addWidget(lbl_default_velocity, 4, 0)
+        params_layout.addWidget(self.spin_default_velocity, 4, 1)
+
+        params_group.setLayout(params_layout)
+        bottom_layout.addWidget(params_group)
+
+        # Right Container: Actions
+        actions_group = QGroupBox()
+        actions_group.setMaximumWidth(500)
+        actions_layout = QGridLayout()
+
+        button_style = "QPushButton { min-height: 30px; max-height: 30px; border-radius: 5px; }"
+
+        self.btn_load = QPushButton("Load from Device")
+        self.btn_load.setStyleSheet(button_style)
+        self.btn_load.clicked.connect(self.load_preset)
+        self.btn_save = QPushButton("Save to Device")
+        self.btn_save.setStyleSheet(button_style)
+        self.btn_save.clicked.connect(self.save_preset)
+
+        actions_layout.addWidget(self.btn_load, 0, 0, 1, 2)
+        actions_layout.addWidget(self.btn_save, 1, 0, 1, 2)
+
+        # Copy and Paste buttons
+        copy_paste_layout = QHBoxLayout()
+        copy_paste_layout.setSpacing(5)
+
+        self.btn_copy = QPushButton("Copy Preset")
+        self.btn_copy.setStyleSheet(button_style)
+        self.btn_copy.clicked.connect(self.copy_preset_to_clipboard)
+        self.btn_paste = QPushButton("Paste Preset")
+        self.btn_paste.setStyleSheet(button_style)
+        self.btn_paste.clicked.connect(self.paste_preset_from_clipboard)
+
+        copy_paste_layout.addWidget(self.btn_copy)
+        copy_paste_layout.addWidget(self.btn_paste)
+        actions_layout.addLayout(copy_paste_layout, 2, 0, 1, 2)
+
+        # Reset All Steps button
+        self.btn_reset_all = QPushButton("Reset All Steps")
+        self.btn_reset_all.setStyleSheet(button_style)
+        self.btn_reset_all.clicked.connect(self.reset_all_steps)
+        actions_layout.addWidget(self.btn_reset_all, 3, 0, 1, 2)
+
+        actions_group.setLayout(actions_layout)
+        bottom_layout.addWidget(actions_group)
+
+        bottom_layout.addStretch(1)
+        main_layout.addLayout(bottom_layout)
+
+        # Status label
+        self.lbl_status = QLabel("Ready. Select a preset tab to begin.")
+        palette_status = self.lbl_status.palette()
+        info_color = palette_status.color(QPalette.Highlight)
+        self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
+        main_layout.addWidget(self.lbl_status)
+
+        self.addLayout(main_layout)
+
+        # Initialize with first preset
+        self._setup_current_preset_entry()
+        self.rebuild_steps()
+        self.update_pattern_length_display()
+
+    def _create_preset_entry(self, index, preset_id):
+        """Create a preset entry widget with top tabs for Basic/Advanced - uses Step Sequencer grid"""
+        # Main container widget
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Header with title
+        header_layout = QHBoxLayout()
+        title_label = QLabel(f"<b>User Seq {index + 1}</b>")
+        title_label.setStyleSheet("font-size: 14pt;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+
+        # Description
+        desc = QLabel("Configure step sequence with absolute MIDI notes.\n"
+                      "Click cells to toggle notes on/off. Right-click for velocity settings.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: gray; font-size: 9pt;")
+        layout.addWidget(desc)
+
+        # Top tabs for Basic/Advanced
+        side_tabs = QTabWidget()
+
+        # Basic tab with step sequencer grid
+        basic_grid = BasicStepSequencerGrid()
+        side_tabs.addTab(basic_grid, "Basic")
+
+        # Advanced tab with step widgets
+        advanced_tab = QWidget()
+        advanced_layout = QVBoxLayout()
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+
+        step_scroll = QScrollArea()
+        step_scroll.setWidgetResizable(True)
+        step_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        step_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        step_scroll.setMinimumHeight(300)
+
+        step_container = QWidget()
+        step_layout = QHBoxLayout()
+        step_layout.setSpacing(2)
+        step_layout.setDirection(QHBoxLayout.LeftToRight)
+        step_container.setLayout(step_layout)
+        step_scroll.setWidget(step_container)
+
+        advanced_layout.addWidget(step_scroll)
+        advanced_tab.setLayout(advanced_layout)
+        side_tabs.addTab(advanced_tab, "Advanced")
+
+        layout.addWidget(side_tabs, 1)
+        container.setLayout(layout)
+
+        return {
+            'widget': container,
+            'title_label': title_label,
+            'basic_grid': basic_grid,
+            'side_tabs': side_tabs,
+            'step_scroll': step_scroll,
+            'step_container': step_container,
+            'step_layout': step_layout,
+            'preset_id': preset_id,
+            'step_widgets': []
+        }
+
+    def on_preset_tab_changed(self, index):
+        """Handle preset tab change"""
+        if index < 0 or index >= len(self.entry_widgets):
+            return
+
+        # Disconnect old signals
+        if hasattr(self, 'basic_grid') and self.basic_grid:
+            try:
+                self.basic_grid.dataChanged.disconnect(self.on_basic_grid_changed)
+            except:
+                pass
+        if hasattr(self, 'tabs') and self.tabs:
+            try:
+                self.tabs.currentChanged.disconnect(self.on_tab_changed)
+            except:
+                pass
+
+        # Setup new preset entry
+        self._setup_current_preset_entry()
+
+        # Rebuild steps for this entry
+        self.rebuild_steps()
+
+        # Update status
+        self.update_status(f"User Seq {index + 1} selected")
 
     def gather_preset_data(self):
         """Override to set preset_type to step sequencer"""
