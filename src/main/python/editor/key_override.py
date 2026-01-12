@@ -264,20 +264,11 @@ class KeyOverride(BasicEditor):
         super().__init__()
         self.keyboard = None
 
-        self.addStretch()
-
-        # Container for title, description, and tabs
-        container = QWidget()
-        container_layout = QVBoxLayout()
-        container_layout.setSpacing(6)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container.setLayout(container_layout)
-
         # Title
         title_label = QLabel(tr("KeyOverride", "Key Overrides"))
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
         title_label.setAlignment(QtCore.Qt.AlignCenter)
-        container_layout.addWidget(title_label)
+        self.addWidget(title_label)
 
         # Description
         desc_label = QLabel(tr("KeyOverride",
@@ -286,7 +277,7 @@ class KeyOverride(BasicEditor):
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
         desc_label.setAlignment(QtCore.Qt.AlignCenter)
-        container_layout.addWidget(desc_label)
+        self.addWidget(desc_label)
 
         self.key_override_entries = []
         self.key_override_entries_available = []
@@ -296,10 +287,7 @@ class KeyOverride(BasicEditor):
             entry.changed.connect(self.on_change)
             self.key_override_entries_available.append(entry)
 
-        container_layout.addWidget(self.tabs)
-
-        self.addWidget(container, alignment=QtCore.Qt.AlignHCenter)
-        self.addStretch()
+        self.addWidget(self.tabs)
 
     def rebuild_ui(self):
         while self.tabs.count() > 0:

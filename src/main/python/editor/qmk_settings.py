@@ -189,22 +189,28 @@ class QmkSettings(BasicEditor):
             if not use_tab:
                 continue
 
-            # Main layout with description on top, settings below
+            # Main layout with centered content
             main_v_layout = QVBoxLayout()
             main_v_layout.setSpacing(15)
 
-            # Top: Title and description
+            # Add stretch to push content to center
+            main_v_layout.addStretch()
+
+            # Top: Title (centered)
             title_label = QLabel(tab["name"])
             title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+            title_label.setAlignment(QtCore.Qt.AlignCenter)
             main_v_layout.addWidget(title_label)
 
+            # Description (centered)
             desc_text = tab_descriptions.get(tab["name"], "Configure settings for this feature.")
             desc_label = QLabel(desc_text)
             desc_label.setWordWrap(True)
             desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+            desc_label.setAlignment(QtCore.Qt.AlignCenter)
             main_v_layout.addWidget(desc_label)
 
-            # Bottom: Settings in a group box
+            # Bottom: Settings in a group box (centered)
             settings_group = QGroupBox("Settings")
             w = QWidget()
             w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
@@ -216,7 +222,13 @@ class QmkSettings(BasicEditor):
             group_layout.setAlignment(w, QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
             settings_group.setLayout(group_layout)
 
-            main_v_layout.addWidget(settings_group)
+            # Create a centered container for the settings group
+            center_h_layout = QHBoxLayout()
+            center_h_layout.addStretch()
+            center_h_layout.addWidget(settings_group)
+            center_h_layout.addStretch()
+            main_v_layout.addLayout(center_h_layout)
+
             main_v_layout.addStretch()
 
             # Create widget for layout

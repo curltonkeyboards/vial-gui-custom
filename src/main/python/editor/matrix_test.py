@@ -3903,7 +3903,7 @@ class GamingConfigurator(BasicEditor):
 
         # Analog Calibration Group
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
-        calibration_group.setMaximumWidth(200)
+        calibration_group.setMaximumWidth(300)
         calibration_layout = QVBoxLayout()
         calibration_layout.setSpacing(6)
         calibration_group.setLayout(calibration_layout)
@@ -3930,7 +3930,7 @@ class GamingConfigurator(BasicEditor):
             min_layout.setContentsMargins(0, 0, 0, 0)
             min_widget.setLayout(min_layout)
 
-            min_label = QLabel(f"Min: {default_min/10:.1f}mm")
+            min_label = QLabel(f"Min: {default_min/10:.2f}mm")
             min_label.setStyleSheet("font-size: 8pt;")
             min_layout.addWidget(min_label)
 
@@ -3940,7 +3940,7 @@ class GamingConfigurator(BasicEditor):
             min_slider.setValue(default_min)
             min_slider.setMinimumWidth(70)
             min_slider.valueChanged.connect(
-                lambda val, lbl=min_label: lbl.setText(f"Min: {val/10:.1f}mm")
+                lambda val, lbl=min_label: lbl.setText(f"Min: {val/10:.2f}mm")
             )
             min_layout.addWidget(min_slider)
             h_layout.addWidget(min_widget)
@@ -3952,7 +3952,7 @@ class GamingConfigurator(BasicEditor):
             max_layout.setContentsMargins(0, 0, 0, 0)
             max_widget.setLayout(max_layout)
 
-            max_label = QLabel(f"Max: {default_max/10:.1f}mm")
+            max_label = QLabel(f"Max: {default_max/10:.2f}mm")
             max_label.setStyleSheet("font-size: 8pt;")
             max_layout.addWidget(max_label)
 
@@ -3962,7 +3962,7 @@ class GamingConfigurator(BasicEditor):
             max_slider.setValue(default_max)
             max_slider.setMinimumWidth(70)
             max_slider.valueChanged.connect(
-                lambda val, lbl=max_label: lbl.setText(f"Max: {val/10:.1f}mm")
+                lambda val, lbl=max_label: lbl.setText(f"Max: {val/10:.2f}mm")
             )
             max_layout.addWidget(max_slider)
             h_layout.addWidget(max_widget)

@@ -2962,7 +2962,7 @@ class RGBConfigurator(BasicEditor):
         # Right side: Custom Lights (fixed 750x550)
         custom_group = QGroupBox("Custom Animation Slots")
         custom_group.setFixedWidth(750)
-        custom_group.setFixedHeight(550)
+        custom_group.setFixedHeight(600)
         custom_widget = QWidget()
         custom_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         custom_widget.setLayout(self.custom_lights_container)
