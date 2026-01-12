@@ -686,28 +686,13 @@ class QuickActuationWidget(QWidget):
         at_row_layout.setContentsMargins(0, 0, 0, 0)
         at_row_layout.setSpacing(10)
 
-        # Aftertouch (same width as CC) with tooltip
+        # Aftertouch (same width as CC)
         at_container = QVBoxLayout()
         at_container.setSpacing(2)
-        at_label_row = QHBoxLayout()
-        at_label_row.setSpacing(4)
-        at_label_row.addStretch()
         at_label = QLabel(tr("QuickActuationWidget", "Aftertouch"))
+        at_label.setAlignment(Qt.AlignCenter)
         at_label.setStyleSheet("QLabel { font-size: 12px; }")
-        at_label_row.addWidget(at_label)
-        at_help = QLabel("?")
-        at_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 10px; }")
-        at_help.setToolTip(
-            "<b>Aftertouch Modes:</b><br>"
-            "<b>Off:</b> No aftertouch sent<br>"
-            "<b>Reverse:</b> Aftertouch sent as key releases (light touch = max)<br>"
-            "<b>Bottom-Out:</b> Aftertouch sent after key bottoms out<br>"
-            "<b>Post-Act:</b> Aftertouch sent after actuation point<br>"
-            "<b>Vibrato:</b> Aftertouch from side-to-side key movement"
-        )
-        at_label_row.addWidget(at_help)
-        at_label_row.addStretch()
-        at_container.addLayout(at_label_row)
+        at_container.addWidget(at_label)
         self.midi_aftertouch = ArrowComboBox()
         self.midi_aftertouch.setMaximumHeight(30)
         self.midi_aftertouch.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
@@ -724,27 +709,13 @@ class QuickActuationWidget(QWidget):
         at_container.addWidget(self.midi_aftertouch)
         at_row_layout.addLayout(at_container, 1)
 
-        # Aftertouch CC (same width as Aftertouch) with tooltip
+        # Aftertouch CC (same width as Aftertouch)
         atcc_container = QVBoxLayout()
         atcc_container.setSpacing(2)
-        atcc_label_row = QHBoxLayout()
-        atcc_label_row.setSpacing(4)
-        atcc_label_row.addStretch()
         atcc_label = QLabel(tr("QuickActuationWidget", "Aftertouch CC"))
+        atcc_label.setAlignment(Qt.AlignCenter)
         atcc_label.setStyleSheet("QLabel { font-size: 12px; }")
-        atcc_label_row.addWidget(atcc_label)
-        atcc_help = QLabel("?")
-        atcc_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 10px; }")
-        atcc_help.setToolTip(
-            "<b>Aftertouch CC:</b><br>"
-            "<b>Off:</b> Only send Poly Aftertouch messages<br>"
-            "<b>CC#0-127:</b> Also send aftertouch as CC<br><br>"
-            "Use this to control synth parameters like<br>"
-            "filter cutoff (CC#74) or mod wheel (CC#1)"
-        )
-        atcc_label_row.addWidget(atcc_help)
-        atcc_label_row.addStretch()
-        atcc_container.addLayout(atcc_label_row)
+        atcc_container.addWidget(atcc_label)
         self.midi_aftertouch_cc = ArrowComboBox()
         self.midi_aftertouch_cc.setMaximumHeight(30)
         self.midi_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
@@ -969,31 +940,16 @@ class QuickActuationWidget(QWidget):
         vel_max_layout.addWidget(self.midi_velocity_max_label)
         layout.addLayout(vel_max_layout)
 
-        # Velocity Curve (label next to dropdown with tooltip)
+        # Velocity Curve (label next to dropdown)
         curve_row = QHBoxLayout()
         curve_row.setContentsMargins(0, 0, 0, 0)
-        curve_row.setSpacing(4)
+        curve_row.setSpacing(6)
 
         curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
         curve_label.setStyleSheet("QLabel { font-size: 14px; }")
-        curve_label.setMinimumWidth(85)
-        curve_label.setMaximumWidth(85)
+        curve_label.setMinimumWidth(100)
+        curve_label.setMaximumWidth(100)
         curve_row.addWidget(curve_label)
-
-        curve_help = QLabel("?")
-        curve_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 11px; }")
-        curve_help.setToolTip(
-            "<b>Velocity Curves:</b><br>"
-            "<b>Linear:</b> Direct 1:1 mapping of speed to velocity<br>"
-            "<b>Aggro:</b> Reaches high velocity faster, punchy response<br>"
-            "<b>Slow:</b> Gradual velocity increase, softer response<br>"
-            "<b>Smooth:</b> Balanced curve, natural feel<br>"
-            "<b>Steep:</b> Rapid velocity increase in mid-range<br>"
-            "<b>Instant:</b> Full velocity with minimal travel<br>"
-            "<b>Turbo:</b> Maximum velocity immediately<br>"
-            "<b>User 1-10:</b> Custom curves from Trigger Settings"
-        )
-        curve_row.addWidget(curve_help)
 
         self.midi_velocity_curve = ArrowComboBox()
         self.midi_velocity_curve.setMaximumWidth(120)
@@ -1029,18 +985,9 @@ class QuickActuationWidget(QWidget):
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
         sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
-        sustain_label.setMinimumWidth(85)
-        sustain_label.setMaximumWidth(85)
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
-
-        sustain_help = QLabel("?")
-        sustain_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 11px; }")
-        sustain_help.setToolTip(
-            "<b>Sustain Pedal Behavior:</b><br>"
-            "<b>Allow:</b> Sustain pedal works normally, holding notes<br>"
-            "<b>Ignore:</b> Sustain pedal CC messages are blocked"
-        )
-        sustain_row.addWidget(sustain_help)
 
         self.midi_sustain_combo = ArrowComboBox()
         self.midi_sustain_combo.setMaximumWidth(120)
@@ -1163,31 +1110,16 @@ class QuickActuationWidget(QWidget):
         ks_max_layout.addWidget(self.keysplit_velocity_max_label)
         layout.addLayout(ks_max_layout)
 
-        # Velocity Curve (label next to dropdown with tooltip)
+        # Velocity Curve (label next to dropdown)
         curve_row = QHBoxLayout()
         curve_row.setContentsMargins(0, 0, 0, 0)
-        curve_row.setSpacing(4)
+        curve_row.setSpacing(6)
 
         curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
         curve_label.setStyleSheet("QLabel { font-size: 14px; }")
-        curve_label.setMinimumWidth(85)
-        curve_label.setMaximumWidth(85)
+        curve_label.setMinimumWidth(100)
+        curve_label.setMaximumWidth(100)
         curve_row.addWidget(curve_label)
-
-        curve_help = QLabel("?")
-        curve_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 11px; }")
-        curve_help.setToolTip(
-            "<b>Velocity Curves:</b><br>"
-            "<b>Linear:</b> Direct 1:1 mapping of speed to velocity<br>"
-            "<b>Aggro:</b> Reaches high velocity faster, punchy response<br>"
-            "<b>Slow:</b> Gradual velocity increase, softer response<br>"
-            "<b>Smooth:</b> Balanced curve, natural feel<br>"
-            "<b>Steep:</b> Rapid velocity increase in mid-range<br>"
-            "<b>Instant:</b> Full velocity with minimal travel<br>"
-            "<b>Turbo:</b> Maximum velocity immediately<br>"
-            "<b>User 1-10:</b> Custom curves from Trigger Settings"
-        )
-        curve_row.addWidget(curve_help)
 
         self.keysplit_velocity_curve = ArrowComboBox()
         self.keysplit_velocity_curve.setMaximumWidth(120)
@@ -1223,18 +1155,9 @@ class QuickActuationWidget(QWidget):
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
         sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
-        sustain_label.setMinimumWidth(85)
-        sustain_label.setMaximumWidth(85)
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
-
-        sustain_help = QLabel("?")
-        sustain_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 11px; }")
-        sustain_help.setToolTip(
-            "<b>Sustain Pedal Behavior:</b><br>"
-            "<b>Allow:</b> Sustain pedal works normally, holding notes<br>"
-            "<b>Ignore:</b> Sustain pedal CC messages are blocked"
-        )
-        sustain_row.addWidget(sustain_help)
 
         self.keysplit_sustain_combo = ArrowComboBox()
         self.keysplit_sustain_combo.setMaximumWidth(120)
@@ -1353,31 +1276,16 @@ class QuickActuationWidget(QWidget):
         ts_max_layout.addWidget(self.triplesplit_velocity_max_label)
         layout.addLayout(ts_max_layout)
 
-        # Velocity Curve (label next to dropdown with tooltip)
+        # Velocity Curve (label next to dropdown)
         curve_row = QHBoxLayout()
         curve_row.setContentsMargins(0, 0, 0, 0)
-        curve_row.setSpacing(4)
+        curve_row.setSpacing(6)
 
         curve_label = QLabel(tr("QuickActuationWidget", "Velocity Curve:"))
         curve_label.setStyleSheet("QLabel { font-size: 14px; }")
-        curve_label.setMinimumWidth(85)
-        curve_label.setMaximumWidth(85)
+        curve_label.setMinimumWidth(100)
+        curve_label.setMaximumWidth(100)
         curve_row.addWidget(curve_label)
-
-        curve_help = QLabel("?")
-        curve_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 11px; }")
-        curve_help.setToolTip(
-            "<b>Velocity Curves:</b><br>"
-            "<b>Linear:</b> Direct 1:1 mapping of speed to velocity<br>"
-            "<b>Aggro:</b> Reaches high velocity faster, punchy response<br>"
-            "<b>Slow:</b> Gradual velocity increase, softer response<br>"
-            "<b>Smooth:</b> Balanced curve, natural feel<br>"
-            "<b>Steep:</b> Rapid velocity increase in mid-range<br>"
-            "<b>Instant:</b> Full velocity with minimal travel<br>"
-            "<b>Turbo:</b> Maximum velocity immediately<br>"
-            "<b>User 1-10:</b> Custom curves from Trigger Settings"
-        )
-        curve_row.addWidget(curve_help)
 
         self.triplesplit_velocity_curve = ArrowComboBox()
         self.triplesplit_velocity_curve.setMaximumWidth(120)
@@ -1413,18 +1321,9 @@ class QuickActuationWidget(QWidget):
 
         sustain_label = QLabel(tr("QuickActuationWidget", "Sustain:"))
         sustain_label.setStyleSheet("QLabel { font-size: 14px; }")
-        sustain_label.setMinimumWidth(85)
-        sustain_label.setMaximumWidth(85)
+        sustain_label.setMinimumWidth(100)
+        sustain_label.setMaximumWidth(100)
         sustain_row.addWidget(sustain_label)
-
-        sustain_help = QLabel("?")
-        sustain_help.setStyleSheet("QLabel { color: palette(highlight); font-weight: bold; font-size: 11px; }")
-        sustain_help.setToolTip(
-            "<b>Sustain Pedal Behavior:</b><br>"
-            "<b>Allow:</b> Sustain pedal works normally, holding notes<br>"
-            "<b>Ignore:</b> Sustain pedal CC messages are blocked"
-        )
-        sustain_row.addWidget(sustain_help)
 
         self.triplesplit_sustain_combo = ArrowComboBox()
         self.triplesplit_sustain_combo.setMaximumWidth(120)

@@ -2877,26 +2877,37 @@ class RGBConfigurator(BasicEditor):
         # Save button is now inside the Basic tab, after LayerRGBHandler
 
     def _create_tab_with_title(self, container, title, description):
-        """Helper method to create a tab with title, description, and scroll area"""
+        """Helper method to create a tab with title, description, and scroll area - centered"""
         content_layout = QVBoxLayout()
+        content_layout.addStretch()
 
         # Title
         title_label = QLabel(title)
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
         content_layout.addWidget(title_label)
 
         # Description
         desc_label = QLabel(description)
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
         content_layout.addWidget(desc_label)
+
+        # Layer info
+        layer_info = QLabel("Select a layer button to apply lighting effects only to that layer\n"
+                           "when Per-Layer RGB is enabled.")
+        layer_info.setWordWrap(True)
+        layer_info.setStyleSheet("color: gray; font-size: 9pt; font-style: italic;")
+        layer_info.setAlignment(QtCore.Qt.AlignCenter)
+        content_layout.addWidget(layer_info)
 
         content_layout.addSpacing(10)
 
         w = QWidget()
         w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         w.setLayout(container)
-        content_layout.addWidget(w, alignment=QtCore.Qt.AlignLeft)
+        content_layout.addWidget(w, alignment=QtCore.Qt.AlignHCenter)
         content_layout.addStretch()
 
         # Create widget for content layout
@@ -2943,8 +2954,10 @@ class RGBConfigurator(BasicEditor):
         basic_group.setLayout(basic_group_layout)
         h_layout.addWidget(basic_group, alignment=QtCore.Qt.AlignTop)
 
-        # Right side: Custom Lights
+        # Right side: Custom Lights (fixed 750x550)
         custom_group = QGroupBox("Custom Animation Slots")
+        custom_group.setFixedWidth(750)
+        custom_group.setFixedHeight(550)
         custom_widget = QWidget()
         custom_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         custom_widget.setLayout(self.custom_lights_container)

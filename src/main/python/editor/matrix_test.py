@@ -41,6 +41,21 @@ class MatrixTest(BasicEditor):
 
         self.layout_editor = layout_editor
 
+        # Title
+        title_label = QLabel(tr("MatrixTest", "Matrix Tester"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel(tr("MatrixTest",
+            "Test individual key switches by pressing them. Each key will light up when its switch\n"
+            "is activated, helping identify faulty or stuck switches."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.addWidget(desc_label)
+
         self.KeyboardWidget2 = KeyboardWidgetSimple(layout_editor)
         self.KeyboardWidget2.set_enabled(False)
 
@@ -308,6 +323,7 @@ class ThruLoopConfigurator(BasicEditor):
             label.setMaximumWidth(30)
             nav_layout.addWidget(label, row * 2, col)
             combo = self.create_cc_combo()
+            combo.setMaximumWidth(80)
             nav_layout.addWidget(combo, row * 2 + 1, col)
             self.nav_combos.append(combo)
 
@@ -319,6 +335,9 @@ class ThruLoopConfigurator(BasicEditor):
         main_h_layout.addLayout(left_column)
 
         # RIGHT COLUMN: Main Functions with Overdub inside (fixed 630x550)
+        right_column = QVBoxLayout()
+        right_column.setSpacing(8)
+
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
         self.main_group.setFixedWidth(630)
         self.main_group.setFixedHeight(550)
@@ -393,7 +412,9 @@ class ThruLoopConfigurator(BasicEditor):
             self.overdub_combos.append(row_combos)
 
         main_group_layout.addLayout(overdub_grid)
-        main_h_layout.addWidget(self.main_group)
+        right_column.addWidget(self.main_group)
+        right_column.addStretch()
+        main_h_layout.addLayout(right_column)
 
         # Right spacer for centering
         main_h_layout.addStretch(1)
