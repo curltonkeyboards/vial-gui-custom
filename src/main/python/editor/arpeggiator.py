@@ -2176,7 +2176,7 @@ class Arpeggiator(BasicEditor):
         self.update_pattern_length_display()
 
     def _create_preset_entry(self, index, preset_id):
-        """Create a preset entry widget with side tabs for Basic/Advanced"""
+        """Create a preset entry widget with top tabs for Basic/Advanced"""
         # Main container widget
         container = QWidget()
         layout = QVBoxLayout()
@@ -2198,9 +2198,8 @@ class Arpeggiator(BasicEditor):
         desc.setStyleSheet("color: gray; font-size: 9pt;")
         layout.addWidget(desc)
 
-        # Side tabs for Basic/Advanced (West position like TabbedKeycodes)
+        # Top tabs for Basic/Advanced
         side_tabs = QTabWidget()
-        side_tabs.setTabPosition(QTabWidget.West)
 
         # Basic tab with grid
         basic_grid = BasicArpeggiatorGrid()
@@ -3129,7 +3128,7 @@ class StepSequencer(Arpeggiator):
         self.update_pattern_length_display()
 
     def _create_preset_entry(self, index, preset_id):
-        """Create a preset entry widget with side tabs for Basic/Advanced - uses Step Sequencer grid"""
+        """Create a preset entry widget with top tabs for Basic/Advanced - uses Step Sequencer grid"""
         # Main container widget
         container = QWidget()
         layout = QVBoxLayout()
@@ -3151,9 +3150,8 @@ class StepSequencer(Arpeggiator):
         desc.setStyleSheet("color: gray; font-size: 9pt;")
         layout.addWidget(desc)
 
-        # Side tabs for Basic/Advanced (West position like TabbedKeycodes)
+        # Top tabs for Basic/Advanced
         side_tabs = QTabWidget()
-        side_tabs.setTabPosition(QTabWidget.West)
 
         # Basic tab with step sequencer grid
         basic_grid = BasicStepSequencerGrid()
