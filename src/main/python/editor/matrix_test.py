@@ -41,11 +41,20 @@ class MatrixTest(BasicEditor):
 
         self.layout_editor = layout_editor
 
+        self.addStretch()
+
+        # Container for title, description, keyboard widget and buttons
+        container = QWidget()
+        container_layout = QVBoxLayout()
+        container_layout.setSpacing(6)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container.setLayout(container_layout)
+
         # Title
         title_label = QLabel(tr("MatrixTest", "Matrix Tester"))
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
         title_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.addWidget(title_label)
+        container_layout.addWidget(title_label)
 
         # Description
         desc_label = QLabel(tr("MatrixTest",
@@ -54,7 +63,7 @@ class MatrixTest(BasicEditor):
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
         desc_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.addWidget(desc_label)
+        container_layout.addWidget(desc_label)
 
         self.KeyboardWidget2 = KeyboardWidgetSimple(layout_editor)
         self.KeyboardWidget2.set_enabled(False)
@@ -70,7 +79,7 @@ class MatrixTest(BasicEditor):
         layout.addWidget(self.KeyboardWidget2)
         layout.setAlignment(self.KeyboardWidget2, Qt.AlignCenter)
 
-        self.addLayout(layout)
+        container_layout.addLayout(layout)
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
@@ -78,7 +87,10 @@ class MatrixTest(BasicEditor):
         btn_layout.addWidget(self.unlock_lbl)
         btn_layout.addWidget(self.unlock_btn)
         btn_layout.addWidget(self.reset_btn)
-        self.addLayout(btn_layout)
+        container_layout.addLayout(btn_layout)
+
+        self.addWidget(container, alignment=QtCore.Qt.AlignHCenter)
+        self.addStretch()
 
         self.keyboard = None
         self.device = None
@@ -3813,37 +3825,34 @@ class GamingConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area)
 
-        # Create horizontal layout: Description | Response+Calibration | Gamepad | Curve
+        # Create horizontal layout: Settings (title+desc+response+calibration) | Gamepad | Curve
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(15)
         main_layout.addLayout(controls_layout)
 
-        # COLUMN 1: Description only (nothing below it)
-        desc_container = QWidget()
-        desc_container.setFixedWidth(160)
-        desc_layout = QVBoxLayout()
-        desc_layout.setContentsMargins(0, 0, 0, 0)
-        desc_container.setLayout(desc_layout)
+        # COLUMN 1: Title, Description, and Response+Calibration side by side
+        settings_column = QVBoxLayout()
+        settings_column.setSpacing(8)
 
+        # Title at top
         title_label = QLabel(tr("GamingConfigurator", "Gaming Mode"))
         title_label.setStyleSheet("font-weight: bold; font-size: 11pt;")
-        desc_layout.addWidget(title_label)
+        settings_column.addWidget(title_label)
 
+        # Description below title
         desc_label = QLabel(tr("GamingConfigurator",
             "Assign keyboard keys to gamepad buttons. "
             "Assigned keys will act as gamepad inputs when Gaming Mode is enabled, "
-            "and function normally when disabled.\n\n"
+            "and function normally when disabled. "
             "Click a button on the controller, then select a key from the keycodes below."))
         desc_label.setWordWrap(True)
+        desc_label.setMaximumWidth(400)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-        desc_layout.addWidget(desc_label)
-        desc_layout.addStretch()
+        settings_column.addWidget(desc_label)
 
-        controls_layout.addWidget(desc_container, alignment=QtCore.Qt.AlignTop)
-
-        # COLUMN 2: Gamepad Response + Analog Calibration (stacked)
-        settings_column = QVBoxLayout()
-        settings_column.setSpacing(8)
+        # Horizontal layout for Response and Calibration side by side
+        response_calibration_layout = QHBoxLayout()
+        response_calibration_layout.setSpacing(8)
 
         # Gamepad Response Section
         response_group = QGroupBox(tr("GamingConfigurator", "Gamepad Response"))
@@ -3890,7 +3899,7 @@ class GamingConfigurator(BasicEditor):
             "Use maximum value of opposite sides of axis rather than combining them."))
         response_layout.addWidget(self.snappy_joystick_checkbox)
 
-        settings_column.addWidget(response_group)
+        response_calibration_layout.addWidget(response_group, alignment=QtCore.Qt.AlignTop)
 
         # Analog Calibration Group
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
@@ -3979,7 +3988,9 @@ class GamingConfigurator(BasicEditor):
         )
         calibration_layout.addWidget(trigger_widget)
 
-        settings_column.addWidget(calibration_group)
+        response_calibration_layout.addWidget(calibration_group, alignment=QtCore.Qt.AlignTop)
+
+        settings_column.addLayout(response_calibration_layout)
         settings_column.addStretch()
 
         controls_layout.addLayout(settings_column)

@@ -2926,26 +2926,31 @@ class RGBConfigurator(BasicEditor):
     def _create_custom_lights_tab(self):
         """Create Custom Lights tab with side-by-side layout"""
         content_layout = QVBoxLayout()
+        content_layout.addStretch()
 
-        # Title
+        # Title (centered)
         title_label = QLabel("Custom Lights")
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
         content_layout.addWidget(title_label)
 
-        # Description
+        # Description (centered)
         desc_label = QLabel("Create and edit custom RGB animations. Basic controls on the left,\n"
                            "custom animation slots on the right.")
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
         content_layout.addWidget(desc_label)
 
         content_layout.addSpacing(10)
 
-        # Side by side layout
+        # Side by side layout (centered)
         h_layout = QHBoxLayout()
+        h_layout.addStretch()
 
-        # Left side: Basic RGB Functions
+        # Left side: Basic RGB Functions (max 450px)
         basic_group = QGroupBox("Basic RGB Functions")
+        basic_group.setMaximumWidth(450)
         basic_widget = QWidget()
         basic_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         basic_widget.setLayout(self.custom_basic_container)
@@ -2966,7 +2971,9 @@ class RGBConfigurator(BasicEditor):
         custom_group.setLayout(custom_group_layout)
         h_layout.addWidget(custom_group)
 
+        h_layout.addStretch()
         content_layout.addLayout(h_layout)
+        content_layout.addStretch()
 
         # Create widget for content layout
         content_widget = QWidget()

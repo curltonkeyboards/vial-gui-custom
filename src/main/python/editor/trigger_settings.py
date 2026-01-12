@@ -1189,17 +1189,10 @@ class TriggerSettingsTab(BasicEditor):
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
 
-        # Header with description
+        # Header only (description is in the left container)
         header_label = QLabel(tr("TriggerSettings", "Null Bind (SOCD Handling)"))
         header_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11pt; }")
         layout.addWidget(header_label)
-
-        desc_label = QLabel(tr("TriggerSettings",
-            "Configure how simultaneous key presses are resolved.\n"
-            "Select keys on the keyboard above and add them to a group."))
-        desc_label.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
-        desc_label.setWordWrap(True)
-        layout.addWidget(desc_label)
 
         # Group selection row
         group_row = QHBoxLayout()
@@ -1217,18 +1210,23 @@ class TriggerSettingsTab(BasicEditor):
         group_row.addWidget(self.nullbind_group_combo)
 
         group_row.addStretch()
+        layout.addLayout(group_row)
 
-        # Behavior selection
+        # Behavior selection row (below group)
+        behavior_row = QHBoxLayout()
+        behavior_row.setSpacing(10)
+
         behavior_label = QLabel(tr("TriggerSettings", "Behavior:"))
         behavior_label.setStyleSheet("QLabel { font-weight: bold; }")
-        group_row.addWidget(behavior_label)
+        behavior_row.addWidget(behavior_label)
 
         self.nullbind_behavior_combo = QComboBox()
         self.nullbind_behavior_combo.setFixedWidth(200)
         self.nullbind_behavior_combo.currentIndexChanged.connect(self.on_nullbind_behavior_changed)
-        group_row.addWidget(self.nullbind_behavior_combo)
+        behavior_row.addWidget(self.nullbind_behavior_combo)
 
-        layout.addLayout(group_row)
+        behavior_row.addStretch()
+        layout.addLayout(behavior_row)
 
         # Keys in group display
         keys_frame = QFrame()
