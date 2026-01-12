@@ -334,8 +334,7 @@ class ThruLoopConfigurator(BasicEditor):
             label = QLabel(f"{i}/8")
             label.setMaximumWidth(30)
             nav_layout.addWidget(label, row * 2, col)
-            combo = self.create_cc_combo()
-            combo.setMaximumWidth(80)
+            combo = self.create_cc_combo(narrow=True)
             nav_layout.addWidget(combo, row * 2 + 1, col)
             self.nav_combos.append(combo)
 
@@ -489,14 +488,17 @@ class ThruLoopConfigurator(BasicEditor):
         self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
         
-    def create_cc_combo(self, for_table=False):
+    def create_cc_combo(self, for_table=False, narrow=False):
         """Create a CC selector combobox
-        
+
         Args:
             for_table: If True, creates a narrower combo for use in tables
+            narrow: If True, creates an even narrower combo (80px max)
         """
         combo = ArrowComboBox()
-        if for_table:
+        if narrow:
+            combo.setMaximumWidth(80)
+        elif for_table:
             combo.setMaximumWidth(100)  # Narrower for tables to show arrow
         else:
             combo.setMinimumWidth(120)
@@ -780,6 +782,23 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
 
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
+
+        # Title
+        title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Settings"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel(tr("MIDIswitchSettingsConfigurator",
+            "Configure global MIDI settings including channel, transpose, velocity curves,\n"
+            "sustain behavior, and aftertouch options for your keyboard."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        main_layout.addWidget(desc_label)
+
+        main_layout.addSpacing(10)
 
         # Global MIDI Settings Group
         global_midi_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Global MIDI Settings"))
@@ -3903,12 +3922,12 @@ class GamingConfigurator(BasicEditor):
 
         # Analog Calibration Group
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
-        calibration_group.setMaximumWidth(300)
+        calibration_group.setMaximumWidth(400)
         calibration_layout = QVBoxLayout()
         calibration_layout.setSpacing(6)
         calibration_group.setLayout(calibration_layout)
 
-        # Helper function to create compact horizontal slider pair (min/max side by side)
+        # Helper function to create stacked slider pair (min on top, max below)
         def create_minmax_slider_row(section_name, default_min, default_max):
             container = QWidget()
             layout = QVBoxLayout()
@@ -3919,72 +3938,51 @@ class GamingConfigurator(BasicEditor):
             section_label = QLabel(f"<b>{section_name}</b>")
             layout.addWidget(section_label)
 
-            # Min/Max in horizontal layout
-            h_layout = QHBoxLayout()
-            h_layout.setSpacing(8)
-
             # Min slider
-            min_widget = QWidget()
-            min_layout = QVBoxLayout()
-            min_layout.setSpacing(1)
-            min_layout.setContentsMargins(0, 0, 0, 0)
-            min_widget.setLayout(min_layout)
-
-            min_label = QLabel(f"Min: {default_min/10:.2f}mm")
+            min_label = QLabel(f"Min: {default_min/100:.2f}mm")
             min_label.setStyleSheet("font-size: 8pt;")
-            min_layout.addWidget(min_label)
+            layout.addWidget(min_label)
 
             min_slider = QSlider(Qt.Horizontal)
             min_slider.setMinimum(0)
-            min_slider.setMaximum(25)
+            min_slider.setMaximum(250)  # 0.00 to 2.50mm in 0.01mm increments
             min_slider.setValue(default_min)
-            min_slider.setMinimumWidth(70)
             min_slider.valueChanged.connect(
-                lambda val, lbl=min_label: lbl.setText(f"Min: {val/10:.2f}mm")
+                lambda val, lbl=min_label: lbl.setText(f"Min: {val/100:.2f}mm")
             )
-            min_layout.addWidget(min_slider)
-            h_layout.addWidget(min_widget)
+            layout.addWidget(min_slider)
 
             # Max slider
-            max_widget = QWidget()
-            max_layout = QVBoxLayout()
-            max_layout.setSpacing(1)
-            max_layout.setContentsMargins(0, 0, 0, 0)
-            max_widget.setLayout(max_layout)
-
-            max_label = QLabel(f"Max: {default_max/10:.2f}mm")
+            max_label = QLabel(f"Max: {default_max/100:.2f}mm")
             max_label.setStyleSheet("font-size: 8pt;")
-            max_layout.addWidget(max_label)
+            layout.addWidget(max_label)
 
             max_slider = QSlider(Qt.Horizontal)
             max_slider.setMinimum(0)
-            max_slider.setMaximum(25)
+            max_slider.setMaximum(250)  # 0.00 to 2.50mm in 0.01mm increments
             max_slider.setValue(default_max)
-            max_slider.setMinimumWidth(70)
             max_slider.valueChanged.connect(
-                lambda val, lbl=max_label: lbl.setText(f"Max: {val/10:.2f}mm")
+                lambda val, lbl=max_label: lbl.setText(f"Max: {val/100:.2f}mm")
             )
-            max_layout.addWidget(max_slider)
-            h_layout.addWidget(max_widget)
+            layout.addWidget(max_slider)
 
-            layout.addLayout(h_layout)
             return container, min_slider, max_slider, min_label, max_label
 
         # LS (Left Stick) Calibration
         ls_widget, self.ls_min_travel_slider, self.ls_max_travel_slider, self.ls_min_travel_label, self.ls_max_travel_label = create_minmax_slider_row(
-            tr("GamingConfigurator", "Left Stick"), 10, 20
+            tr("GamingConfigurator", "Left Stick"), 100, 200
         )
         calibration_layout.addWidget(ls_widget)
 
         # RS (Right Stick) Calibration
         rs_widget, self.rs_min_travel_slider, self.rs_max_travel_slider, self.rs_min_travel_label, self.rs_max_travel_label = create_minmax_slider_row(
-            tr("GamingConfigurator", "Right Stick"), 10, 20
+            tr("GamingConfigurator", "Right Stick"), 100, 200
         )
         calibration_layout.addWidget(rs_widget)
 
         # Triggers Calibration
         trigger_widget, self.trigger_min_travel_slider, self.trigger_max_travel_slider, self.trigger_min_travel_label, self.trigger_max_travel_label = create_minmax_slider_row(
-            tr("GamingConfigurator", "Triggers"), 10, 20
+            tr("GamingConfigurator", "Triggers"), 100, 200
         )
         calibration_layout.addWidget(trigger_widget)
 
