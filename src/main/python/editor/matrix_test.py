@@ -476,7 +476,6 @@ class ThruLoopConfigurator(BasicEditor):
     def on_loop_enabled_changed(self):
         enabled = not self.loop_enabled.isChecked()
         self.main_group.setEnabled(enabled)
-        self.overdub_group.setEnabled(enabled) 
         self.loopchop_group.setEnabled(enabled)
     
     def on_separate_loopchop_changed(self):
