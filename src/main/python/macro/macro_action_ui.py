@@ -2,16 +2,48 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtWidgets import QLineEdit, QToolButton, QWidget, QSizePolicy, QSpinBox
 
 from constants import KEY_SIZE_RATIO
-from tabbed_keycodes import TabbedKeycodes
 from widgets.flowlayout import FlowLayout
 from macro.macro_action import ActionText, ActionSequence, ActionDown, ActionUp, ActionTap, ActionDelay
 from widgets.key_widget import KeyWidget
 
 
-class DeletableKeyWidget(KeyWidget):
+class MacroKeyWidget(KeyWidget):
+    """Custom KeyWidget that doesn't open tray - parent will handle keycode selection"""
+
+    selected = pyqtSignal(object)  # Emits self when clicked
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.is_selected = False
         self.setFocusPolicy(Qt.ClickFocus)
+
+    def mousePressEvent(self, ev):
+        # Set active_key to the actual widget so KeyboardWidget draws the highlight
+        if len(self.widgets) > 0:
+            self.active_key = self.widgets[0]
+            self.active_mask = False
+
+        # Emit that we're selected (don't call parent which opens tray)
+        self.selected.emit(self)
+        self.update()  # Force repaint to show highlight
+        ev.accept()
+
+    def mouseReleaseEvent(self, ev):
+        # Override to prevent any tray behavior
+        ev.accept()
+
+    def set_selected(self, selected):
+        """Visual feedback for selection"""
+        self.is_selected = selected
+        if selected:
+            # Set active_key to show native KeyboardWidget highlighting
+            if len(self.widgets) > 0:
+                self.active_key = self.widgets[0]
+                self.active_mask = False
+        else:
+            # Clear active_key to remove highlighting
+            self.active_key = None
+        self.update()
 
     def keyReleaseEvent(self, ev):
         # remove this keycode from the sequence when delete is pressed
@@ -19,9 +51,15 @@ class DeletableKeyWidget(KeyWidget):
             self.set_keycode(0)
 
 
+class DeletableKeyWidget(MacroKeyWidget):
+    """Alias for MacroKeyWidget - backwards compatible"""
+    pass
+
+
 class BasicActionUI(QObject):
 
     changed = pyqtSignal()
+    key_selected = pyqtSignal(object)  # Emits the selected key widget
     actcls = None
 
     def __init__(self, container, act=None):
@@ -48,7 +86,7 @@ class ActionTextUI(BasicActionUI):
         self.text.textChanged.connect(self.on_change)
 
     def insert(self, row):
-        self.container.addWidget(self.text, row, 2)
+        self.container.addWidget(self.text, row, 3)
 
     def remove(self):
         self.container.removeWidget(self.text)
@@ -70,8 +108,8 @@ class ActionSequenceUI(BasicActionUI):
 
         self.btn_plus = QToolButton()
         self.btn_plus.setText("+")
-        self.btn_plus.setFixedWidth(int(self.btn_plus.fontMetrics().height() * KEY_SIZE_RATIO))
-        self.btn_plus.setFixedHeight(int(self.btn_plus.fontMetrics().height() * KEY_SIZE_RATIO))
+        self.btn_plus.setFixedWidth(30)
+        self.btn_plus.setFixedHeight(30)
         self.btn_plus.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.btn_plus.clicked.connect(self.on_add)
 
@@ -90,8 +128,6 @@ class ActionSequenceUI(BasicActionUI):
                 w.set_keycode_filter(self.keycode_filter)
 
     def recreate_sequence(self):
-        TabbedKeycodes.close_tray()
-
         self.layout.removeWidget(self.btn_plus)
         for w in self.widgets:
             self.layout.removeWidget(w)
@@ -102,18 +138,22 @@ class ActionSequenceUI(BasicActionUI):
             w = DeletableKeyWidget(self.keycode_filter)
             w.set_keycode(kc)
             w.changed.connect(self.on_change)
+            w.selected.connect(self._on_key_selected)
             self.layout.addWidget(w)
             self.widgets.append(w)
         self.layout.addWidget(self.btn_plus)
 
+    def _on_key_selected(self, widget):
+        """Handle key widget selection - bubble up to parent"""
+        self.key_selected.emit(widget)
+
     def insert(self, row):
-        self.container.addWidget(self.layout_container, row, 2)
+        self.container.addWidget(self.layout_container, row, 3)
 
     def remove(self):
         self.container.removeWidget(self.layout_container)
 
     def delete(self):
-        TabbedKeycodes.close_tray()
         for w in self.widgets:
             w.deleteLater()
         self.btn_plus.deleteLater()
@@ -169,7 +209,7 @@ class ActionDelayUI(BasicActionUI):
         self.layout.addWidget(self.value)
 
     def insert(self, row):
-        self.container.addWidget(self.layout_container, row, 2)
+        self.container.addWidget(self.layout_container, row, 3)
 
     def remove(self):
         self.container.removeWidget(self.layout_container)
