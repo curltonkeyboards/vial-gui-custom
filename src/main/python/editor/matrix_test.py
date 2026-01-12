@@ -200,14 +200,17 @@ class ThruLoopConfigurator(BasicEditor):
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         main_widget = QWidget()
-        main_h_layout = QHBoxLayout()  # Main horizontal layout for 25/75 split
+        main_h_layout = QHBoxLayout()  # Main horizontal layout with centering
         main_h_layout.setSpacing(15)
         main_widget.setLayout(main_h_layout)
 
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
-        # LEFT COLUMN (25%): Title/Description + Basic Settings + LoopChop
+        # Left spacer for centering
+        main_h_layout.addStretch(1)
+
+        # LEFT COLUMN: Title/Description + Basic Settings + LoopChop (fixed width 250px)
         left_column = QVBoxLayout()
         left_column.setSpacing(8)
 
@@ -228,6 +231,7 @@ class ThruLoopConfigurator(BasicEditor):
 
         # Basic Settings Group
         self.basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
+        self.basic_group.setFixedWidth(250)
         basic_layout = QGridLayout()
         self.basic_group.setLayout(basic_layout)
         left_column.addWidget(self.basic_group)
@@ -265,6 +269,7 @@ class ThruLoopConfigurator(BasicEditor):
 
         # LoopChop Settings (below Basic Settings)
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
+        self.loopchop_group.setFixedWidth(250)
         loopchop_layout = QGridLayout()
         loopchop_layout.setSpacing(5)
         loopchop_layout.setContentsMargins(10, 10, 10, 10)
@@ -300,10 +305,12 @@ class ThruLoopConfigurator(BasicEditor):
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 4)
 
         left_column.addStretch()
-        main_h_layout.addLayout(left_column, 1)  # 25% (stretch factor 1)
+        main_h_layout.addLayout(left_column)
 
-        # RIGHT COLUMN (75%): Main Functions with Overdub inside
+        # RIGHT COLUMN: Main Functions with Overdub inside (fixed 630x550)
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
+        self.main_group.setFixedWidth(630)
+        self.main_group.setFixedHeight(550)
         main_group_layout = QVBoxLayout()
         main_group_layout.setSpacing(5)
         main_group_layout.setContentsMargins(10, 8, 10, 10)
@@ -375,8 +382,11 @@ class ThruLoopConfigurator(BasicEditor):
             self.overdub_combos.append(row_combos)
 
         main_group_layout.addLayout(overdub_grid)
-        main_h_layout.addWidget(self.main_group, 3)  # 75% (stretch factor 3)
-        
+        main_h_layout.addWidget(self.main_group)
+
+        # Right spacer for centering
+        main_h_layout.addStretch(1)
+
         # Buttons
         self.addStretch()
         buttons_layout = QHBoxLayout()

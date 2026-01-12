@@ -5,7 +5,7 @@ from collections import defaultdict
 from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QCheckBox, QGridLayout, QLabel, QWidget, QSizePolicy, QTabWidget, QSpinBox, \
-    QHBoxLayout, QPushButton, QMessageBox, QScrollArea
+    QHBoxLayout, QPushButton, QMessageBox, QScrollArea, QGroupBox
 
 from editor.basic_editor import BasicEditor
 from protocol.constants import VIAL_PROTOCOL_QMK_SETTINGS
@@ -148,6 +148,24 @@ class QmkSettings(BasicEditor):
         return options
 
     def recreate_gui(self):
+        # Tab descriptions based on QMK/Vial documentation
+        tab_descriptions = {
+            "Magic": "Swap and modify key behavior globally. Changes apply system-wide\n"
+                     "without modifying your keymap layout.",
+            "Grave Escape": "Configure the Grave Escape key to send Escape when combined\n"
+                            "with specific modifiers, or Grave (`) otherwise.",
+            "Tap-Hold": "Configure dual-function key timing. Tap for one action,\n"
+                        "hold for another. Adjust timing thresholds and behavior.",
+            "Auto Shift": "Automatically send shifted characters when keys are held\n"
+                          "longer than the timeout. No need to hold Shift.",
+            "Combo": "Configure combo key timing. Combos trigger actions when\n"
+                     "multiple keys are pressed simultaneously.",
+            "One Shot Keys": "Configure sticky modifiers that remain active for only\n"
+                             "the next keypress. Reduces finger strain.",
+            "Mouse keys": "Control mouse cursor and scroll using keyboard keys.\n"
+                          "Configure movement speed, acceleration, and delays."
+        }
+
         # delete old GUI
         for tab in self.tabs:
             for field in tab:
@@ -171,17 +189,48 @@ class QmkSettings(BasicEditor):
             if not use_tab:
                 continue
 
+            # Main layout with description on left, settings on right
+            main_h_layout = QHBoxLayout()
+            main_h_layout.setSpacing(20)
+
+            # Left side: Title and description
+            desc_container = QWidget()
+            desc_container.setFixedWidth(200)
+            desc_layout = QVBoxLayout()
+            desc_layout.setContentsMargins(10, 10, 10, 10)
+            desc_container.setLayout(desc_layout)
+
+            title_label = QLabel(tab["name"])
+            title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+            desc_layout.addWidget(title_label)
+
+            desc_text = tab_descriptions.get(tab["name"], "Configure settings for this feature.")
+            desc_label = QLabel(desc_text)
+            desc_label.setWordWrap(True)
+            desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+            desc_layout.addWidget(desc_label)
+            desc_layout.addStretch()
+
+            main_h_layout.addWidget(desc_container, alignment=QtCore.Qt.AlignTop)
+
+            # Right side: Settings in a group box
+            settings_group = QGroupBox("Settings")
             w = QWidget()
             w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
             container = QGridLayout()
             w.setLayout(container)
-            l = QVBoxLayout()
-            l.addWidget(w)
-            l.setAlignment(w, QtCore.Qt.AlignHCenter)
+
+            group_layout = QVBoxLayout()
+            group_layout.addWidget(w)
+            group_layout.setAlignment(w, QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
+            settings_group.setLayout(group_layout)
+
+            main_h_layout.addWidget(settings_group)
+            main_h_layout.addStretch()
 
             # Create widget for layout
             content_widget = QWidget()
-            content_widget.setLayout(l)
+            content_widget.setLayout(main_h_layout)
 
             # Wrap in scroll area
             w2 = QScrollArea()
@@ -190,7 +239,7 @@ class QmkSettings(BasicEditor):
             w2.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             w2.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-            self.misc_widgets += [w, content_widget, w2]
+            self.misc_widgets += [w, content_widget, w2, desc_container, settings_group]
             self.tabs_widget.addTab(w2, tab["name"])
             self.tabs.append(self.populate_tab(tab, container))
 
