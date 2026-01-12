@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout
+    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout, QGroupBox
 
 from widgets.combo_box import ArrowComboBox
 from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple, KeyboardWidgetNoHighlight
@@ -1604,8 +1604,17 @@ class PerKeyRGBHandler(BasicHandler):
 
         # Title
         self.lbl_title = QLabel(tr("RGBConfigurator", "Per-Key RGB Configuration"))
-        self.lbl_title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.lbl_title.setStyleSheet("font-weight: bold; font-size: 14pt;")
         container.addWidget(self.lbl_title, row, 0, 1, 2)
+        row += 1
+
+        # Description
+        self.lbl_description = QLabel(tr("RGBConfigurator",
+            "Configure individual LED colors for each key. Select a preset, choose a color from the palette,\n"
+            "then click keys on the keyboard to paint them. Double-click palette colors to edit them."))
+        self.lbl_description.setWordWrap(True)
+        self.lbl_description.setStyleSheet("color: gray; font-size: 9pt;")
+        container.addWidget(self.lbl_description, row, 0, 1, 2)
         row += 1
 
         # Preset selector with individual buttons
@@ -1722,7 +1731,7 @@ class PerKeyRGBHandler(BasicHandler):
         self.key_widgets = []  # Will store references to keyboard key widgets
 
         self.widgets = [
-            self.lbl_title, self.lbl_preset, preset_button_widget,
+            self.lbl_title, self.lbl_description, self.lbl_preset, preset_button_widget,
             main_widget
         ]
 
@@ -2802,10 +2811,14 @@ class RGBConfigurator(BasicEditor):
         self.tabs_widget = QTabWidget()
         self.addWidget(self.tabs_widget)
 
-        # Create containers for each tab
-        # Tab 1: Basic - for basic RGB controls
+        # Tab 1: Basic - for basic RGB controls (with title/description)
         self.basic_container = QGridLayout()
-        self.basic_tab = self._create_tab_with_scroll(self.basic_container)
+        self.basic_tab = self._create_tab_with_title(
+            self.basic_container,
+            "Basic RGB",
+            "Configure global RGB lighting settings including brightness,\n"
+            "effects, speed, and color. Changes apply to all keys."
+        )
         self.tabs_widget.addTab(self.basic_tab, tr("RGBConfigurator", "Basic"))
 
         # Tab 2: Lighting Configurator - for per-key RGB
@@ -2813,9 +2826,10 @@ class RGBConfigurator(BasicEditor):
         self.lighting_tab = self._create_tab_with_scroll(self.lighting_container)
         self.tabs_widget.addTab(self.lighting_tab, tr("RGBConfigurator", "Lighting Configurator"))
 
-        # Tab 3: Custom Lights
-        self.custom_container = QGridLayout()
-        self.custom_tab = self._create_tab_with_scroll(self.custom_container)
+        # Tab 3: Custom Lights - side by side layout (Basic left, Custom right)
+        self.custom_basic_container = QGridLayout()
+        self.custom_lights_container = QGridLayout()
+        self.custom_tab = self._create_custom_lights_tab()
         self.tabs_widget.addTab(self.custom_tab, tr("RGBConfigurator", "Custom Lights"))
 
         # Initialize handlers for Basic tab
@@ -2838,20 +2852,19 @@ class RGBConfigurator(BasicEditor):
         self.handler_per_key_rgb = PerKeyRGBHandler(self.lighting_container)
         # No update connection needed for per-key handler
 
-        # Initialize handlers for Custom Lights tab
-        # First, add all Basic tab handlers to Custom Lights tab (duplicate Basic content)
-        self.handler_backlight_custom = QmkBacklightHandler(self.custom_container)
+        # Initialize handlers for Custom Lights tab - Basic side (left)
+        self.handler_backlight_custom = QmkBacklightHandler(self.custom_basic_container)
         self.handler_backlight_custom.update.connect(self.update_from_keyboard)
-        self.handler_rgblight_custom = QmkRgblightHandler(self.custom_container)
+        self.handler_rgblight_custom = QmkRgblightHandler(self.custom_basic_container)
         self.handler_rgblight_custom.update.connect(self.update_from_keyboard)
-        self.handler_vialrgb_custom = VialRGBHandler(self.custom_container)
+        self.handler_vialrgb_custom = VialRGBHandler(self.custom_basic_container)
         self.handler_vialrgb_custom.update.connect(self.update_from_keyboard)
-        self.handler_rescan_custom = RescanButtonHandler(self.custom_container)
-        self.handler_layer_rgb_custom = LayerRGBHandler(self.custom_container)
+        self.handler_rescan_custom = RescanButtonHandler(self.custom_basic_container)
+        self.handler_layer_rgb_custom = LayerRGBHandler(self.custom_basic_container)
         self.handler_layer_rgb_custom.update.connect(self.update_from_keyboard)
 
-        # Then add the Custom Lights handler (original custom lights content will appear below Basic content)
-        self.handler_custom_lights = CustomLightsHandler(self.custom_container)
+        # Custom Lights handler (right side)
+        self.handler_custom_lights = CustomLightsHandler(self.custom_lights_container)
         self.handler_custom_lights.update.connect(self.update_from_keyboard)
 
         self.handlers = [self.handler_backlight, self.handler_rgblight,
@@ -2862,6 +2875,118 @@ class RGBConfigurator(BasicEditor):
                         self.handler_layer_rgb_custom, self.handler_custom_lights]
 
         # Save button is now inside the Basic tab, after LayerRGBHandler
+
+    def _create_tab_with_title(self, container, title, description):
+        """Helper method to create a tab with title, description, and scroll area - centered"""
+        content_layout = QVBoxLayout()
+        content_layout.addStretch()
+
+        # Title
+        title_label = QLabel(title)
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        content_layout.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel(description)
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        content_layout.addWidget(desc_label)
+
+        # Layer info
+        layer_info = QLabel("Select a layer button to apply lighting effects only to that layer\n"
+                           "when Per-Layer RGB is enabled.")
+        layer_info.setWordWrap(True)
+        layer_info.setStyleSheet("color: gray; font-size: 9pt; font-style: italic;")
+        layer_info.setAlignment(QtCore.Qt.AlignCenter)
+        content_layout.addWidget(layer_info)
+
+        content_layout.addSpacing(10)
+
+        w = QWidget()
+        w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        w.setLayout(container)
+        content_layout.addWidget(w, alignment=QtCore.Qt.AlignHCenter)
+        content_layout.addStretch()
+
+        # Create widget for content layout
+        content_widget = QWidget()
+        content_widget.setLayout(content_layout)
+
+        # Wrap in scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(content_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        return scroll_area
+
+    def _create_custom_lights_tab(self):
+        """Create Custom Lights tab with side-by-side layout"""
+        content_layout = QVBoxLayout()
+        content_layout.addStretch()
+
+        # Title (centered)
+        title_label = QLabel("Custom Lights")
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        content_layout.addWidget(title_label)
+
+        # Description (centered)
+        desc_label = QLabel("Create and edit custom RGB animations. Basic controls on the left,\n"
+                           "custom animation slots on the right.")
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        content_layout.addWidget(desc_label)
+
+        content_layout.addSpacing(10)
+
+        # Side by side layout (centered)
+        h_layout = QHBoxLayout()
+        h_layout.addStretch()
+
+        # Left side: Basic RGB Functions (max 450px)
+        basic_group = QGroupBox("Basic RGB Functions")
+        basic_group.setMaximumWidth(450)
+        basic_widget = QWidget()
+        basic_widget.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        basic_widget.setLayout(self.custom_basic_container)
+        basic_group_layout = QVBoxLayout()
+        basic_group_layout.addWidget(basic_widget, alignment=QtCore.Qt.AlignTop)
+        basic_group.setLayout(basic_group_layout)
+        h_layout.addWidget(basic_group, alignment=QtCore.Qt.AlignTop)
+
+        # Right side: Custom Lights (fixed 750x550)
+        custom_group = QGroupBox("Custom Animation Slots")
+        custom_group.setFixedWidth(750)
+        custom_group.setFixedHeight(600)
+        custom_widget = QWidget()
+        custom_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        custom_widget.setLayout(self.custom_lights_container)
+        custom_group_layout = QVBoxLayout()
+        custom_group_layout.addWidget(custom_widget)
+        custom_group.setLayout(custom_group_layout)
+        h_layout.addWidget(custom_group)
+
+        h_layout.addStretch()
+        content_layout.addLayout(h_layout)
+        content_layout.addStretch()
+
+        # Create widget for content layout
+        content_widget = QWidget()
+        content_widget.setLayout(content_layout)
+
+        # Wrap in scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(content_widget)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        return scroll_area
 
     def _create_tab_with_scroll(self, container):
         """Helper method to create a tab with scroll area"""

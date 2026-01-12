@@ -6,7 +6,7 @@ Allows configuration of multi-action analog keys with customizable actuation poi
 Users configure DKS slots (DKS_00 - DKS_49) and then assign them to keys via the keymap editor.
 """
 
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
                               QComboBox, QSlider, QGroupBox, QMessageBox, QFrame,
                               QSizePolicy, QCheckBox, QSpinBox, QScrollArea, QApplication, QTabWidget)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
@@ -841,127 +841,71 @@ class DKSActionEditor(QWidget):
         self.action_num = action_num
         self.is_press = is_press
 
-        # Main horizontal layout
-        layout = QHBoxLayout()
+        # Main vertical layout - button on top, slider below
+        layout = QVBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(8)
+        layout.setSpacing(4)
 
-        if is_press:
-            # Press layout: Stretch | Dropdown | Key | Slider (left to right)
-            # Add stretch before dropdown to push content together
-            layout.addStretch()
+        # Top row: Behavior dropdown and Key widget side by side
+        top_row = QHBoxLayout()
+        top_row.setSpacing(4)
 
-            # Behavior selector on the outside (left)
-            self.behavior_combo = QComboBox()
-            self.behavior_combo.addItems(["Tap", "Press", "Release"])
-            self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
-            self.behavior_combo.currentIndexChanged.connect(self._on_changed)
-            self.behavior_combo.setFixedSize(70, 25)
-            layout.addWidget(self.behavior_combo)
+        # Behavior selector (narrower)
+        self.behavior_combo = QComboBox()
+        self.behavior_combo.addItems(["Tap", "Press", "Release"])
+        self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
+        self.behavior_combo.currentIndexChanged.connect(self._on_changed)
+        self.behavior_combo.setFixedSize(50, 25)
+        top_row.addWidget(self.behavior_combo)
 
-            # Key widget in middle
-            key_container = QVBoxLayout()
-            key_container.setSpacing(2)
+        # Key widget with label
+        key_container = QVBoxLayout()
+        key_container.setSpacing(2)
 
-            action_label = QLabel(f"Press {action_num + 1}")
-            action_label.setAlignment(Qt.AlignCenter)
-            action_label.setStyleSheet("""
-                QLabel {
-                    font-weight: bold;
-                    font-size: 10px;
-                    color: palette(button-text);
-                    background-color: palette(button);
-                    border-radius: 4px;
-                    padding: 2px 6px;
-                }
-            """)
-            key_container.addWidget(action_label)
+        action_type = "Press" if is_press else "Release"
+        action_label = QLabel(f"{action_type} {action_num + 1}")
+        action_label.setAlignment(Qt.AlignCenter)
+        action_label.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                font-size: 9px;
+                color: palette(button-text);
+                background-color: palette(button);
+                border-radius: 4px;
+                padding: 2px 4px;
+            }
+        """)
+        key_container.addWidget(action_label)
 
-            self.key_widget = DKSKeyWidget()
-            self.key_widget.setFixedSize(60, 50)
-            self.key_widget.changed.connect(self._on_changed)
-            self.key_widget.selected.connect(self._on_key_selected)
-            key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
+        self.key_widget = DKSKeyWidget()
+        self.key_widget.setFixedSize(55, 45)
+        self.key_widget.changed.connect(self._on_changed)
+        self.key_widget.selected.connect(self._on_key_selected)
+        key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
 
-            layout.addLayout(key_container)
+        top_row.addLayout(key_container)
+        layout.addLayout(top_row)
 
-            # Slider on the inside (right) - horizontal
-            slider_container = QVBoxLayout()
-            slider_container.setSpacing(2)
+        # Bottom row: Slider below the button
+        slider_container = QHBoxLayout()
+        slider_container.setSpacing(4)
 
-            self.actuation_label = QLabel("1.50mm")
-            self.actuation_label.setAlignment(Qt.AlignCenter)
-            self.actuation_label.setStyleSheet("font-size: 9px;")
-            slider_container.addWidget(self.actuation_label)
+        self.actuation_slider = QSlider(Qt.Horizontal)
+        self.actuation_slider.setMinimum(0)
+        self.actuation_slider.setMaximum(100)
+        self.actuation_slider.setValue(60)
+        self.actuation_slider.setFixedWidth(70)
+        self.actuation_slider.valueChanged.connect(self._update_actuation_label)
+        self.actuation_slider.valueChanged.connect(self._on_changed)
+        slider_container.addWidget(self.actuation_slider)
 
-            self.actuation_slider = QSlider(Qt.Horizontal)
-            self.actuation_slider.setMinimum(0)
-            self.actuation_slider.setMaximum(100)
-            self.actuation_slider.setValue(60)
-            self.actuation_slider.setFixedWidth(80)
-            self.actuation_slider.valueChanged.connect(self._update_actuation_label)
-            self.actuation_slider.valueChanged.connect(self._on_changed)
-            slider_container.addWidget(self.actuation_slider)
+        self.actuation_label = QLabel("1.50mm")
+        self.actuation_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.actuation_label.setStyleSheet("font-size: 8px;")
+        self.actuation_label.setFixedWidth(35)
+        slider_container.addWidget(self.actuation_label)
 
-            layout.addLayout(slider_container)
-        else:
-            # Release layout: Slider | Key | Dropdown (left to right)
-            # Slider on the inside (left) - horizontal
-            slider_container = QVBoxLayout()
-            slider_container.setSpacing(2)
-
-            self.actuation_label = QLabel("1.50mm")
-            self.actuation_label.setAlignment(Qt.AlignCenter)
-            self.actuation_label.setStyleSheet("font-size: 9px;")
-            slider_container.addWidget(self.actuation_label)
-
-            self.actuation_slider = QSlider(Qt.Horizontal)
-            self.actuation_slider.setMinimum(0)
-            self.actuation_slider.setMaximum(100)
-            self.actuation_slider.setValue(60)
-            self.actuation_slider.setFixedWidth(80)
-            self.actuation_slider.valueChanged.connect(self._update_actuation_label)
-            self.actuation_slider.valueChanged.connect(self._on_changed)
-            slider_container.addWidget(self.actuation_slider)
-
-            layout.addLayout(slider_container)
-
-            # Key widget in middle
-            key_container = QVBoxLayout()
-            key_container.setSpacing(2)
-
-            action_label = QLabel(f"Release {action_num + 1}")
-            action_label.setAlignment(Qt.AlignCenter)
-            action_label.setStyleSheet("""
-                QLabel {
-                    font-weight: bold;
-                    font-size: 10px;
-                    color: palette(button-text);
-                    background-color: palette(button);
-                    border-radius: 4px;
-                    padding: 2px 6px;
-                }
-            """)
-            key_container.addWidget(action_label)
-
-            self.key_widget = DKSKeyWidget()
-            self.key_widget.setFixedSize(60, 50)
-            self.key_widget.changed.connect(self._on_changed)
-            self.key_widget.selected.connect(self._on_key_selected)
-            key_container.addWidget(self.key_widget, alignment=Qt.AlignCenter)
-
-            layout.addLayout(key_container)
-
-            # Behavior selector on the outside (right)
-            self.behavior_combo = QComboBox()
-            self.behavior_combo.addItems(["Tap", "Press", "Release"])
-            self.behavior_combo.setCurrentIndex(DKS_BEHAVIOR_TAP)
-            self.behavior_combo.currentIndexChanged.connect(self._on_changed)
-            self.behavior_combo.setFixedSize(70, 25)
-            layout.addWidget(self.behavior_combo)
-
-            # Add stretch after dropdown to push content together
-            layout.addStretch()
+        layout.addLayout(slider_container)
 
         # Store label reference for color styling
         self.label = action_label
@@ -1041,7 +985,7 @@ class DKSVisualWidget(QWidget):
         self.setLayout(self.main_layout)
 
     def set_editors(self, press_editors, release_editors):
-        """Position the action editors in horizontal layout"""
+        """Position the action editors in horizontal layout with 2x2 grids"""
         self.press_editors = press_editors
         self.release_editors = release_editors
 
@@ -1051,17 +995,31 @@ class DKSVisualWidget(QWidget):
             if item.widget():
                 item.widget().setParent(None)
 
-        # Left section: Press actions (vertical stack)
+        # Left section: Title/Description + Press actions (2x2 grid)
         press_container = QWidget()
         press_layout = QVBoxLayout()
         press_layout.setContentsMargins(0, 0, 0, 0)
-        press_layout.setSpacing(10)
+        press_layout.setSpacing(6)
+
+        # Title and description at top left
+        title_label = QLabel("DKS Configuration")
+        title_label.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        press_layout.addWidget(title_label)
+
+        desc_label = QLabel("Configure multi-action keys with customizable actuation points.\n"
+                           "Set different actions for press and release at specific depths.")
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        press_layout.addWidget(desc_label)
+
+        # Add some spacing before press section
+        press_layout.addSpacing(10)
 
         press_label = QLabel("Key Press (Downstroke)")
         press_label.setStyleSheet("""
             QLabel {
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 11px;
                 color: palette(button-text);
                 background-color: palette(button);
                 border-radius: 6px;
@@ -1071,10 +1029,15 @@ class DKSVisualWidget(QWidget):
         press_label.setAlignment(Qt.AlignCenter)
         press_layout.addWidget(press_label)
 
-        for editor in self.press_editors:
+        # 2x2 grid for press actions
+        press_grid = QGridLayout()
+        press_grid.setSpacing(6)
+        for i, editor in enumerate(self.press_editors):
+            row = i // 2  # 0, 0, 1, 1
+            col = i % 2   # 0, 1, 0, 1
             editor.setParent(press_container)
-            press_layout.addWidget(editor)
-            # Label styling is now done in DKSActionEditor.__init__
+            press_grid.addWidget(editor, row, col)
+        press_layout.addLayout(press_grid)
 
         press_layout.addStretch()
         press_container.setLayout(press_layout)
@@ -1106,19 +1069,22 @@ class DKSVisualWidget(QWidget):
         viz_layout.addStretch()
 
         viz_container.setLayout(viz_layout)
-        self.main_layout.addWidget(viz_container)
+        self.main_layout.addWidget(viz_container, alignment=Qt.AlignTop)
 
-        # Right section: Release actions (vertical stack)
+        # Right section: Release actions (2x2 grid) - with top spacing to align with press
         release_container = QWidget()
         release_layout = QVBoxLayout()
         release_layout.setContentsMargins(0, 0, 0, 0)
-        release_layout.setSpacing(10)
+        release_layout.setSpacing(6)
+
+        # Add spacing at top to align with press section (title + desc height)
+        release_layout.addSpacing(75)
 
         release_label = QLabel("Key Release (Upstroke)")
         release_label.setStyleSheet("""
             QLabel {
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 11px;
                 color: palette(button-text);
                 background-color: palette(button);
                 border-radius: 6px;
@@ -1128,10 +1094,15 @@ class DKSVisualWidget(QWidget):
         release_label.setAlignment(Qt.AlignCenter)
         release_layout.addWidget(release_label)
 
-        for editor in self.release_editors:
+        # 2x2 grid for release actions
+        release_grid = QGridLayout()
+        release_grid.setSpacing(6)
+        for i, editor in enumerate(self.release_editors):
+            row = i // 2  # 0, 0, 1, 1
+            col = i % 2   # 0, 1, 0, 1
             editor.setParent(release_container)
-            release_layout.addWidget(editor)
-            # Label styling is now done in DKSActionEditor.__init__
+            release_grid.addWidget(editor, row, col)
+        release_layout.addLayout(release_grid)
 
         release_layout.addStretch()
         release_container.setLayout(release_layout)

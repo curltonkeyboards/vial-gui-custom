@@ -1189,17 +1189,10 @@ class TriggerSettingsTab(BasicEditor):
         layout.setSpacing(8)
         layout.setContentsMargins(8, 8, 8, 8)
 
-        # Header with description
+        # Header only (description is in the left container)
         header_label = QLabel(tr("TriggerSettings", "Null Bind (SOCD Handling)"))
         header_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11pt; }")
         layout.addWidget(header_label)
-
-        desc_label = QLabel(tr("TriggerSettings",
-            "Configure how simultaneous key presses are resolved.\n"
-            "Select keys on the keyboard above and add them to a group."))
-        desc_label.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
-        desc_label.setWordWrap(True)
-        layout.addWidget(desc_label)
 
         # Group selection row
         group_row = QHBoxLayout()
@@ -1217,18 +1210,23 @@ class TriggerSettingsTab(BasicEditor):
         group_row.addWidget(self.nullbind_group_combo)
 
         group_row.addStretch()
+        layout.addLayout(group_row)
 
-        # Behavior selection
+        # Behavior selection row (below group)
+        behavior_row = QHBoxLayout()
+        behavior_row.setSpacing(10)
+
         behavior_label = QLabel(tr("TriggerSettings", "Behavior:"))
         behavior_label.setStyleSheet("QLabel { font-weight: bold; }")
-        group_row.addWidget(behavior_label)
+        behavior_row.addWidget(behavior_label)
 
         self.nullbind_behavior_combo = QComboBox()
         self.nullbind_behavior_combo.setFixedWidth(200)
         self.nullbind_behavior_combo.currentIndexChanged.connect(self.on_nullbind_behavior_changed)
-        group_row.addWidget(self.nullbind_behavior_combo)
+        behavior_row.addWidget(self.nullbind_behavior_combo)
 
-        layout.addLayout(group_row)
+        behavior_row.addStretch()
+        layout.addLayout(behavior_row)
 
         # Keys in group display
         keys_frame = QFrame()
@@ -1322,14 +1320,6 @@ class TriggerSettingsTab(BasicEditor):
         left_layout.setSpacing(6)
         left_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Checkboxes above tabs - always visible
-        checkboxes_layout = QHBoxLayout()
-        checkboxes_layout.setContentsMargins(10, 5, 10, 5)
-        checkboxes_layout.addWidget(self.enable_checkbox)
-        checkboxes_layout.addWidget(self.per_layer_checkbox)
-        checkboxes_layout.addStretch()
-        left_layout.addLayout(checkboxes_layout)
-
         # Tabbed settings container
         tabs_container = QFrame()
         tabs_container.setFrameShape(QFrame.StyledPanel)
@@ -1344,39 +1334,176 @@ class TriggerSettingsTab(BasicEditor):
 
         # Actuation Tab
         actuation_tab = QWidget()
-        actuation_layout = QVBoxLayout()
+        actuation_layout = QHBoxLayout()
         actuation_layout.setContentsMargins(8, 8, 8, 8)
+        actuation_layout.setSpacing(12)
 
+        # Left side: Description with checkboxes
+        actuation_desc_container = QWidget()
+        actuation_desc_container.setFixedWidth(210)
+        actuation_desc_layout = QVBoxLayout()
+        actuation_desc_layout.setContentsMargins(0, 0, 0, 0)
+        actuation_desc_title = QLabel(tr("TriggerSettings", "Actuation"))
+        actuation_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        actuation_desc_layout.addWidget(actuation_desc_title)
+        actuation_desc_text = QLabel(tr("TriggerSettings",
+            "Set the key travel distance at which a keypress is registered. "
+            "Adjust deadzones to prevent accidental presses."))
+        actuation_desc_text.setWordWrap(True)
+        actuation_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        actuation_desc_layout.addWidget(actuation_desc_text)
+
+        actuation_desc_layout.addSpacing(10)
+
+        # Per-Key checkbox with description
+        actuation_desc_layout.addWidget(self.enable_checkbox)
+        per_key_desc = QLabel(tr("TriggerSettings",
+            "Per-Key: Each key can have its own actuation settings."))
+        per_key_desc.setWordWrap(True)
+        per_key_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        actuation_desc_layout.addWidget(per_key_desc)
+
+        actuation_desc_layout.addSpacing(5)
+
+        # Per-Layer checkbox with description
+        actuation_desc_layout.addWidget(self.per_layer_checkbox)
+        per_layer_desc = QLabel(tr("TriggerSettings",
+            "Per-Layer: Settings change based on the active keyboard layer."))
+        per_layer_desc.setWordWrap(True)
+        per_layer_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        actuation_desc_layout.addWidget(per_layer_desc)
+
+        actuation_desc_layout.addStretch()
+        actuation_desc_container.setLayout(actuation_desc_layout)
+        actuation_layout.addWidget(actuation_desc_container)
+
+        # Right side: Controls
         self.trigger_container = self.create_trigger_container()
-        actuation_layout.addWidget(self.trigger_container)
-        actuation_layout.addStretch()
+        actuation_layout.addWidget(self.trigger_container, 1)
 
         actuation_tab.setLayout(actuation_layout)
         self.settings_tabs.addTab(actuation_tab, "Actuation")
 
         # Rapidfire Tab
         rapidfire_tab = QWidget()
-        rapidfire_layout = QVBoxLayout()
+        rapidfire_layout = QHBoxLayout()
         rapidfire_layout.setContentsMargins(8, 8, 8, 8)
+        rapidfire_layout.setSpacing(12)
 
+        # Left side: Description with checkboxes
+        rapidfire_desc_container = QWidget()
+        rapidfire_desc_container.setFixedWidth(210)
+        rapidfire_desc_layout = QVBoxLayout()
+        rapidfire_desc_layout.setContentsMargins(0, 0, 0, 0)
+        rapidfire_desc_title = QLabel(tr("TriggerSettings", "Rapidfire"))
+        rapidfire_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        rapidfire_desc_layout.addWidget(rapidfire_desc_title)
+        rapidfire_desc_text = QLabel(tr("TriggerSettings",
+            "Enable rapid key repeats based on key travel. "
+            "Adjust press and release sensitivity thresholds."))
+        rapidfire_desc_text.setWordWrap(True)
+        rapidfire_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        rapidfire_desc_layout.addWidget(rapidfire_desc_text)
+
+        rapidfire_desc_layout.addSpacing(10)
+
+        # Per-Key checkbox with description
+        self.rf_enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
+        self.rf_enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.rf_enable_checkbox.stateChanged.connect(self.on_enable_changed)
+        rapidfire_desc_layout.addWidget(self.rf_enable_checkbox)
+        rf_per_key_desc = QLabel(tr("TriggerSettings",
+            "Per-Key: Each key can have its own rapidfire settings."))
+        rf_per_key_desc.setWordWrap(True)
+        rf_per_key_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        rapidfire_desc_layout.addWidget(rf_per_key_desc)
+
+        rapidfire_desc_layout.addSpacing(5)
+
+        # Per-Layer checkbox with description
+        self.rf_per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
+        self.rf_per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.rf_per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
+        rapidfire_desc_layout.addWidget(self.rf_per_layer_checkbox)
+        rf_per_layer_desc = QLabel(tr("TriggerSettings",
+            "Per-Layer: Settings change based on the active keyboard layer."))
+        rf_per_layer_desc.setWordWrap(True)
+        rf_per_layer_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        rapidfire_desc_layout.addWidget(rf_per_layer_desc)
+
+        rapidfire_desc_layout.addStretch()
+        rapidfire_desc_container.setLayout(rapidfire_desc_layout)
+        rapidfire_layout.addWidget(rapidfire_desc_container)
+
+        # Right side: Controls
         self.rapidfire_container = self.create_rapidfire_container()
-        rapidfire_layout.addWidget(self.rapidfire_container)
-        rapidfire_layout.addStretch()
+        rapidfire_layout.addWidget(self.rapidfire_container, 1)
 
         rapidfire_tab.setLayout(rapidfire_layout)
         self.settings_tabs.addTab(rapidfire_tab, "Rapidfire")
 
         # Velocity Curve Tab
         velocity_tab = QWidget()
-        velocity_layout = QVBoxLayout()
+        velocity_layout = QHBoxLayout()
         velocity_layout.setContentsMargins(8, 8, 8, 8)
+        velocity_layout.setSpacing(12)
+
+        # Left side: Description with checkboxes
+        velocity_desc_container = QWidget()
+        velocity_desc_container.setFixedWidth(210)
+        velocity_desc_layout = QVBoxLayout()
+        velocity_desc_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_desc_title = QLabel(tr("TriggerSettings", "Velocity Curve"))
+        velocity_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        velocity_desc_layout.addWidget(velocity_desc_title)
+        velocity_desc_text = QLabel(tr("TriggerSettings",
+            "Customize MIDI velocity response based on key travel speed. "
+            "Shape the curve for expressive playing."))
+        velocity_desc_text.setWordWrap(True)
+        velocity_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        velocity_desc_layout.addWidget(velocity_desc_text)
+
+        velocity_desc_layout.addSpacing(10)
+
+        # Per-Key checkbox with description
+        self.vc_enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
+        self.vc_enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.vc_enable_checkbox.stateChanged.connect(self.on_enable_changed)
+        velocity_desc_layout.addWidget(self.vc_enable_checkbox)
+        vc_per_key_desc = QLabel(tr("TriggerSettings",
+            "Per-Key: Each key can have its own velocity curve."))
+        vc_per_key_desc.setWordWrap(True)
+        vc_per_key_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        velocity_desc_layout.addWidget(vc_per_key_desc)
+
+        velocity_desc_layout.addSpacing(5)
+
+        # Per-Layer checkbox with description
+        self.vc_per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
+        self.vc_per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.vc_per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
+        velocity_desc_layout.addWidget(self.vc_per_layer_checkbox)
+        vc_per_layer_desc = QLabel(tr("TriggerSettings",
+            "Per-Layer: Settings change based on the active keyboard layer."))
+        vc_per_layer_desc.setWordWrap(True)
+        vc_per_layer_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        velocity_desc_layout.addWidget(vc_per_layer_desc)
+
+        velocity_desc_layout.addStretch()
+        velocity_desc_container.setLayout(velocity_desc_layout)
+        velocity_layout.addWidget(velocity_desc_container)
+
+        # Right side: Controls
+        velocity_controls = QWidget()
+        velocity_controls_layout = QVBoxLayout()
+        velocity_controls_layout.setContentsMargins(0, 0, 0, 0)
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        velocity_layout.addWidget(self.use_per_key_curve_checkbox)
+        velocity_controls_layout.addWidget(self.use_per_key_curve_checkbox)
 
         # Velocity Curve Editor - centered
         from widgets.curve_editor import CurveEditorWidget
@@ -1389,20 +1516,69 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
         curve_editor_container.addWidget(self.velocity_curve_editor)
         curve_editor_container.addStretch()
-        velocity_layout.addLayout(curve_editor_container)
-        velocity_layout.addStretch()
+        velocity_controls_layout.addLayout(curve_editor_container)
+        velocity_controls_layout.addStretch()
+
+        velocity_controls.setLayout(velocity_controls_layout)
+        velocity_layout.addWidget(velocity_controls, 1)
 
         velocity_tab.setLayout(velocity_layout)
         self.settings_tabs.addTab(velocity_tab, "Velocity Curve")
 
         # Null Bind Tab
         nullbind_tab = QWidget()
-        nullbind_layout = QVBoxLayout()
+        nullbind_layout = QHBoxLayout()
         nullbind_layout.setContentsMargins(8, 8, 8, 8)
+        nullbind_layout.setSpacing(12)
 
+        # Left side: Description with checkboxes
+        nullbind_desc_container = QWidget()
+        nullbind_desc_container.setFixedWidth(210)
+        nullbind_desc_layout = QVBoxLayout()
+        nullbind_desc_layout.setContentsMargins(0, 0, 0, 0)
+        nullbind_desc_title = QLabel(tr("TriggerSettings", "Null Bind"))
+        nullbind_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        nullbind_desc_layout.addWidget(nullbind_desc_title)
+        nullbind_desc_text = QLabel(tr("TriggerSettings",
+            "Configure SOCD (Simultaneous Opposing Cardinal Directions) handling. "
+            "Define how the keyboard resolves conflicting key presses."))
+        nullbind_desc_text.setWordWrap(True)
+        nullbind_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        nullbind_desc_layout.addWidget(nullbind_desc_text)
+
+        nullbind_desc_layout.addSpacing(10)
+
+        # Per-Key checkbox with description
+        self.nb_enable_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Key Actuation"))
+        self.nb_enable_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.nb_enable_checkbox.stateChanged.connect(self.on_enable_changed)
+        nullbind_desc_layout.addWidget(self.nb_enable_checkbox)
+        nb_per_key_desc = QLabel(tr("TriggerSettings",
+            "Per-Key: Each key can have its own null bind settings."))
+        nb_per_key_desc.setWordWrap(True)
+        nb_per_key_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        nullbind_desc_layout.addWidget(nb_per_key_desc)
+
+        nullbind_desc_layout.addSpacing(5)
+
+        # Per-Layer checkbox with description
+        self.nb_per_layer_checkbox = QCheckBox(tr("TriggerSettings", "Enable Per-Layer Actuation"))
+        self.nb_per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; }")
+        self.nb_per_layer_checkbox.stateChanged.connect(self.on_per_layer_changed)
+        nullbind_desc_layout.addWidget(self.nb_per_layer_checkbox)
+        nb_per_layer_desc = QLabel(tr("TriggerSettings",
+            "Per-Layer: Settings change based on the active keyboard layer."))
+        nb_per_layer_desc.setWordWrap(True)
+        nb_per_layer_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        nullbind_desc_layout.addWidget(nb_per_layer_desc)
+
+        nullbind_desc_layout.addStretch()
+        nullbind_desc_container.setLayout(nullbind_desc_layout)
+        nullbind_layout.addWidget(nullbind_desc_container)
+
+        # Right side: Controls
         self.nullbind_container = self.create_nullbind_container()
-        nullbind_layout.addWidget(self.nullbind_container)
-        nullbind_layout.addStretch()
+        nullbind_layout.addWidget(self.nullbind_container, 1)
 
         nullbind_tab.setLayout(nullbind_layout)
         self.settings_tabs.addTab(nullbind_tab, "Null Bind")

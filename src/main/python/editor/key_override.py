@@ -264,6 +264,21 @@ class KeyOverride(BasicEditor):
         super().__init__()
         self.keyboard = None
 
+        # Title
+        title_label = QLabel(tr("KeyOverride", "Key Overrides"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel(tr("KeyOverride",
+            "Remap keys based on modifier combinations. Override the output of a key when specific\n"
+            "modifiers are held, allowing context-sensitive key behavior."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.addWidget(desc_label)
+
         self.key_override_entries = []
         self.key_override_entries_available = []
         self.tabs = TabWidgetWithKeycodes()

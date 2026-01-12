@@ -41,6 +41,30 @@ class MatrixTest(BasicEditor):
 
         self.layout_editor = layout_editor
 
+        self.addStretch()
+
+        # Container for title, description, keyboard widget and buttons
+        container = QWidget()
+        container_layout = QVBoxLayout()
+        container_layout.setSpacing(6)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container.setLayout(container_layout)
+
+        # Title
+        title_label = QLabel(tr("MatrixTest", "Matrix Tester"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        container_layout.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel(tr("MatrixTest",
+            "Test individual key switches by pressing them. Each key will light up when its switch\n"
+            "is activated, helping identify faulty or stuck switches."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        container_layout.addWidget(desc_label)
+
         self.KeyboardWidget2 = KeyboardWidgetSimple(layout_editor)
         self.KeyboardWidget2.set_enabled(False)
 
@@ -55,7 +79,7 @@ class MatrixTest(BasicEditor):
         layout.addWidget(self.KeyboardWidget2)
         layout.setAlignment(self.KeyboardWidget2, Qt.AlignCenter)
 
-        self.addLayout(layout)
+        container_layout.addLayout(layout)
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
@@ -63,7 +87,10 @@ class MatrixTest(BasicEditor):
         btn_layout.addWidget(self.unlock_lbl)
         btn_layout.addWidget(self.unlock_btn)
         btn_layout.addWidget(self.reset_btn)
-        self.addLayout(btn_layout)
+        container_layout.addLayout(btn_layout)
+
+        self.addWidget(container, alignment=QtCore.Qt.AlignHCenter)
+        self.addStretch()
 
         self.keyboard = None
         self.device = None
@@ -181,17 +208,17 @@ class MatrixTest(BasicEditor):
 
 
 class ThruLoopConfigurator(BasicEditor):
-    
+
     def __init__(self):
         super().__init__()
-        
+
         self.single_loopchop_label = None
         self.master_cc = None
         self.single_loopchop_widgets = []
         self.nav_widget = None
-        
+
         self.setup_ui()
-        
+
     def setup_ui(self):
         # Create scroll area for better window resizing
         scroll_area = QScrollArea()
@@ -200,22 +227,53 @@ class ThruLoopConfigurator(BasicEditor):
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         main_widget = QWidget()
-        main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
+        outer_layout = QVBoxLayout()  # Outer layout for title + columns
+        outer_layout.setSpacing(15)
+        main_widget.setLayout(outer_layout)
 
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
-        # Top row: Basic Settings and LoopChop side by side
-        top_row_layout = QHBoxLayout()
-        main_layout.addLayout(top_row_layout)
-        
+        # TOP: Title and Description (centered)
+        title_container = QWidget()
+        title_layout = QVBoxLayout()
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_container.setLayout(title_layout)
+
+        title_label = QLabel(tr("ThruLoopConfigurator", "ThruLoop"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_layout.addWidget(title_label)
+
+        desc_label = QLabel(tr("ThruLoopConfigurator",
+            "Configure ThruLoop MIDI looping and LoopChop navigation. "
+            "Set up CC mappings for recording, playback, and loop control."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_layout.addWidget(desc_label)
+
+        outer_layout.addWidget(title_container)
+
+        # COLUMNS: Side by side layout
+        main_h_layout = QHBoxLayout()
+        main_h_layout.setSpacing(15)
+        outer_layout.addLayout(main_h_layout)
+
+        # Left spacer for centering
+        main_h_layout.addStretch(1)
+
+        # LEFT COLUMN: Basic Settings + LoopChop (400px width)
+        left_column = QVBoxLayout()
+        left_column.setSpacing(8)
+
         # Basic Settings Group
         self.basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
+        self.basic_group.setFixedWidth(400)
         basic_layout = QGridLayout()
         self.basic_group.setLayout(basic_layout)
-        top_row_layout.addWidget(self.basic_group)
-        
+        left_column.addWidget(self.basic_group)
+
         # ThruLoop Channel
         basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "ThruLoop Channel")), 0, 0)
         self.loop_channel = ArrowComboBox()
@@ -228,43 +286,44 @@ class ThruLoopConfigurator(BasicEditor):
             self.loop_channel.addItem(f"Channel {i}", i)
         self.loop_channel.setCurrentIndex(15)
         basic_layout.addWidget(self.loop_channel, 0, 1)
-        
+
         # Send Restart Messages and Alternate Restart Mode (side by side)
         basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Restart Settings:")), 1, 0, 1, 2)
-        
+
         self.sync_midi = QCheckBox(tr("ThruLoopConfigurator", "Send Restart Messages"))
         basic_layout.addWidget(self.sync_midi, 2, 0)
-        
+
         self.alternate_restart = QCheckBox(tr("ThruLoopConfigurator", "Alternate Restart Mode"))
         basic_layout.addWidget(self.alternate_restart, 2, 1)
-        
+
         # Disable ThruLoop and CC Loop Recording (side by side)
         basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Loop Controls:")), 3, 0, 1, 2)
-        
+
         self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
         basic_layout.addWidget(self.loop_enabled, 4, 0)
-        
+
         self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
         basic_layout.addWidget(self.cc_loop_recording, 4, 1)
-        
-        # LoopChop Settings (more compact)
+
+        # LoopChop Settings (below Basic Settings)
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
+        self.loopchop_group.setFixedWidth(400)
         loopchop_layout = QGridLayout()
         loopchop_layout.setSpacing(5)
         loopchop_layout.setContentsMargins(10, 10, 10, 10)
         self.loopchop_group.setLayout(loopchop_layout)
-        top_row_layout.addWidget(self.loopchop_group)
-        
+        left_column.addWidget(self.loopchop_group)
+
         # Separate CCs for LoopChop checkbox
         self.separate_loopchop = QCheckBox(tr("ThruLoopConfigurator", "Separate CCs for LoopChop"))
         loopchop_layout.addWidget(self.separate_loopchop, 0, 0, 1, 4)
-        
+
         # Single LoopChop CC - Always visible
         self.single_loopchop_label = QLabel(tr("ThruLoopConfigurator", "Loop Chop"))
         loopchop_layout.addWidget(self.single_loopchop_label, 1, 0)
         self.master_cc = self.create_cc_combo()
         loopchop_layout.addWidget(self.master_cc, 1, 1, 1, 3)
-        
+
         # Individual LoopChop CCs (8 navigation CCs) - More compact layout
         nav_layout = QGridLayout()
         nav_layout.setSpacing(3)
@@ -276,21 +335,33 @@ class ThruLoopConfigurator(BasicEditor):
             label.setMaximumWidth(30)
             nav_layout.addWidget(label, row * 2, col)
             combo = self.create_cc_combo()
+            combo.setMaximumWidth(80)
             nav_layout.addWidget(combo, row * 2 + 1, col)
             self.nav_combos.append(combo)
-        
+
         self.nav_widget = QWidget()
         self.nav_widget.setLayout(nav_layout)
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 4)
-        
-        # Main Functions - Using clean grid layout
+
+        left_column.addStretch()
+        main_h_layout.addLayout(left_column)
+
+        # RIGHT COLUMN: Main Functions with Overdub inside (fixed 630x550)
+        right_column = QVBoxLayout()
+        right_column.setSpacing(8)
+
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
-        self.main_group.setMaximumWidth(700)
-        main_layout.addWidget(self.main_group, alignment=QtCore.Qt.AlignHCenter)
+        self.main_group.setFixedWidth(630)
+        self.main_group.setFixedHeight(550)
+        main_group_layout = QVBoxLayout()
+        main_group_layout.setSpacing(5)
+        main_group_layout.setContentsMargins(10, 8, 10, 10)
+        self.main_group.setLayout(main_group_layout)
+
+        # Main Functions grid
         main_grid = QGridLayout()
-        main_grid.setSpacing(8)
-        main_grid.setContentsMargins(10, 15, 10, 10)
-        self.main_group.setLayout(main_grid)
+        main_grid.setSpacing(5)
+        main_grid.setContentsMargins(0, 0, 0, 0)
 
         # Add column headers
         for col in range(4):
@@ -315,15 +386,19 @@ class ThruLoopConfigurator(BasicEditor):
                 main_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.main_combos.append(row_combos)
-        
-        # Overdub Functions - Using clean grid layout
-        self.overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
-        self.overdub_group.setMaximumWidth(700)
-        main_layout.addWidget(self.overdub_group, alignment=QtCore.Qt.AlignHCenter)
+
+        main_group_layout.addLayout(main_grid)
+
+        # Separator line
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        main_group_layout.addWidget(separator)
+
+        # Overdub Functions section inside Main Functions
         overdub_grid = QGridLayout()
-        overdub_grid.setSpacing(8)
-        overdub_grid.setContentsMargins(10, 15, 10, 10)
-        self.overdub_group.setLayout(overdub_grid)
+        overdub_grid.setSpacing(5)
+        overdub_grid.setContentsMargins(0, 0, 0, 0)
 
         # Add column headers
         for col in range(4):
@@ -347,7 +422,15 @@ class ThruLoopConfigurator(BasicEditor):
                 overdub_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.overdub_combos.append(row_combos)
-        
+
+        main_group_layout.addLayout(overdub_grid)
+        right_column.addWidget(self.main_group)
+        right_column.addStretch()
+        main_h_layout.addLayout(right_column)
+
+        # Right spacer for centering
+        main_h_layout.addStretch(1)
+
         # Buttons
         self.addStretch()
         buttons_layout = QHBoxLayout()
@@ -447,7 +530,6 @@ class ThruLoopConfigurator(BasicEditor):
     def on_loop_enabled_changed(self):
         enabled = not self.loop_enabled.isChecked()
         self.main_group.setEnabled(enabled)
-        self.overdub_group.setEnabled(enabled) 
         self.loopchop_group.setEnabled(enabled)
     
     def on_separate_loopchop_changed(self):
@@ -3743,129 +3825,54 @@ class GamingConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area)
 
-        # Create horizontal layout for calibration (left) and gamepad (center)
+        # Create horizontal layout: Settings (title+desc+response+calibration) | Gamepad | Curve
         controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(30)
+        controls_layout.setSpacing(15)
         main_layout.addLayout(controls_layout)
 
-        # Add outer stretch to center content
-        controls_layout.addStretch(1)
+        # COLUMN 1: Title, Description, and Response+Calibration side by side
+        settings_column = QVBoxLayout()
+        settings_column.setSpacing(8)
 
-        # Analog Calibration Group (LEFT SIDE)
-        calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
-        calibration_group.setMaximumWidth(250)
-        calibration_layout = QVBoxLayout()
-        calibration_layout.setSpacing(8)
-        calibration_group.setLayout(calibration_layout)
-        controls_layout.addWidget(calibration_group, alignment=QtCore.Qt.AlignTop)
+        # Title at top
+        title_label = QLabel(tr("GamingConfigurator", "Gaming Mode"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        settings_column.addWidget(title_label)
 
-        # Helper function to create compact slider
-        def create_compact_slider(label_text, default_value):
-            widget = QWidget()
-            layout = QVBoxLayout()
-            layout.setSpacing(2)
-            layout.setContentsMargins(0, 0, 0, 0)
-            widget.setLayout(layout)
+        # Description below title
+        desc_label = QLabel(tr("GamingConfigurator",
+            "Assign keyboard keys to gamepad buttons. "
+            "Assigned keys will act as gamepad inputs when Gaming Mode is enabled, "
+            "and function normally when disabled. "
+            "Click a button on the controller, then select a key from the keycodes below."))
+        desc_label.setWordWrap(True)
+        desc_label.setMaximumWidth(400)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        settings_column.addWidget(desc_label)
 
-            label_with_value = QLabel(f"{label_text}: {default_value/10:.1f}")
-            layout.addWidget(label_with_value)
-
-            slider = QSlider(Qt.Horizontal)
-            slider.setMinimum(0)
-            slider.setMaximum(25)
-            slider.setValue(default_value)
-            slider.setTickInterval(1)
-            slider.setMinimumWidth(200)
-            layout.addWidget(slider)
-
-            slider.valueChanged.connect(
-                lambda val, lbl=label_with_value, txt=label_text: lbl.setText(f"{txt}: {val/10:.1f}")
-            )
-
-            return widget, slider, label_with_value
-
-        # LS (Left Stick) Calibration
-        ls_label = QLabel("<b>Left Stick</b>")
-        calibration_layout.addWidget(ls_label)
-
-        ls_min_widget, self.ls_min_travel_slider, self.ls_min_travel_label = create_compact_slider(
-            tr("GamingConfigurator", "Min Travel (mm)"), 10
-        )
-        calibration_layout.addWidget(ls_min_widget)
-
-        ls_max_widget, self.ls_max_travel_slider, self.ls_max_travel_label = create_compact_slider(
-            tr("GamingConfigurator", "Max Travel (mm)"), 20
-        )
-        calibration_layout.addWidget(ls_max_widget)
-
-        # RS (Right Stick) Calibration
-        rs_label = QLabel("<b>Right Stick</b>")
-        calibration_layout.addWidget(rs_label)
-
-        rs_min_widget, self.rs_min_travel_slider, self.rs_min_travel_label = create_compact_slider(
-            tr("GamingConfigurator", "Min Travel (mm)"), 10
-        )
-        calibration_layout.addWidget(rs_min_widget)
-
-        rs_max_widget, self.rs_max_travel_slider, self.rs_max_travel_label = create_compact_slider(
-            tr("GamingConfigurator", "Max Travel (mm)"), 20
-        )
-        calibration_layout.addWidget(rs_max_widget)
-
-        # Triggers Calibration
-        trigger_label = QLabel("<b>Triggers</b>")
-        calibration_layout.addWidget(trigger_label)
-
-        trigger_min_widget, self.trigger_min_travel_slider, self.trigger_min_travel_label = create_compact_slider(
-            tr("GamingConfigurator", "Min Travel (mm)"), 10
-        )
-        calibration_layout.addWidget(trigger_min_widget)
-
-        trigger_max_widget, self.trigger_max_travel_slider, self.trigger_max_travel_label = create_compact_slider(
-            tr("GamingConfigurator", "Max Travel (mm)"), 20
-        )
-        calibration_layout.addWidget(trigger_max_widget)
-
-        # MIDDLE COLUMN: Curve Editor and Gamepad Response
-        middle_column = QWidget()
-        middle_layout = QVBoxLayout()
-        middle_layout.setSpacing(15)
-        middle_layout.setContentsMargins(0, 0, 0, 0)
-        middle_column.setLayout(middle_layout)
-
-        # Analog Curve Section
-        from widgets.curve_editor import CurveEditorWidget
-        curve_group = QGroupBox(tr("GamingConfigurator", "Analog Curve"))
-        curve_group.setMaximumWidth(350)
-        curve_group_layout = QVBoxLayout()
-        curve_group.setLayout(curve_group_layout)
-
-        self.curve_editor = CurveEditorWidget(show_save_button=True)
-        self.curve_editor.curve_changed.connect(self.on_curve_changed)
-        self.curve_editor.save_to_user_requested.connect(self.on_save_curve_to_user)
-        self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
-        curve_group_layout.addWidget(self.curve_editor)
-
-        middle_layout.addWidget(curve_group)
+        # Horizontal layout for Response and Calibration side by side
+        response_calibration_layout = QHBoxLayout()
+        response_calibration_layout.setSpacing(8)
 
         # Gamepad Response Section
         response_group = QGroupBox(tr("GamingConfigurator", "Gamepad Response"))
-        response_group.setMaximumWidth(350)
+        response_group.setMaximumWidth(200)
         response_layout = QVBoxLayout()
+        response_layout.setSpacing(4)
         response_group.setLayout(response_layout)
 
         # Angle Adjustment
-        self.angle_adj_checkbox = QCheckBox(tr("GamingConfigurator", "Enable angle adjustment"))
+        self.angle_adj_checkbox = QCheckBox(tr("GamingConfigurator", "Angle adjustment"))
         response_layout.addWidget(self.angle_adj_checkbox)
 
         # Diagonal Angle Slider
         angle_widget = QWidget()
         angle_layout = QVBoxLayout()
         angle_layout.setSpacing(2)
-        angle_layout.setContentsMargins(20, 0, 0, 0)  # Indent
+        angle_layout.setContentsMargins(15, 0, 0, 0)  # Indent
         angle_widget.setLayout(angle_layout)
 
-        self.diagonal_angle_label = QLabel("Diagonal Angle: 0°")
+        self.diagonal_angle_label = QLabel("Angle: 0°")
         angle_layout.addWidget(self.diagonal_angle_label)
 
         self.diagonal_angle_slider = QSlider(Qt.Horizontal)
@@ -3874,14 +3881,13 @@ class GamingConfigurator(BasicEditor):
         self.diagonal_angle_slider.setValue(0)
         self.diagonal_angle_slider.setTickInterval(10)
         self.diagonal_angle_slider.valueChanged.connect(
-            lambda val: self.diagonal_angle_label.setText(f"Diagonal Angle: {val}°")
+            lambda val: self.diagonal_angle_label.setText(f"Angle: {val}°")
         )
         angle_layout.addWidget(self.diagonal_angle_slider)
-
         response_layout.addWidget(angle_widget)
 
         # Square Output
-        self.square_output_checkbox = QCheckBox(tr("GamingConfigurator", "Use Square joystick output"))
+        self.square_output_checkbox = QCheckBox(tr("GamingConfigurator", "Square output"))
         self.square_output_checkbox.setToolTip(tr("GamingConfigurator",
             "Restrict joystick movement to a square instead of circle.\n"
             "Allows maximum axis output. Recommended for Rocket League and CS:GO."))
@@ -3893,15 +3899,121 @@ class GamingConfigurator(BasicEditor):
             "Use maximum value of opposite sides of axis rather than combining them."))
         response_layout.addWidget(self.snappy_joystick_checkbox)
 
-        middle_layout.addWidget(response_group)
-        middle_layout.addStretch()
+        response_calibration_layout.addWidget(response_group, alignment=QtCore.Qt.AlignTop)
 
-        controls_layout.addWidget(middle_column, alignment=QtCore.Qt.AlignTop)
+        # Analog Calibration Group
+        calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
+        calibration_group.setMaximumWidth(300)
+        calibration_layout = QVBoxLayout()
+        calibration_layout.setSpacing(6)
+        calibration_group.setLayout(calibration_layout)
 
-        # Create gamepad widget with drawn outline
+        # Helper function to create compact horizontal slider pair (min/max side by side)
+        def create_minmax_slider_row(section_name, default_min, default_max):
+            container = QWidget()
+            layout = QVBoxLayout()
+            layout.setSpacing(2)
+            layout.setContentsMargins(0, 0, 0, 0)
+            container.setLayout(layout)
+
+            section_label = QLabel(f"<b>{section_name}</b>")
+            layout.addWidget(section_label)
+
+            # Min/Max in horizontal layout
+            h_layout = QHBoxLayout()
+            h_layout.setSpacing(8)
+
+            # Min slider
+            min_widget = QWidget()
+            min_layout = QVBoxLayout()
+            min_layout.setSpacing(1)
+            min_layout.setContentsMargins(0, 0, 0, 0)
+            min_widget.setLayout(min_layout)
+
+            min_label = QLabel(f"Min: {default_min/10:.2f}mm")
+            min_label.setStyleSheet("font-size: 8pt;")
+            min_layout.addWidget(min_label)
+
+            min_slider = QSlider(Qt.Horizontal)
+            min_slider.setMinimum(0)
+            min_slider.setMaximum(25)
+            min_slider.setValue(default_min)
+            min_slider.setMinimumWidth(70)
+            min_slider.valueChanged.connect(
+                lambda val, lbl=min_label: lbl.setText(f"Min: {val/10:.2f}mm")
+            )
+            min_layout.addWidget(min_slider)
+            h_layout.addWidget(min_widget)
+
+            # Max slider
+            max_widget = QWidget()
+            max_layout = QVBoxLayout()
+            max_layout.setSpacing(1)
+            max_layout.setContentsMargins(0, 0, 0, 0)
+            max_widget.setLayout(max_layout)
+
+            max_label = QLabel(f"Max: {default_max/10:.2f}mm")
+            max_label.setStyleSheet("font-size: 8pt;")
+            max_layout.addWidget(max_label)
+
+            max_slider = QSlider(Qt.Horizontal)
+            max_slider.setMinimum(0)
+            max_slider.setMaximum(25)
+            max_slider.setValue(default_max)
+            max_slider.setMinimumWidth(70)
+            max_slider.valueChanged.connect(
+                lambda val, lbl=max_label: lbl.setText(f"Max: {val/10:.2f}mm")
+            )
+            max_layout.addWidget(max_slider)
+            h_layout.addWidget(max_widget)
+
+            layout.addLayout(h_layout)
+            return container, min_slider, max_slider, min_label, max_label
+
+        # LS (Left Stick) Calibration
+        ls_widget, self.ls_min_travel_slider, self.ls_max_travel_slider, self.ls_min_travel_label, self.ls_max_travel_label = create_minmax_slider_row(
+            tr("GamingConfigurator", "Left Stick"), 10, 20
+        )
+        calibration_layout.addWidget(ls_widget)
+
+        # RS (Right Stick) Calibration
+        rs_widget, self.rs_min_travel_slider, self.rs_max_travel_slider, self.rs_min_travel_label, self.rs_max_travel_label = create_minmax_slider_row(
+            tr("GamingConfigurator", "Right Stick"), 10, 20
+        )
+        calibration_layout.addWidget(rs_widget)
+
+        # Triggers Calibration
+        trigger_widget, self.trigger_min_travel_slider, self.trigger_max_travel_slider, self.trigger_min_travel_label, self.trigger_max_travel_label = create_minmax_slider_row(
+            tr("GamingConfigurator", "Triggers"), 10, 20
+        )
+        calibration_layout.addWidget(trigger_widget)
+
+        response_calibration_layout.addWidget(calibration_group, alignment=QtCore.Qt.AlignTop)
+
+        settings_column.addLayout(response_calibration_layout)
+        settings_column.addStretch()
+
+        controls_layout.addLayout(settings_column)
+
+        # COLUMN 3: Gamepad widget with drawn outline
         gamepad_widget = GamepadWidget()
         gamepad_widget.setFixedSize(750, 560)
         controls_layout.addWidget(gamepad_widget)
+
+        # RIGHT COLUMN: Analog Curve
+        from widgets.curve_editor import CurveEditorWidget
+        curve_group = QGroupBox(tr("GamingConfigurator", "Analog Curve"))
+        curve_group.setMaximumWidth(320)
+        curve_group_layout = QVBoxLayout()
+        curve_group.setLayout(curve_group_layout)
+
+        self.curve_editor = CurveEditorWidget(show_save_button=True)
+        self.curve_editor.curve_changed.connect(self.on_curve_changed)
+        self.curve_editor.save_to_user_requested.connect(self.on_save_curve_to_user)
+        self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
+        curve_group_layout.addWidget(self.curve_editor)
+
+        controls_layout.addWidget(curve_group, alignment=QtCore.Qt.AlignTop)
 
         # Map control IDs to positions and names (matching the original control IDs)
         control_mapping = {

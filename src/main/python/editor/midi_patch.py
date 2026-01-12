@@ -47,6 +47,21 @@ class MIDIPatchBay(BasicEditor):
         self.addWidget(main_widget)
         self.setAlignment(main_widget, QtCore.Qt.AlignHCenter)
 
+        # Title
+        title_label = QLabel(tr("MIDIPatchBay", "MIDI Patchbay"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
+        # Description
+        desc_label = QLabel(tr("MIDIPatchBay",
+            "Route MIDI devices to your MIDIswitch keyboard. Connect external MIDI controllers\n"
+            "to send MIDI messages through the keyboard. Filter which message types are passed through."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        main_layout.addWidget(desc_label)
+
         if not MIDI_AVAILABLE:
             error_label = QLabel(tr("MIDIPatchBay",
                 "MIDI support not available. Please install python-rtmidi:\npip install python-rtmidi"))
