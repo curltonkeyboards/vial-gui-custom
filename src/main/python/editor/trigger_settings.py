@@ -1322,14 +1322,6 @@ class TriggerSettingsTab(BasicEditor):
         left_layout.setSpacing(6)
         left_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Checkboxes above tabs - always visible
-        checkboxes_layout = QHBoxLayout()
-        checkboxes_layout.setContentsMargins(10, 5, 10, 5)
-        checkboxes_layout.addWidget(self.enable_checkbox)
-        checkboxes_layout.addWidget(self.per_layer_checkbox)
-        checkboxes_layout.addStretch()
-        left_layout.addLayout(checkboxes_layout)
-
         # Tabbed settings container
         tabs_container = QFrame()
         tabs_container.setFrameShape(QFrame.StyledPanel)
@@ -1348,9 +1340,9 @@ class TriggerSettingsTab(BasicEditor):
         actuation_layout.setContentsMargins(8, 8, 8, 8)
         actuation_layout.setSpacing(12)
 
-        # Left side: Description
+        # Left side: Description with checkboxes
         actuation_desc_container = QWidget()
-        actuation_desc_container.setFixedWidth(140)
+        actuation_desc_container.setFixedWidth(210)
         actuation_desc_layout = QVBoxLayout()
         actuation_desc_layout.setContentsMargins(0, 0, 0, 0)
         actuation_desc_title = QLabel(tr("TriggerSettings", "Actuation"))
@@ -1362,6 +1354,27 @@ class TriggerSettingsTab(BasicEditor):
         actuation_desc_text.setWordWrap(True)
         actuation_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
         actuation_desc_layout.addWidget(actuation_desc_text)
+
+        actuation_desc_layout.addSpacing(10)
+
+        # Per-Key checkbox with description
+        actuation_desc_layout.addWidget(self.enable_checkbox)
+        per_key_desc = QLabel(tr("TriggerSettings",
+            "Per-Key: Each key can have its own actuation settings."))
+        per_key_desc.setWordWrap(True)
+        per_key_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        actuation_desc_layout.addWidget(per_key_desc)
+
+        actuation_desc_layout.addSpacing(5)
+
+        # Per-Layer checkbox with description
+        actuation_desc_layout.addWidget(self.per_layer_checkbox)
+        per_layer_desc = QLabel(tr("TriggerSettings",
+            "Per-Layer: Settings change based on the active keyboard layer."))
+        per_layer_desc.setWordWrap(True)
+        per_layer_desc.setStyleSheet("color: gray; font-size: 8pt; margin-left: 18px;")
+        actuation_desc_layout.addWidget(per_layer_desc)
+
         actuation_desc_layout.addStretch()
         actuation_desc_container.setLayout(actuation_desc_layout)
         actuation_layout.addWidget(actuation_desc_container)
@@ -1381,7 +1394,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Left side: Description
         rapidfire_desc_container = QWidget()
-        rapidfire_desc_container.setFixedWidth(140)
+        rapidfire_desc_container.setFixedWidth(210)
         rapidfire_desc_layout = QVBoxLayout()
         rapidfire_desc_layout.setContentsMargins(0, 0, 0, 0)
         rapidfire_desc_title = QLabel(tr("TriggerSettings", "Rapidfire"))
@@ -1412,7 +1425,7 @@ class TriggerSettingsTab(BasicEditor):
 
         # Left side: Description
         velocity_desc_container = QWidget()
-        velocity_desc_container.setFixedWidth(140)
+        velocity_desc_container.setFixedWidth(210)
         velocity_desc_layout = QVBoxLayout()
         velocity_desc_layout.setContentsMargins(0, 0, 0, 0)
         velocity_desc_title = QLabel(tr("TriggerSettings", "Velocity Curve"))

@@ -200,38 +200,49 @@ class ThruLoopConfigurator(BasicEditor):
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         main_widget = QWidget()
-        main_h_layout = QHBoxLayout()  # Main horizontal layout with centering
-        main_h_layout.setSpacing(15)
-        main_widget.setLayout(main_h_layout)
+        outer_layout = QVBoxLayout()  # Outer layout for title + columns
+        outer_layout.setSpacing(15)
+        main_widget.setLayout(outer_layout)
 
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
-        # Left spacer for centering
-        main_h_layout.addStretch(1)
+        # TOP: Title and Description (centered)
+        title_container = QWidget()
+        title_layout = QVBoxLayout()
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_container.setLayout(title_layout)
 
-        # LEFT COLUMN: Title/Description + Basic Settings + LoopChop (fixed width 250px)
-        left_column = QVBoxLayout()
-        left_column.setSpacing(8)
-
-        # Title
         title_label = QLabel(tr("ThruLoopConfigurator", "ThruLoop"))
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-        left_column.addWidget(title_label)
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_layout.addWidget(title_label)
 
-        # Description
         desc_label = QLabel(tr("ThruLoopConfigurator",
             "Configure ThruLoop MIDI looping and LoopChop navigation. "
             "Set up CC mappings for recording, playback, and loop control."))
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-        left_column.addWidget(desc_label)
+        desc_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_layout.addWidget(desc_label)
 
-        left_column.addSpacing(10)
+        outer_layout.addWidget(title_container)
+
+        # COLUMNS: Side by side layout
+        main_h_layout = QHBoxLayout()
+        main_h_layout.setSpacing(15)
+        outer_layout.addLayout(main_h_layout)
+
+        # Left spacer for centering
+        main_h_layout.addStretch(1)
+
+        # LEFT COLUMN: Basic Settings + LoopChop (400px width)
+        left_column = QVBoxLayout()
+        left_column.setSpacing(8)
 
         # Basic Settings Group
         self.basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
-        self.basic_group.setFixedWidth(250)
+        self.basic_group.setFixedWidth(400)
         basic_layout = QGridLayout()
         self.basic_group.setLayout(basic_layout)
         left_column.addWidget(self.basic_group)
@@ -269,7 +280,7 @@ class ThruLoopConfigurator(BasicEditor):
 
         # LoopChop Settings (below Basic Settings)
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
-        self.loopchop_group.setFixedWidth(250)
+        self.loopchop_group.setFixedWidth(400)
         loopchop_layout = QGridLayout()
         loopchop_layout.setSpacing(5)
         loopchop_layout.setContentsMargins(10, 10, 10, 10)

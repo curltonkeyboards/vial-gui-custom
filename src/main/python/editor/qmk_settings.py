@@ -189,31 +189,22 @@ class QmkSettings(BasicEditor):
             if not use_tab:
                 continue
 
-            # Main layout with description on left, settings on right
-            main_h_layout = QHBoxLayout()
-            main_h_layout.setSpacing(20)
+            # Main layout with description on top, settings below
+            main_v_layout = QVBoxLayout()
+            main_v_layout.setSpacing(15)
 
-            # Left side: Title and description
-            desc_container = QWidget()
-            desc_container.setFixedWidth(200)
-            desc_layout = QVBoxLayout()
-            desc_layout.setContentsMargins(10, 10, 10, 10)
-            desc_container.setLayout(desc_layout)
-
+            # Top: Title and description
             title_label = QLabel(tab["name"])
             title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-            desc_layout.addWidget(title_label)
+            main_v_layout.addWidget(title_label)
 
             desc_text = tab_descriptions.get(tab["name"], "Configure settings for this feature.")
             desc_label = QLabel(desc_text)
             desc_label.setWordWrap(True)
             desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-            desc_layout.addWidget(desc_label)
-            desc_layout.addStretch()
+            main_v_layout.addWidget(desc_label)
 
-            main_h_layout.addWidget(desc_container, alignment=QtCore.Qt.AlignTop)
-
-            # Right side: Settings in a group box
+            # Bottom: Settings in a group box
             settings_group = QGroupBox("Settings")
             w = QWidget()
             w.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
@@ -225,12 +216,12 @@ class QmkSettings(BasicEditor):
             group_layout.setAlignment(w, QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
             settings_group.setLayout(group_layout)
 
-            main_h_layout.addWidget(settings_group)
-            main_h_layout.addStretch()
+            main_v_layout.addWidget(settings_group)
+            main_v_layout.addStretch()
 
             # Create widget for layout
             content_widget = QWidget()
-            content_widget.setLayout(main_h_layout)
+            content_widget.setLayout(main_v_layout)
 
             # Wrap in scroll area
             w2 = QScrollArea()
@@ -239,7 +230,7 @@ class QmkSettings(BasicEditor):
             w2.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
             w2.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-            self.misc_widgets += [w, content_widget, w2, desc_container, settings_group]
+            self.misc_widgets += [w, content_widget, w2, settings_group]
             self.tabs_widget.addTab(w2, tab["name"])
             self.tabs.append(self.populate_tab(tab, container))
 
