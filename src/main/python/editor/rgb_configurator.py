@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import pyqtSignal, QObject, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QSizePolicy, QGridLayout, QLabel, QSlider, \
-    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout
+    QComboBox, QColorDialog, QCheckBox, QTabWidget, QMenu, QAction, QScrollArea, QVBoxLayout, QGroupBox
 
 from widgets.combo_box import ArrowComboBox
 from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple, KeyboardWidgetNoHighlight
