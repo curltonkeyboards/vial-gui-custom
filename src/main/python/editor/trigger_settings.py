@@ -1344,39 +1344,101 @@ class TriggerSettingsTab(BasicEditor):
 
         # Actuation Tab
         actuation_tab = QWidget()
-        actuation_layout = QVBoxLayout()
+        actuation_layout = QHBoxLayout()
         actuation_layout.setContentsMargins(8, 8, 8, 8)
+        actuation_layout.setSpacing(12)
 
+        # Left side: Description
+        actuation_desc_container = QWidget()
+        actuation_desc_container.setFixedWidth(140)
+        actuation_desc_layout = QVBoxLayout()
+        actuation_desc_layout.setContentsMargins(0, 0, 0, 0)
+        actuation_desc_title = QLabel(tr("TriggerSettings", "Actuation"))
+        actuation_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        actuation_desc_layout.addWidget(actuation_desc_title)
+        actuation_desc_text = QLabel(tr("TriggerSettings",
+            "Set the key travel distance at which a keypress is registered. "
+            "Adjust deadzones to prevent accidental presses."))
+        actuation_desc_text.setWordWrap(True)
+        actuation_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        actuation_desc_layout.addWidget(actuation_desc_text)
+        actuation_desc_layout.addStretch()
+        actuation_desc_container.setLayout(actuation_desc_layout)
+        actuation_layout.addWidget(actuation_desc_container)
+
+        # Right side: Controls
         self.trigger_container = self.create_trigger_container()
-        actuation_layout.addWidget(self.trigger_container)
-        actuation_layout.addStretch()
+        actuation_layout.addWidget(self.trigger_container, 1)
 
         actuation_tab.setLayout(actuation_layout)
         self.settings_tabs.addTab(actuation_tab, "Actuation")
 
         # Rapidfire Tab
         rapidfire_tab = QWidget()
-        rapidfire_layout = QVBoxLayout()
+        rapidfire_layout = QHBoxLayout()
         rapidfire_layout.setContentsMargins(8, 8, 8, 8)
+        rapidfire_layout.setSpacing(12)
 
+        # Left side: Description
+        rapidfire_desc_container = QWidget()
+        rapidfire_desc_container.setFixedWidth(140)
+        rapidfire_desc_layout = QVBoxLayout()
+        rapidfire_desc_layout.setContentsMargins(0, 0, 0, 0)
+        rapidfire_desc_title = QLabel(tr("TriggerSettings", "Rapidfire"))
+        rapidfire_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        rapidfire_desc_layout.addWidget(rapidfire_desc_title)
+        rapidfire_desc_text = QLabel(tr("TriggerSettings",
+            "Enable rapid key repeats based on key travel. "
+            "Adjust press and release sensitivity thresholds."))
+        rapidfire_desc_text.setWordWrap(True)
+        rapidfire_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        rapidfire_desc_layout.addWidget(rapidfire_desc_text)
+        rapidfire_desc_layout.addStretch()
+        rapidfire_desc_container.setLayout(rapidfire_desc_layout)
+        rapidfire_layout.addWidget(rapidfire_desc_container)
+
+        # Right side: Controls
         self.rapidfire_container = self.create_rapidfire_container()
-        rapidfire_layout.addWidget(self.rapidfire_container)
-        rapidfire_layout.addStretch()
+        rapidfire_layout.addWidget(self.rapidfire_container, 1)
 
         rapidfire_tab.setLayout(rapidfire_layout)
         self.settings_tabs.addTab(rapidfire_tab, "Rapidfire")
 
         # Velocity Curve Tab
         velocity_tab = QWidget()
-        velocity_layout = QVBoxLayout()
+        velocity_layout = QHBoxLayout()
         velocity_layout.setContentsMargins(8, 8, 8, 8)
+        velocity_layout.setSpacing(12)
+
+        # Left side: Description
+        velocity_desc_container = QWidget()
+        velocity_desc_container.setFixedWidth(140)
+        velocity_desc_layout = QVBoxLayout()
+        velocity_desc_layout.setContentsMargins(0, 0, 0, 0)
+        velocity_desc_title = QLabel(tr("TriggerSettings", "Velocity Curve"))
+        velocity_desc_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        velocity_desc_layout.addWidget(velocity_desc_title)
+        velocity_desc_text = QLabel(tr("TriggerSettings",
+            "Customize MIDI velocity response based on key travel speed. "
+            "Shape the curve for expressive playing."))
+        velocity_desc_text.setWordWrap(True)
+        velocity_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
+        velocity_desc_layout.addWidget(velocity_desc_text)
+        velocity_desc_layout.addStretch()
+        velocity_desc_container.setLayout(velocity_desc_layout)
+        velocity_layout.addWidget(velocity_desc_container)
+
+        # Right side: Controls
+        velocity_controls = QWidget()
+        velocity_controls_layout = QVBoxLayout()
+        velocity_controls_layout.setContentsMargins(0, 0, 0, 0)
 
         # Use Per-Key Velocity Curve checkbox
         self.use_per_key_curve_checkbox = QCheckBox(tr("TriggerSettings", "Use Per-Key Velocity Curve"))
         self.use_per_key_curve_checkbox.setToolTip("When enabled, this key uses its own velocity curve.")
         self.use_per_key_curve_checkbox.setEnabled(False)
         self.use_per_key_curve_checkbox.stateChanged.connect(self.on_use_per_key_curve_changed)
-        velocity_layout.addWidget(self.use_per_key_curve_checkbox)
+        velocity_controls_layout.addWidget(self.use_per_key_curve_checkbox)
 
         # Velocity Curve Editor - centered
         from widgets.curve_editor import CurveEditorWidget
@@ -1389,8 +1451,11 @@ class TriggerSettingsTab(BasicEditor):
         self.velocity_curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
         curve_editor_container.addWidget(self.velocity_curve_editor)
         curve_editor_container.addStretch()
-        velocity_layout.addLayout(curve_editor_container)
-        velocity_layout.addStretch()
+        velocity_controls_layout.addLayout(curve_editor_container)
+        velocity_controls_layout.addStretch()
+
+        velocity_controls.setLayout(velocity_controls_layout)
+        velocity_layout.addWidget(velocity_controls, 1)
 
         velocity_tab.setLayout(velocity_layout)
         self.settings_tabs.addTab(velocity_tab, "Velocity Curve")

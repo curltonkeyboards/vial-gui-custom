@@ -1604,8 +1604,17 @@ class PerKeyRGBHandler(BasicHandler):
 
         # Title
         self.lbl_title = QLabel(tr("RGBConfigurator", "Per-Key RGB Configuration"))
-        self.lbl_title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.lbl_title.setStyleSheet("font-weight: bold; font-size: 14pt;")
         container.addWidget(self.lbl_title, row, 0, 1, 2)
+        row += 1
+
+        # Description
+        self.lbl_description = QLabel(tr("RGBConfigurator",
+            "Configure individual LED colors for each key. Select a preset, choose a color from the palette,\n"
+            "then click keys on the keyboard to paint them. Double-click palette colors to edit them."))
+        self.lbl_description.setWordWrap(True)
+        self.lbl_description.setStyleSheet("color: gray; font-size: 9pt;")
+        container.addWidget(self.lbl_description, row, 0, 1, 2)
         row += 1
 
         # Preset selector with individual buttons
@@ -1722,7 +1731,7 @@ class PerKeyRGBHandler(BasicHandler):
         self.key_widgets = []  # Will store references to keyboard key widgets
 
         self.widgets = [
-            self.lbl_title, self.lbl_preset, preset_button_widget,
+            self.lbl_title, self.lbl_description, self.lbl_preset, preset_button_widget,
             main_widget
         ]
 
