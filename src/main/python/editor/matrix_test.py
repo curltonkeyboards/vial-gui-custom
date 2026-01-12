@@ -200,34 +200,31 @@ class ThruLoopConfigurator(BasicEditor):
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         main_widget = QWidget()
-        main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
+        main_h_layout = QHBoxLayout()  # Main horizontal layout for 25/75 split
+        main_h_layout.setSpacing(15)
+        main_widget.setLayout(main_h_layout)
 
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
+        # LEFT COLUMN (25%): Title/Description + Basic Settings + LoopChop
+        left_column = QVBoxLayout()
+        left_column.setSpacing(8)
+
         # Title
-        title_label = QLabel(tr("ThruLoopConfigurator", "ThruLoop Configuration"))
+        title_label = QLabel(tr("ThruLoopConfigurator", "ThruLoop"))
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-        title_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(title_label)
+        left_column.addWidget(title_label)
 
         # Description
         desc_label = QLabel(tr("ThruLoopConfigurator",
-            "Configure ThruLoop MIDI looping and LoopChop navigation settings. Set up CC mappings\n"
-            "for recording, playback, and loop control functions across all 4 loops and overdubs."))
+            "Configure ThruLoop MIDI looping and LoopChop navigation. "
+            "Set up CC mappings for recording, playback, and loop control."))
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-        desc_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(desc_label)
+        left_column.addWidget(desc_label)
 
-        # Top row: Basic Settings + Loop Chop (stacked) on left, Main Functions on right
-        top_row_layout = QHBoxLayout()
-        main_layout.addLayout(top_row_layout)
-
-        # Left column: Basic Settings above Loop Chop
-        left_column = QVBoxLayout()
-        left_column.setSpacing(8)
+        left_column.addSpacing(10)
 
         # Basic Settings Group
         self.basic_group = QGroupBox(tr("ThruLoopConfigurator", "Basic Settings"))
@@ -303,15 +300,19 @@ class ThruLoopConfigurator(BasicEditor):
         loopchop_layout.addWidget(self.nav_widget, 2, 0, 1, 4)
 
         left_column.addStretch()
-        top_row_layout.addLayout(left_column)
+        main_h_layout.addLayout(left_column, 1)  # 25% (stretch factor 1)
 
-        # Right side: Main Functions
+        # RIGHT COLUMN (75%): Main Functions with Overdub inside
         self.main_group = QGroupBox(tr("ThruLoopConfigurator", "Main Functions"))
+        main_group_layout = QVBoxLayout()
+        main_group_layout.setSpacing(5)
+        main_group_layout.setContentsMargins(10, 8, 10, 10)
+        self.main_group.setLayout(main_group_layout)
+
+        # Main Functions grid
         main_grid = QGridLayout()
-        main_grid.setSpacing(8)
-        main_grid.setContentsMargins(10, 15, 10, 10)
-        self.main_group.setLayout(main_grid)
-        top_row_layout.addWidget(self.main_group)
+        main_grid.setSpacing(5)
+        main_grid.setContentsMargins(0, 0, 0, 0)
 
         # Add column headers
         for col in range(4):
@@ -337,14 +338,18 @@ class ThruLoopConfigurator(BasicEditor):
                 row_combos.append(combo)
             self.main_combos.append(row_combos)
 
-        # Overdub Functions - Using clean grid layout
-        self.overdub_group = QGroupBox(tr("ThruLoopConfigurator", "Overdub Functions"))
-        self.overdub_group.setMaximumWidth(700)
-        main_layout.addWidget(self.overdub_group, alignment=QtCore.Qt.AlignHCenter)
+        main_group_layout.addLayout(main_grid)
+
+        # Separator line
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        main_group_layout.addWidget(separator)
+
+        # Overdub Functions section inside Main Functions
         overdub_grid = QGridLayout()
-        overdub_grid.setSpacing(8)
-        overdub_grid.setContentsMargins(10, 15, 10, 10)
-        self.overdub_group.setLayout(overdub_grid)
+        overdub_grid.setSpacing(5)
+        overdub_grid.setContentsMargins(0, 0, 0, 0)
 
         # Add column headers
         for col in range(4):
@@ -368,6 +373,9 @@ class ThruLoopConfigurator(BasicEditor):
                 overdub_grid.addWidget(combo, row_idx + 1, col_idx + 1)
                 row_combos.append(combo)
             self.overdub_combos.append(row_combos)
+
+        main_group_layout.addLayout(overdub_grid)
+        main_h_layout.addWidget(self.main_group, 3)  # 75% (stretch factor 3)
         
         # Buttons
         self.addStretch()
@@ -3764,18 +3772,14 @@ class GamingConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area)
 
-        # Create horizontal layout for description (left), gamepad (center), curve (right)
+        # Create horizontal layout: Description | Response+Calibration | Gamepad | Curve
         controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(20)
+        controls_layout.setSpacing(15)
         main_layout.addLayout(controls_layout)
 
-        # LEFT COLUMN: Description + Gamepad Response + Analog Calibration (stacked)
-        left_column = QVBoxLayout()
-        left_column.setSpacing(12)
-
-        # Description container
+        # COLUMN 1: Description only (nothing below it)
         desc_container = QWidget()
-        desc_container.setFixedWidth(180)
+        desc_container.setFixedWidth(160)
         desc_layout = QVBoxLayout()
         desc_layout.setContentsMargins(0, 0, 0, 0)
         desc_container.setLayout(desc_layout)
@@ -3794,9 +3798,13 @@ class GamingConfigurator(BasicEditor):
         desc_layout.addWidget(desc_label)
         desc_layout.addStretch()
 
-        left_column.addWidget(desc_container)
+        controls_layout.addWidget(desc_container, alignment=QtCore.Qt.AlignTop)
 
-        # Gamepad Response Section (above calibration)
+        # COLUMN 2: Gamepad Response + Analog Calibration (stacked)
+        settings_column = QVBoxLayout()
+        settings_column.setSpacing(8)
+
+        # Gamepad Response Section
         response_group = QGroupBox(tr("GamingConfigurator", "Gamepad Response"))
         response_group.setMaximumWidth(200)
         response_layout = QVBoxLayout()
@@ -3841,9 +3849,9 @@ class GamingConfigurator(BasicEditor):
             "Use maximum value of opposite sides of axis rather than combining them."))
         response_layout.addWidget(self.snappy_joystick_checkbox)
 
-        left_column.addWidget(response_group)
+        settings_column.addWidget(response_group)
 
-        # Analog Calibration Group (below response)
+        # Analog Calibration Group
         calibration_group = QGroupBox(tr("GamingConfigurator", "Analog Calibration"))
         calibration_group.setMaximumWidth(200)
         calibration_layout = QVBoxLayout()
@@ -3930,12 +3938,12 @@ class GamingConfigurator(BasicEditor):
         )
         calibration_layout.addWidget(trigger_widget)
 
-        left_column.addWidget(calibration_group)
-        left_column.addStretch()
+        settings_column.addWidget(calibration_group)
+        settings_column.addStretch()
 
-        controls_layout.addLayout(left_column)
+        controls_layout.addLayout(settings_column)
 
-        # CENTER: Gamepad widget with drawn outline
+        # COLUMN 3: Gamepad widget with drawn outline
         gamepad_widget = GamepadWidget()
         gamepad_widget.setFixedSize(750, 560)
         controls_layout.addWidget(gamepad_widget)

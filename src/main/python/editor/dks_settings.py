@@ -995,11 +995,25 @@ class DKSVisualWidget(QWidget):
             if item.widget():
                 item.widget().setParent(None)
 
-        # Left section: Press actions (2x2 grid)
+        # Left section: Title/Description + Press actions (2x2 grid)
         press_container = QWidget()
         press_layout = QVBoxLayout()
         press_layout.setContentsMargins(0, 0, 0, 0)
         press_layout.setSpacing(6)
+
+        # Title and description at top left
+        title_label = QLabel("DKS Configuration")
+        title_label.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        press_layout.addWidget(title_label)
+
+        desc_label = QLabel("Configure multi-action keys with customizable actuation points.\n"
+                           "Set different actions for press and release at specific depths.")
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        press_layout.addWidget(desc_label)
+
+        # Add some spacing before press section
+        press_layout.addSpacing(10)
 
         press_label = QLabel("Key Press (Downstroke)")
         press_label.setStyleSheet("""
@@ -1055,13 +1069,16 @@ class DKSVisualWidget(QWidget):
         viz_layout.addStretch()
 
         viz_container.setLayout(viz_layout)
-        self.main_layout.addWidget(viz_container)
+        self.main_layout.addWidget(viz_container, alignment=Qt.AlignTop)
 
-        # Right section: Release actions (2x2 grid)
+        # Right section: Release actions (2x2 grid) - with top spacing to align with press
         release_container = QWidget()
         release_layout = QVBoxLayout()
         release_layout.setContentsMargins(0, 0, 0, 0)
         release_layout.setSpacing(6)
+
+        # Add spacing at top to align with press section (title + desc height)
+        release_layout.addSpacing(75)
 
         release_label = QLabel("Key Release (Upstroke)")
         release_label.setStyleSheet("""
