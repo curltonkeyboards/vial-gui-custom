@@ -135,6 +135,34 @@ class QuickActuationWidget(QWidget):
         self.advanced_tab = self.create_advanced_tab()
         self.tab_widget.addTab(self.advanced_tab, "Advanced")
 
+    def create_help_label(self, tooltip_text):
+        """Create a small question mark button with tooltip for help"""
+        help_btn = QPushButton("?")
+        help_btn.setStyleSheet("""
+            QPushButton {
+                color: #888;
+                font-weight: bold;
+                font-size: 9pt;
+                border: 1px solid #888;
+                border-radius: 9px;
+                min-width: 16px;
+                max-width: 16px;
+                min-height: 16px;
+                max-height: 16px;
+                padding: 0px;
+                margin: 0px;
+                background: transparent;
+            }
+            QPushButton:hover {
+                color: #fff;
+                background-color: #555;
+                border-color: #fff;
+            }
+        """)
+        help_btn.setToolTip(tooltip_text)
+        help_btn.setFocusPolicy(Qt.NoFocus)
+        return help_btn
+
     def create_actuation_tab(self):
         """Create the Actuation Settings tab"""
         tab = QWidget()
@@ -150,11 +178,13 @@ class QuickActuationWidget(QWidget):
 
         self.enable_per_key_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Key"))
         self.enable_per_key_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
+        self.enable_per_key_checkbox.setToolTip("Enable individual actuation point per key.\nConfigure in Trigger Settings tab.")
         self.enable_per_key_checkbox.stateChanged.connect(self.on_enable_per_key_toggled)
         top_row_layout.addWidget(self.enable_per_key_checkbox)
 
         self.per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer Actuation"))
         self.per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; } QCheckBox::indicator { border: 1px solid palette(mid); background-color: palette(button); width: 13px; height: 13px; } QCheckBox::indicator:checked { border: 1px solid palette(highlight); background-color: palette(highlight); }")
+        self.per_layer_checkbox.setToolTip("Enable different actuation points per layer.\nWhen off, same actuation applies to all layers.")
         self.per_layer_checkbox.stateChanged.connect(self.on_per_layer_toggled)
         top_row_layout.addWidget(self.per_layer_checkbox)
 
@@ -194,6 +224,7 @@ class QuickActuationWidget(QWidget):
         label = QLabel(tr("QuickActuationWidget", "Normal Keys:"))
         label.setMinimumWidth(90)
         label.setMaximumWidth(90)
+        label.setToolTip("Actuation point for non-MIDI keys.\nLower = more sensitive, higher = deeper press required.")
         slider_layout.addWidget(label)
 
         self.normal_slider = QSlider(Qt.Horizontal)
@@ -220,6 +251,7 @@ class QuickActuationWidget(QWidget):
         midi_label = QLabel(tr("QuickActuationWidget", "MIDI Keys:"))
         midi_label.setMinimumWidth(90)
         midi_label.setMaximumWidth(90)
+        midi_label.setToolTip("Actuation point for MIDI note keys.\nLower = more sensitive, higher = deeper press required.")
         midi_slider_layout.addWidget(midi_label)
 
         self.midi_slider = QSlider(Qt.Horizontal)
@@ -264,6 +296,7 @@ class QuickActuationWidget(QWidget):
         # Per-layer toggle
         self.aftertouch_per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer Settings"))
         self.aftertouch_per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; }")
+        self.aftertouch_per_layer_checkbox.setToolTip("Enable different velocity/aftertouch settings per layer.\nWhen off, same settings apply to all layers.")
         self.aftertouch_per_layer_checkbox.stateChanged.connect(self.on_aftertouch_per_layer_toggled)
         layout.addWidget(self.aftertouch_per_layer_checkbox)
 
@@ -285,6 +318,13 @@ class QuickActuationWidget(QWidget):
         velocity_layout.setSpacing(6)
         velocity_label = QLabel(tr("QuickActuationWidget", "Velocity:"))
         velocity_label.setMinimumWidth(110)
+        velocity_label.setToolTip(
+            "How MIDI velocity is calculated:\n"
+            "Fixed (64): Always sends velocity 64\n"
+            "Peak at Apex: Velocity based on key apex position\n"
+            "Speed-Based: Velocity based on key press speed\n"
+            "Speed + Peak: Combines speed and apex methods"
+        )
         velocity_layout.addWidget(velocity_label)
 
         self.velocity_combo = ArrowComboBox()
@@ -308,6 +348,7 @@ class QuickActuationWidget(QWidget):
         vel_speed_layout.setSpacing(6)
         vel_speed_label = QLabel(tr("QuickActuationWidget", "Velocity Scale:"))
         vel_speed_label.setMinimumWidth(110)
+        vel_speed_label.setToolTip("Velocity sensitivity multiplier (1-20).\nHigher = more sensitive to key press speed.")
         vel_speed_layout.addWidget(vel_speed_label)
 
         self.vel_speed_combo = ArrowComboBox()
@@ -334,6 +375,14 @@ class QuickActuationWidget(QWidget):
         mode_layout.setContentsMargins(0, 0, 0, 0)
         mode_label = QLabel(tr("QuickActuationWidget", "Aftertouch Mode:"))
         mode_label.setMinimumWidth(110)
+        mode_label.setToolTip(
+            "Aftertouch pressure behavior:\n"
+            "Off: No aftertouch\n"
+            "Reverse: Pressure on key release\n"
+            "Bottom-Out: Pressure when fully pressed\n"
+            "Post-Actuation: Pressure after actuation point\n"
+            "Vibrato: Key wiggle creates pitch modulation"
+        )
         mode_layout.addWidget(mode_label)
 
         self.aftertouch_mode_combo = ArrowComboBox()
@@ -357,6 +406,7 @@ class QuickActuationWidget(QWidget):
         cc_layout.setContentsMargins(0, 0, 0, 0)
         cc_label = QLabel(tr("QuickActuationWidget", "Aftertouch CC:"))
         cc_label.setMinimumWidth(110)
+        cc_label.setToolTip("MIDI CC number to send for aftertouch.\nOff: Send standard aftertouch messages\nCC#0-127: Send specified CC instead")
         cc_layout.addWidget(cc_label)
 
         self.aftertouch_cc_combo = ArrowComboBox()
@@ -381,6 +431,7 @@ class QuickActuationWidget(QWidget):
 
         sens_label = QLabel(tr("QuickActuationWidget", "Vibrato Sensitivity:"))
         sens_label.setMinimumWidth(110)
+        sens_label.setToolTip("How sensitive vibrato is to key movement.\n50% = Less sensitive, 200% = Very sensitive")
         sens_layout.addWidget(sens_label)
 
         self.vibrato_sens_slider = QSlider(Qt.Horizontal)
@@ -406,6 +457,7 @@ class QuickActuationWidget(QWidget):
 
         decay_label = QLabel(tr("QuickActuationWidget", "Vibrato Decay:"))
         decay_label.setMinimumWidth(110)
+        decay_label.setToolTip("How long vibrato effect lasts after key wiggle stops.\n0ms = Instant decay, 2000ms = Slow decay")
         decay_layout.addWidget(decay_label)
 
         self.vibrato_decay_slider = QSlider(Qt.Horizontal)

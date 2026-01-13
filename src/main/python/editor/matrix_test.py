@@ -1747,9 +1747,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         vel_interval_label_layout.setSpacing(5)
         vel_interval_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")))
         vel_interval_label_layout.addWidget(self.create_help_label(
-            "Velocity update sensitivity (1-10).\n"
-            "Lower values = more frequent velocity updates.\n"
-            "Higher values = less frequent updates, smoother response."
+            "Velocity step amount (1-10).\n"
+            "When using velocity +/- keys, this is the\n"
+            "amount velocity will increase or decrease."
         ))
         vel_interval_label.setLayout(vel_interval_label_layout)
         advanced_layout.addWidget(vel_interval_label, 0, 1)
@@ -1771,9 +1771,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         cc_interval_label_layout.setSpacing(5)
         cc_interval_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")))
         cc_interval_label_layout.addWidget(self.create_help_label(
-            "Control Change update sensitivity (1-16).\n"
-            "Lower values = more frequent CC updates.\n"
-            "Higher values = less frequent updates, reduces MIDI traffic."
+            "CC step amount (1-16).\n"
+            "When using CC +/- keys, this is the\n"
+            "amount the CC value will increase or decrease."
         ))
         cc_interval_label.setLayout(cc_interval_label_layout)
         advanced_layout.addWidget(cc_interval_label, 0, 3)
@@ -4504,6 +4504,7 @@ class GamingConfigurator(BasicEditor):
 
         # Angle Adjustment
         self.angle_adj_checkbox = QCheckBox(tr("GamingConfigurator", "Angle adjustment"))
+        self.angle_adj_checkbox.setToolTip("Enable diagonal angle adjustment.\nModifies the angle at which diagonals are registered.")
         response_layout.addWidget(self.angle_adj_checkbox)
 
         # Diagonal Angle Slider
@@ -4514,6 +4515,7 @@ class GamingConfigurator(BasicEditor):
         angle_widget.setLayout(angle_layout)
 
         self.diagonal_angle_label = QLabel("Angle: 0°")
+        self.diagonal_angle_label.setToolTip("Angle offset for diagonal detection (0-90°).\nHigher values make diagonals easier to hit.")
         angle_layout.addWidget(self.diagonal_angle_label)
 
         self.diagonal_angle_slider = QSlider(Qt.Horizontal)
