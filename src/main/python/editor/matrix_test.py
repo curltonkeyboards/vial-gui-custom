@@ -1945,9 +1945,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             lambda: self.send_param_update(PARAM_MIDI_CLOCK_SOURCE, self.midi_clock_source.currentData())
         )
 
-        # Set initial offshoot visibility based on default dropdown values (all 0, so both hidden)
-        self._update_offshoot_visibility()
-
     def send_param_update(self, param_id, value):
         """Send real-time HID parameter update to keyboard"""
         try:
