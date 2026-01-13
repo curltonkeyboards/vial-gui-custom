@@ -413,8 +413,8 @@ class Theme:
                 background-color: palette(tooltip-base);
                 color: palette(tooltip-text);
                 border: 1px solid palette(mid);
-                border-radius: 4px;
-                padding: 6px 10px;
+                border-radius: 3px;
+                padding: 2px 4px;
                 font-size: 9pt;
             }
 
