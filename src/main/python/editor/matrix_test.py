@@ -780,10 +780,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.setup_ui()
 
     def create_help_label(self, tooltip_text):
-        """Create a small question mark label with tooltip for help"""
-        help_label = QLabel("?")
-        help_label.setStyleSheet("""
-            QLabel {
+        """Create a small question mark button with tooltip for help"""
+        help_btn = QPushButton("?")
+        help_btn.setStyleSheet("""
+            QPushButton {
                 color: #888;
                 font-weight: bold;
                 font-size: 10pt;
@@ -795,18 +795,17 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
                 max-height: 18px;
                 padding: 0px;
                 margin: 0px;
+                background: transparent;
             }
-            QLabel:hover {
+            QPushButton:hover {
                 color: #fff;
                 background-color: #555;
                 border-color: #fff;
             }
         """)
-        help_label.setAlignment(Qt.AlignCenter)
-        help_label.setToolTip(tooltip_text)
-        help_label.setMouseTracking(True)
-        help_label.setCursor(Qt.WhatsThisCursor)
-        return help_label
+        help_btn.setToolTip(tooltip_text)
+        help_btn.setFocusPolicy(Qt.NoFocus)
+        return help_btn
 
     def create_label_with_help(self, text, tooltip_text):
         """Create a horizontal layout with label and help icon"""
