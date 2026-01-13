@@ -780,31 +780,32 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.setup_ui()
 
     def create_help_label(self, tooltip_text):
-        """Create a small question mark label with tooltip for help"""
-        help_label = QLabel("?")
-        help_label.setStyleSheet("""
-            QLabel {
+        """Create a small question mark button with tooltip for help"""
+        help_btn = QPushButton("?")
+        help_btn.setStyleSheet("""
+            QPushButton {
                 color: #888;
                 font-weight: bold;
                 font-size: 10pt;
                 border: 1px solid #888;
-                border-radius: 8px;
-                min-width: 16px;
-                max-width: 16px;
-                min-height: 16px;
-                max-height: 16px;
+                border-radius: 9px;
+                min-width: 18px;
+                max-width: 18px;
+                min-height: 18px;
+                max-height: 18px;
                 padding: 0px;
                 margin: 0px;
+                background: transparent;
             }
-            QLabel:hover {
+            QPushButton:hover {
                 color: #fff;
                 background-color: #555;
                 border-color: #fff;
             }
         """)
-        help_label.setAlignment(Qt.AlignCenter)
-        help_label.setToolTip(tooltip_text)
-        return help_label
+        help_btn.setToolTip(tooltip_text)
+        help_btn.setFocusPolicy(Qt.NoFocus)
+        return help_btn
 
     def create_label_with_help(self, text, tooltip_text):
         """Create a horizontal layout with label and help icon"""
@@ -1584,8 +1585,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.unsynced_mode.addItem("BPM Beat", 3)
         loop_layout.addWidget(self.unsynced_mode, 0, 2)
 
-        # Sample Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sample Mode:")), 0, 3)
+        # Sample Mode with help
+        sample_mode_label = QWidget()
+        sample_mode_label_layout = QHBoxLayout()
+        sample_mode_label_layout.setContentsMargins(0, 0, 0, 0)
+        sample_mode_label_layout.setSpacing(5)
+        sample_mode_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sample Mode:")))
+        sample_mode_label_layout.addWidget(self.create_help_label(
+            "Enable one-shot sample playback mode.\n"
+            "Off: Normal loop behavior\n"
+            "On: Loops play once and stop"
+        ))
+        sample_mode_label.setLayout(sample_mode_label_layout)
+        loop_layout.addWidget(sample_mode_label, 0, 3)
         self.sample_mode = ArrowComboBox()
         self.sample_mode.setMinimumWidth(120)
         self.sample_mode.setMinimumHeight(25)
@@ -1597,8 +1609,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.sample_mode.addItem("On", True)
         loop_layout.addWidget(self.sample_mode, 0, 4)
 
-        # Loop Messaging
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")), 1, 1)
+        # Loop Messaging with help
+        thruloop_label = QWidget()
+        thruloop_label_layout = QHBoxLayout()
+        thruloop_label_layout.setContentsMargins(0, 0, 0, 0)
+        thruloop_label_layout.setSpacing(5)
+        thruloop_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")))
+        thruloop_label_layout.addWidget(self.create_help_label(
+            "Pass MIDI messages through the looper.\n"
+            "Off: MIDI is not passed through\n"
+            "On: MIDI messages are forwarded"
+        ))
+        thruloop_label.setLayout(thruloop_label_layout)
+        loop_layout.addWidget(thruloop_label, 1, 1)
         self.loop_messaging_enabled = ArrowComboBox()
         self.loop_messaging_enabled.setMinimumWidth(120)
         self.loop_messaging_enabled.setMinimumHeight(25)
@@ -1610,8 +1633,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.loop_messaging_enabled.addItem("On", True)
         loop_layout.addWidget(self.loop_messaging_enabled, 1, 2)
 
-        # Messaging Channel
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")), 1, 3)
+        # Messaging Channel with help
+        thruloop_ch_label = QWidget()
+        thruloop_ch_label_layout = QHBoxLayout()
+        thruloop_ch_label_layout.setContentsMargins(0, 0, 0, 0)
+        thruloop_ch_label_layout.setSpacing(5)
+        thruloop_ch_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")))
+        thruloop_ch_label_layout.addWidget(self.create_help_label(
+            "MIDI channel (1-16) used for ThruLoop messages.\n"
+            "ThruLoop messages will be sent on this channel."
+        ))
+        thruloop_ch_label.setLayout(thruloop_ch_label_layout)
+        loop_layout.addWidget(thruloop_ch_label, 1, 3)
         self.loop_messaging_channel = ArrowComboBox()
         self.loop_messaging_channel.setMinimumWidth(120)
         self.loop_messaging_channel.setMinimumHeight(25)
@@ -1624,8 +1657,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.loop_messaging_channel.setCurrentIndex(15)
         loop_layout.addWidget(self.loop_messaging_channel, 1, 4)
 
-        # Sync MIDI Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")), 2, 1)
+        # Sync MIDI Mode with help
+        restart_msg_label = QWidget()
+        restart_msg_label_layout = QHBoxLayout()
+        restart_msg_label_layout.setContentsMargins(0, 0, 0, 0)
+        restart_msg_label_layout.setSpacing(5)
+        restart_msg_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")))
+        restart_msg_label_layout.addWidget(self.create_help_label(
+            "Send restart messages when loop restarts.\n"
+            "Off: No restart messages sent\n"
+            "On: Send restart messages to external devices"
+        ))
+        restart_msg_label.setLayout(restart_msg_label_layout)
+        loop_layout.addWidget(restart_msg_label, 2, 1)
         self.sync_midi_mode = ArrowComboBox()
         self.sync_midi_mode.setMinimumWidth(120)
         self.sync_midi_mode.setMinimumHeight(25)
@@ -1637,8 +1681,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.sync_midi_mode.addItem("On", True)
         loop_layout.addWidget(self.sync_midi_mode, 2, 2)
 
-        # Restart Mode
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")), 2, 3)
+        # Restart Mode with help
+        restart_mode_label = QWidget()
+        restart_mode_label_layout = QHBoxLayout()
+        restart_mode_label_layout.setContentsMargins(0, 0, 0, 0)
+        restart_mode_label_layout.setSpacing(5)
+        restart_mode_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")))
+        restart_mode_label_layout.addWidget(self.create_help_label(
+            "How to signal loop restart to external devices.\n"
+            "Restart CC: Send a CC message to restart\n"
+            "Stop+Start: Send stop then start messages"
+        ))
+        restart_mode_label.setLayout(restart_mode_label_layout)
+        loop_layout.addWidget(restart_mode_label, 2, 3)
         self.alternate_restart_mode = ArrowComboBox()
         self.alternate_restart_mode.setMinimumWidth(120)
         self.alternate_restart_mode.setMinimumHeight(25)
@@ -1650,8 +1705,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.alternate_restart_mode.addItem("Stop+Start", True)
         loop_layout.addWidget(self.alternate_restart_mode, 2, 4)
 
-        # SmartChord Lights
-        loop_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")), 3, 1)
+        # Overdub Mode with help
+        overdub_label = QWidget()
+        overdub_label_layout = QHBoxLayout()
+        overdub_label_layout.setContentsMargins(0, 0, 0, 0)
+        overdub_label_layout.setSpacing(5)
+        overdub_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")))
+        overdub_label_layout.addWidget(self.create_help_label(
+            "Loop overdub behavior mode.\n"
+            "Default: Standard overdub behavior\n"
+            "8 Track Looper: Optimized for 8-track looper workflow"
+        ))
+        overdub_label.setLayout(overdub_label_layout)
+        loop_layout.addWidget(overdub_label, 3, 1)
         self.smart_chord_light = ArrowComboBox()
         self.smart_chord_light.setMinimumWidth(120)
         self.smart_chord_light.setMinimumHeight(25)
@@ -1674,8 +1740,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_group.setLayout(advanced_layout)
         main_layout.addWidget(advanced_group)
 
-        # Velocity Interval
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")), 0, 1)
+        # Velocity Interval with help
+        vel_interval_label = QWidget()
+        vel_interval_label_layout = QHBoxLayout()
+        vel_interval_label_layout.setContentsMargins(0, 0, 0, 0)
+        vel_interval_label_layout.setSpacing(5)
+        vel_interval_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Interval:")))
+        vel_interval_label_layout.addWidget(self.create_help_label(
+            "Velocity step amount (1-10).\n"
+            "When using velocity +/- keys, this is the\n"
+            "amount velocity will increase or decrease."
+        ))
+        vel_interval_label.setLayout(vel_interval_label_layout)
+        advanced_layout.addWidget(vel_interval_label, 0, 1)
         self.velocity_sensitivity = ArrowComboBox()
         self.velocity_sensitivity.setMinimumWidth(120)
         self.velocity_sensitivity.setMinimumHeight(25)
@@ -1687,8 +1764,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.velocity_sensitivity.addItem(str(i), i)
         advanced_layout.addWidget(self.velocity_sensitivity, 0, 2)
 
-        # CC Interval
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")), 0, 3)
+        # CC Interval with help
+        cc_interval_label = QWidget()
+        cc_interval_label_layout = QHBoxLayout()
+        cc_interval_label_layout.setContentsMargins(0, 0, 0, 0)
+        cc_interval_label_layout.setSpacing(5)
+        cc_interval_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Interval:")))
+        cc_interval_label_layout.addWidget(self.create_help_label(
+            "CC step amount (1-16).\n"
+            "When using CC +/- keys, this is the\n"
+            "amount the CC value will increase or decrease."
+        ))
+        cc_interval_label.setLayout(cc_interval_label_layout)
+        advanced_layout.addWidget(cc_interval_label, 0, 3)
         self.cc_sensitivity = ArrowComboBox()
         self.cc_sensitivity.setMinimumWidth(120)
         self.cc_sensitivity.setMinimumHeight(25)
@@ -1700,8 +1788,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.cc_sensitivity.addItem(str(i), i)
         advanced_layout.addWidget(self.cc_sensitivity, 0, 4)
 
-        # Dynamic Range
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Dynamic Range:")), 1, 1)
+        # Dynamic Range with help
+        dynamic_range_label = QWidget()
+        dynamic_range_label_layout = QHBoxLayout()
+        dynamic_range_label_layout.setContentsMargins(0, 0, 0, 0)
+        dynamic_range_label_layout.setSpacing(5)
+        dynamic_range_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Dynamic Range:")))
+        dynamic_range_label_layout.addWidget(self.create_help_label(
+            "Random velocity variation amount (0-127).\n"
+            "Adds human-like variation to velocity values.\n"
+            "0 = No variation, higher = more randomness."
+        ))
+        dynamic_range_label.setLayout(dynamic_range_label_layout)
+        advanced_layout.addWidget(dynamic_range_label, 1, 1)
         self.random_velocity_modifier = ArrowComboBox()
         self.random_velocity_modifier.setMinimumWidth(120)
         self.random_velocity_modifier.setMinimumHeight(25)
@@ -1713,8 +1812,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             self.random_velocity_modifier.addItem(str(i), i)
         advanced_layout.addWidget(self.random_velocity_modifier, 1, 2)
 
-        # OLED Keyboard
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "OLED Keyboard:")), 1, 3)
+        # OLED Keyboard with help
+        oled_label = QWidget()
+        oled_label_layout = QHBoxLayout()
+        oled_label_layout.setContentsMargins(0, 0, 0, 0)
+        oled_label_layout.setSpacing(5)
+        oled_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "OLED Keyboard:")))
+        oled_label_layout.addWidget(self.create_help_label(
+            "OLED display keyboard visualization style.\n"
+            "Style 1: Standard keyboard display\n"
+            "Style 2: Alternative keyboard layout"
+        ))
+        oled_label.setLayout(oled_label_layout)
+        advanced_layout.addWidget(oled_label, 1, 3)
         self.oled_keyboard = ArrowComboBox()
         self.oled_keyboard.setMinimumWidth(120)
         self.oled_keyboard.setMinimumHeight(25)
@@ -1726,8 +1836,21 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.oled_keyboard.addItem("Style 2", 12)
         advanced_layout.addWidget(self.oled_keyboard, 1, 4)
 
-        # SC Light Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")), 2, 1)
+        # SC Light Mode with help
+        guide_lights_label = QWidget()
+        guide_lights_label_layout = QHBoxLayout()
+        guide_lights_label_layout.setContentsMargins(0, 0, 0, 0)
+        guide_lights_label_layout.setSpacing(5)
+        guide_lights_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Guide Lights:")))
+        guide_lights_label_layout.addWidget(self.create_help_label(
+            "SmartChord guide light behavior.\n"
+            "All Off: No guide lights\n"
+            "SmartChord Off: Guide lights off for SmartChord\n"
+            "All On: Dynamic: Lights follow chord changes\n"
+            "Guitar EADGB/ADGBE: Guitar string tuning layouts"
+        ))
+        guide_lights_label.setLayout(guide_lights_label_layout)
+        advanced_layout.addWidget(guide_lights_label, 2, 1)
         self.smart_chord_light_mode = ArrowComboBox()
         self.smart_chord_light_mode.setMinimumWidth(120)
         self.smart_chord_light_mode.setMinimumHeight(25)
@@ -1742,8 +1865,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light_mode.addItem("All on: Guitar ADGBE", 4)
         advanced_layout.addWidget(self.smart_chord_light_mode, 2, 2)
 
-        # Colorblind Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")), 2, 3)
+        # Colorblind Mode with help
+        colorblind_label = QWidget()
+        colorblind_label_layout = QHBoxLayout()
+        colorblind_label_layout.setContentsMargins(0, 0, 0, 0)
+        colorblind_label_layout.setSpacing(5)
+        colorblind_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Colorblind Mode:")))
+        colorblind_label_layout.addWidget(self.create_help_label(
+            "Enable colorblind-friendly LED colors.\n"
+            "Off: Standard color scheme\n"
+            "On: High-contrast colors for better visibility"
+        ))
+        colorblind_label.setLayout(colorblind_label_layout)
+        advanced_layout.addWidget(colorblind_label, 2, 3)
         self.colorblind_mode = ArrowComboBox()
         self.colorblind_mode.setMinimumWidth(120)
         self.colorblind_mode.setMinimumHeight(25)
@@ -1755,8 +1889,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.colorblind_mode.addItem("On", 1)
         advanced_layout.addWidget(self.colorblind_mode, 2, 4)
 
-        # RGB Layer Mode
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")), 3, 1)
+        # RGB Layer Mode with help
+        rgb_layer_label = QWidget()
+        rgb_layer_label_layout = QHBoxLayout()
+        rgb_layer_label_layout.setContentsMargins(0, 0, 0, 0)
+        rgb_layer_label_layout.setSpacing(5)
+        rgb_layer_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "RGB Layer Mode:")))
+        rgb_layer_label_layout.addWidget(self.create_help_label(
+            "Enable custom RGB animations per layer.\n"
+            "Off: Use global RGB settings\n"
+            "On: Each layer can have unique RGB animations"
+        ))
+        rgb_layer_label.setLayout(rgb_layer_label_layout)
+        advanced_layout.addWidget(rgb_layer_label, 3, 1)
         self.custom_layer_animations = ArrowComboBox()
         self.custom_layer_animations.setMinimumWidth(120)
         self.custom_layer_animations.setMinimumHeight(25)
@@ -1768,8 +1913,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.custom_layer_animations.addItem("On", True)
         advanced_layout.addWidget(self.custom_layer_animations, 3, 2)
 
-        # CC Loop Recording
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")), 3, 3)
+        # CC Loop Recording with help
+        cc_loop_label = QWidget()
+        cc_loop_label_layout = QHBoxLayout()
+        cc_loop_label_layout.setContentsMargins(0, 0, 0, 0)
+        cc_loop_label_layout.setSpacing(5)
+        cc_loop_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")))
+        cc_loop_label_layout.addWidget(self.create_help_label(
+            "Record Control Change messages in loops.\n"
+            "Off: Only record note events\n"
+            "On: Record CC messages alongside notes"
+        ))
+        cc_loop_label.setLayout(cc_loop_label_layout)
+        advanced_layout.addWidget(cc_loop_label, 3, 3)
         self.cc_loop_recording = ArrowComboBox()
         self.cc_loop_recording.setMinimumWidth(120)
         self.cc_loop_recording.setMinimumHeight(25)
@@ -1781,8 +1937,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.cc_loop_recording.addItem("On", True)
         advanced_layout.addWidget(self.cc_loop_recording, 3, 4)
 
-        # True Sustain
-        advanced_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")), 4, 1)
+        # True Sustain with help
+        true_sustain_label = QWidget()
+        true_sustain_label_layout = QHBoxLayout()
+        true_sustain_label_layout.setContentsMargins(0, 0, 0, 0)
+        true_sustain_label_layout.setSpacing(5)
+        true_sustain_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "True Sustain:")))
+        true_sustain_label_layout.addWidget(self.create_help_label(
+            "Enable true sustain pedal behavior.\n"
+            "Off: Standard sustain behavior\n"
+            "On: More realistic piano-style sustain"
+        ))
+        true_sustain_label.setLayout(true_sustain_label_layout)
+        advanced_layout.addWidget(true_sustain_label, 4, 1)
         self.true_sustain = ArrowComboBox()
         self.true_sustain.setMinimumWidth(120)
         self.true_sustain.setMinimumHeight(25)
@@ -1797,6 +1964,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Aftertouch is now per-layer (configured in Layer Actuation section)
         aftertouch_note = QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch: Per-Layer"))
         aftertouch_note.setStyleSheet("QLabel { color: #888; font-style: italic; }")
+        aftertouch_note.setToolTip(
+            "Aftertouch settings are configured per-layer.\n"
+            "Go to the Layer Actuation section to configure\n"
+            "aftertouch mode and CC number for each layer."
+        )
         advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
 
         # MIDI Routing Settings Group with help icon
@@ -1846,7 +2018,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.channel_override.addItem("On", True)
         midi_routing_layout.addWidget(self.channel_override, 0, 2)
 
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Override:")), 0, 3)
+        vel_override_label = QWidget()
+        vel_override_label_layout = QHBoxLayout()
+        vel_override_label_layout.setContentsMargins(0, 0, 0, 0)
+        vel_override_label_layout.setSpacing(5)
+        vel_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Override:")))
+        vel_override_label_layout.addWidget(self.create_help_label(
+            "Override velocity for incoming MIDI notes.\n"
+            "Off: Use incoming velocity values\n"
+            "On: Apply keyboard velocity settings to input"
+        ))
+        vel_override_label.setLayout(vel_override_label_layout)
+        midi_routing_layout.addWidget(vel_override_label, 0, 3)
         self.velocity_override = ArrowComboBox()
         self.velocity_override.setMinimumWidth(80)
         self.velocity_override.setMinimumHeight(25)
@@ -1858,7 +2041,18 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_override.addItem("On", True)
         midi_routing_layout.addWidget(self.velocity_override, 0, 4)
 
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose Override:")), 0, 5)
+        trans_override_label = QWidget()
+        trans_override_label_layout = QHBoxLayout()
+        trans_override_label_layout.setContentsMargins(0, 0, 0, 0)
+        trans_override_label_layout.setSpacing(5)
+        trans_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose Override:")))
+        trans_override_label_layout.addWidget(self.create_help_label(
+            "Override transpose for incoming MIDI notes.\n"
+            "Off: Use incoming note values\n"
+            "On: Apply keyboard transpose settings to input"
+        ))
+        trans_override_label.setLayout(trans_override_label_layout)
+        midi_routing_layout.addWidget(trans_override_label, 0, 5)
         self.transpose_override = ArrowComboBox()
         self.transpose_override.setMinimumWidth(80)
         self.transpose_override.setMinimumHeight(25)
@@ -1870,8 +2064,21 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_override.addItem("On", True)
         midi_routing_layout.addWidget(self.transpose_override, 0, 6)
 
-        # Row 1: MIDI routing modes
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI IN Mode:")), 1, 1)
+        # Row 1: MIDI routing modes with help
+        midi_in_label = QWidget()
+        midi_in_label_layout = QHBoxLayout()
+        midi_in_label_layout.setContentsMargins(0, 0, 0, 0)
+        midi_in_label_layout.setSpacing(5)
+        midi_in_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI IN Mode:")))
+        midi_in_label_layout.addWidget(self.create_help_label(
+            "How incoming MIDI from DIN port is processed.\n"
+            "Process All: Process all incoming MIDI\n"
+            "Thru: Pass MIDI through unchanged\n"
+            "Clock Only: Only process clock messages\n"
+            "Ignore: Ignore all incoming MIDI"
+        ))
+        midi_in_label.setLayout(midi_in_label_layout)
+        midi_routing_layout.addWidget(midi_in_label, 1, 1)
         self.midi_in_mode = ArrowComboBox()
         self.midi_in_mode.setMinimumWidth(120)
         self.midi_in_mode.setMinimumHeight(25)
@@ -1885,7 +2092,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.midi_in_mode.addItem("Ignore", 3)
         midi_routing_layout.addWidget(self.midi_in_mode, 1, 2)
 
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "USB MIDI Mode:")), 1, 3)
+        usb_midi_label = QWidget()
+        usb_midi_label_layout = QHBoxLayout()
+        usb_midi_label_layout.setContentsMargins(0, 0, 0, 0)
+        usb_midi_label_layout.setSpacing(5)
+        usb_midi_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "USB MIDI Mode:")))
+        usb_midi_label_layout.addWidget(self.create_help_label(
+            "How incoming USB MIDI is processed.\n"
+            "Process All: Process all incoming MIDI\n"
+            "Thru: Pass MIDI through unchanged\n"
+            "Clock Only: Only process clock messages\n"
+            "Ignore: Ignore all incoming USB MIDI"
+        ))
+        usb_midi_label.setLayout(usb_midi_label_layout)
+        midi_routing_layout.addWidget(usb_midi_label, 1, 3)
         self.usb_midi_mode = ArrowComboBox()
         self.usb_midi_mode.setMinimumWidth(120)
         self.usb_midi_mode.setMinimumHeight(25)
@@ -1899,7 +2119,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.usb_midi_mode.addItem("Ignore", 3)
         midi_routing_layout.addWidget(self.usb_midi_mode, 1, 4)
 
-        midi_routing_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Clock Source:")), 1, 5)
+        clock_source_label = QWidget()
+        clock_source_label_layout = QHBoxLayout()
+        clock_source_label_layout.setContentsMargins(0, 0, 0, 0)
+        clock_source_label_layout.setSpacing(5)
+        clock_source_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Clock Source:")))
+        clock_source_label_layout.addWidget(self.create_help_label(
+            "Where MIDI timing clock comes from.\n"
+            "Local: Use internal clock\n"
+            "USB: Sync to USB MIDI clock\n"
+            "MIDI IN: Sync to DIN MIDI input clock"
+        ))
+        clock_source_label.setLayout(clock_source_label_layout)
+        midi_routing_layout.addWidget(clock_source_label, 1, 5)
         self.midi_clock_source = ArrowComboBox()
         self.midi_clock_source.setMinimumWidth(120)
         self.midi_clock_source.setMinimumHeight(25)
@@ -1922,6 +2154,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         save_default_btn.setMinimumHeight(30)
         save_default_btn.setMaximumHeight(30)
         save_default_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+        save_default_btn.setToolTip("Save current settings as the default configuration.\nThese settings will be loaded on keyboard startup.")
         save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
         buttons_layout.addWidget(save_default_btn)
 
@@ -1929,6 +2162,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         load_default_btn.setMinimumHeight(30)
         load_default_btn.setMaximumHeight(30)
         load_default_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+        load_default_btn.setToolTip("Load the saved default configuration.\nRestores settings from the default slot.")
         load_default_btn.clicked.connect(lambda: self.on_load_slot(0))
         buttons_layout.addWidget(load_default_btn)
 
@@ -1936,6 +2170,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         load_current_btn.setMinimumHeight(30)
         load_current_btn.setMaximumHeight(30)
         load_current_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+        load_current_btn.setToolTip("Refresh display with current keyboard settings.\nUpdates all fields to match the keyboard's active configuration.")
         load_current_btn.clicked.connect(self.on_load_current_settings)
         buttons_layout.addWidget(load_current_btn)
 
@@ -1943,6 +2178,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         reset_btn.setMinimumHeight(30)
         reset_btn.setMaximumHeight(30)
         reset_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+        reset_btn.setToolTip("Reset all MIDI settings to factory defaults.\nThis cannot be undone.")
         reset_btn.clicked.connect(self.on_reset)
         buttons_layout.addWidget(reset_btn)
 
@@ -1956,6 +2192,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.setMinimumHeight(30)
             btn.setMaximumHeight(30)
             btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+            btn.setToolTip(f"Save current settings to preset slot {i}.\nUse slots to store different configurations.")
             btn.clicked.connect(lambda checked, slot=i: self.on_save_slot(slot))
             save_slots_layout.addWidget(btn)
         self.addLayout(save_slots_layout)
@@ -1968,6 +2205,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             btn.setMinimumHeight(30)
             btn.setMaximumHeight(30)
             btn.setStyleSheet("QPushButton { border-radius: 5px; }")
+            btn.setToolTip(f"Load settings from preset slot {i}.\nRestores a previously saved configuration.")
             btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
             load_slots_layout.addWidget(btn)
         self.addLayout(load_slots_layout)
@@ -4214,6 +4452,34 @@ class GamingConfigurator(BasicEditor):
         self.active_control_id = None  # Track which control is being assigned
         self.setup_ui()
 
+    def create_help_label(self, tooltip_text):
+        """Create a small question mark button with tooltip for help"""
+        help_btn = QPushButton("?")
+        help_btn.setStyleSheet("""
+            QPushButton {
+                color: #888;
+                font-weight: bold;
+                font-size: 9pt;
+                border: 1px solid #888;
+                border-radius: 9px;
+                min-width: 16px;
+                max-width: 16px;
+                min-height: 16px;
+                max-height: 16px;
+                padding: 0px;
+                margin: 0px;
+                background: transparent;
+            }
+            QPushButton:hover {
+                color: #fff;
+                background-color: #555;
+                border-color: #fff;
+            }
+        """)
+        help_btn.setToolTip(tooltip_text)
+        help_btn.setFocusPolicy(Qt.NoFocus)
+        return help_btn
+
     def setup_ui(self):
         # Create scroll area for better window resizing
         scroll_area = QScrollArea()
@@ -4265,8 +4531,12 @@ class GamingConfigurator(BasicEditor):
         response_group.setLayout(response_layout)
 
         # Angle Adjustment
+        angle_adj_row = QHBoxLayout()
         self.angle_adj_checkbox = QCheckBox(tr("GamingConfigurator", "Angle adjustment"))
-        response_layout.addWidget(self.angle_adj_checkbox)
+        angle_adj_row.addWidget(self.angle_adj_checkbox)
+        angle_adj_row.addWidget(self.create_help_label("Enable diagonal angle adjustment.\nModifies the angle at which diagonals are registered."))
+        angle_adj_row.addStretch()
+        response_layout.addLayout(angle_adj_row)
 
         # Diagonal Angle Slider
         angle_widget = QWidget()
@@ -4275,8 +4545,12 @@ class GamingConfigurator(BasicEditor):
         angle_layout.setContentsMargins(15, 0, 0, 0)  # Indent
         angle_widget.setLayout(angle_layout)
 
+        angle_label_row = QHBoxLayout()
         self.diagonal_angle_label = QLabel("Angle: 0°")
-        angle_layout.addWidget(self.diagonal_angle_label)
+        angle_label_row.addWidget(self.diagonal_angle_label)
+        angle_label_row.addWidget(self.create_help_label("Angle offset for diagonal detection (0-90°).\nHigher values make diagonals easier to hit."))
+        angle_label_row.addStretch()
+        angle_layout.addLayout(angle_label_row)
 
         self.diagonal_angle_slider = QSlider(Qt.Horizontal)
         self.diagonal_angle_slider.setMinimum(0)
@@ -4290,17 +4564,23 @@ class GamingConfigurator(BasicEditor):
         response_layout.addWidget(angle_widget)
 
         # Square Output
+        square_row = QHBoxLayout()
         self.square_output_checkbox = QCheckBox(tr("GamingConfigurator", "Square output"))
-        self.square_output_checkbox.setToolTip(tr("GamingConfigurator",
+        square_row.addWidget(self.square_output_checkbox)
+        square_row.addWidget(self.create_help_label(
             "Restrict joystick movement to a square instead of circle.\n"
             "Allows maximum axis output. Recommended for Rocket League and CS:GO."))
-        response_layout.addWidget(self.square_output_checkbox)
+        square_row.addStretch()
+        response_layout.addLayout(square_row)
 
         # Snappy Joystick
+        snappy_row = QHBoxLayout()
         self.snappy_joystick_checkbox = QCheckBox(tr("GamingConfigurator", "Snappy Joystick"))
-        self.snappy_joystick_checkbox.setToolTip(tr("GamingConfigurator",
+        snappy_row.addWidget(self.snappy_joystick_checkbox)
+        snappy_row.addWidget(self.create_help_label(
             "Use maximum value of opposite sides of axis rather than combining them."))
-        response_layout.addWidget(self.snappy_joystick_checkbox)
+        snappy_row.addStretch()
+        response_layout.addLayout(snappy_row)
 
         response_calibration_layout.addWidget(response_group, alignment=QtCore.Qt.AlignTop)
 

@@ -408,6 +408,16 @@ class Theme:
     def get_stylesheet(cls):
         """Return modern 2025 stylesheet for UI elements"""
         return """
+            /* Tooltip Styling - Ensure tooltips are visible */
+            QToolTip {
+                background-color: palette(tooltip-base);
+                color: palette(tooltip-text);
+                border: 1px solid palette(mid);
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 9pt;
+            }
+
             /* Modern Tab Styling with Rounded Edges */
             QTabBar::tab {
                 background: palette(button);

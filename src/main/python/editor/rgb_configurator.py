@@ -2155,6 +2155,34 @@ class PerKeyRGBHandler(BasicHandler):
 class CustomLightsHandler(BasicHandler):
     """Handler for custom animation slot configuration - uses VialKeyboard infrastructure"""
 
+    def create_help_label(self, tooltip_text):
+        """Create a small question mark button with tooltip for help"""
+        help_btn = QPushButton("?")
+        help_btn.setStyleSheet("""
+            QPushButton {
+                color: #888;
+                font-weight: bold;
+                font-size: 9pt;
+                border: 1px solid #888;
+                border-radius: 9px;
+                min-width: 16px;
+                max-width: 16px;
+                min-height: 16px;
+                max-height: 16px;
+                padding: 0px;
+                margin: 0px;
+                background: transparent;
+            }
+            QPushButton:hover {
+                color: #fff;
+                background-color: #555;
+                border-color: #fff;
+            }
+        """)
+        help_btn.setToolTip(tooltip_text)
+        help_btn.setFocusPolicy(Qt.NoFocus)
+        return help_btn
+
     def __init__(self, container):
         super().__init__(container)
 
@@ -2230,26 +2258,42 @@ class CustomLightsHandler(BasicHandler):
         layout.setSpacing(5)
 
         # Live Animation section
+        live_header = QHBoxLayout()
         live_label = QLabel(tr("RGBConfigurator", "Live Animation:"))
         live_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(live_label, 0, 0, 1, 3)
+        live_header.addWidget(live_label)
+        live_header.addWidget(self.create_help_label("Animation that plays continuously while keys are held.\nActive while note/key is pressed."))
+        live_header.addStretch()
+        layout.addLayout(live_header, 0, 0, 1, 3)
 
         # Live Effect - hierarchical dropdown with rounded edges
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 1, 0)
+        live_effect_row = QHBoxLayout()
+        live_effect_label = QLabel(tr("RGBConfigurator", "Effect:"))
+        live_effect_row.addWidget(live_effect_label)
+        live_effect_row.addWidget(self.create_help_label("The animation pattern to display.\nChoose from various effects like Solid, Breathing, Rainbow, etc."))
+        layout.addLayout(live_effect_row, 1, 0)
         live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
         live_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
         layout.addWidget(live_effect, 1, 1, 1, 2)
 
         # Live Style - hierarchical dropdown with rounded edges
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 2, 0)
+        live_pos_row = QHBoxLayout()
+        live_position_label = QLabel(tr("RGBConfigurator", "Position:"))
+        live_pos_row.addWidget(live_position_label)
+        live_pos_row.addWidget(self.create_help_label("Where the animation appears on the keyboard.\nChoose from All Keys, Rows, Columns, or specific key groups."))
+        layout.addLayout(live_pos_row, 2, 0)
         live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
         live_style.setStyleSheet("QComboBox { border-radius: 5px; }")
         live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
         layout.addWidget(live_style, 2, 1, 1, 2)
 
         # Live Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Live Speed:")), 3, 0)
+        live_speed_row = QHBoxLayout()
+        live_speed_label = QLabel(tr("RGBConfigurator", "Live Speed:"))
+        live_speed_row.addWidget(live_speed_label)
+        live_speed_row.addWidget(self.create_help_label("Speed of the live animation.\nHigher values = faster animation."))
+        layout.addLayout(live_speed_row, 3, 0)
         live_speed = QSlider(QtCore.Qt.Horizontal)
         live_speed.setMinimum(0)
         live_speed.setMaximum(255)
@@ -2258,26 +2302,42 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(live_speed, 3, 1, 1, 2)
 
         # Macro Animation section
+        macro_header = QHBoxLayout()
         macro_label = QLabel(tr("RGBConfigurator", "Macro Animation:"))
         macro_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(macro_label, 4, 0, 1, 3)
+        macro_header.addWidget(macro_label)
+        macro_header.addWidget(self.create_help_label("Animation that plays once when keys are pressed.\nTriggers on key press and plays to completion."))
+        macro_header.addStretch()
+        layout.addLayout(macro_header, 4, 0, 1, 3)
 
         # Macro Effect - hierarchical dropdown with rounded edges (same as live effects)
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Effect:")), 5, 0)
+        macro_effect_row = QHBoxLayout()
+        macro_effect_label = QLabel(tr("RGBConfigurator", "Effect:"))
+        macro_effect_row.addWidget(macro_effect_label)
+        macro_effect_row.addWidget(self.create_help_label("The one-shot animation pattern to display on key press."))
+        layout.addLayout(macro_effect_row, 5, 0)
         macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)  # Same hierarchy as live effects
         macro_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
         layout.addWidget(macro_effect, 5, 1, 1, 2)
 
         # Macro Style - hierarchical dropdown with rounded edges
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Position:")), 6, 0)
+        macro_pos_row = QHBoxLayout()
+        macro_position_label = QLabel(tr("RGBConfigurator", "Position:"))
+        macro_pos_row.addWidget(macro_position_label)
+        macro_pos_row.addWidget(self.create_help_label("Where the macro animation appears.\nCan be relative to pressed key or fixed positions."))
+        layout.addLayout(macro_pos_row, 6, 0)
         macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
         macro_style.setStyleSheet("QComboBox { border-radius: 5px; }")
         macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
         layout.addWidget(macro_style, 6, 1, 1, 2)
-        
+
         # Macro Animation Speed slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Macro Speed:")), 7, 0)
+        macro_speed_row = QHBoxLayout()
+        macro_speed_label = QLabel(tr("RGBConfigurator", "Macro Speed:"))
+        macro_speed_row.addWidget(macro_speed_label)
+        macro_speed_row.addWidget(self.create_help_label("Speed of the macro animation.\nHigher values = faster animation."))
+        layout.addLayout(macro_speed_row, 7, 0)
         macro_speed = QSlider(QtCore.Qt.Horizontal)
         macro_speed.setMinimum(0)
         macro_speed.setMaximum(255)
@@ -2286,19 +2346,31 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(macro_speed, 7, 1, 1, 2)
 
         # Effects section
+        bg_header = QHBoxLayout()
         effects_label = QLabel(tr("RGBConfigurator", "Background:"))
         effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 8, 0, 1, 3)
+        bg_header.addWidget(effects_label)
+        bg_header.addWidget(self.create_help_label("Background lighting that shows when no keys are pressed.\nProvides ambient illumination."))
+        bg_header.addStretch()
+        layout.addLayout(bg_header, 8, 0, 1, 3)
 
         # Background - hierarchical dropdown with rounded edges
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background:")), 9, 0)
+        bg_effect_row = QHBoxLayout()
+        bg_effect_label = QLabel(tr("RGBConfigurator", "Background:"))
+        bg_effect_row.addWidget(bg_effect_label)
+        bg_effect_row.addWidget(self.create_help_label("The background animation pattern.\nShows when keys are idle."))
+        layout.addLayout(bg_effect_row, 9, 0)
         background = HierarchicalDropdown(BACKGROUNDS_HIERARCHY)
         background.setStyleSheet("QComboBox { border-radius: 5px; }")
         background.valueChanged.connect(lambda idx, s=slot: self.on_background_changed(s, idx))
         layout.addWidget(background, 9, 1, 1, 2)
 
         # Background Brightness slider
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Background Brightness:")), 10, 0)
+        bg_bright_row = QHBoxLayout()
+        bg_brightness_label = QLabel(tr("RGBConfigurator", "Bg Brightness:"))
+        bg_bright_row.addWidget(bg_brightness_label)
+        bg_bright_row.addWidget(self.create_help_label("Brightness of the background animation.\n0% = Off, 100% = Full brightness."))
+        layout.addLayout(bg_bright_row, 10, 0)
         background_brightness = QSlider(QtCore.Qt.Horizontal)
         background_brightness.setMinimum(0)
         background_brightness.setMaximum(100)
@@ -2307,19 +2379,31 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(background_brightness, 10, 1, 1, 2)
 
         # Effect Colours section header
-        effects_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
-        effects_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-        layout.addWidget(effects_label, 11, 0, 1, 3)
+        colours_header = QHBoxLayout()
+        colours_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
+        colours_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        colours_header.addWidget(colours_label)
+        colours_header.addWidget(self.create_help_label("Color settings for animations.\nControls how colors are applied to effects."))
+        colours_header.addStretch()
+        layout.addLayout(colours_header, 11, 0, 1, 3)
 
         # Colour Scheme - moved to row 12, with rounded edges
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Colour Scheme:")), 12, 0)
+        colour_row = QHBoxLayout()
+        colour_scheme_label = QLabel(tr("RGBConfigurator", "Colour Scheme:"))
+        colour_row.addWidget(colour_scheme_label)
+        colour_row.addWidget(self.create_help_label("How colors are chosen for the animation.\nFixed colors, random, or based on key velocity/position."))
+        layout.addLayout(colour_row, 12, 0)
         color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
         color_type.setStyleSheet("QComboBox { border-radius: 5px; }")
         color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
         layout.addWidget(color_type, 12, 1, 1, 2)
 
         # Sustain Mode - moved to row 13, with rounded edges
-        layout.addWidget(QLabel(tr("RGBConfigurator", "Sustain:")), 13, 0)
+        sustain_row = QHBoxLayout()
+        sustain_label = QLabel(tr("RGBConfigurator", "Sustain:"))
+        sustain_row.addWidget(sustain_label)
+        sustain_row.addWidget(self.create_help_label("How long the animation lingers after key release.\nAffects fade-out behavior."))
+        layout.addLayout(sustain_row, 13, 0)
         sustain_mode = ArrowComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
@@ -2334,12 +2418,14 @@ class CustomLightsHandler(BasicHandler):
         save_button.clicked.connect(lambda checked, s=slot: self.on_save_slot(s))
         save_button.setMinimumHeight(30)
         save_button.setStyleSheet("QPushButton { border-radius: 5px; }")
+        save_button.setToolTip("Save current settings to this animation slot on the keyboard.")
         buttons_layout.addWidget(save_button)
 
         load_button = QPushButton(tr("RGBConfigurator", "Load Settings from Keyboard"))
         load_button.clicked.connect(lambda checked, s=slot: self.on_load_from_keyboard(s))
         load_button.setMinimumHeight(30)
         load_button.setStyleSheet("QPushButton { border-radius: 5px; }")
+        load_button.setToolTip("Load current settings from the keyboard for this slot.\nRefreshes the display with saved values.")
         buttons_layout.addWidget(load_button)
 
         preset_combo = ArrowComboBox()
@@ -2348,6 +2434,7 @@ class CustomLightsHandler(BasicHandler):
             preset_combo.addItem(preset)
         preset_combo.setMinimumHeight(30)
         preset_combo.setStyleSheet("QComboBox { border-radius: 5px; }")
+        preset_combo.setToolTip("Load a predefined animation preset.\nQuickly set up common lighting effects.")
         preset_combo.currentIndexChanged.connect(lambda idx, s=slot: self.on_load_preset(s, idx))
         buttons_layout.addWidget(preset_combo)
         
