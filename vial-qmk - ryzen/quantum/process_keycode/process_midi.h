@@ -954,10 +954,10 @@ extern layer_actuation_t layer_actuations[12];
 extern bool aftertouch_pedal_active;
 extern uint8_t analog_mode;  // Global analog mode
 
-// Per-key actuation arrays and flags
+// Per-key actuation arrays (firmware always uses per-key per-layer)
 extern layer_key_actuations_t per_key_actuations[12];  // 6720 bytes total (560 bytes × 12 layers)
-extern bool per_key_mode_enabled;
-extern bool per_key_per_layer_enabled;
+// NOTE: per_key_mode_enabled and per_key_per_layer_enabled have been REMOVED
+// Firmware now ALWAYS uses per-key per-layer settings.
 
 void save_layer_actuations(void);
 void load_layer_actuations(void);
@@ -1034,11 +1034,13 @@ typedef enum {
 } nullbind_behavior_t;
 
 // Null bind group structure (18 bytes per group)
+// NOTE: Each group is now layer-specific. Groups only activate on their assigned layer.
 typedef struct {
     uint8_t behavior;                               // nullbind_behavior_t
     uint8_t key_count;                              // Number of keys in this group (0-8)
     uint8_t keys[NULLBIND_MAX_KEYS_PER_GROUP];      // Key indices (row * 14 + col), 0xFF = unused
-    uint8_t reserved[8];                            // Reserved for future use (e.g., per-key priority order)
+    uint8_t layer;                                  // Layer this group is active on (0-11), 0xFF = all layers (legacy)
+    uint8_t reserved[7];                            // Reserved for future use (e.g., per-key priority order)
 } nullbind_group_t;
 
 // Runtime state for null bind processing
@@ -1072,12 +1074,14 @@ bool nullbind_add_key_to_group(uint8_t group_num, uint8_t key_index);
 bool nullbind_remove_key_from_group(uint8_t group_num, uint8_t key_index);
 void nullbind_clear_group(uint8_t group_num);
 bool nullbind_key_in_group(uint8_t group_num, uint8_t key_index);
-int8_t nullbind_find_key_group(uint8_t key_index);  // Returns group num or -1
+int8_t nullbind_find_key_group(uint8_t key_index);  // Returns group num or -1 (ignores layer)
+int8_t nullbind_find_key_group_for_layer(uint8_t key_index, uint8_t layer);  // Returns group num or -1 (layer-specific)
 
 // Key processing functions (called from matrix scanning)
-bool nullbind_should_null_key(uint8_t row, uint8_t col);
-void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel);
-void nullbind_key_released(uint8_t row, uint8_t col);
+// NOTE: These are now layer-aware - groups only activate on their assigned layer
+bool nullbind_should_null_key(uint8_t row, uint8_t col, uint8_t layer);
+void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel, uint8_t layer);
+void nullbind_key_released(uint8_t row, uint8_t col, uint8_t layer);
 void nullbind_update_group_state(uint8_t group_num);
 
 // HID handlers

@@ -425,9 +425,9 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
 // Priority 3: Global fallback curve
 uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t split_type) {
     uint8_t key_index = row * 14 + col;
-    if (key_index < 70) {
-        uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
-        per_key_actuation_t *settings = &per_key_actuations[target_layer].keys[key_index];
+    if (key_index < 70 && layer < 12) {
+        // Always use per-key per-layer settings
+        per_key_actuation_t *settings = &per_key_actuations[layer].keys[key_index];
 
         // Priority 1: Check if this specific key uses per-key velocity curve
         if (settings->flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
@@ -2226,8 +2226,9 @@ layer_actuation_t layer_actuations[12] = {
 // =============================================================================
 
 layer_key_actuations_t per_key_actuations[12];  // 840 bytes total (70 keys × 12 layers)
-bool per_key_mode_enabled = false;
-bool per_key_per_layer_enabled = false;
+// NOTE: per_key_mode_enabled and per_key_per_layer_enabled have been REMOVED
+// Firmware now ALWAYS uses per-key per-layer settings. The GUI handles "apply to all"
+// by writing the same values to all keys/layers when the user wants uniform settings.
 
 // =============================================================================
 // NULL BIND (SOCD) GLOBAL VARIABLES
@@ -3193,8 +3194,7 @@ void initialize_per_key_actuations(void) {
             per_key_actuations[layer].keys[key].rapidfire_velocity_mod = DEFAULT_RAPIDFIRE_VELOCITY_MOD;
         }
     }
-    per_key_mode_enabled = false;
-    per_key_per_layer_enabled = false;
+    // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
 // Save per-key actuations to EEPROM
@@ -3202,12 +3202,7 @@ void save_per_key_actuations(void) {
     eeprom_update_block(per_key_actuations,
                         (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                         PER_KEY_ACTUATION_SIZE);
-
-    // Save flags
-    eeprom_update_byte((uint8_t*)PER_KEY_ACTUATION_FLAGS_ADDR,
-                       per_key_mode_enabled ? 1 : 0);
-    eeprom_update_byte((uint8_t*)(PER_KEY_ACTUATION_FLAGS_ADDR + 1),
-                       per_key_per_layer_enabled ? 1 : 0);
+    // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
 // Load per-key actuations from EEPROM
@@ -3215,10 +3210,7 @@ void load_per_key_actuations(void) {
     eeprom_read_block(per_key_actuations,
                       (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                       PER_KEY_ACTUATION_SIZE);
-
-    // Load flags
-    per_key_mode_enabled = eeprom_read_byte((uint8_t*)PER_KEY_ACTUATION_FLAGS_ADDR) != 0;
-    per_key_per_layer_enabled = eeprom_read_byte((uint8_t*)(PER_KEY_ACTUATION_FLAGS_ADDR + 1)) != 0;
+    // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
 // Reset all per-key actuations to default
@@ -3240,35 +3232,24 @@ void reset_per_key_actuations(void) {
 //   - get_key_actuation_point(layer, row, col)
 //
 // The function returns a value 0-100 representing 0-2.5mm of travel.
+// NOTE: Firmware ALWAYS uses per-key per-layer settings now.
+// The GUI handles "apply to all keys/layers" by writing the same values.
 uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
-    // If per-key mode is disabled, use layer defaults
-    if (!per_key_mode_enabled) {
-        // Return layer-wide setting (use midi_actuation as the default)
-        // NOTE: Since per-key mode uses a single value for both MIDI and normal keys,
-        // we use midi_actuation as the default when per-key mode is off
-        return layer_actuations[layer].midi_actuation;
-    }
-
-    // Per-key mode enabled
     uint8_t key_index = row * 14 + col;  // 14 columns per row
-    if (key_index >= 70) return DEFAULT_ACTUATION_VALUE;
+    if (key_index >= 70 || layer >= 12) return DEFAULT_ACTUATION_VALUE;
 
-    // Per-layer mode: use specific layer
-    if (per_key_per_layer_enabled) {
-        return per_key_actuations[layer].keys[key_index].actuation;
-    }
-
-    // Global mode: always use layer 0
-    return per_key_actuations[0].keys[key_index].actuation;
+    // Always return per-key per-layer actuation
+    return per_key_actuations[layer].keys[key_index].actuation;
 }
 
 // Get pointer to per-key settings for a specific key
+// NOTE: Firmware ALWAYS uses per-key per-layer settings now.
 per_key_actuation_t* get_key_settings(uint8_t layer, uint8_t row, uint8_t col) {
     uint8_t key_index = row * 14 + col;
-    if (key_index >= 70) return NULL;
+    if (key_index >= 70 || layer >= 12) return NULL;
 
-    uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
-    return &per_key_actuations[target_layer].keys[key_index];
+    // Always return settings from the specified layer
+    return &per_key_actuations[layer].keys[key_index];
 }
 
 // =============================================================================
@@ -3327,19 +3308,23 @@ void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
     response[7] = (uint8_t)per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod;
 }
 
-// Set per-key mode flags
+// DEPRECATED: Set per-key mode flags
+// NOTE: Mode flags have been REMOVED. Firmware ALWAYS uses per-key per-layer.
+// This handler is kept for backward compatibility with older GUIs - it's a no-op.
 // Format: [mode_enabled, per_layer_enabled]
 void handle_set_per_key_mode(const uint8_t* data) {
-    per_key_mode_enabled = data[0] != 0;
-    per_key_per_layer_enabled = data[1] != 0;
-    save_per_key_actuations();
+    (void)data;  // Unused - modes are removed
+    // No-op: firmware always uses per-key per-layer
 }
 
-// Get per-key mode flags
+// DEPRECATED: Get per-key mode flags
+// NOTE: Mode flags have been REMOVED. Firmware ALWAYS uses per-key per-layer.
+// This handler returns 1,1 (both enabled) for backward compatibility.
 // Response: [mode_enabled, per_layer_enabled]
 void handle_get_per_key_mode(uint8_t* response) {
-    response[0] = per_key_mode_enabled ? 0x01 : 0x00;
-    response[1] = per_key_per_layer_enabled ? 0x01 : 0x00;
+    // Always report as enabled for backward compatibility
+    response[0] = 0x01;  // per_key_mode always "enabled"
+    response[1] = 0x01;  // per_layer_mode always "enabled"
 }
 
 // Reset all per-key actuations to default (HID handler)
@@ -3374,8 +3359,11 @@ void nullbind_init(void) {
     for (uint8_t g = 0; g < NULLBIND_NUM_GROUPS; g++) {
         nullbind_groups[g].behavior = NULLBIND_BEHAVIOR_NEUTRAL;
         nullbind_groups[g].key_count = 0;
+        nullbind_groups[g].layer = 0;  // Default to layer 0
         for (uint8_t k = 0; k < NULLBIND_MAX_KEYS_PER_GROUP; k++) {
             nullbind_groups[g].keys[k] = 0xFF;  // 0xFF = unused
+        }
+        for (uint8_t k = 0; k < 7; k++) {
             nullbind_groups[g].reserved[k] = 0;
         }
 
@@ -3528,10 +3516,26 @@ bool nullbind_key_in_group(uint8_t group_num, uint8_t key_index) {
     return false;
 }
 
-// Find which null bind group a key belongs to
+// Find which null bind group a key belongs to (ignoring layer)
 // Returns group number (0-19) or -1 if not in any group
+// NOTE: This is the legacy function - use nullbind_find_key_group_for_layer for layer-aware lookup
 int8_t nullbind_find_key_group(uint8_t key_index) {
     for (uint8_t g = 0; g < NULLBIND_NUM_GROUPS; g++) {
+        if (nullbind_key_in_group(g, key_index)) {
+            return (int8_t)g;
+        }
+    }
+    return -1;
+}
+
+// Find which null bind group a key belongs to for a specific layer
+// Returns group number (0-19) or -1 if not in any group on this layer
+int8_t nullbind_find_key_group_for_layer(uint8_t key_index, uint8_t layer) {
+    for (uint8_t g = 0; g < NULLBIND_NUM_GROUPS; g++) {
+        // Check if group is for this layer
+        if (nullbind_groups[g].layer != layer) {
+            continue;  // Group is for a different layer
+        }
         if (nullbind_key_in_group(g, key_index)) {
             return (int8_t)g;
         }
@@ -3657,7 +3661,8 @@ void nullbind_update_group_state(uint8_t group_num) {
 }
 
 // Called when a key is pressed - updates null bind state
-void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel) {
+// NOTE: Now layer-aware - only processes groups assigned to the current layer
+void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel, uint8_t layer) {
     if (!nullbind_enabled) return;
 
     uint8_t key_index = row * 14 + col;
@@ -3666,9 +3671,9 @@ void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel) {
     // Update travel for distance-based null bind
     nullbind_key_travel[key_index] = travel;
 
-    // Find which group this key belongs to
-    int8_t group_num = nullbind_find_key_group(key_index);
-    if (group_num < 0) return;  // Key not in any null bind group
+    // Find which group this key belongs to on this specific layer
+    int8_t group_num = nullbind_find_key_group_for_layer(key_index, layer);
+    if (group_num < 0) return;  // Key not in any null bind group on this layer
 
     // Get key's index within the group
     uint8_t key_idx_in_group = nullbind_get_key_index_in_group(group_num, key_index);
@@ -3686,7 +3691,8 @@ void nullbind_key_pressed(uint8_t row, uint8_t col, uint8_t travel) {
 }
 
 // Called when a key is released - updates null bind state
-void nullbind_key_released(uint8_t row, uint8_t col) {
+// NOTE: Now layer-aware - only processes groups assigned to the current layer
+void nullbind_key_released(uint8_t row, uint8_t col, uint8_t layer) {
     if (!nullbind_enabled) return;
 
     uint8_t key_index = row * 14 + col;
@@ -3695,8 +3701,8 @@ void nullbind_key_released(uint8_t row, uint8_t col) {
     // Clear travel
     nullbind_key_travel[key_index] = 0;
 
-    // Find which group this key belongs to
-    int8_t group_num = nullbind_find_key_group(key_index);
+    // Find which group this key belongs to on this specific layer
+    int8_t group_num = nullbind_find_key_group_for_layer(key_index, layer);
     if (group_num < 0) return;
 
     // Get key's index within the group
@@ -3729,15 +3735,16 @@ void nullbind_key_released(uint8_t row, uint8_t col) {
 
 // Check if a key should be nulled (blocked from registering)
 // Returns true if key should be nulled, false if it should register normally
-bool nullbind_should_null_key(uint8_t row, uint8_t col) {
+// NOTE: Now layer-aware - only checks groups assigned to the current layer
+bool nullbind_should_null_key(uint8_t row, uint8_t col, uint8_t layer) {
     if (!nullbind_enabled) return false;
 
     uint8_t key_index = row * 14 + col;
     if (key_index >= 70) return false;
 
-    // Find which group this key belongs to
-    int8_t group_num = nullbind_find_key_group(key_index);
-    if (group_num < 0) return false;  // Key not in any null bind group - don't null
+    // Find which group this key belongs to on this specific layer
+    int8_t group_num = nullbind_find_key_group_for_layer(key_index, layer);
+    if (group_num < 0) return false;  // Key not in any null bind group on this layer - don't null
 
     // Get key's index within the group
     uint8_t key_idx_in_group = nullbind_get_key_index_in_group(group_num, key_index);
@@ -3759,7 +3766,8 @@ bool nullbind_should_null_key(uint8_t row, uint8_t col) {
 // =============================================================================
 
 // Get null bind group configuration
-// Response: [status, behavior, key_count, keys[8], reserved[8]]
+// Response: [status, behavior, key_count, keys[8], layer, reserved[7]]
+// NOTE: layer field added - groups are now layer-specific
 void handle_nullbind_get_group(uint8_t group_num, uint8_t* response) {
     if (group_num >= NULLBIND_NUM_GROUPS) {
         response[0] = 1;  // Error status
@@ -3777,14 +3785,18 @@ void handle_nullbind_get_group(uint8_t group_num, uint8_t* response) {
         response[3 + i] = group->keys[i];
     }
 
-    // Copy reserved bytes
-    for (uint8_t i = 0; i < 8; i++) {
-        response[11 + i] = group->reserved[i];
+    // Layer field (byte 11)
+    response[11] = group->layer;
+
+    // Copy reserved bytes (7 bytes starting at byte 12)
+    for (uint8_t i = 0; i < 7; i++) {
+        response[12 + i] = group->reserved[i];
     }
 }
 
 // Set null bind group configuration
-// Format: [group_num, behavior, key_count, keys[8], reserved[8]]
+// Format: [group_num, behavior, key_count, keys[8], layer, reserved[7]]
+// NOTE: layer field added - groups are now layer-specific
 void handle_nullbind_set_group(const uint8_t* data) {
     uint8_t group_num = data[0];
 
@@ -3805,9 +3817,15 @@ void handle_nullbind_set_group(const uint8_t* data) {
         group->keys[i] = data[3 + i];
     }
 
-    // Copy reserved bytes
-    for (uint8_t i = 0; i < 8; i++) {
-        group->reserved[i] = data[11 + i];
+    // Layer field (byte 11)
+    group->layer = data[11];
+    if (group->layer >= 12) {
+        group->layer = 0;  // Default to layer 0 if invalid
+    }
+
+    // Copy reserved bytes (7 bytes starting at byte 12)
+    for (uint8_t i = 0; i < 7; i++) {
+        group->reserved[i] = data[12 + i];
     }
 
     // Reset runtime state for this group

@@ -69,11 +69,16 @@ def get_behavior_choices(key_count: int) -> List[Tuple[int, str]]:
 
 
 class NullBindGroup:
-    """Represents a null bind group configuration"""
+    """Represents a null bind group configuration
+
+    NOTE: Groups are now layer-specific. Each group is assigned to a single layer
+    and only activates when that layer is active.
+    """
 
     def __init__(self):
         self.behavior = NULLBIND_BEHAVIOR_NEUTRAL
         self.keys = []  # List of key indices (row * 14 + col for 5x14 keyboard)
+        self.layer = 0  # Layer this group is active on (0-11)
 
     @property
     def key_count(self) -> int:
@@ -119,6 +124,7 @@ class NullBindGroup:
         """Clear all keys from the group"""
         self.keys = []
         self.behavior = NULLBIND_BEHAVIOR_NEUTRAL
+        # Note: layer is preserved when clearing
 
     def has_key(self, key_index: int) -> bool:
         """Check if a key is in this group"""
@@ -158,7 +164,8 @@ class NullBindGroup:
         - byte 0: behavior
         - byte 1: key_count
         - bytes 2-9: keys[8] (padded with 0xFF for unused)
-        - bytes 10-17: reserved (for future use, e.g., per-key priority order)
+        - byte 10: layer (0-11, which layer this group is active on)
+        - bytes 11-17: reserved (for future use)
         """
         data = bytearray(NULLBIND_GROUP_SIZE)
         data[0] = self.behavior
@@ -171,7 +178,10 @@ class NullBindGroup:
             else:
                 data[2 + i] = 0xFF
 
-        # Reserved bytes (10-17) already 0
+        # Layer field (byte 10)
+        data[10] = self.layer if self.layer < 12 else 0
+
+        # Reserved bytes (11-17) already 0
         return bytes(data)
 
     @staticmethod
@@ -191,13 +201,17 @@ class NullBindGroup:
             if key != 0xFF:
                 group.keys.append(key)
 
+        # Layer field (byte 10)
+        group.layer = data[10] if data[10] < 12 else 0
+
         return group
 
     def to_dict(self) -> dict:
         """Convert to dictionary for GUI"""
         return {
             'behavior': self.behavior,
-            'keys': list(self.keys)
+            'keys': list(self.keys),
+            'layer': self.layer
         }
 
     @staticmethod
@@ -206,6 +220,7 @@ class NullBindGroup:
         group = NullBindGroup()
         group.behavior = data.get('behavior', NULLBIND_BEHAVIOR_NEUTRAL)
         group.keys = list(data.get('keys', []))
+        group.layer = data.get('layer', 0)
         return group
 
 

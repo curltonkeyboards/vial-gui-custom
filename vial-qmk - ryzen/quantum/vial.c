@@ -922,18 +922,22 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			break;
 		}
 
-		case HID_CMD_SET_PER_KEY_MODE: {  // 0xE4
+		case HID_CMD_SET_PER_KEY_MODE: {  // 0xE4 - DEPRECATED
+			// NOTE: Mode flags have been REMOVED. Firmware ALWAYS uses per-key per-layer.
+			// This handler is kept for backward compatibility - it's a no-op.
 			// Format: [per_key_enabled, per_layer_enabled]
 			if (length >= 4) {
 				handle_set_per_key_mode(&msg[2]);
-				msg[0] = 0x01; // Success
+				msg[0] = 0x01; // Success (no-op)
 			} else {
 				msg[0] = 0x00; // Error
 			}
 			break;
 		}
 
-		case HID_CMD_GET_PER_KEY_MODE: {  // 0xE5
+		case HID_CMD_GET_PER_KEY_MODE: {  // 0xE5 - DEPRECATED
+			// NOTE: Mode flags have been REMOVED. Firmware ALWAYS uses per-key per-layer.
+			// Returns 1,1 (both enabled) for backward compatibility.
 			// Response: [per_key_enabled, per_layer_enabled]
 			handle_get_per_key_mode(&msg[1]);
 			msg[0] = 0x01; // Success
