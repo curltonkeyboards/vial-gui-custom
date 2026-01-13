@@ -1057,46 +1057,43 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         base_layout.addWidget(self.base_sustain, row, 1)
 
         # KeySplit Settings container
-        self.keysplit_offshoot = QGroupBox(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings"))
-        self.keysplit_offshoot.setMaximumWidth(320)
+        self.keysplit_offshoot = QGroupBox()
+        self.keysplit_offshoot.setMaximumWidth(350)
         keysplit_layout = QGridLayout()
-        keysplit_layout.setVerticalSpacing(10)
-        keysplit_layout.setHorizontalSpacing(10)
+        keysplit_layout.setVerticalSpacing(8)
+        keysplit_layout.setHorizontalSpacing(8)
         self.keysplit_offshoot.setLayout(keysplit_layout)
 
         ks_row = 0
 
-        # KeySplit Channel/Transpose/Velocity on/off dropdowns
-        ks_enable_label = QWidget()
-        ks_enable_layout = QHBoxLayout()
-        ks_enable_layout.setContentsMargins(0, 0, 0, 0)
-        ks_enable_layout.setSpacing(5)
-        ks_enable_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Enable:")))
-        ks_enable_layout.addWidget(self.create_help_label(
-            "Enable KeySplit for different parameters:\n"
-            "Channel: Use separate MIDI channel for split keys\n"
-            "Transpose: Apply different transpose to split keys\n"
-            "Velocity: Use different velocity curve for split keys"
+        # KeySplit title with help icon
+        ks_title_container = QWidget()
+        ks_title_layout = QHBoxLayout()
+        ks_title_layout.setContentsMargins(0, 0, 0, 0)
+        ks_title_layout.setSpacing(5)
+        ks_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings"))
+        ks_title_label.setStyleSheet("font-weight: bold;")
+        ks_title_layout.addWidget(ks_title_label)
+        ks_title_layout.addWidget(self.create_help_label(
+            "KeySplit allows keys assigned to the KeySplit layer to use\n"
+            "different MIDI settings than the base layer.\n\n"
+            "Enable each parameter to apply separate settings for split keys."
         ))
-        ks_enable_layout.addStretch()
-        ks_enable_label.setLayout(ks_enable_layout)
-        keysplit_layout.addWidget(ks_enable_label, ks_row, 0, 1, 3)
+        ks_title_layout.addStretch()
+        ks_title_container.setLayout(ks_title_layout)
+        keysplit_layout.addWidget(ks_title_container, ks_row, 0, 1, 3)
         ks_row += 1
 
-        # Channel On/Off
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), ks_row, 0)
-        self.keysplit_channel_enable = ArrowComboBox()
-        self.keysplit_channel_enable.setMinimumWidth(60)
-        self.keysplit_channel_enable.setMaximumWidth(80)
-        self.keysplit_channel_enable.setMinimumHeight(25)
-        self.keysplit_channel_enable.setMaximumHeight(25)
-        self.keysplit_channel_enable.addItem("Off", 0)
-        self.keysplit_channel_enable.addItem("On", 1)
-        self.keysplit_channel_enable.setEditable(True)
-        self.keysplit_channel_enable.lineEdit().setReadOnly(True)
-        self.keysplit_channel_enable.lineEdit().setAlignment(Qt.AlignCenter)
-        self.keysplit_channel_enable.currentIndexChanged.connect(self._on_split_enable_changed)
-        keysplit_layout.addWidget(self.keysplit_channel_enable, ks_row, 1)
+        # Channel: Value dropdown | On/Off
+        ch_label = QWidget()
+        ch_label_layout = QHBoxLayout()
+        ch_label_layout.setContentsMargins(0, 0, 0, 0)
+        ch_label_layout.setSpacing(3)
+        ch_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")))
+        ch_label_layout.addWidget(self.create_help_label("MIDI channel (1-16) for KeySplit keys"))
+        ch_label_layout.addStretch()
+        ch_label.setLayout(ch_label_layout)
+        keysplit_layout.addWidget(ch_label, ks_row, 0)
 
         self.key_split_channel = ArrowComboBox()
         self.key_split_channel.setMinimumWidth(60)
@@ -1108,23 +1105,32 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split_channel.setEditable(True)
         self.key_split_channel.lineEdit().setReadOnly(True)
         self.key_split_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.key_split_channel, ks_row, 2)
+        keysplit_layout.addWidget(self.key_split_channel, ks_row, 1)
+
+        self.keysplit_channel_enable = ArrowComboBox()
+        self.keysplit_channel_enable.setMinimumWidth(50)
+        self.keysplit_channel_enable.setMaximumWidth(60)
+        self.keysplit_channel_enable.setMinimumHeight(25)
+        self.keysplit_channel_enable.setMaximumHeight(25)
+        self.keysplit_channel_enable.addItem("Off", 0)
+        self.keysplit_channel_enable.addItem("On", 1)
+        self.keysplit_channel_enable.setEditable(True)
+        self.keysplit_channel_enable.lineEdit().setReadOnly(True)
+        self.keysplit_channel_enable.lineEdit().setAlignment(Qt.AlignCenter)
+        self.keysplit_channel_enable.currentIndexChanged.connect(self._on_split_enable_changed)
+        keysplit_layout.addWidget(self.keysplit_channel_enable, ks_row, 2)
         ks_row += 1
 
-        # Transpose On/Off
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), ks_row, 0)
-        self.keysplit_transpose_enable = ArrowComboBox()
-        self.keysplit_transpose_enable.setMinimumWidth(60)
-        self.keysplit_transpose_enable.setMaximumWidth(80)
-        self.keysplit_transpose_enable.setMinimumHeight(25)
-        self.keysplit_transpose_enable.setMaximumHeight(25)
-        self.keysplit_transpose_enable.addItem("Off", 0)
-        self.keysplit_transpose_enable.addItem("On", 1)
-        self.keysplit_transpose_enable.setEditable(True)
-        self.keysplit_transpose_enable.lineEdit().setReadOnly(True)
-        self.keysplit_transpose_enable.lineEdit().setAlignment(Qt.AlignCenter)
-        self.keysplit_transpose_enable.currentIndexChanged.connect(self._on_split_enable_changed)
-        keysplit_layout.addWidget(self.keysplit_transpose_enable, ks_row, 1)
+        # Transpose: Value dropdown | On/Off
+        tr_label = QWidget()
+        tr_label_layout = QHBoxLayout()
+        tr_label_layout.setContentsMargins(0, 0, 0, 0)
+        tr_label_layout.setSpacing(3)
+        tr_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")))
+        tr_label_layout.addWidget(self.create_help_label("Semitone offset (-64 to +64) for KeySplit keys"))
+        tr_label_layout.addStretch()
+        tr_label.setLayout(tr_label_layout)
+        keysplit_layout.addWidget(tr_label, ks_row, 0)
 
         self.transpose_number2 = ArrowComboBox()
         self.transpose_number2.setMinimumWidth(60)
@@ -1137,30 +1143,45 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_number2.setEditable(True)
         self.transpose_number2.lineEdit().setReadOnly(True)
         self.transpose_number2.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.transpose_number2, ks_row, 2)
+        keysplit_layout.addWidget(self.transpose_number2, ks_row, 1)
+
+        self.keysplit_transpose_enable = ArrowComboBox()
+        self.keysplit_transpose_enable.setMinimumWidth(50)
+        self.keysplit_transpose_enable.setMaximumWidth(60)
+        self.keysplit_transpose_enable.setMinimumHeight(25)
+        self.keysplit_transpose_enable.setMaximumHeight(25)
+        self.keysplit_transpose_enable.addItem("Off", 0)
+        self.keysplit_transpose_enable.addItem("On", 1)
+        self.keysplit_transpose_enable.setEditable(True)
+        self.keysplit_transpose_enable.lineEdit().setReadOnly(True)
+        self.keysplit_transpose_enable.lineEdit().setAlignment(Qt.AlignCenter)
+        self.keysplit_transpose_enable.currentIndexChanged.connect(self._on_split_enable_changed)
+        keysplit_layout.addWidget(self.keysplit_transpose_enable, ks_row, 2)
         ks_row += 1
 
-        # Velocity On/Off
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), ks_row, 0)
-        self.keysplit_velocity_enable = ArrowComboBox()
-        self.keysplit_velocity_enable.setMinimumWidth(60)
-        self.keysplit_velocity_enable.setMaximumWidth(80)
-        self.keysplit_velocity_enable.setMinimumHeight(25)
-        self.keysplit_velocity_enable.setMaximumHeight(25)
-        self.keysplit_velocity_enable.addItem("Off", 0)
-        self.keysplit_velocity_enable.addItem("On", 1)
-        self.keysplit_velocity_enable.setEditable(True)
-        self.keysplit_velocity_enable.lineEdit().setReadOnly(True)
-        self.keysplit_velocity_enable.lineEdit().setAlignment(Qt.AlignCenter)
-        self.keysplit_velocity_enable.currentIndexChanged.connect(self._on_split_enable_changed)
-        keysplit_layout.addWidget(self.keysplit_velocity_enable, ks_row, 1)
-        ks_row += 1
+        # Velocity Curve: Curve dropdown | On/Off (merged)
+        vc_label = QWidget()
+        vc_label_layout = QHBoxLayout()
+        vc_label_layout.setContentsMargins(0, 0, 0, 0)
+        vc_label_layout.setSpacing(3)
+        vc_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")))
+        vc_label_layout.addWidget(self.create_help_label(
+            "Velocity response curve for KeySplit keys:\n"
+            "Linear: Direct 1:1 mapping\n"
+            "Aggro: More sensitive at low velocities\n"
+            "Slow: Less sensitive at low velocities\n"
+            "Smooth: Gradual S-curve response\n"
+            "Steep: Sharp response curve\n"
+            "Instant: Maximum velocity always\n"
+            "Turbo: Enhanced high velocity response"
+        ))
+        vc_label_layout.addStretch()
+        vc_label.setLayout(vc_label_layout)
+        keysplit_layout.addWidget(vc_label, ks_row, 0)
 
-        # Velocity Curve
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), ks_row, 0)
         self.velocity_curve2 = ArrowComboBox()
         self.velocity_curve2.setMinimumWidth(80)
-        self.velocity_curve2.setMaximumWidth(120)
+        self.velocity_curve2.setMaximumWidth(100)
         self.velocity_curve2.setMinimumHeight(25)
         self.velocity_curve2.setMaximumHeight(25)
         self.velocity_curve2.addItem("Linear", 0)
@@ -1176,11 +1197,33 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_curve2.setEditable(True)
         self.velocity_curve2.lineEdit().setReadOnly(True)
         self.velocity_curve2.lineEdit().setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_curve2, ks_row, 1, 1, 2)
+        keysplit_layout.addWidget(self.velocity_curve2, ks_row, 1)
+
+        self.keysplit_velocity_enable = ArrowComboBox()
+        self.keysplit_velocity_enable.setMinimumWidth(50)
+        self.keysplit_velocity_enable.setMaximumWidth(60)
+        self.keysplit_velocity_enable.setMinimumHeight(25)
+        self.keysplit_velocity_enable.setMaximumHeight(25)
+        self.keysplit_velocity_enable.addItem("Off", 0)
+        self.keysplit_velocity_enable.addItem("On", 1)
+        self.keysplit_velocity_enable.setEditable(True)
+        self.keysplit_velocity_enable.lineEdit().setReadOnly(True)
+        self.keysplit_velocity_enable.lineEdit().setAlignment(Qt.AlignCenter)
+        self.keysplit_velocity_enable.currentIndexChanged.connect(self._on_split_enable_changed)
+        keysplit_layout.addWidget(self.keysplit_velocity_enable, ks_row, 2)
         ks_row += 1
 
-        # Velocity Min
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), ks_row, 0)
+        # Velocity Min with help
+        vmin_label = QWidget()
+        vmin_label_layout = QHBoxLayout()
+        vmin_label_layout.setContentsMargins(0, 0, 0, 0)
+        vmin_label_layout.setSpacing(3)
+        vmin_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
+        vmin_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity (1-127) for KeySplit keys"))
+        vmin_label_layout.addStretch()
+        vmin_label.setLayout(vmin_label_layout)
+        keysplit_layout.addWidget(vmin_label, ks_row, 0)
+
         self.velocity_min2 = QSlider(Qt.Horizontal)
         self.velocity_min2.setMinimum(1)
         self.velocity_min2.setMaximum(127)
@@ -1193,8 +1236,17 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_min2.valueChanged.connect(lambda v: self.velocity_min2_value.setText(str(v)))
         ks_row += 1
 
-        # Velocity Max
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), ks_row, 0)
+        # Velocity Max with help
+        vmax_label = QWidget()
+        vmax_label_layout = QHBoxLayout()
+        vmax_label_layout.setContentsMargins(0, 0, 0, 0)
+        vmax_label_layout.setSpacing(3)
+        vmax_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
+        vmax_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity (1-127) for KeySplit keys"))
+        vmax_label_layout.addStretch()
+        vmax_label.setLayout(vmax_label_layout)
+        keysplit_layout.addWidget(vmax_label, ks_row, 0)
+
         self.velocity_max2 = QSlider(Qt.Horizontal)
         self.velocity_max2.setMinimum(1)
         self.velocity_max2.setMaximum(127)
@@ -1207,8 +1259,21 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_max2.valueChanged.connect(lambda v: self.velocity_max2_value.setText(str(v)))
         ks_row += 1
 
-        # Sustain
-        keysplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), ks_row, 0)
+        # Sustain with help
+        sus_label = QWidget()
+        sus_label_layout = QHBoxLayout()
+        sus_label_layout.setContentsMargins(0, 0, 0, 0)
+        sus_label_layout.setSpacing(3)
+        sus_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")))
+        sus_label_layout.addWidget(self.create_help_label(
+            "Sustain pedal behavior for KeySplit keys:\n"
+            "Ignore: Sustain pedal has no effect\n"
+            "Allow: Notes sustain when pedal is held"
+        ))
+        sus_label_layout.addStretch()
+        sus_label.setLayout(sus_label_layout)
+        keysplit_layout.addWidget(sus_label, ks_row, 0)
+
         self.keysplit_sustain = ArrowComboBox()
         self.keysplit_sustain.setMinimumWidth(80)
         self.keysplit_sustain.setMaximumWidth(120)
@@ -1223,46 +1288,43 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_layout.addWidget(self.keysplit_sustain, ks_row, 1, 1, 2)
 
         # TripleSplit Settings container
-        self.triplesplit_offshoot = QGroupBox(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
-        self.triplesplit_offshoot.setMaximumWidth(320)
+        self.triplesplit_offshoot = QGroupBox()
+        self.triplesplit_offshoot.setMaximumWidth(350)
         triplesplit_layout = QGridLayout()
-        triplesplit_layout.setVerticalSpacing(10)
-        triplesplit_layout.setHorizontalSpacing(10)
+        triplesplit_layout.setVerticalSpacing(8)
+        triplesplit_layout.setHorizontalSpacing(8)
         self.triplesplit_offshoot.setLayout(triplesplit_layout)
 
         ts_row = 0
 
-        # TripleSplit Channel/Transpose/Velocity on/off dropdowns
-        ts_enable_label = QWidget()
-        ts_enable_layout = QHBoxLayout()
-        ts_enable_layout.setContentsMargins(0, 0, 0, 0)
-        ts_enable_layout.setSpacing(5)
-        ts_enable_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Enable:")))
-        ts_enable_layout.addWidget(self.create_help_label(
-            "Enable TripleSplit for different parameters:\n"
-            "Channel: Use separate MIDI channel for third split keys\n"
-            "Transpose: Apply different transpose to third split keys\n"
-            "Velocity: Use different velocity curve for third split keys"
+        # TripleSplit title with help icon
+        ts_title_container = QWidget()
+        ts_title_layout = QHBoxLayout()
+        ts_title_layout.setContentsMargins(0, 0, 0, 0)
+        ts_title_layout.setSpacing(5)
+        ts_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
+        ts_title_label.setStyleSheet("font-weight: bold;")
+        ts_title_layout.addWidget(ts_title_label)
+        ts_title_layout.addWidget(self.create_help_label(
+            "TripleSplit allows keys assigned to the TripleSplit layer to use\n"
+            "different MIDI settings than both base and KeySplit layers.\n\n"
+            "Enable each parameter to apply separate settings for third split keys."
         ))
-        ts_enable_layout.addStretch()
-        ts_enable_label.setLayout(ts_enable_layout)
-        triplesplit_layout.addWidget(ts_enable_label, ts_row, 0, 1, 3)
+        ts_title_layout.addStretch()
+        ts_title_container.setLayout(ts_title_layout)
+        triplesplit_layout.addWidget(ts_title_container, ts_row, 0, 1, 3)
         ts_row += 1
 
-        # Channel On/Off
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")), ts_row, 0)
-        self.triplesplit_channel_enable = ArrowComboBox()
-        self.triplesplit_channel_enable.setMinimumWidth(60)
-        self.triplesplit_channel_enable.setMaximumWidth(80)
-        self.triplesplit_channel_enable.setMinimumHeight(25)
-        self.triplesplit_channel_enable.setMaximumHeight(25)
-        self.triplesplit_channel_enable.addItem("Off", 0)
-        self.triplesplit_channel_enable.addItem("On", 1)
-        self.triplesplit_channel_enable.setEditable(True)
-        self.triplesplit_channel_enable.lineEdit().setReadOnly(True)
-        self.triplesplit_channel_enable.lineEdit().setAlignment(Qt.AlignCenter)
-        self.triplesplit_channel_enable.currentIndexChanged.connect(self._on_split_enable_changed)
-        triplesplit_layout.addWidget(self.triplesplit_channel_enable, ts_row, 1)
+        # Channel: Value dropdown | On/Off
+        ts_ch_label = QWidget()
+        ts_ch_label_layout = QHBoxLayout()
+        ts_ch_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_ch_label_layout.setSpacing(3)
+        ts_ch_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Channel:")))
+        ts_ch_label_layout.addWidget(self.create_help_label("MIDI channel (1-16) for TripleSplit keys"))
+        ts_ch_label_layout.addStretch()
+        ts_ch_label.setLayout(ts_ch_label_layout)
+        triplesplit_layout.addWidget(ts_ch_label, ts_row, 0)
 
         self.key_split2_channel = ArrowComboBox()
         self.key_split2_channel.setMinimumWidth(60)
@@ -1274,23 +1336,32 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.key_split2_channel.setEditable(True)
         self.key_split2_channel.lineEdit().setReadOnly(True)
         self.key_split2_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.key_split2_channel, ts_row, 2)
+        triplesplit_layout.addWidget(self.key_split2_channel, ts_row, 1)
+
+        self.triplesplit_channel_enable = ArrowComboBox()
+        self.triplesplit_channel_enable.setMinimumWidth(50)
+        self.triplesplit_channel_enable.setMaximumWidth(60)
+        self.triplesplit_channel_enable.setMinimumHeight(25)
+        self.triplesplit_channel_enable.setMaximumHeight(25)
+        self.triplesplit_channel_enable.addItem("Off", 0)
+        self.triplesplit_channel_enable.addItem("On", 1)
+        self.triplesplit_channel_enable.setEditable(True)
+        self.triplesplit_channel_enable.lineEdit().setReadOnly(True)
+        self.triplesplit_channel_enable.lineEdit().setAlignment(Qt.AlignCenter)
+        self.triplesplit_channel_enable.currentIndexChanged.connect(self._on_split_enable_changed)
+        triplesplit_layout.addWidget(self.triplesplit_channel_enable, ts_row, 2)
         ts_row += 1
 
-        # Transpose On/Off
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")), ts_row, 0)
-        self.triplesplit_transpose_enable = ArrowComboBox()
-        self.triplesplit_transpose_enable.setMinimumWidth(60)
-        self.triplesplit_transpose_enable.setMaximumWidth(80)
-        self.triplesplit_transpose_enable.setMinimumHeight(25)
-        self.triplesplit_transpose_enable.setMaximumHeight(25)
-        self.triplesplit_transpose_enable.addItem("Off", 0)
-        self.triplesplit_transpose_enable.addItem("On", 1)
-        self.triplesplit_transpose_enable.setEditable(True)
-        self.triplesplit_transpose_enable.lineEdit().setReadOnly(True)
-        self.triplesplit_transpose_enable.lineEdit().setAlignment(Qt.AlignCenter)
-        self.triplesplit_transpose_enable.currentIndexChanged.connect(self._on_split_enable_changed)
-        triplesplit_layout.addWidget(self.triplesplit_transpose_enable, ts_row, 1)
+        # Transpose: Value dropdown | On/Off
+        ts_tr_label = QWidget()
+        ts_tr_label_layout = QHBoxLayout()
+        ts_tr_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_tr_label_layout.setSpacing(3)
+        ts_tr_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Transpose:")))
+        ts_tr_label_layout.addWidget(self.create_help_label("Semitone offset (-64 to +64) for TripleSplit keys"))
+        ts_tr_label_layout.addStretch()
+        ts_tr_label.setLayout(ts_tr_label_layout)
+        triplesplit_layout.addWidget(ts_tr_label, ts_row, 0)
 
         self.transpose_number3 = ArrowComboBox()
         self.transpose_number3.setMinimumWidth(60)
@@ -1303,30 +1374,45 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.transpose_number3.setEditable(True)
         self.transpose_number3.lineEdit().setReadOnly(True)
         self.transpose_number3.lineEdit().setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.transpose_number3, ts_row, 2)
+        triplesplit_layout.addWidget(self.transpose_number3, ts_row, 1)
+
+        self.triplesplit_transpose_enable = ArrowComboBox()
+        self.triplesplit_transpose_enable.setMinimumWidth(50)
+        self.triplesplit_transpose_enable.setMaximumWidth(60)
+        self.triplesplit_transpose_enable.setMinimumHeight(25)
+        self.triplesplit_transpose_enable.setMaximumHeight(25)
+        self.triplesplit_transpose_enable.addItem("Off", 0)
+        self.triplesplit_transpose_enable.addItem("On", 1)
+        self.triplesplit_transpose_enable.setEditable(True)
+        self.triplesplit_transpose_enable.lineEdit().setReadOnly(True)
+        self.triplesplit_transpose_enable.lineEdit().setAlignment(Qt.AlignCenter)
+        self.triplesplit_transpose_enable.currentIndexChanged.connect(self._on_split_enable_changed)
+        triplesplit_layout.addWidget(self.triplesplit_transpose_enable, ts_row, 2)
         ts_row += 1
 
-        # Velocity On/Off
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity:")), ts_row, 0)
-        self.triplesplit_velocity_enable = ArrowComboBox()
-        self.triplesplit_velocity_enable.setMinimumWidth(60)
-        self.triplesplit_velocity_enable.setMaximumWidth(80)
-        self.triplesplit_velocity_enable.setMinimumHeight(25)
-        self.triplesplit_velocity_enable.setMaximumHeight(25)
-        self.triplesplit_velocity_enable.addItem("Off", 0)
-        self.triplesplit_velocity_enable.addItem("On", 1)
-        self.triplesplit_velocity_enable.setEditable(True)
-        self.triplesplit_velocity_enable.lineEdit().setReadOnly(True)
-        self.triplesplit_velocity_enable.lineEdit().setAlignment(Qt.AlignCenter)
-        self.triplesplit_velocity_enable.currentIndexChanged.connect(self._on_split_enable_changed)
-        triplesplit_layout.addWidget(self.triplesplit_velocity_enable, ts_row, 1)
-        ts_row += 1
+        # Velocity Curve: Curve dropdown | On/Off (merged)
+        ts_vc_label = QWidget()
+        ts_vc_label_layout = QHBoxLayout()
+        ts_vc_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_vc_label_layout.setSpacing(3)
+        ts_vc_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")))
+        ts_vc_label_layout.addWidget(self.create_help_label(
+            "Velocity response curve for TripleSplit keys:\n"
+            "Linear: Direct 1:1 mapping\n"
+            "Aggro: More sensitive at low velocities\n"
+            "Slow: Less sensitive at low velocities\n"
+            "Smooth: Gradual S-curve response\n"
+            "Steep: Sharp response curve\n"
+            "Instant: Maximum velocity always\n"
+            "Turbo: Enhanced high velocity response"
+        ))
+        ts_vc_label_layout.addStretch()
+        ts_vc_label.setLayout(ts_vc_label_layout)
+        triplesplit_layout.addWidget(ts_vc_label, ts_row, 0)
 
-        # Velocity Curve
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Curve:")), ts_row, 0)
         self.velocity_curve3 = ArrowComboBox()
         self.velocity_curve3.setMinimumWidth(80)
-        self.velocity_curve3.setMaximumWidth(120)
+        self.velocity_curve3.setMaximumWidth(100)
         self.velocity_curve3.setMinimumHeight(25)
         self.velocity_curve3.setMaximumHeight(25)
         self.velocity_curve3.addItem("Linear", 0)
@@ -1342,11 +1428,33 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_curve3.setEditable(True)
         self.velocity_curve3.lineEdit().setReadOnly(True)
         self.velocity_curve3.lineEdit().setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.velocity_curve3, ts_row, 1, 1, 2)
+        triplesplit_layout.addWidget(self.velocity_curve3, ts_row, 1)
+
+        self.triplesplit_velocity_enable = ArrowComboBox()
+        self.triplesplit_velocity_enable.setMinimumWidth(50)
+        self.triplesplit_velocity_enable.setMaximumWidth(60)
+        self.triplesplit_velocity_enable.setMinimumHeight(25)
+        self.triplesplit_velocity_enable.setMaximumHeight(25)
+        self.triplesplit_velocity_enable.addItem("Off", 0)
+        self.triplesplit_velocity_enable.addItem("On", 1)
+        self.triplesplit_velocity_enable.setEditable(True)
+        self.triplesplit_velocity_enable.lineEdit().setReadOnly(True)
+        self.triplesplit_velocity_enable.lineEdit().setAlignment(Qt.AlignCenter)
+        self.triplesplit_velocity_enable.currentIndexChanged.connect(self._on_split_enable_changed)
+        triplesplit_layout.addWidget(self.triplesplit_velocity_enable, ts_row, 2)
         ts_row += 1
 
-        # Velocity Min
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")), ts_row, 0)
+        # Velocity Min with help
+        ts_vmin_label = QWidget()
+        ts_vmin_label_layout = QHBoxLayout()
+        ts_vmin_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_vmin_label_layout.setSpacing(3)
+        ts_vmin_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
+        ts_vmin_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity (1-127) for TripleSplit keys"))
+        ts_vmin_label_layout.addStretch()
+        ts_vmin_label.setLayout(ts_vmin_label_layout)
+        triplesplit_layout.addWidget(ts_vmin_label, ts_row, 0)
+
         self.velocity_min3 = QSlider(Qt.Horizontal)
         self.velocity_min3.setMinimum(1)
         self.velocity_min3.setMaximum(127)
@@ -1359,8 +1467,17 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_min3.valueChanged.connect(lambda v: self.velocity_min3_value.setText(str(v)))
         ts_row += 1
 
-        # Velocity Max
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")), ts_row, 0)
+        # Velocity Max with help
+        ts_vmax_label = QWidget()
+        ts_vmax_label_layout = QHBoxLayout()
+        ts_vmax_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_vmax_label_layout.setSpacing(3)
+        ts_vmax_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
+        ts_vmax_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity (1-127) for TripleSplit keys"))
+        ts_vmax_label_layout.addStretch()
+        ts_vmax_label.setLayout(ts_vmax_label_layout)
+        triplesplit_layout.addWidget(ts_vmax_label, ts_row, 0)
+
         self.velocity_max3 = QSlider(Qt.Horizontal)
         self.velocity_max3.setMinimum(1)
         self.velocity_max3.setMaximum(127)
@@ -1373,8 +1490,21 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_max3.valueChanged.connect(lambda v: self.velocity_max3_value.setText(str(v)))
         ts_row += 1
 
-        # Sustain
-        triplesplit_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")), ts_row, 0)
+        # Sustain with help
+        ts_sus_label = QWidget()
+        ts_sus_label_layout = QHBoxLayout()
+        ts_sus_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_sus_label_layout.setSpacing(3)
+        ts_sus_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Sustain:")))
+        ts_sus_label_layout.addWidget(self.create_help_label(
+            "Sustain pedal behavior for TripleSplit keys:\n"
+            "Ignore: Sustain pedal has no effect\n"
+            "Allow: Notes sustain when pedal is held"
+        ))
+        ts_sus_label_layout.addStretch()
+        ts_sus_label.setLayout(ts_sus_label_layout)
+        triplesplit_layout.addWidget(ts_sus_label, ts_row, 0)
+
         self.triplesplit_sustain = ArrowComboBox()
         self.triplesplit_sustain.setMinimumWidth(80)
         self.triplesplit_sustain.setMaximumWidth(120)
