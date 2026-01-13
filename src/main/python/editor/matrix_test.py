@@ -321,8 +321,8 @@ class ThruLoopConfigurator(BasicEditor):
         # Single LoopChop CC - Always visible
         self.single_loopchop_label = QLabel(tr("ThruLoopConfigurator", "Loop Chop"))
         loopchop_layout.addWidget(self.single_loopchop_label, 1, 0)
-        self.master_cc = self.create_cc_combo()
-        loopchop_layout.addWidget(self.master_cc, 1, 1, 1, 3)
+        self.master_cc = self.create_cc_combo(narrow=True)
+        loopchop_layout.addWidget(self.master_cc, 1, 1, 1, 3, Qt.AlignLeft)
 
         # Individual LoopChop CCs (8 navigation CCs) - More compact layout
         nav_layout = QGridLayout()
@@ -498,6 +498,8 @@ class ThruLoopConfigurator(BasicEditor):
         combo = ArrowComboBox()
         if narrow:
             combo.setMaximumWidth(80)
+            # Set size policy to prevent layout from stretching beyond max width
+            combo.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         elif for_table:
             combo.setMaximumWidth(100)  # Narrower for tables to show arrow
         else:
