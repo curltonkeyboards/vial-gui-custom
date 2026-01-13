@@ -788,11 +788,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
                 font-weight: bold;
                 font-size: 10pt;
                 border: 1px solid #888;
-                border-radius: 8px;
-                min-width: 16px;
-                max-width: 16px;
-                min-height: 16px;
-                max-height: 16px;
+                border-radius: 9px;
+                min-width: 18px;
+                max-width: 18px;
+                min-height: 18px;
+                max-height: 18px;
                 padding: 0px;
                 margin: 0px;
             }
@@ -804,6 +804,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         """)
         help_label.setAlignment(Qt.AlignCenter)
         help_label.setToolTip(tooltip_text)
+        help_label.setMouseTracking(True)
+        help_label.setCursor(Qt.WhatsThisCursor)
         return help_label
 
     def create_label_with_help(self, text, tooltip_text):
