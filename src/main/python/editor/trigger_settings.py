@@ -1228,7 +1228,7 @@ class TriggerSettingsTab(BasicEditor):
         behavior_row.addStretch()
         layout.addLayout(behavior_row)
 
-        # Layer selection row (SOCD groups are now layer-specific)
+        # Layer display row (SOCD groups use the currently selected layer from keymap)
         layer_row = QHBoxLayout()
         layer_row.setSpacing(10)
 
@@ -1236,14 +1236,11 @@ class TriggerSettingsTab(BasicEditor):
         layer_label.setStyleSheet("QLabel { font-weight: bold; }")
         layer_row.addWidget(layer_label)
 
-        self.nullbind_layer_combo = QComboBox()
-        for i in range(12):
-            self.nullbind_layer_combo.addItem(f"Layer {i}", i)
-        self.nullbind_layer_combo.currentIndexChanged.connect(self.on_nullbind_layer_changed)
-        self.nullbind_layer_combo.setFixedWidth(120)
-        layer_row.addWidget(self.nullbind_layer_combo)
+        self.nullbind_layer_display = QLabel("Layer 0")
+        self.nullbind_layer_display.setStyleSheet("QLabel { font-weight: bold; color: palette(highlight); }")
+        layer_row.addWidget(self.nullbind_layer_display)
 
-        layer_hint = QLabel(tr("TriggerSettings", "(This group only activates on this layer)"))
+        layer_hint = QLabel(tr("TriggerSettings", "(Set when keys are added - uses keymap layer)"))
         layer_hint.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
         layer_row.addWidget(layer_hint)
 
@@ -3418,10 +3415,8 @@ class TriggerSettingsTab(BasicEditor):
                 key_labels.append(label)
             self.nullbind_keys_display.setText("  ".join(key_labels))
 
-        # Update layer combo to match group's layer setting
-        self.nullbind_layer_combo.blockSignals(True)
-        self.nullbind_layer_combo.setCurrentIndex(group.layer)
-        self.nullbind_layer_combo.blockSignals(False)
+        # Update layer display to show group's assigned layer
+        self.nullbind_layer_display.setText(f"Layer {group.layer}")
 
         # Update behavior combo choices (in case keys changed)
         self.update_nullbind_behavior_choices()
@@ -3448,25 +3443,6 @@ class TriggerSettingsTab(BasicEditor):
             self.nullbind_save_btn.setEnabled(True)
             self.update_nullbind_behavior_description()
             self.update_nullbind_display()
-
-    def on_nullbind_layer_changed(self, index):
-        """Handle null bind layer selection change
-
-        Each SOCD group is now layer-specific - it only activates when
-        that layer is active on the keyboard.
-        """
-        if index < 0:
-            return
-
-        layer = self.nullbind_layer_combo.currentData()
-        if layer is None:
-            return
-
-        group = self.nullbind_groups[self.current_nullbind_group]
-        if group.layer != layer:
-            group.layer = layer
-            self.nullbind_pending_changes = True
-            self.nullbind_save_btn.setEnabled(True)
 
     def on_nullbind_add_keys(self):
         """Add selected keys to current null bind group"""
@@ -3521,6 +3497,8 @@ class TriggerSettingsTab(BasicEditor):
                             added_count += 1
 
         if added_count > 0:
+            # Set group's layer to current layer from keymap widget
+            group.layer = self.current_layer
             self.nullbind_pending_changes = True
             self.nullbind_save_btn.setEnabled(True)
             self.update_nullbind_display()
