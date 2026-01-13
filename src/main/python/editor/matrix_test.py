@@ -4452,6 +4452,34 @@ class GamingConfigurator(BasicEditor):
         self.active_control_id = None  # Track which control is being assigned
         self.setup_ui()
 
+    def create_help_label(self, tooltip_text):
+        """Create a small question mark button with tooltip for help"""
+        help_btn = QPushButton("?")
+        help_btn.setStyleSheet("""
+            QPushButton {
+                color: #888;
+                font-weight: bold;
+                font-size: 9pt;
+                border: 1px solid #888;
+                border-radius: 9px;
+                min-width: 16px;
+                max-width: 16px;
+                min-height: 16px;
+                max-height: 16px;
+                padding: 0px;
+                margin: 0px;
+                background: transparent;
+            }
+            QPushButton:hover {
+                color: #fff;
+                background-color: #555;
+                border-color: #fff;
+            }
+        """)
+        help_btn.setToolTip(tooltip_text)
+        help_btn.setFocusPolicy(Qt.NoFocus)
+        return help_btn
+
     def setup_ui(self):
         # Create scroll area for better window resizing
         scroll_area = QScrollArea()
@@ -4503,9 +4531,12 @@ class GamingConfigurator(BasicEditor):
         response_group.setLayout(response_layout)
 
         # Angle Adjustment
+        angle_adj_row = QHBoxLayout()
         self.angle_adj_checkbox = QCheckBox(tr("GamingConfigurator", "Angle adjustment"))
-        self.angle_adj_checkbox.setToolTip("Enable diagonal angle adjustment.\nModifies the angle at which diagonals are registered.")
-        response_layout.addWidget(self.angle_adj_checkbox)
+        angle_adj_row.addWidget(self.angle_adj_checkbox)
+        angle_adj_row.addWidget(self.create_help_label("Enable diagonal angle adjustment.\nModifies the angle at which diagonals are registered."))
+        angle_adj_row.addStretch()
+        response_layout.addLayout(angle_adj_row)
 
         # Diagonal Angle Slider
         angle_widget = QWidget()
@@ -4514,9 +4545,12 @@ class GamingConfigurator(BasicEditor):
         angle_layout.setContentsMargins(15, 0, 0, 0)  # Indent
         angle_widget.setLayout(angle_layout)
 
+        angle_label_row = QHBoxLayout()
         self.diagonal_angle_label = QLabel("Angle: 0°")
-        self.diagonal_angle_label.setToolTip("Angle offset for diagonal detection (0-90°).\nHigher values make diagonals easier to hit.")
-        angle_layout.addWidget(self.diagonal_angle_label)
+        angle_label_row.addWidget(self.diagonal_angle_label)
+        angle_label_row.addWidget(self.create_help_label("Angle offset for diagonal detection (0-90°).\nHigher values make diagonals easier to hit."))
+        angle_label_row.addStretch()
+        angle_layout.addLayout(angle_label_row)
 
         self.diagonal_angle_slider = QSlider(Qt.Horizontal)
         self.diagonal_angle_slider.setMinimum(0)
@@ -4530,17 +4564,23 @@ class GamingConfigurator(BasicEditor):
         response_layout.addWidget(angle_widget)
 
         # Square Output
+        square_row = QHBoxLayout()
         self.square_output_checkbox = QCheckBox(tr("GamingConfigurator", "Square output"))
-        self.square_output_checkbox.setToolTip(tr("GamingConfigurator",
+        square_row.addWidget(self.square_output_checkbox)
+        square_row.addWidget(self.create_help_label(
             "Restrict joystick movement to a square instead of circle.\n"
             "Allows maximum axis output. Recommended for Rocket League and CS:GO."))
-        response_layout.addWidget(self.square_output_checkbox)
+        square_row.addStretch()
+        response_layout.addLayout(square_row)
 
         # Snappy Joystick
+        snappy_row = QHBoxLayout()
         self.snappy_joystick_checkbox = QCheckBox(tr("GamingConfigurator", "Snappy Joystick"))
-        self.snappy_joystick_checkbox.setToolTip(tr("GamingConfigurator",
+        snappy_row.addWidget(self.snappy_joystick_checkbox)
+        snappy_row.addWidget(self.create_help_label(
             "Use maximum value of opposite sides of axis rather than combining them."))
-        response_layout.addWidget(self.snappy_joystick_checkbox)
+        snappy_row.addStretch()
+        response_layout.addLayout(snappy_row)
 
         response_calibration_layout.addWidget(response_group, alignment=QtCore.Qt.AlignTop)
 
