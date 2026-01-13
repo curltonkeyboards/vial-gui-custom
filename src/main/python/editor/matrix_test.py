@@ -497,8 +497,16 @@ class ThruLoopConfigurator(BasicEditor):
         """
         combo = ArrowComboBox()
         if narrow:
+            # Override global stylesheet min-width and padding to allow 80px max
+            combo.setStyleSheet("""
+                QComboBox {
+                    min-width: 0px;
+                    max-width: 80px;
+                    padding: 4px 6px;
+                    padding-right: 20px;
+                }
+            """)
             combo.setMaximumWidth(80)
-            # Set size policy to prevent layout from stretching beyond max width
             combo.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         elif for_table:
             combo.setMaximumWidth(100)  # Narrower for tables to show arrow
