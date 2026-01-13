@@ -61,7 +61,7 @@ extern uint8_t channel_number;
 extern layer_actuation_t layer_actuations[12];
 extern bool aftertouch_pedal_active;
 extern layer_key_actuations_t per_key_actuations[12];
-extern bool per_key_per_layer_enabled;
+// NOTE: per_key_per_layer_enabled removed - firmware always uses per-key per-layer
 
 // Keysplit/transpose variables for aftertouch channel determination
 extern uint8_t keysplitchannel;
@@ -335,9 +335,8 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
         return;
     }
 
-    // Always use per-key settings (no more mode toggle)
-    uint8_t target_layer = per_key_per_layer_enabled ? layer : 0;
-    per_key_actuation_t *settings = &per_key_actuations[target_layer].keys[key_idx];
+    // Always use per-key per-layer settings - firmware always reads from current layer
+    per_key_actuation_t *settings = &per_key_actuations[layer].keys[key_idx];
 
     // Convert from 0-100 scale to 0-255 distance
     *actuation_point = actuation_to_distance(settings->actuation);
@@ -494,15 +493,16 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     }
 
     // Null bind integration: notify on key state transitions
+    // NOTE: Null bind is now layer-aware - groups only activate on their assigned layer
     uint8_t row = KEY_ROW(key_idx);
     uint8_t col = KEY_COL(key_idx);
 
     if (key->is_pressed && !was_pressed) {
-        // Key just pressed - notify null bind with current travel distance
-        nullbind_key_pressed(row, col, key->distance);
+        // Key just pressed - notify null bind with current travel distance and layer
+        nullbind_key_pressed(row, col, key->distance, current_layer);
     } else if (!key->is_pressed && was_pressed) {
         // Key just released - notify null bind
-        nullbind_key_released(row, col);
+        nullbind_key_released(row, col, current_layer);
     } else if (key->is_pressed) {
         // Key still pressed - update travel for distance-based null bind
         // This is needed for DISTANCE mode to track which key is pressed further
@@ -513,8 +513,8 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
             extern uint8_t nullbind_key_travel[70];  // Access from orthomidi5x14.c
             nullbind_key_travel[key_index] = key->distance;
 
-            // Re-evaluate which key should be active if distance changed
-            int8_t group_num = nullbind_find_key_group(key_index);
+            // Re-evaluate which key should be active if distance changed (layer-aware)
+            int8_t group_num = nullbind_find_key_group_for_layer(key_index, current_layer);
             if (group_num >= 0) {
                 nullbind_update_group_state(group_num);
             }
@@ -570,7 +570,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     state->pressed = pressed;
 
     // Get per-key settings for velocity modification (used by RT)
-    per_key_actuation_t *per_key_settings = &per_key_actuations[per_key_per_layer_enabled ? current_layer : 0].keys[key_idx];
+    per_key_actuation_t *per_key_settings = &per_key_actuations[current_layer].keys[key_idx];
 
     // ========================================================================
     // VELOCITY MODE PROCESSING
@@ -1188,7 +1188,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
             if (pressed) {
                 // Check if null bind wants to block this key (SOCD handling)
-                if (!nullbind_should_null_key(row, col)) {
+                // NOTE: Null bind is layer-aware - only checks groups on current layer
+                if (!nullbind_should_null_key(row, col, current_layer)) {
                     current_row_value |= (MATRIX_ROW_SHIFTER << col);
                 }
             }
@@ -1276,9 +1277,8 @@ void analog_matrix_set_actuation_point(uint8_t row, uint8_t col, uint8_t point) 
 
     if (point == 0) point = DEFAULT_ACTUATION_VALUE;
 
-    // Update all layers (or just current layer based on per_key_per_layer_enabled)
-    uint8_t target_layer = per_key_per_layer_enabled ? cached_layer : 0;
-    per_key_actuations[target_layer].keys[key_idx].actuation = point;
+    // Always update current layer - firmware is always per-key per-layer
+    per_key_actuations[cached_layer].keys[key_idx].actuation = point;
 }
 
 void analog_matrix_set_rapid_trigger(uint8_t row, uint8_t col, uint8_t sensitivity) {
@@ -1287,16 +1287,15 @@ void analog_matrix_set_rapid_trigger(uint8_t row, uint8_t col, uint8_t sensitivi
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
 
-    uint8_t target_layer = per_key_per_layer_enabled ? cached_layer : 0;
-
+    // Always update current layer - firmware is always per-key per-layer
     if (sensitivity == 0) {
         // Disable rapid trigger
-        per_key_actuations[target_layer].keys[key_idx].flags &= ~PER_KEY_FLAG_RAPIDFIRE_ENABLED;
+        per_key_actuations[cached_layer].keys[key_idx].flags &= ~PER_KEY_FLAG_RAPIDFIRE_ENABLED;
     } else {
         // Enable rapid trigger with given sensitivity
-        per_key_actuations[target_layer].keys[key_idx].flags |= PER_KEY_FLAG_RAPIDFIRE_ENABLED;
-        per_key_actuations[target_layer].keys[key_idx].rapidfire_press_sens = sensitivity;
-        per_key_actuations[target_layer].keys[key_idx].rapidfire_release_sens = sensitivity;
+        per_key_actuations[cached_layer].keys[key_idx].flags |= PER_KEY_FLAG_RAPIDFIRE_ENABLED;
+        per_key_actuations[cached_layer].keys[key_idx].rapidfire_press_sens = sensitivity;
+        per_key_actuations[cached_layer].keys[key_idx].rapidfire_release_sens = sensitivity;
     }
 }
 
@@ -1308,12 +1307,11 @@ void analog_matrix_set_key_mode(uint8_t row, uint8_t col, uint8_t mode) {
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
 
-    uint8_t target_layer = per_key_per_layer_enabled ? cached_layer : 0;
-
+    // Always update current layer - firmware is always per-key per-layer
     if (mode == AKM_RAPID) {
-        per_key_actuations[target_layer].keys[key_idx].flags |= PER_KEY_FLAG_RAPIDFIRE_ENABLED;
+        per_key_actuations[cached_layer].keys[key_idx].flags |= PER_KEY_FLAG_RAPIDFIRE_ENABLED;
     } else {
-        per_key_actuations[target_layer].keys[key_idx].flags &= ~PER_KEY_FLAG_RAPIDFIRE_ENABLED;
+        per_key_actuations[cached_layer].keys[key_idx].flags &= ~PER_KEY_FLAG_RAPIDFIRE_ENABLED;
     }
 }
 

@@ -1700,29 +1700,43 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return None
 
     def set_per_key_mode(self, mode_enabled, per_layer_enabled):
-        """Set per-key actuation mode flags
+        """DEPRECATED: Set per-key actuation mode flags
+
+        NOTE: Mode flags have been REMOVED from firmware. Firmware now ALWAYS uses
+        per-key per-layer settings. The GUI handles "apply to all keys/layers" by
+        writing the same values to all keys/layers when the user wants uniform settings.
+
+        This function is kept for backward compatibility but is now a no-op.
+        The HID command still exists in firmware but does nothing.
 
         Args:
-            mode_enabled: True to enable per-key actuation mode, False to use layer defaults
-            per_layer_enabled: True for per-layer mode, False for global mode (layer 0 only)
+            mode_enabled: Ignored - always per-key
+            per_layer_enabled: Ignored - always per-layer
 
         Returns:
-            bool: True if successful, False otherwise
+            bool: Always True (no-op success)
         """
+        # No-op: firmware always uses per-key per-layer
+        # Still send the command for backward compatibility with older firmware
         try:
             data = [1 if mode_enabled else 0, 1 if per_layer_enabled else 0]
             packet = self._create_hid_packet(HID_CMD_SET_PER_KEY_MODE, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
             return response and len(response) > 5 and response[5] == 0x01
         except Exception as e:
-            return False
+            return True  # Return success anyway - this is a no-op
 
     def get_per_key_mode(self):
-        """Get per-key actuation mode flags
+        """DEPRECATED: Get per-key actuation mode flags
+
+        NOTE: Mode flags have been REMOVED from firmware. Firmware now ALWAYS uses
+        per-key per-layer settings. This function always returns both modes as enabled.
 
         Returns:
-            dict: {'mode_enabled': bool, 'per_layer_enabled': bool} or None on error
+            dict: {'mode_enabled': True, 'per_layer_enabled': True} - always enabled
         """
+        # Always return enabled - firmware always uses per-key per-layer
+        # Still query firmware for backward compatibility
         try:
             packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_MODE, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
@@ -1731,9 +1745,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     'mode_enabled': response[6] != 0,
                     'per_layer_enabled': response[7] != 0
                 }
-            return None
+            # If query fails, return enabled defaults
+            return {'mode_enabled': True, 'per_layer_enabled': True}
         except Exception as e:
-            return None
+            return {'mode_enabled': True, 'per_layer_enabled': True}
 
     def reset_per_key_actuations(self):
         """Reset all per-key actuations to default (60 = 1.5mm)

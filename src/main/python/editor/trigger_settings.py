@@ -1228,6 +1228,28 @@ class TriggerSettingsTab(BasicEditor):
         behavior_row.addStretch()
         layout.addLayout(behavior_row)
 
+        # Layer selection row (SOCD groups are now layer-specific)
+        layer_row = QHBoxLayout()
+        layer_row.setSpacing(10)
+
+        layer_label = QLabel(tr("TriggerSettings", "Active Layer:"))
+        layer_label.setStyleSheet("QLabel { font-weight: bold; }")
+        layer_row.addWidget(layer_label)
+
+        self.nullbind_layer_combo = QComboBox()
+        for i in range(12):
+            self.nullbind_layer_combo.addItem(f"Layer {i}", i)
+        self.nullbind_layer_combo.currentIndexChanged.connect(self.on_nullbind_layer_changed)
+        self.nullbind_layer_combo.setFixedWidth(120)
+        layer_row.addWidget(self.nullbind_layer_combo)
+
+        layer_hint = QLabel(tr("TriggerSettings", "(This group only activates on this layer)"))
+        layer_hint.setStyleSheet("QLabel { color: gray; font-size: 9pt; }")
+        layer_row.addWidget(layer_hint)
+
+        layer_row.addStretch()
+        layout.addLayout(layer_row)
+
         # Keys in group display
         keys_frame = QFrame()
         keys_frame.setFrameShape(QFrame.StyledPanel)
@@ -1541,7 +1563,8 @@ class TriggerSettingsTab(BasicEditor):
         nullbind_desc_layout.addWidget(nullbind_desc_title)
         nullbind_desc_text = QLabel(tr("TriggerSettings",
             "Configure SOCD (Simultaneous Opposing Cardinal Directions) handling. "
-            "Define how the keyboard resolves conflicting key presses."))
+            "Define how the keyboard resolves conflicting key presses. "
+            "Each group is layer-specific - assign a layer where the group is active."))
         nullbind_desc_text.setWordWrap(True)
         nullbind_desc_text.setStyleSheet("color: gray; font-size: 9pt;")
         nullbind_desc_layout.addWidget(nullbind_desc_text)
@@ -2686,42 +2709,55 @@ class TriggerSettingsTab(BasicEditor):
         return False
 
     def apply_keymap_based_actuations(self):
-        """When disabling per-key mode, scan keymap and assign actuation values based on key type"""
+        """When disabling per-key mode, scan keymap and assign actuation values based on key type.
+
+        This applies uniform keymap-based actuations to ALL 12 layers since firmware
+        always uses per-key per-layer settings. This ensures consistency across all layers.
+        """
         if not self.valid() or not self.keyboard:
             return
 
-        # Get current layer actuation values
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Get current layer actuation values (use as source for all layers)
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
-        normal_actuation = data_source[layer]['normal']
-        midi_actuation = data_source[layer]['midi']
+        normal_actuation = data_source[self.current_layer]['normal']
+        midi_actuation = data_source[self.current_layer]['midi']
 
-        # Scan all keys in the current keymap and assign actuation values
-        for key in self.container.widgets:
-            if key.desc.row is not None:
-                row, col = key.desc.row, key.desc.col
-                key_index = row * 14 + col
+        # Apply to ALL 12 layers for uniformity (firmware always uses per-key per-layer)
+        for layer in range(12):
+            # Scan all keys in the keymap and assign actuation values
+            for key in self.container.widgets:
+                if key.desc.row is not None:
+                    row, col = key.desc.row, key.desc.col
+                    key_index = row * 14 + col
 
-                if key_index < 70:
-                    # Get the keycode for this key from the keymap
-                    keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                    if key_index < 70:
+                        # Get the keycode for this key from the keymap (check current layer for MIDI detection)
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
-                    # Determine actuation value based on whether it's a MIDI key
-                    if self.is_midi_keycode(keycode):
-                        actuation_value = midi_actuation
-                    else:
-                        actuation_value = normal_actuation
+                        # Determine actuation value based on whether it's a MIDI key
+                        if self.is_midi_keycode(keycode):
+                            actuation_value = midi_actuation
+                        else:
+                            actuation_value = normal_actuation
 
-                    # Update per-key value in memory
-                    self.per_key_values[layer][key_index]['actuation'] = actuation_value
+                        # Update per-key value in memory
+                        self.per_key_values[layer][key_index]['actuation'] = actuation_value
 
-                    # Send to device
-                    if self.device and isinstance(self.device, VialKeyboard):
-                        settings = self.per_key_values[layer][key_index]
-                        self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+                        # Send to device
+                        if self.device and isinstance(self.device, VialKeyboard):
+                            settings = self.per_key_values[layer][key_index]
+                            self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
     def on_enable_changed(self, state):
-        """Handle enable checkbox toggle"""
+        """Handle enable checkbox toggle
+
+        NOTE: When per-key is enabled, per-layer is automatically enabled and
+        cannot be unchecked. Firmware ALWAYS uses per-key per-layer settings.
+        The checkboxes control how the GUI sends values:
+        - Per-key OFF + Per-layer OFF: Same value to all keys × all layers
+        - Per-key OFF + Per-layer ON: Same value to all keys, different per layer
+        - Per-key ON (+ Per-layer ON): Different values per key per layer
+        """
         if self.syncing:
             return
 
@@ -2751,7 +2787,17 @@ class TriggerSettingsTab(BasicEditor):
             self.apply_keymap_based_actuations()
 
         self.mode_enabled = new_mode_enabled
-        # Keep per_layer_checkbox always enabled (arrays are not mutually exclusive)
+
+        # When per-key is enabled, per-layer MUST be enabled (and grayed out)
+        if self.mode_enabled:
+            self.syncing = True
+            self.per_layer_checkbox.setChecked(True)
+            self.per_layer_checkbox.setEnabled(False)  # Gray out - can't uncheck
+            self.per_layer_enabled = True
+            self.syncing = False
+        else:
+            self.per_layer_checkbox.setEnabled(True)  # Re-enable when per-key is off
+
         self.copy_layer_btn.setEnabled(self.mode_enabled)
         self.copy_all_layers_btn.setEnabled(self.mode_enabled)
         self.reset_btn.setEnabled(self.mode_enabled)
@@ -2770,7 +2816,8 @@ class TriggerSettingsTab(BasicEditor):
             key_selected = self.container.active_key is not None
             self.trigger_slider.setEnabled(key_selected)
 
-        # Update device
+        # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
+        # The call is kept for backward compatibility but is a no-op
         if self.device and isinstance(self.device, VialKeyboard):
             self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
 
@@ -2789,13 +2836,32 @@ class TriggerSettingsTab(BasicEditor):
         pass
 
     def on_per_layer_changed(self, state):
-        """Handle per-layer checkbox toggle"""
+        """Handle per-layer checkbox toggle
+
+        NOTE: When per-layer is unchecked (and per-key is off), changes to actuation
+        settings should be written to ALL 12 layers so they stay uniform.
+        Firmware ALWAYS uses per-key per-layer - this checkbox controls GUI behavior.
+
+        When per-key is enabled, this checkbox cannot be unchecked (grayed out).
+        """
         if self.syncing:
+            return
+
+        # If per-key is enabled, per-layer cannot be disabled
+        if self.mode_enabled and state != Qt.Checked:
+            self.syncing = True
+            self.per_layer_checkbox.setChecked(True)
+            self.syncing = False
             return
 
         self.per_layer_enabled = (state == Qt.Checked)
 
-        # Update device
+        # If per-layer was just disabled, sync current layer's values to all layers
+        if not self.per_layer_enabled:
+            self.sync_current_layer_to_all_layers()
+
+        # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
+        # The call is kept for backward compatibility but is a no-op
         if self.device and isinstance(self.device, VialKeyboard):
             self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
 
@@ -2806,6 +2872,28 @@ class TriggerSettingsTab(BasicEditor):
             self.actuation_widget_ref.syncing = False
 
         self.refresh_layer_display()
+
+    def sync_current_layer_to_all_layers(self):
+        """Sync current layer's per-key values to all 12 layers
+
+        Called when per-layer is disabled to make all layers uniform.
+        """
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+
+        source_layer = self.current_layer
+
+        # Copy from current layer to all other layers (in memory and on device)
+        for dest_layer in range(12):
+            if dest_layer == source_layer:
+                continue
+
+            # Copy in memory
+            for key_index in range(70):
+                self.per_key_values[dest_layer][key_index] = self.per_key_values[source_layer][key_index].copy()
+
+            # Copy on device using the copy layer command
+            self.device.keyboard.copy_layer_actuations(source_layer, dest_layer)
 
     def on_copy_layer(self):
         """Show dialog to copy actuations from another layer"""
@@ -3330,6 +3418,11 @@ class TriggerSettingsTab(BasicEditor):
                 key_labels.append(label)
             self.nullbind_keys_display.setText("  ".join(key_labels))
 
+        # Update layer combo to match group's layer setting
+        self.nullbind_layer_combo.blockSignals(True)
+        self.nullbind_layer_combo.setCurrentIndex(group.layer)
+        self.nullbind_layer_combo.blockSignals(False)
+
         # Update behavior combo choices (in case keys changed)
         self.update_nullbind_behavior_choices()
 
@@ -3355,6 +3448,25 @@ class TriggerSettingsTab(BasicEditor):
             self.nullbind_save_btn.setEnabled(True)
             self.update_nullbind_behavior_description()
             self.update_nullbind_display()
+
+    def on_nullbind_layer_changed(self, index):
+        """Handle null bind layer selection change
+
+        Each SOCD group is now layer-specific - it only activates when
+        that layer is active on the keyboard.
+        """
+        if index < 0:
+            return
+
+        layer = self.nullbind_layer_combo.currentData()
+        if layer is None:
+            return
+
+        group = self.nullbind_groups[self.current_nullbind_group]
+        if group.layer != layer:
+            group.layer = layer
+            self.nullbind_pending_changes = True
+            self.nullbind_save_btn.setEnabled(True)
 
     def on_nullbind_add_keys(self):
         """Add selected keys to current null bind group"""
