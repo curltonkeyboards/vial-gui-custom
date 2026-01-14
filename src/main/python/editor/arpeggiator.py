@@ -923,13 +923,9 @@ class BasicArpeggiatorGrid(QWidget):
         legend_layout.addStretch()
         self.main_layout.addLayout(legend_layout)
 
-        # Add hint about changing steps
-        steps_hint_layout = QHBoxLayout()
-        steps_hint = QLabel("To add or remove steps, adjust the Number of Steps setting below")
-        steps_hint.setStyleSheet(f"color: {muted_color.name()}; font-size: 10px; font-style: italic;")
-        steps_hint_layout.addWidget(steps_hint)
-        steps_hint_layout.addStretch()
-        self.main_layout.addLayout(steps_hint_layout)
+        # Create steps hint label (will be positioned in the grid)
+        self.steps_hint = QLabel("To add or remove steps, adjust the Number of Steps setting below")
+        self.steps_hint.setStyleSheet(f"color: {muted_color.name()}; font-size: 10px; font-style: italic; padding-top: 5px;")
 
         self.setLayout(self.main_layout)
 
@@ -991,6 +987,15 @@ class BasicArpeggiatorGrid(QWidget):
 
             self.cells.append(row_cells)
 
+        # Add steps hint below the last step row
+        self._update_steps_hint_position()
+
+    def _update_steps_hint_position(self):
+        """Position the steps hint below the last step row"""
+        # Remove from current position if it exists
+        self.grid_layout.removeWidget(self.steps_hint)
+        # Add at row after all steps (num_steps + 2 accounts for 2 header rows)
+        self.grid_layout.addWidget(self.steps_hint, self.num_steps + 2, 0, 1, 24)
 
     def on_steps_changed(self, new_steps):
         """Handle number of steps changed - preserve existing data"""
@@ -1034,6 +1039,8 @@ class BasicArpeggiatorGrid(QWidget):
             # Trim cells list
             self.cells = self.cells[:new_steps]
 
+        # Update hint position
+        self._update_steps_hint_position()
         self.dataChanged.emit()
 
     def on_default_velocity_changed(self, value):
