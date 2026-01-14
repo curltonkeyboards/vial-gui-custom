@@ -2293,6 +2293,9 @@ class Arpeggiator(BasicEditor):
         # Initialize basic grid settings
         if hasattr(self, 'spin_default_velocity'):
             self.basic_grid.default_velocity = self.spin_default_velocity.value() * 2
+        # Sync basic grid's num_steps with the spin control
+        if hasattr(self, 'spin_num_steps') and self.basic_grid.num_steps != self.spin_num_steps.value():
+            self.basic_grid.on_steps_changed(self.spin_num_steps.value())
 
     def on_preset_tab_changed(self, index):
         """Handle preset tab change"""
