@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
                              QComboBox, QSpinBox, QLineEdit, QScrollArea,
                              QFrame, QButtonGroup, QRadioButton, QCheckBox, QSlider,
                              QInputDialog, QTabWidget, QDialog, QDialogButtonBox,
-                             QApplication)
+                             QApplication, QToolButton)
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -293,23 +293,14 @@ class BasicStepSequencerGrid(QWidget):
         # Create header row (step numbers)
         self.rebuild_header()
 
-        # Create "Add Note" button (will be positioned after rows)
-        self.btn_add_note = QPushButton("+")
-        self.btn_add_note.setMinimumSize(60, 30)
-        self.btn_add_note.setMaximumSize(60, 30)
-        palette = self.palette()
-        highlight = palette.color(QPalette.Highlight)
-        self.btn_add_note.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 18px;
-                font-weight: bold;
-                border: 2px solid {highlight.name()};
-                background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 50);
-            }}
-            QPushButton:hover {{
-                background-color: rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 100);
-            }}
-        """)
+        # Create "+" button (will be positioned after rows) - styled like macro tab
+        self.btn_add_note = QToolButton()
+        self.btn_add_note.setText("+")
+        self.btn_add_note.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        # Size based on font metrics like macro tab
+        btn_size = int(self.btn_add_note.fontMetrics().height() * 3.2)
+        self.btn_add_note.setFixedWidth(btn_size)
+        self.btn_add_note.setFixedHeight(btn_size)
         self.btn_add_note.setCursor(Qt.PointingHandCursor)
         self.btn_add_note.clicked.connect(self.add_note_row)
 
@@ -347,10 +338,10 @@ class BasicStepSequencerGrid(QWidget):
 
         add_note_layout.addWidget(self.btn_add_note)
 
-        # Add "Add Note" label
+        # Add instruction label next to + button
         if not hasattr(self, 'add_note_label'):
-            self.add_note_label = QLabel("Add Note")
-            self.add_note_label.setStyleSheet("font-weight: bold;")
+            self.add_note_label = QLabel("Add a new note row")
+            self.add_note_label.setStyleSheet("color: gray; font-style: italic;")
         add_note_layout.addWidget(self.add_note_label)
         add_note_layout.addStretch()
 
@@ -376,6 +367,11 @@ class BasicStepSequencerGrid(QWidget):
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setStyleSheet("font-weight: bold;")
             self.grid_layout.addWidget(lbl, 0, step + 1)
+
+        # Add hint label to the right of step numbers
+        steps_hint = QLabel("To add or remove steps, adjust the Number of Steps setting below")
+        steps_hint.setStyleSheet("color: gray; font-style: italic; padding-left: 10px;")
+        self.grid_layout.addWidget(steps_hint, 0, self.num_steps + 1)
 
     def on_steps_changed(self, new_steps):
         """Handle number of steps changed"""
@@ -926,6 +922,14 @@ class BasicArpeggiatorGrid(QWidget):
         legend_layout.addWidget(legend_label)
         legend_layout.addStretch()
         self.main_layout.addLayout(legend_layout)
+
+        # Add hint about changing steps
+        steps_hint_layout = QHBoxLayout()
+        steps_hint = QLabel("To add or remove steps, adjust the Number of Steps setting below")
+        steps_hint.setStyleSheet(f"color: {muted_color.name()}; font-size: 10px; font-style: italic;")
+        steps_hint_layout.addWidget(steps_hint)
+        steps_hint_layout.addStretch()
+        self.main_layout.addLayout(steps_hint_layout)
 
         self.setLayout(self.main_layout)
 
