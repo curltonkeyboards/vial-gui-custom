@@ -30,6 +30,10 @@ static void    *current_macro_buffer2 = NULL;
 static void   **current_macro_pointer = NULL;
 static uint32_t *current_recording_start_time = NULL;
 
+// External functions for arpeggiator press order tracking
+extern void arp_track_note_pressed(uint8_t live_note_index);
+extern void arp_track_note_moved(uint8_t from_index, uint8_t to_index);
+
 // Function to add a note to the live notes array
 static void add_live_note(uint8_t channel, uint8_t note, uint8_t velocity) {
     // First check if this note is in the sustain queue
@@ -43,19 +47,24 @@ static void add_live_note(uint8_t channel, uint8_t note, uint8_t velocity) {
                 sustain_notes[i][2] = sustain_notes[sustain_note_count-1][2];
             }
             sustain_note_count--;
-            dprintf("midi: removed note from sustain queue ch:%d note:%d (playing again)\n", 
+            dprintf("midi: removed note from sustain queue ch:%d note:%d (playing again)\n",
                     channel, note);
             break;
         }
     }
-    
+
     // Now add to live notes
     if (live_note_count < MAX_LIVE_NOTES) {
-        live_notes[live_note_count][0] = channel;
-        live_notes[live_note_count][1] = note;
-        live_notes[live_note_count][2] = velocity;
+        uint8_t new_index = live_note_count;
+        live_notes[new_index][0] = channel;
+        live_notes[new_index][1] = note;
+        live_notes[new_index][2] = velocity;
         live_note_count++;
-        dprintf("midi: added live note ch:%d note:%d vel:%d (total: %d)\n", 
+
+        // Track press order for arpeggiator
+        arp_track_note_pressed(new_index);
+
+        dprintf("midi: added live note ch:%d note:%d vel:%d (total: %d)\n",
                 channel, note, velocity, live_note_count);
     }
 }
@@ -66,12 +75,16 @@ static void remove_live_note(uint8_t channel, uint8_t note) {
         if (live_notes[i][0] == channel && live_notes[i][1] == note) {
             // Move the last note to this position
             if (i < live_note_count - 1) {
-                live_notes[i][0] = live_notes[live_note_count-1][0];
-                live_notes[i][1] = live_notes[live_note_count-1][1];
-                live_notes[i][2] = live_notes[live_note_count-1][2];
+                uint8_t from_idx = live_note_count - 1;
+                live_notes[i][0] = live_notes[from_idx][0];
+                live_notes[i][1] = live_notes[from_idx][1];
+                live_notes[i][2] = live_notes[from_idx][2];
+
+                // Track the move for arpeggiator press order
+                arp_track_note_moved(from_idx, i);
             }
             live_note_count--;
-            dprintf("midi: removed live note ch:%d note:%d (remaining: %d)\n", 
+            dprintf("midi: removed live note ch:%d note:%d (remaining: %d)\n",
                     channel, note, live_note_count);
             break;
         }
