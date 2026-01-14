@@ -23,6 +23,7 @@
 #define ARP_CMD_GET_INFO         0xC9  // Get arp system info
 #define ARP_CMD_SET_NOTE         0xCA  // Set single note data
 #define ARP_CMD_SET_NOTES_CHUNK  0xCB  // Set multiple notes (chunked)
+#define ARP_CMD_SET_MODE         0xCC  // Set arpeggiator mode only
 
 // HID Protocol IDs (matching dynamic macro protocol)
 #define HID_MANUFACTURER_ID 0x7D
@@ -506,6 +507,21 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             break;
         }
 
+        case ARP_CMD_SET_MODE: {
+            // Set arpeggiator mode only (without affecting active state)
+            // params[0] = mode (0=SINGLE_NOTE, 1=CHORD_BASIC, 2=CHORD_ADVANCED)
+            uint8_t mode = params[0];
+            if (mode < ARPMODE_COUNT) {
+                arp_set_mode((arp_mode_t)mode);
+                params[0] = 0;  // Success
+                dprintf("ARP HID: SET_MODE - mode=%d\n", mode);
+            } else {
+                params[0] = 1;  // Error: invalid mode
+                dprintf("ARP HID: SET_MODE failed - invalid mode %d\n", mode);
+            }
+            break;
+        }
+
         default:
             params[0] = 0xFF;  // Unknown command
             dprintf("ARP HID: Unknown command 0x%02X\n", cmd);
@@ -521,7 +537,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xC0 && data[3] <= 0xCB) {
+        data[3] >= 0xC0 && data[3] <= 0xCC) {
 
         dprintf("raw_hid_receive_kb: Arpeggiator packet detected, forwarding\n");
         arp_hid_receive(data, length);
