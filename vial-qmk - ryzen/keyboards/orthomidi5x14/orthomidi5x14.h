@@ -692,6 +692,10 @@ void seq_set_rate_override(uint8_t note_value, uint8_t timing_mode);
 void arp_reset_overrides(void);
 void seq_reset_overrides(void);
 
+// Arpeggiator note press order tracking (called from process_midi.c)
+void arp_track_note_pressed(uint8_t live_note_index);
+void arp_track_note_moved(uint8_t from_index, uint8_t to_index);
+
 // Lazy-loading preset management
 bool arp_load_preset_into_slot(uint8_t preset_id);  // Load preset into arp RAM slot
 bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot);  // Load preset into seq RAM slot

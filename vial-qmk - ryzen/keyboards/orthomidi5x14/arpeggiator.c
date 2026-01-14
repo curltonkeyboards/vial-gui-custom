@@ -81,6 +81,65 @@ extern uint8_t he_velocity_min;  // Global HE velocity minimum
 extern uint8_t he_velocity_max;  // Global HE velocity maximum
 
 // =============================================================================
+// LIVE NOTE PRESS ORDER TRACKING (for arpeggiator modes)
+// =============================================================================
+// Tracks the sequence number of each live note to determine press order.
+// The most recently pressed note still held has the highest sequence number.
+
+static uint32_t live_note_sequence[MAX_LIVE_NOTES];  // Sequence number for each live note slot
+static uint32_t live_note_next_sequence = 1;         // Next sequence number to assign
+
+// Called when a note is added to live_notes (hooked from process_midi.c)
+void arp_track_note_pressed(uint8_t live_note_index) {
+    if (live_note_index < MAX_LIVE_NOTES) {
+        live_note_sequence[live_note_index] = live_note_next_sequence++;
+    }
+}
+
+// Called when a note is removed and another is moved to fill the gap
+void arp_track_note_moved(uint8_t from_index, uint8_t to_index) {
+    if (from_index < MAX_LIVE_NOTES && to_index < MAX_LIVE_NOTES) {
+        live_note_sequence[to_index] = live_note_sequence[from_index];
+    }
+}
+
+// Get index of most recently pressed note that's still held
+static uint8_t get_most_recent_live_note_index(void) {
+    if (live_note_count == 0) return 0;
+
+    uint8_t most_recent_idx = 0;
+    uint32_t highest_seq = 0;
+
+    for (uint8_t i = 0; i < live_note_count; i++) {
+        if (live_note_sequence[i] > highest_seq) {
+            highest_seq = live_note_sequence[i];
+            most_recent_idx = i;
+        }
+    }
+
+    return most_recent_idx;
+}
+
+// Get indices of live notes sorted by press order (oldest first)
+static void sort_live_notes_by_press_order(uint8_t sorted_indices[], uint8_t count) {
+    // Create array of indices
+    for (uint8_t i = 0; i < count; i++) {
+        sorted_indices[i] = i;
+    }
+
+    // Simple bubble sort by sequence number (ascending = oldest first)
+    for (uint8_t i = 0; i < count - 1; i++) {
+        for (uint8_t j = 0; j < count - i - 1; j++) {
+            if (live_note_sequence[sorted_indices[j]] > live_note_sequence[sorted_indices[j+1]]) {
+                uint8_t temp = sorted_indices[j];
+                sorted_indices[j] = sorted_indices[j+1];
+                sorted_indices[j+1] = temp;
+            }
+        }
+    }
+}
+
+// =============================================================================
 // ARP NOTES TRACKING (for gate timing)
 // =============================================================================
 
@@ -640,18 +699,18 @@ void arp_update(void) {
         }
         // Handle Arpeggiator (relative intervals)
         else {
-            // Sort live notes for consistent ordering
-            uint8_t sorted_indices[MAX_LIVE_NOTES];
-            sort_live_notes_by_pitch(sorted_indices, live_note_count);
+            // Sort live notes by press order (for Chord Advanced mode)
+            uint8_t press_order_indices[MAX_LIVE_NOTES];
+            sort_live_notes_by_press_order(press_order_indices, live_note_count);
 
             // Handle different playback modes
             switch (arp_state.mode) {
                 case ARPMODE_SINGLE_NOTE: {
                 // Single Note Mode: Play master note + semitone offset
-                // Master note = lowest/first held note
+                // Master note = most recently pressed note that's still held
                 if (live_note_count == 0) break;
 
-                uint8_t master_idx = sorted_indices[0];  // Lowest held note
+                uint8_t master_idx = get_most_recent_live_note_index();
                 uint8_t master_note = live_notes[master_idx][1];
                 uint8_t channel = live_notes[master_idx][0];
 
@@ -683,8 +742,8 @@ void arp_update(void) {
             }
 
             case ARPMODE_CHORD_BASIC: {
-                // Chord Basic Mode: Apply semitone offset to ALL held notes
-                // Each step plays all held notes + the semitone offset
+                // Chord Basic Mode: Apply semitone offset to ALL held notes simultaneously
+                // Each step plays all held notes + the semitone offset at once
                 for (uint8_t i = 0; i < note_count_to_play; i++) {
                     uint8_t preset_note_idx = notes_to_play[i];
                     unpacked_note_t *note = &unpacked_notes[preset_note_idx];
@@ -692,9 +751,9 @@ void arp_update(void) {
                     int16_t semitone_offset = note->note_index;
                     int16_t octave_semitones = note->octave_offset * 12;
 
-                    // Apply offset to ALL held notes
+                    // Apply offset to ALL held notes (in press order)
                     for (uint8_t n = 0; n < live_note_count; n++) {
-                        uint8_t live_idx = sorted_indices[n];
+                        uint8_t live_idx = press_order_indices[n];
                         uint8_t channel = live_notes[live_idx][0];
                         uint8_t master_note = live_notes[live_idx][1];
 
@@ -718,40 +777,77 @@ void arp_update(void) {
             }
 
             case ARPMODE_CHORD_ADVANCED: {
-                // Chord Advanced Mode: Rotate through held notes, applying semitone offset to each
-                // Each step plays one held note + offset, rotating through all held notes
+                // Chord Advanced Mode: Cycles through held notes with subdivided timing
+                // For each step, plays all held notes one at a time with equal spacing
+                // E.g., 3 notes held + 100ms step = notes at 0ms, 33ms, 66ms
+                // Pattern: N1+S1, N2+S1, N3+S1, N1+S2, N2+S2, N3+S2, etc.
 
-                for (uint8_t i = 0; i < note_count_to_play; i++) {
-                    uint8_t preset_note_idx = notes_to_play[i];
-                    unpacked_note_t *note = &unpacked_notes[preset_note_idx];
+                // We only process one note per arp_update call
+                // current_note_in_chord tracks which note in the chord we're on
 
-                    // Play the next note in rotation
-                    uint8_t note_to_play = arp_state.current_note_in_chord % live_note_count;
-                    uint8_t live_idx = sorted_indices[note_to_play];
-                    uint8_t channel = live_notes[live_idx][0];
-                    uint8_t master_note = live_notes[live_idx][1];
+                // Find the step data for current position
+                // (note_count_to_play should be 1 for typical arp patterns)
+                if (note_count_to_play == 0) break;
 
-                    int16_t semitone_offset = note->note_index;
-                    int16_t octave_semitones = note->octave_offset * 12;
-                    int16_t final_note = master_note + semitone_offset + octave_semitones;
+                uint8_t preset_note_idx = notes_to_play[0];  // Use first step at this position
+                unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
-                    // Clamp to MIDI range
-                    if (final_note < 0) final_note = 0;
-                    if (final_note > 127) final_note = 127;
+                int16_t semitone_offset = note->note_index;
+                int16_t octave_semitones = note->octave_offset * 12;
 
-                    uint8_t raw_travel = (note->velocity * 2);
+                // Get the note to play based on current_note_in_chord (in press order)
+                uint8_t chord_note_idx = arp_state.current_note_in_chord % live_note_count;
+                uint8_t live_idx = press_order_indices[chord_note_idx];
+                uint8_t channel = live_notes[live_idx][0];
+                uint8_t master_note = live_notes[live_idx][1];
 
-                    // Send note-on
-                    midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
+                int16_t final_note = master_note + semitone_offset + octave_semitones;
 
-                    // Add to arp_notes for gate tracking
-                    uint32_t note_off_time = current_time + gate_duration_ms;
-                    add_arp_note(channel, (uint8_t)final_note, raw_travel, note_off_time);
+                // Clamp to MIDI range
+                if (final_note < 0) final_note = 0;
+                if (final_note > 127) final_note = 127;
 
-                    // Advance to next note in chord for next trigger
-                    arp_state.current_note_in_chord = (arp_state.current_note_in_chord + 1) % live_note_count;
+                uint8_t raw_travel = (note->velocity * 2);
+
+                // Calculate subdivided gate time (shorter for subdivided notes)
+                uint32_t subdivision_ms = ms_per_16th / live_note_count;
+                uint32_t sub_gate_ms = (subdivision_ms * gate_percent) / 100;
+                if (sub_gate_ms < 10) sub_gate_ms = 10;  // Minimum 10ms gate
+
+                // Send note-on
+                midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
+
+                // Add to arp_notes for gate tracking with subdivided gate
+                uint32_t note_off_time = current_time + sub_gate_ms;
+                add_arp_note(channel, (uint8_t)final_note, raw_travel, note_off_time);
+
+                // Advance to next note in chord
+                arp_state.current_note_in_chord++;
+
+                // Check if we've played all notes for this step
+                if (arp_state.current_note_in_chord >= live_note_count) {
+                    // Reset for next step and advance pattern position
+                    arp_state.current_note_in_chord = 0;
+
+                    // Advance pattern position
+                    arp_state.current_position_16ths++;
+
+                    // Check for loop
+                    if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+                        arp_state.current_position_16ths = 0;
+                        arp_state.pattern_start_time = current_time;
+                        dprintf("arp: pattern loop\n");
+                    }
+
+                    // Next note time is next step
+                    arp_state.next_note_time = current_time + subdivision_ms;
+                } else {
+                    // More notes to play in this chord - set subdivision timing
+                    arp_state.next_note_time = current_time + subdivision_ms;
                 }
-                break;
+
+                // Return early - we handle position advancement above for chord advanced
+                return;
             }
 
                 default:
@@ -760,7 +856,7 @@ void arp_update(void) {
         }
     }
 
-    // Advance position
+    // Advance position (not used for CHORD_ADVANCED which handles this itself)
     arp_state.current_position_16ths++;
 
     // Check for loop
@@ -771,8 +867,8 @@ void arp_update(void) {
     }
 
     // Calculate next note time
-    uint32_t ms_per_16th = get_ms_per_16th(preset);
-    arp_state.next_note_time = current_time + ms_per_16th;
+    uint32_t ms_per_16th_final = get_ms_per_16th(preset);
+    arp_state.next_note_time = current_time + ms_per_16th_final;
 }
 
 // =============================================================================
