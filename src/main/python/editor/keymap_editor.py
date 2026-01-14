@@ -91,8 +91,6 @@ class QuickActuationWidget(QWidget):
             'velocity_curve': 2,
             'velocity_min': 1,
             'velocity_max': 127,
-            'aftertouch': 0,
-            'aftertouch_cc': 255,  # 255 = off (no CC sent)
             'keysplit_enabled': False,
             'keysplit_channel': 0,
             'keysplit_transpose': 0,
@@ -720,74 +718,6 @@ class QuickActuationWidget(QWidget):
 
         self.midi_settings_layout.addWidget(self.midi_tabs)
         self.midi_tabs.setVisible(False)  # Hidden by default, shown when advanced mode is on
-
-        # Advanced MIDI Settings (aftertouch, shown when advanced is enabled)
-        self.midi_advanced_widget = QWidget()
-        adv_layout = QVBoxLayout()
-        adv_layout.setSpacing(6)
-        adv_layout.setContentsMargins(0, 5, 0, 0)
-        self.midi_advanced_widget.setLayout(adv_layout)
-        self.midi_advanced_widget.setVisible(False)
-        layout.addWidget(self.midi_advanced_widget)
-
-        # Aftertouch settings (no title to save space)
-        aftertouch_group = QWidget()
-        aftertouch_layout = QVBoxLayout()
-        aftertouch_layout.setSpacing(4)
-        aftertouch_layout.setContentsMargins(0, 0, 0, 0)
-        aftertouch_group.setLayout(aftertouch_layout)
-        adv_layout.addWidget(aftertouch_group)
-
-        # Aftertouch and AT CC side by side
-        at_row_layout = QHBoxLayout()
-        at_row_layout.setContentsMargins(0, 0, 0, 0)
-        at_row_layout.setSpacing(10)
-
-        # Aftertouch (same width as CC)
-        at_container = QVBoxLayout()
-        at_container.setSpacing(2)
-        at_label = QLabel(tr("QuickActuationWidget", "Aftertouch"))
-        at_label.setAlignment(Qt.AlignCenter)
-        at_label.setStyleSheet("QLabel { font-size: 12px; }")
-        at_container.addWidget(at_label)
-        self.midi_aftertouch = ArrowComboBox()
-        self.midi_aftertouch.setMaximumHeight(30)
-        self.midi_aftertouch.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
-        self.midi_aftertouch.setEditable(True)
-        self.midi_aftertouch.lineEdit().setReadOnly(True)
-        self.midi_aftertouch.lineEdit().setAlignment(Qt.AlignCenter)
-        self.midi_aftertouch.addItem("Off", 0)
-        self.midi_aftertouch.addItem("Reverse", 1)
-        self.midi_aftertouch.addItem("Bottom-Out", 2)
-        self.midi_aftertouch.addItem("Post-Act", 3)
-        self.midi_aftertouch.addItem("Vibrato", 4)
-        self.midi_aftertouch.setCurrentIndex(0)
-        self.midi_aftertouch.currentIndexChanged.connect(self.on_midi_settings_changed)
-        at_container.addWidget(self.midi_aftertouch)
-        at_row_layout.addLayout(at_container, 1)
-
-        # Aftertouch CC (same width as Aftertouch)
-        atcc_container = QVBoxLayout()
-        atcc_container.setSpacing(2)
-        atcc_label = QLabel(tr("QuickActuationWidget", "Aftertouch CC"))
-        atcc_label.setAlignment(Qt.AlignCenter)
-        atcc_label.setStyleSheet("QLabel { font-size: 12px; }")
-        atcc_container.addWidget(atcc_label)
-        self.midi_aftertouch_cc = ArrowComboBox()
-        self.midi_aftertouch_cc.setMaximumHeight(30)
-        self.midi_aftertouch_cc.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
-        self.midi_aftertouch_cc.setEditable(True)
-        self.midi_aftertouch_cc.lineEdit().setReadOnly(True)
-        self.midi_aftertouch_cc.lineEdit().setAlignment(Qt.AlignCenter)
-        self.midi_aftertouch_cc.addItem("Off", 255)  # 255 = no CC sent, only poly aftertouch
-        for cc in range(128):
-            self.midi_aftertouch_cc.addItem(f"CC#{cc}", cc)
-        self.midi_aftertouch_cc.setCurrentIndex(0)  # Default to "Off"
-        self.midi_aftertouch_cc.currentIndexChanged.connect(self.on_midi_settings_changed)
-        atcc_container.addWidget(self.midi_aftertouch_cc)
-        at_row_layout.addLayout(atcc_container, 1)
-
-        aftertouch_layout.addLayout(at_row_layout)
 
         layout.addStretch()
 
@@ -1671,7 +1601,6 @@ class QuickActuationWidget(QWidget):
     def on_midi_advanced_toggled(self):
         """Toggle advanced MIDI options visibility"""
         show_advanced = self.midi_advanced_checkbox.isChecked()
-        self.midi_advanced_widget.setVisible(show_advanced)
 
         # Show/hide keysplit/triplesplit enable widgets
         self.keysplit_enable_widget.setVisible(show_advanced)
@@ -1911,8 +1840,6 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['velocity_curve'] = self.midi_velocity_curve.currentData()
         self.midi_settings['velocity_min'] = self.midi_velocity_min.value()
         self.midi_settings['velocity_max'] = self.midi_velocity_max.value()
-        self.midi_settings['aftertouch'] = self.midi_aftertouch.currentData()
-        self.midi_settings['aftertouch_cc'] = self.midi_aftertouch_cc.currentData()
 
         self.midi_settings['keysplit_enabled'] = self.keysplit_enabled_checkbox.isChecked()
         self.midi_settings['keysplit_channel'] = self.keysplit_channel_slider.value()
