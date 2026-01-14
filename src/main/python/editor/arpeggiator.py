@@ -293,14 +293,12 @@ class BasicStepSequencerGrid(QWidget):
         # Create header row (step numbers)
         self.rebuild_header()
 
-        # Create "+" button (will be positioned after rows) - styled like macro tab
+        # Create "+" button (will be positioned after rows) - same size as note buttons
         self.btn_add_note = QToolButton()
         self.btn_add_note.setText("+")
         self.btn_add_note.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        # Size based on font metrics like macro tab
-        btn_size = int(self.btn_add_note.fontMetrics().height() * 3.2)
-        self.btn_add_note.setFixedWidth(btn_size)
-        self.btn_add_note.setFixedHeight(btn_size)
+        # Same size as the editable note buttons (50x50)
+        self.btn_add_note.setFixedSize(50, 50)
         self.btn_add_note.setCursor(Qt.PointingHandCursor)
         self.btn_add_note.clicked.connect(self.add_note_row)
 
@@ -335,24 +333,15 @@ class BasicStepSequencerGrid(QWidget):
         # Add them at the row after all existing rows (len(self.rows) + 2, accounting for 2 header rows)
         row_position = len(self.rows) + 2
 
-        # Create horizontal layout for + button and label
-        add_note_container = QWidget()
-        add_note_layout = QHBoxLayout()
-        add_note_layout.setContentsMargins(0, 0, 0, 0)
-        add_note_layout.setSpacing(5)
+        # Place + button in column 1 (aligned with note buttons)
+        self.grid_layout.addWidget(self.btn_add_note, row_position, 1)
 
-        add_note_layout.addWidget(self.btn_add_note)
-
-        # Add instruction label next to + button
+        # Add instruction label in column 2 (next to + button)
         if not hasattr(self, 'add_note_label'):
             self.add_note_label = QLabel("Add a new note row")
             self.add_note_label.setStyleSheet("color: gray; font-style: italic;")
-        add_note_layout.addWidget(self.add_note_label)
-        add_note_layout.addStretch()
-
-        add_note_container.setLayout(add_note_layout)
-        # Span from col 0 across all columns
-        self.grid_layout.addWidget(add_note_container, row_position, 0, 1, self.num_steps + 3)
+            self.add_note_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.grid_layout.addWidget(self.add_note_label, row_position, 2, 1, self.num_steps)
 
     def _update_note_label_position(self):
         """Update the position of the 'Note' label to span all note rows"""
