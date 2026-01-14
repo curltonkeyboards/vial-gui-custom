@@ -282,7 +282,7 @@ class BasicStepSequencerGrid(QWidget):
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
-        self.grid_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.grid_layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         self.grid_container.setLayout(self.grid_layout)
 
         scroll.setWidget(self.grid_container)
@@ -867,7 +867,7 @@ class BasicArpeggiatorGrid(QWidget):
         self.grid_layout = QGridLayout()
         self.grid_layout.setSpacing(2)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
-        self.grid_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.grid_layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         self.grid_container.setLayout(self.grid_layout)
 
         scroll.setWidget(self.grid_container)
