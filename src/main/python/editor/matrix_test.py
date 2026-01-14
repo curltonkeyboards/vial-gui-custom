@@ -864,6 +864,44 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
         desc_label.setAlignment(QtCore.Qt.AlignLeft)
         midi_title_layout.addWidget(desc_label)
+
+        midi_title_layout.addSpacing(15)
+
+        # Buttons in the title container
+        midi_btn_style = "QPushButton { border-radius: 5px; font-size: 9pt; }"
+
+        save_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save as Default"))
+        save_default_btn.setMinimumHeight(28)
+        save_default_btn.setMaximumHeight(28)
+        save_default_btn.setStyleSheet(midi_btn_style)
+        save_default_btn.setToolTip("Save current settings as the default configuration.\nThese settings will be loaded on keyboard startup.")
+        save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
+        midi_title_layout.addWidget(save_default_btn)
+
+        load_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Default"))
+        load_default_btn.setMinimumHeight(28)
+        load_default_btn.setMaximumHeight(28)
+        load_default_btn.setStyleSheet(midi_btn_style)
+        load_default_btn.setToolTip("Load the saved default configuration.\nRestores settings from the default slot.")
+        load_default_btn.clicked.connect(lambda: self.on_load_slot(0))
+        midi_title_layout.addWidget(load_default_btn)
+
+        load_current_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Current"))
+        load_current_btn.setMinimumHeight(28)
+        load_current_btn.setMaximumHeight(28)
+        load_current_btn.setStyleSheet(midi_btn_style)
+        load_current_btn.setToolTip("Refresh display with current keyboard settings.\nUpdates all fields to match the keyboard's active configuration.")
+        load_current_btn.clicked.connect(self.on_load_current_settings)
+        midi_title_layout.addWidget(load_current_btn)
+
+        reset_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"))
+        reset_btn.setMinimumHeight(28)
+        reset_btn.setMaximumHeight(28)
+        reset_btn.setStyleSheet(midi_btn_style)
+        reset_btn.setToolTip("Reset all MIDI settings to factory defaults.\nThis cannot be undone.")
+        reset_btn.clicked.connect(self.on_reset)
+        midi_title_layout.addWidget(reset_btn)
+
         midi_title_layout.addStretch()
 
         # Base MIDI Settings container (limited width like keysplit)
@@ -1533,19 +1571,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Add global MIDI group to main layout
         main_layout.addWidget(global_midi_group)
 
-        # Loop Settings Group with title on left side
+        # Loop Settings Group with title on left, container centered
         loop_row_container = QWidget()
         loop_row_layout = QHBoxLayout()
         loop_row_layout.setContentsMargins(0, 0, 0, 0)
         loop_row_container.setLayout(loop_row_layout)
 
-        # Loop title container (left side)
+        # Loop title container (left of centered container, vertically centered)
         loop_title_widget = QWidget()
-        loop_title_widget.setMaximumWidth(150)
+        loop_title_widget.setFixedWidth(150)
         loop_title_layout = QVBoxLayout()
         loop_title_layout.setContentsMargins(0, 0, 0, 0)
         loop_title_widget.setLayout(loop_title_layout)
 
+        loop_title_layout.addStretch()
         loop_title_header = QWidget()
         loop_title_header_layout = QHBoxLayout()
         loop_title_header_layout.setContentsMargins(0, 0, 0, 0)
@@ -1571,13 +1610,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
         loop_layout.setHorizontalSpacing(25)
-        loop_layout.setColumnStretch(0, 0)
-        loop_layout.setColumnStretch(2, 0)
-        loop_layout.setColumnStretch(4, 0)
-        loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward right
 
+        loop_row_layout.addStretch()
         loop_row_layout.addWidget(loop_title_widget)
-        loop_row_layout.addWidget(loop_group, 1)
+        loop_row_layout.addWidget(loop_group)
+        loop_row_layout.addStretch()
         main_layout.addWidget(loop_row_container)
 
         # Sync Mode with help
@@ -1753,19 +1790,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light.addItem("8 Track Looper", 1)
         loop_layout.addWidget(self.smart_chord_light, 3, 2)
 
-        # Advanced Settings Group with title on left side
+        # Advanced Settings Group with title on left, container centered
         advanced_row_container = QWidget()
         advanced_row_layout = QHBoxLayout()
         advanced_row_layout.setContentsMargins(0, 0, 0, 0)
         advanced_row_container.setLayout(advanced_row_layout)
 
-        # Advanced title container (left side)
+        # Advanced title container (left of centered container, vertically centered)
         advanced_title_widget = QWidget()
-        advanced_title_widget.setMaximumWidth(150)
+        advanced_title_widget.setFixedWidth(150)
         advanced_title_layout = QVBoxLayout()
         advanced_title_layout.setContentsMargins(0, 0, 0, 0)
         advanced_title_widget.setLayout(advanced_title_layout)
 
+        advanced_title_layout.addStretch()
         advanced_title_header = QWidget()
         advanced_title_header_layout = QHBoxLayout()
         advanced_title_header_layout.setContentsMargins(0, 0, 0, 0)
@@ -1782,15 +1820,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_group = QGroupBox()
         advanced_layout = QGridLayout()
         advanced_layout.setHorizontalSpacing(25)
-        advanced_layout.setColumnStretch(0, 0)
-        advanced_layout.setColumnStretch(2, 0)
-        advanced_layout.setColumnStretch(4, 0)
-        advanced_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward right
         advanced_group.setLayout(advanced_layout)
 
+        advanced_row_layout.addStretch()
         advanced_row_layout.addWidget(advanced_title_widget)
-        advanced_row_layout.addWidget(advanced_group, 1)
-        main_layout.addWidget(advanced_row_container)
+        advanced_row_layout.addWidget(advanced_group)
+        advanced_row_layout.addStretch()
 
         # Velocity Interval with help
         vel_interval_label = QWidget()
@@ -2023,19 +2058,20 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         )
         advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
 
-        # MIDI Routing Settings Group with title on left side
+        # MIDI Routing Settings Group with title on left, container centered
         routing_row_container = QWidget()
         routing_row_layout = QHBoxLayout()
         routing_row_layout.setContentsMargins(0, 0, 0, 0)
         routing_row_container.setLayout(routing_row_layout)
 
-        # Routing title container (left side)
+        # Routing title container (left of centered container, vertically centered)
         routing_title_widget = QWidget()
-        routing_title_widget.setMaximumWidth(150)
+        routing_title_widget.setFixedWidth(150)
         routing_title_layout = QVBoxLayout()
         routing_title_layout.setContentsMargins(0, 0, 0, 0)
         routing_title_widget.setLayout(routing_title_layout)
 
+        routing_title_layout.addStretch()
         routing_title_header = QWidget()
         routing_title_header_layout = QHBoxLayout()
         routing_title_header_layout.setContentsMargins(0, 0, 0, 0)
@@ -2059,16 +2095,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         midi_routing_group = QGroupBox()
         midi_routing_layout = QGridLayout()
         midi_routing_layout.setHorizontalSpacing(25)
-        midi_routing_layout.setColumnStretch(0, 0)
-        midi_routing_layout.setColumnStretch(2, 0)
-        midi_routing_layout.setColumnStretch(4, 0)
-        midi_routing_layout.setColumnStretch(6, 0)
-        midi_routing_layout.setColumnStretch(7, 1)    # Right spacer
         midi_routing_group.setLayout(midi_routing_layout)
 
+        routing_row_layout.addStretch()
         routing_row_layout.addWidget(routing_title_widget)
-        routing_row_layout.addWidget(midi_routing_group, 1)
-        main_layout.addWidget(routing_row_container)
+        routing_row_layout.addWidget(midi_routing_group)
+        routing_row_layout.addStretch()
 
         # Row 0: Override settings with help icons
         ch_override_label = QWidget()
@@ -2216,45 +2248,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.midi_clock_source.addItem("MIDI IN", 2)
         midi_routing_layout.addWidget(self.midi_clock_source, 1, 6)
 
-        # Buttons
+        # Add MIDI Routing before Advanced Settings (swapped order)
+        main_layout.addWidget(routing_row_container)
+        main_layout.addWidget(advanced_row_container)
+
+        # Slot buttons at bottom
         self.addStretch()
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addStretch()
-
-        # Default buttons
-        save_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save as Default"))
-        save_default_btn.setMinimumHeight(30)
-        save_default_btn.setMaximumHeight(30)
-        save_default_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-        save_default_btn.setToolTip("Save current settings as the default configuration.\nThese settings will be loaded on keyboard startup.")
-        save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
-        buttons_layout.addWidget(save_default_btn)
-
-        load_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Default"))
-        load_default_btn.setMinimumHeight(30)
-        load_default_btn.setMaximumHeight(30)
-        load_default_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-        load_default_btn.setToolTip("Load the saved default configuration.\nRestores settings from the default slot.")
-        load_default_btn.clicked.connect(lambda: self.on_load_slot(0))
-        buttons_layout.addWidget(load_default_btn)
-
-        load_current_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Current Settings"))
-        load_current_btn.setMinimumHeight(30)
-        load_current_btn.setMaximumHeight(30)
-        load_current_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-        load_current_btn.setToolTip("Refresh display with current keyboard settings.\nUpdates all fields to match the keyboard's active configuration.")
-        load_current_btn.clicked.connect(self.on_load_current_settings)
-        buttons_layout.addWidget(load_current_btn)
-
-        reset_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"))
-        reset_btn.setMinimumHeight(30)
-        reset_btn.setMaximumHeight(30)
-        reset_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-        reset_btn.setToolTip("Reset all MIDI settings to factory defaults.\nThis cannot be undone.")
-        reset_btn.clicked.connect(self.on_reset)
-        buttons_layout.addWidget(reset_btn)
-
-        self.addLayout(buttons_layout)
 
         # Save slot buttons
         save_slots_layout = QHBoxLayout()
