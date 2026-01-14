@@ -1976,6 +1976,7 @@ class Arpeggiator(BasicEditor):
     ARP_CMD_GET_INFO = 0xC9
     ARP_CMD_SET_NOTE = 0xCA
     ARP_CMD_SET_NOTES_CHUNK = 0xCB
+    ARP_CMD_SET_MODE = 0xCC
 
     MANUFACTURER_ID = 0x7D
     SUB_ID = 0x00
@@ -2048,6 +2049,7 @@ class Arpeggiator(BasicEditor):
         self.combo_mode.addItem("Chord Basic (All Notes)", 1)
         self.combo_mode.addItem("Chord Advanced (Rotation)", 2)
         self.combo_mode.setToolTip("Select how the arpeggiator plays notes")
+        self.combo_mode.currentIndexChanged.connect(self.on_mode_changed)
         params_layout.addWidget(lbl_mode, 0, 0)
         params_layout.addWidget(self.combo_mode, 0, 1)
 
@@ -2321,6 +2323,21 @@ class Arpeggiator(BasicEditor):
         self.step_layout.addStretch()  # Add stretch at the end to push steps to the left
         self.update_pattern_length_display()
         self.update_status(f"Rebuilt sequencer with {step_count} steps")
+
+    def on_mode_changed(self, index):
+        """Arpeggiator mode changed - send to device immediately"""
+        mode = self.combo_mode.currentData()
+        if mode is None:
+            mode = 0  # Default to Single Note
+
+        mode_names = ["Single Note", "Chord Basic", "Chord Advanced"]
+        mode_name = mode_names[mode] if mode < len(mode_names) else f"Mode {mode}"
+
+        # Send mode change to device
+        if self.send_hid_command(self.ARP_CMD_SET_MODE, [mode]):
+            self.update_status(f"Arpeggiator mode changed to {mode_name}")
+        else:
+            self.update_status(f"Failed to set arpeggiator mode", error=True)
 
     def on_pattern_rate_changed(self, index):
         """Pattern rate changed - update pattern length display"""
