@@ -293,16 +293,19 @@ class BasicStepSequencerGrid(QWidget):
         # Create header row (step numbers)
         self.rebuild_header()
 
-        # Create "+" button (will be positioned after rows) - styled like macro tab
+        # Create "+" button (will be positioned after rows) - same size as note buttons
         self.btn_add_note = QToolButton()
         self.btn_add_note.setText("+")
         self.btn_add_note.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        # Size based on font metrics like macro tab
-        btn_size = int(self.btn_add_note.fontMetrics().height() * 3.2)
-        self.btn_add_note.setFixedWidth(btn_size)
-        self.btn_add_note.setFixedHeight(btn_size)
+        # Same size as the editable note buttons (50x50)
+        self.btn_add_note.setFixedSize(50, 50)
         self.btn_add_note.setCursor(Qt.PointingHandCursor)
         self.btn_add_note.clicked.connect(self.add_note_row)
+
+        # Create "Note" label (will span note rows on left side)
+        self.note_title = QLabel("Note")
+        self.note_title.setAlignment(Qt.AlignCenter)
+        self.note_title.setStyleSheet("font-weight: bold;")
 
         # Add 4 default rows
         default_notes = [
@@ -327,51 +330,53 @@ class BasicStepSequencerGrid(QWidget):
         if hasattr(self, 'add_note_label') and self.add_note_label.parent() is not None:
             self.grid_layout.removeWidget(self.add_note_label)
 
-        # Add them at the row after all existing rows (len(self.rows) + 1, accounting for header)
-        row_position = len(self.rows) + 1
+        # Add them at the row after all existing rows (len(self.rows) + 2, accounting for 2 header rows)
+        row_position = len(self.rows) + 2
 
-        # Create horizontal layout for + button and label
-        add_note_container = QWidget()
-        add_note_layout = QHBoxLayout()
-        add_note_layout.setContentsMargins(0, 0, 0, 0)
-        add_note_layout.setSpacing(5)
+        # Place + button in column 1 (aligned with note buttons)
+        self.grid_layout.addWidget(self.btn_add_note, row_position, 1)
 
-        add_note_layout.addWidget(self.btn_add_note)
-
-        # Add instruction label next to + button
+        # Add instruction label in column 2 (next to + button)
         if not hasattr(self, 'add_note_label'):
             self.add_note_label = QLabel("Add a new note row")
             self.add_note_label.setStyleSheet("color: gray; font-style: italic;")
-        add_note_layout.addWidget(self.add_note_label)
-        add_note_layout.addStretch()
+            self.add_note_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.grid_layout.addWidget(self.add_note_label, row_position, 2, 1, self.num_steps)
 
-        add_note_container.setLayout(add_note_layout)
-        self.grid_layout.addWidget(add_note_container, row_position, 0, 1, self.num_steps + 1)
+    def _update_note_label_position(self):
+        """Update the position of the 'Note' label to span all note rows"""
+        # Remove from current position
+        self.grid_layout.removeWidget(self.note_title)
+        # Add spanning all note rows (col 0, starting at row 2)
+        if len(self.rows) > 0:
+            self.grid_layout.addWidget(self.note_title, 2, 0, len(self.rows), 1)
 
     def rebuild_header(self):
-        """Rebuild the header row with step numbers"""
-        # Clear first row
-        for col in range(self.grid_layout.columnCount()):
-            item = self.grid_layout.itemAtPosition(0, col)
-            if item and item.widget():
-                item.widget().deleteLater()
+        """Rebuild the header rows with Step title and step numbers"""
+        # Clear first two rows
+        for row in range(2):
+            for col in range(self.grid_layout.columnCount()):
+                item = self.grid_layout.itemAtPosition(row, col)
+                if item and item.widget():
+                    item.widget().deleteLater()
 
-        # Add empty label for note column (no "Note" title)
-        note_header = QLabel("")
-        note_header.setStyleSheet("padding-right: 5px;")
-        self.grid_layout.addWidget(note_header, 0, 0)
+        # Row 0: "Step" label above step columns (cols 2+)
+        step_title = QLabel("Step")
+        step_title.setAlignment(Qt.AlignCenter)
+        step_title.setStyleSheet("font-weight: bold;")
+        self.grid_layout.addWidget(step_title, 0, 2, 1, self.num_steps)
 
-        # Add step numbers
+        # Row 1: Step numbers (cols 2+)
         for step in range(self.num_steps):
             lbl = QLabel(f"{step + 1}")
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setStyleSheet("font-weight: bold;")
-            self.grid_layout.addWidget(lbl, 0, step + 1)
+            self.grid_layout.addWidget(lbl, 1, step + 2)
 
         # Add hint label to the right of step numbers
         steps_hint = QLabel("To add or remove steps, adjust the Number of Steps setting below")
         steps_hint.setStyleSheet("color: gray; font-style: italic; padding-left: 10px;")
-        self.grid_layout.addWidget(steps_hint, 0, self.num_steps + 1)
+        self.grid_layout.addWidget(steps_hint, 1, self.num_steps + 2)
 
     def on_steps_changed(self, new_steps):
         """Handle number of steps changed"""
@@ -379,14 +384,14 @@ class BasicStepSequencerGrid(QWidget):
         self.num_steps = new_steps
 
         if new_steps > old_steps:
-            # Add columns
+            # Add columns (cols 2+ for cells, row offset +2 for headers)
             for row_idx, row_data in enumerate(self.rows):
                 for step in range(old_steps, new_steps):
                     cell = GridCell(row_idx, step, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
                     row_data['cells'].append(cell)
-                    self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+                    self.grid_layout.addWidget(cell, row_idx + 2, step + 2)
         elif new_steps < old_steps:
             # Remove columns
             for row_data in self.rows:
@@ -396,6 +401,7 @@ class BasicStepSequencerGrid(QWidget):
                     cell.deleteLater()
 
         self.rebuild_header()
+        self._update_add_button_position()
         self.dataChanged.emit()
 
     def on_default_velocity_changed(self, value):
@@ -414,7 +420,7 @@ class BasicStepSequencerGrid(QWidget):
             'cells': []
         }
 
-        # Create note label with delete button
+        # Create note label with delete button (col 1)
         note_widget = QWidget()
         note_layout = QHBoxLayout()
         note_layout.setContentsMargins(0, 0, 0, 0)
@@ -451,18 +457,19 @@ class BasicStepSequencerGrid(QWidget):
         note_layout.addWidget(note_label)
 
         note_widget.setLayout(note_layout)
-        self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
+        self.grid_layout.addWidget(note_widget, row_idx + 2, 1)  # Row offset +2 for headers, col 1
 
-        # Create cells for this row
+        # Create cells for this row (cols 2+)
         for step in range(self.num_steps):
             cell = GridCell(row_idx, step, self)
             cell.leftClicked.connect(self.on_cell_left_click)
             cell.rightClicked.connect(self.on_cell_right_click)
             row_data['cells'].append(cell)
-            self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+            self.grid_layout.addWidget(cell, row_idx + 2, step + 2)  # Row offset +2, col offset +2
 
         self.rows.append(row_data)
         self._update_add_button_position()
+        self._update_note_label_position()
 
     def add_note_row(self):
         """Add a new note row"""
@@ -534,8 +541,8 @@ class BasicStepSequencerGrid(QWidget):
         # Remove widgets
         row_data = self.rows[row_idx]
 
-        # Remove note label (column 0)
-        item = self.grid_layout.itemAtPosition(row_idx + 1, 0)
+        # Remove note widget (column 1, row offset +2)
+        item = self.grid_layout.itemAtPosition(row_idx + 2, 1)
         if item and item.widget():
             item.widget().deleteLater()
 
@@ -550,6 +557,7 @@ class BasicStepSequencerGrid(QWidget):
         # Rebuild grid (re-index rows)
         self.rebuild_grid()
         self._update_add_button_position()
+        self._update_note_label_position()
         self.dataChanged.emit()
 
     def rebuild_grid(self):
@@ -616,7 +624,7 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.addWidget(note_label)
 
             note_widget.setLayout(note_layout)
-            self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
+            self.grid_layout.addWidget(note_widget, row_idx + 2, 1)  # Row offset +2, col 1
 
             # Create NEW cells and restore their states
             new_cells = []
@@ -631,12 +639,13 @@ class BasicStepSequencerGrid(QWidget):
                     cell.set_active(state['active'], state['velocity'], state['octave'])
 
                 new_cells.append(cell)
-                self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+                self.grid_layout.addWidget(cell, row_idx + 2, step + 2)  # Row offset +2, col offset +2
 
             # Replace old cells list with new cells
             row_data['cells'] = new_cells
 
         self._update_add_button_position()
+        self._update_note_label_position()
 
     def on_cell_left_click(self, row, col):
         """Handle left click - toggle cell"""
@@ -942,20 +951,19 @@ class BasicArpeggiatorGrid(QWidget):
 
         self.cells = []
 
-        # Header row 1: "Interval" label
+        # Header row 0: "Interval" label above interval columns (cols 2-24)
         interval_title = QLabel("Interval")
         interval_title.setAlignment(Qt.AlignCenter)
         interval_title.setStyleSheet("font-weight: bold;")
-        self.grid_layout.addWidget(interval_title, 0, 0, 1, 24)  # Span across all columns
+        self.grid_layout.addWidget(interval_title, 0, 2, 1, 23)  # Span interval columns only
 
-        # Header row 2: Interval numbers
-        self.grid_layout.addWidget(QLabel("Step"), 1, 0)  # Label for step column
+        # Header row 1: Interval numbers (cols 2-24)
         for col in range(23):
             interval = col - 11  # Col 0 = -11, col 11 = 0, col 22 = +11
 
             # Interval label
             if interval == 0:
-                lbl_text = "0"  # Changed from "Base Note" to "0"
+                lbl_text = "0"
             elif interval > 0:
                 lbl_text = f"+{interval}"
             else:
@@ -963,29 +971,36 @@ class BasicArpeggiatorGrid(QWidget):
 
             lbl = QLabel(lbl_text)
             lbl.setAlignment(Qt.AlignCenter)
-
-            # Make all intervals bold
             lbl.setStyleSheet("font-weight: bold;")
-            self.grid_layout.addWidget(lbl, 1, col + 1)
+            self.grid_layout.addWidget(lbl, 1, col + 2)
+
+        # "Step" label on left side spanning all step rows (col 0)
+        self.step_title = QLabel("Step")
+        self.step_title.setAlignment(Qt.AlignCenter)
+        self.step_title.setStyleSheet("font-weight: bold;")
+        # Will be positioned after creating rows
 
         # Create num_steps rows (one for each step) x 23 columns (intervals -11 to +11)
         for row in range(self.num_steps):
-            # Step label
+            # Step number label (col 1)
             lbl = QLabel(f"{row + 1}")
-            lbl.setAlignment(Qt.AlignRight)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold;")
-            self.grid_layout.addWidget(lbl, row + 2, 0)
+            self.grid_layout.addWidget(lbl, row + 2, 1)
 
-            # Create cells for this row (all 23 intervals)
+            # Create cells for this row (cols 2-24)
             row_cells = []
             for col in range(23):
                 cell = GridCell(row, col, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
                 row_cells.append(cell)
-                self.grid_layout.addWidget(cell, row + 2, col + 1)
+                self.grid_layout.addWidget(cell, row + 2, col + 2)
 
             self.cells.append(row_cells)
+
+        # Position "Step" label spanning all step rows (col 0, rows 2 to num_steps+1)
+        self.grid_layout.addWidget(self.step_title, 2, 0, self.num_steps, 1)
 
         # Add steps hint below the last step row
         self._update_steps_hint_position()
@@ -995,7 +1010,8 @@ class BasicArpeggiatorGrid(QWidget):
         # Remove from current position if it exists
         self.grid_layout.removeWidget(self.steps_hint)
         # Add at row after all steps (num_steps + 2 accounts for 2 header rows)
-        self.grid_layout.addWidget(self.steps_hint, self.num_steps + 2, 0, 1, 24)
+        # Span all 25 columns (col 0=Step label, col 1=numbers, cols 2-24=intervals)
+        self.grid_layout.addWidget(self.steps_hint, self.num_steps + 2, 0, 1, 25)
 
     def on_steps_changed(self, new_steps):
         """Handle number of steps changed - preserve existing data"""
@@ -1005,28 +1021,28 @@ class BasicArpeggiatorGrid(QWidget):
         if new_steps > old_steps:
             # Add rows - append new rows with all 23 interval cells
             for step in range(old_steps, new_steps):
-                # Step label
+                # Step number label (col 1)
                 lbl = QLabel(f"{step + 1}")
-                lbl.setAlignment(Qt.AlignRight)
+                lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 lbl.setStyleSheet("min-width: 30px; padding-right: 5px; font-weight: bold;")
-                self.grid_layout.addWidget(lbl, step + 2, 0)
+                self.grid_layout.addWidget(lbl, step + 2, 1)
 
-                # Create cells for this row (all 23 intervals)
+                # Create cells for this row (cols 2-24)
                 row_cells = []
                 for col in range(23):
                     cell = GridCell(step, col, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
                     row_cells.append(cell)
-                    self.grid_layout.addWidget(cell, step + 2, col + 1)
+                    self.grid_layout.addWidget(cell, step + 2, col + 2)
 
                 self.cells.append(row_cells)
         elif new_steps < old_steps:
             # Remove rows - remove from end
             for step in range(new_steps, old_steps):
                 if step < len(self.cells):
-                    # Remove label
-                    label_item = self.grid_layout.itemAtPosition(step + 2, 0)
+                    # Remove step number label (col 1)
+                    label_item = self.grid_layout.itemAtPosition(step + 2, 1)
                     if label_item and label_item.widget():
                         label_item.widget().deleteLater()
 
@@ -1038,6 +1054,10 @@ class BasicArpeggiatorGrid(QWidget):
 
             # Trim cells list
             self.cells = self.cells[:new_steps]
+
+        # Update "Step" label to span new number of rows
+        self.grid_layout.removeWidget(self.step_title)
+        self.grid_layout.addWidget(self.step_title, 2, 0, self.num_steps, 1)
 
         # Update hint position
         self._update_steps_hint_position()
@@ -2273,6 +2293,9 @@ class Arpeggiator(BasicEditor):
         # Initialize basic grid settings
         if hasattr(self, 'spin_default_velocity'):
             self.basic_grid.default_velocity = self.spin_default_velocity.value() * 2
+        # Sync basic grid's num_steps with the spin control
+        if hasattr(self, 'spin_num_steps') and self.basic_grid.num_steps != self.spin_num_steps.value():
+            self.basic_grid.on_steps_changed(self.spin_num_steps.value())
 
     def on_preset_tab_changed(self, index):
         """Handle preset tab change"""
