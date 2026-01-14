@@ -837,21 +837,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
-        # Title
-        title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Settings"))
-        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-        title_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(title_label)
-
-        # Description
-        desc_label = QLabel(tr("MIDIswitchSettingsConfigurator",
-            "Configure global MIDI settings including channel, transpose, velocity curves,\n"
-            "sustain behavior, and aftertouch options for your keyboard."))
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-        desc_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(desc_label)
-
         main_layout.addSpacing(10)
 
         # Global MIDI Settings Group - now contains base settings, keysplit, and triplesplit
@@ -860,30 +845,34 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         global_midi_group_layout.setSpacing(15)
         global_midi_group.setLayout(global_midi_group_layout)
 
-        # Create title with help icon for the group
-        global_midi_title = QLabel(tr("MIDIswitchSettingsConfigurator", "Global MIDI Settings"))
-        global_midi_title.setStyleSheet("font-weight: bold;")
-        global_midi_help = self.create_help_label(
-            "Configure the base MIDI settings that apply to all keys.\n"
-            "Channel: The MIDI channel for note output (1-16)\n"
-            "Transpose: Shift all notes up or down by semitones\n"
-            "Velocity Curve: How key press force maps to MIDI velocity\n"
-            "Sustain: Whether to respond to sustain pedal messages"
-        )
-        title_container = QHBoxLayout()
-        title_container.addStretch()
-        title_container.addWidget(global_midi_help)
-        title_container.addWidget(global_midi_title)
-        title_container.addStretch()
-        main_layout.addLayout(title_container)
+        # Base MIDI Settings container with title and description
+        base_settings_container = QWidget()
+        base_settings_container.setMaximumWidth(320)
+        base_container_layout = QVBoxLayout()
+        base_container_layout.setContentsMargins(0, 0, 0, 0)
+        base_container_layout.setSpacing(5)
+        base_settings_container.setLayout(base_container_layout)
 
-        # Base MIDI Settings container (limited width like keysplit)
-        base_settings_container = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Base Settings"))
-        base_settings_container.setMaximumWidth(300)
+        # Title
+        base_title = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Settings"))
+        base_title.setStyleSheet("font-weight: bold; font-size: 11pt;")
+        base_container_layout.addWidget(base_title)
+
+        # Description
+        base_desc = QLabel(tr("MIDIswitchSettingsConfigurator",
+            "Configure the default MIDI settings that load\n"
+            "every time the MIDIswitch boots up."))
+        base_desc.setWordWrap(True)
+        base_desc.setStyleSheet("color: gray; font-size: 9pt;")
+        base_container_layout.addWidget(base_desc)
+
+        # Base Settings group box
+        base_settings_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Base Settings"))
         base_layout = QGridLayout()
         base_layout.setVerticalSpacing(10)
         base_layout.setHorizontalSpacing(10)
-        base_settings_container.setLayout(base_layout)
+        base_settings_group.setLayout(base_layout)
+        base_container_layout.addWidget(base_settings_group)
 
         row = 0
 
@@ -1960,16 +1949,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("Off", False)
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
-
-        # Aftertouch is now per-layer (configured in Layer Actuation section)
-        aftertouch_note = QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch: Per-Layer"))
-        aftertouch_note.setStyleSheet("QLabel { color: #888; font-style: italic; }")
-        aftertouch_note.setToolTip(
-            "Aftertouch settings are configured per-layer.\n"
-            "Go to the Layer Actuation section to configure\n"
-            "aftertouch mode and CC number for each layer."
-        )
-        advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
 
         # MIDI Routing Settings Group with help icon
         routing_title_container = QHBoxLayout()
