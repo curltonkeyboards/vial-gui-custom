@@ -837,45 +837,34 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.addWidget(scroll_area, 1)
 
-        # Title
-        title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Settings"))
-        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
-        title_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(title_label)
-
-        # Description
-        desc_label = QLabel(tr("MIDIswitchSettingsConfigurator",
-            "Configure global MIDI settings including channel, transpose, velocity curves,\n"
-            "sustain behavior, and aftertouch options for your keyboard."))
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
-        desc_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(desc_label)
-
         main_layout.addSpacing(10)
 
-        # Global MIDI Settings Group - now contains base settings, keysplit, and triplesplit
+        # Global MIDI Settings Group - contains title/description on left, then base settings, keysplit, and triplesplit
         global_midi_group = QGroupBox()
         global_midi_group_layout = QHBoxLayout()
         global_midi_group_layout.setSpacing(15)
         global_midi_group.setLayout(global_midi_group_layout)
 
-        # Create title with help icon for the group
-        global_midi_title = QLabel(tr("MIDIswitchSettingsConfigurator", "Global MIDI Settings"))
-        global_midi_title.setStyleSheet("font-weight: bold;")
-        global_midi_help = self.create_help_label(
-            "Configure the base MIDI settings that apply to all keys.\n"
-            "Channel: The MIDI channel for note output (1-16)\n"
-            "Transpose: Shift all notes up or down by semitones\n"
-            "Velocity Curve: How key press force maps to MIDI velocity\n"
-            "Sustain: Whether to respond to sustain pedal messages"
-        )
-        title_container = QHBoxLayout()
-        title_container.addStretch()
-        title_container.addWidget(global_midi_help)
-        title_container.addWidget(global_midi_title)
-        title_container.addStretch()
-        main_layout.addLayout(title_container)
+        # MIDI Settings title and description container (left side)
+        midi_title_container = QWidget()
+        midi_title_container.setMaximumWidth(200)
+        midi_title_layout = QVBoxLayout()
+        midi_title_layout.setContentsMargins(0, 0, 0, 0)
+        midi_title_container.setLayout(midi_title_layout)
+
+        title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Settings"))
+        title_label.setStyleSheet("font-weight: bold; font-size: 14pt;")
+        title_label.setAlignment(QtCore.Qt.AlignLeft)
+        midi_title_layout.addWidget(title_label)
+
+        desc_label = QLabel(tr("MIDIswitchSettingsConfigurator",
+            "Configure global MIDI settings including channel, transpose, velocity curves, "
+            "sustain behavior, and aftertouch options for your keyboard."))
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray; font-size: 9pt;")
+        desc_label.setAlignment(QtCore.Qt.AlignLeft)
+        midi_title_layout.addWidget(desc_label)
+        midi_title_layout.addStretch()
 
         # Base MIDI Settings container (limited width like keysplit)
         base_settings_container = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Base Settings"))
@@ -1066,24 +1055,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.keysplit_offshoot.setLayout(keysplit_layout)
 
         ks_row = 0
-
-        # KeySplit title with help icon
-        ks_title_container = QWidget()
-        ks_title_layout = QHBoxLayout()
-        ks_title_layout.setContentsMargins(0, 0, 0, 0)
-        ks_title_layout.setSpacing(5)
-        ks_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings"))
-        ks_title_label.setStyleSheet("font-weight: bold;")
-        ks_title_layout.addWidget(self.create_help_label(
-            "KeySplit allows keys assigned to the KeySplit layer to use\n"
-            "different MIDI settings than the base layer.\n\n"
-            "Enable each parameter to apply separate settings for split keys."
-        ))
-        ks_title_layout.addWidget(ks_title_label)
-        ks_title_layout.addStretch()
-        ks_title_container.setLayout(ks_title_layout)
-        keysplit_layout.addWidget(ks_title_container, ks_row, 0, 1, 3)
-        ks_row += 1
 
         # Channel: Value dropdown | On/Off
         ch_label = QWidget()
@@ -1298,24 +1269,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
 
         ts_row = 0
 
-        # TripleSplit title with help icon
-        ts_title_container = QWidget()
-        ts_title_layout = QHBoxLayout()
-        ts_title_layout.setContentsMargins(0, 0, 0, 0)
-        ts_title_layout.setSpacing(5)
-        ts_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
-        ts_title_label.setStyleSheet("font-weight: bold;")
-        ts_title_layout.addWidget(self.create_help_label(
-            "TripleSplit allows keys assigned to the TripleSplit layer to use\n"
-            "different MIDI settings than both base and KeySplit layers.\n\n"
-            "Enable each parameter to apply separate settings for third split keys."
-        ))
-        ts_title_layout.addWidget(ts_title_label)
-        ts_title_layout.addStretch()
-        ts_title_container.setLayout(ts_title_layout)
-        triplesplit_layout.addWidget(ts_title_container, ts_row, 0, 1, 3)
-        ts_row += 1
-
         # Channel: Value dropdown | On/Off
         ts_ch_label = QWidget()
         ts_ch_label_layout = QHBoxLayout()
@@ -1519,22 +1472,89 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         triplesplit_layout.addWidget(self.triplesplit_sustain, ts_row, 1, 1, 2)
 
-        # Add all three containers to the horizontal layout
+        # Create wrapper for keysplit with title above
+        keysplit_wrapper = QWidget()
+        keysplit_wrapper_layout = QVBoxLayout()
+        keysplit_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        keysplit_wrapper_layout.setSpacing(5)
+        keysplit_wrapper.setLayout(keysplit_wrapper_layout)
+
+        # KeySplit title with help icon (above container)
+        ks_header = QWidget()
+        ks_header_layout = QHBoxLayout()
+        ks_header_layout.setContentsMargins(0, 0, 0, 0)
+        ks_header_layout.setSpacing(5)
+        ks_header_title = QLabel(tr("MIDIswitchSettingsConfigurator", "KeySplit Settings"))
+        ks_header_title.setStyleSheet("font-weight: bold;")
+        ks_header_layout.addWidget(self.create_help_label(
+            "KeySplit allows keys assigned to the KeySplit layer to use\n"
+            "different MIDI settings than the base layer.\n\n"
+            "Enable each parameter to apply separate settings for split keys."
+        ))
+        ks_header_layout.addWidget(ks_header_title)
+        ks_header_layout.addStretch()
+        ks_header.setLayout(ks_header_layout)
+        keysplit_wrapper_layout.addWidget(ks_header)
+        keysplit_wrapper_layout.addWidget(self.keysplit_offshoot)
+
+        # Create wrapper for triplesplit with title above
+        triplesplit_wrapper = QWidget()
+        triplesplit_wrapper_layout = QVBoxLayout()
+        triplesplit_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        triplesplit_wrapper_layout.setSpacing(5)
+        triplesplit_wrapper.setLayout(triplesplit_wrapper_layout)
+
+        # TripleSplit title with help icon (above container)
+        ts_header = QWidget()
+        ts_header_layout = QHBoxLayout()
+        ts_header_layout.setContentsMargins(0, 0, 0, 0)
+        ts_header_layout.setSpacing(5)
+        ts_header_title = QLabel(tr("MIDIswitchSettingsConfigurator", "TripleSplit Settings"))
+        ts_header_title.setStyleSheet("font-weight: bold;")
+        ts_header_layout.addWidget(self.create_help_label(
+            "TripleSplit allows keys assigned to the TripleSplit layer to use\n"
+            "different MIDI settings than both base and KeySplit layers.\n\n"
+            "Enable each parameter to apply separate settings for third split keys."
+        ))
+        ts_header_layout.addWidget(ts_header_title)
+        ts_header_layout.addStretch()
+        ts_header.setLayout(ts_header_layout)
+        triplesplit_wrapper_layout.addWidget(ts_header)
+        triplesplit_wrapper_layout.addWidget(self.triplesplit_offshoot)
+
+        # Add all containers to the horizontal layout
+        global_midi_group_layout.addWidget(midi_title_container)
         global_midi_group_layout.addStretch()
         global_midi_group_layout.addWidget(base_settings_container)
-        global_midi_group_layout.addWidget(self.keysplit_offshoot)
-        global_midi_group_layout.addWidget(self.triplesplit_offshoot)
+        global_midi_group_layout.addWidget(keysplit_wrapper)
+        global_midi_group_layout.addWidget(triplesplit_wrapper)
         global_midi_group_layout.addStretch()
 
         # Add global MIDI group to main layout
         main_layout.addWidget(global_midi_group)
 
-        # Loop Settings Group with help icon
-        loop_title_container = QHBoxLayout()
-        loop_title_container.addStretch()
+        # Loop Settings Group with title on left side
+        loop_row_container = QWidget()
+        loop_row_layout = QHBoxLayout()
+        loop_row_layout.setContentsMargins(0, 0, 0, 0)
+        loop_row_container.setLayout(loop_row_layout)
+
+        # Loop title container (left side)
+        loop_title_widget = QWidget()
+        loop_title_widget.setMaximumWidth(150)
+        loop_title_layout = QVBoxLayout()
+        loop_title_layout.setContentsMargins(0, 0, 0, 0)
+        loop_title_widget.setLayout(loop_title_layout)
+
+        loop_title_header = QWidget()
+        loop_title_header_layout = QHBoxLayout()
+        loop_title_header_layout.setContentsMargins(0, 0, 0, 0)
+        loop_title_header_layout.setSpacing(5)
+        loop_title_header.setLayout(loop_title_header_layout)
+
         loop_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
         loop_title_label.setStyleSheet("font-weight: bold;")
-        loop_title_container.addWidget(self.create_help_label(
+        loop_title_header_layout.addWidget(self.create_help_label(
             "Configure looping and synchronization settings:\n"
             "Sync Mode: How loops sync with tempo/clock\n"
             "Sample Mode: Enable one-shot sample playback\n"
@@ -1542,19 +1562,23 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "ThruLoop Channel: Channel for ThruLoop messages\n"
             "ThruLoop Restart: Send restart messages"
         ))
-        loop_title_container.addWidget(loop_title_label)
-        loop_title_container.addStretch()
-        main_layout.addLayout(loop_title_container)
+        loop_title_header_layout.addWidget(loop_title_label)
+        loop_title_header_layout.addStretch()
+        loop_title_layout.addWidget(loop_title_header)
+        loop_title_layout.addStretch()
 
         loop_group = QGroupBox()
         loop_layout = QGridLayout()
         loop_group.setLayout(loop_layout)
         loop_layout.setHorizontalSpacing(25)
-        loop_layout.setColumnStretch(0, 1)     # Left spacer
+        loop_layout.setColumnStretch(0, 0)
         loop_layout.setColumnStretch(2, 0)
         loop_layout.setColumnStretch(4, 0)
-        loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward center
-        main_layout.addWidget(loop_group)
+        loop_layout.setColumnStretch(5, 1)     # Right spacer - pushes everything toward right
+
+        loop_row_layout.addWidget(loop_title_widget)
+        loop_row_layout.addWidget(loop_group, 1)
+        main_layout.addWidget(loop_row_container)
 
         # Sync Mode with help
         sync_mode_label = QWidget()
@@ -1729,16 +1753,44 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light.addItem("8 Track Looper", 1)
         loop_layout.addWidget(self.smart_chord_light, 3, 2)
 
-        # Advanced Settings Group
-        advanced_group = QGroupBox(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
+        # Advanced Settings Group with title on left side
+        advanced_row_container = QWidget()
+        advanced_row_layout = QHBoxLayout()
+        advanced_row_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_row_container.setLayout(advanced_row_layout)
+
+        # Advanced title container (left side)
+        advanced_title_widget = QWidget()
+        advanced_title_widget.setMaximumWidth(150)
+        advanced_title_layout = QVBoxLayout()
+        advanced_title_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_title_widget.setLayout(advanced_title_layout)
+
+        advanced_title_header = QWidget()
+        advanced_title_header_layout = QHBoxLayout()
+        advanced_title_header_layout.setContentsMargins(0, 0, 0, 0)
+        advanced_title_header_layout.setSpacing(5)
+        advanced_title_header.setLayout(advanced_title_header_layout)
+
+        advanced_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
+        advanced_title_label.setStyleSheet("font-weight: bold;")
+        advanced_title_header_layout.addWidget(advanced_title_label)
+        advanced_title_header_layout.addStretch()
+        advanced_title_layout.addWidget(advanced_title_header)
+        advanced_title_layout.addStretch()
+
+        advanced_group = QGroupBox()
         advanced_layout = QGridLayout()
         advanced_layout.setHorizontalSpacing(25)
-        advanced_layout.setColumnStretch(0, 1)    # Left spacer
+        advanced_layout.setColumnStretch(0, 0)
         advanced_layout.setColumnStretch(2, 0)
         advanced_layout.setColumnStretch(4, 0)
-        advanced_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward center
+        advanced_layout.setColumnStretch(5, 1)    # Right spacer - pushes everything toward right
         advanced_group.setLayout(advanced_layout)
-        main_layout.addWidget(advanced_group)
+
+        advanced_row_layout.addWidget(advanced_title_widget)
+        advanced_row_layout.addWidget(advanced_group, 1)
+        main_layout.addWidget(advanced_row_container)
 
         # Velocity Interval with help
         vel_interval_label = QWidget()
@@ -1971,32 +2023,52 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         )
         advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
 
-        # MIDI Routing Settings Group with help icon
-        routing_title_container = QHBoxLayout()
-        routing_title_container.addStretch()
+        # MIDI Routing Settings Group with title on left side
+        routing_row_container = QWidget()
+        routing_row_layout = QHBoxLayout()
+        routing_row_layout.setContentsMargins(0, 0, 0, 0)
+        routing_row_container.setLayout(routing_row_layout)
+
+        # Routing title container (left side)
+        routing_title_widget = QWidget()
+        routing_title_widget.setMaximumWidth(150)
+        routing_title_layout = QVBoxLayout()
+        routing_title_layout.setContentsMargins(0, 0, 0, 0)
+        routing_title_widget.setLayout(routing_title_layout)
+
+        routing_title_header = QWidget()
+        routing_title_header_layout = QHBoxLayout()
+        routing_title_header_layout.setContentsMargins(0, 0, 0, 0)
+        routing_title_header_layout.setSpacing(5)
+        routing_title_header.setLayout(routing_title_header_layout)
+
         routing_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Routing Settings"))
         routing_title_label.setStyleSheet("font-weight: bold;")
-        routing_title_container.addWidget(self.create_help_label(
+        routing_title_header_layout.addWidget(self.create_help_label(
             "Configure MIDI input/output routing:\n"
             "Override settings control what MIDI data is passed through\n"
             "MIDI IN Mode: How incoming MIDI is processed\n"
             "USB MIDI Mode: How USB MIDI data is handled\n"
             "Clock Source: Where timing clock comes from"
         ))
-        routing_title_container.addWidget(routing_title_label)
-        routing_title_container.addStretch()
-        main_layout.addLayout(routing_title_container)
+        routing_title_header_layout.addWidget(routing_title_label)
+        routing_title_header_layout.addStretch()
+        routing_title_layout.addWidget(routing_title_header)
+        routing_title_layout.addStretch()
 
         midi_routing_group = QGroupBox()
         midi_routing_layout = QGridLayout()
         midi_routing_layout.setHorizontalSpacing(25)
-        midi_routing_layout.setColumnStretch(0, 1)    # Left spacer
+        midi_routing_layout.setColumnStretch(0, 0)
         midi_routing_layout.setColumnStretch(2, 0)
         midi_routing_layout.setColumnStretch(4, 0)
         midi_routing_layout.setColumnStretch(6, 0)
         midi_routing_layout.setColumnStretch(7, 1)    # Right spacer
         midi_routing_group.setLayout(midi_routing_layout)
-        main_layout.addWidget(midi_routing_group)
+
+        routing_row_layout.addWidget(routing_title_widget)
+        routing_row_layout.addWidget(midi_routing_group, 1)
+        main_layout.addWidget(routing_row_container)
 
         # Row 0: Override settings with help icons
         ch_override_label = QWidget()
