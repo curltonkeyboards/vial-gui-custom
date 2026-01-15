@@ -14,7 +14,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_DAW_ABLETON, KEYCODES_DAW_FL, KEYCODES_DAW_LOGIC, KEYCODES_DAW_PROTOOLS, KEYCODES_DAW_GARAGEBAND, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, \
+    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_HE_VELOCITY_CURVE, KEYCODES_HE_VELOCITY_RANGE, \
@@ -2516,7 +2516,7 @@ class LightingTab2(QScrollArea):
         return True  # Always has dropdowns
 
 class MacroContentTab(QWidget):
-    """Sub-tab showing macro keycodes with content"""
+    """Sub-tab showing all macro keycodes"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent):
@@ -2548,36 +2548,32 @@ class MacroContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        # Clear existing buttons from layout and delete them
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Clear existing buttons
+        for btn in self.buttons:
+            btn.deleteLater()
         self.buttons = []
 
-        if not self.keyboard:
-            return
+        # Use KEYCODES_MACRO list which is populated based on keyboard.macro_count
+        for keycode in KEYCODES_MACRO:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setToolTip(Keycode.tooltip(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode: self.keycode_changed.emit(k.qmk_id))
+            btn.keycode = keycode
+            self.flow_layout.addWidget(btn)
+            self.buttons.append(btn)
 
-        # Show ALL macro keycodes (not just those with content)
-        try:
-            macro_count = getattr(self.keyboard, 'macro_count', 16)
-            for idx in range(macro_count):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(f"M{idx}")
-                btn.setToolTip(f"Macro {idx}")
-                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"M{i}"))
-                self.flow_layout.addWidget(btn)
-                self.buttons.append(btn)
-        except Exception as e:
-            print(f"MacroContentTab.recreate_buttons error: {e}")
+        self.relabel_buttons()
+
+    def relabel_buttons(self):
+        KeycodeDisplay.relabel_buttons(self.buttons)
 
     def has_buttons(self):
         return len(self.buttons) > 0
 
 
 class TapDanceContentTab(QWidget):
-    """Sub-tab showing tap dance keycodes with content"""
+    """Sub-tab showing all tap dance keycodes"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent):
@@ -2609,35 +2605,32 @@ class TapDanceContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        # Clear existing buttons from layout and delete them
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Clear existing buttons
+        for btn in self.buttons:
+            btn.deleteLater()
         self.buttons = []
 
-        if not self.keyboard or not hasattr(self.keyboard, 'tap_dance_count'):
-            return
+        # Use KEYCODES_TAP_DANCE list which is populated based on keyboard.tap_dance_count
+        for keycode in KEYCODES_TAP_DANCE:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setToolTip(Keycode.tooltip(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode: self.keycode_changed.emit(k.qmk_id))
+            btn.keycode = keycode
+            self.flow_layout.addWidget(btn)
+            self.buttons.append(btn)
 
-        # Show ALL tap dance keycodes (not just those with content)
-        try:
-            for idx in range(self.keyboard.tap_dance_count):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(f"TD{idx}")
-                btn.setToolTip(f"Tap Dance {idx}")
-                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TD({i})"))
-                self.flow_layout.addWidget(btn)
-                self.buttons.append(btn)
-        except Exception as e:
-            print(f"TapDanceContentTab.recreate_buttons error: {e}")
+        self.relabel_buttons()
+
+    def relabel_buttons(self):
+        KeycodeDisplay.relabel_buttons(self.buttons)
 
     def has_buttons(self):
         return len(self.buttons) > 0
 
 
 class DKSContentTab(QWidget):
-    """Sub-tab showing DKS keycodes with content"""
+    """Sub-tab showing all DKS keycodes"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent):
@@ -2669,37 +2662,32 @@ class DKSContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        from protocol.dks_protocol import DKS_NUM_SLOTS
-
-        # Clear existing buttons from layout and delete them
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Clear existing buttons
+        for btn in self.buttons:
+            btn.deleteLater()
         self.buttons = []
 
-        if not self.keyboard:
-            return
+        # Use KEYCODES_DKS list (50 DKS slots)
+        for keycode in KEYCODES_DKS:
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setToolTip(Keycode.tooltip(keycode.qmk_id))
+            btn.clicked.connect(lambda _, k=keycode: self.keycode_changed.emit(k.qmk_id))
+            btn.keycode = keycode
+            self.flow_layout.addWidget(btn)
+            self.buttons.append(btn)
 
-        # Show ALL DKS keycodes (not just those with content)
-        try:
-            for idx in range(DKS_NUM_SLOTS):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(f"DKS{idx}")
-                btn.setToolTip(f"DKS {idx}")
-                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"DKS_{i:02d}"))
-                self.flow_layout.addWidget(btn)
-                self.buttons.append(btn)
-        except Exception as e:
-            print(f"DKSContentTab.recreate_buttons error: {e}")
+        self.relabel_buttons()
+
+    def relabel_buttons(self):
+        KeycodeDisplay.relabel_buttons(self.buttons)
 
     def has_buttons(self):
         return len(self.buttons) > 0
 
 
 class ToggleContentTab(QWidget):
-    """Sub-tab showing toggle keycodes with content"""
+    """Sub-tab showing all toggle keycodes"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent):
@@ -2733,28 +2721,27 @@ class ToggleContentTab(QWidget):
     def recreate_buttons(self):
         from protocol.toggle_protocol import TOGGLE_NUM_SLOTS
 
-        # Clear existing buttons from layout and delete them
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Clear existing buttons
+        for btn in self.buttons:
+            btn.deleteLater()
         self.buttons = []
 
-        if not self.keyboard:
-            return
+        # Create toggle keycodes dynamically (100 toggle slots)
+        for idx in range(TOGGLE_NUM_SLOTS):
+            qmk_id = f"TGL_{idx:02d}"
+            keycode = Keycode(qmk_id, f"TGL\n{idx:02d}", f"Toggle slot {idx}")
+            btn = SquareButton()
+            btn.setRelSize(KEYCODE_BTN_RATIO)
+            btn.setToolTip(f"Toggle slot {idx}")
+            btn.clicked.connect(lambda _, k=keycode: self.keycode_changed.emit(k.qmk_id))
+            btn.keycode = keycode
+            self.flow_layout.addWidget(btn)
+            self.buttons.append(btn)
 
-        # Show ALL toggle keycodes (not just those with content)
-        try:
-            for idx in range(TOGGLE_NUM_SLOTS):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.setText(f"TGL{idx:02d}")
-                btn.setToolTip(f"Toggle {idx}")
-                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TGL_{i:02d}"))
-                self.flow_layout.addWidget(btn)
-                self.buttons.append(btn)
-        except Exception as e:
-            print(f"ToggleContentTab.recreate_buttons error: {e}")
+        self.relabel_buttons()
+
+    def relabel_buttons(self):
+        KeycodeDisplay.relabel_buttons(self.buttons)
 
     def has_buttons(self):
         return len(self.buttons) > 0
@@ -2910,8 +2897,11 @@ class MacroTab(QWidget):
         return True  # Always show the tab
 
     def relabel_buttons(self):
-        """Relabel buttons - not needed for these tabs"""
-        pass
+        """Relabel buttons in all sub-tabs"""
+        self.macro_tab.relabel_buttons()
+        self.tapdance_tab.relabel_buttons()
+        self.dks_tab.relabel_buttons()
+        self.toggle_tab.relabel_buttons()
 
 class KeySplitTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
