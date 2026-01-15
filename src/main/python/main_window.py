@@ -31,6 +31,7 @@ from editor.qmk_settings import QmkSettings
 from editor.rgb_configurator import RGBConfigurator
 from tabbed_keycodes import TabbedKeycodes
 from editor.tap_dance import TapDance
+from editor.advanced_keys import AdvancedKeysTab
 from unlocker import Unlocker
 from util import tr, EXAMPLE_KEYBOARDS, KeycodeDisplay, EXAMPLE_KEYBOARD_PREFIX
 from vial_device import VialKeyboard
@@ -122,6 +123,18 @@ class MainWindow(QMainWindow):
         self.tap_dance = TapDance()
         self.combos = Combos()
         self.key_override = KeyOverride()
+
+        # Create the consolidated Advanced Keys tab
+        self.advanced_keys = AdvancedKeysTab(
+            self.layout_editor,
+            self.dks_settings,
+            self.macro_recorder,
+            self.toggle_settings,
+            self.tap_dance,
+            self.combos,
+            self.key_override
+        )
+
         QmkSettings.initialize(appctx)
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
@@ -141,16 +154,14 @@ class MainWindow(QMainWindow):
         self.arpeggiator = Arpeggiator()
         self.step_sequencer = StepSequencer()
 
-        # Updated editors list with new tabs inserted between Lighting and Tap Dance
+        # Updated editors list - DKS, Toggle, Macros, TapDance, Combos, KeyOverride consolidated into Advanced Keys
         self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
-                        (self.dks_settings, "DKS Settings"), (self.toggle_settings, "Toggle Keys"),
-                        (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
+                        (self.layout_editor, "Layout"), (self.advanced_keys, "Advanced Keys"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
                         (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
                         (self.midi_patchbay, "MIDI Patch"), (self.loop_manager, "Loop Manager"),
                         (self.arpeggiator, "Arpeggiator"), (self.step_sequencer, "Step Sequencer"),
-                        (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
-                        (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
+                        (self.qmk_settings, "QMK Settings"),
                         (self.matrix_tester, "Matrix tester"), (self.firmware_flasher, "Firmware updater")]
 
         Unlocker.global_layout_editor = self.layout_editor
@@ -364,9 +375,11 @@ class MainWindow(QMainWindow):
             self.autorefresh.current_device.keyboard.reload()
 
         # Updated to include the new configurators in the rebuild process
+        # Note: Individual editors (dks_settings, toggle_settings, macro_recorder, etc.) are rebuilt
+        # first so advanced_keys can check their validity
         for e in [self.layout_editor, self.keymap_editor, self.trigger_settings, self.dks_settings,
                   self.toggle_settings, self.firmware_flasher, self.macro_recorder, self.tap_dance,
-                  self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
+                  self.combos, self.key_override, self.advanced_keys, self.qmk_settings, self.matrix_tester,
                   self.rgb_configurator, self.MIDIswitchSettingsConfigurator,
                   self.thruloop_configurator, self.gaming_configurator, self.midi_patchbay,
                   self.loop_manager, self.arpeggiator, self.step_sequencer]:
