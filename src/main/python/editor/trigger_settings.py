@@ -1667,8 +1667,8 @@ class TriggerSettingsTab(BasicEditor):
         if not hasattr(self, 'actuation_visualizer'):
             return
 
-        # Get current layer
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Always show current layer's per-key values in the visualizer
+        layer = self.current_layer
 
         # Get active key if selected
         if self.container.active_key and self.container.active_key.desc.row is not None:
@@ -1797,7 +1797,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.pending_layer_data.append(layer_data.copy())
 
         # Update pending_layer_data for current layer (or all layers if not per-layer)
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         if self.per_layer_enabled:
             # Update only current layer
@@ -1846,7 +1846,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.pending_layer_data.append(layer_data.copy())
 
         # Update pending_layer_data for current layer (or all layers if not per-layer)
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         if self.per_layer_enabled:
             # Update only current layer
@@ -1913,7 +1913,8 @@ class TriggerSettingsTab(BasicEditor):
 
                     if key_index < 70:
                         # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Use 'layer' not 'current_layer' so each layer's keymap determines key type
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -1992,7 +1993,8 @@ class TriggerSettingsTab(BasicEditor):
 
                     if key_index < 70:
                         # Get the keycode for this key from the keymap
-                        keycode = self.keyboard.layout.get((self.current_layer, row, col), "KC_NO")
+                        # Use 'layer' not 'current_layer' so each layer's keymap determines key type
+                        keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
                         # Check if key type matches
                         key_is_midi = self.is_midi_keycode(keycode)
@@ -2063,8 +2065,8 @@ class TriggerSettingsTab(BasicEditor):
         if key_index >= 70:
             return
 
-        # Get current layer to use
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Always show/edit current layer's per-key settings
+        layer = self.current_layer
 
         # Load all settings from cache
         settings = self.per_key_values[layer][key_index]
@@ -2158,7 +2160,8 @@ class TriggerSettingsTab(BasicEditor):
         if key_index >= 70:
             return
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Always use current layer's settings
+        layer = self.current_layer
         settings = self.per_key_values[layer][key_index]
 
         # Send to device
@@ -2180,7 +2183,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2215,7 +2218,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys with IMMEDIATE SAVE to keyboard
         for key in selected_keys:
@@ -2253,7 +2256,7 @@ class TriggerSettingsTab(BasicEditor):
                 if not selected_keys and self.container.active_key:
                     selected_keys = [self.container.active_key]
 
-                layer = self.current_layer if self.per_layer_enabled else 0
+                layer = self.current_layer
 
                 # Apply to all selected keys with IMMEDIATE SAVE
                 for key in selected_keys:
@@ -2302,7 +2305,7 @@ class TriggerSettingsTab(BasicEditor):
                 if not selected_keys and self.container.active_key:
                     selected_keys = [self.container.active_key]
 
-                layer = self.current_layer if self.per_layer_enabled else 0
+                layer = self.current_layer
 
                 for key in selected_keys:
                     if key.desc.row is not None:
@@ -2333,7 +2336,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2365,7 +2368,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2426,7 +2429,7 @@ class TriggerSettingsTab(BasicEditor):
             if not selected_keys and self.container.active_key:
                 selected_keys = [self.container.active_key]
 
-            layer = self.current_layer if self.per_layer_enabled else 0
+            layer = self.current_layer
 
             # Apply to all selected keys
             for key in selected_keys:
@@ -2462,7 +2465,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2493,7 +2496,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2524,7 +2527,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2589,7 +2592,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2624,7 +2627,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2709,10 +2712,14 @@ class TriggerSettingsTab(BasicEditor):
         return False
 
     def apply_keymap_based_actuations(self):
-        """When disabling per-key mode, scan keymap and assign actuation values based on key type.
+        """Apply actuation and deadzone values to all layers based on each layer's keymap.
 
-        This applies uniform keymap-based actuations to ALL 12 layers since firmware
-        always uses per-key per-layer settings. This ensures consistency across all layers.
+        This is called when per-layer mode is disabled or when per-key mode is disabled.
+        It scans each layer's keymap and applies the appropriate normal or MIDI actuation
+        and deadzone values based on whether each key is a MIDI key on that layer.
+
+        This ensures that when using a single set of normal/MIDI values, each layer
+        gets the correct actuation based on its own keymap configuration.
         """
         if not self.valid() or not self.keyboard:
             return
@@ -2721,6 +2728,12 @@ class TriggerSettingsTab(BasicEditor):
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
         normal_actuation = data_source[self.current_layer]['normal']
         midi_actuation = data_source[self.current_layer]['midi']
+
+        # Get deadzone values from the global sliders
+        normal_dz_bottom = self.global_normal_slider.get_deadzone_bottom()
+        normal_dz_top = self.global_normal_slider.get_deadzone_top()
+        midi_dz_bottom = self.global_midi_slider.get_deadzone_bottom()
+        midi_dz_top = self.global_midi_slider.get_deadzone_top()
 
         # Apply to ALL 12 layers for uniformity (firmware always uses per-key per-layer)
         for layer in range(12):
@@ -2731,17 +2744,23 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap (check current layer for MIDI detection)
+                        # Get the keycode for this key from the keymap
                         keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
-                        # Determine actuation value based on whether it's a MIDI key
+                        # Determine actuation and deadzone values based on whether it's a MIDI key
                         if self.is_midi_keycode(keycode):
                             actuation_value = midi_actuation
+                            dz_bottom = midi_dz_bottom
+                            dz_top = midi_dz_top
                         else:
                             actuation_value = normal_actuation
+                            dz_bottom = normal_dz_bottom
+                            dz_top = normal_dz_top
 
-                        # Update per-key value in memory
+                        # Update per-key values in memory
                         self.per_key_values[layer][key_index]['actuation'] = actuation_value
+                        self.per_key_values[layer][key_index]['deadzone_bottom'] = dz_bottom
+                        self.per_key_values[layer][key_index]['deadzone_top'] = dz_top
 
                         # Send to device
                         if self.device and isinstance(self.device, VialKeyboard):
@@ -2856,9 +2875,10 @@ class TriggerSettingsTab(BasicEditor):
 
         self.per_layer_enabled = (state == Qt.Checked)
 
-        # If per-layer was just disabled, sync current layer's values to all layers
+        # If per-layer was just disabled, apply keymap-based actuations to all layers
+        # This ensures each layer's keys get the correct actuation based on their keymap
         if not self.per_layer_enabled:
-            self.sync_current_layer_to_all_layers()
+            self.apply_keymap_based_actuations()
 
         # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
         # The call is kept for backward compatibility but is a no-op
@@ -3054,7 +3074,7 @@ class TriggerSettingsTab(BasicEditor):
         self.syncing = True
 
         # Get layer to use
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
@@ -3206,8 +3226,9 @@ class TriggerSettingsTab(BasicEditor):
         for idx, btn in enumerate(self.layer_buttons[:self.keyboard.layers]):
             btn.setChecked(idx == self.current_layer)
 
-        # Update keyboard key displays
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Update keyboard key displays - always show current layer's per-key values
+        # Even when per-layer is disabled, each layer has its own values based on keymap
+        layer = self.current_layer
 
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
