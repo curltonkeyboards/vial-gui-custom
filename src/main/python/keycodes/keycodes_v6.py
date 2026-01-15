@@ -2513,6 +2513,9 @@ class keycodes_v6:
         # DKS (Dynamic Keystroke) Slots (0xED00-0xED31) - 50 slots
         "DKS_00": 0xED00,  # Base for DKS slot selection
 
+        # Toggle Keys Slots (0xEE00-0xEE63) - 100 slots
+        "TGL_00": 0xEE00,  # Base for toggle key slot selection
+
         "QK_KB": 0xCC57, #custom keycodes safe range
 
         # =============================================================================
@@ -2852,6 +2855,10 @@ for x in range(68):
 # Generate DKS (Dynamic Keystroke) slot selection keycodes (50 slots)
 for x in range(50):
     keycodes_v6.kc["DKS_{:02d}".format(x)] = keycodes_v6.kc["DKS_00"] + x
+
+# Generate Toggle Keys slot selection keycodes (100 slots)
+for x in range(100):
+    keycodes_v6.kc["TGL_{:02d}".format(x)] = keycodes_v6.kc["TGL_00"] + x
 
 for name, val in keycodes_v6.kc.items():
     if name.endswith("(kc)"):
