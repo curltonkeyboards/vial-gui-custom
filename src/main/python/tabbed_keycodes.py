@@ -2561,17 +2561,25 @@ class MacroContentSection(QScrollArea):
 
         macros_with_content = []
         try:
-            # Check if keyboard has macro data
-            if hasattr(self.keyboard, 'macro') and self.keyboard.macro:
-                # Split by NUL to get individual macros
-                macro_data = self.keyboard.macro.split(b"\x00")
-                macro_count = getattr(self.keyboard, 'macro_count', len(macro_data))
-
-                for i in range(min(macro_count, len(macro_data))):
-                    if i < len(macro_data) and len(macro_data[i]) > 0:
-                        macros_with_content.append(i)
-        except Exception:
-            pass
+            # Use macros_deserialize to properly check content like the macro editor does
+            if hasattr(self.keyboard, 'macro') and hasattr(self.keyboard, 'macros_deserialize'):
+                if self.keyboard.macro:
+                    macros = self.keyboard.macros_deserialize(self.keyboard.macro)
+                    for i, macro in enumerate(macros):
+                        # macro is a list of actions - if it has any actions, it has content
+                        if len(macro) > 0:
+                            macros_with_content.append(i)
+        except Exception as e:
+            # Fallback: try the simple split approach
+            try:
+                if hasattr(self.keyboard, 'macro') and self.keyboard.macro:
+                    macro_data = self.keyboard.macro.split(b"\x00")
+                    macro_count = getattr(self.keyboard, 'macro_count', len(macro_data))
+                    for i in range(min(macro_count, len(macro_data))):
+                        if i < len(macro_data) and len(macro_data[i]) > 0:
+                            macros_with_content.append(i)
+            except Exception:
+                pass
 
         return macros_with_content
 
@@ -2668,10 +2676,19 @@ class TapdanceContentSection(QScrollArea):
 
         tapdances_with_content = []
         try:
-            if hasattr(self.keyboard, 'tap_dance_entries') and self.keyboard.tap_dance_entries:
-                for i, entry in enumerate(self.keyboard.tap_dance_entries):
+            # Use tap_dance_get method like the tap dance editor does
+            if hasattr(self.keyboard, 'tap_dance_count') and hasattr(self.keyboard, 'tap_dance_get'):
+                for i in range(self.keyboard.tap_dance_count):
+                    entry = self.keyboard.tap_dance_get(i)
                     # Entry format: (on_tap, on_hold, on_double_tap, on_tap_hold, tapping_term)
                     # Check if any of the 4 keycodes is not "KC_NO"
+                    if len(entry) >= 4:
+                        if (entry[0] != "KC_NO" or entry[1] != "KC_NO" or
+                            entry[2] != "KC_NO" or entry[3] != "KC_NO"):
+                            tapdances_with_content.append(i)
+            # Fallback to tap_dance_entries if available
+            elif hasattr(self.keyboard, 'tap_dance_entries') and self.keyboard.tap_dance_entries:
+                for i, entry in enumerate(self.keyboard.tap_dance_entries):
                     if len(entry) >= 4:
                         if (entry[0] != "KC_NO" or entry[1] != "KC_NO" or
                             entry[2] != "KC_NO" or entry[3] != "KC_NO"):
@@ -2729,13 +2746,12 @@ class TapdanceContentSection(QScrollArea):
 
 
 class DKSContentSection(QScrollArea):
-    """Section displaying DKS keycode buttons for DKS slots with content"""
+    """Section displaying DKS keycode buttons - shows all DKS slots since content detection requires device"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
         self.keyboard = None
-        self.device = None
         self.current_keycode_filter = None
         self.buttons = []
 
@@ -2745,8 +2761,8 @@ class DKSContentSection(QScrollArea):
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setAlignment(Qt.AlignTop)
 
-        # Info label shown when no content detected
-        self.info_label = QLabel("No DKS slots with content detected.\nConfigure DKS in the DKS editor tab.")
+        # Info label shown when no keyboard connected
+        self.info_label = QLabel("Connect a keyboard to see DKS keycodes.")
         self.info_label.setAlignment(Qt.AlignCenter)
         self.info_label.setStyleSheet("color: gray; font-style: italic;")
         self.main_layout.addWidget(self.info_label)
@@ -2766,39 +2782,7 @@ class DKSContentSection(QScrollArea):
 
     def set_keyboard(self, keyboard):
         self.keyboard = keyboard
-        # Try to get device from keyboard for DKS protocol access
-        if hasattr(keyboard, 'dev'):
-            self.device = keyboard.dev
         self.recreate_buttons(self.current_keycode_filter)
-
-    def get_dks_slots_with_content(self):
-        """Get list of DKS slot indices that have content"""
-        if self.keyboard is None:
-            return []
-
-        dks_with_content = []
-        try:
-            # Check if keyboard has DKS data via dks_slots attribute
-            if hasattr(self.keyboard, 'dks_slots'):
-                for i, slot in enumerate(self.keyboard.dks_slots):
-                    # Check if any action has a non-zero keycode
-                    has_content = False
-                    if hasattr(slot, 'press_actions'):
-                        for action in slot.press_actions:
-                            if hasattr(action, 'keycode') and action.keycode != 0:
-                                has_content = True
-                                break
-                    if not has_content and hasattr(slot, 'release_actions'):
-                        for action in slot.release_actions:
-                            if hasattr(action, 'keycode') and action.keycode != 0:
-                                has_content = True
-                                break
-                    if has_content:
-                        dks_with_content.append(i)
-        except Exception:
-            pass
-
-        return dks_with_content
 
     def recreate_buttons(self, keycode_filter=None):
         self.current_keycode_filter = keycode_filter
@@ -2810,9 +2794,9 @@ class DKSContentSection(QScrollArea):
                 item.widget().deleteLater()
         self.buttons.clear()
 
-        dks_with_content = self.get_dks_slots_with_content()
-
-        if not dks_with_content:
+        # Show all DKS slots (50 slots) when keyboard is connected
+        # Content detection for DKS requires device access which we don't have here
+        if self.keyboard is None:
             self.info_label.show()
             self.button_container.hide()
             return
@@ -2820,9 +2804,9 @@ class DKSContentSection(QScrollArea):
         self.info_label.hide()
         self.button_container.show()
 
-        # Create buttons for each DKS slot with content
-        for idx in dks_with_content:
-            keycode = KEYCODES_DKS[idx] if idx < len(KEYCODES_DKS) else None
+        # Create buttons for all DKS slots
+        for idx in range(min(50, len(KEYCODES_DKS))):
+            keycode = KEYCODES_DKS[idx]
             if keycode is None:
                 continue
 
@@ -2848,7 +2832,7 @@ class DKSContentSection(QScrollArea):
 
 
 class ToggleContentSection(QScrollArea):
-    """Section displaying Toggle keycode buttons for toggle slots with content"""
+    """Section displaying Toggle keycode buttons - shows all toggle slots since content detection requires device"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent):
@@ -2863,8 +2847,8 @@ class ToggleContentSection(QScrollArea):
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setAlignment(Qt.AlignTop)
 
-        # Info label shown when no content detected
-        self.info_label = QLabel("No toggle slots with content detected.\nConfigure toggles in the Toggle editor tab.")
+        # Info label shown when no keyboard connected
+        self.info_label = QLabel("Connect a keyboard to see Toggle keycodes.")
         self.info_label.setAlignment(Qt.AlignCenter)
         self.info_label.setStyleSheet("color: gray; font-style: italic;")
         self.main_layout.addWidget(self.info_label)
@@ -2886,25 +2870,6 @@ class ToggleContentSection(QScrollArea):
         self.keyboard = keyboard
         self.recreate_buttons(self.current_keycode_filter)
 
-    def get_toggles_with_content(self):
-        """Get list of toggle slot indices that have content"""
-        if self.keyboard is None:
-            return []
-
-        toggles_with_content = []
-        try:
-            # Check if keyboard has toggle_slots attribute
-            if hasattr(self.keyboard, 'toggle_slots'):
-                for i, slot in enumerate(self.keyboard.toggle_slots):
-                    if hasattr(slot, 'target_keycode') and slot.target_keycode != 0:
-                        toggles_with_content.append(i)
-                    elif hasattr(slot, 'is_enabled') and slot.is_enabled():
-                        toggles_with_content.append(i)
-        except Exception:
-            pass
-
-        return toggles_with_content
-
     def recreate_buttons(self, keycode_filter=None):
         self.current_keycode_filter = keycode_filter
 
@@ -2915,9 +2880,9 @@ class ToggleContentSection(QScrollArea):
                 item.widget().deleteLater()
         self.buttons.clear()
 
-        toggles_with_content = self.get_toggles_with_content()
-
-        if not toggles_with_content:
+        # Show all Toggle slots (100 slots) when keyboard is connected
+        # Content detection for Toggle requires device access which we don't have here
+        if self.keyboard is None:
             self.info_label.show()
             self.button_container.hide()
             return
@@ -2925,9 +2890,9 @@ class ToggleContentSection(QScrollArea):
         self.info_label.hide()
         self.button_container.show()
 
-        # Create buttons for each toggle slot with content
-        for idx in toggles_with_content:
-            keycode = KEYCODES_TOGGLE[idx] if idx < len(KEYCODES_TOGGLE) else None
+        # Create buttons for all Toggle slots
+        for idx in range(min(100, len(KEYCODES_TOGGLE))):
+            keycode = KEYCODES_TOGGLE[idx]
             if keycode is None:
                 continue
 
