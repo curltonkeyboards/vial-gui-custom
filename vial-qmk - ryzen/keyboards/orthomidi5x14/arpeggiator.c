@@ -463,25 +463,6 @@ static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
     return base_ms;
 }
 
-// Sort live notes by pitch (for consistent ordering)
-static void sort_live_notes_by_pitch(uint8_t sorted_indices[], uint8_t count) {
-    // Create array of indices
-    for (uint8_t i = 0; i < count; i++) {
-        sorted_indices[i] = i;
-    }
-
-    // Simple bubble sort by note pitch
-    for (uint8_t i = 0; i < count - 1; i++) {
-        for (uint8_t j = 0; j < count - i - 1; j++) {
-            if (live_notes[sorted_indices[j]][1] > live_notes[sorted_indices[j+1]][1]) {
-                uint8_t temp = sorted_indices[j];
-                sorted_indices[j] = sorted_indices[j+1];
-                sorted_indices[j+1] = temp;
-            }
-        }
-    }
-}
-
 void arp_init(void) {
     // Clear arp notes
     memset(arp_notes, 0, sizeof(arp_notes));
