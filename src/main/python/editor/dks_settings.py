@@ -1458,6 +1458,10 @@ class DKSSettingsTab(BasicEditor):
         self._manually_expanded_count = 0
         self._scan_and_update_visible_tabs()
 
+        # Set keyboard reference for tabbed keycodes
+        if hasattr(device, 'keyboard'):
+            self.tabbed_keycodes.set_keyboard(device.keyboard)
+
     def _dks_slot_has_content(self, slot):
         """Check if a DKS slot has any keycodes assigned"""
         # Check press actions

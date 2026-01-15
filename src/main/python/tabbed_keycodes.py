@@ -2570,8 +2570,8 @@ class MacroContentTab(QWidget):
                     btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"M{i}"))
                     self.flow_layout.addWidget(btn)
                     self.buttons.append(btn)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"MacroContentTab.recreate_buttons error: {e}")
 
     def has_buttons(self):
         return len(self.buttons) > 0
@@ -2632,8 +2632,8 @@ class TapDanceContentTab(QWidget):
                     btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TD({i})"))
                     self.flow_layout.addWidget(btn)
                     self.buttons.append(btn)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"TapDanceContentTab.recreate_buttons error: {e}")
 
     def has_buttons(self):
         return len(self.buttons) > 0
@@ -2711,8 +2711,8 @@ class DKSContentTab(QWidget):
                         btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"DKS_{i:02d}"))
                         self.flow_layout.addWidget(btn)
                         self.buttons.append(btn)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"DKSContentTab.recreate_buttons error: {e}")
 
     def has_buttons(self):
         return len(self.buttons) > 0
@@ -2776,8 +2776,8 @@ class ToggleContentTab(QWidget):
                     btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TGL_{i:02d}"))
                     self.flow_layout.addWidget(btn)
                     self.buttons.append(btn)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"ToggleContentTab.recreate_buttons error: {e}")
 
     def has_buttons(self):
         return len(self.buttons) > 0

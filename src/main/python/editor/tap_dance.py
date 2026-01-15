@@ -283,6 +283,8 @@ class TapDance(BasicEditor):
         if self.valid():
             self.keyboard = device.keyboard
             self.rebuild_ui()
+            # Set keyboard reference for tabbed keycodes
+            self.tabbed_keycodes.set_keyboard(self.keyboard)
 
     def valid(self):
         return isinstance(self.device, VialKeyboard) and \

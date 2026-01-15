@@ -120,6 +120,9 @@ class MacroRecorder(BasicEditor):
         self._manually_expanded_count = 0
         self._update_visible_tabs()
 
+        # Set keyboard reference for tabbed keycodes
+        self.tabbed_keycodes.set_keyboard(self.keyboard)
+
         self.on_change()
 
     def on_widget_deleted(self, widget):
