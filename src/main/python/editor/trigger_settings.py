@@ -2711,10 +2711,14 @@ class TriggerSettingsTab(BasicEditor):
         return False
 
     def apply_keymap_based_actuations(self):
-        """When disabling per-key mode, scan keymap and assign actuation values based on key type.
+        """Apply actuation and deadzone values to all layers based on each layer's keymap.
 
-        This applies uniform keymap-based actuations to ALL 12 layers since firmware
-        always uses per-key per-layer settings. This ensures consistency across all layers.
+        This is called when per-layer mode is disabled or when per-key mode is disabled.
+        It scans each layer's keymap and applies the appropriate normal or MIDI actuation
+        and deadzone values based on whether each key is a MIDI key on that layer.
+
+        This ensures that when using a single set of normal/MIDI values, each layer
+        gets the correct actuation based on its own keymap configuration.
         """
         if not self.valid() or not self.keyboard:
             return
@@ -2723,6 +2727,12 @@ class TriggerSettingsTab(BasicEditor):
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
         normal_actuation = data_source[self.current_layer]['normal']
         midi_actuation = data_source[self.current_layer]['midi']
+
+        # Get deadzone values from the global sliders
+        normal_dz_bottom = self.global_normal_slider.get_deadzone_bottom()
+        normal_dz_top = self.global_normal_slider.get_deadzone_top()
+        midi_dz_bottom = self.global_midi_slider.get_deadzone_bottom()
+        midi_dz_top = self.global_midi_slider.get_deadzone_top()
 
         # Apply to ALL 12 layers for uniformity (firmware always uses per-key per-layer)
         for layer in range(12):
@@ -2733,17 +2743,23 @@ class TriggerSettingsTab(BasicEditor):
                     key_index = row * 14 + col
 
                     if key_index < 70:
-                        # Get the keycode for this key from the keymap (check current layer for MIDI detection)
+                        # Get the keycode for this key from the keymap
                         keycode = self.keyboard.layout.get((layer, row, col), "KC_NO")
 
-                        # Determine actuation value based on whether it's a MIDI key
+                        # Determine actuation and deadzone values based on whether it's a MIDI key
                         if self.is_midi_keycode(keycode):
                             actuation_value = midi_actuation
+                            dz_bottom = midi_dz_bottom
+                            dz_top = midi_dz_top
                         else:
                             actuation_value = normal_actuation
+                            dz_bottom = normal_dz_bottom
+                            dz_top = normal_dz_top
 
-                        # Update per-key value in memory
+                        # Update per-key values in memory
                         self.per_key_values[layer][key_index]['actuation'] = actuation_value
+                        self.per_key_values[layer][key_index]['deadzone_bottom'] = dz_bottom
+                        self.per_key_values[layer][key_index]['deadzone_top'] = dz_top
 
                         # Send to device
                         if self.device and isinstance(self.device, VialKeyboard):
@@ -2858,9 +2874,10 @@ class TriggerSettingsTab(BasicEditor):
 
         self.per_layer_enabled = (state == Qt.Checked)
 
-        # If per-layer was just disabled, sync current layer's values to all layers
+        # If per-layer was just disabled, apply keymap-based actuations to all layers
+        # This ensures each layer's keys get the correct actuation based on their keymap
         if not self.per_layer_enabled:
-            self.sync_current_layer_to_all_layers()
+            self.apply_keymap_based_actuations()
 
         # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
         # The call is kept for backward compatibility but is a no-op
