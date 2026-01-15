@@ -2558,18 +2558,16 @@ class MacroContentTab(QWidget):
         if not self.keyboard:
             return
 
-        # Get macros with content
+        # Show all macro keycodes
         try:
-            macros = self.keyboard.macros_deserialize(self.keyboard.macro)
-            for idx, macro in enumerate(macros):
-                if len(macro) > 0:  # Has content
-                    btn = SquareButton()
-                    btn.setRelSize(KEYCODE_BTN_RATIO)
-                    btn.setText(f"M{idx}")
-                    btn.setToolTip(f"Macro {idx}")
-                    btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"M{i}"))
-                    self.flow_layout.addWidget(btn)
-                    self.buttons.append(btn)
+            for idx in range(self.keyboard.macro_count):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(f"M{idx}")
+                btn.setToolTip(f"Macro {idx}")
+                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"M{i}"))
+                self.flow_layout.addWidget(btn)
+                self.buttons.append(btn)
         except Exception as e:
             print(f"MacroContentTab.recreate_buttons error: {e}")
 
@@ -2620,18 +2618,16 @@ class TapDanceContentTab(QWidget):
         if not self.keyboard or not hasattr(self.keyboard, 'tap_dance_count'):
             return
 
+        # Show all tap dance keycodes
         try:
             for idx in range(self.keyboard.tap_dance_count):
-                data = self.keyboard.tap_dance_get(idx)
-                # Check if any of the 4 keycodes is not "KC_NO" (has content)
-                if data[0] != "KC_NO" or data[1] != "KC_NO" or data[2] != "KC_NO" or data[3] != "KC_NO":
-                    btn = SquareButton()
-                    btn.setRelSize(KEYCODE_BTN_RATIO)
-                    btn.setText(f"TD{idx}")
-                    btn.setToolTip(f"Tap Dance {idx}")
-                    btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TD({i})"))
-                    self.flow_layout.addWidget(btn)
-                    self.buttons.append(btn)
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(f"TD{idx}")
+                btn.setToolTip(f"Tap Dance {idx}")
+                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TD({i})"))
+                self.flow_layout.addWidget(btn)
+                self.buttons.append(btn)
         except Exception as e:
             print(f"TapDanceContentTab.recreate_buttons error: {e}")
 
@@ -2672,7 +2668,7 @@ class DKSContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        from protocol.dks_protocol import ProtocolDKS, DKS_NUM_SLOTS
+        from protocol.dks_protocol import DKS_NUM_SLOTS
 
         # Clear existing buttons from layout and delete them
         while self.flow_layout.count():
@@ -2684,33 +2680,16 @@ class DKSContentTab(QWidget):
         if not self.keyboard:
             return
 
+        # Show all DKS keycodes
         try:
-            # Create DKS protocol to read slots
-            dks_protocol = ProtocolDKS(self.keyboard)
-
             for idx in range(DKS_NUM_SLOTS):
-                slot = dks_protocol.get_slot(idx)
-                if slot:
-                    # Check if any action has content
-                    has_content = False
-                    for action in slot.press_actions:
-                        if action.keycode != 0:
-                            has_content = True
-                            break
-                    if not has_content:
-                        for action in slot.release_actions:
-                            if action.keycode != 0:
-                                has_content = True
-                                break
-
-                    if has_content:
-                        btn = SquareButton()
-                        btn.setRelSize(KEYCODE_BTN_RATIO)
-                        btn.setText(f"DKS{idx}")
-                        btn.setToolTip(f"DKS {idx}")
-                        btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"DKS_{i:02d}"))
-                        self.flow_layout.addWidget(btn)
-                        self.buttons.append(btn)
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(f"DKS{idx}")
+                btn.setToolTip(f"DKS {idx}")
+                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"DKS_{i:02d}"))
+                self.flow_layout.addWidget(btn)
+                self.buttons.append(btn)
         except Exception as e:
             print(f"DKSContentTab.recreate_buttons error: {e}")
 
@@ -2751,7 +2730,7 @@ class ToggleContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        from protocol.toggle_protocol import ProtocolToggle, TOGGLE_NUM_SLOTS
+        from protocol.toggle_protocol import TOGGLE_NUM_SLOTS
 
         # Clear existing buttons from layout and delete them
         while self.flow_layout.count():
@@ -2763,19 +2742,16 @@ class ToggleContentTab(QWidget):
         if not self.keyboard:
             return
 
+        # Show all toggle keycodes
         try:
-            toggle_protocol = ProtocolToggle(self.keyboard)
-
             for idx in range(TOGGLE_NUM_SLOTS):
-                slot = toggle_protocol.get_slot(idx)
-                if slot and slot.is_enabled():
-                    btn = SquareButton()
-                    btn.setRelSize(KEYCODE_BTN_RATIO)
-                    btn.setText(f"TGL{idx:02d}")
-                    btn.setToolTip(f"Toggle {idx}")
-                    btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TGL_{i:02d}"))
-                    self.flow_layout.addWidget(btn)
-                    self.buttons.append(btn)
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.setText(f"TGL{idx:02d}")
+                btn.setToolTip(f"Toggle {idx}")
+                btn.clicked.connect(lambda _, i=idx: self.keycode_changed.emit(f"TGL_{i:02d}"))
+                self.flow_layout.addWidget(btn)
+                self.buttons.append(btn)
         except Exception as e:
             print(f"ToggleContentTab.recreate_buttons error: {e}")
 
