@@ -1667,8 +1667,8 @@ class TriggerSettingsTab(BasicEditor):
         if not hasattr(self, 'actuation_visualizer'):
             return
 
-        # Get current layer
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Always show current layer's per-key values in the visualizer
+        layer = self.current_layer
 
         # Get active key if selected
         if self.container.active_key and self.container.active_key.desc.row is not None:
@@ -1797,7 +1797,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.pending_layer_data.append(layer_data.copy())
 
         # Update pending_layer_data for current layer (or all layers if not per-layer)
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         if self.per_layer_enabled:
             # Update only current layer
@@ -1846,7 +1846,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.pending_layer_data.append(layer_data.copy())
 
         # Update pending_layer_data for current layer (or all layers if not per-layer)
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         if self.per_layer_enabled:
             # Update only current layer
@@ -2065,8 +2065,8 @@ class TriggerSettingsTab(BasicEditor):
         if key_index >= 70:
             return
 
-        # Get current layer to use
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Always show/edit current layer's per-key settings
+        layer = self.current_layer
 
         # Load all settings from cache
         settings = self.per_key_values[layer][key_index]
@@ -2160,7 +2160,8 @@ class TriggerSettingsTab(BasicEditor):
         if key_index >= 70:
             return
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Always use current layer's settings
+        layer = self.current_layer
         settings = self.per_key_values[layer][key_index]
 
         # Send to device
@@ -2182,7 +2183,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2217,7 +2218,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys with IMMEDIATE SAVE to keyboard
         for key in selected_keys:
@@ -2255,7 +2256,7 @@ class TriggerSettingsTab(BasicEditor):
                 if not selected_keys and self.container.active_key:
                     selected_keys = [self.container.active_key]
 
-                layer = self.current_layer if self.per_layer_enabled else 0
+                layer = self.current_layer
 
                 # Apply to all selected keys with IMMEDIATE SAVE
                 for key in selected_keys:
@@ -2304,7 +2305,7 @@ class TriggerSettingsTab(BasicEditor):
                 if not selected_keys and self.container.active_key:
                     selected_keys = [self.container.active_key]
 
-                layer = self.current_layer if self.per_layer_enabled else 0
+                layer = self.current_layer
 
                 for key in selected_keys:
                     if key.desc.row is not None:
@@ -2335,7 +2336,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2367,7 +2368,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2428,7 +2429,7 @@ class TriggerSettingsTab(BasicEditor):
             if not selected_keys and self.container.active_key:
                 selected_keys = [self.container.active_key]
 
-            layer = self.current_layer if self.per_layer_enabled else 0
+            layer = self.current_layer
 
             # Apply to all selected keys
             for key in selected_keys:
@@ -2464,7 +2465,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2495,7 +2496,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2526,7 +2527,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2591,7 +2592,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -2626,7 +2627,7 @@ class TriggerSettingsTab(BasicEditor):
         if not selected_keys and self.container.active_key:
             selected_keys = [self.container.active_key]
 
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Apply to all selected keys
         for key in selected_keys:
@@ -3073,7 +3074,7 @@ class TriggerSettingsTab(BasicEditor):
         self.syncing = True
 
         # Get layer to use
-        layer = self.current_layer if self.per_layer_enabled else 0
+        layer = self.current_layer
 
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
@@ -3225,8 +3226,9 @@ class TriggerSettingsTab(BasicEditor):
         for idx, btn in enumerate(self.layer_buttons[:self.keyboard.layers]):
             btn.setChecked(idx == self.current_layer)
 
-        # Update keyboard key displays
-        layer = self.current_layer if self.per_layer_enabled else 0
+        # Update keyboard key displays - always show current layer's per-key values
+        # Even when per-layer is disabled, each layer has its own values based on keymap
+        layer = self.current_layer
 
         # Use pending data if available, otherwise use saved data
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
