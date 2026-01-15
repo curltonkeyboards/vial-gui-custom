@@ -2525,21 +2525,22 @@ class MacroContentTab(QWidget):
         self.buttons = []
 
         # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # Content widget with flow layout
         self.content = QWidget()
         self.flow_layout = FlowLayout()
         self.flow_layout.setContentsMargins(10, 10, 10, 10)
         self.content.setLayout(self.flow_layout)
-        scroll.setWidget(self.content)
+        self.scroll.setWidget(self.content)
 
         # Main layout
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(scroll)
+        layout.addWidget(self.scroll)
         self.setLayout(layout)
 
     def set_keyboard(self, keyboard):
@@ -2547,9 +2548,11 @@ class MacroContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        # Clear existing buttons
-        for btn in self.buttons:
-            btn.deleteLater()
+        # Clear existing buttons from layout and delete them
+        while self.flow_layout.count():
+            item = self.flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         self.buttons = []
 
         if not self.keyboard:
@@ -2584,21 +2587,22 @@ class TapDanceContentTab(QWidget):
         self.buttons = []
 
         # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # Content widget with flow layout
         self.content = QWidget()
         self.flow_layout = FlowLayout()
         self.flow_layout.setContentsMargins(10, 10, 10, 10)
         self.content.setLayout(self.flow_layout)
-        scroll.setWidget(self.content)
+        self.scroll.setWidget(self.content)
 
         # Main layout
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(scroll)
+        layout.addWidget(self.scroll)
         self.setLayout(layout)
 
     def set_keyboard(self, keyboard):
@@ -2606,9 +2610,11 @@ class TapDanceContentTab(QWidget):
         self.recreate_buttons()
 
     def recreate_buttons(self):
-        # Clear existing buttons
-        for btn in self.buttons:
-            btn.deleteLater()
+        # Clear existing buttons from layout and delete them
+        while self.flow_layout.count():
+            item = self.flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         self.buttons = []
 
         if not self.keyboard or not hasattr(self.keyboard, 'tap_dance_count'):
@@ -2643,21 +2649,22 @@ class DKSContentTab(QWidget):
         self.buttons = []
 
         # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # Content widget with flow layout
         self.content = QWidget()
         self.flow_layout = FlowLayout()
         self.flow_layout.setContentsMargins(10, 10, 10, 10)
         self.content.setLayout(self.flow_layout)
-        scroll.setWidget(self.content)
+        self.scroll.setWidget(self.content)
 
         # Main layout
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(scroll)
+        layout.addWidget(self.scroll)
         self.setLayout(layout)
 
     def set_keyboard(self, keyboard):
@@ -2667,9 +2674,11 @@ class DKSContentTab(QWidget):
     def recreate_buttons(self):
         from protocol.dks_protocol import ProtocolDKS, DKS_NUM_SLOTS
 
-        # Clear existing buttons
-        for btn in self.buttons:
-            btn.deleteLater()
+        # Clear existing buttons from layout and delete them
+        while self.flow_layout.count():
+            item = self.flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         self.buttons = []
 
         if not self.keyboard:
@@ -2677,9 +2686,6 @@ class DKSContentTab(QWidget):
 
         try:
             # Create DKS protocol to read slots
-            from vial_device import VialKeyboard
-            # We need to access the device, but we only have keyboard
-            # Try to create protocol with keyboard directly
             dks_protocol = ProtocolDKS(self.keyboard)
 
             for idx in range(DKS_NUM_SLOTS):
@@ -2722,21 +2728,22 @@ class ToggleContentTab(QWidget):
         self.buttons = []
 
         # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # Content widget with flow layout
         self.content = QWidget()
         self.flow_layout = FlowLayout()
         self.flow_layout.setContentsMargins(10, 10, 10, 10)
         self.content.setLayout(self.flow_layout)
-        scroll.setWidget(self.content)
+        self.scroll.setWidget(self.content)
 
         # Main layout
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(scroll)
+        layout.addWidget(self.scroll)
         self.setLayout(layout)
 
     def set_keyboard(self, keyboard):
@@ -2746,9 +2753,11 @@ class ToggleContentTab(QWidget):
     def recreate_buttons(self):
         from protocol.toggle_protocol import ProtocolToggle, TOGGLE_NUM_SLOTS
 
-        # Clear existing buttons
-        for btn in self.buttons:
-            btn.deleteLater()
+        # Clear existing buttons from layout and delete them
+        while self.flow_layout.count():
+            item = self.flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
         self.buttons = []
 
         if not self.keyboard:
