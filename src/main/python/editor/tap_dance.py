@@ -203,6 +203,10 @@ class TapDance(BasicEditor):
             entry.key_selected.connect(self.on_key_widget_selected)
             self.tap_dance_entries_available.append(entry)
 
+        # Dynamic tab tracking
+        self._visible_tab_count = 1  # Minimum 1 tab visible
+        self._manually_expanded_count = 0  # Tabs added via "+" button
+
         self.addWidget(self.tabs)
 
         # Save/Revert buttons
@@ -255,9 +259,10 @@ class TapDance(BasicEditor):
         while self.tabs.count() > 0:
             self.tabs.removeTab(0)
         self.tap_dance_entries = self.tap_dance_entries_available[:self.keyboard.tap_dance_count]
-        for x, e in enumerate(self.tap_dance_entries):
-            self.tabs.addTab(e.widget(), str(x))
         self.reload_ui()
+        # Reset manual expansion and update visible tabs
+        self._manually_expanded_count = 0
+        self._update_visible_tabs()
 
     def reload_ui(self):
         for x, e in enumerate(self.tap_dance_entries):
@@ -278,6 +283,8 @@ class TapDance(BasicEditor):
         if self.valid():
             self.keyboard = device.keyboard
             self.rebuild_ui()
+            # Set keyboard reference for tabbed keycodes
+            self.tabbed_keycodes.set_keyboard(self.keyboard)
 
     def valid(self):
         return isinstance(self.device, VialKeyboard) and \
@@ -290,7 +297,8 @@ class TapDance(BasicEditor):
     def update_modified_state(self):
         """ Update indication of which tabs are modified, and keep Save button enabled only if it's needed """
         has_changes = False
-        for x, e in enumerate(self.tap_dance_entries):
+        # Only update titles for visible tabs (not the "+" tab)
+        for x in range(self._visible_tab_count):
             if self.tap_dance_entries[x].save() != self.keyboard.tap_dance_get(x):
                 has_changes = True
                 self.tabs.setTabText(x, "{}*".format(x))
@@ -300,3 +308,61 @@ class TapDance(BasicEditor):
 
     def on_timing_changed(self):
         self.update_modified_state()
+
+    def _tap_dance_has_content(self, entry_idx):
+        """Check if a tap dance entry has any keycodes assigned"""
+        entry = self.tap_dance_entries[entry_idx]
+        data = entry.save()  # Returns (on_tap, on_hold, on_double_tap, on_tap_hold, tapping_term)
+        # Check if any of the 4 keycodes is not "KC_NO"
+        return data[0] != "KC_NO" or data[1] != "KC_NO" or data[2] != "KC_NO" or data[3] != "KC_NO"
+
+    def _find_last_used_index(self):
+        """Find the index of the last tap dance that has content (counting back from max)"""
+        for idx in range(len(self.tap_dance_entries) - 1, -1, -1):
+            if self._tap_dance_has_content(idx):
+                return idx
+        return -1  # No tap dances have content
+
+    def _update_visible_tabs(self):
+        """Update which tabs are visible based on content and manual expansion"""
+        if not self.keyboard or not self.tap_dance_entries:
+            return
+
+        max_tabs = len(self.tap_dance_entries)
+        last_used = self._find_last_used_index()
+
+        # Calculate visible count: last used + 1, or at least 1, plus any manually expanded
+        base_visible = max(1, last_used + 1)
+        self._visible_tab_count = min(max_tabs, base_visible + self._manually_expanded_count)
+
+        # Remove all tabs first
+        while self.tabs.count() > 0:
+            self.tabs.removeTab(0)
+
+        # Add visible tap dance tabs
+        for x in range(self._visible_tab_count):
+            self.tabs.addTab(self.tap_dance_entries[x].widget(), str(x))
+
+        # Add "+" tab if not all tabs are visible
+        if self._visible_tab_count < max_tabs:
+            plus_widget = QWidget()
+            self.tabs.addTab(plus_widget, "+")
+            self.tabs.currentChanged.connect(self._on_tab_changed)
+        else:
+            try:
+                self.tabs.currentChanged.disconnect(self._on_tab_changed)
+            except TypeError:
+                pass
+
+        self.update_modified_state()
+
+    def _on_tab_changed(self, index):
+        """Handle tab change - check if '+' tab was clicked"""
+        if self._visible_tab_count < len(self.tap_dance_entries) and index == self._visible_tab_count:
+            self._manually_expanded_count += 1
+            try:
+                self.tabs.currentChanged.disconnect(self._on_tab_changed)
+            except TypeError:
+                pass
+            self._update_visible_tabs()
+            self.tabs.setCurrentIndex(self._visible_tab_count - 1)

@@ -31,6 +31,10 @@ class MacroRecorder(BasicEditor):
         self.recorder = None
         self.selected_key_widget = None  # Track currently selected key widget
 
+        # Dynamic tab tracking
+        self._visible_tab_count = 1  # Minimum 1 tab visible
+        self._manually_expanded_count = 0  # Tabs added via "+" button
+
         if sys.platform.startswith("linux"):
             from macro.macro_recorder_linux import LinuxRecorder
 
@@ -112,6 +116,13 @@ class MacroRecorder(BasicEditor):
         # deserialize macros that came from keyboard
         self.deserialize(self.keyboard.macro)
 
+        # Reset manual expansion count on rebuild, then update visible tabs
+        self._manually_expanded_count = 0
+        self._update_visible_tabs()
+
+        # Set keyboard reference for tabbed keycodes
+        self.tabbed_keycodes.set_keyboard(self.keyboard)
+
         self.on_change()
 
     def on_widget_deleted(self, widget):
@@ -147,7 +158,8 @@ class MacroRecorder(BasicEditor):
 
     def update_tab_titles(self):
         macros = self.keyboard.macro.split(b"\x00")
-        for x, w in enumerate(self.macro_tab_w[:self.keyboard.macro_count]):
+        # Only update titles for visible tabs (not the "+" tab)
+        for x in range(self._visible_tab_count):
             title = "M{}".format(x)
             if macros[x] != self.keyboard.macro_serialize(self.macro_tabs[x].actions()):
                 title += "*"
@@ -159,9 +171,13 @@ class MacroRecorder(BasicEditor):
 
         self.recording_tab.pre_record()
 
-        for x, w in enumerate(self.macro_tabs[:self.keyboard.macro_count]):
-            if tab != w:
+        # Disable all visible tabs except the recording one (and the "+" tab)
+        for x in range(self._visible_tab_count):
+            if tab != self.macro_tabs[x]:
                 self.tabs.tabBar().setTabEnabled(x, False)
+        # Also disable "+" tab if visible
+        if self._visible_tab_count < self.keyboard.macro_count:
+            self.tabs.tabBar().setTabEnabled(self._visible_tab_count, False)
 
         self.recording = True
         self.keystrokes = []
@@ -171,8 +187,11 @@ class MacroRecorder(BasicEditor):
         self.recorder.stop()
 
     def on_stop(self):
-        for x in range(self.keyboard.macro_count):
+        # Re-enable all visible tabs (and "+" tab if present)
+        for x in range(self._visible_tab_count):
             self.tabs.tabBar().setTabEnabled(x, True)
+        if self._visible_tab_count < self.keyboard.macro_count:
+            self.tabs.tabBar().setTabEnabled(self._visible_tab_count, True)
 
         if not self.recording_append:
             self.recording_tab.clear()
@@ -231,3 +250,61 @@ class MacroRecorder(BasicEditor):
         Unlocker.unlock(self.device.keyboard)
         self.keyboard.set_macro(self.serialize())
         self.on_change()
+
+    def _find_last_used_index(self):
+        """Find the index of the last macro that has content (counting back from max)"""
+        for idx in range(self.keyboard.macro_count - 1, -1, -1):
+            if len(self.macro_tabs[idx].actions()) > 0:
+                return idx
+        return -1  # No macros have content
+
+    def _update_visible_tabs(self):
+        """Update which tabs are visible based on content and manual expansion"""
+        if not self.keyboard:
+            return
+
+        max_tabs = self.keyboard.macro_count
+        last_used = self._find_last_used_index()
+
+        # Calculate visible count: last used + 1, or at least 1, plus any manually expanded
+        base_visible = max(1, last_used + 1)
+        self._visible_tab_count = min(max_tabs, base_visible + self._manually_expanded_count)
+
+        # Remove all tabs first
+        while self.tabs.count() > 0:
+            self.tabs.removeTab(0)
+
+        # Add visible macro tabs
+        for x in range(self._visible_tab_count):
+            self.tabs.addTab(self.macro_tab_w[x], "")
+            self.macro_tabs[x].set_macro_index(x)
+
+        # Add "+" tab if not all tabs are visible
+        if self._visible_tab_count < max_tabs:
+            plus_widget = QWidget()
+            self.tabs.addTab(plus_widget, "+")
+            # Connect tab change to detect "+" click
+            self.tabs.currentChanged.connect(self._on_tab_changed)
+        else:
+            # Disconnect if all tabs shown
+            try:
+                self.tabs.currentChanged.disconnect(self._on_tab_changed)
+            except TypeError:
+                pass  # Not connected
+
+        self.update_tab_titles()
+
+    def _on_tab_changed(self, index):
+        """Handle tab change - check if '+' tab was clicked"""
+        # Check if the "+" tab was clicked (last tab when not all visible)
+        if self._visible_tab_count < self.keyboard.macro_count and index == self._visible_tab_count:
+            # Expand one more tab
+            self._manually_expanded_count += 1
+            # Disconnect before updating to avoid recursion
+            try:
+                self.tabs.currentChanged.disconnect(self._on_tab_changed)
+            except TypeError:
+                pass
+            self._update_visible_tabs()
+            # Switch to the newly visible tab
+            self.tabs.setCurrentIndex(self._visible_tab_count - 1)
