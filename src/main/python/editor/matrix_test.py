@@ -894,14 +894,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
 
         load_menu = QMenu(load_settings_btn)
         load_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Load Default"), lambda: self.on_load_slot(0))
-        load_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Load Current"), self.on_load_current_settings)
         load_menu.addSeparator()
         for i in range(1, 5):
             load_menu.addAction(tr("MIDIswitchSettingsConfigurator", f"Load Slot {i}"), lambda checked=False, slot=i: self.on_load_slot(slot))
-        load_menu.addSeparator()
-        load_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"), self.on_reset)
         load_settings_btn.setMenu(load_menu)
         midi_title_layout.addWidget(load_settings_btn)
+
+        # Load Active Settings button (individual)
+        load_active_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Active Settings"))
+        load_active_btn.setMinimumHeight(28)
+        load_active_btn.setMaximumHeight(28)
+        load_active_btn.setStyleSheet(midi_btn_style)
+        load_active_btn.setToolTip("Refresh display with current keyboard settings.\nUpdates all fields to match the keyboard's active configuration.")
+        load_active_btn.clicked.connect(self.on_load_current_settings)
+        midi_title_layout.addWidget(load_active_btn)
+
+        # Reset to Defaults button (individual)
+        reset_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"))
+        reset_btn.setMinimumHeight(28)
+        reset_btn.setMaximumHeight(28)
+        reset_btn.setStyleSheet(midi_btn_style)
+        reset_btn.setToolTip("Reset all MIDI settings to factory defaults.\nThis cannot be undone.")
+        reset_btn.clicked.connect(self.on_reset)
+        midi_title_layout.addWidget(reset_btn)
 
         midi_title_layout.addStretch()
 
