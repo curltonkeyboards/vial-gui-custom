@@ -1377,29 +1377,32 @@ class DKSSettingsTab(BasicEditor):
         self.layout_editor = layout_editor
         self.dks_protocol = None
         self.dks_entries = []
+        self.dks_scroll_widgets = []  # Store scroll widgets for each entry
         self.loaded_slots = set()  # Track which slots have been loaded
+
+        # Dynamic tab tracking
+        self._visible_tab_count = 1  # Minimum 1 tab visible
+        self._manually_expanded_count = 0  # Tabs added via "+" button
 
         # Create tab widget for DKS slots
         self.tabs = QTabWidget()
 
-        # Create all DKS entries (pre-create like TapDance does)
+        # Create all DKS entries and their scroll widgets
         for i in range(DKS_NUM_SLOTS):
             entry = DKSEntryUI(i)
             entry.changed.connect(self.on_entry_changed)
             self.dks_entries.append(entry)
 
-        # Add tabs to widget
-        for i, entry in enumerate(self.dks_entries):
             scroll = QScrollArea()
             scroll.setWidget(entry)
             scroll.setWidgetResizable(True)
             scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-            self.tabs.addTab(scroll, f"DKS{i}")
+            self.dks_scroll_widgets.append(scroll)
 
         self.addWidget(self.tabs)
 
-        # Connect tab changes for lazy loading
+        # Connect tab changes for lazy loading and "+" tab handling
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
         # Add TabbedKeycodes at the bottom (same as keymap editor)
@@ -1419,9 +1422,16 @@ class DKSSettingsTab(BasicEditor):
             self.dks_entries[current_idx].on_keycode_selected(keycode)
 
     def _on_tab_changed(self, index):
-        """Handle tab change - lazy load slot data"""
+        """Handle tab change - lazy load slot data and handle '+' tab"""
+        # Check if "+" tab was clicked
+        if self._visible_tab_count < DKS_NUM_SLOTS and index == self._visible_tab_count:
+            self._manually_expanded_count += 1
+            self._update_visible_tabs()
+            self.tabs.setCurrentIndex(self._visible_tab_count - 1)
+            return
+
+        # Lazy load: Only load slot data when first viewing the tab
         if index >= 0 and index < len(self.dks_entries):
-            # Lazy load: Only load slot data when first viewing the tab
             if self.dks_protocol and index not in self.loaded_slots:
                 self.dks_entries[index]._on_load()
                 self.loaded_slots.add(index)
@@ -1443,6 +1453,80 @@ class DKSSettingsTab(BasicEditor):
 
         # Clear loaded slots cache on device change
         self.loaded_slots.clear()
+
+        # Reset manual expansion and scan for used slots
+        self._manually_expanded_count = 0
+        self._scan_and_update_visible_tabs()
+
+    def _dks_slot_has_content(self, slot):
+        """Check if a DKS slot has any keycodes assigned"""
+        # Check press actions
+        for action in slot.press_actions:
+            if action.keycode != 0:
+                return True
+        # Check release actions
+        for action in slot.release_actions:
+            if action.keycode != 0:
+                return True
+        return False
+
+    def _scan_and_update_visible_tabs(self):
+        """Scan all slots to find which have content and update visible tabs"""
+        if not self.dks_protocol:
+            return
+
+        # Load all slots to find which have content
+        last_used = -1
+        for i in range(DKS_NUM_SLOTS):
+            slot = self.dks_protocol.get_slot(i)
+            if slot:
+                self.dks_entries[i].load_from_slot(slot)
+                self.loaded_slots.add(i)
+                if self._dks_slot_has_content(slot):
+                    last_used = i
+
+        self._update_visible_tabs_with_last_used(last_used)
+
+    def _find_last_used_index(self):
+        """Find the index of the last DKS slot that has content"""
+        for idx in range(DKS_NUM_SLOTS - 1, -1, -1):
+            if idx in self.loaded_slots:
+                # Check if this entry has any keycodes set
+                for editor in self.dks_entries[idx].press_editors:
+                    keycode, _, _ = editor.get_action()
+                    if keycode != 0:
+                        return idx
+                for editor in self.dks_entries[idx].release_editors:
+                    keycode, _, _ = editor.get_action()
+                    if keycode != 0:
+                        return idx
+        return -1
+
+    def _update_visible_tabs_with_last_used(self, last_used):
+        """Update visible tabs given the last used index"""
+        max_tabs = DKS_NUM_SLOTS
+
+        # Calculate visible count: last used + 1, or at least 1, plus any manually expanded
+        base_visible = max(1, last_used + 1)
+        self._visible_tab_count = min(max_tabs, base_visible + self._manually_expanded_count)
+
+        # Remove all tabs first
+        while self.tabs.count() > 0:
+            self.tabs.removeTab(0)
+
+        # Add visible DKS tabs
+        for x in range(self._visible_tab_count):
+            self.tabs.addTab(self.dks_scroll_widgets[x], f"DKS{x}")
+
+        # Add "+" tab if not all tabs are visible
+        if self._visible_tab_count < max_tabs:
+            plus_widget = QWidget()
+            self.tabs.addTab(plus_widget, "+")
+
+    def _update_visible_tabs(self):
+        """Update which tabs are visible based on content and manual expansion"""
+        last_used = self._find_last_used_index()
+        self._update_visible_tabs_with_last_used(last_used)
 
     def valid(self):
         """Check if this tab is valid for the current device"""
