@@ -2623,8 +2623,8 @@ class TapDanceContentTab(QWidget):
         try:
             for idx in range(self.keyboard.tap_dance_count):
                 data = self.keyboard.tap_dance_get(idx)
-                # Check if any of the 4 keycodes is not 0 (has content)
-                if data[0] != 0 or data[1] != 0 or data[2] != 0 or data[3] != 0:
+                # Check if any of the 4 keycodes is not "KC_NO" (has content)
+                if data[0] != "KC_NO" or data[1] != "KC_NO" or data[2] != "KC_NO" or data[3] != "KC_NO":
                     btn = SquareButton()
                     btn.setRelSize(KEYCODE_BTN_RATIO)
                     btn.setText(f"TD{idx}")

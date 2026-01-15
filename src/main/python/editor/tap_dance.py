@@ -311,8 +311,8 @@ class TapDance(BasicEditor):
         """Check if a tap dance entry has any keycodes assigned"""
         entry = self.tap_dance_entries[entry_idx]
         data = entry.save()  # Returns (on_tap, on_hold, on_double_tap, on_tap_hold, tapping_term)
-        # Check if any of the 4 keycodes is not "KC_NO" (keycode 0)
-        return data[0] != 0 or data[1] != 0 or data[2] != 0 or data[3] != 0
+        # Check if any of the 4 keycodes is not "KC_NO"
+        return data[0] != "KC_NO" or data[1] != "KC_NO" or data[2] != "KC_NO" or data[3] != "KC_NO"
 
     def _find_last_used_index(self):
         """Find the index of the last tap dance that has content (counting back from max)"""
