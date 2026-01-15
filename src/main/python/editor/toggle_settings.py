@@ -312,10 +312,15 @@ class ToggleEntryUI(QWidget):
         else:
             QMessageBox.warning(self, "Error", "Failed to send configuration to keyboard")
 
-    def _on_load(self):
-        """Load slot from keyboard"""
+    def _on_load(self, silent=False):
+        """Load slot from keyboard
+
+        Args:
+            silent: If True, don't show error messages (used for automatic loading)
+        """
         if not self.toggle_protocol:
-            QMessageBox.warning(self, "Error", "Not connected to keyboard")
+            if not silent:
+                QMessageBox.warning(self, "Error", "Not connected to keyboard")
             return
 
         slot = self.toggle_protocol.get_slot(self.slot_num)
@@ -325,7 +330,8 @@ class ToggleEntryUI(QWidget):
             self.pending_changes = False
             self.save_btn.setEnabled(False)
         else:
-            QMessageBox.warning(self, "Error", "Failed to load configuration from keyboard")
+            if not silent:
+                QMessageBox.warning(self, "Error", "Failed to load configuration from keyboard")
 
 
 class ToggleSettingsTab(BasicEditor):
@@ -396,7 +402,7 @@ class ToggleSettingsTab(BasicEditor):
         if index >= 0 and index < len(self.toggle_entries):
             # Lazy load: Only load slot data when first viewing the tab
             if self.toggle_protocol and index not in self.loaded_slots:
-                self.toggle_entries[index]._on_load()
+                self.toggle_entries[index]._on_load(silent=True)
                 self.loaded_slots.add(index)
 
     def _on_reset_all(self):
@@ -413,9 +419,9 @@ class ToggleSettingsTab(BasicEditor):
         if reply == QMessageBox.Yes:
             if self.toggle_protocol.reset_all_slots():
                 QMessageBox.information(None, "Success", "All slots reset to defaults")
-                # Reload current tab
+                # Reload current tab (silent since reset already showed success)
                 current_idx = self.tabs.currentIndex()
-                self.toggle_entries[current_idx]._on_load()
+                self.toggle_entries[current_idx]._on_load(silent=True)
             else:
                 QMessageBox.warning(None, "Error", "Failed to reset slots")
 
@@ -426,9 +432,9 @@ class ToggleSettingsTab(BasicEditor):
 
         if self.toggle_protocol.load_from_eeprom():
             QMessageBox.information(None, "Success", "Toggle configurations loaded from EEPROM")
-            # Reload current tab
+            # Reload current tab (silent since load already showed success)
             current_idx = self.tabs.currentIndex()
-            self.toggle_entries[current_idx]._on_load()
+            self.toggle_entries[current_idx]._on_load(silent=True)
         else:
             QMessageBox.warning(None, "Error", "Failed to load from EEPROM")
 
@@ -450,10 +456,10 @@ class ToggleSettingsTab(BasicEditor):
             # Clear loaded slots cache
             self.loaded_slots.clear()
 
-            # Load current tab
+            # Load current tab (silent=True to avoid error popups for unsupported keyboards)
             current_idx = self.tabs.currentIndex()
             if current_idx >= 0:
-                self.toggle_entries[current_idx]._on_load()
+                self.toggle_entries[current_idx]._on_load(silent=True)
                 self.loaded_slots.add(current_idx)
 
     def valid(self):
