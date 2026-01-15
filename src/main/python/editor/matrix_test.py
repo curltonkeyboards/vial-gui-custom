@@ -6,7 +6,7 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider)
+                           QScrollArea, QSlider, QMenu)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPainterPath, QRegion
@@ -867,40 +867,41 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
 
         midi_title_layout.addSpacing(15)
 
-        # Buttons in the title container
+        # Buttons in the title container with popup menus
         midi_btn_style = "QPushButton { border-radius: 5px; font-size: 9pt; }"
 
-        save_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save as Default"))
-        save_default_btn.setMinimumHeight(28)
-        save_default_btn.setMaximumHeight(28)
-        save_default_btn.setStyleSheet(midi_btn_style)
-        save_default_btn.setToolTip("Save current settings as the default configuration.\nThese settings will be loaded on keyboard startup.")
-        save_default_btn.clicked.connect(lambda: self.on_save_slot(0))
-        midi_title_layout.addWidget(save_default_btn)
+        # Save Settings button with popup menu
+        save_settings_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Save Settings"))
+        save_settings_btn.setMinimumHeight(28)
+        save_settings_btn.setMaximumHeight(28)
+        save_settings_btn.setStyleSheet(midi_btn_style)
+        save_settings_btn.setToolTip("Save current settings to a slot")
 
-        load_default_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Default"))
-        load_default_btn.setMinimumHeight(28)
-        load_default_btn.setMaximumHeight(28)
-        load_default_btn.setStyleSheet(midi_btn_style)
-        load_default_btn.setToolTip("Load the saved default configuration.\nRestores settings from the default slot.")
-        load_default_btn.clicked.connect(lambda: self.on_load_slot(0))
-        midi_title_layout.addWidget(load_default_btn)
+        save_menu = QMenu(save_settings_btn)
+        save_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Save as Default"), lambda: self.on_save_slot(0))
+        save_menu.addSeparator()
+        for i in range(1, 5):
+            save_menu.addAction(tr("MIDIswitchSettingsConfigurator", f"Save to Slot {i}"), lambda checked=False, slot=i: self.on_save_slot(slot))
+        save_settings_btn.setMenu(save_menu)
+        midi_title_layout.addWidget(save_settings_btn)
 
-        load_current_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Current"))
-        load_current_btn.setMinimumHeight(28)
-        load_current_btn.setMaximumHeight(28)
-        load_current_btn.setStyleSheet(midi_btn_style)
-        load_current_btn.setToolTip("Refresh display with current keyboard settings.\nUpdates all fields to match the keyboard's active configuration.")
-        load_current_btn.clicked.connect(self.on_load_current_settings)
-        midi_title_layout.addWidget(load_current_btn)
+        # Load Settings button with popup menu
+        load_settings_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Load Settings"))
+        load_settings_btn.setMinimumHeight(28)
+        load_settings_btn.setMaximumHeight(28)
+        load_settings_btn.setStyleSheet(midi_btn_style)
+        load_settings_btn.setToolTip("Load settings from a slot")
 
-        reset_btn = QPushButton(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"))
-        reset_btn.setMinimumHeight(28)
-        reset_btn.setMaximumHeight(28)
-        reset_btn.setStyleSheet(midi_btn_style)
-        reset_btn.setToolTip("Reset all MIDI settings to factory defaults.\nThis cannot be undone.")
-        reset_btn.clicked.connect(self.on_reset)
-        midi_title_layout.addWidget(reset_btn)
+        load_menu = QMenu(load_settings_btn)
+        load_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Load Default"), lambda: self.on_load_slot(0))
+        load_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Load Current"), self.on_load_current_settings)
+        load_menu.addSeparator()
+        for i in range(1, 5):
+            load_menu.addAction(tr("MIDIswitchSettingsConfigurator", f"Load Slot {i}"), lambda checked=False, slot=i: self.on_load_slot(slot))
+        load_menu.addSeparator()
+        load_menu.addAction(tr("MIDIswitchSettingsConfigurator", "Reset to Defaults"), self.on_reset)
+        load_settings_btn.setMenu(load_menu)
+        midi_title_layout.addWidget(load_settings_btn)
 
         midi_title_layout.addStretch()
 
@@ -1585,25 +1586,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         loop_title_widget.setLayout(loop_title_layout)
 
         loop_title_layout.addStretch()
-        loop_title_header = QWidget()
-        loop_title_header_layout = QHBoxLayout()
-        loop_title_header_layout.setContentsMargins(0, 0, 0, 0)
-        loop_title_header_layout.setSpacing(5)
-        loop_title_header.setLayout(loop_title_header_layout)
-
         loop_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Loop Settings"))
-        loop_title_label.setStyleSheet("font-weight: bold;")
-        loop_title_header_layout.addWidget(self.create_help_label(
-            "Configure looping and synchronization settings:\n"
-            "Sync Mode: How loops sync with tempo/clock\n"
-            "Sample Mode: Enable one-shot sample playback\n"
-            "ThruLoop: Pass MIDI through the looper\n"
-            "ThruLoop Channel: Channel for ThruLoop messages\n"
-            "ThruLoop Restart: Send restart messages"
-        ))
-        loop_title_header_layout.addWidget(loop_title_label)
-        loop_title_header_layout.addStretch()
-        loop_title_layout.addWidget(loop_title_header)
+        loop_title_layout.addWidget(loop_title_label)
         loop_title_layout.addStretch()
 
         loop_group = QGroupBox()
@@ -1804,17 +1788,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         advanced_title_widget.setLayout(advanced_title_layout)
 
         advanced_title_layout.addStretch()
-        advanced_title_header = QWidget()
-        advanced_title_header_layout = QHBoxLayout()
-        advanced_title_header_layout.setContentsMargins(0, 0, 0, 0)
-        advanced_title_header_layout.setSpacing(5)
-        advanced_title_header.setLayout(advanced_title_header_layout)
-
         advanced_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "Advanced Settings"))
-        advanced_title_label.setStyleSheet("font-weight: bold;")
-        advanced_title_header_layout.addWidget(advanced_title_label)
-        advanced_title_header_layout.addStretch()
-        advanced_title_layout.addWidget(advanced_title_header)
+        advanced_title_layout.addWidget(advanced_title_label)
         advanced_title_layout.addStretch()
 
         advanced_group = QGroupBox()
@@ -2072,24 +2047,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         routing_title_widget.setLayout(routing_title_layout)
 
         routing_title_layout.addStretch()
-        routing_title_header = QWidget()
-        routing_title_header_layout = QHBoxLayout()
-        routing_title_header_layout.setContentsMargins(0, 0, 0, 0)
-        routing_title_header_layout.setSpacing(5)
-        routing_title_header.setLayout(routing_title_header_layout)
-
-        routing_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Routing Settings"))
-        routing_title_label.setStyleSheet("font-weight: bold;")
-        routing_title_header_layout.addWidget(self.create_help_label(
-            "Configure MIDI input/output routing:\n"
-            "Override settings control what MIDI data is passed through\n"
-            "MIDI IN Mode: How incoming MIDI is processed\n"
-            "USB MIDI Mode: How USB MIDI data is handled\n"
-            "Clock Source: Where timing clock comes from"
-        ))
-        routing_title_header_layout.addWidget(routing_title_label)
-        routing_title_header_layout.addStretch()
-        routing_title_layout.addWidget(routing_title_header)
+        routing_title_label = QLabel(tr("MIDIswitchSettingsConfigurator", "MIDI Routing"))
+        routing_title_layout.addWidget(routing_title_label)
         routing_title_layout.addStretch()
 
         midi_routing_group = QGroupBox()
@@ -2251,35 +2210,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         # Add MIDI Routing before Advanced Settings (swapped order)
         main_layout.addWidget(routing_row_container)
         main_layout.addWidget(advanced_row_container)
-
-        # Slot buttons at bottom
-        self.addStretch()
-
-        # Save slot buttons
-        save_slots_layout = QHBoxLayout()
-        save_slots_layout.addStretch()
-        for i in range(1, 5):
-            btn = QPushButton(tr("MIDIswitchSettingsConfigurator", f"Save to Slot {i}"))
-            btn.setMinimumHeight(30)
-            btn.setMaximumHeight(30)
-            btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-            btn.setToolTip(f"Save current settings to preset slot {i}.\nUse slots to store different configurations.")
-            btn.clicked.connect(lambda checked, slot=i: self.on_save_slot(slot))
-            save_slots_layout.addWidget(btn)
-        self.addLayout(save_slots_layout)
-
-        # Load slot buttons
-        load_slots_layout = QHBoxLayout()
-        load_slots_layout.addStretch()
-        for i in range(1, 5):
-            btn = QPushButton(tr("MIDIswitchSettingsConfigurator", f"Load Slot {i}"))
-            btn.setMinimumHeight(30)
-            btn.setMaximumHeight(30)
-            btn.setStyleSheet("QPushButton { border-radius: 5px; }")
-            btn.setToolTip(f"Load settings from preset slot {i}.\nRestores a previously saved configuration.")
-            btn.clicked.connect(lambda checked, slot=i: self.on_load_slot(slot))
-            load_slots_layout.addWidget(btn)
-        self.addLayout(load_slots_layout)
 
         # Apply stylesheet to center combo box text and remove padding
         main_widget.setStyleSheet("""
