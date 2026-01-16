@@ -2598,11 +2598,17 @@ class MacroTab(QWidget):
         self.keyboard = None
         self.current_keycode_filter = None
 
-        # Default counts (will be updated when keyboard is set)
-        self.macro_count = 16
-        self.tapdance_count = 32
-        self.dks_count = 50
-        self.toggle_count = 100
+        # Editor references (will be set via set_editors())
+        self.macro_recorder = None
+        self.tap_dance_editor = None
+        self.dks_settings = None
+        self.toggle_settings = None
+
+        # Default counts (will be updated when editors are set)
+        self.macro_count = 1
+        self.tapdance_count = 1
+        self.dks_count = 1
+        self.toggle_count = 1
 
         # Create sub-tabs
         self.macro_subtab = MacroSubTab(self, "macro")
@@ -2711,21 +2717,43 @@ class MacroTab(QWidget):
         self.keyboard = keyboard
         self.update_counts()
 
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set references to the editors to query their visible tab counts"""
+        self.macro_recorder = macro_recorder
+        self.tap_dance_editor = tap_dance_editor
+        self.dks_settings = dks_settings
+        self.toggle_settings = toggle_settings
+        self.update_counts()
+
     def update_counts(self):
-        """Update button counts from keyboard or use defaults"""
-        if self.keyboard is not None:
-            # Get counts from keyboard
-            self.macro_count = getattr(self.keyboard, 'macro_count', 16)
-            self.tapdance_count = getattr(self.keyboard, 'tap_dance_count', 32)
-            # DKS and Toggle have fixed counts from protocol
-            self.dks_count = 50
-            self.toggle_count = 100
+        """Update button counts from editors' visible tab counts"""
+        # Get macro count from editor's visible tab count
+        if self.macro_recorder is not None and hasattr(self.macro_recorder, '_visible_tab_count'):
+            self.macro_count = max(1, self.macro_recorder._visible_tab_count)
+        elif self.keyboard is not None:
+            self.macro_count = getattr(self.keyboard, 'macro_count', 1)
         else:
-            # Use defaults
-            self.macro_count = 16
-            self.tapdance_count = 32
-            self.dks_count = 50
-            self.toggle_count = 100
+            self.macro_count = 1
+
+        # Get tapdance count from editor's visible tab count
+        if self.tap_dance_editor is not None and hasattr(self.tap_dance_editor, '_visible_tab_count'):
+            self.tapdance_count = max(1, self.tap_dance_editor._visible_tab_count)
+        elif self.keyboard is not None:
+            self.tapdance_count = getattr(self.keyboard, 'tap_dance_count', 1)
+        else:
+            self.tapdance_count = 1
+
+        # Get DKS count from editor's visible tab count
+        if self.dks_settings is not None and hasattr(self.dks_settings, '_visible_tab_count'):
+            self.dks_count = max(1, self.dks_settings._visible_tab_count)
+        else:
+            self.dks_count = 1
+
+        # Get Toggle count from editor's visible tab count
+        if self.toggle_settings is not None and hasattr(self.toggle_settings, '_visible_tab_count'):
+            self.toggle_count = max(1, self.toggle_settings._visible_tab_count)
+        else:
+            self.toggle_count = 1
 
         # Update sub-tab counts
         self.macro_subtab.set_button_count(self.macro_count)
@@ -5447,6 +5475,12 @@ class FilteredTabbedKeycodes(QTabWidget):
             elif hasattr(tab, 'keyboard'):
                 tab.keyboard = keyboard
 
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set editor references for tabs that need them (e.g., MacroTab)"""
+        for tab in self.tabs:
+            if hasattr(tab, 'set_editors') and callable(tab.set_editors):
+                tab.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+
 
 class TabbedKeycodes(QWidget):
 
@@ -5521,4 +5555,9 @@ class TabbedKeycodes(QWidget):
         """Set keyboard reference for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_keyboard(keyboard)
+
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set editor references for all tab widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
 
