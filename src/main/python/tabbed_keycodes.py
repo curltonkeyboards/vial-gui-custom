@@ -2694,7 +2694,7 @@ class MacroTab(QWidget):
         """)
         self.content_layout = QVBoxLayout(self.content_wrapper)
         self.content_layout.setSpacing(0)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setContentsMargins(4, 4, 4, 4)
 
         # Add all section widgets to content area
         self.section_widgets = {}
@@ -2716,6 +2716,8 @@ class MacroTab(QWidget):
         """Set the keyboard reference and update counts from it"""
         self.keyboard = keyboard
         self.update_counts()
+        # Recreate buttons with updated counts using current filter
+        self.recreate_buttons(self.current_keycode_filter)
 
     def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
         """Set references to the editors to query their visible tab counts"""
@@ -2724,6 +2726,8 @@ class MacroTab(QWidget):
         self.dks_settings = dks_settings
         self.toggle_settings = toggle_settings
         self.update_counts()
+        # Recreate buttons with updated counts using current filter
+        self.recreate_buttons(self.current_keycode_filter)
 
     def update_counts(self):
         """Update button counts from editors' visible tab counts"""

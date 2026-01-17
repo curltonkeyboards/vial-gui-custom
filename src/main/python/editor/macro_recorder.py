@@ -122,6 +122,8 @@ class MacroRecorder(BasicEditor):
 
         # Set keyboard reference for tabbed keycodes
         self.tabbed_keycodes.set_keyboard(self.keyboard)
+        # Set editor reference so MacroTab can get accurate visible tab counts
+        self.tabbed_keycodes.set_editors(macro_recorder=self)
 
         self.on_change()
 
@@ -306,5 +308,7 @@ class MacroRecorder(BasicEditor):
             except TypeError:
                 pass
             self._update_visible_tabs()
+            # Update keycode buttons to show new macro count
+            self.tabbed_keycodes.set_editors(macro_recorder=self)
             # Switch to the newly visible tab
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)
