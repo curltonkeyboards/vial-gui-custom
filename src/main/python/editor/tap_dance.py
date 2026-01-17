@@ -365,4 +365,6 @@ class TapDance(BasicEditor):
             except TypeError:
                 pass
             self._update_visible_tabs()
+            # Update keycode buttons to show new tapdance count
+            self.tabbed_keycodes.refresh_macro_buttons()
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)
