@@ -3768,7 +3768,7 @@ KEYCODES_DAW_GARAGEBAND = [
 
 KEYCODES_HIDDEN = []
 for x in range(256):
-    KEYCODES_HIDDEN.append(K("TD({})".format(x), "TD({})".format(x)))
+    KEYCODES_HIDDEN.append(K("TD({})".format(x), "Tap/\nHold\n{}".format(x)))
 
 KEYCODES = []
 KEYCODES_MAP = dict()
