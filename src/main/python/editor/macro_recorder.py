@@ -309,6 +309,6 @@ class MacroRecorder(BasicEditor):
                 pass
             self._update_visible_tabs()
             # Update keycode buttons to show new macro count
-            self.tabbed_keycodes.set_editors(macro_recorder=self)
+            self.tabbed_keycodes.refresh_macro_buttons()
             # Switch to the newly visible tab
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)

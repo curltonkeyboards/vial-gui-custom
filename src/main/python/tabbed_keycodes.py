@@ -2715,9 +2715,8 @@ class MacroTab(QWidget):
     def set_keyboard(self, keyboard):
         """Set the keyboard reference and update counts from it"""
         self.keyboard = keyboard
-        self.update_counts()
-        # Recreate buttons with updated counts using current filter
-        self.recreate_buttons(self.current_keycode_filter)
+        # Force refresh buttons with current filter
+        self.refresh_buttons()
 
     def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
         """Set references to the editors to query their visible tab counts"""
@@ -2725,9 +2724,22 @@ class MacroTab(QWidget):
         self.tap_dance_editor = tap_dance_editor
         self.dks_settings = dks_settings
         self.toggle_settings = toggle_settings
+        # Force refresh buttons with current filter
+        self.refresh_buttons()
+
+    def refresh_buttons(self):
+        """Force refresh all buttons with current counts"""
         self.update_counts()
-        # Recreate buttons with updated counts using current filter
-        self.recreate_buttons(self.current_keycode_filter)
+        # Directly recreate buttons on each subtab
+        for tab_widget, _ in self.sections:
+            tab_widget.recreate_buttons(self.current_keycode_filter)
+
+    def showEvent(self, event):
+        """Refresh buttons when tab becomes visible"""
+        super().showEvent(event)
+        # Only refresh if we have keyboard or editor references
+        if self.keyboard is not None or self.macro_recorder is not None:
+            self.refresh_buttons()
 
     def update_counts(self):
         """Update button counts from editors' visible tab counts"""
@@ -5485,6 +5497,12 @@ class FilteredTabbedKeycodes(QTabWidget):
             if hasattr(tab, 'set_editors') and callable(tab.set_editors):
                 tab.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
 
+    def refresh_macro_buttons(self):
+        """Force refresh the MacroTab buttons"""
+        for tab in self.tabs:
+            if hasattr(tab, 'refresh_buttons') and callable(tab.refresh_buttons):
+                tab.refresh_buttons()
+
 
 class TabbedKeycodes(QWidget):
 
@@ -5564,4 +5582,9 @@ class TabbedKeycodes(QWidget):
         """Set editor references for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+
+    def refresh_macro_buttons(self):
+        """Force refresh the macro tab buttons in all keycodes widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.refresh_macro_buttons()
 
