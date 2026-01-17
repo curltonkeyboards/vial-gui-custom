@@ -2571,7 +2571,7 @@ class MacroSubTab(QScrollArea):
                 btn.setRelSize(KEYCODE_BTN_RATIO)
                 btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
                 btn.keycode = keycode
-                btn.setText(keycode.label.replace("\n", " "))
+                btn.setText(keycode.label)
                 btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.qmk_id)
                 self.flow_layout.addWidget(btn)
                 self.buttons.append(btn)
@@ -2582,7 +2582,7 @@ class MacroSubTab(QScrollArea):
     def relabel_buttons(self):
         for btn in self.buttons:
             if hasattr(btn, 'keycode') and btn.keycode:
-                btn.setText(btn.keycode.label.replace("\n", " "))
+                btn.setText(btn.keycode.label)
 
 
 class MacroTab(QWidget):
