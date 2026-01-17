@@ -171,6 +171,10 @@ class Combos(BasicEditor):
         self.combo_entries = []
         self.combo_entries_available = []
         self.tabs = QTabWidget()
+
+        # Dynamic tab tracking
+        self._visible_tab_count = 1  # Minimum 1 tab visible
+        self._manually_expanded_count = 0  # Tabs added via "+" button
         for x in range(128):
             entry = ComboEntryUI(x)
             entry.key_changed.connect(self.on_key_changed)
@@ -226,12 +230,9 @@ class Combos(BasicEditor):
                 self.selected_key_widget = None
 
     def rebuild_ui(self):
-        while self.tabs.count() > 0:
-            self.tabs.removeTab(0)
-        self.combo_entries = self.combo_entries_available[:self.keyboard.combo_count]
-        for x, e in enumerate(self.combo_entries):
-            self.tabs.addTab(e.widget(), str(x + 1))
-        self.reload_ui()
+        # Reset manual expansion count on rebuild, then update visible tabs
+        self._manually_expanded_count = 0
+        self._update_visible_tabs()
 
     def reload_ui(self):
         for x, e in enumerate(self.combo_entries):
@@ -260,6 +261,66 @@ class Combos(BasicEditor):
 
     def on_key_changed(self):
         self.on_save()
+
+    def _find_last_used_index(self):
+        """Find the index of the last combo that has content (counting back from max)"""
+        for idx in range(self.keyboard.combo_count - 1, -1, -1):
+            data = self.keyboard.combo_get(idx)
+            # Check if any keycode in the combo is non-zero
+            if any(kc != 0 and kc != "KC_NO" for kc in data):
+                return idx
+        return -1  # No combos have content
+
+    def _update_visible_tabs(self):
+        """Update which tabs are visible based on content and manual expansion"""
+        if not self.keyboard:
+            return
+
+        max_tabs = self.keyboard.combo_count
+        last_used = self._find_last_used_index()
+
+        # Calculate visible count: last used + 1, or at least 1, plus any manually expanded
+        base_visible = max(1, last_used + 1)
+        self._visible_tab_count = min(max_tabs, base_visible + self._manually_expanded_count)
+
+        # Remove all tabs first
+        while self.tabs.count() > 0:
+            self.tabs.removeTab(0)
+
+        # Add visible combo tabs
+        self.combo_entries = self.combo_entries_available[:self._visible_tab_count]
+        for x, e in enumerate(self.combo_entries):
+            self.tabs.addTab(e.widget(), str(x + 1))
+
+        # Add "+" tab if not all tabs are visible
+        if self._visible_tab_count < max_tabs:
+            plus_widget = QWidget()
+            self.tabs.addTab(plus_widget, "+")
+            # Connect tab change to detect "+" click
+            self.tabs.currentChanged.connect(self._on_tab_changed)
+        else:
+            # Disconnect if all tabs shown
+            try:
+                self.tabs.currentChanged.disconnect(self._on_tab_changed)
+            except TypeError:
+                pass  # Not connected
+
+        self.reload_ui()
+
+    def _on_tab_changed(self, index):
+        """Handle tab change - check if '+' tab was clicked"""
+        # Check if the "+" tab was clicked (last tab when not all visible)
+        if self._visible_tab_count < self.keyboard.combo_count and index == self._visible_tab_count:
+            # Expand one more tab
+            self._manually_expanded_count += 1
+            # Disconnect before updating to avoid recursion
+            try:
+                self.tabs.currentChanged.disconnect(self._on_tab_changed)
+            except TypeError:
+                pass
+            self._update_visible_tabs()
+            # Switch to the newly visible tab
+            self.tabs.setCurrentIndex(self._visible_tab_count - 1)
 
     def update_modified_state(self):
         """ Update indication of which tabs are modified, and keep Save button enabled only if it's needed """
