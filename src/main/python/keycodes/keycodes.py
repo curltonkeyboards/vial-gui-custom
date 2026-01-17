@@ -3432,7 +3432,7 @@ for x in range(48, 68):
 KEYCODES_DKS = []
 for x in range(50):
     KEYCODES_DKS.append(
-        K("DKS_{:02d}".format(x), "DKS\n{}".format(x), "Dynamic Keystroke slot {} - multi-action analog key".format(x))
+        K("DKS_{:02d}".format(x), "Dynamic\nKeystroke\n{}".format(x), "Dynamic Keystroke slot {} - multi-action analog key".format(x))
     )
 
 # Toggle key slot keycodes (100 slots)
@@ -3963,14 +3963,16 @@ def recreate_keyboard_keycodes(keyboard):
 
     KEYCODES_MACRO.clear()
     for x in range(keyboard.macro_count):
-        lbl = "M{}".format(x)
-        KEYCODES_MACRO.append(Keycode(lbl, lbl))
+        qmk_id = "M{}".format(x)
+        label = "Macro\n{}".format(x)
+        KEYCODES_MACRO.append(Keycode(qmk_id, label))
 
 
     KEYCODES_TAP_DANCE.clear()
     for x in range(keyboard.tap_dance_count):
-        lbl = "TD({})".format(x)
-        KEYCODES_TAP_DANCE.append(Keycode(lbl, lbl, "Tap dance keycode"))
+        qmk_id = "TD({})".format(x)
+        label = "Tap/\nHold\n{}".format(x)
+        KEYCODES_TAP_DANCE.append(Keycode(qmk_id, label, "Tap dance keycode"))
 
     # Check if custom keycodes are defined in keyboard, and if so add them to user keycodes
     if keyboard.custom_keycodes is not None and len(keyboard.custom_keycodes) > 0:
