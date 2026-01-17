@@ -186,6 +186,14 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tray_keycodes, 0)
         self.tray_keycodes.hide()
 
+        # Connect editors to tray_keycodes for dynamic keycode counts
+        self.tray_keycodes.set_editors(
+            macro_recorder=self.macro_recorder,
+            tap_dance_editor=self.tap_dance,
+            dks_settings=self.dks_settings,
+            toggle_settings=self.toggle_settings
+        )
+
         # Prevent the layout from resizing the window
         layout.setSizeConstraint(QVBoxLayout.SetNoConstraint)
 
@@ -371,6 +379,9 @@ class MainWindow(QMainWindow):
                   self.thruloop_configurator, self.gaming_configurator, self.midi_patchbay,
                   self.loop_manager, self.arpeggiator, self.step_sequencer]:
             e.rebuild(self.autorefresh.current_device)
+
+        # Refresh keycode buttons in tray to reflect updated content counts from editors
+        self.tray_keycodes.recreate_keycode_buttons()
 
     def refresh_tabs(self):
         print("refresh_tabs() called")

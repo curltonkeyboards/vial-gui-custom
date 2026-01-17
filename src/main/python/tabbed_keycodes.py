@@ -14,7 +14,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_DAW_ABLETON, KEYCODES_DAW_FL, KEYCODES_DAW_LOGIC, KEYCODES_DAW_PROTOOLS, KEYCODES_DAW_GARAGEBAND, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, \
+    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_HE_VELOCITY_CURVE, KEYCODES_HE_VELOCITY_RANGE, \
@@ -2515,7 +2515,78 @@ class LightingTab2(QScrollArea):
         """Check if there are buttons or dropdown items."""
         return True  # Always has dropdowns
 
-class MacroTab(QScrollArea):
+class MacroSubTab(QScrollArea):
+    """Sub-tab for displaying keycode buttons (Macro, Tapdance, DKS, or Toggle)"""
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, tab_type):
+        super().__init__(parent)
+        self.tab_type = tab_type  # "macro", "tapdance", "dks", "toggle"
+        self.buttons = []
+        self.button_count = 0
+        self.current_keycode_filter = None
+
+        # Create scroll content
+        self.scroll_content = QWidget()
+        self.flow_layout = FlowLayout()
+        self.flow_layout.setContentsMargins(10, 10, 10, 10)
+        self.scroll_content.setLayout(self.flow_layout)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+    def set_button_count(self, count):
+        """Set the number of buttons to display"""
+        self.button_count = count
+
+    def recreate_buttons(self, keycode_filter=None):
+        """Recreate buttons based on the current count"""
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing buttons
+        while self.flow_layout.count():
+            child = self.flow_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        self.buttons.clear()
+
+        # Get the appropriate keycodes based on tab type
+        if self.tab_type == "macro":
+            keycodes = KEYCODES_MACRO[:self.button_count] if self.button_count > 0 else []
+        elif self.tab_type == "tapdance":
+            keycodes = KEYCODES_TAP_DANCE[:self.button_count] if self.button_count > 0 else []
+        elif self.tab_type == "dks":
+            keycodes = KEYCODES_DKS[:self.button_count] if self.button_count > 0 else []
+        elif self.tab_type == "toggle":
+            keycodes = KEYCODES_TOGGLE[:self.button_count] if self.button_count > 0 else []
+        else:
+            keycodes = []
+
+        # Create buttons for each keycode
+        for keycode in keycodes:
+            if keycode_filter is None or keycode_filter(keycode):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label.replace("\n", " "))
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.qmk_id)
+                self.flow_layout.addWidget(btn)
+                self.buttons.append(btn)
+
+    def has_buttons(self):
+        return len(self.buttons) > 0
+
+    def relabel_buttons(self):
+        for btn in self.buttons:
+            if hasattr(btn, 'keycode') and btn.keycode:
+                btn.setText(btn.keycode.label.replace("\n", " "))
+
+
+class MacroTab(QWidget):
+    """Master tab for Macro, Tapdance, DKS, and Toggle keycodes with side-tab navigation"""
     keycode_changed = pyqtSignal(str)
 
     def __init__(self, parent, label, inversion_keycodes, smartchord_LSB, smartchord_MSB):
@@ -2524,130 +2595,221 @@ class MacroTab(QScrollArea):
         self.inversion_keycodes = inversion_keycodes
         self.smartchord_LSB = smartchord_LSB
         self.smartchord_MSB = smartchord_MSB
+        self.keyboard = None
+        self.current_keycode_filter = None
 
-        # Create a widget for the scroll area content
-        self.scroll_content = QWidget()
-        self.main_layout = QVBoxLayout(self.scroll_content)
+        # Editor references (will be set via set_editors())
+        self.macro_recorder = None
+        self.tap_dance_editor = None
+        self.dks_settings = None
+        self.toggle_settings = None
 
-        # Set the scroll area properties
-        self.setWidget(self.scroll_content)
-        self.setWidgetResizable(True)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        # Default counts (will be updated when editors are set)
+        self.macro_count = 1
+        self.tapdance_count = 1
+        self.dks_count = 1
+        self.toggle_count = 1
 
-        # Add a spacer at the top to push everything down by 100 pixels
-        top_spacer = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(top_spacer)
+        # Create sub-tabs
+        self.macro_subtab = MacroSubTab(self, "macro")
+        self.tapdance_subtab = MacroSubTab(self, "tapdance")
+        self.dks_subtab = MacroSubTab(self, "dks")
+        self.toggle_subtab = MacroSubTab(self, "toggle")
 
-                # Add "Macro Controls" title
-        self.lighting_controls_label = QLabel("Macro & Tapdance Controls")
-        self.lighting_controls_label.setAlignment(Qt.AlignCenter)
-        self.lighting_controls_label.setStyleSheet("font-size: 13px;")
-        self.main_layout.addWidget(self.lighting_controls_label)
+        # Connect signals
+        self.macro_subtab.keycode_changed.connect(self.on_keycode_changed)
+        self.tapdance_subtab.keycode_changed.connect(self.on_keycode_changed)
+        self.dks_subtab.keycode_changed.connect(self.on_keycode_changed)
+        self.toggle_subtab.keycode_changed.connect(self.on_keycode_changed)
 
-        # Add another spacer (10px)
-        top_spacer2 = QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
-        self.main_layout.addItem(top_spacer2)
+        # Define sections (tab_widget, display_name)
+        self.sections = [
+            (self.macro_subtab, "Macro"),
+            (self.tapdance_subtab, "Tapdance"),
+            (self.dks_subtab, "DKS"),
+            (self.toggle_subtab, "Toggle")
+        ]
 
-        # Row 1: Value buttons (Macro, Tapdance, and DKS Selection)
-        self.value_buttons_layout = QHBoxLayout()
+        # Create horizontal layout: side tabs on left, content on right
+        main_layout_h = QHBoxLayout()
+        main_layout_h.setSpacing(0)
+        main_layout_h.setContentsMargins(0, 0, 0, 0)
 
-        # Add horizontal spacer on the left to center the value buttons
-        self.value_buttons_layout.addStretch()
-
-        # Add the value buttons
-        self.add_value_button("Macro Selection", self.value_buttons_layout)
-        self.add_value_button("Tapdance Selection", self.value_buttons_layout)
-        self.add_value_button("DKS Selection", self.value_buttons_layout)
-
-        # Add horizontal spacer on the right to center the value buttons
-        self.value_buttons_layout.addStretch()
-
-        # Add the value buttons layout to the main layout
-        self.main_layout.addLayout(self.value_buttons_layout)
-
-        # Spacer to push everything to the top
-        self.main_layout.addStretch()
-
-    def add_value_button(self, label_text, layout):
-        """Create a button that opens a dialog to input a value for the corresponding keycode."""
-        button = QPushButton(label_text)
-        button.setFixedHeight(50)
-        button.setFixedWidth(250)
-        button.clicked.connect(lambda: self.open_value_dialog(label_text))
-        layout.addWidget(button)
-
-    def open_value_dialog(self, label):
-        """Open a dialog to input a value between 0 and the max allowed value."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"Set Value for {label}")
-        dialog.setFixedSize(300, 150)
-
-        # Set max value based on the button type
-        if label == "Tapdance Selection":
-            max_value = 100
-        elif label == "DKS Selection":
-            max_value = 49
-        else:  # Macro Selection
-            max_value = 255
-
-        layout = QVBoxLayout(dialog)
-        label_widget = QLabel(f"Enter value for {label} (0-{max_value}):")
-        self.value_input = QLineEdit()
-        self.value_input.setPlaceholderText(f"Enter a number between 0 and {max_value}")
-        self.value_input.textChanged.connect(lambda text: self.validate_value_input(text, max_value))
-
-        layout.addWidget(label_widget)
-        layout.addWidget(self.value_input)
-
-        confirm_button = QPushButton("Confirm")
-        confirm_button.clicked.connect(lambda: self.confirm_value(dialog, label))
-        layout.addWidget(confirm_button)
-
-        dialog.exec_()
-
-    def validate_value_input(self, text, max_value):
-        if text and (not text.isdigit() or not (0 <= int(text) <= max_value)):
-            self.value_input.clear()
-
-    def confirm_value(self, dialog, label):
-        """Confirm the value input and emit the corresponding keycode."""
-        value = self.value_input.text()
-        if label == "Tapdance Selection":
-            max_value = 100
-        elif label == "DKS Selection":
-            max_value = 49
-        else:  # Macro Selection
-            max_value = 255
-
-        if value.isdigit() and 0 <= int(value) <= max_value:
-            keycode_map = {
-                "Tapdance Selection": f"TD({value})",
-                "Macro Selection": f"M{value}",
-                "DKS Selection": f"DKS_{int(value):02d}"
+        # Create side tabs container
+        side_tabs_container = QWidget()
+        side_tabs_container.setObjectName("macro_side_tabs_container")
+        side_tabs_container.setStyleSheet("""
+            QWidget#macro_side_tabs_container {
+                background: palette(window);
+                border: 1px solid palette(mid);
+                border-right: none;
             }
+        """)
+        side_tabs_layout = QVBoxLayout(side_tabs_container)
+        side_tabs_layout.setSpacing(0)
+        side_tabs_layout.setContentsMargins(0, 0, 0, 0)
 
-            if label in keycode_map:
-                selected_keycode = keycode_map[label]
-                self.keycode_changed.emit(selected_keycode)
-                dialog.accept()
+        self.side_tab_buttons = {}
+        for tab_widget, display_name in self.sections:
+            btn = QPushButton(display_name)
+            btn.setCheckable(True)
+            btn.setMinimumHeight(40)
+            btn.setMinimumWidth(100)
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: 1px solid palette(mid);
+                    border-radius: 0px;
+                    border-right: none;
+                    background: palette(button);
+                    text-align: left;
+                    padding-left: 15px;
+                    font-size: 9pt;
+                }
+                QPushButton:hover:!checked {
+                    background: palette(light);
+                }
+                QPushButton:checked {
+                    background: palette(base);
+                    font-weight: 600;
+                    border-right: 1px solid palette(base);
+                }
+            """)
+            btn.clicked.connect(lambda checked, dn=display_name: self.show_section(dn))
+            side_tabs_layout.addWidget(btn)
+            self.side_tab_buttons[display_name] = btn
+
+        side_tabs_layout.addStretch(1)
+        main_layout_h.addWidget(side_tabs_container)
+
+        # Create content container
+        self.content_wrapper = QWidget()
+        self.content_wrapper.setObjectName("macro_content_wrapper")
+        self.content_wrapper.setStyleSheet("""
+            QWidget#macro_content_wrapper {
+                border: 1px solid palette(mid);
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.1,
+                                           stop: 0 palette(alternate-base),
+                                           stop: 1 palette(base));
+            }
+        """)
+        self.content_layout = QVBoxLayout(self.content_wrapper)
+        self.content_layout.setSpacing(0)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add all section widgets to content area
+        self.section_widgets = {}
+        for tab_widget, display_name in self.sections:
+            tab_widget.hide()
+            self.content_layout.addWidget(tab_widget)
+            self.section_widgets[display_name] = tab_widget
+
+        main_layout_h.addWidget(self.content_wrapper)
+        self.setLayout(main_layout_h)
+
+        # Initialize with default counts
+        self.update_counts()
+
+        # Show first section by default
+        self.show_section("Macro")
+
+    def set_keyboard(self, keyboard):
+        """Set the keyboard reference and update counts from it"""
+        self.keyboard = keyboard
+        self.update_counts()
+
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set references to the editors to query their visible tab counts"""
+        self.macro_recorder = macro_recorder
+        self.tap_dance_editor = tap_dance_editor
+        self.dks_settings = dks_settings
+        self.toggle_settings = toggle_settings
+        self.update_counts()
+
+    def update_counts(self):
+        """Update button counts from editors' visible tab counts"""
+        # Get macro count from editor's visible tab count
+        if self.macro_recorder is not None and hasattr(self.macro_recorder, '_visible_tab_count'):
+            self.macro_count = max(1, self.macro_recorder._visible_tab_count)
+        elif self.keyboard is not None:
+            self.macro_count = getattr(self.keyboard, 'macro_count', 1)
+        else:
+            self.macro_count = 1
+
+        # Get tapdance count from editor's visible tab count
+        if self.tap_dance_editor is not None and hasattr(self.tap_dance_editor, '_visible_tab_count'):
+            self.tapdance_count = max(1, self.tap_dance_editor._visible_tab_count)
+        elif self.keyboard is not None:
+            self.tapdance_count = getattr(self.keyboard, 'tap_dance_count', 1)
+        else:
+            self.tapdance_count = 1
+
+        # Get DKS count from editor's visible tab count
+        if self.dks_settings is not None and hasattr(self.dks_settings, '_visible_tab_count'):
+            self.dks_count = max(1, self.dks_settings._visible_tab_count)
+        else:
+            self.dks_count = 1
+
+        # Get Toggle count from editor's visible tab count
+        if self.toggle_settings is not None and hasattr(self.toggle_settings, '_visible_tab_count'):
+            self.toggle_count = max(1, self.toggle_settings._visible_tab_count)
+        else:
+            self.toggle_count = 1
+
+        # Update sub-tab counts
+        self.macro_subtab.set_button_count(self.macro_count)
+        self.tapdance_subtab.set_button_count(self.tapdance_count)
+        self.dks_subtab.set_button_count(self.dks_count)
+        self.toggle_subtab.set_button_count(self.toggle_count)
+
+    def show_section(self, section_name):
+        """Show the specified section and update tab button states"""
+        # Hide all section widgets
+        for widget in self.section_widgets.values():
+            widget.hide()
+
+        # Uncheck all tab buttons
+        for btn in self.side_tab_buttons.values():
+            btn.setChecked(False)
+
+        # Show the selected section widget and check its tab button
+        if section_name in self.section_widgets:
+            self.section_widgets[section_name].show()
+            if section_name in self.side_tab_buttons:
+                self.side_tab_buttons[section_name].setChecked(True)
+
+    def on_keycode_changed(self, code):
+        self.keycode_changed.emit(code)
 
     def recreate_buttons(self, keycode_filter=None):
-        # No regular buttons to create - only selection boxes remain
-        pass
+        self.current_keycode_filter = keycode_filter
 
-    def on_selection_change(self, index):
-        selected_qmk_id = self.sender().itemData(index)
-        if selected_qmk_id:
-            self.keycode_changed.emit(selected_qmk_id)
+        # Update counts before recreating buttons
+        self.update_counts()
 
-    def relabel_buttons(self):
-        # No buttons to relabel - only selection boxes
-        pass
+        # Store currently selected section before recreating
+        current_section = None
+        for section_name, widget in self.section_widgets.items():
+            if widget.isVisible():
+                current_section = section_name
+                break
+
+        # Recreate buttons for each sub-tab
+        for tab_widget, display_name in self.sections:
+            tab_widget.recreate_buttons(keycode_filter)
+
+        # Restore the previously selected section, or default to first
+        if current_section and current_section in self.section_widgets:
+            self.show_section(current_section)
+        else:
+            self.show_section("Macro")
 
     def has_buttons(self):
-        """Check if there are selection boxes."""
-        return True  # Always has selection boxes
+        return any(tab.has_buttons() for tab, _ in self.sections)
+
+    def relabel_buttons(self):
+        for tab_widget, _ in self.sections:
+            tab_widget.relabel_buttons()
+
 
 class KeySplitTab(QScrollArea):
     keycode_changed = pyqtSignal(str)
@@ -5313,6 +5475,12 @@ class FilteredTabbedKeycodes(QTabWidget):
             elif hasattr(tab, 'keyboard'):
                 tab.keyboard = keyboard
 
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set editor references for tabs that need them (e.g., MacroTab)"""
+        for tab in self.tabs:
+            if hasattr(tab, 'set_editors') and callable(tab.set_editors):
+                tab.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+
 
 class TabbedKeycodes(QWidget):
 
@@ -5387,4 +5555,9 @@ class TabbedKeycodes(QWidget):
         """Set keyboard reference for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_keyboard(keyboard)
+
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set editor references for all tab widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
 
