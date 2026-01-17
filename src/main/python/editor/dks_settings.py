@@ -1427,6 +1427,8 @@ class DKSSettingsTab(BasicEditor):
         if self._visible_tab_count < DKS_NUM_SLOTS and index == self._visible_tab_count:
             self._manually_expanded_count += 1
             self._update_visible_tabs()
+            # Update keycode buttons to show new DKS count
+            self.tabbed_keycodes.refresh_macro_buttons()
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)
             return
 

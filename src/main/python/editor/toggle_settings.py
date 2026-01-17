@@ -84,8 +84,22 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
     def set_keyboard(self, keyboard):
         """Set keyboard reference for tabs that need it"""
         for tab in self.tabs:
-            if hasattr(tab, 'keyboard'):
+            if hasattr(tab, 'set_keyboard') and callable(tab.set_keyboard):
+                tab.set_keyboard(keyboard)
+            elif hasattr(tab, 'keyboard'):
                 tab.keyboard = keyboard
+
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set editor references for tabs that need them (e.g., MacroTab)"""
+        for tab in self.tabs:
+            if hasattr(tab, 'set_editors') and callable(tab.set_editors):
+                tab.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+
+    def refresh_macro_buttons(self):
+        """Force refresh the MacroTab buttons"""
+        for tab in self.tabs:
+            if hasattr(tab, 'refresh_buttons') and callable(tab.refresh_buttons):
+                tab.refresh_buttons()
 
 
 class TabbedKeycodesNoLayers(QWidget):
@@ -126,6 +140,16 @@ class TabbedKeycodesNoLayers(QWidget):
         """Set keyboard reference for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_keyboard(keyboard)
+
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+        """Set editor references for all tab widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+
+    def refresh_macro_buttons(self):
+        """Force refresh the macro tab buttons in all keycodes widgets"""
+        for opt in [self.all_keycodes, self.basic_keycodes]:
+            opt.refresh_macro_buttons()
 
 
 class ToggleKeyWidget(KeyWidget):
@@ -406,6 +430,8 @@ class ToggleSettingsTab(BasicEditor):
         if self._visible_tab_count < TOGGLE_NUM_SLOTS and index == self._visible_tab_count:
             self._manually_expanded_count += 1
             self._update_visible_tabs()
+            # Update keycode buttons to show new toggle count
+            self.tabbed_keycodes.refresh_macro_buttons()
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)
             return
 

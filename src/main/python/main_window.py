@@ -380,8 +380,37 @@ class MainWindow(QMainWindow):
                   self.loop_manager, self.arpeggiator, self.step_sequencer]:
             e.rebuild(self.autorefresh.current_device)
 
+        # Set all editor references on all tabbed_keycodes instances
+        self._update_all_tabbed_keycodes()
+
         # Refresh keycode buttons in tray to reflect updated content counts from editors
         self.tray_keycodes.recreate_keycode_buttons()
+
+    def _update_all_tabbed_keycodes(self):
+        """Set all editor references on all tabbed_keycodes instances for consistent keycode counts"""
+        editors_with_tabbed_keycodes = [
+            self.keymap_editor,
+            self.macro_recorder,
+            self.tap_dance,
+            self.dks_settings,
+            self.toggle_settings,
+            self.combos,
+            self.matrix_tester,
+        ]
+
+        for editor in editors_with_tabbed_keycodes:
+            if hasattr(editor, 'tabbed_keycodes'):
+                editor.tabbed_keycodes.set_keyboard(self.autorefresh.current_device.keyboard if isinstance(self.autorefresh.current_device, VialKeyboard) else None)
+                editor.tabbed_keycodes.set_editors(
+                    macro_recorder=self.macro_recorder,
+                    tap_dance_editor=self.tap_dance,
+                    dks_settings=self.dks_settings,
+                    toggle_settings=self.toggle_settings
+                )
+
+        # Also update the tray keycodes
+        if isinstance(self.autorefresh.current_device, VialKeyboard):
+            self.tray_keycodes.set_keyboard(self.autorefresh.current_device.keyboard)
 
     def refresh_tabs(self):
         print("refresh_tabs() called")
