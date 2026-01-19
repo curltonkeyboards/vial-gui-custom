@@ -495,8 +495,10 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
         }
     }
 
+    // DEBUG Step 7b: Disable null bind calls to test if they cause the issue
     // Null bind integration: notify on key state transitions
     // NOTE: Null bind is now layer-aware - groups only activate on their assigned layer
+    /*
     uint8_t row = KEY_ROW(key_idx);
     uint8_t col = KEY_COL(key_idx);
 
@@ -523,6 +525,7 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
             }
         }
     }
+    */
 }
 
 // ============================================================================
