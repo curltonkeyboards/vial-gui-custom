@@ -949,8 +949,8 @@ static void initialize_midi_states(void) {
 // ============================================================================
 
 static void analog_matrix_task_internal(void) {
-    // DEBUG Step 5: Minimal scanning - ADC + EMA only, no processing
-    // Testing if the issue is in ADC reading or in the post-processing
+    // DEBUG Step 6: Add calibration + distance calculation back
+    // Testing if calibration or distance calc causes the issue
 
     if (!analog_initialized) return;
 
@@ -966,12 +966,18 @@ static void analog_matrix_task_internal(void) {
             key_state_t *key = &key_matrix[key_idx];
             uint16_t raw_value = samples[row];
 
-            // 1. Apply EMA filter only
+            // 1. Apply EMA filter
             key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
-            // DEBUG: Skip all processing for now
-            // update_calibration(key_idx);
-            // key->distance = adc_to_distance(...);
+            // 2. Update calibration (re-enabled)
+            update_calibration(key_idx);
+
+            // 3. Calculate distance (re-enabled)
+            key->distance = adc_to_distance(key->adc_filtered,
+                                            key->adc_rest_value,
+                                            key->adc_bottom_out_value);
+
+            // 4. RT processing - still disabled
             // process_rapid_trigger(key_idx, current_layer);
         }
 
@@ -1094,11 +1100,11 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
-    // Run analog matrix scan (minimal version for debugging)
+    // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // DEBUG Step 5: Simplified matrix build - no MIDI, DKS, or null bind processing
-    // Just check is_pressed state directly
+    // DEBUG Step 6: Use distance value for key detection
+    // Still no MIDI, DKS, or null bind processing
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         matrix_row_t current_row_value = 0;
 
@@ -1106,9 +1112,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             uint32_t key_idx = KEY_INDEX(row, col);
             key_state_t *key = &key_matrix[key_idx];
 
-            // Simple threshold check on filtered ADC value
-            // If ADC drops below rest-100, consider it pressed
-            if (key->adc_filtered < key->adc_rest_value - 100) {
+            // Use distance threshold (50 out of 255 = ~20% travel)
+            if (key->distance > 50) {
                 current_row_value |= (MATRIX_ROW_SHIFTER << col);
             }
         }
