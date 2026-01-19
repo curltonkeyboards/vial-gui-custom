@@ -15270,23 +15270,23 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Show ADC readings using same pattern as oled_render_keylog
-    char dbuf[256];  // Large buffer for debug output
+    // DEBUG MODE: Show RAW ADC readings (no filtering)
+    char dbuf[256];
 
-    // Read all ADC values into variables first
-    uint16_t v00 = analog_matrix_get_raw_value(0, 0);
-    uint16_t v01 = analog_matrix_get_raw_value(0, 1);
-    uint16_t v02 = analog_matrix_get_raw_value(0, 2);
-    uint16_t v03 = analog_matrix_get_raw_value(0, 3);
-    uint16_t v04 = analog_matrix_get_raw_value(0, 4);
-    uint16_t v10 = analog_matrix_get_raw_value(1, 0);
-    uint16_t v20 = analog_matrix_get_raw_value(2, 0);
-    uint16_t v30 = analog_matrix_get_raw_value(3, 0);
-    uint16_t v40 = analog_matrix_get_raw_value(4, 0);
-    uint16_t v013 = analog_matrix_get_raw_value(0, 13);
+    // Read RAW ADC values (no EMA filtering)
+    uint16_t v00 = analog_matrix_get_raw_adc(0, 0);
+    uint16_t v01 = analog_matrix_get_raw_adc(0, 1);
+    uint16_t v02 = analog_matrix_get_raw_adc(0, 2);
+    uint16_t v03 = analog_matrix_get_raw_adc(0, 3);
+    uint16_t v04 = analog_matrix_get_raw_adc(0, 4);
+    uint16_t v10 = analog_matrix_get_raw_adc(1, 0);
+    uint16_t v20 = analog_matrix_get_raw_adc(2, 0);
+    uint16_t v30 = analog_matrix_get_raw_adc(3, 0);
+    uint16_t v40 = analog_matrix_get_raw_adc(4, 0);
+    uint16_t v013 = analog_matrix_get_raw_adc(0, 13);
 
     // Build string progressively like oled_render_keylog does
-    snprintf(dbuf, sizeof(dbuf), "  ADC DEBUG MODE\n");
+    snprintf(dbuf, sizeof(dbuf), "  RAW ADC VALUES\n");
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C1 =%5u\n", v01);

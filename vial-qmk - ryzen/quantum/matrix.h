@@ -213,8 +213,11 @@ uint8_t analog_matrix_get_velocity_mode(void);
 // Get current key state (true = pressed, false = released)
 bool analog_matrix_get_key_state(uint8_t row, uint8_t col);
 
-// Get raw ADC value for debugging
+// Get raw ADC value for debugging (actually returns filtered value)
 uint16_t analog_matrix_get_raw_value(uint8_t row, uint8_t col);
+
+// Get actual raw ADC value (no filtering at all)
+uint16_t analog_matrix_get_raw_adc(uint8_t row, uint8_t col);
 
 // Check if key is calibrated
 bool analog_matrix_is_calibrated(uint8_t row, uint8_t col);

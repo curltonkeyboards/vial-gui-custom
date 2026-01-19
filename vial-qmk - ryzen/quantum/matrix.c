@@ -81,6 +81,7 @@ extern int8_t octave_number;
 
 typedef struct {
     // ADC state (with EMA filtering)
+    uint16_t adc_raw;               // Raw ADC value (no filtering)
     uint16_t adc_filtered;          // EMA-filtered ADC value
     uint16_t adc_rest_value;        // Calibrated rest position
     uint16_t adc_bottom_out_value;  // Calibrated bottom-out position
@@ -968,6 +969,9 @@ static void analog_matrix_task_internal(void) {
             key_state_t *key = &key_matrix[key_idx];
             uint16_t raw_value = samples[row];
 
+            // Store raw value for debugging
+            key->adc_raw = raw_value;
+
             // 1. Apply EMA filter (libhmk style)
             key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
@@ -1267,6 +1271,13 @@ uint16_t analog_matrix_get_raw_value(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
     uint32_t key_idx = KEY_INDEX(row, col);
     return key_matrix[key_idx].adc_filtered;
+}
+
+// Get actual raw ADC value (no filtering)
+uint16_t analog_matrix_get_raw_adc(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return key_matrix[key_idx].adc_raw;
 }
 
 bool analog_matrix_is_calibrated(uint8_t row, uint8_t col) {
