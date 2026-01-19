@@ -2212,13 +2212,14 @@ bool aftertouch_pedal_active = false;
 // Layer actuations with per-layer aftertouch settings
 // {normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags,
 //  aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time}
+// FIX: Set actuation to 99 (nearly full press) to prevent empty sockets from triggering
 layer_actuation_t layer_actuations[12] = {
-    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
-    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
-    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
-    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
-    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200},
-    {80, 80, 2, 10, 0, 0, 255, 100, 200}, {80, 80, 2, 10, 0, 0, 255, 100, 200}
+    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
+    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
+    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
+    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
+    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
+    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200}
 };
 
 // =============================================================================
@@ -2251,8 +2252,8 @@ bool toggle_enabled = true;  // Global enable flag
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
-        layer_actuations[i].normal_actuation = 80;  // 2.0mm
-        layer_actuations[i].midi_actuation = 80;    // 2.0mm
+        layer_actuations[i].normal_actuation = 99;  // ~2.5mm (nearly full press to prevent ghost presses)
+        layer_actuations[i].midi_actuation = 99;    // ~2.5mm (nearly full press to prevent ghost presses)
         layer_actuations[i].velocity_mode = 0;      // Fixed
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
