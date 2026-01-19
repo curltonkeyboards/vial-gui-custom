@@ -421,111 +421,15 @@ static void save_calibration_to_eeprom(void) {
 __attribute__((unused))
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
-    bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
-    // Get per-key actuation config
-    uint8_t actuation_point, rt_down, rt_up, flags;
-    get_key_actuation_config(key_idx, current_layer,
-                            &actuation_point, &rt_down, &rt_up, &flags);
+    // DEBUG Step 7c: Use fixed actuation point, no per-key config lookup
+    // Fixed actuation at 50/255 (~20% travel), no RT
+    uint8_t actuation_point = 50;
 
-    // Determine reset point based on continuous mode flag
-    // Continuous mode: reset only when key fully released (distance = 0)
-    // Normal mode: reset when key goes above actuation point
-    uint8_t reset_point = (flags & PER_KEY_FLAG_CONTINUOUS_RT) ? 0 : actuation_point;
+    // Simple threshold mode only - no RT state machine
+    key->is_pressed = (key->distance >= actuation_point);
 
-    if (rt_down == 0) {
-        // RT disabled - simple threshold mode
-        key->is_pressed = (key->distance >= actuation_point);
-        key->key_dir = KEY_DIR_INACTIVE;
-
-        // Velocity capture on initial press (for MIDI)
-        if (key->is_pressed && !was_pressed) {
-            key->base_velocity = 0;  // Will be calculated by MIDI processor
-        }
-    } else {
-        // RT enabled - libhmk 3-state FSM
-        if (rt_up == 0) rt_up = rt_down;  // Symmetric if not specified
-
-        switch (key->key_dir) {
-            case KEY_DIR_INACTIVE:
-                if (key->distance > actuation_point) {
-                    // Initial press
-                    key->extremum = key->distance;
-                    key->key_dir = KEY_DIR_DOWN;
-                    key->is_pressed = true;
-                    key->base_velocity = 0;  // Reset for new press cycle
-                }
-                break;
-
-            case KEY_DIR_DOWN:
-                if (key->distance <= reset_point) {
-                    // Full release to inactive
-                    key->extremum = key->distance;
-                    key->key_dir = KEY_DIR_INACTIVE;
-                    key->is_pressed = false;
-                    key->base_velocity = 0;
-                } else if (key->distance + rt_up < key->extremum) {
-                    // RT release (moved up by rt_up from peak)
-                    key->extremum = key->distance;
-                    key->key_dir = KEY_DIR_UP;
-                    key->is_pressed = false;
-                } else if (key->distance > key->extremum) {
-                    // Track deeper press
-                    key->extremum = key->distance;
-                }
-                break;
-
-            case KEY_DIR_UP:
-                if (key->distance <= reset_point) {
-                    // Full release to inactive
-                    key->extremum = key->distance;
-                    key->key_dir = KEY_DIR_INACTIVE;
-                    key->is_pressed = false;
-                    key->base_velocity = 0;
-                } else if (key->extremum + rt_down < key->distance) {
-                    // RT re-press (moved down by rt_down from trough)
-                    key->extremum = key->distance;
-                    key->key_dir = KEY_DIR_DOWN;
-                    key->is_pressed = true;
-                } else if (key->distance < key->extremum) {
-                    // Track higher release
-                    key->extremum = key->distance;
-                }
-                break;
-        }
-    }
-
-    // DEBUG Step 7b: Disable null bind calls to test if they cause the issue
-    // Null bind integration: notify on key state transitions
-    // NOTE: Null bind is now layer-aware - groups only activate on their assigned layer
-    /*
-    uint8_t row = KEY_ROW(key_idx);
-    uint8_t col = KEY_COL(key_idx);
-
-    if (key->is_pressed && !was_pressed) {
-        // Key just pressed - notify null bind with current travel distance and layer
-        nullbind_key_pressed(row, col, key->distance, current_layer);
-    } else if (!key->is_pressed && was_pressed) {
-        // Key just released - notify null bind
-        nullbind_key_released(row, col, current_layer);
-    } else if (key->is_pressed) {
-        // Key still pressed - update travel for distance-based null bind
-        // This is needed for DISTANCE mode to track which key is pressed further
-        uint8_t key_index = row * 14 + col;
-        if (key_index < 70) {
-            // Update the internal travel tracking (done inside nullbind_key_pressed normally,
-            // but we need to update it continuously for distance mode)
-            extern uint8_t nullbind_key_travel[70];  // Access from orthomidi5x14.c
-            nullbind_key_travel[key_index] = key->distance;
-
-            // Re-evaluate which key should be active if distance changed (layer-aware)
-            int8_t group_num = nullbind_find_key_group_for_layer(key_index, current_layer);
-            if (group_num >= 0) {
-                nullbind_update_group_state(group_num);
-            }
-        }
-    }
-    */
+    // Skip all null bind integration
 }
 
 // ============================================================================
