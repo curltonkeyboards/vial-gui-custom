@@ -422,9 +422,11 @@ __attribute__((unused))
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
 
-    // DEBUG Step 7c: Use fixed actuation point, no per-key config lookup
-    // Fixed actuation at 50/255 (~20% travel), no RT
-    uint8_t actuation_point = 50;
+    // DEBUG Step 7d: Test per-key config lookup with simple threshold
+    // Get per-key actuation config
+    uint8_t actuation_point, rt_down, rt_up, flags;
+    get_key_actuation_config(key_idx, current_layer,
+                            &actuation_point, &rt_down, &rt_up, &flags);
 
     // Simple threshold mode only - no RT state machine
     key->is_pressed = (key->distance >= actuation_point);
