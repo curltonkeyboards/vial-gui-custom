@@ -327,30 +327,19 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    if (key_idx >= NUM_KEYS || layer >= 12) {
-        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
-        *rt_down = 0;
-        *rt_up = 0;
-        *flags = 0;
-        return;
-    }
+    // FIX: Use layer-level actuation settings instead of per-key array
+    // The per_key_actuations[] array access was causing USB disconnection
+    // This uses the already-working layer_actuations[] instead
 
-    // Always use per-key per-layer settings - firmware always reads from current layer
-    per_key_actuation_t *settings = &per_key_actuations[layer].keys[key_idx];
+    if (layer >= 12) layer = 0;
 
-    // Convert from 0-100 scale to 0-255 distance
-    *actuation_point = actuation_to_distance(settings->actuation);
+    // Use layer-level normal actuation setting
+    *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
 
-    // RT sensitivity: convert from 0-100 scale to 0-255 distance
-    if (settings->flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) {
-        *rt_down = actuation_to_distance(settings->rapidfire_press_sens);
-        *rt_up = actuation_to_distance(settings->rapidfire_release_sens);
-    } else {
-        *rt_down = 0;  // RT disabled
-        *rt_up = 0;
-    }
-
-    *flags = settings->flags;
+    // Disable RT for now (can be re-enabled with layer-level settings later)
+    *rt_down = 0;
+    *rt_up = 0;
+    *flags = 0;
 }
 
 // ============================================================================
@@ -418,16 +407,61 @@ static void save_calibration_to_eeprom(void) {
 // RT STATE MACHINE (libhmk 3-state FSM)
 // ============================================================================
 
-__attribute__((unused))
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
 
-    // DEBUG Step 7e: Test actuation_to_distance() without array access
-    // Use default actuation value (20 = 2.0mm), don't access per_key_actuations
-    uint8_t actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
+    // Get actuation config (now uses layer-level settings, not per-key array)
+    uint8_t actuation_point, rt_down, rt_up, flags;
+    get_key_actuation_config(key_idx, current_layer,
+                            &actuation_point, &rt_down, &rt_up, &flags);
 
-    // Simple threshold mode only
-    key->is_pressed = (key->distance >= actuation_point);
+    if (rt_down == 0) {
+        // RT disabled - simple threshold mode
+        key->is_pressed = (key->distance >= actuation_point);
+        key->key_dir = KEY_DIR_INACTIVE;
+    } else {
+        // RT enabled - libhmk 3-state FSM
+        if (rt_up == 0) rt_up = rt_down;
+        uint8_t reset_point = actuation_point;
+
+        switch (key->key_dir) {
+            case KEY_DIR_INACTIVE:
+                if (key->distance > actuation_point) {
+                    key->extremum = key->distance;
+                    key->key_dir = KEY_DIR_DOWN;
+                    key->is_pressed = true;
+                }
+                break;
+
+            case KEY_DIR_DOWN:
+                if (key->distance <= reset_point) {
+                    key->extremum = key->distance;
+                    key->key_dir = KEY_DIR_INACTIVE;
+                    key->is_pressed = false;
+                } else if (key->distance + rt_up < key->extremum) {
+                    key->extremum = key->distance;
+                    key->key_dir = KEY_DIR_UP;
+                    key->is_pressed = false;
+                } else if (key->distance > key->extremum) {
+                    key->extremum = key->distance;
+                }
+                break;
+
+            case KEY_DIR_UP:
+                if (key->distance <= reset_point) {
+                    key->extremum = key->distance;
+                    key->key_dir = KEY_DIR_INACTIVE;
+                    key->is_pressed = false;
+                } else if (key->extremum + rt_down < key->distance) {
+                    key->extremum = key->distance;
+                    key->key_dir = KEY_DIR_DOWN;
+                    key->is_pressed = true;
+                } else if (key->distance < key->extremum) {
+                    key->extremum = key->distance;
+                }
+                break;
+        }
+    }
 }
 
 // ============================================================================
