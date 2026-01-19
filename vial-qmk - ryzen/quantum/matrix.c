@@ -944,19 +944,10 @@ static void initialize_midi_states(void) {
 // ============================================================================
 
 static void analog_matrix_task_internal(void) {
-    // DEBUG Step 4: Re-enable continuous scanning
-    // If USB disconnects now, the problem is in this function
+    // DEBUG Step 5: Minimal scanning - ADC + EMA only, no processing
+    // Testing if the issue is in ADC reading or in the post-processing
 
     if (!analog_initialized) return;
-
-    // Get current layer ONCE per scan
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-
-    // Update layer cache
-    if (current_layer != cached_layer) {
-        cached_layer = current_layer;
-    }
-    update_active_settings(current_layer);
 
     // Scan by column (hardware-optimized)
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -970,27 +961,16 @@ static void analog_matrix_task_internal(void) {
             key_state_t *key = &key_matrix[key_idx];
             uint16_t raw_value = samples[row];
 
-            // 1. Apply EMA filter (libhmk style)
+            // 1. Apply EMA filter only
             key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
-            // 2. Update calibration (continuous)
-            update_calibration(key_idx);
-
-            // 3. Calculate distance (0-255)
-            key->distance = adc_to_distance(key->adc_filtered,
-                                            key->adc_rest_value,
-                                            key->adc_bottom_out_value);
-
-            // 4. Process RT state machine
-            process_rapid_trigger(key_idx, current_layer);
+            // DEBUG: Skip all processing for now
+            // update_calibration(key_idx);
+            // key->distance = adc_to_distance(...);
+            // process_rapid_trigger(key_idx, current_layer);
         }
 
         unselect_column();
-    }
-
-    // Auto-save calibration after inactivity
-    if (calibration_dirty && timer_elapsed(last_calibration_change) >= INACTIVITY_TIMEOUT_MS) {
-        save_calibration_to_eeprom();
     }
 }
 
@@ -1109,93 +1089,22 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
-    // Initialize MIDI states if needed
-    if (!midi_states_initialized && optimized_midi_positions != NULL) {
-        initialize_midi_states();
-    }
-
-    // Run analog matrix scan
+    // Run analog matrix scan (minimal version for debugging)
     analog_matrix_task_internal();
 
-    // Get current layer
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    if (current_layer >= 12) current_layer = 0;
-
-    // Process MIDI keys
-    if (midi_states_initialized && active_settings.velocity_mode > 0) {
-        for (uint32_t i = 0; i < NUM_KEYS; i++) {
-            if (midi_key_states[i].is_midi_key) {
-                process_midi_key_analog(i, current_layer);
-            }
-        }
-    }
-
-    // Process DKS keys
-    for (uint32_t i = 0; i < NUM_KEYS; i++) {
-        uint8_t row = KEY_ROW(i);
-        uint8_t col = KEY_COL(i);
-        uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
-
-        if (is_dks_keycode(keycode)) {
-            // Convert distance to travel for DKS (backward compatibility)
-            uint8_t travel = distance_to_travel_compat(key_matrix[i].distance);
-            dks_process_key(row, col, travel, keycode);
-        }
-    }
-
-    // Build matrix from key states
-    uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
-    uint8_t analog_mode = active_settings.velocity_mode;
-
+    // DEBUG Step 5: Simplified matrix build - no MIDI, DKS, or null bind processing
+    // Just check is_pressed state directly
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         matrix_row_t current_row_value = 0;
 
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             uint32_t key_idx = KEY_INDEX(row, col);
             key_state_t *key = &key_matrix[key_idx];
-            bool pressed = false;
 
-            // Check if this is a DKS key
-            uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
-            bool is_dks = is_dks_keycode(keycode);
-
-            if (is_dks) {
-                // DKS keys handle their own keycodes internally
-                pressed = false;
-            } else if (midi_key_states[key_idx].is_midi_key) {
-                midi_key_state_t *state = &midi_key_states[key_idx];
-                uint8_t travel = distance_to_travel_compat(key->distance);
-
-                switch (analog_mode) {
-                    case 0:  // Fixed
-                        pressed = key->is_pressed && (travel >= midi_threshold);
-                        break;
-                    case 1:  // Peak
-                        pressed = state->send_on_release;
-                        break;
-                    case 2:  // Speed
-                        pressed = (travel >= midi_threshold) && state->calculated_velocity > 0;
-                        break;
-                    case 3:  // Speed+Peak
-                        pressed = state->send_on_release;
-                        break;
-                }
-
-                if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
-                    aftertouch_pedal_active && state->was_pressed) {
-                    pressed = true;
-                }
-            } else {
-                // Normal key - use RT state
-                pressed = key->is_pressed;
-            }
-
-            if (pressed) {
-                // Check if null bind wants to block this key (SOCD handling)
-                // NOTE: Null bind is layer-aware - only checks groups on current layer
-                if (!nullbind_should_null_key(row, col, current_layer)) {
-                    current_row_value |= (MATRIX_ROW_SHIFTER << col);
-                }
+            // Simple threshold check on filtered ADC value
+            // If ADC drops below rest-100, consider it pressed
+            if (key->adc_filtered < key->adc_rest_value - 100) {
+                current_row_value |= (MATRIX_ROW_SHIFTER << col);
             }
         }
 
