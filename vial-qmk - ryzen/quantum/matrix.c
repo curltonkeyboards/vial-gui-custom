@@ -944,6 +944,10 @@ static void initialize_midi_states(void) {
 // ============================================================================
 
 static void analog_matrix_task_internal(void) {
+    // DEBUG: Disable all ADC scanning to test if USB stays connected
+    // Remove this return statement once debugging is complete
+    return;
+
     if (!analog_initialized) return;
 
     // Get current layer ONCE per scan
@@ -1043,9 +1047,9 @@ void matrix_init_custom(void) {
     adcgrpcfg.sqr1 = sqr[2];
     adcgrpcfg.num_channels = chn_cnt;
 
-    adcStart(&ADCD1, NULL);
-
-    SYSCFG->PMC |= SYSCFG_PMC_ADC1DC2;
+    // DEBUG: Skip ADC initialization to test USB stability
+    // adcStart(&ADCD1, NULL);
+    // SYSCFG->PMC |= SYSCFG_PMC_ADC1DC2;
 
     // Initialize all keys (flat array)
     for (uint32_t i = 0; i < NUM_KEYS; i++) {
@@ -1078,6 +1082,8 @@ void matrix_init_custom(void) {
         matrix[i] = 0;
     }
 
+    // DEBUG: Skip ADC warm-up to test USB stability
+    /*
     // Warm up ADC
     for (uint8_t i = 0; i < 5; i++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -1095,6 +1101,7 @@ void matrix_init_custom(void) {
             unselect_column();
         }
     }
+    */
 
     analog_initialized = true;
 
