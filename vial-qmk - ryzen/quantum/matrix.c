@@ -1278,6 +1278,7 @@ void analog_matrix_set_actuation_point(uint8_t row, uint8_t col, uint8_t point) 
     // In the new architecture, actuation is per-key in per_key_actuations[]
     // This function updates the per-key setting
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
+    if (cached_layer >= 12) return;  // Bounds check for layer
 
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
@@ -1290,6 +1291,7 @@ void analog_matrix_set_actuation_point(uint8_t row, uint8_t col, uint8_t point) 
 
 void analog_matrix_set_rapid_trigger(uint8_t row, uint8_t col, uint8_t sensitivity) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
+    if (cached_layer >= 12) return;  // Bounds check for layer
 
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
@@ -1310,6 +1312,7 @@ void analog_matrix_set_key_mode(uint8_t row, uint8_t col, uint8_t mode) {
     // Deprecated in new architecture - RT is always per-key
     // Mode is now controlled via per_key_actuations[].flags
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
+    if (cached_layer >= 12) return;  // Bounds check for layer
 
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
