@@ -327,26 +327,36 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    // FIX: Use layer-level actuation settings instead of per-key array
-    // The per_key_actuations[] array access was causing USB disconnection
-    // This uses the already-working layer_actuations[] instead
+    if (key_idx >= NUM_KEYS || layer >= 12) {
+        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
+        *rt_down = 0;
+        *rt_up = 0;
+        *flags = 0;
+        return;
+    }
 
-    if (layer >= 12) layer = 0;
+    // Always use per-key per-layer settings - firmware always reads from current layer
+    per_key_actuation_t *settings = &per_key_actuations[layer].keys[key_idx];
 
-    // Use layer-level normal actuation setting
-    *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
+    // Convert from 0-100 scale to 0-255 distance
+    *actuation_point = actuation_to_distance(settings->actuation);
 
-    // Disable RT for now (can be re-enabled with layer-level settings later)
-    *rt_down = 0;
-    *rt_up = 0;
-    *flags = 0;
+    // RT sensitivity: convert from 0-100 scale to 0-255 distance
+    if (settings->flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) {
+        *rt_down = actuation_to_distance(settings->rapidfire_press_sens);
+        *rt_up = actuation_to_distance(settings->rapidfire_release_sens);
+    } else {
+        *rt_down = 0;  // RT disabled
+        *rt_up = 0;
+    }
+
+    *flags = settings->flags;
 }
 
 // ============================================================================
 // CALIBRATION FUNCTIONS (libhmk style continuous calibration)
 // ============================================================================
 
-__attribute__((unused))
 static void update_calibration(uint32_t key_idx) {
     key_state_t *key = &key_matrix[key_idx];
     uint32_t now = timer_read32();
@@ -396,7 +406,6 @@ static void update_calibration(uint32_t key_idx) {
     key->last_adc_value = key->adc_filtered;
 }
 
-__attribute__((unused))
 static void save_calibration_to_eeprom(void) {
     // TODO: Implement EEPROM save for calibration
     // For now, just mark as clean
@@ -409,57 +418,106 @@ static void save_calibration_to_eeprom(void) {
 
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
+    bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
-    // Get actuation config (now uses layer-level settings, not per-key array)
+    // Get per-key actuation config
     uint8_t actuation_point, rt_down, rt_up, flags;
     get_key_actuation_config(key_idx, current_layer,
                             &actuation_point, &rt_down, &rt_up, &flags);
+
+    // Determine reset point based on continuous mode flag
+    // Continuous mode: reset only when key fully released (distance = 0)
+    // Normal mode: reset when key goes above actuation point
+    uint8_t reset_point = (flags & PER_KEY_FLAG_CONTINUOUS_RT) ? 0 : actuation_point;
 
     if (rt_down == 0) {
         // RT disabled - simple threshold mode
         key->is_pressed = (key->distance >= actuation_point);
         key->key_dir = KEY_DIR_INACTIVE;
+
+        // Velocity capture on initial press (for MIDI)
+        if (key->is_pressed && !was_pressed) {
+            key->base_velocity = 0;  // Will be calculated by MIDI processor
+        }
     } else {
         // RT enabled - libhmk 3-state FSM
-        if (rt_up == 0) rt_up = rt_down;
-        uint8_t reset_point = actuation_point;
+        if (rt_up == 0) rt_up = rt_down;  // Symmetric if not specified
 
         switch (key->key_dir) {
             case KEY_DIR_INACTIVE:
                 if (key->distance > actuation_point) {
+                    // Initial press
                     key->extremum = key->distance;
                     key->key_dir = KEY_DIR_DOWN;
                     key->is_pressed = true;
+                    key->base_velocity = 0;  // Reset for new press cycle
                 }
                 break;
 
             case KEY_DIR_DOWN:
                 if (key->distance <= reset_point) {
+                    // Full release to inactive
                     key->extremum = key->distance;
                     key->key_dir = KEY_DIR_INACTIVE;
                     key->is_pressed = false;
+                    key->base_velocity = 0;
                 } else if (key->distance + rt_up < key->extremum) {
+                    // RT release (moved up by rt_up from peak)
                     key->extremum = key->distance;
                     key->key_dir = KEY_DIR_UP;
                     key->is_pressed = false;
                 } else if (key->distance > key->extremum) {
+                    // Track deeper press
                     key->extremum = key->distance;
                 }
                 break;
 
             case KEY_DIR_UP:
                 if (key->distance <= reset_point) {
+                    // Full release to inactive
                     key->extremum = key->distance;
                     key->key_dir = KEY_DIR_INACTIVE;
                     key->is_pressed = false;
+                    key->base_velocity = 0;
                 } else if (key->extremum + rt_down < key->distance) {
+                    // RT re-press (moved down by rt_down from trough)
                     key->extremum = key->distance;
                     key->key_dir = KEY_DIR_DOWN;
                     key->is_pressed = true;
                 } else if (key->distance < key->extremum) {
+                    // Track higher release
                     key->extremum = key->distance;
                 }
                 break;
+        }
+    }
+
+    // Null bind integration: notify on key state transitions
+    // NOTE: Null bind is now layer-aware - groups only activate on their assigned layer
+    uint8_t row = KEY_ROW(key_idx);
+    uint8_t col = KEY_COL(key_idx);
+
+    if (key->is_pressed && !was_pressed) {
+        // Key just pressed - notify null bind with current travel distance and layer
+        nullbind_key_pressed(row, col, key->distance, current_layer);
+    } else if (!key->is_pressed && was_pressed) {
+        // Key just released - notify null bind
+        nullbind_key_released(row, col, current_layer);
+    } else if (key->is_pressed) {
+        // Key still pressed - update travel for distance-based null bind
+        // This is needed for DISTANCE mode to track which key is pressed further
+        uint8_t key_index = row * 14 + col;
+        if (key_index < 70) {
+            // Update the internal travel tracking (done inside nullbind_key_pressed normally,
+            // but we need to update it continuously for distance mode)
+            extern uint8_t nullbind_key_travel[70];  // Access from orthomidi5x14.c
+            nullbind_key_travel[key_index] = key->distance;
+
+            // Re-evaluate which key should be active if distance changed (layer-aware)
+            int8_t group_num = nullbind_find_key_group_for_layer(key_index, current_layer);
+            if (group_num >= 0) {
+                nullbind_update_group_state(group_num);
+            }
         }
     }
 }
@@ -495,7 +553,6 @@ static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out)
 // MIDI KEY ANALOG PROCESSING
 // ============================================================================
 
-__attribute__((unused))
 static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     midi_key_state_t *state = &midi_key_states[key_idx];
     key_state_t *key = &key_matrix[key_idx];
@@ -863,7 +920,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 }
 
-__attribute__((unused))
 static void initialize_midi_states(void) {
     if (midi_states_initialized) return;
 
@@ -888,14 +944,10 @@ static void initialize_midi_states(void) {
 // ============================================================================
 
 static void analog_matrix_task_internal(void) {
-    // DEBUG Step 7: Add rapid trigger processing back
-    // Testing if RT causes the issue
-
     if (!analog_initialized) return;
 
-    // Get current layer for RT processing
+    // Get current layer ONCE per scan
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    if (current_layer >= 12) current_layer = 0;
 
     // Update layer cache
     if (current_layer != cached_layer) {
@@ -915,22 +967,27 @@ static void analog_matrix_task_internal(void) {
             key_state_t *key = &key_matrix[key_idx];
             uint16_t raw_value = samples[row];
 
-            // 1. Apply EMA filter
+            // 1. Apply EMA filter (libhmk style)
             key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
-            // 2. Update calibration
+            // 2. Update calibration (continuous)
             update_calibration(key_idx);
 
-            // 3. Calculate distance
+            // 3. Calculate distance (0-255)
             key->distance = adc_to_distance(key->adc_filtered,
                                             key->adc_rest_value,
                                             key->adc_bottom_out_value);
 
-            // 4. RT processing (re-enabled)
+            // 4. Process RT state machine
             process_rapid_trigger(key_idx, current_layer);
         }
 
         unselect_column();
+    }
+
+    // Auto-save calibration after inactivity
+    if (calibration_dirty && timer_elapsed(last_calibration_change) >= INACTIVITY_TIMEOUT_MS) {
+        save_calibration_to_eeprom();
     }
 }
 
@@ -986,8 +1043,8 @@ void matrix_init_custom(void) {
     adcgrpcfg.sqr1 = sqr[2];
     adcgrpcfg.num_channels = chn_cnt;
 
-    // DEBUG Step 2: Re-enable ADC init, keep scanning disabled
     adcStart(&ADCD1, NULL);
+
     SYSCFG->PMC |= SYSCFG_PMC_ADC1DC2;
 
     // Initialize all keys (flat array)
@@ -1021,7 +1078,6 @@ void matrix_init_custom(void) {
         matrix[i] = 0;
     }
 
-    // DEBUG Step 3: Re-enable warm-up loop, keep continuous scanning disabled
     // Warm up ADC
     for (uint8_t i = 0; i < 5; i++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -1049,21 +1105,93 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
+    // Initialize MIDI states if needed
+    if (!midi_states_initialized && optimized_midi_positions != NULL) {
+        initialize_midi_states();
+    }
+
     // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // DEBUG Step 7: Use RT is_pressed state for key detection
-    // Still no MIDI, DKS, or null bind processing
+    // Get current layer
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+    if (current_layer >= 12) current_layer = 0;
+
+    // Process MIDI keys
+    if (midi_states_initialized && active_settings.velocity_mode > 0) {
+        for (uint32_t i = 0; i < NUM_KEYS; i++) {
+            if (midi_key_states[i].is_midi_key) {
+                process_midi_key_analog(i, current_layer);
+            }
+        }
+    }
+
+    // Process DKS keys
+    for (uint32_t i = 0; i < NUM_KEYS; i++) {
+        uint8_t row = KEY_ROW(i);
+        uint8_t col = KEY_COL(i);
+        uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+
+        if (is_dks_keycode(keycode)) {
+            // Convert distance to travel for DKS (backward compatibility)
+            uint8_t travel = distance_to_travel_compat(key_matrix[i].distance);
+            dks_process_key(row, col, travel, keycode);
+        }
+    }
+
+    // Build matrix from key states
+    uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    uint8_t analog_mode = active_settings.velocity_mode;
+
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         matrix_row_t current_row_value = 0;
 
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             uint32_t key_idx = KEY_INDEX(row, col);
             key_state_t *key = &key_matrix[key_idx];
+            bool pressed = false;
 
-            // Use RT is_pressed state
-            if (key->is_pressed) {
-                current_row_value |= (MATRIX_ROW_SHIFTER << col);
+            // Check if this is a DKS key
+            uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+            bool is_dks = is_dks_keycode(keycode);
+
+            if (is_dks) {
+                // DKS keys handle their own keycodes internally
+                pressed = false;
+            } else if (midi_key_states[key_idx].is_midi_key) {
+                midi_key_state_t *state = &midi_key_states[key_idx];
+                uint8_t travel = distance_to_travel_compat(key->distance);
+
+                switch (analog_mode) {
+                    case 0:  // Fixed
+                        pressed = key->is_pressed && (travel >= midi_threshold);
+                        break;
+                    case 1:  // Peak
+                        pressed = state->send_on_release;
+                        break;
+                    case 2:  // Speed
+                        pressed = (travel >= midi_threshold) && state->calculated_velocity > 0;
+                        break;
+                    case 3:  // Speed+Peak
+                        pressed = state->send_on_release;
+                        break;
+                }
+
+                if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
+                    aftertouch_pedal_active && state->was_pressed) {
+                    pressed = true;
+                }
+            } else {
+                // Normal key - use RT state
+                pressed = key->is_pressed;
+            }
+
+            if (pressed) {
+                // Check if null bind wants to block this key (SOCD handling)
+                // NOTE: Null bind is layer-aware - only checks groups on current layer
+                if (!nullbind_should_null_key(row, col, current_layer)) {
+                    current_row_value |= (MATRIX_ROW_SHIFTER << col);
+                }
             }
         }
 
@@ -1143,7 +1271,6 @@ void analog_matrix_set_actuation_point(uint8_t row, uint8_t col, uint8_t point) 
     // In the new architecture, actuation is per-key in per_key_actuations[]
     // This function updates the per-key setting
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
-    if (cached_layer >= 12) return;  // Bounds check for layer
 
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
@@ -1156,7 +1283,6 @@ void analog_matrix_set_actuation_point(uint8_t row, uint8_t col, uint8_t point) 
 
 void analog_matrix_set_rapid_trigger(uint8_t row, uint8_t col, uint8_t sensitivity) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
-    if (cached_layer >= 12) return;  // Bounds check for layer
 
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
@@ -1177,7 +1303,6 @@ void analog_matrix_set_key_mode(uint8_t row, uint8_t col, uint8_t mode) {
     // Deprecated in new architecture - RT is always per-key
     // Mode is now controlled via per_key_actuations[].flags
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
-    if (cached_layer >= 12) return;  // Bounds check for layer
 
     uint8_t key_idx = row * MATRIX_COLS + col;
     if (key_idx >= 70) return;
