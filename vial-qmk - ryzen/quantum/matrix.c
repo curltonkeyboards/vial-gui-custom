@@ -409,6 +409,16 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
     bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
+    // FIX: If ADC value is outside valid range, force key to not pressed
+    // This prevents empty sockets (floating ADC) from triggering keypresses
+    if (key->adc_filtered < VALID_ANALOG_RAW_VALUE_MIN ||
+        key->adc_filtered > VALID_ANALOG_RAW_VALUE_MAX) {
+        key->is_pressed = false;
+        key->key_dir = KEY_DIR_INACTIVE;
+        key->distance = 0;
+        return;
+    }
+
     // Get per-key actuation config
     uint8_t actuation_point, rt_down, rt_up, flags;
     get_key_actuation_config(key_idx, current_layer,
