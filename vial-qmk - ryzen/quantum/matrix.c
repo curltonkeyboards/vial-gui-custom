@@ -422,16 +422,12 @@ __attribute__((unused))
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
 
-    // DEBUG Step 7d: Test per-key config lookup with simple threshold
-    // Get per-key actuation config
-    uint8_t actuation_point, rt_down, rt_up, flags;
-    get_key_actuation_config(key_idx, current_layer,
-                            &actuation_point, &rt_down, &rt_up, &flags);
+    // DEBUG Step 7e: Test actuation_to_distance() without array access
+    // Use default actuation value (20 = 2.0mm), don't access per_key_actuations
+    uint8_t actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
 
-    // Simple threshold mode only - no RT state machine
+    // Simple threshold mode only
     key->is_pressed = (key->distance >= actuation_point);
-
-    // Skip all null bind integration
 }
 
 // ============================================================================
