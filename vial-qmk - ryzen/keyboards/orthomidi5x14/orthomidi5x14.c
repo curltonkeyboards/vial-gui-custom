@@ -15270,36 +15270,45 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Show RAW ADC readings (no filtering)
-    char dbuf[256];
+    // DEBUG MODE: Show RAW ADC readings - compact 4 per line
+    char dbuf[512];
 
-    // Read RAW ADC values (no EMA filtering)
-    uint16_t v00 = analog_matrix_get_raw_adc(0, 0);
-    uint16_t v01 = analog_matrix_get_raw_adc(0, 1);
-    uint16_t v02 = analog_matrix_get_raw_adc(0, 2);
-    uint16_t v03 = analog_matrix_get_raw_adc(0, 3);
-    uint16_t v04 = analog_matrix_get_raw_adc(0, 4);
-    uint16_t v10 = analog_matrix_get_raw_adc(1, 0);
-    uint16_t v20 = analog_matrix_get_raw_adc(2, 0);
-    uint16_t v30 = analog_matrix_get_raw_adc(3, 0);
-    uint16_t v40 = analog_matrix_get_raw_adc(4, 0);
-    uint16_t v013 = analog_matrix_get_raw_adc(0, 13);
+    // Row 0 header
+    snprintf(dbuf, sizeof(dbuf), "ROW 0 (cols 0-13):\n");
+    // Row 0: cols 0-3
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(0,0), analog_matrix_get_raw_adc(0,1),
+        analog_matrix_get_raw_adc(0,2), analog_matrix_get_raw_adc(0,3));
+    // Row 0: cols 4-7
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(0,4), analog_matrix_get_raw_adc(0,5),
+        analog_matrix_get_raw_adc(0,6), analog_matrix_get_raw_adc(0,7));
+    // Row 0: cols 8-11
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(0,8), analog_matrix_get_raw_adc(0,9),
+        analog_matrix_get_raw_adc(0,10), analog_matrix_get_raw_adc(0,11));
+    // Row 0: cols 12-13
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u\n",
+        analog_matrix_get_raw_adc(0,12), analog_matrix_get_raw_adc(0,13));
 
-    // Build string progressively like oled_render_keylog does
-    snprintf(dbuf, sizeof(dbuf), "  RAW ADC VALUES\n");
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C1 =%5u\n", v01);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C2 =%5u\n", v02);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C3 =%5u\n", v03);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C4 =%5u\n", v04);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C0 =%5u\n", v10);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C0 =%5u\n", v20);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C0 =%5u\n", v30);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C0 =%5u\n", v40);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C13=%5u\n", v013);
+    // Row 1 header
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "ROW 1:\n");
+    // Row 1: cols 0-3
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(1,0), analog_matrix_get_raw_adc(1,1),
+        analog_matrix_get_raw_adc(1,2), analog_matrix_get_raw_adc(1,3));
+    // Row 1: cols 4-7
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(1,4), analog_matrix_get_raw_adc(1,5),
+        analog_matrix_get_raw_adc(1,6), analog_matrix_get_raw_adc(1,7));
+    // Row 1: cols 8-11
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(1,8), analog_matrix_get_raw_adc(1,9),
+        analog_matrix_get_raw_adc(1,10), analog_matrix_get_raw_adc(1,11));
+    // Row 1: cols 12-13
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u\n",
+        analog_matrix_get_raw_adc(1,12), analog_matrix_get_raw_adc(1,13));
 
-    // Write entire buffer at once like oled_render_keylog does
     oled_write(dbuf, false);
 
     return false;
