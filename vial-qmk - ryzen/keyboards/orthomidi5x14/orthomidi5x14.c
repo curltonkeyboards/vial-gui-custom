@@ -4678,13 +4678,15 @@ void keyboard_post_init_user(void) {
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
 
-	// Initialize per-key actuations
-	load_per_key_actuations();
-	// If EEPROM is uninitialized (all 0xFF), set defaults
-	if (per_key_actuations[0].keys[0].actuation == 0xFF) {
-		initialize_per_key_actuations();
-		save_per_key_actuations();
-	}
+	// FIX: Skip per_key_actuations EEPROM operations - was causing init hang
+	// Reading/writing 6.7KB from EEPROM during init takes too long
+	// Just initialize to defaults in RAM instead
+	initialize_per_key_actuations();  // Set defaults in RAM only
+	// load_per_key_actuations();  // DISABLED - 6.7KB EEPROM read
+	// if (per_key_actuations[0].keys[0].actuation == 0xFF) {
+	//     initialize_per_key_actuations();
+	//     save_per_key_actuations();  // DISABLED - 6.7KB EEPROM write
+	// }
 
 	// Load user curves from EEPROM
 	user_curves_load();
