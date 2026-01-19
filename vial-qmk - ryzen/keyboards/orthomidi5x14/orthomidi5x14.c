@@ -15281,7 +15281,7 @@ bool oled_task_user(void) {
     oled_clear();
     oled_set_cursor(0, 0);
 
-    char line[24];
+    char line[32];
 
     // Header
     oled_write("  RAW ADC (row.col)\n", false);
