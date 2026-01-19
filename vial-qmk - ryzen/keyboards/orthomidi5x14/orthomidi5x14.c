@@ -15270,68 +15270,47 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Show 40 raw ADC values using keylog pattern
-    // Format: Row number then 4 values (cols 0,4,8,12 or 2,6,10,13)
-    // Uses same pattern as oled_render_keylog - build string then write
+    // DEBUG MODE: Show ADC values in text area (8 lines max)
+    // Text area = rows 0-7, Graphics area = rows 8-15
+    // 21 chars per line max, 8 lines = 168 chars for text
 
-    char buf[400];
+    // Format: Show 28 ADC values (7 lines × 4 values each)
+    // Row labels: 0-4 for keyboard rows, a/b for second column set
+    // Cols shown: 0,4,8,12 (first set) and 2,6,10,13 (second set)
 
-    // Header
-    snprintf(buf, sizeof(buf), "   RAW ADC DEBUG\n");
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), " c0  c4  c8  c12\n");
+    char buf[180];
 
-    // Row 0 - cols 0,4,8,12
+    // Line 0: Header (21 chars padded)
+    snprintf(buf, sizeof(buf), "   ADC c0 c4 c8 c12 \n");
+
+    // Lines 1-5: Rows 0-4 with cols 0,4,8,12 (20 values)
     snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "0%4u%4u%4u%4u\n",
         analog_matrix_get_raw_adc(0, 0), analog_matrix_get_raw_adc(0, 4),
         analog_matrix_get_raw_adc(0, 8), analog_matrix_get_raw_adc(0, 12));
-    // Row 1 - cols 0,4,8,12
     snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "1%4u%4u%4u%4u\n",
         analog_matrix_get_raw_adc(1, 0), analog_matrix_get_raw_adc(1, 4),
         analog_matrix_get_raw_adc(1, 8), analog_matrix_get_raw_adc(1, 12));
-    // Row 2 - cols 0,4,8,12
     snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "2%4u%4u%4u%4u\n",
         analog_matrix_get_raw_adc(2, 0), analog_matrix_get_raw_adc(2, 4),
         analog_matrix_get_raw_adc(2, 8), analog_matrix_get_raw_adc(2, 12));
-    // Row 3 - cols 0,4,8,12
     snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "3%4u%4u%4u%4u\n",
         analog_matrix_get_raw_adc(3, 0), analog_matrix_get_raw_adc(3, 4),
         analog_matrix_get_raw_adc(3, 8), analog_matrix_get_raw_adc(3, 12));
-    // Row 4 - cols 0,4,8,12
     snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "4%4u%4u%4u%4u\n",
         analog_matrix_get_raw_adc(4, 0), analog_matrix_get_raw_adc(4, 4),
         analog_matrix_get_raw_adc(4, 8), analog_matrix_get_raw_adc(4, 12));
 
-    // Second set: cols 2,6,10,13
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), " c2  c6 c10 c13\n");
-
-    // Row 0 - cols 2,6,10,13
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "0%4u%4u%4u%4u\n",
+    // Lines 6-7: Second column header + Row 0 with cols 2,6,10,13
+    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "   c2  c6 c10 c13\n");
+    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "0%4u%4u%4u%4u",
         analog_matrix_get_raw_adc(0, 2), analog_matrix_get_raw_adc(0, 6),
         analog_matrix_get_raw_adc(0, 10), analog_matrix_get_raw_adc(0, 13));
-    // Row 1 - cols 2,6,10,13
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "1%4u%4u%4u%4u\n",
-        analog_matrix_get_raw_adc(1, 2), analog_matrix_get_raw_adc(1, 6),
-        analog_matrix_get_raw_adc(1, 10), analog_matrix_get_raw_adc(1, 13));
-    // Row 2 - cols 2,6,10,13
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "2%4u%4u%4u%4u\n",
-        analog_matrix_get_raw_adc(2, 2), analog_matrix_get_raw_adc(2, 6),
-        analog_matrix_get_raw_adc(2, 10), analog_matrix_get_raw_adc(2, 13));
-    // Row 3 - cols 2,6,10,13
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "3%4u%4u%4u%4u\n",
-        analog_matrix_get_raw_adc(3, 2), analog_matrix_get_raw_adc(3, 6),
-        analog_matrix_get_raw_adc(3, 10), analog_matrix_get_raw_adc(3, 13));
-    // Row 4 - cols 2,6,10,13
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "4%4u%4u%4u%4u\n",
-        analog_matrix_get_raw_adc(4, 2), analog_matrix_get_raw_adc(4, 6),
-        analog_matrix_get_raw_adc(4, 10), analog_matrix_get_raw_adc(4, 13));
-
-    // Padding lines to fill screen and overwrite old content
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "                     \n");
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "                     \n");
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "                     \n");
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "                     ");
 
     oled_write(buf, false);
+
+    // Render the keyboard graphics in bottom half (rows 8-15)
+    // This prevents garbage pixels
+    render_luna(0, 1);
 
     return false;
 
