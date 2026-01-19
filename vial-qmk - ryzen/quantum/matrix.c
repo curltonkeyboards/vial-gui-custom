@@ -1047,9 +1047,9 @@ void matrix_init_custom(void) {
     adcgrpcfg.sqr1 = sqr[2];
     adcgrpcfg.num_channels = chn_cnt;
 
-    // DEBUG: Skip ADC initialization to test USB stability
-    // adcStart(&ADCD1, NULL);
-    // SYSCFG->PMC |= SYSCFG_PMC_ADC1DC2;
+    // DEBUG Step 2: Re-enable ADC init, keep scanning disabled
+    adcStart(&ADCD1, NULL);
+    SYSCFG->PMC |= SYSCFG_PMC_ADC1DC2;
 
     // Initialize all keys (flat array)
     for (uint32_t i = 0; i < NUM_KEYS; i++) {
