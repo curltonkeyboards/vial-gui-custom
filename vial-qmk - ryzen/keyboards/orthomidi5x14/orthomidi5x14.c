@@ -15271,33 +15271,53 @@ void render_big_number(uint8_t number) {
 
 bool oled_task_user(void) {
     // DEBUG MODE: Show ADC readings spread across matrix
-    // OLED is 21 chars wide, 4 lines
-    char line[22];
+    // OLED is 128x128, use larger buffer and simpler format
+    static char buf[64];
+
     oled_clear();
 
-    // Line 1: Row 0, cols 0 and 7
-    snprintf(line, sizeof(line), "0,0:%4d  0,7:%4d",
-             analog_matrix_get_raw_value(0, 0),
-             analog_matrix_get_raw_value(0, 7));
-    oled_write_ln(line, false);
+    // Read all ADC values into variables first
+    uint16_t v00 = analog_matrix_get_raw_value(0, 0);
+    uint16_t v01 = analog_matrix_get_raw_value(0, 1);
+    uint16_t v02 = analog_matrix_get_raw_value(0, 2);
+    uint16_t v03 = analog_matrix_get_raw_value(0, 3);
+    uint16_t v04 = analog_matrix_get_raw_value(0, 4);
+    uint16_t v10 = analog_matrix_get_raw_value(1, 0);
+    uint16_t v20 = analog_matrix_get_raw_value(2, 0);
+    uint16_t v30 = analog_matrix_get_raw_value(3, 0);
+    uint16_t v40 = analog_matrix_get_raw_value(4, 0);
+    uint16_t v013 = analog_matrix_get_raw_value(0, 13);
 
-    // Line 2: Row 1, cols 0 and 7
-    snprintf(line, sizeof(line), "1,0:%4d  1,7:%4d",
-             analog_matrix_get_raw_value(1, 0),
-             analog_matrix_get_raw_value(1, 7));
-    oled_write_ln(line, false);
+    // Display one key per line - simple format
+    snprintf(buf, sizeof(buf), "R0C0 =%5u", v00);
+    oled_write_ln(buf, false);
 
-    // Line 3: Row 2, cols 0 and 7
-    snprintf(line, sizeof(line), "2,0:%4d  2,7:%4d",
-             analog_matrix_get_raw_value(2, 0),
-             analog_matrix_get_raw_value(2, 7));
-    oled_write_ln(line, false);
+    snprintf(buf, sizeof(buf), "R0C1 =%5u", v01);
+    oled_write_ln(buf, false);
 
-    // Line 4: Row 3 and 4, col 0
-    snprintf(line, sizeof(line), "3,0:%4d  4,0:%4d",
-             analog_matrix_get_raw_value(3, 0),
-             analog_matrix_get_raw_value(4, 0));
-    oled_write_ln(line, false);
+    snprintf(buf, sizeof(buf), "R0C2 =%5u", v02);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R0C3 =%5u", v03);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R0C4 =%5u", v04);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R1C0 =%5u", v10);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R2C0 =%5u", v20);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R3C0 =%5u", v30);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R4C0 =%5u", v40);
+    oled_write_ln(buf, false);
+
+    snprintf(buf, sizeof(buf), "R0C13=%5u", v013);
+    oled_write_ln(buf, false);
 
     return false;
 
