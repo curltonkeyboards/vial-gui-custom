@@ -15270,11 +15270,8 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Show ADC readings spread across matrix
-    // OLED is 128x128, use larger buffer and simpler format
-    static char buf[64];
-
-    oled_clear();
+    // DEBUG MODE: Show ADC readings using same pattern as oled_render_keylog
+    char name[256];  // Large buffer like render_keylog uses
 
     // Read all ADC values into variables first
     uint16_t v00 = analog_matrix_get_raw_value(0, 0);
@@ -15288,36 +15285,22 @@ bool oled_task_user(void) {
     uint16_t v40 = analog_matrix_get_raw_value(4, 0);
     uint16_t v013 = analog_matrix_get_raw_value(0, 13);
 
-    // Display one key per line - simple format
-    snprintf(buf, sizeof(buf), "R0C0 =%5u", v00);
-    oled_write_ln(buf, false);
+    // Build string progressively like oled_render_keylog does
+    snprintf(name, sizeof(name), "  ADC DEBUG MODE\n");
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------\n");
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R0C0 =%5u\n", v00);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R0C1 =%5u\n", v01);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R0C2 =%5u\n", v02);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R0C3 =%5u\n", v03);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R0C4 =%5u\n", v04);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R1C0 =%5u\n", v10);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R2C0 =%5u\n", v20);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R3C0 =%5u\n", v30);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R4C0 =%5u\n", v40);
+    snprintf(name + strlen(name), sizeof(name) - strlen(name), "R0C13=%5u\n", v013);
 
-    snprintf(buf, sizeof(buf), "R0C1 =%5u", v01);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R0C2 =%5u", v02);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R0C3 =%5u", v03);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R0C4 =%5u", v04);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R1C0 =%5u", v10);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R2C0 =%5u", v20);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R3C0 =%5u", v30);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R4C0 =%5u", v40);
-    oled_write_ln(buf, false);
-
-    snprintf(buf, sizeof(buf), "R0C13=%5u", v013);
-    oled_write_ln(buf, false);
+    // Write entire buffer at once like oled_render_keylog does
+    oled_write(name, false);
 
     return false;
 
