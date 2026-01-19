@@ -15271,7 +15271,8 @@ void render_big_number(uint8_t number) {
 
 bool oled_task_user(void) {
     // DEBUG MODE: Show RAW ADC - mixed positions across all rows
-    char dbuf[512];
+    static char dbuf[1024];  // Static and larger buffer
+    memset(dbuf, 0, sizeof(dbuf));  // Clear buffer
 
     // Line 1: r0c0, r1c3, r2c7, r3c11
     snprintf(dbuf, sizeof(dbuf), "%4u %4u %4u %4u\n",
