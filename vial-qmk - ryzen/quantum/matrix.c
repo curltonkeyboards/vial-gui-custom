@@ -357,6 +357,7 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
 // CALIBRATION FUNCTIONS (libhmk style continuous calibration)
 // ============================================================================
 
+__attribute__((unused))
 static void update_calibration(uint32_t key_idx) {
     key_state_t *key = &key_matrix[key_idx];
     uint32_t now = timer_read32();
@@ -406,6 +407,7 @@ static void update_calibration(uint32_t key_idx) {
     key->last_adc_value = key->adc_filtered;
 }
 
+__attribute__((unused))
 static void save_calibration_to_eeprom(void) {
     // TODO: Implement EEPROM save for calibration
     // For now, just mark as clean
@@ -416,6 +418,7 @@ static void save_calibration_to_eeprom(void) {
 // RT STATE MACHINE (libhmk 3-state FSM)
 // ============================================================================
 
+__attribute__((unused))
 static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
     bool was_pressed = key->is_pressed;  // Track previous state for null bind
@@ -553,6 +556,7 @@ static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out)
 // MIDI KEY ANALOG PROCESSING
 // ============================================================================
 
+__attribute__((unused))
 static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     midi_key_state_t *state = &midi_key_states[key_idx];
     key_state_t *key = &key_matrix[key_idx];
@@ -920,6 +924,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 }
 
+__attribute__((unused))
 static void initialize_midi_states(void) {
     if (midi_states_initialized) return;
 
