@@ -558,8 +558,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     state->was_pressed = state->pressed;
     state->pressed = pressed;
 
-    // Get per-key settings for velocity modification (used by RT)
-    per_key_actuation_t *per_key_settings = &per_key_actuations[current_layer].keys[key_idx];
+    // FIX: Removed per_key_actuations[] access - was causing USB disconnect
+    // RT velocity modifier is disabled for now (was: per_key_settings->rapidfire_velocity_mod)
+    int8_t rapidfire_velocity_mod = 0;
 
     // ========================================================================
     // VELOCITY MODE PROCESSING
@@ -758,7 +759,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // ========================================================================
     if (key->key_dir != KEY_DIR_INACTIVE && pressed && !state->was_pressed && state->velocity_captured) {
         // RT re-trigger with existing velocity - accumulate modifier
-        int16_t new_raw = state->raw_velocity + (per_key_settings->rapidfire_velocity_mod * 2);  // Scale modifier to 0-255 range
+        int16_t new_raw = state->raw_velocity + (rapidfire_velocity_mod * 2);  // Scale modifier to 0-255 range
         if (new_raw < 0) new_raw = 0;
         if (new_raw > 255) new_raw = 255;
         state->raw_velocity = (uint8_t)new_raw;
