@@ -15270,35 +15270,35 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Exact same format that worked before
-    char dbuf[256];
+    char dbuf[256];  // Large buffer for debug output
 
-    // Read values from mixed positions across all rows
-    uint16_t v00 = analog_matrix_get_raw_adc(0, 0);
-    uint16_t v13 = analog_matrix_get_raw_adc(1, 3);
-    uint16_t v27 = analog_matrix_get_raw_adc(2, 7);
-    uint16_t v311 = analog_matrix_get_raw_adc(3, 11);
-    uint16_t v42 = analog_matrix_get_raw_adc(4, 2);
-    uint16_t v05 = analog_matrix_get_raw_adc(0, 5);
-    uint16_t v19 = analog_matrix_get_raw_adc(1, 9);
-    uint16_t v213 = analog_matrix_get_raw_adc(2, 13);
-    uint16_t v31 = analog_matrix_get_raw_adc(3, 1);
-    uint16_t v40 = analog_matrix_get_raw_adc(4, 0);
+    // Read all ADC values into variables first
+    uint16_t v00 = analog_matrix_get_raw_value(0, 0);
+    uint16_t v01 = analog_matrix_get_raw_value(0, 1);
+    uint16_t v02 = analog_matrix_get_raw_value(0, 2);
+    uint16_t v03 = analog_matrix_get_raw_value(0, 3);
+    uint16_t v04 = analog_matrix_get_raw_value(0, 4);
+    uint16_t v10 = analog_matrix_get_raw_value(1, 0);
+    uint16_t v20 = analog_matrix_get_raw_value(2, 0);
+    uint16_t v30 = analog_matrix_get_raw_value(3, 0);
+    uint16_t v40 = analog_matrix_get_raw_value(4, 0);
+    uint16_t v013 = analog_matrix_get_raw_value(0, 13);
 
-    // Exact same format that worked
-    snprintf(dbuf, sizeof(dbuf), "  RAW ADC VALUES\n");
+    // Build string progressively like oled_render_keylog does
+    snprintf(dbuf, sizeof(dbuf), "  ADC DEBUG MODE\n");
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C3 =%5u\n", v13);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C7 =%5u\n", v27);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C11=%5u\n", v311);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C2 =%5u\n", v42);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C5 =%5u\n", v05);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C9 =%5u\n", v19);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C13=%5u\n", v213);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C1 =%5u\n", v31);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C1 =%5u\n", v01);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C2 =%5u\n", v02);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C3 =%5u\n", v03);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C4 =%5u\n", v04);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C0 =%5u\n", v10);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C0 =%5u\n", v20);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C0 =%5u\n", v30);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C0 =%5u\n", v40);
+    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C13=%5u\n", v013);
 
+    // Write entire buffer at once like oled_render_keylog does
     oled_write(dbuf, false);
 
     return false;
