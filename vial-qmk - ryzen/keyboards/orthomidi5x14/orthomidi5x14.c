@@ -15270,32 +15270,33 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Show ADC readings for first 6 keys
+    // DEBUG MODE: Show ADC readings spread across matrix
+    // OLED is 21 chars wide, 4 lines
     char line[22];
     oled_clear();
 
-    // Row 0: Keys (0,0) and (0,1)
-    uint16_t adc0 = analog_matrix_get_raw_value(0, 0);
-    uint16_t adc1 = analog_matrix_get_raw_value(0, 1);
-    snprintf(line, sizeof(line), "0,0:%4d 0,1:%4d", adc0, adc1);
+    // Line 1: Row 0, cols 0 and 7
+    snprintf(line, sizeof(line), "0,0:%4d  0,7:%4d",
+             analog_matrix_get_raw_value(0, 0),
+             analog_matrix_get_raw_value(0, 7));
     oled_write_ln(line, false);
 
-    // Row 1: Keys (0,2) and (0,3)
-    uint16_t adc2 = analog_matrix_get_raw_value(0, 2);
-    uint16_t adc3 = analog_matrix_get_raw_value(0, 3);
-    snprintf(line, sizeof(line), "0,2:%4d 0,3:%4d", adc2, adc3);
+    // Line 2: Row 1, cols 0 and 7
+    snprintf(line, sizeof(line), "1,0:%4d  1,7:%4d",
+             analog_matrix_get_raw_value(1, 0),
+             analog_matrix_get_raw_value(1, 7));
     oled_write_ln(line, false);
 
-    // Row 2: Keys (1,0) and (1,1)
-    uint16_t adc4 = analog_matrix_get_raw_value(1, 0);
-    uint16_t adc5 = analog_matrix_get_raw_value(1, 1);
-    snprintf(line, sizeof(line), "1,0:%4d 1,1:%4d", adc4, adc5);
+    // Line 3: Row 2, cols 0 and 7
+    snprintf(line, sizeof(line), "2,0:%4d  2,7:%4d",
+             analog_matrix_get_raw_value(2, 0),
+             analog_matrix_get_raw_value(2, 7));
     oled_write_ln(line, false);
 
-    // Row 3: Keys (2,0) and (2,1)
-    uint16_t adc6 = analog_matrix_get_raw_value(2, 0);
-    uint16_t adc7 = analog_matrix_get_raw_value(2, 1);
-    snprintf(line, sizeof(line), "2,0:%4d 2,1:%4d", adc6, adc7);
+    // Line 4: Row 3 and 4, col 0
+    snprintf(line, sizeof(line), "3,0:%4d  4,0:%4d",
+             analog_matrix_get_raw_value(3, 0),
+             analog_matrix_get_raw_value(4, 0));
     oled_write_ln(line, false);
 
     return false;
