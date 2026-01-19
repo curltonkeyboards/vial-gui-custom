@@ -15315,16 +15315,19 @@ bool oled_task_user(void) {
     uint16_t v8c = analog_matrix_get_raw_adc(0,2);
     uint16_t v8d = analog_matrix_get_raw_adc(1,6);
 
-    // Build string with pre-read values
+    // Build and write in chunks (OLED has ~124 char limit per write)
+    // First 4 lines
     snprintf(dbuf, sizeof(dbuf), "%4u %4u %4u %4u\n", v1a, v1b, v1c, v1d);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v2a, v2b, v2c, v2d);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v3a, v3b, v3c, v3d);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v4a, v4b, v4c, v4d);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v5a, v5b, v5c, v5d);
+    oled_write(dbuf, false);
+
+    // Next 4 lines
+    snprintf(dbuf, sizeof(dbuf), "%4u %4u %4u %4u\n", v5a, v5b, v5c, v5d);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v6a, v6b, v6c, v6d);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v7a, v7b, v7c, v7d);
     snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v8a, v8b, v8c, v8d);
-
     oled_write(dbuf, false);
 
     return false;
