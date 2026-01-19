@@ -319,7 +319,7 @@ static inline void update_active_settings(uint8_t current_layer) {
 }
 
 // ============================================================================
-// PER-KEY ACTUATION LOOKUP (always per-key, layer-aware)
+// PER-KEY ACTUATION LOOKUP (using layer-level settings to avoid USB disconnect)
 // ============================================================================
 
 static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
@@ -327,30 +327,19 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    if (key_idx >= NUM_KEYS || layer >= 12) {
-        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
-        *rt_down = 0;
-        *rt_up = 0;
-        *flags = 0;
-        return;
-    }
+    // FIX: Use layer-level actuation settings instead of per-key array
+    // The per_key_actuations[] array access was causing USB disconnection
+    // due to its large size (6.7KB) and frequent access (70x per scan cycle)
 
-    // Always use per-key per-layer settings - firmware always reads from current layer
-    per_key_actuation_t *settings = &per_key_actuations[layer].keys[key_idx];
+    if (layer >= 12) layer = 0;
 
-    // Convert from 0-100 scale to 0-255 distance
-    *actuation_point = actuation_to_distance(settings->actuation);
+    // Use layer-level normal actuation setting
+    *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
 
-    // RT sensitivity: convert from 0-100 scale to 0-255 distance
-    if (settings->flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) {
-        *rt_down = actuation_to_distance(settings->rapidfire_press_sens);
-        *rt_up = actuation_to_distance(settings->rapidfire_release_sens);
-    } else {
-        *rt_down = 0;  // RT disabled
-        *rt_up = 0;
-    }
-
-    *flags = settings->flags;
+    // RT disabled for now - can be re-enabled with layer-level settings later
+    *rt_down = 0;
+    *rt_up = 0;
+    *flags = 0;
 }
 
 // ============================================================================
