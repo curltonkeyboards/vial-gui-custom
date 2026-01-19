@@ -944,9 +944,8 @@ static void initialize_midi_states(void) {
 // ============================================================================
 
 static void analog_matrix_task_internal(void) {
-    // DEBUG: Disable all ADC scanning to test if USB stays connected
-    // Remove this return statement once debugging is complete
-    return;
+    // DEBUG Step 4: Re-enable continuous scanning
+    // If USB disconnects now, the problem is in this function
 
     if (!analog_initialized) return;
 
