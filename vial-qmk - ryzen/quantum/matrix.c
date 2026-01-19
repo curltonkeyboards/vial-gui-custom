@@ -1082,8 +1082,7 @@ void matrix_init_custom(void) {
         matrix[i] = 0;
     }
 
-    // DEBUG: Skip ADC warm-up to test USB stability
-    /*
+    // DEBUG Step 3: Re-enable warm-up loop, keep continuous scanning disabled
     // Warm up ADC
     for (uint8_t i = 0; i < 5; i++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -1101,7 +1100,6 @@ void matrix_init_custom(void) {
             unselect_column();
         }
     }
-    */
 
     analog_initialized = true;
 
