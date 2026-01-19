@@ -949,10 +949,20 @@ static void initialize_midi_states(void) {
 // ============================================================================
 
 static void analog_matrix_task_internal(void) {
-    // DEBUG Step 6: Add calibration + distance calculation back
-    // Testing if calibration or distance calc causes the issue
+    // DEBUG Step 7: Add rapid trigger processing back
+    // Testing if RT causes the issue
 
     if (!analog_initialized) return;
+
+    // Get current layer for RT processing
+    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+    if (current_layer >= 12) current_layer = 0;
+
+    // Update layer cache
+    if (current_layer != cached_layer) {
+        cached_layer = current_layer;
+    }
+    update_active_settings(current_layer);
 
     // Scan by column (hardware-optimized)
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -969,16 +979,16 @@ static void analog_matrix_task_internal(void) {
             // 1. Apply EMA filter
             key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
-            // 2. Update calibration (re-enabled)
+            // 2. Update calibration
             update_calibration(key_idx);
 
-            // 3. Calculate distance (re-enabled)
+            // 3. Calculate distance
             key->distance = adc_to_distance(key->adc_filtered,
                                             key->adc_rest_value,
                                             key->adc_bottom_out_value);
 
-            // 4. RT processing - still disabled
-            // process_rapid_trigger(key_idx, current_layer);
+            // 4. RT processing (re-enabled)
+            process_rapid_trigger(key_idx, current_layer);
         }
 
         unselect_column();
@@ -1103,7 +1113,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // DEBUG Step 6: Use distance value for key detection
+    // DEBUG Step 7: Use RT is_pressed state for key detection
     // Still no MIDI, DKS, or null bind processing
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         matrix_row_t current_row_value = 0;
@@ -1112,8 +1122,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             uint32_t key_idx = KEY_INDEX(row, col);
             key_state_t *key = &key_matrix[key_idx];
 
-            // Use distance threshold (50 out of 255 = ~20% travel)
-            if (key->distance > 50) {
+            // Use RT is_pressed state
+            if (key->is_pressed) {
                 current_row_value |= (MATRIX_ROW_SHIFTER << col);
             }
         }
