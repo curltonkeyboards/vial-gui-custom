@@ -15270,36 +15270,71 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // DEBUG MODE: Exact same format that worked before
-    char dbuf[256];
+    // DEBUG MODE: Show 30 raw ADC values, 4 per line, spread across keyboard
+    // Positions shown (row.col):
+    // Line1: 0.0  0.4  0.8  0.12    Line2: 0.2  0.6  0.10 0.13
+    // Line3: 1.0  1.4  1.8  1.12    Line4: 1.2  1.6  1.10 1.13
+    // Line5: 2.0  2.4  2.8  2.12    Line6: 2.2  2.6  2.10 2.13
+    // Line7: 3.0  3.4  3.8  3.12    Line8: 3.2  3.6  3.10 3.13
+    // Line9: 4.0  4.4  4.8  4.12    Line10: 4.2 4.6  (28 total, +2 corners)
 
-    // Read values from mixed positions across all rows
-    uint16_t v00 = analog_matrix_get_raw_adc(0, 0);
-    uint16_t v13 = analog_matrix_get_raw_adc(1, 3);
-    uint16_t v27 = analog_matrix_get_raw_adc(2, 7);
-    uint16_t v311 = analog_matrix_get_raw_adc(3, 11);
-    uint16_t v42 = analog_matrix_get_raw_adc(4, 2);
-    uint16_t v05 = analog_matrix_get_raw_adc(0, 5);
-    uint16_t v19 = analog_matrix_get_raw_adc(1, 9);
-    uint16_t v213 = analog_matrix_get_raw_adc(2, 13);
-    uint16_t v31 = analog_matrix_get_raw_adc(3, 1);
-    uint16_t v40 = analog_matrix_get_raw_adc(4, 0);
+    oled_clear();
+    oled_set_cursor(0, 0);
 
-    // Exact same format that worked
-    snprintf(dbuf, sizeof(dbuf), "  RAW ADC VALUES\n");
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C3 =%5u\n", v13);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C7 =%5u\n", v27);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C11=%5u\n", v311);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C2 =%5u\n", v42);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C5 =%5u\n", v05);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C9 =%5u\n", v19);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C13=%5u\n", v213);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C1 =%5u\n", v31);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C0 =%5u\n", v40);
+    char line[24];
 
-    oled_write(dbuf, false);
+    // Header
+    oled_write("  RAW ADC (row.col)\n", false);
+
+    // Row 0: positions spread across columns
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(0, 0),  analog_matrix_get_raw_adc(0, 4),
+        analog_matrix_get_raw_adc(0, 8),  analog_matrix_get_raw_adc(0, 12));
+    oled_write(line, false);
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(0, 2),  analog_matrix_get_raw_adc(0, 6),
+        analog_matrix_get_raw_adc(0, 10), analog_matrix_get_raw_adc(0, 13));
+    oled_write(line, false);
+
+    // Row 1
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(1, 0),  analog_matrix_get_raw_adc(1, 4),
+        analog_matrix_get_raw_adc(1, 8),  analog_matrix_get_raw_adc(1, 12));
+    oled_write(line, false);
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(1, 2),  analog_matrix_get_raw_adc(1, 6),
+        analog_matrix_get_raw_adc(1, 10), analog_matrix_get_raw_adc(1, 13));
+    oled_write(line, false);
+
+    // Row 2
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(2, 0),  analog_matrix_get_raw_adc(2, 4),
+        analog_matrix_get_raw_adc(2, 8),  analog_matrix_get_raw_adc(2, 12));
+    oled_write(line, false);
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(2, 2),  analog_matrix_get_raw_adc(2, 6),
+        analog_matrix_get_raw_adc(2, 10), analog_matrix_get_raw_adc(2, 13));
+    oled_write(line, false);
+
+    // Row 3
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(3, 0),  analog_matrix_get_raw_adc(3, 4),
+        analog_matrix_get_raw_adc(3, 8),  analog_matrix_get_raw_adc(3, 12));
+    oled_write(line, false);
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(3, 2),  analog_matrix_get_raw_adc(3, 6),
+        analog_matrix_get_raw_adc(3, 10), analog_matrix_get_raw_adc(3, 13));
+    oled_write(line, false);
+
+    // Row 4
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(4, 0),  analog_matrix_get_raw_adc(4, 4),
+        analog_matrix_get_raw_adc(4, 8),  analog_matrix_get_raw_adc(4, 12));
+    oled_write(line, false);
+    snprintf(line, sizeof(line), "%4u %4u %4u %4u\n",
+        analog_matrix_get_raw_adc(4, 2),  analog_matrix_get_raw_adc(4, 6),
+        analog_matrix_get_raw_adc(4, 10), analog_matrix_get_raw_adc(4, 13));
+    oled_write(line, false);
 
     return false;
 
