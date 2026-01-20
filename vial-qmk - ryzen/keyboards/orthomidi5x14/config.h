@@ -154,24 +154,29 @@
 
 #define OLED_TIMEOUT 0
 
-#define MATRIX_ROWS 5   // 5 physical rows (ADC1-ADC5) + 1 virtual row for encoder clicks and sustain pedal
-#define MATRIX_COLS 14  // 14 columns
+#define MATRIX_ROWS 4   // 4 physical rows (ADC2-ADC5 = PA0-PA3), ADC1 is tied to VSS
+#define MATRIX_COLS 8   // 8 columns (A0 hardwired to VDD, can only access odd mux channels)
 
 // ADC-capable pins for reading row analog values
 // Each ADC pin reads one row of Hall effect sensors
-#define MATRIX_ROW_PINS { A0, A1, A2, A3, A4 }
-//                        ADC1 ADC2 ADC3 ADC4 ADC5 (PA0-PA4, pins 10-14)
+// PCB wiring: ADC5=PA0, ADC4=PA1, ADC3=PA2, ADC2=PA3, ADC1=VSS(ground!)
+// Only 4 usable rows since ADC1 is tied to ground
+#define MATRIX_ROW_PINS { A0, A1, A2, A3 }
+//                        PA0  PA1  PA2  PA3 (ADC5, ADC4, ADC3, ADC2 on PCB silk)
 
 // ============================================================================
 // ADG706 MULTIPLEXER PINS (from your PCB)
 // ============================================================================
 
-// Address pins (4-bit binary for selecting 1 of 16 channels)
-// Your PCB uses channels 0-13 for 14 columns
-#define ADG706_A0 A5  // MUX1_A (PA5, pin 15) - Address bit 0 (LSB)
-#define ADG706_A1 A6  // MUX1_B (PA6, pin 16) - Address bit 1
-#define ADG706_A2 A7  // MUX1_C (PA7, pin 17) - Address bit 2
-#define ADG706_A3 A8  // MUX1_D (PA8, pin 18) - Address bit 3 (MSB)
+// Address pins - PCB wiring:
+// MU1XA (A0) = VDD (always HIGH, hardwired - can only access odd channels!)
+// MU1XB (A1) = PA4
+// MU1XC (A2) = PA5
+// MU1XD (A3) = PA6
+#define ADG706_A0 NO_PIN  // A0 is hardwired to VDD, not controllable
+#define ADG706_A1 A4      // MU1XB → PA4 - Address bit 1
+#define ADG706_A2 A5      // MU1XC → PA5 - Address bit 2
+#define ADG706_A3 A6      // MU1XD → PA6 - Address bit 3 (MSB)
 
 // Enable pin (active LOW)
 // NOTE: If your ADG706 EN pin is hardwired to GND (always enabled),

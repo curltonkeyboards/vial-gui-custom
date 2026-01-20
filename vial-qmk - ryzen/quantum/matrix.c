@@ -254,10 +254,22 @@ static uint8_t pin_to_adc_channel(pin_t pin) {
 static void select_column(uint8_t col) {
     if (col >= 16) return;
 
+    // PCB has A0 hardwired to VDD (always 1), so we can only access odd channels
+    // Channel = A3*8 + A2*4 + A1*2 + 1
+    // For col 0-7, we map to channels 1,3,5,7,9,11,13,15
+    // Bit 0 of col controls A1, bit 1 controls A2, bit 2 controls A3
+#if ADG706_A0 == NO_PIN
+    // A0 is hardwired, shift addressing: col bits 0,1,2 -> A1,A2,A3
+    writePin(ADG706_A1, col & 0x01);
+    writePin(ADG706_A2, col & 0x02);
+    writePin(ADG706_A3, col & 0x04);
+#else
+    // Normal 4-bit addressing
     writePin(ADG706_A0, col & 0x01);
     writePin(ADG706_A1, col & 0x02);
     writePin(ADG706_A2, col & 0x04);
     writePin(ADG706_A3, col & 0x08);
+#endif
 
     if (ADG706_EN != NO_PIN) {
         writePinLow(ADG706_EN);
@@ -1003,8 +1015,10 @@ static void analog_matrix_task_internal(void) {
 void matrix_init_custom(void) {
     if (analog_initialized) return;
 
-    // Initialize mux pins
+    // Initialize mux pins (skip A0 if hardwired to VDD)
+#if ADG706_A0 != NO_PIN
     setPinOutput(ADG706_A0);
+#endif
     setPinOutput(ADG706_A1);
     setPinOutput(ADG706_A2);
     setPinOutput(ADG706_A3);
@@ -1014,7 +1028,9 @@ void matrix_init_custom(void) {
         writePinHigh(ADG706_EN);
     }
 
+#if ADG706_A0 != NO_PIN
     writePinLow(ADG706_A0);
+#endif
     writePinLow(ADG706_A1);
     writePinLow(ADG706_A2);
     writePinLow(ADG706_A3);
