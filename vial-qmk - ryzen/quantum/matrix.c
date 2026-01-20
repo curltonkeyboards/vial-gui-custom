@@ -81,6 +81,7 @@ extern int8_t octave_number;
 
 typedef struct {
     // ADC state (with EMA filtering)
+    uint16_t adc_raw;               // Raw ADC value (no filtering)
     uint16_t adc_filtered;          // EMA-filtered ADC value
     uint16_t adc_rest_value;        // Calibrated rest position
     uint16_t adc_bottom_out_value;  // Calibrated bottom-out position
@@ -253,10 +254,20 @@ static uint8_t pin_to_adc_channel(pin_t pin) {
 static void select_column(uint8_t col) {
     if (col >= 16) return;
 
-    writePin(ADG706_A0, col & 0x01);
-    writePin(ADG706_A1, col & 0x02);
-    writePin(ADG706_A2, col & 0x04);
-    writePin(ADG706_A3, col & 0x08);
+    // Invert column addressing to match physical PCB wiring
+    // Physical columns are wired in reverse order on the mux
+    // cols 0-7: invert to 7-0, cols 8-13: invert to 13-8
+    uint8_t mux_addr;
+    if (col < 8) {
+        mux_addr = 7 - col;      // 0→7, 1→6, ..., 7→0
+    } else {
+        mux_addr = 21 - col;     // 8→13, 9→12, ..., 13→8
+    }
+
+    writePin(ADG706_A0, mux_addr & 0x01);
+    writePin(ADG706_A1, mux_addr & 0x02);
+    writePin(ADG706_A2, mux_addr & 0x04);
+    writePin(ADG706_A3, mux_addr & 0x08);
 
     if (ADG706_EN != NO_PIN) {
         writePinLow(ADG706_EN);
@@ -409,10 +420,11 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
     bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
-    // FIX: If ADC value is outside valid range, force key to not pressed
-    // This prevents empty sockets (floating ADC) from triggering keypresses
-    if (key->adc_filtered < VALID_ANALOG_RAW_VALUE_MIN ||
-        key->adc_filtered > VALID_ANALOG_RAW_VALUE_MAX) {
+    // FIX: Tighter ADC validity check to prevent ghost presses from empty sockets
+    // Empty sockets often read very low values (0-1500) or very high values (>3300)
+    // Valid HE sensors should read 2000-3300 range (full press ~2100, rest ~3000)
+    // Using 1800-3300 to allow some margin for sensor variation
+    if (key->adc_filtered < 1800 || key->adc_filtered > 3300) {
         key->is_pressed = false;
         key->key_dir = KEY_DIR_INACTIVE;
         key->distance = 0;
@@ -967,6 +979,9 @@ static void analog_matrix_task_internal(void) {
             key_state_t *key = &key_matrix[key_idx];
             uint16_t raw_value = samples[row];
 
+            // Store raw value for debugging
+            key->adc_raw = raw_value;
+
             // 1. Apply EMA filter (libhmk style)
             key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
@@ -998,7 +1013,7 @@ static void analog_matrix_task_internal(void) {
 void matrix_init_custom(void) {
     if (analog_initialized) return;
 
-    // Initialize mux pins
+    // Initialize mux address pins
     setPinOutput(ADG706_A0);
     setPinOutput(ADG706_A1);
     setPinOutput(ADG706_A2);
@@ -1104,6 +1119,20 @@ void matrix_init_custom(void) {
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
+
+    // DEBUG: Disable all keypresses while debugging ADC values
+    // Run ADC scanning to get readings, but don't register any key presses
+    analog_matrix_task_internal();
+
+    // Return early with empty matrix - no keys pressed
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        if (current_matrix[row] != 0) {
+            current_matrix[row] = 0;
+            changed = true;
+        }
+    }
+    return changed;
+    // END DEBUG - remove above and uncomment below to restore normal operation
 
     // Initialize MIDI states if needed
     if (!midi_states_initialized && optimized_midi_positions != NULL) {
@@ -1252,6 +1281,13 @@ uint16_t analog_matrix_get_raw_value(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
     uint32_t key_idx = KEY_INDEX(row, col);
     return key_matrix[key_idx].adc_filtered;
+}
+
+// Get actual raw ADC value (no filtering)
+uint16_t analog_matrix_get_raw_adc(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return key_matrix[key_idx].adc_raw;
 }
 
 bool analog_matrix_is_calibrated(uint8_t row, uint8_t col) {
