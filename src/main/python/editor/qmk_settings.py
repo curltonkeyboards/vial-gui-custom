@@ -52,6 +52,9 @@ class BooleanOption(GenericOption):
 
     def reload(self, keyboard):
         value = super().reload(keyboard)
+        # Handle case where firmware advertises setting but doesn't return a value
+        if value is None:
+            value = 0
         checked = value & (1 << self.qsid_bit)
 
         self.checkbox.blockSignals(True)
@@ -81,6 +84,9 @@ class IntegerOption(GenericOption):
 
     def reload(self, keyboard):
         value = super().reload(keyboard)
+        # Handle case where firmware advertises setting but doesn't return a value
+        if value is None:
+            value = 0
         self.spinbox.blockSignals(True)
         self.spinbox.setValue(value)
         self.spinbox.blockSignals(False)
