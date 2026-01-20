@@ -13269,16 +13269,19 @@ __attribute__((weak)) void load_layer_actuations(void) {
     // Load entire array at once
     eeprom_read_block(&layer_actuations, (void*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
 
-    // Validate loaded values (use high defaults = less sensitive)
+    // Validate loaded values - check for 0 (uninitialized EEPROM) and > 100
+    // Use 50% default - appropriate for typical Hall effect sensor ranges
     for (uint8_t layer = 0; layer < 12; layer++) {
-        if (layer_actuations[layer].normal_actuation > 100) {
-            layer_actuations[layer].normal_actuation = 95;  // High = less sensitive
+        if (layer_actuations[layer].normal_actuation == 0 ||
+            layer_actuations[layer].normal_actuation > 100) {
+            layer_actuations[layer].normal_actuation = 50;
         }
-        if (layer_actuations[layer].midi_actuation > 100) {
-            layer_actuations[layer].midi_actuation = 95;    // High = less sensitive
+        if (layer_actuations[layer].midi_actuation == 0 ||
+            layer_actuations[layer].midi_actuation > 100) {
+            layer_actuations[layer].midi_actuation = 50;
         }
         if (layer_actuations[layer].velocity_mode > 3) {
-            layer_actuations[layer].velocity_mode = 2;
+            layer_actuations[layer].velocity_mode = 0;
         }
         // Note: rapidfire settings moved to per-key actuations
         if (layer_actuations[layer].velocity_speed_scale < 1 || layer_actuations[layer].velocity_speed_scale > 20) {
@@ -13292,9 +13295,9 @@ __attribute__((weak)) void load_layer_actuations(void) {
 // Reset all layer actuations to defaults
 __attribute__((weak)) void reset_layer_actuations(void) {
     for (uint8_t layer = 0; layer < 12; layer++) {
-        layer_actuations[layer].normal_actuation = 95;  // High value = less sensitive (deep press required)
-        layer_actuations[layer].midi_actuation = 95;    // High value = less sensitive
-        layer_actuations[layer].velocity_mode = 2;
+        layer_actuations[layer].normal_actuation = 50;  // 50% = mid-travel actuation
+        layer_actuations[layer].midi_actuation = 50;    // 50% = mid-travel actuation
+        layer_actuations[layer].velocity_mode = 0;      // Fixed velocity
         // Note: rapidfire settings moved to per-key actuations
         layer_actuations[layer].velocity_speed_scale = 10;
         layer_actuations[layer].flags = 0;

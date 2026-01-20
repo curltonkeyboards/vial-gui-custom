@@ -2252,8 +2252,10 @@ bool toggle_enabled = true;  // Global enable flag
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
-        layer_actuations[i].normal_actuation = 99;  // ~2.5mm (nearly full press to prevent ghost presses)
-        layer_actuations[i].midi_actuation = 99;    // ~2.5mm (nearly full press to prevent ghost presses)
+        // Actuation at 50% (~1.5mm travel) - appropriate for ADC range 1100-2000
+        // This ensures keys register before full bottom-out
+        layer_actuations[i].normal_actuation = 50;
+        layer_actuations[i].midi_actuation = 50;
         layer_actuations[i].velocity_mode = 0;      // Fixed
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
@@ -3058,17 +3060,17 @@ void load_layer_actuations(void) {
     eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
 
     // Validate loaded values - check for both 0 AND > 100 (uninitialized EEPROM protection)
-    // Use high defaults (95) = less sensitive = prevents ghost presses
+    // Use 50% default - appropriate for ADC range 1100-2000 on this hardware
     for (uint8_t layer = 0; layer < 12; layer++) {
-        // Normal actuation: must be 1-100, default to 95 (deep press required)
+        // Normal actuation: must be 1-100, default to 50 (mid-travel actuation)
         if (layer_actuations[layer].normal_actuation == 0 ||
             layer_actuations[layer].normal_actuation > 100) {
-            layer_actuations[layer].normal_actuation = 95;
+            layer_actuations[layer].normal_actuation = 50;
         }
-        // MIDI actuation: must be 1-100, default to 95
+        // MIDI actuation: must be 1-100, default to 50
         if (layer_actuations[layer].midi_actuation == 0 ||
             layer_actuations[layer].midi_actuation > 100) {
-            layer_actuations[layer].midi_actuation = 95;
+            layer_actuations[layer].midi_actuation = 50;
         }
         // Velocity mode: must be 0-3
         if (layer_actuations[layer].velocity_mode > 3) {
