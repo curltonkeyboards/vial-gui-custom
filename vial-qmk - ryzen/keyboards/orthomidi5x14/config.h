@@ -224,7 +224,8 @@
 // DEBOUNCE
 // ============================================================================
 
-#define DEBOUNCE 5
+// TROUBLESHOOTING: Disabled debounce - HE sensors don't need it
+#define DEBOUNCE 0
 
 // ============================================================================
 // HARDWARE NOTES FOR YOUR PCB
