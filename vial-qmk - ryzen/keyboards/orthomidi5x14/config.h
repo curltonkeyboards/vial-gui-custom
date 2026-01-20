@@ -154,15 +154,15 @@
 
 #define OLED_TIMEOUT 0
 
-#define MATRIX_ROWS 4   // 4 physical rows (ADC2-ADC5 = PA0-PA3), ADC1 is tied to VSS
-#define MATRIX_COLS 8   // 8 columns (A0 hardwired to VDD, can only access odd mux channels)
+#define MATRIX_ROWS 5   // 5 rows for layout compatibility (NOTE: ADC1=VSS on PCB, row 4 won't work)
+#define MATRIX_COLS 14  // 14 columns for layout (NOTE: A0=VDD limits to 8 addressable channels)
 
 // ADC-capable pins for reading row analog values
 // Each ADC pin reads one row of Hall effect sensors
 // PCB wiring: ADC5=PA0, ADC4=PA1, ADC3=PA2, ADC2=PA3, ADC1=VSS(ground!)
-// Only 4 usable rows since ADC1 is tied to ground
-#define MATRIX_ROW_PINS { A0, A1, A2, A3 }
-//                        PA0  PA1  PA2  PA3 (ADC5, ADC4, ADC3, ADC2 on PCB silk)
+// Row 4 (A4/PA4) is actually used for mux A1, so it won't read ADC properly
+#define MATRIX_ROW_PINS { A0, A1, A2, A3, A4 }
+//                        PA0  PA1  PA2  PA3  PA4 (row 4 conflicts with mux!)
 
 // ============================================================================
 // ADG706 MULTIPLEXER PINS (from your PCB)
