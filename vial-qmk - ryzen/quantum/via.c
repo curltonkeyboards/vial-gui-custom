@@ -211,37 +211,39 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     uint8_t *command_id   = &(data[0]);
     uint8_t *command_data = &(data[1]);
 	
-    // ADD THIS DEBUG LINE:
-    dprintf("VIA HID: Received %d bytes: [%02X %02X %02X %02X %02X %02X]\n", 
-            length, data[0], data[1], data[2], data[3], data[4], data[5]);
-	
+    // DEBUG: Uncomment to trace all HID packets
+    // dprintf("VIA HID: Received %d bytes: [%02X %02X %02X %02X %02X %02X]\n",
+    //         length, data[0], data[1], data[2], data[3], data[4], data[5]);
+
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
     // Forward declaration
     void dynamic_macro_hid_receive(uint8_t *data, uint8_t length);
-    
-    // FIXED VALIDATION: Allow variable packet sizes for our dynamic macro packets
+
+    // CUSTOM HID: Intercept dynamic macro packets (0x7D 0x00 0x4D header)
+    // TROUBLESHOOTING: This is disabled when ORTHOMIDI_CUSTOM_HID_ENABLE is not defined
     if (length >= 32 && length <= 48 &&  // Reasonable size limits
         data[0] == 0x7D &&  // HID_MANUFACTURER_ID
-        data[1] == 0x00 &&  // HID_SUB_ID  
+        data[1] == 0x00 &&  // HID_SUB_ID
         data[2] == 0x4D) {  // HID_DEVICE_ID
-        
+
         uint8_t cmd = data[3];
-        
-        // Validate command is in our expected ranges (UPDATED)
+
+        // Validate command is in our expected ranges
         if ((cmd >= 0xA0 && cmd <= 0xA7) ||  // Save/Load Operations
-            (cmd >= 0xA8 && cmd <= 0xAF) ||  // Request/Trigger Operations  
+            (cmd >= 0xA8 && cmd <= 0xAF) ||  // Request/Trigger Operations
             (cmd >= 0xB0 && cmd <= 0xB5) ||  // Loop Configuration
-            (cmd >= 0xB6 && cmd <= 0xBB)) {  // Keyboard Configuration (including Layer RGB)
-            dprintf("VIA HID: Valid dynamic macro packet detected (cmd: 0x%02X, len: %d), forwarding\n", cmd, length);
+            (cmd >= 0xB6 && cmd <= 0xBB)) {  // Keyboard Configuration
+            dprintf("VIA HID: Dynamic macro packet (cmd: 0x%02X), forwarding\n", cmd);
             dynamic_macro_hid_receive(data, length);
             return; // Don't process with VIA
         } else {
-            dprintf("VIA HID: Invalid dynamic macro command 0x%02X, ignoring\n", cmd);
-            // Send error response and return
+            dprintf("VIA HID: Invalid dynamic macro command 0x%02X\n", cmd);
             data[5] = 1; // Set error status
             raw_hid_send(data, length);
             return;
         }
     }
+#endif // ORTHOMIDI_CUSTOM_HID_ENABLE
 
 #ifdef VIAL_ENABLE
     /* When unlock is in progress, we can only react to a subset of commands */

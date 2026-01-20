@@ -15,11 +15,16 @@
  */
 
 #include "vial.h"
+
+#include <string.h>
+
+// TROUBLESHOOTING: Conditionally include keyboard-specific headers
+// These should be moved to keyboard-level code, not in quantum/vial.c
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
 #include "orthomidi5x14.h"
 #include "process_midi.h"
 #include "../keyboards/orthomidi5x14/per_key_rgb.h"
-
-#include <string.h>
+#endif
 
 #include "dynamic_keymap.h"
 #include "quantum.h"
@@ -275,6 +280,14 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             break;
         }
 #endif
+
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+        // ============================================================================
+        // ORTHOMIDI CUSTOM HID HANDLERS (Layer RGB, Custom Animations, Actuation, etc.)
+        // These handlers require keyboard-specific code and are disabled by default
+        // for troubleshooting. Enable with ORTHOMIDI_CUSTOM_HID_ENABLE=yes in rules.mk
+        // ============================================================================
+
         // ADD YOUR LAYER RGB CASES HERE
         case vial_layer_rgb_save: {  // 0xBC
             uint8_t layer = msg[2];
@@ -956,6 +969,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		}
 
         // END LAYER RGB CASES
+#endif // ORTHOMIDI_CUSTOM_HID_ENABLE
 
         case vial_dynamic_entry_op: {
             switch (msg[2]) {
