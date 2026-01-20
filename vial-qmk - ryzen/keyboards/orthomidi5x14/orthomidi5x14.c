@@ -15270,35 +15270,42 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    char dbuf[256];  // Large buffer for debug output
+    // Only update every 500ms to avoid race condition with raw ADC values
+    static uint32_t last_update = 0;
+    static char dbuf[256];
+    static uint16_t v00, v01, v02, v03, v04, v10, v20, v30, v40, v013;
 
-    // Read all ADC values into variables first - RAW unsmoothed
-    uint16_t v00 = analog_matrix_get_raw_adc(0, 0);
-    uint16_t v01 = analog_matrix_get_raw_adc(0, 1);
-    uint16_t v02 = analog_matrix_get_raw_adc(0, 2);
-    uint16_t v03 = analog_matrix_get_raw_adc(0, 3);
-    uint16_t v04 = analog_matrix_get_raw_adc(0, 4);
-    uint16_t v10 = analog_matrix_get_raw_adc(1, 0);
-    uint16_t v20 = analog_matrix_get_raw_adc(2, 0);
-    uint16_t v30 = analog_matrix_get_raw_adc(3, 0);
-    uint16_t v40 = analog_matrix_get_raw_adc(4, 0);
-    uint16_t v013 = analog_matrix_get_raw_adc(0, 13);
+    if (timer_elapsed32(last_update) > 500) {
+        last_update = timer_read32();
 
-    // Build string progressively like oled_render_keylog does
-    snprintf(dbuf, sizeof(dbuf), "  RAW ADC (no EMA)\n");
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C1 =%5u\n", v01);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C2 =%5u\n", v02);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C3 =%5u\n", v03);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C4 =%5u\n", v04);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C0 =%5u\n", v10);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C0 =%5u\n", v20);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C0 =%5u\n", v30);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C0 =%5u\n", v40);
-    snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C13=%5u\n", v013);
+        // Read all ADC values into variables first - RAW unsmoothed
+        v00 = analog_matrix_get_raw_adc(0, 0);
+        v01 = analog_matrix_get_raw_adc(0, 1);
+        v02 = analog_matrix_get_raw_adc(0, 2);
+        v03 = analog_matrix_get_raw_adc(0, 3);
+        v04 = analog_matrix_get_raw_adc(0, 4);
+        v10 = analog_matrix_get_raw_adc(1, 0);
+        v20 = analog_matrix_get_raw_adc(2, 0);
+        v30 = analog_matrix_get_raw_adc(3, 0);
+        v40 = analog_matrix_get_raw_adc(4, 0);
+        v013 = analog_matrix_get_raw_adc(0, 13);
 
-    // Write entire buffer at once like oled_render_keylog does
+        // Build string progressively like oled_render_keylog does
+        snprintf(dbuf, sizeof(dbuf), "  RAW ADC (no EMA)\n");
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C1 =%5u\n", v01);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C2 =%5u\n", v02);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C3 =%5u\n", v03);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C4 =%5u\n", v04);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C0 =%5u\n", v10);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C0 =%5u\n", v20);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C0 =%5u\n", v30);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C0 =%5u\n", v40);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C13=%5u\n", v013);
+    }
+
+    // Write cached buffer
     oled_write(dbuf, false);
 
     return false;
