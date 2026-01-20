@@ -168,14 +168,14 @@
 // ============================================================================
 
 // Address pins - PCB wiring:
-// MUX1A (A0) = PA5
-// MUX1B (A1) = PA6
-// MUX1C (A2) = PB0
-// MUX1D (A3) = PB1
-#define ADG706_A0 A5      // PA5 = MUX1A - Address bit 0 (LSB)
-#define ADG706_A1 A6      // PA6 = MUX1B - Address bit 1
-#define ADG706_A2 B0      // PB0 = MUX1C - Address bit 2
-#define ADG706_A3 B1      // PB1 = MUX1D - Address bit 3 (MSB)
+// MUXA (A0) = PA5
+// MUXB (A1) = PA6
+// MUXC (A2) = PA7
+// MUXD (A3) = PB0
+#define ADG706_A0 A5      // PA5 = MUXA - Address bit 0 (LSB)
+#define ADG706_A1 A6      // PA6 = MUXB - Address bit 1
+#define ADG706_A2 A7      // PA7 = MUXC - Address bit 2
+#define ADG706_A3 B0      // PB0 = MUXD - Address bit 3 (MSB)
 
 // Enable pin (active LOW)
 // NOTE: If your ADG706 EN pin is hardwired to GND (always enabled),
