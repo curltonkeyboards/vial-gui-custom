@@ -134,19 +134,45 @@ static inline __attribute__((always_inline)) uint8_t adc_to_distance_corrected(
     uint16_t bottom_out,
     uint8_t strength
 ) {
-    // Handle edge cases
-    if (rest >= bottom_out) return 0;  // Invalid calibration
+    // Handle edge cases - only return 0 if calibration is truly invalid (equal values)
+    if (rest == bottom_out) return 0;  // Invalid calibration
 
     // Handle inverted ADC (Hall effect: higher ADC = less pressed)
-    // Most Hall sensors work this way
+    // Most Hall sensors work this way - rest value is HIGHER than bottom_out
     if (rest > bottom_out) {
-        // Inverted: swap rest and bottom, invert adc
-        uint16_t temp = rest;
-        rest = bottom_out;
-        bottom_out = temp;
-        // Invert ADC reading relative to range
-        if (adc > rest + bottom_out) adc = 0;
-        else adc = rest + bottom_out - adc;
+        // Inverted Hall effect sensor: rest=2000, bottom=1100
+        // We need to invert the ADC reading so that:
+        // - At rest (adc=2000): distance should be 0
+        // - At bottom (adc=1100): distance should be 255
+
+        // Calculate distance directly for inverted sensors
+        // distance = (rest - adc) / (rest - bottom_out) * 255
+        if (adc >= rest) return 0;        // At or above rest = no travel
+        if (adc <= bottom_out) return 255; // At or below bottom = full travel
+
+        // Normalize to 0-1023 range for LUT lookup
+        // For inverted: higher ADC = less pressed, so invert the calculation
+        uint32_t normalized = ((uint32_t)(rest - adc) * 1023) / (rest - bottom_out);
+        if (normalized > 1023) normalized = 1023;
+
+        // Calculate linear distance (0-255)
+        uint8_t linear_distance = (uint8_t)(((uint32_t)(rest - adc) * 255) / (rest - bottom_out));
+
+        // If no correction, return linear
+        if (strength == 0) {
+            return linear_distance;
+        }
+
+        // Look up corrected distance from LUT
+        uint8_t lut_distance = pgm_read_byte(&distance_lut[normalized]);
+
+        // Blend based on strength
+        if (strength >= 100) {
+            return lut_distance;
+        }
+
+        uint16_t blended = ((uint16_t)linear_distance * (100 - strength) + (uint16_t)lut_distance * strength) / 100;
+        return (uint8_t)blended;
     }
 
     // Boundary checks

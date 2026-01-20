@@ -3056,6 +3056,43 @@ void save_layer_actuations(void) {
 // Load all layer actuations from EEPROM
 void load_layer_actuations(void) {
     eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+
+    // Validate loaded values - check for both 0 AND > 100 (uninitialized EEPROM protection)
+    // Use high defaults (95) = less sensitive = prevents ghost presses
+    for (uint8_t layer = 0; layer < 12; layer++) {
+        // Normal actuation: must be 1-100, default to 95 (deep press required)
+        if (layer_actuations[layer].normal_actuation == 0 ||
+            layer_actuations[layer].normal_actuation > 100) {
+            layer_actuations[layer].normal_actuation = 95;
+        }
+        // MIDI actuation: must be 1-100, default to 95
+        if (layer_actuations[layer].midi_actuation == 0 ||
+            layer_actuations[layer].midi_actuation > 100) {
+            layer_actuations[layer].midi_actuation = 95;
+        }
+        // Velocity mode: must be 0-3
+        if (layer_actuations[layer].velocity_mode > 3) {
+            layer_actuations[layer].velocity_mode = 0;
+        }
+        // Velocity speed scale: must be 1-20, default to 10
+        if (layer_actuations[layer].velocity_speed_scale < 1 ||
+            layer_actuations[layer].velocity_speed_scale > 20) {
+            layer_actuations[layer].velocity_speed_scale = 10;
+        }
+        // Aftertouch mode: must be 0-4
+        if (layer_actuations[layer].aftertouch_mode > 4) {
+            layer_actuations[layer].aftertouch_mode = 0;
+        }
+        // Vibrato sensitivity: must be 50-200, default to 100
+        if (layer_actuations[layer].vibrato_sensitivity < 50 ||
+            layer_actuations[layer].vibrato_sensitivity > 200) {
+            layer_actuations[layer].vibrato_sensitivity = 100;
+        }
+        // Vibrato decay time: must be 0-2000, default to 200
+        if (layer_actuations[layer].vibrato_decay_time > 2000) {
+            layer_actuations[layer].vibrato_decay_time = 200;
+        }
+    }
 }
 
 // Reset all layer actuations to defaults

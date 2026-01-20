@@ -420,11 +420,13 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
     bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
-    // FIX: Tighter ADC validity check to prevent ghost presses from empty sockets
-    // Empty sockets often read very low values (0-1500) or very high values (>3300)
-    // Valid HE sensors should read 2000-3300 range (full press ~2100, rest ~3000)
-    // Using 1800-3300 to allow some margin for sensor variation
-    if (key->adc_filtered < 1800 || key->adc_filtered > 3300) {
+    // FIX: ADC validity check to prevent ghost presses from empty sockets
+    // Empty sockets often read very low values (0-500) or very high values (>3500)
+    // Actual measured HE sensor values for this keyboard:
+    // - Resting (unpressed): 1650-2250 ADC
+    // - Pressed (bottom out): 1100-1350 ADC
+    // Valid range: 1000-2500 to encompass all valid readings with margin
+    if (key->adc_filtered < 1000 || key->adc_filtered > 2500) {
         key->is_pressed = false;
         key->key_dir = KEY_DIR_INACTIVE;
         key->distance = 0;
