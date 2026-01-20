@@ -15270,39 +15270,33 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // Only update every 500ms to avoid race condition with raw ADC values
+    // Update every 250ms to avoid race condition with raw ADC values
     static uint32_t last_update = 0;
     static char dbuf[256];
-    static uint16_t v00, v01, v02, v03, v04, v10, v20, v30, v40, v013;
+    // 40 values: 8 per row × 5 rows
+    static uint16_t v[5][8];
 
-    if (timer_elapsed32(last_update) > 500) {
+    if (timer_elapsed32(last_update) > 250) {
         last_update = timer_read32();
 
-        // Read all ADC values into variables first - RAW unsmoothed
-        v00 = analog_matrix_get_raw_adc(0, 0);
-        v01 = analog_matrix_get_raw_adc(0, 1);
-        v02 = analog_matrix_get_raw_adc(0, 2);
-        v03 = analog_matrix_get_raw_adc(0, 3);
-        v04 = analog_matrix_get_raw_adc(0, 4);
-        v10 = analog_matrix_get_raw_adc(1, 0);
-        v20 = analog_matrix_get_raw_adc(2, 0);
-        v30 = analog_matrix_get_raw_adc(3, 0);
-        v40 = analog_matrix_get_raw_adc(4, 0);
-        v013 = analog_matrix_get_raw_adc(0, 13);
+        // Read 8 values from each row (cols 0-7)
+        for (uint8_t row = 0; row < 5; row++) {
+            for (uint8_t col = 0; col < 8; col++) {
+                v[row][col] = analog_matrix_get_raw_adc(row, col);
+            }
+        }
 
-        // Build string progressively like oled_render_keylog does
-        snprintf(dbuf, sizeof(dbuf), "  RAW ADC (no EMA)\n");
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "---------------------\n");
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C0 =%5u\n", v00);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C1 =%5u\n", v01);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C2 =%5u\n", v02);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C3 =%5u\n", v03);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C4 =%5u\n", v04);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R1C0 =%5u\n", v10);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R2C0 =%5u\n", v20);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R3C0 =%5u\n", v30);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R4C0 =%5u\n", v40);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "R0C13=%5u\n", v013);
+        // Build compact display - 4 values per line, 2 lines per row
+        snprintf(dbuf, sizeof(dbuf), "%4u%4u%4u%4u\n", v[0][0], v[0][1], v[0][2], v[0][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[0][4], v[0][5], v[0][6], v[0][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[1][0], v[1][1], v[1][2], v[1][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[1][4], v[1][5], v[1][6], v[1][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[2][0], v[2][1], v[2][2], v[2][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[2][4], v[2][5], v[2][6], v[2][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[3][0], v[3][1], v[3][2], v[3][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[3][4], v[3][5], v[3][6], v[3][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[4][0], v[4][1], v[4][2], v[4][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[4][4], v[4][5], v[4][6], v[4][7]);
     }
 
     // Write cached buffer
