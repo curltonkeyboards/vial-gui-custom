@@ -15286,17 +15286,17 @@ bool oled_task_user(void) {
             }
         }
 
-        // Build compact display - 4 values per line, 2 lines per row
-        snprintf(dbuf, sizeof(dbuf), "%4u%4u%4u%4u\n", v[0][0], v[0][1], v[0][2], v[0][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[0][4], v[0][5], v[0][6], v[0][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[1][0], v[1][1], v[1][2], v[1][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[1][4], v[1][5], v[1][6], v[1][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[2][0], v[2][1], v[2][2], v[2][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[2][4], v[2][5], v[2][6], v[2][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[3][0], v[3][1], v[3][2], v[3][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[3][4], v[3][5], v[3][6], v[3][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[4][0], v[4][1], v[4][2], v[4][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u%4u%4u%4u\n", v[4][4], v[4][5], v[4][6], v[4][7]);
+        // Build display - 4 values per line with spaces
+        snprintf(dbuf, sizeof(dbuf), "%4u %4u %4u %4u\n", v[0][0], v[0][1], v[0][2], v[0][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[0][4], v[0][5], v[0][6], v[0][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[1][0], v[1][1], v[1][2], v[1][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[1][4], v[1][5], v[1][6], v[1][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[2][0], v[2][1], v[2][2], v[2][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[2][4], v[2][5], v[2][6], v[2][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[3][0], v[3][1], v[3][2], v[3][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[3][4], v[3][5], v[3][6], v[3][7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[4][0], v[4][1], v[4][2], v[4][3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[4][4], v[4][5], v[4][6], v[4][7]);
     }
 
     // Write cached buffer
