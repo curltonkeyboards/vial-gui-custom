@@ -15273,23 +15273,24 @@ bool oled_task_user(void) {
     // Update every 250ms to avoid race condition with raw ADC values
     static uint32_t last_update = 0;
     static char dbuf[256];
-    // Show all 5 rows, first 7 cols each (35 keys - half the matrix)
+    // Show all 5 rows, cols 7-13 (35 keys - second half of matrix)
     static uint16_t r0[7], r1[7], r2[7], r3[7], r4[7];
 
     if (timer_elapsed32(last_update) > 250) {
         last_update = timer_read32();
 
-        // Read all 5 rows, 7 cols each (35 keys)
-        for (uint8_t col = 0; col < 7; col++) {
-            r0[col] = analog_matrix_get_raw_value(0, col);
-            r1[col] = analog_matrix_get_raw_value(1, col);
-            r2[col] = analog_matrix_get_raw_value(2, col);
-            r3[col] = analog_matrix_get_raw_value(3, col);
-            r4[col] = analog_matrix_get_raw_value(4, col);
+        // Read all 5 rows, cols 7-13 (store at indices 0-6)
+        for (uint8_t i = 0; i < 7; i++) {
+            uint8_t col = i + 7;  // firmware cols 7-13
+            r0[i] = analog_matrix_get_raw_value(0, col);
+            r1[i] = analog_matrix_get_raw_value(1, col);
+            r2[i] = analog_matrix_get_raw_value(2, col);
+            r3[i] = analog_matrix_get_raw_value(3, col);
+            r4[i] = analog_matrix_get_raw_value(4, col);
         }
 
-        // Display: 5 rows x 7 cols (cols 0-6)
-        snprintf(dbuf, sizeof(dbuf), "R0:%4u%4u%4u%4u%4u%4u%4u\n",
+        // Display: 5 rows x 7 cols (cols 7-13)
+        snprintf(dbuf, sizeof(dbuf), "R0 c7-13:%4u%4u%4u%4u%4u%4u%4u\n",
                  r0[0], r0[1], r0[2], r0[3], r0[4], r0[5], r0[6]);
         snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf),
                  "R1:%4u%4u%4u%4u%4u%4u%4u\n",
