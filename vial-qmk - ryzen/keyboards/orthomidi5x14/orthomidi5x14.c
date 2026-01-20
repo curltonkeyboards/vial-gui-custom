@@ -15281,9 +15281,9 @@ bool oled_task_user(void) {
 
         // Read row 0 (14 cols), row 1 (14 cols), row 2 (12 cols) = 40 total
         for (uint8_t col = 0; col < 14; col++) {
-            r0[col] = analog_matrix_get_raw_adc(0, col);
-            r1[col] = analog_matrix_get_raw_adc(1, col);
-            if (col < 12) r2[col] = analog_matrix_get_raw_adc(2, col);
+            r0[col] = analog_matrix_get_raw_value(0, col);
+            r1[col] = analog_matrix_get_raw_value(1, col);
+            if (col < 12) r2[col] = analog_matrix_get_raw_value(2, col);
         }
 
         // Row 0: cols 0-13 (4 lines)
