@@ -254,11 +254,20 @@ static uint8_t pin_to_adc_channel(pin_t pin) {
 static void select_column(uint8_t col) {
     if (col >= 16) return;
 
-    // Standard 4-bit addressing for ADG706 multiplexer
-    writePin(ADG706_A0, col & 0x01);
-    writePin(ADG706_A1, col & 0x02);
-    writePin(ADG706_A2, col & 0x04);
-    writePin(ADG706_A3, col & 0x08);
+    // Invert column addressing to match physical PCB wiring
+    // Physical columns are wired in reverse order on the mux
+    // cols 0-7: invert to 7-0, cols 8-13: invert to 13-8
+    uint8_t mux_addr;
+    if (col < 8) {
+        mux_addr = 7 - col;      // 0→7, 1→6, ..., 7→0
+    } else {
+        mux_addr = 21 - col;     // 8→13, 9→12, ..., 13→8
+    }
+
+    writePin(ADG706_A0, mux_addr & 0x01);
+    writePin(ADG706_A1, mux_addr & 0x02);
+    writePin(ADG706_A2, mux_addr & 0x04);
+    writePin(ADG706_A3, mux_addr & 0x08);
 
     if (ADG706_EN != NO_PIN) {
         writePinLow(ADG706_EN);
