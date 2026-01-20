@@ -984,8 +984,9 @@ static void analog_matrix_task_internal(void) {
             // Store raw value for debugging
             key->adc_raw = raw_value;
 
-            // 1. Apply EMA filter (libhmk style)
-            key->adc_filtered = EMA(raw_value, key->adc_filtered);
+            // TROUBLESHOOTING: Bypass EMA filter, use raw ADC directly
+            // Original: key->adc_filtered = EMA(raw_value, key->adc_filtered);
+            key->adc_filtered = raw_value;
 
             // 2. Update calibration (continuous)
             update_calibration(key_idx);
