@@ -154,7 +154,7 @@
 
 #define OLED_TIMEOUT 0
 
-#define MATRIX_ROWS 5   // 5 rows (ADC1-ADC5 = PA4-PA0)
+#define MATRIX_ROWS 6   // 5 physical rows (ADC1-ADC5) + 1 virtual row for encoders/sustain
 #define MATRIX_COLS 14  // 14 columns (mux channels 0-13)
 
 // ADC-capable pins for reading row analog values
