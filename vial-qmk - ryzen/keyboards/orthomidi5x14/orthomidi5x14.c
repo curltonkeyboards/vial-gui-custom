@@ -2252,10 +2252,11 @@ bool toggle_enabled = true;  // Global enable flag
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
-        // Actuation at 50% (~1.5mm travel) - appropriate for ADC range 1100-2000
-        // This ensures keys register before full bottom-out
-        layer_actuations[i].normal_actuation = 50;
-        layer_actuations[i].midi_actuation = 50;
+        // TROUBLESHOOTING: Using 30% actuation for easy triggering
+        // At 30%: actuation_point = 76, key registers when ADC drops to ~1732
+        // This should trigger with even a light press
+        layer_actuations[i].normal_actuation = 30;
+        layer_actuations[i].midi_actuation = 30;
         layer_actuations[i].velocity_mode = 0;      // Fixed
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
@@ -3057,44 +3058,13 @@ void save_layer_actuations(void) {
 
 // Load all layer actuations from EEPROM
 void load_layer_actuations(void) {
-    eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    // TROUBLESHOOTING: Bypass EEPROM and use hardcoded defaults
+    // This ensures we have known-good actuation values for testing
+    // TODO: Re-enable EEPROM loading once key detection is working
+    initialize_layer_actuations();
 
-    // Validate loaded values - check for both 0 AND > 100 (uninitialized EEPROM protection)
-    // Use 50% default - appropriate for ADC range 1100-2000 on this hardware
-    for (uint8_t layer = 0; layer < 12; layer++) {
-        // Normal actuation: must be 1-100, default to 50 (mid-travel actuation)
-        if (layer_actuations[layer].normal_actuation == 0 ||
-            layer_actuations[layer].normal_actuation > 100) {
-            layer_actuations[layer].normal_actuation = 50;
-        }
-        // MIDI actuation: must be 1-100, default to 50
-        if (layer_actuations[layer].midi_actuation == 0 ||
-            layer_actuations[layer].midi_actuation > 100) {
-            layer_actuations[layer].midi_actuation = 50;
-        }
-        // Velocity mode: must be 0-3
-        if (layer_actuations[layer].velocity_mode > 3) {
-            layer_actuations[layer].velocity_mode = 0;
-        }
-        // Velocity speed scale: must be 1-20, default to 10
-        if (layer_actuations[layer].velocity_speed_scale < 1 ||
-            layer_actuations[layer].velocity_speed_scale > 20) {
-            layer_actuations[layer].velocity_speed_scale = 10;
-        }
-        // Aftertouch mode: must be 0-4
-        if (layer_actuations[layer].aftertouch_mode > 4) {
-            layer_actuations[layer].aftertouch_mode = 0;
-        }
-        // Vibrato sensitivity: must be 50-200, default to 100
-        if (layer_actuations[layer].vibrato_sensitivity < 50 ||
-            layer_actuations[layer].vibrato_sensitivity > 200) {
-            layer_actuations[layer].vibrato_sensitivity = 100;
-        }
-        // Vibrato decay time: must be 0-2000, default to 200
-        if (layer_actuations[layer].vibrato_decay_time > 2000) {
-            layer_actuations[layer].vibrato_decay_time = 200;
-        }
-    }
+    // Original EEPROM loading code (disabled for troubleshooting):
+    // eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
 }
 
 // Reset all layer actuations to defaults
