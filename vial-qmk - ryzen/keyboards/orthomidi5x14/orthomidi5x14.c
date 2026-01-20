@@ -15273,30 +15273,33 @@ bool oled_task_user(void) {
     // Update every 250ms to avoid race condition with raw ADC values
     static uint32_t last_update = 0;
     static char dbuf[256];
-    // 40 values: 8 per row × 5 rows
-    static uint16_t v[5][8];
+    // First 40 keys in order: r0c0-r0c13, r1c0-r1c13, r2c0-r2c11
+    static uint16_t r0[14], r1[14], r2[12];
 
     if (timer_elapsed32(last_update) > 250) {
         last_update = timer_read32();
 
-        // Read 8 values from each row (cols 0-7)
-        for (uint8_t row = 0; row < 5; row++) {
-            for (uint8_t col = 0; col < 8; col++) {
-                v[row][col] = analog_matrix_get_raw_adc(row, col);
-            }
+        // Read row 0 (14 cols), row 1 (14 cols), row 2 (12 cols) = 40 total
+        for (uint8_t col = 0; col < 14; col++) {
+            r0[col] = analog_matrix_get_raw_adc(0, col);
+            r1[col] = analog_matrix_get_raw_adc(1, col);
+            if (col < 12) r2[col] = analog_matrix_get_raw_adc(2, col);
         }
 
-        // Build display - 4 values per line with spaces
-        snprintf(dbuf, sizeof(dbuf), "%4u %4u %4u %4u\n", v[0][0], v[0][1], v[0][2], v[0][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[0][4], v[0][5], v[0][6], v[0][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[1][0], v[1][1], v[1][2], v[1][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[1][4], v[1][5], v[1][6], v[1][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[2][0], v[2][1], v[2][2], v[2][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[2][4], v[2][5], v[2][6], v[2][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[3][0], v[3][1], v[3][2], v[3][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[3][4], v[3][5], v[3][6], v[3][7]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[4][0], v[4][1], v[4][2], v[4][3]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", v[4][4], v[4][5], v[4][6], v[4][7]);
+        // Row 0: cols 0-13 (4 lines)
+        snprintf(dbuf, sizeof(dbuf), "%4u %4u %4u %4u\n", r0[0], r0[1], r0[2], r0[3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r0[4], r0[5], r0[6], r0[7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r0[8], r0[9], r0[10], r0[11]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u\n", r0[12], r0[13]);
+        // Row 1: cols 0-13 (4 lines)
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r1[0], r1[1], r1[2], r1[3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r1[4], r1[5], r1[6], r1[7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r1[8], r1[9], r1[10], r1[11]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u\n", r1[12], r1[13]);
+        // Row 2: cols 0-11 (3 lines)
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r2[0], r2[1], r2[2], r2[3]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r2[4], r2[5], r2[6], r2[7]);
+        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf), "%4u %4u %4u %4u\n", r2[8], r2[9], r2[10], r2[11]);
     }
 
     // Write cached buffer
