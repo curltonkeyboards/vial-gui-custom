@@ -2252,8 +2252,11 @@ bool toggle_enabled = true;  // Global enable flag
 // Initialize default values
 void initialize_layer_actuations(void) {
     for (uint8_t i = 0; i < 12; i++) {
-        layer_actuations[i].normal_actuation = 99;  // ~2.5mm (nearly full press to prevent ghost presses)
-        layer_actuations[i].midi_actuation = 99;    // ~2.5mm (nearly full press to prevent ghost presses)
+        // TROUBLESHOOTING: Using 30% actuation for easy triggering
+        // At 30%: actuation_point = 76, key registers when ADC drops to ~1732
+        // This should trigger with even a light press
+        layer_actuations[i].normal_actuation = 30;
+        layer_actuations[i].midi_actuation = 30;
         layer_actuations[i].velocity_mode = 0;      // Fixed
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
@@ -3055,7 +3058,13 @@ void save_layer_actuations(void) {
 
 // Load all layer actuations from EEPROM
 void load_layer_actuations(void) {
-    eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    // TROUBLESHOOTING: Bypass EEPROM and use hardcoded defaults
+    // This ensures we have known-good actuation values for testing
+    // TODO: Re-enable EEPROM loading once key detection is working
+    initialize_layer_actuations();
+
+    // Original EEPROM loading code (disabled for troubleshooting):
+    // eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
 }
 
 // Reset all layer actuations to defaults
@@ -15270,48 +15279,6 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // Update every 250ms to avoid race condition with raw ADC values
-    static uint32_t last_update = 0;
-    static char dbuf[256];
-    // Show all 5 rows, cols 7-13 (35 keys - second half of matrix)
-    static uint16_t r0[7], r1[7], r2[7], r3[7], r4[7];
-
-    if (timer_elapsed32(last_update) > 250) {
-        last_update = timer_read32();
-
-        // Read all 5 rows, cols 7-13 (store at indices 0-6)
-        for (uint8_t i = 0; i < 7; i++) {
-            uint8_t col = i + 7;  // firmware cols 7-13
-            r0[i] = analog_matrix_get_raw_value(0, col);
-            r1[i] = analog_matrix_get_raw_value(1, col);
-            r2[i] = analog_matrix_get_raw_value(2, col);
-            r3[i] = analog_matrix_get_raw_value(3, col);
-            r4[i] = analog_matrix_get_raw_value(4, col);
-        }
-
-        // Display: 5 rows x 7 cols (cols 7-13)
-        snprintf(dbuf, sizeof(dbuf), "R0 c7-13:%4u%4u%4u%4u%4u%4u%4u\n",
-                 r0[0], r0[1], r0[2], r0[3], r0[4], r0[5], r0[6]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf),
-                 "R1:%4u%4u%4u%4u%4u%4u%4u\n",
-                 r1[0], r1[1], r1[2], r1[3], r1[4], r1[5], r1[6]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf),
-                 "R2:%4u%4u%4u%4u%4u%4u%4u\n",
-                 r2[0], r2[1], r2[2], r2[3], r2[4], r2[5], r2[6]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf),
-                 "R3:%4u%4u%4u%4u%4u%4u%4u\n",
-                 r3[0], r3[1], r3[2], r3[3], r3[4], r3[5], r3[6]);
-        snprintf(dbuf + strlen(dbuf), sizeof(dbuf) - strlen(dbuf),
-                 "R4:%4u%4u%4u%4u%4u%4u%4u\n",
-                 r4[0], r4[1], r4[2], r4[3], r4[4], r4[5], r4[6]);
-    }
-
-    // Write cached buffer
-    oled_write(dbuf, false);
-
-    return false;
-
-    // ORIGINAL CODE BELOW - restore after debugging
     // Check if quick build is active - if so, show big number display
     if (quick_build_is_active()) {
         render_big_number(quick_build_get_current_step());

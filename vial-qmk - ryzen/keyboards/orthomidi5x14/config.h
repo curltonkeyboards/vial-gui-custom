@@ -212,18 +212,20 @@
 // Rapid trigger sensitivity (default: 4 = 0.4mm)
 // #define DEFAULT_RAPID_TRIGGER_SENSITIVITY 4
 
-// ADC calibration values (measure and adjust if needed!)
-// Defaults assume typical Hall effect sensor behavior:
-// - Rest: ~3000 ADC value
-// - Full press: ~2100 ADC value
-// #define DEFAULT_ZERO_TRAVEL_VALUE 3000
-// #define DEFAULT_FULL_RANGE 900
+// ADC calibration values (measured from actual hardware)
+// Your Hall effect sensors read:
+// - Rest: ~1650-2250 ADC (average ~2000)
+// - Full press: ~1100-1350 ADC (bottom ~1100)
+// - Travel range: ~900 counts
+#define DEFAULT_ZERO_TRAVEL_VALUE 2000
+#define DEFAULT_FULL_RANGE 900
 
 // ============================================================================
 // DEBOUNCE
 // ============================================================================
 
-#define DEBOUNCE 5
+// TROUBLESHOOTING: Disabled debounce - HE sensors don't need it
+#define DEBOUNCE 0
 
 // ============================================================================
 // HARDWARE NOTES FOR YOUR PCB

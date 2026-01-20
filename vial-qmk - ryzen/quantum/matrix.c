@@ -180,6 +180,25 @@ static struct {
     uint16_t vibrato_decay_time;
 } active_settings;
 
+// ============================================================================
+// KEY TYPE CACHE (eliminates EEPROM reads in scan loop)
+// ============================================================================
+
+// Key types for the cache
+typedef enum {
+    KEY_TYPE_NORMAL = 0,
+    KEY_TYPE_DKS = 1,
+    KEY_TYPE_MIDI = 2
+} key_type_t;
+
+// Cache: stores key type for each key (refreshed on layer change)
+static uint8_t key_type_cache[NUM_KEYS];
+static uint16_t dks_keycode_cache[NUM_KEYS];  // Cache DKS keycodes for processing
+static uint8_t key_type_cache_layer = 0xFF;   // Layer the cache was built for
+
+// Forward declaration
+static void refresh_key_type_cache(uint8_t layer);
+
 // ADC configuration
 #define ADC_GRP_NUM_CHANNELS MATRIX_ROWS
 #define ADC_GRP_BUF_DEPTH 1
@@ -330,6 +349,44 @@ static inline void update_active_settings(uint8_t current_layer) {
 }
 
 // ============================================================================
+// KEY TYPE CACHE REFRESH (eliminates 140 EEPROM reads per scan)
+// ============================================================================
+
+// Refresh key type cache when layer changes
+// This reads keycodes from EEPROM once per layer change instead of 140x per scan
+static void refresh_key_type_cache(uint8_t layer) {
+    if (layer >= 12) layer = 0;
+
+    // Skip if cache is already valid for this layer
+    if (key_type_cache_layer == layer) return;
+
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+            uint32_t key_idx = KEY_INDEX(row, col);
+            uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
+
+            // Check if DKS key
+            if (is_dks_keycode(keycode)) {
+                key_type_cache[key_idx] = KEY_TYPE_DKS;
+                dks_keycode_cache[key_idx] = keycode;
+            }
+            // Check if MIDI key (using existing midi_key_states which is set up at init)
+            else if (midi_key_states[key_idx].is_midi_key) {
+                key_type_cache[key_idx] = KEY_TYPE_MIDI;
+                dks_keycode_cache[key_idx] = 0;
+            }
+            // Normal key
+            else {
+                key_type_cache[key_idx] = KEY_TYPE_NORMAL;
+                dks_keycode_cache[key_idx] = 0;
+            }
+        }
+    }
+
+    key_type_cache_layer = layer;
+}
+
+// ============================================================================
 // PER-KEY ACTUATION LOOKUP (using layer-level settings to avoid USB disconnect)
 // ============================================================================
 
@@ -420,11 +477,13 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     key_state_t *key = &key_matrix[key_idx];
     bool was_pressed = key->is_pressed;  // Track previous state for null bind
 
-    // FIX: Tighter ADC validity check to prevent ghost presses from empty sockets
-    // Empty sockets often read very low values (0-1500) or very high values (>3300)
-    // Valid HE sensors should read 2000-3300 range (full press ~2100, rest ~3000)
-    // Using 1800-3300 to allow some margin for sensor variation
-    if (key->adc_filtered < 1800 || key->adc_filtered > 3300) {
+    // FIX: ADC validity check to prevent ghost presses from empty sockets
+    // Empty sockets often read very low values (0-500) or very high values (>3500)
+    // Actual measured HE sensor values for this keyboard:
+    // - Resting (unpressed): 1650-2250 ADC
+    // - Pressed (bottom out): 1100-1350 ADC
+    // Valid range: 1000-2500 to encompass all valid readings with margin
+    if (key->adc_filtered < 1000 || key->adc_filtered > 2500) {
         key->is_pressed = false;
         key->key_dir = KEY_DIR_INACTIVE;
         key->distance = 0;
@@ -982,8 +1041,9 @@ static void analog_matrix_task_internal(void) {
             // Store raw value for debugging
             key->adc_raw = raw_value;
 
-            // 1. Apply EMA filter (libhmk style)
-            key->adc_filtered = EMA(raw_value, key->adc_filtered);
+            // TROUBLESHOOTING: Bypass EMA filter, use raw ADC directly
+            // Original: key->adc_filtered = EMA(raw_value, key->adc_filtered);
+            key->adc_filtered = raw_value;
 
             // 2. Update calibration (continuous)
             update_calibration(key_idx);
@@ -1120,20 +1180,6 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
-    // DEBUG: Disable all keypresses while debugging ADC values
-    // Run ADC scanning to get readings, but don't register any key presses
-    analog_matrix_task_internal();
-
-    // Return early with empty matrix - no keys pressed
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        if (current_matrix[row] != 0) {
-            current_matrix[row] = 0;
-            changed = true;
-        }
-    }
-    return changed;
-    // END DEBUG - remove above and uncomment below to restore normal operation
-
     // Initialize MIDI states if needed
     if (!midi_states_initialized && optimized_midi_positions != NULL) {
         initialize_midi_states();
@@ -1146,29 +1192,30 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
     if (current_layer >= 12) current_layer = 0;
 
-    // Process MIDI keys
+    // Refresh key type cache on layer change (eliminates 140 EEPROM reads per scan)
+    refresh_key_type_cache(current_layer);
+
+    // Process MIDI keys (uses cached is_midi_key flag - no EEPROM reads)
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
-            if (midi_key_states[i].is_midi_key) {
+            if (key_type_cache[i] == KEY_TYPE_MIDI) {
                 process_midi_key_analog(i, current_layer);
             }
         }
     }
 
-    // Process DKS keys
+    // Process DKS keys (uses cached key types and keycodes - no EEPROM reads)
     for (uint32_t i = 0; i < NUM_KEYS; i++) {
-        uint8_t row = KEY_ROW(i);
-        uint8_t col = KEY_COL(i);
-        uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
-
-        if (is_dks_keycode(keycode)) {
+        if (key_type_cache[i] == KEY_TYPE_DKS) {
+            uint8_t row = KEY_ROW(i);
+            uint8_t col = KEY_COL(i);
             // Convert distance to travel for DKS (backward compatibility)
             uint8_t travel = distance_to_travel_compat(key_matrix[i].distance);
-            dks_process_key(row, col, travel, keycode);
+            dks_process_key(row, col, travel, dks_keycode_cache[i]);
         }
     }
 
-    // Build matrix from key states
+    // Build matrix from key states (uses cached key types - no EEPROM reads)
     uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
     uint8_t analog_mode = active_settings.velocity_mode;
 
@@ -1180,14 +1227,13 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             key_state_t *key = &key_matrix[key_idx];
             bool pressed = false;
 
-            // Check if this is a DKS key
-            uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
-            bool is_dks = is_dks_keycode(keycode);
+            // Use cached key type instead of EEPROM read
+            uint8_t key_type = key_type_cache[key_idx];
 
-            if (is_dks) {
+            if (key_type == KEY_TYPE_DKS) {
                 // DKS keys handle their own keycodes internally
                 pressed = false;
-            } else if (midi_key_states[key_idx].is_midi_key) {
+            } else if (key_type == KEY_TYPE_MIDI) {
                 midi_key_state_t *state = &midi_key_states[key_idx];
                 uint8_t travel = distance_to_travel_compat(key->distance);
 
@@ -1211,7 +1257,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                     pressed = true;
                 }
             } else {
-                // Normal key - use RT state
+                // Normal key (KEY_TYPE_NORMAL) - use RT state
                 pressed = key->is_pressed;
             }
 

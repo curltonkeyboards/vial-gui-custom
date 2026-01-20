@@ -104,9 +104,10 @@ typedef uint32_t matrix_row_t;
 // Travel scaling factor for internal precision
 #define TRAVEL_SCALE 6
 
-// ADC valid range
-#define VALID_ANALOG_RAW_VALUE_MIN 1200
-#define VALID_ANALOG_RAW_VALUE_MAX 3500
+// ADC valid range (measured for orthomidi5x14 Hall effect sensors)
+// Actual values: rest=1650-2250, pressed=1100-1350
+#define VALID_ANALOG_RAW_VALUE_MIN 1000
+#define VALID_ANALOG_RAW_VALUE_MAX 2500
 
 // Debounce attempts
 #ifndef ANALOG_DEBOUCE_TIME
