@@ -1120,20 +1120,6 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
-    // DEBUG: Disable all keypresses while debugging ADC values
-    // Run ADC scanning to get readings, but don't register any key presses
-    analog_matrix_task_internal();
-
-    // Return early with empty matrix - no keys pressed
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        if (current_matrix[row] != 0) {
-            current_matrix[row] = 0;
-            changed = true;
-        }
-    }
-    return changed;
-    // END DEBUG - remove above and uncomment below to restore normal operation
-
     // Initialize MIDI states if needed
     if (!midi_states_initialized && optimized_midi_positions != NULL) {
         initialize_midi_states();
