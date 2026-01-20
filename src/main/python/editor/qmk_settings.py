@@ -269,7 +269,9 @@ class QmkSettings(BasicEditor):
         for x, tab in enumerate(self.tabs):
             tab_changed = False
             for opt in tab:
-                if qsid_values[opt.qsid] != self.keyboard.settings[opt.qsid]:
+                # Handle case where firmware advertises setting but doesn't return a value
+                stored_value = self.keyboard.settings.get(opt.qsid, 0)
+                if qsid_values[opt.qsid] != stored_value:
                     changed = True
                     tab_changed = True
             title = self.tabs_widget.tabText(x).rstrip("*")
