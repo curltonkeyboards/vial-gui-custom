@@ -252,15 +252,15 @@ class ProtocolNullBind:
             packet = self.keyboard._create_hid_packet(HID_CMD_NULLBIND_GET_GROUP, 0, [group_num])
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response or len(response) < (6 + NULLBIND_GROUP_SIZE):
+            if not response or len(response) < (5 + NULLBIND_GROUP_SIZE):
                 return None
 
-            # Check status byte
-            if response[5] != 0:
+            # Check status byte (firmware puts it at index 4)
+            if response[4] != 0:
                 return None
 
-            # Extract group data
-            group_data = response[6:6 + NULLBIND_GROUP_SIZE]
+            # Extract group data (firmware puts it at index 5)
+            group_data = response[5:5 + NULLBIND_GROUP_SIZE]
             group = NullBindGroup.from_bytes(group_data)
 
             # Cache it
@@ -292,7 +292,7 @@ class ProtocolNullBind:
             packet = self.keyboard._create_hid_packet(HID_CMD_NULLBIND_SET_GROUP, 0, data)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            success = response and len(response) > 5 and response[5] == 0
+            success = response and len(response) > 4 and response[4] == 0
 
             # Update cache
             if success:
@@ -313,7 +313,7 @@ class ProtocolNullBind:
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_NULLBIND_SAVE_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
-            return response and len(response) > 5 and response[5] == 0
+            return response and len(response) > 4 and response[4] == 0
         except Exception as e:
             print(f"NullBind: Error saving to EEPROM: {e}")
             return False
@@ -328,7 +328,7 @@ class ProtocolNullBind:
             packet = self.keyboard._create_hid_packet(HID_CMD_NULLBIND_LOAD_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            success = response and len(response) > 5 and response[5] == 0
+            success = response and len(response) > 4 and response[4] == 0
 
             if success:
                 self.groups_cache.clear()
@@ -348,7 +348,7 @@ class ProtocolNullBind:
             packet = self.keyboard._create_hid_packet(HID_CMD_NULLBIND_RESET_ALL, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            success = response and len(response) > 5 and response[5] == 0
+            success = response and len(response) > 4 and response[4] == 0
 
             if success:
                 self.groups_cache.clear()

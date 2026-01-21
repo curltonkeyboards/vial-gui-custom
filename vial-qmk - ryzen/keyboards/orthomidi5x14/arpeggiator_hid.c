@@ -630,13 +630,13 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
         switch (cmd) {
             case HID_CMD_NULLBIND_GET_GROUP:  // 0xF0
-                // Format: [group_num] at data[4]
-                handle_nullbind_get_group(data[4], &response[4]);
+                // Format: [group_num] at data[6] (Python _create_hid_packet puts data at byte 6)
+                handle_nullbind_get_group(data[6], &response[4]);
                 break;
 
             case HID_CMD_NULLBIND_SET_GROUP:  // 0xF1
-                // Format: [group_num, behavior, key_count, keys[8], reserved[8]] at data[4]
-                handle_nullbind_set_group(&data[4]);
+                // Format: [group_num, behavior, key_count, keys[8], reserved[8]] at data[6]
+                handle_nullbind_set_group(&data[6]);
                 response[4] = 0;  // Success status
                 break;
 
