@@ -15405,11 +15405,12 @@ bool oled_task_user(void) {
     char str[22] = "";
     char name[124] = "";  // Define `name` buffer to be used later
 
-    // EEPROM DEBUG: Show magic (51000) and toggle24 (51098)
-    uint16_t magic = eeprom_read_word((uint16_t*)51000);
-    uint16_t t24 = eeprom_read_word((uint16_t*)51098);
-    uint16_t t25 = eeprom_read_word((uint16_t*)51102);
-    snprintf(str, sizeof(str), "M%04X 24:%04X 25:%04X", magic, t24, t25);
+    // DEBUG: Show RAM values for toggle 24-27
+    snprintf(str, sizeof(str), "%04X %04X %04X %04X",
+        toggle_slots[24].target_keycode,
+        toggle_slots[25].target_keycode,
+        toggle_slots[26].target_keycode,
+        toggle_slots[27].target_keycode);
     oled_write(str, false);
 
     // Display temporary mode message if active
