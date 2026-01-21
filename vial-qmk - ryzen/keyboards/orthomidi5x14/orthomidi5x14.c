@@ -15368,33 +15368,27 @@ void matrix_scan_user(void) {
 	if (current_bpm > 0) {
 	midi_clock_task();}
 
-	// Handle footswitch / sustain pedal (PA9) - active low (pulled high with internal pullup)
-	// Triggers both MIDI CC 64 (sustain) AND a key event at row 5, col 2 for Vial remapping
-	static bool sustain_pedal_prev_state = true;
-	bool sustain_pedal_state = readPin(A9);
-	if (sustain_pedal_state != sustain_pedal_prev_state) {
-		if (!sustain_pedal_state) {
-			// Pedal pressed - send MIDI sustain ON
-			truesustain = true;
-			midi_send_cc(&midi_device, channel_number, 64, 127);
-			// Trigger key event for Vial remapping (row 5, col 2)
+	// Handle footswitch / momentary switch (PA9) - active low (pulled high with internal pullup)
+	// Triggers key event at row 5, col 2 for Vial remapping (user can assign any key including MIDI sustain)
+	static bool footswitch_prev_state = true;
+	bool footswitch_state = readPin(A9);
+	if (footswitch_state != footswitch_prev_state) {
+		if (!footswitch_state) {
+			// Footswitch pressed
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 2},
 				.pressed = true,
 				.time = timer_read()
 			});
 		} else {
-			// Pedal released - send MIDI sustain OFF
-			truesustain = false;
-			midi_send_cc(&midi_device, channel_number, 64, 0);
-			// Release key event
+			// Footswitch released
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 2},
 				.pressed = false,
 				.time = timer_read()
 			});
 		}
-		sustain_pedal_prev_state = sustain_pedal_state;
+		footswitch_prev_state = footswitch_state;
 	}
 
 	// Handle encoder 0 click button (PB14) - triggers key at row 5, col 0
