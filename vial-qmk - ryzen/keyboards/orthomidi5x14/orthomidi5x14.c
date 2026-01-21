@@ -15405,12 +15405,14 @@ bool oled_task_user(void) {
     char str[22] = "";
     char name[124] = "";  // Define `name` buffer to be used later
 
-    // EEPROM DEBUG: Read values and display instead of layer/BPM
-    uint8_t e1 = eeprom_read_byte((uint8_t*)2000);
-    uint8_t e2 = eeprom_read_byte((uint8_t*)10000);
-    uint8_t e3 = eeprom_read_byte((uint8_t*)30000);
-    uint8_t e4 = eeprom_read_byte((uint8_t*)51000);
-    snprintf(str, sizeof(str), "%02X %02X %02X %02X", e1, e2, e3, e4);
+    // EEPROM DEBUG: Show toggle area bytes (51000+)
+    uint8_t t0 = eeprom_read_byte((uint8_t*)51000);
+    uint8_t t1 = eeprom_read_byte((uint8_t*)51001);
+    uint8_t t2 = eeprom_read_byte((uint8_t*)51002);
+    uint8_t t3 = eeprom_read_byte((uint8_t*)51003);
+    uint8_t t4 = eeprom_read_byte((uint8_t*)51004);
+    uint8_t t5 = eeprom_read_byte((uint8_t*)51005);
+    snprintf(str, sizeof(str), "%02X%02X%02X%02X%02X%02X", t0, t1, t2, t3, t4, t5);
     oled_write(str, false);
 
     // Display temporary mode message if active
