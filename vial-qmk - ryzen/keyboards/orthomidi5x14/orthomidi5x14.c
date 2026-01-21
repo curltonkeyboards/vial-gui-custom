@@ -4856,34 +4856,6 @@ void keyboard_post_init_user(void) {
 	// Initialize toggle keys system
 	toggle_load_from_eeprom();
 
-	// Sanity check tap dance entries - reset if garbage detected
-	// Check a few entries for invalid tapping_term (should be 50-500, not 0xAA55 etc)
-	#ifdef VIAL_TAP_DANCE_ENABLE
-	{
-		vial_tap_dance_entry_t td_check;
-		bool needs_reset = false;
-		// Check entries 0, 37, 50, 99 for garbage
-		uint8_t check_indices[] = {0, 37, 50, 99};
-		for (int i = 0; i < 4; i++) {
-			if (check_indices[i] < VIAL_TAP_DANCE_ENTRIES) {
-				dynamic_keymap_get_tap_dance(check_indices[i], &td_check);
-				// If tapping_term is garbage (> 1000 or 0), mark for reset
-				if (td_check.custom_tapping_term > 1000 || td_check.custom_tapping_term == 0) {
-					needs_reset = true;
-					break;
-				}
-			}
-		}
-		if (needs_reset) {
-			// Reset all tap dance entries to defaults
-			vial_tap_dance_entry_t td_default = { KC_NO, KC_NO, KC_NO, KC_NO, TAPPING_TERM };
-			for (size_t i = 0; i < VIAL_TAP_DANCE_ENTRIES; ++i) {
-				dynamic_keymap_set_tap_dance(i, &td_default);
-			}
-		}
-	}
-	#endif
-
 	// Initialize encoder click buttons and footswitch pins
 	setPinInputHigh(B14);  // Encoder 0 click (directly polled GPIO)
 	setPinInputHigh(B15);  // Encoder 1 click (directly polled GPIO)
