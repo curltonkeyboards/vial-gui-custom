@@ -4870,6 +4870,10 @@ void keyboard_post_init_user(void) {
 	// PA15/PB3 are JTAG pins remapped to USART1 AF7
 	setup_serial_midi();
 #endif
+
+	// AUTO-RUN EEPROM DIAGNOSTIC ON BOOT - for debugging
+	// Press any key to exit diagnostic display and return to normal
+	eeprom_diag_run_test();
 }
 
    
