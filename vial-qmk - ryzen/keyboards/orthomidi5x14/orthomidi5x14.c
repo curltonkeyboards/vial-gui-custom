@@ -15359,79 +15359,16 @@ void matrix_scan_user(void) {
 	if (current_bpm > 0) {
 	midi_clock_task();}
 
-	// Helper function to process virtual key press/release with full keycode support
-	// Uses dynamic_keymap_get_keycode() directly since action_exec() doesn't work
-	// properly with virtual row 5 (QMK's internal keycode lookup has issues)
-	static void process_virtual_key(uint8_t row, uint8_t col, bool pressed) {
-		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-		uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
-
-		if (keycode == KC_NO || keycode == KC_TRNS) {
-			return;
-		}
-
-		// Handle layer keycodes
-		if (keycode >= QK_MOMENTARY && keycode <= QK_MOMENTARY_MAX) {
-			// MO(layer) - Momentary layer switch
-			uint8_t target_layer = QK_MOMENTARY_GET_LAYER(keycode);
-			if (pressed) {
-				layer_on(target_layer);
-			} else {
-				layer_off(target_layer);
-			}
-		} else if (keycode >= QK_TOGGLE_LAYER && keycode <= QK_TOGGLE_LAYER_MAX) {
-			// TG(layer) - Toggle layer
-			if (pressed) {
-				uint8_t target_layer = QK_TOGGLE_LAYER_GET_LAYER(keycode);
-				layer_invert(target_layer);
-			}
-		} else if (keycode >= QK_DEF_LAYER && keycode <= QK_DEF_LAYER_MAX) {
-			// DF(layer) - Set default layer
-			if (pressed) {
-				uint8_t target_layer = QK_DEF_LAYER_GET_LAYER(keycode);
-				set_single_persistent_default_layer(target_layer);
-			}
-		} else if (keycode >= QK_ONE_SHOT_LAYER && keycode <= QK_ONE_SHOT_LAYER_MAX) {
-			// OSL(layer) - One-shot layer
-			if (pressed) {
-				uint8_t target_layer = QK_ONE_SHOT_LAYER_GET_LAYER(keycode);
-				set_oneshot_layer(target_layer, ONESHOT_START);
-			}
-		} else if (keycode >= QK_LAYER_TAP_TOGGLE && keycode <= QK_LAYER_TAP_TOGGLE_MAX) {
-			// TT(layer) - Layer tap-toggle
-			uint8_t target_layer = QK_LAYER_TAP_TOGGLE_GET_LAYER(keycode);
-			if (pressed) {
-				layer_on(target_layer);
-			} else {
-				layer_off(target_layer);
-			}
-		} else if (keycode >= QK_TO && keycode <= QK_TO_MAX) {
-			// TO(layer) - Turn on layer
-			if (pressed) {
-				uint8_t target_layer = QK_TO_GET_LAYER(keycode);
-				layer_move(target_layer);
-			}
-		} else if (keycode >= QK_ONE_SHOT_MOD && keycode <= QK_ONE_SHOT_MOD_MAX) {
-			// OSM(mod) - One-shot modifier
-			if (pressed) {
-				uint8_t mod = QK_ONE_SHOT_MOD_GET_MODS(keycode);
-				set_oneshot_mods(mod);
-			}
-		} else {
-			// Basic keycodes, modifiers, and other types
-			if (pressed) {
-				register_code16(keycode);
-			} else {
-				unregister_code16(keycode);
-			}
-		}
-	}
+	// Virtual keys (encoder clicks + sustain pedal) use full QMK action processing
+	// via action_exec() with MAKE_KEYEVENT to set the event type correctly.
+	// The .type = KEY_EVENT field is REQUIRED - without it, the event defaults to
+	// TICK_EVENT (value 0) and IS_EVENT() returns false, causing it to be ignored.
 
 	// Handle footswitch / momentary switch (PA9) - active low
 	static bool footswitch_prev_state = true;
 	bool footswitch_state = readPin(A9);
 	if (footswitch_state != footswitch_prev_state) {
-		process_virtual_key(5, 2, !footswitch_state);
+		action_exec(MAKE_KEYEVENT(5, 2, !footswitch_state));
 		footswitch_prev_state = footswitch_state;
 	}
 
@@ -15439,7 +15376,7 @@ void matrix_scan_user(void) {
 	static bool encoder0_click_prev_state = true;
 	bool encoder0_click_state = readPin(B14);
 	if (encoder0_click_state != encoder0_click_prev_state) {
-		process_virtual_key(5, 0, !encoder0_click_state);
+		action_exec(MAKE_KEYEVENT(5, 0, !encoder0_click_state));
 		encoder0_click_prev_state = encoder0_click_state;
 	}
 
@@ -15447,7 +15384,7 @@ void matrix_scan_user(void) {
 	static bool encoder1_click_prev_state = true;
 	bool encoder1_click_state = readPin(B15);
 	if (encoder1_click_state != encoder1_click_prev_state) {
-		process_virtual_key(5, 1, !encoder1_click_state);
+		action_exec(MAKE_KEYEVENT(5, 1, !encoder1_click_state));
 		encoder1_click_prev_state = encoder1_click_state;
 	}
 }
