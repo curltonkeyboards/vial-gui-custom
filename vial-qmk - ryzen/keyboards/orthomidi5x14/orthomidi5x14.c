@@ -11121,25 +11121,29 @@ snprintf(keylog_str + strlen(keylog_str), sizeof(keylog_str) - strlen(keylog_str
 void oled_render_keylog(void) {
 	char name[124];
 
-	// DEBUG: Read null bind group 1 and tap dance 37 from EEPROM
-	// Null bind group 1 is at NULLBIND_EEPROM_ADDR + 18 (18 bytes per group)
-	uint8_t nb_behavior = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 0));
-	uint8_t nb_keycount = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 1));
-	uint8_t nb_key0 = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 2));
-	uint8_t nb_key1 = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 3));
+	// DEBUG: Compare EEPROM vs RAM for null bind group 0 (first group)
+	// EEPROM: Read directly from EEPROM address
+	uint8_t ee_behavior = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 0));
+	uint8_t ee_keycount = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 1));
+	uint8_t ee_key0 = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 2));
+
+	// RAM: Read from nullbind_groups[0] array (what HID handler uses)
+	uint8_t ram_behavior = nullbind_groups[0].behavior;
+	uint8_t ram_keycount = nullbind_groups[0].key_count;
+	uint8_t ram_key0 = nullbind_groups[0].keys[0];
 
 	// Read tap dance 37 using the dynamic_keymap function
 	vial_tap_dance_entry_t td37;
 	dynamic_keymap_get_tap_dance(37, &td37);
 
-	// Line 1: Null bind group 1 data
-	snprintf(name, sizeof(name), "\nNB1 b:%02X n:%02X k:%02X%02X", nb_behavior, nb_keycount, nb_key0, nb_key1);
+	// Line 1: EEPROM values for group 0
+	snprintf(name, sizeof(name), "\nEE0 b:%02X n:%02X k:%02X", ee_behavior, ee_keycount, ee_key0);
 
-	// Line 2: Tap dance 37 on_tap and on_hold
+	// Line 2: RAM values for group 0 (what HID sends)
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nRAM b:%02X n:%02X k:%02X", ram_behavior, ram_keycount, ram_key0);
+
+	// Line 3: Tap dance 37
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nTD37 T:%04X H:%04X", td37.on_tap, td37.on_hold);
-
-	// Line 3: Tap dance 37 on_double_tap and on_tap_hold
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n DT:%04X TH:%04X", td37.on_double_tap, td37.on_tap_hold);
 
 	// Line 4: separator
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n---------------------");
