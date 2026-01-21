@@ -4011,6 +4011,7 @@ void handle_toggle_load_eeprom(void) {
 // HID handler: Reset all toggle slots
 void handle_toggle_reset_all(void) {
     toggle_reset_all();
+    toggle_save_to_eeprom();  // Persist the reset to EEPROM
 }
 
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
