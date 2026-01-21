@@ -610,14 +610,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a null bind command (0xF0-0xF4)
+    // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xF0 && data[3] <= 0xF4) {
+        data[3] >= 0xF0 && data[3] <= 0xFB) {
 
-        dprintf("raw_hid_receive_kb: Null bind command detected (0x%02X)\n", data[3]);
+        dprintf("raw_hid_receive_kb: Command detected (0x%02X)\n", data[3]);
 
         uint8_t cmd = data[3];
         uint8_t response[32] = {0};
