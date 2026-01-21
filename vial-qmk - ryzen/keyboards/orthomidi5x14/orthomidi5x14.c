@@ -15377,6 +15377,8 @@ void matrix_scan_user(void) {
 			// Pedal pressed - send MIDI sustain ON
 			truesustain = true;
 			midi_send_cc(&midi_device, channel_number, 64, 127);
+			// Send key directly for testing
+			register_code(KC_A);
 			// Also trigger key event for Vial remapping (row 5, col 2)
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 2},
@@ -15387,6 +15389,8 @@ void matrix_scan_user(void) {
 			// Pedal released - send MIDI sustain OFF
 			truesustain = false;
 			midi_send_cc(&midi_device, channel_number, 64, 0);
+			// Release key
+			unregister_code(KC_A);
 			// Release key event
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 2},
@@ -15402,7 +15406,9 @@ void matrix_scan_user(void) {
 	bool encoder0_click_state = readPin(B14);
 	if (encoder0_click_state != encoder0_click_prev_state) {
 		if (!encoder0_click_state) {
-			// Encoder 0 click pressed
+			// Encoder 0 click pressed - send directly for testing
+			register_code(KC_B);
+			// Also trigger via action_exec for Vial remapping
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 0},
 				.pressed = true,
@@ -15410,6 +15416,7 @@ void matrix_scan_user(void) {
 			});
 		} else {
 			// Encoder 0 click released
+			unregister_code(KC_B);
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 0},
 				.pressed = false,
@@ -15424,7 +15431,9 @@ void matrix_scan_user(void) {
 	bool encoder1_click_state = readPin(B15);
 	if (encoder1_click_state != encoder1_click_prev_state) {
 		if (!encoder1_click_state) {
-			// Encoder 1 click pressed
+			// Encoder 1 click pressed - send directly for testing
+			register_code(KC_C);
+			// Also trigger via action_exec for Vial remapping
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 1},
 				.pressed = true,
@@ -15432,6 +15441,7 @@ void matrix_scan_user(void) {
 			});
 		} else {
 			// Encoder 1 click released
+			unregister_code(KC_C);
 			action_exec((keyevent_t){
 				.key = (keypos_t){.row = 5, .col = 1},
 				.pressed = false,
