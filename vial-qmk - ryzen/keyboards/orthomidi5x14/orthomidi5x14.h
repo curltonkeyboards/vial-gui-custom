@@ -424,18 +424,18 @@ typedef struct {
 } gaming_settings_t;
 
 // EEPROM address for gaming settings (100 bytes allocated)
-// REORGANIZED: Now at 36500 (after 20KB VIA macro space)
-#define GAMING_SETTINGS_EEPROM_ADDR 36500
+// RESTORED: Original address at 74100
+#define GAMING_SETTINGS_EEPROM_ADDR 74100
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
 // EEPROM address for null bind settings (360 bytes: 20 groups × 18 bytes each)
-// Located at 45000 (after per-key actuations which end around 44722)
-#define NULLBIND_EEPROM_ADDR 45000
+// Located at 50000 (new feature, placed before arp presets)
+#define NULLBIND_EEPROM_ADDR 50000
 #define NULLBIND_MAGIC 0x4E42  // "NB" for Null Bind
 
 // EEPROM address for toggle settings (400 bytes: 100 slots × 4 bytes each)
-// Located at 45500 (after null bind which ends at 45360)
-#define TOGGLE_EEPROM_ADDR 45500
+// Located at 51000 (new feature, after null bind)
+#define TOGGLE_EEPROM_ADDR 51000
 #define TOGGLE_MAGIC 0x5447  // "TG" for Toggle
 
 // =============================================================================
@@ -456,8 +456,8 @@ typedef struct {
 } user_curves_t;
 
 // EEPROM address for user curves (242 bytes: 10 curves × 24 + 2 magic)
-// REORGANIZED: Now at 36000 (after 20KB VIA macro space)
-#define USER_CURVES_EEPROM_ADDR 36000
+// RESTORED: Original address at 68100
+#define USER_CURVES_EEPROM_ADDR 68100
 #define USER_CURVES_MAGIC 0xCF01
 
 extern user_curves_t user_curves;
@@ -635,9 +635,9 @@ typedef struct {
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
-// REORGANIZED: Custom features start at 22000 (after 20KB VIA macro space at 0-21999)
-#define ARP_EEPROM_ADDR 22000       // Starting address for user arp presets (20 × 200 = 4000 bytes, ends at 25999)
-#define SEQ_EEPROM_ADDR 26000       // Starting address for user seq presets (20 × 392 = 7840 bytes, ends at 33839)
+// RESTORED: Original addresses
+#define ARP_EEPROM_ADDR 56000       // Starting address for user arp presets (20 × 200 = 4000 bytes)
+#define SEQ_EEPROM_ADDR 60000       // Starting address for user seq presets (20 × 392 = 7840 bytes)
 #define ARP_PRESET_MAGIC 0xA89F     // Magic number for preset validation
 #define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
 #define ARP_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_ARP_PRESET_NOTES * 3))  // 8 + 192 = 200 bytes
