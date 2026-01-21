@@ -4020,117 +4020,77 @@ void handle_toggle_reset_all(void) {
 
 eeprom_diag_t eeprom_diag = {0};
 bool eeprom_diag_display_mode = false;
+static uint32_t eeprom_diag_timer = 0;
 
 void eeprom_diag_run_test(void) {
-    eeprom_diag.test_running = true;
-    eeprom_diag.test_complete = false;
+    // Read values from test addresses
+    eeprom_diag.read_val[0] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_1);
+    eeprom_diag.read_val[1] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_2);
+    eeprom_diag.read_val[2] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_3);
+    eeprom_diag.read_val[3] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_4);
+    eeprom_diag.read_val[4] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_5);
 
-    // Define test addresses and values
-    uint32_t addrs[5] = {
-        EEPROM_DIAG_ADDR_1,
-        EEPROM_DIAG_ADDR_2,
-        EEPROM_DIAG_ADDR_3,
-        EEPROM_DIAG_ADDR_4,
-        EEPROM_DIAG_ADDR_5
-    };
-    uint8_t vals[5] = {
-        EEPROM_DIAG_VAL_1,
-        EEPROM_DIAG_VAL_2,
-        EEPROM_DIAG_VAL_3,
-        EEPROM_DIAG_VAL_4,
-        EEPROM_DIAG_VAL_5
-    };
-
-    // Step 1: Write test values
-    for (int i = 0; i < 5; i++) {
-        eeprom_diag.write_val[i] = vals[i];
-        eeprom_update_byte((uint8_t*)addrs[i], vals[i]);
-    }
-
-    // Small delay to ensure writes complete
-    wait_ms(10);
-
-    // Step 2: Read back values
-    for (int i = 0; i < 5; i++) {
-        eeprom_diag.read_val[i] = eeprom_read_byte((uint8_t*)addrs[i]);
-        eeprom_diag.match[i] = (eeprom_diag.read_val[i] == eeprom_diag.write_val[i]);
-    }
-
-    // Step 3: Read raw bytes from toggle EEPROM area
+    // Read raw bytes from toggle EEPROM area
     for (int i = 0; i < 8; i++) {
         eeprom_diag.toggle_raw[i] = eeprom_read_byte((uint8_t*)(TOGGLE_EEPROM_ADDR + i));
     }
 
-    eeprom_diag.test_running = false;
     eeprom_diag.test_complete = true;
-    eeprom_diag_display_mode = true;  // Enable OLED display of results
+    eeprom_diag_display_mode = true;
+    eeprom_diag_timer = timer_read32();
 }
 
 void eeprom_diag_display_oled(void) {
-    if (!eeprom_diag.test_complete) {
-        oled_clear();
-        oled_set_cursor(0, 0);
-        oled_write_P(PSTR("EEPROM Test..."), false);
-        return;
+    char buf[64];
+
+    // Refresh every 2 seconds
+    if (timer_elapsed32(eeprom_diag_timer) > 2000) {
+        eeprom_diag_run_test();
     }
 
     oled_clear();
+
+    // Line 0: Title
     oled_set_cursor(0, 0);
+    oled_write_P(PSTR("EEPROM DEBUG"), false);
 
-    // Line 1: Title
-    oled_write_P(PSTR("EEPROM DIAGNOSTIC"), false);
-
-    // Line 2: Test results summary
+    // Line 1: Address 1000
     oled_set_cursor(0, 1);
-    int pass_count = 0;
-    for (int i = 0; i < 5; i++) {
-        if (eeprom_diag.match[i]) pass_count++;
-    }
-    char buf[32];
-    snprintf(buf, sizeof(buf), "Pass: %d/5", pass_count);
+    snprintf(buf, 22, "1K:%02X", eeprom_diag.read_val[0]);
     oled_write(buf, false);
 
-    // Line 3-7: Individual test results
+    // Line 2: Address 2000
     oled_set_cursor(0, 2);
-    snprintf(buf, sizeof(buf), "1K: W=%02X R=%02X %s",
-             eeprom_diag.write_val[0], eeprom_diag.read_val[0],
-             eeprom_diag.match[0] ? "OK" : "FAIL");
+    snprintf(buf, 22, "2K:%02X", eeprom_diag.read_val[1]);
     oled_write(buf, false);
 
+    // Line 3: Address 10000
     oled_set_cursor(0, 3);
-    snprintf(buf, sizeof(buf), "2K: W=%02X R=%02X %s",
-             eeprom_diag.write_val[1], eeprom_diag.read_val[1],
-             eeprom_diag.match[1] ? "OK" : "FAIL");
+    snprintf(buf, 22, "10K:%02X", eeprom_diag.read_val[2]);
     oled_write(buf, false);
 
+    // Line 4: Address 30000
     oled_set_cursor(0, 4);
-    snprintf(buf, sizeof(buf), "10K:W=%02X R=%02X %s",
-             eeprom_diag.write_val[2], eeprom_diag.read_val[2],
-             eeprom_diag.match[2] ? "OK" : "FAIL");
+    snprintf(buf, 22, "30K:%02X", eeprom_diag.read_val[3]);
     oled_write(buf, false);
 
+    // Line 5: Address 51000
     oled_set_cursor(0, 5);
-    snprintf(buf, sizeof(buf), "30K:W=%02X R=%02X %s",
-             eeprom_diag.write_val[3], eeprom_diag.read_val[3],
-             eeprom_diag.match[3] ? "OK" : "FAIL");
+    snprintf(buf, 22, "51K:%02X", eeprom_diag.read_val[4]);
     oled_write(buf, false);
 
+    // Line 6: Toggle raw bytes 0-3
     oled_set_cursor(0, 6);
-    snprintf(buf, sizeof(buf), "51K:W=%02X R=%02X %s",
-             eeprom_diag.write_val[4], eeprom_diag.read_val[4],
-             eeprom_diag.match[4] ? "OK" : "FAIL");
+    snprintf(buf, 22, "T:%02X%02X%02X%02X",
+        eeprom_diag.toggle_raw[0], eeprom_diag.toggle_raw[1],
+        eeprom_diag.toggle_raw[2], eeprom_diag.toggle_raw[3]);
     oled_write(buf, false);
 
-    // Line 8-9: Raw toggle EEPROM bytes
+    // Line 7: Toggle raw bytes 4-7
     oled_set_cursor(0, 7);
-    oled_write_P(PSTR("Toggle@51000:"), false);
-
-    oled_set_cursor(0, 8);
-    snprintf(buf, sizeof(buf), "%02X %02X %02X %02X %02X %02X %02X %02X",
-             eeprom_diag.toggle_raw[0], eeprom_diag.toggle_raw[1],
-             eeprom_diag.toggle_raw[2], eeprom_diag.toggle_raw[3],
-             eeprom_diag.toggle_raw[4], eeprom_diag.toggle_raw[5],
-             eeprom_diag.toggle_raw[6], eeprom_diag.toggle_raw[7]);
+    snprintf(buf, 22, " %02X%02X%02X%02X",
+        eeprom_diag.toggle_raw[4], eeprom_diag.toggle_raw[5],
+        eeprom_diag.toggle_raw[6], eeprom_diag.toggle_raw[7]);
     oled_write(buf, false);
 }
 
