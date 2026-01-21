@@ -564,14 +564,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
         switch (cmd) {
             case 0xE0:  // HID_CMD_SET_PER_KEY_ACTUATION
-                // Format: [layer, row, col, actuation_value] at data[4-7]
-                handle_set_per_key_actuation(&data[4]);
+                // Format: [layer, key_index, settings...] at data[6] (Python puts data at byte 6)
+                handle_set_per_key_actuation(&data[6]);
                 response[4] = 0x01;  // Success
                 break;
 
             case 0xE1:  // HID_CMD_GET_PER_KEY_ACTUATION
-                // Format: [layer, row, col] at data[4-6]
-                handle_get_per_key_actuation(&data[4], &response[4]);
+                // Format: [layer, key_index] at data[6]
+                handle_get_per_key_actuation(&data[6], &response[4]);
                 break;
 
             case 0xE2:  // HID_CMD_GET_ALL_PER_KEY_ACTUATIONS
@@ -585,8 +585,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
 
             case 0xE4:  // HID_CMD_SET_PER_KEY_MODE
-                // Format: [mode_enabled, per_layer_enabled] at data[4-5]
-                handle_set_per_key_mode(&data[4]);
+                // Format: [mode_enabled, per_layer_enabled] at data[6]
+                handle_set_per_key_mode(&data[6]);
                 response[4] = 0x01;  // Success
                 break;
 
@@ -595,8 +595,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
 
             case 0xE6:  // HID_CMD_COPY_LAYER_ACTUATIONS
-                // Format: [source_layer, dest_layer] at data[4-5]
-                handle_copy_layer_actuations(&data[4]);
+                // Format: [source_layer, dest_layer] at data[6]
+                handle_copy_layer_actuations(&data[6]);
                 response[4] = 0x01;  // Success
                 break;
 
