@@ -11127,7 +11127,6 @@ void oled_render_keylog(void) {
 	uint8_t nb_keycount = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 1));
 	uint8_t nb_key0 = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 2));
 	uint8_t nb_key1 = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 3));
-	uint8_t nb_layer = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + 10));
 
 	// Read tap dance 37 using the dynamic_keymap function
 	vial_tap_dance_entry_t td37;
