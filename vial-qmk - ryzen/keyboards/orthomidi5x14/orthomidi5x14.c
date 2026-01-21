@@ -15300,15 +15300,6 @@ bool oled_task_user(void) {
     // Write the layer information to the OLED
     oled_write_P(str, false);
 
-    // Debug: Show encoder click and sustain pedal pin states
-    // 1 = not pressed (pulled high), 0 = pressed (connected to ground)
-    char debug_str[22];
-    snprintf(debug_str, sizeof(debug_str), "E0:%d E1:%d SUS:%d",
-             readPin(B14) ? 1 : 0,   // Encoder 0 click
-             readPin(B15) ? 1 : 0,   // Encoder 1 click
-             readPin(A9) ? 1 : 0);   // Sustain pedal
-    oled_write(debug_str, false);
-
     // Display temporary mode message if active
     if (mode_display_active) {
         if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {

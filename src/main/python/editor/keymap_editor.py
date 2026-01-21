@@ -2488,8 +2488,8 @@ class EncoderAssignWidget(QWidget):
 
             # Matrix key mapping for encoder press and sustain pedal
             matrix_key_mapping = {
-                2: (5, 0),  # Encoder 1 Press -> row 5, col 0
-                5: (5, 1),  # Encoder 2 Press -> row 5, col 1
+                2: (5, 1),  # Encoder 1 Press -> row 5, col 1
+                5: (5, 0),  # Encoder 2 Press -> row 5, col 0
                 6: (5, 2),  # Sustain Pedal -> row 5, col 2
             }
 
@@ -2784,16 +2784,16 @@ class KeymapEditor(BasicEditor):
         # Map button index to encoder parameters or matrix key positions
         # Button 0: Encoder 1 Up (enc_idx=0, dir=1) - encoder rotation
         # Button 1: Encoder 1 Down (enc_idx=0, dir=0) - encoder rotation
-        # Button 2: Encoder 1 Press - matrix key at row=5, col=0
+        # Button 2: Encoder 1 Press - matrix key at row=5, col=1
         # Button 3: Encoder 2 Up (enc_idx=1, dir=1) - encoder rotation
         # Button 4: Encoder 2 Down (enc_idx=1, dir=0) - encoder rotation
-        # Button 5: Encoder 2 Press - matrix key at row=5, col=1
+        # Button 5: Encoder 2 Press - matrix key at row=5, col=0
         # Button 6: Sustain Pedal - matrix key at row=5, col=2
 
         # Matrix key mappings for encoder clicks and sustain pedal
         matrix_key_mapping = {
-            2: (5, 0),  # Encoder 1 Press -> row 5, col 0
-            5: (5, 1),  # Encoder 2 Press -> row 5, col 1
+            2: (5, 1),  # Encoder 1 Press -> row 5, col 1
+            5: (5, 0),  # Encoder 2 Press -> row 5, col 0
             6: (5, 2),  # Sustain Pedal -> row 5, col 2
         }
 
