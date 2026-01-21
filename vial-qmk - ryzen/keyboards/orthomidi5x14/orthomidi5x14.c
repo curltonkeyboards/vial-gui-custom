@@ -15359,70 +15359,88 @@ void matrix_scan_user(void) {
 	if (current_bpm > 0) {
 	midi_clock_task();}
 
-	// Handle footswitch / momentary switch (PA9) - active low (pulled high with internal pullup)
-	// Looks up keycode from Vial dynamic keymap at row 5, col 2
-	static bool footswitch_prev_state = true;
-	static uint16_t footswitch_keycode = KC_NO;
-	bool footswitch_state = readPin(A9);
-	if (footswitch_state != footswitch_prev_state) {
+	// Helper function to process virtual key press/release with full keycode support
+	// Handles basic keycodes, layer switches, and other extended keycodes
+	static void process_virtual_key(uint8_t row, uint8_t col, bool pressed) {
 		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-		if (!footswitch_state) {
-			// Footswitch pressed - get keycode and register it
-			footswitch_keycode = dynamic_keymap_get_keycode(layer, 5, 2);
-			if (footswitch_keycode != KC_NO && footswitch_keycode != KC_TRNS) {
-				register_code16(footswitch_keycode);
+		uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
+
+		if (keycode == KC_NO || keycode == KC_TRNS) {
+			return;
+		}
+
+		// Check keycode type and handle appropriately
+		if (keycode >= QK_MOMENTARY && keycode <= QK_MOMENTARY_MAX) {
+			// MO(layer) - Momentary layer switch
+			uint8_t target_layer = QK_MOMENTARY_GET_LAYER(keycode);
+			if (pressed) {
+				layer_on(target_layer);
+			} else {
+				layer_off(target_layer);
+			}
+		} else if (keycode >= QK_TOGGLE_LAYER && keycode <= QK_TOGGLE_LAYER_MAX) {
+			// TG(layer) - Toggle layer
+			if (pressed) {
+				uint8_t target_layer = QK_TOGGLE_LAYER_GET_LAYER(keycode);
+				layer_invert(target_layer);
+			}
+		} else if (keycode >= QK_DEF_LAYER && keycode <= QK_DEF_LAYER_MAX) {
+			// DF(layer) - Set default layer
+			if (pressed) {
+				uint8_t target_layer = QK_DEF_LAYER_GET_LAYER(keycode);
+				set_single_persistent_default_layer(target_layer);
+			}
+		} else if (keycode >= QK_ONE_SHOT_LAYER && keycode <= QK_ONE_SHOT_LAYER_MAX) {
+			// OSL(layer) - One-shot layer
+			if (pressed) {
+				uint8_t target_layer = QK_ONE_SHOT_LAYER_GET_LAYER(keycode);
+				set_oneshot_layer(target_layer, ONESHOT_START);
+			}
+		} else if (keycode >= QK_LAYER_TAP_TOGGLE && keycode <= QK_LAYER_TAP_TOGGLE_MAX) {
+			// TT(layer) - Layer tap-toggle
+			uint8_t target_layer = QK_LAYER_TAP_TOGGLE_GET_LAYER(keycode);
+			if (pressed) {
+				layer_on(target_layer);
+			} else {
+				layer_off(target_layer);
+			}
+		} else if (keycode >= QK_TO && keycode <= QK_TO_MAX) {
+			// TO(layer) - Turn on layer
+			if (pressed) {
+				uint8_t target_layer = QK_TO_GET_LAYER(keycode);
+				layer_move(target_layer);
 			}
 		} else {
-			// Footswitch released - unregister the same keycode that was pressed
-			if (footswitch_keycode != KC_NO && footswitch_keycode != KC_TRNS) {
-				unregister_code16(footswitch_keycode);
+			// Basic keycodes and other types - use register/unregister
+			if (pressed) {
+				register_code16(keycode);
+			} else {
+				unregister_code16(keycode);
 			}
-			footswitch_keycode = KC_NO;
 		}
+	}
+
+	// Handle footswitch / momentary switch (PA9) - active low (pulled high with internal pullup)
+	static bool footswitch_prev_state = true;
+	bool footswitch_state = readPin(A9);
+	if (footswitch_state != footswitch_prev_state) {
+		process_virtual_key(5, 2, !footswitch_state);
 		footswitch_prev_state = footswitch_state;
 	}
 
-	// Handle encoder 0 click button (PB14) - looks up keycode from row 5, col 0
+	// Handle encoder 0 click button (PB14) - matrix position (5, 0)
 	static bool encoder0_click_prev_state = true;
-	static uint16_t encoder0_click_keycode = KC_NO;
 	bool encoder0_click_state = readPin(B14);
 	if (encoder0_click_state != encoder0_click_prev_state) {
-		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-		if (!encoder0_click_state) {
-			// Encoder 0 click pressed
-			encoder0_click_keycode = dynamic_keymap_get_keycode(layer, 5, 0);
-			if (encoder0_click_keycode != KC_NO && encoder0_click_keycode != KC_TRNS) {
-				register_code16(encoder0_click_keycode);
-			}
-		} else {
-			// Encoder 0 click released
-			if (encoder0_click_keycode != KC_NO && encoder0_click_keycode != KC_TRNS) {
-				unregister_code16(encoder0_click_keycode);
-			}
-			encoder0_click_keycode = KC_NO;
-		}
+		process_virtual_key(5, 0, !encoder0_click_state);
 		encoder0_click_prev_state = encoder0_click_state;
 	}
 
-	// Handle encoder 1 click button (PB15) - looks up keycode from row 5, col 1
+	// Handle encoder 1 click button (PB15) - matrix position (5, 1)
 	static bool encoder1_click_prev_state = true;
-	static uint16_t encoder1_click_keycode = KC_NO;
 	bool encoder1_click_state = readPin(B15);
 	if (encoder1_click_state != encoder1_click_prev_state) {
-		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-		if (!encoder1_click_state) {
-			// Encoder 1 click pressed
-			encoder1_click_keycode = dynamic_keymap_get_keycode(layer, 5, 1);
-			if (encoder1_click_keycode != KC_NO && encoder1_click_keycode != KC_TRNS) {
-				register_code16(encoder1_click_keycode);
-			}
-		} else {
-			// Encoder 1 click released
-			if (encoder1_click_keycode != KC_NO && encoder1_click_keycode != KC_TRNS) {
-				unregister_code16(encoder1_click_keycode);
-			}
-			encoder1_click_keycode = KC_NO;
-		}
+		process_virtual_key(5, 1, !encoder1_click_state);
 		encoder1_click_prev_state = encoder1_click_state;
 	}
 }
