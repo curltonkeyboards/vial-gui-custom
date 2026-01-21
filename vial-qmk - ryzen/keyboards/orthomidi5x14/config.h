@@ -89,14 +89,6 @@
 // The number of LEDs connected
 #define RGB_MATRIX_LED_COUNT 70
 
-// WS2812 PWM Driver Configuration (PB8 = TIM4_CH3)
-// Using PWM+DMA for reliable timing that won't be affected by ADC scanning
-#define WS2812_PWM_DRIVER PWMD4           // TIM4 peripheral
-#define WS2812_PWM_CHANNEL 3              // Channel 3 (PB8 is TIM4_CH3)
-#define WS2812_PWM_PAL_MODE 2             // Alternate function 2 for TIM4
-#define WS2812_DMA_STREAM STM32_DMA_STREAM_ID(1, 6)  // DMA1 Stream 6 for TIM4_UP
-#define WS2812_DMA_CHANNEL 2              // DMA channel 2 for TIM4
-
 
 
 
