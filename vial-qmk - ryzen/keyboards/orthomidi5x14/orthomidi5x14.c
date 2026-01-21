@@ -11121,18 +11121,24 @@ snprintf(keylog_str + strlen(keylog_str), sizeof(keylog_str) - strlen(keylog_str
 void oled_render_keylog(void) {
 	char name[124];
 
-	// DEBUG: Show all 5 fields of tap dance 37
-	vial_tap_dance_entry_t td37;
-	dynamic_keymap_get_tap_dance(37, &td37);
+	// DEBUG: Show tap dance EEPROM address and raw data
+	uint16_t td_base_addr = dynamic_keymap_get_tap_dance_eeprom_addr();
+	uint16_t td37_addr = td_base_addr + (37 * 10);  // Each entry is 10 bytes
 
-	// Line 1: on_tap and on_hold
-	snprintf(name, sizeof(name), "\nTD37 T:%04X H:%04X", td37.on_tap, td37.on_hold);
+	// Read raw bytes directly from EEPROM at tap dance 37 location
+	uint8_t raw[10];
+	for (int i = 0; i < 10; i++) {
+		raw[i] = eeprom_read_byte((uint8_t*)(td37_addr + i));
+	}
 
-	// Line 2: on_double_tap and on_tap_hold
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n DT:%04X TH:%04X", td37.on_double_tap, td37.on_tap_hold);
+	// Line 1: Base address and TD37 address
+	snprintf(name, sizeof(name), "\nTD base:%u TD37:%u", td_base_addr, td37_addr);
 
-	// Line 3: tapping_term
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n Term:%04X (%d)", td37.custom_tapping_term, td37.custom_tapping_term);
+	// Line 2: Raw bytes 0-4 (on_tap + on_hold + half of on_double_tap)
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nRAW:%02X%02X%02X%02X%02X", raw[0], raw[1], raw[2], raw[3], raw[4]);
+
+	// Line 3: Raw bytes 5-9 (rest of on_double_tap + on_tap_hold + tapping_term)
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n    %02X%02X%02X%02X%02X", raw[5], raw[6], raw[7], raw[8], raw[9]);
 
 	// Line 4: separator
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n---------------------");

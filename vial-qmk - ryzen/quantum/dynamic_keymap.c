@@ -218,6 +218,10 @@ int dynamic_keymap_set_tap_dance(uint8_t index, const vial_tap_dance_entry_t *en
 
     return 0;
 }
+
+uint16_t dynamic_keymap_get_tap_dance_eeprom_addr(void) {
+    return VIAL_TAP_DANCE_EEPROM_ADDR;
+}
 #endif
 
 #ifdef VIAL_COMBO_ENABLE
