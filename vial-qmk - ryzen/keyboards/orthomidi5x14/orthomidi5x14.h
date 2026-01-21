@@ -439,6 +439,46 @@ typedef struct {
 #define TOGGLE_MAGIC 0x5447  // "TG" for Toggle
 
 // =============================================================================
+// EEPROM DIAGNOSTIC SYSTEM
+// =============================================================================
+// Test addresses for EEPROM verification
+#define EEPROM_DIAG_ADDR_1 1000
+#define EEPROM_DIAG_ADDR_2 2000
+#define EEPROM_DIAG_ADDR_3 10000
+#define EEPROM_DIAG_ADDR_4 30000
+#define EEPROM_DIAG_ADDR_5 51000  // Same as toggle addr
+
+// Test values to write
+#define EEPROM_DIAG_VAL_1 0xAA
+#define EEPROM_DIAG_VAL_2 0xBB
+#define EEPROM_DIAG_VAL_3 0xCC
+#define EEPROM_DIAG_VAL_4 0xDD
+#define EEPROM_DIAG_VAL_5 0xEE
+
+// Diagnostic state
+typedef struct {
+    bool test_complete;
+    bool test_running;
+    uint8_t write_val[5];   // Values we wrote
+    uint8_t read_val[5];    // Values we read back
+    bool match[5];          // Whether read == write
+    uint8_t toggle_raw[8];  // Raw bytes from toggle EEPROM area
+} eeprom_diag_t;
+
+extern eeprom_diag_t eeprom_diag;
+extern bool eeprom_diag_display_mode;
+
+// HID command for EEPROM diagnostics
+#define HID_CMD_EEPROM_DIAG_RUN 0xFA    // Run EEPROM diagnostic test
+#define HID_CMD_EEPROM_DIAG_GET 0xFB    // Get diagnostic results
+
+// Function declarations
+void eeprom_diag_run_test(void);
+void eeprom_diag_display_oled(void);
+void handle_eeprom_diag_run(uint8_t* response);
+void handle_eeprom_diag_get(uint8_t* response);
+
+// =============================================================================
 // CURVE SYSTEM (For Gaming Analog & Velocity Curves)
 // =============================================================================
 

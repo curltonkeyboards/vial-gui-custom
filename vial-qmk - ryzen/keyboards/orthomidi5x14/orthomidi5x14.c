@@ -4014,6 +4014,148 @@ void handle_toggle_reset_all(void) {
     toggle_save_to_eeprom();  // Persist the reset to EEPROM
 }
 
+// =============================================================================
+// EEPROM DIAGNOSTIC SYSTEM IMPLEMENTATION
+// =============================================================================
+
+eeprom_diag_t eeprom_diag = {0};
+bool eeprom_diag_display_mode = false;
+
+void eeprom_diag_run_test(void) {
+    eeprom_diag.test_running = true;
+    eeprom_diag.test_complete = false;
+
+    // Define test addresses and values
+    uint32_t addrs[5] = {
+        EEPROM_DIAG_ADDR_1,
+        EEPROM_DIAG_ADDR_2,
+        EEPROM_DIAG_ADDR_3,
+        EEPROM_DIAG_ADDR_4,
+        EEPROM_DIAG_ADDR_5
+    };
+    uint8_t vals[5] = {
+        EEPROM_DIAG_VAL_1,
+        EEPROM_DIAG_VAL_2,
+        EEPROM_DIAG_VAL_3,
+        EEPROM_DIAG_VAL_4,
+        EEPROM_DIAG_VAL_5
+    };
+
+    // Step 1: Write test values
+    for (int i = 0; i < 5; i++) {
+        eeprom_diag.write_val[i] = vals[i];
+        eeprom_update_byte((uint8_t*)addrs[i], vals[i]);
+    }
+
+    // Small delay to ensure writes complete
+    wait_ms(10);
+
+    // Step 2: Read back values
+    for (int i = 0; i < 5; i++) {
+        eeprom_diag.read_val[i] = eeprom_read_byte((uint8_t*)addrs[i]);
+        eeprom_diag.match[i] = (eeprom_diag.read_val[i] == eeprom_diag.write_val[i]);
+    }
+
+    // Step 3: Read raw bytes from toggle EEPROM area
+    for (int i = 0; i < 8; i++) {
+        eeprom_diag.toggle_raw[i] = eeprom_read_byte((uint8_t*)(TOGGLE_EEPROM_ADDR + i));
+    }
+
+    eeprom_diag.test_running = false;
+    eeprom_diag.test_complete = true;
+    eeprom_diag_display_mode = true;  // Enable OLED display of results
+}
+
+void eeprom_diag_display_oled(void) {
+    if (!eeprom_diag.test_complete) {
+        oled_clear();
+        oled_set_cursor(0, 0);
+        oled_write_P(PSTR("EEPROM Test..."), false);
+        return;
+    }
+
+    oled_clear();
+    oled_set_cursor(0, 0);
+
+    // Line 1: Title
+    oled_write_P(PSTR("EEPROM DIAGNOSTIC"), false);
+
+    // Line 2: Test results summary
+    oled_set_cursor(0, 1);
+    int pass_count = 0;
+    for (int i = 0; i < 5; i++) {
+        if (eeprom_diag.match[i]) pass_count++;
+    }
+    char buf[22];
+    snprintf(buf, sizeof(buf), "Tests: %d/5 PASS", pass_count);
+    oled_write(buf, false);
+
+    // Line 3-7: Individual test results
+    oled_set_cursor(0, 2);
+    snprintf(buf, sizeof(buf), "1K: W=%02X R=%02X %s",
+             eeprom_diag.write_val[0], eeprom_diag.read_val[0],
+             eeprom_diag.match[0] ? "OK" : "FAIL");
+    oled_write(buf, false);
+
+    oled_set_cursor(0, 3);
+    snprintf(buf, sizeof(buf), "2K: W=%02X R=%02X %s",
+             eeprom_diag.write_val[1], eeprom_diag.read_val[1],
+             eeprom_diag.match[1] ? "OK" : "FAIL");
+    oled_write(buf, false);
+
+    oled_set_cursor(0, 4);
+    snprintf(buf, sizeof(buf), "10K:W=%02X R=%02X %s",
+             eeprom_diag.write_val[2], eeprom_diag.read_val[2],
+             eeprom_diag.match[2] ? "OK" : "FAIL");
+    oled_write(buf, false);
+
+    oled_set_cursor(0, 5);
+    snprintf(buf, sizeof(buf), "30K:W=%02X R=%02X %s",
+             eeprom_diag.write_val[3], eeprom_diag.read_val[3],
+             eeprom_diag.match[3] ? "OK" : "FAIL");
+    oled_write(buf, false);
+
+    oled_set_cursor(0, 6);
+    snprintf(buf, sizeof(buf), "51K:W=%02X R=%02X %s",
+             eeprom_diag.write_val[4], eeprom_diag.read_val[4],
+             eeprom_diag.match[4] ? "OK" : "FAIL");
+    oled_write(buf, false);
+
+    // Line 8-9: Raw toggle EEPROM bytes
+    oled_set_cursor(0, 7);
+    oled_write_P(PSTR("Toggle@51000:"), false);
+
+    oled_set_cursor(0, 8);
+    snprintf(buf, sizeof(buf), "%02X %02X %02X %02X %02X %02X %02X %02X",
+             eeprom_diag.toggle_raw[0], eeprom_diag.toggle_raw[1],
+             eeprom_diag.toggle_raw[2], eeprom_diag.toggle_raw[3],
+             eeprom_diag.toggle_raw[4], eeprom_diag.toggle_raw[5],
+             eeprom_diag.toggle_raw[6], eeprom_diag.toggle_raw[7]);
+    oled_write(buf, false);
+}
+
+void handle_eeprom_diag_run(uint8_t* response) {
+    eeprom_diag_run_test();
+    response[0] = 0;  // Success
+}
+
+void handle_eeprom_diag_get(uint8_t* response) {
+    response[0] = eeprom_diag.test_complete ? 0 : 1;  // 0 = complete, 1 = not ready
+    response[1] = eeprom_diag.match[0] ? 1 : 0;
+    response[2] = eeprom_diag.match[1] ? 1 : 0;
+    response[3] = eeprom_diag.match[2] ? 1 : 0;
+    response[4] = eeprom_diag.match[3] ? 1 : 0;
+    response[5] = eeprom_diag.match[4] ? 1 : 0;
+    // Raw toggle bytes
+    for (int i = 0; i < 8; i++) {
+        response[6 + i] = eeprom_diag.toggle_raw[i];
+    }
+}
+
+// =============================================================================
+// END EEPROM DIAGNOSTIC SYSTEM
+// =============================================================================
+
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
 }
@@ -12598,6 +12740,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static uint8_t base_note = 0;
     static uint8_t interval_note = 0;
 
+    // Exit EEPROM diagnostic display mode on any keypress
+    if (eeprom_diag_display_mode && record->event.pressed) {
+        eeprom_diag_display_mode = false;
+        return true;  // Continue processing the keypress
+    }
+
     // =============================================================================
     // TOGGLE KEYS (TGL_00 - TGL_99, keycodes 0xEE00-0xEE63)
     // =============================================================================
@@ -15282,6 +15430,12 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
+    // Check if EEPROM diagnostic display is active
+    if (eeprom_diag_display_mode) {
+        eeprom_diag_display_oled();
+        return false;
+    }
+
     // Check if quick build is active - if so, show big number display
     if (quick_build_is_active()) {
         render_big_number(quick_build_get_current_step());

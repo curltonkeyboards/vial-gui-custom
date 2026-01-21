@@ -682,6 +682,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 response[4] = 0;  // Success status
                 break;
 
+            case HID_CMD_EEPROM_DIAG_RUN:  // 0xFA
+                handle_eeprom_diag_run(response);
+                break;
+
+            case HID_CMD_EEPROM_DIAG_GET:  // 0xFB
+                handle_eeprom_diag_get(response);
+                break;
+
             default:
                 response[4] = 1;  // Error - unknown command
                 break;
