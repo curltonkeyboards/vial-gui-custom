@@ -4086,8 +4086,8 @@ void eeprom_diag_display_oled(void) {
     for (int i = 0; i < 5; i++) {
         if (eeprom_diag.match[i]) pass_count++;
     }
-    char buf[22];
-    snprintf(buf, sizeof(buf), "Tests: %d/5 PASS", pass_count);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Pass: %d/5", pass_count);
     oled_write(buf, false);
 
     // Line 3-7: Individual test results
