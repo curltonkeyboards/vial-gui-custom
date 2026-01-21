@@ -45,7 +45,6 @@ void dynamic_keymap_set_qmk_settings(uint16_t offset, uint8_t value);
 #ifdef VIAL_TAP_DANCE_ENABLE
 int dynamic_keymap_get_tap_dance(uint8_t index, vial_tap_dance_entry_t *entry);
 int dynamic_keymap_set_tap_dance(uint8_t index, const vial_tap_dance_entry_t *entry);
-uint16_t dynamic_keymap_get_tap_dance_eeprom_addr(void);  // Debug: get tap dance EEPROM base address
 #endif
 #ifdef VIAL_COMBO_ENABLE
 int dynamic_keymap_get_combo(uint8_t index, vial_combo_entry_t *entry);
