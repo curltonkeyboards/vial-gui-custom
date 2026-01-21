@@ -15394,12 +15394,6 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // Check if EEPROM diagnostic display is active
-    if (eeprom_diag_display_mode) {
-        eeprom_diag_display_oled();
-        return false;
-    }
-
     // Check if quick build is active - if so, show big number display
     if (quick_build_is_active()) {
         render_big_number(quick_build_get_current_step());
@@ -15410,14 +15404,14 @@ bool oled_task_user(void) {
     // Buffer to store the formatted string
     char str[22] = "";
     char name[124] = "";  // Define `name` buffer to be used later
-    // Get the current layer and format it into `str`
-    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
 
-    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
-	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
-    // Write the layer information to the OLED
-    oled_write_P(str, false);
+    // EEPROM DEBUG: Read values and display instead of layer/BPM
+    uint8_t e1 = eeprom_read_byte((uint8_t*)2000);
+    uint8_t e2 = eeprom_read_byte((uint8_t*)10000);
+    uint8_t e3 = eeprom_read_byte((uint8_t*)30000);
+    uint8_t e4 = eeprom_read_byte((uint8_t*)51000);
+    snprintf(str, sizeof(str), "%02X %02X %02X %02X", e1, e2, e3, e4);
+    oled_write(str, false);
 
     // Display temporary mode message if active
     if (mode_display_active) {
