@@ -256,6 +256,27 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     }
 #endif // ORTHOMIDI_CUSTOM_HID_ENABLE
 
+    // ALWAYS intercept custom HID packets (0x7D 0x00 0x4D header) for arpeggiator,
+    // per-key actuation, null bind, toggle, and EEPROM diag commands.
+    // These handlers send their own response, so we must return early to prevent
+    // VIA from sending a duplicate response (the original request data).
+    if (length >= 32 &&
+        data[0] == 0x7D &&  // HID_MANUFACTURER_ID
+        data[1] == 0x00 &&  // HID_SUB_ID
+        data[2] == 0x4D) {  // HID_DEVICE_ID
+
+        uint8_t cmd = data[3];
+
+        // Arpeggiator (0xC0-0xCC), Per-key actuation (0xE0-0xE6),
+        // Null bind/Toggle/EEPROM diag (0xF0-0xFB)
+        if ((cmd >= 0xC0 && cmd <= 0xCC) ||
+            (cmd >= 0xE0 && cmd <= 0xE6) ||
+            (cmd >= 0xF0 && cmd <= 0xFB)) {
+            raw_hid_receive_kb(data, length);
+            return; // Handler sends its own response
+        }
+    }
+
 #ifdef VIAL_ENABLE
     /* When unlock is in progress, we can only react to a subset of commands */
     if (vial_unlock_in_progress) {
