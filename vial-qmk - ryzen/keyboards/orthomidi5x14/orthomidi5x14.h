@@ -424,18 +424,18 @@ typedef struct {
 } gaming_settings_t;
 
 // EEPROM address for gaming settings (100 bytes allocated)
-// RESTORED: Original address at 74100
-#define GAMING_SETTINGS_EEPROM_ADDR 74100
+// Reorganized: 42000 (was 74100 - exceeded 64KB limit!)
+#define GAMING_SETTINGS_EEPROM_ADDR 42000
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
 // EEPROM address for null bind settings (360 bytes: 20 groups × 18 bytes each)
-// Located at 50000 (new feature, placed before arp presets)
-#define NULLBIND_EEPROM_ADDR 50000
+// Reorganized: 21000 (was 50000)
+#define NULLBIND_EEPROM_ADDR 21000
 #define NULLBIND_MAGIC 0x4E42  // "NB" for Null Bind
 
 // EEPROM address for toggle settings (400 bytes: 100 slots × 4 bytes each)
-// Located at 51000 (new feature, after null bind)
-#define TOGGLE_EEPROM_ADDR 51000
+// Reorganized: 22000 (was 51000)
+#define TOGGLE_EEPROM_ADDR 22000
 #define TOGGLE_MAGIC 0x5447  // "TG" for Toggle
 
 // =============================================================================
@@ -446,7 +446,7 @@ typedef struct {
 #define EEPROM_DIAG_ADDR_2 2000
 #define EEPROM_DIAG_ADDR_3 10000
 #define EEPROM_DIAG_ADDR_4 30000
-#define EEPROM_DIAG_ADDR_5 51000  // Same as toggle addr
+#define EEPROM_DIAG_ADDR_5 22000  // Same as toggle addr
 
 // Test values to write
 #define EEPROM_DIAG_VAL_1 0xAA
@@ -498,8 +498,8 @@ typedef struct {
 } user_curves_t;
 
 // EEPROM address for user curves (242 bytes: 10 curves × 24 + 2 magic)
-// RESTORED: Original address at 68100
-#define USER_CURVES_EEPROM_ADDR 68100
+// Reorganized: 41000 (was 68100 - exceeded 64KB limit!)
+#define USER_CURVES_EEPROM_ADDR 41000
 #define USER_CURVES_MAGIC 0xCF01
 
 extern user_curves_t user_curves;
@@ -677,9 +677,9 @@ typedef struct {
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
-// RESTORED: Original addresses
-#define ARP_EEPROM_ADDR 56000       // Starting address for user arp presets (20 × 200 = 4000 bytes)
-#define SEQ_EEPROM_ADDR 60000       // Starting address for user seq presets (20 × 392 = 7840 bytes)
+// Reorganized: 23000 and 27500 (was 56000/60000)
+#define ARP_EEPROM_ADDR 23000       // Starting address for user arp presets (20 × 200 = 4000 bytes)
+#define SEQ_EEPROM_ADDR 27500       // Starting address for user seq presets (20 × 392 = 7840 bytes)
 #define ARP_PRESET_MAGIC 0xA89F     // Magic number for preset validation
 #define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
 #define ARP_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_ARP_PRESET_NOTES * 3))  // 8 + 192 = 200 bytes
