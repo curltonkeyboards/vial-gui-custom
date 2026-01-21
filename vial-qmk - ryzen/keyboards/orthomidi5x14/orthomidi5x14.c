@@ -4035,6 +4035,26 @@ void eeprom_diag_run_test(void) {
         eeprom_diag.toggle_raw[i] = eeprom_read_byte((uint8_t*)(TOGGLE_EEPROM_ADDR + i));
     }
 
+    // Read null bind group 1 (18 bytes at NULLBIND_EEPROM_ADDR + 18)
+    for (int i = 0; i < 18; i++) {
+        eeprom_diag.nullbind_g1[i] = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + i));
+    }
+
+    // Read tap dance 37 using the dynamic_keymap function
+    vial_tap_dance_entry_t td37;
+    if (dynamic_keymap_get_tap_dance(37, &td37) == 0) {
+        // Copy raw bytes from the tap dance entry (10 bytes)
+        uint8_t *td_bytes = (uint8_t*)&td37;
+        for (int i = 0; i < 10; i++) {
+            eeprom_diag.tapdance_37[i] = td_bytes[i];
+        }
+    } else {
+        // Error reading - fill with 0xFF
+        for (int i = 0; i < 10; i++) {
+            eeprom_diag.tapdance_37[i] = 0xFF;
+        }
+    }
+
     eeprom_diag.test_complete = true;
     eeprom_diag_display_mode = true;
     eeprom_diag_timer = timer_read32();
@@ -4052,45 +4072,62 @@ void eeprom_diag_display_oled(void) {
 
     // Line 0: Title
     oled_set_cursor(0, 0);
-    oled_write_P(PSTR("EEPROM DEBUG"), false);
+    oled_write_P(PSTR("NB G1 + TD37 DBG"), false);
 
-    // Line 1: Address 1000
+    // Line 1-2: Null bind group 1 (first 8 bytes: behavior, key_count, keys[0-5])
+    // Format: [behavior, key_count, keys[8], layer, reserved[7]]
     oled_set_cursor(0, 1);
-    snprintf(buf, 22, "1K:%02X", eeprom_diag.read_val[0]);
+    snprintf(buf, 22, "NB1:%02X %02X k:%02X%02X",
+        eeprom_diag.nullbind_g1[0],  // behavior
+        eeprom_diag.nullbind_g1[1],  // key_count
+        eeprom_diag.nullbind_g1[2],  // keys[0]
+        eeprom_diag.nullbind_g1[3]); // keys[1]
     oled_write(buf, false);
 
-    // Line 2: Address 2000
+    // Line 2: More null bind keys
     oled_set_cursor(0, 2);
-    snprintf(buf, 22, "2K:%02X", eeprom_diag.read_val[1]);
+    snprintf(buf, 22, "k:%02X%02X%02X%02X L:%02X",
+        eeprom_diag.nullbind_g1[4],  // keys[2]
+        eeprom_diag.nullbind_g1[5],  // keys[3]
+        eeprom_diag.nullbind_g1[6],  // keys[4]
+        eeprom_diag.nullbind_g1[7],  // keys[5]
+        eeprom_diag.nullbind_g1[10]); // layer
     oled_write(buf, false);
 
-    // Line 3: Address 10000
+    // Line 3-4: Tap dance 37 (10 bytes = 5 uint16 keycodes)
+    // Format: [on_tap(2), on_hold(2), on_double_tap(2), on_tap_hold(2), tapping_term(2)]
+    uint16_t td_tap = eeprom_diag.tapdance_37[0] | (eeprom_diag.tapdance_37[1] << 8);
+    uint16_t td_hold = eeprom_diag.tapdance_37[2] | (eeprom_diag.tapdance_37[3] << 8);
+    uint16_t td_dtap = eeprom_diag.tapdance_37[4] | (eeprom_diag.tapdance_37[5] << 8);
+
     oled_set_cursor(0, 3);
-    snprintf(buf, 22, "10K:%02X", eeprom_diag.read_val[2]);
+    snprintf(buf, 22, "TD37 T:%04X H:%04X", td_tap, td_hold);
     oled_write(buf, false);
 
-    // Line 4: Address 30000
+    uint16_t td_thold = eeprom_diag.tapdance_37[6] | (eeprom_diag.tapdance_37[7] << 8);
+    uint16_t td_term = eeprom_diag.tapdance_37[8] | (eeprom_diag.tapdance_37[9] << 8);
+
     oled_set_cursor(0, 4);
-    snprintf(buf, 22, "30K:%02X", eeprom_diag.read_val[3]);
+    snprintf(buf, 22, "DT:%04X TH:%04X", td_dtap, td_thold);
     oled_write(buf, false);
 
-    // Line 5: Address 51000
     oled_set_cursor(0, 5);
-    snprintf(buf, 22, "51K:%02X", eeprom_diag.read_val[4]);
+    snprintf(buf, 22, "Term:%04X", td_term);
     oled_write(buf, false);
 
-    // Line 6: Toggle raw bytes 0-3
+    // Line 6-7: Raw bytes for reference
     oled_set_cursor(0, 6);
-    snprintf(buf, 22, "T:%02X%02X%02X%02X",
-        eeprom_diag.toggle_raw[0], eeprom_diag.toggle_raw[1],
-        eeprom_diag.toggle_raw[2], eeprom_diag.toggle_raw[3]);
+    snprintf(buf, 22, "NB:%02X%02X%02X%02X%02X%02X",
+        eeprom_diag.nullbind_g1[0], eeprom_diag.nullbind_g1[1],
+        eeprom_diag.nullbind_g1[2], eeprom_diag.nullbind_g1[3],
+        eeprom_diag.nullbind_g1[4], eeprom_diag.nullbind_g1[5]);
     oled_write(buf, false);
 
-    // Line 7: Toggle raw bytes 4-7
     oled_set_cursor(0, 7);
-    snprintf(buf, 22, " %02X%02X%02X%02X",
-        eeprom_diag.toggle_raw[4], eeprom_diag.toggle_raw[5],
-        eeprom_diag.toggle_raw[6], eeprom_diag.toggle_raw[7]);
+    snprintf(buf, 22, "TD:%02X%02X%02X%02X%02X%02X",
+        eeprom_diag.tapdance_37[0], eeprom_diag.tapdance_37[1],
+        eeprom_diag.tapdance_37[2], eeprom_diag.tapdance_37[3],
+        eeprom_diag.tapdance_37[4], eeprom_diag.tapdance_37[5]);
     oled_write(buf, false);
 }
 

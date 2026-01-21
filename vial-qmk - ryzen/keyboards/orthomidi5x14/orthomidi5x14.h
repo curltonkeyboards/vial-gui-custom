@@ -463,6 +463,8 @@ typedef struct {
     uint8_t read_val[5];    // Values we read back
     bool match[5];          // Whether read == write
     uint8_t toggle_raw[8];  // Raw bytes from toggle EEPROM area
+    uint8_t nullbind_g1[18]; // Null bind group 1 raw data (18 bytes)
+    uint8_t tapdance_37[10]; // Tap dance 37 raw data (10 bytes)
 } eeprom_diag_t;
 
 extern eeprom_diag_t eeprom_diag;
