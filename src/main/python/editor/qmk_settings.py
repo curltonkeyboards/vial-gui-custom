@@ -52,6 +52,9 @@ class BooleanOption(GenericOption):
 
     def reload(self, keyboard):
         value = super().reload(keyboard)
+        # Handle case where firmware advertises setting but doesn't return a value
+        if value is None:
+            value = 0
         checked = value & (1 << self.qsid_bit)
 
         self.checkbox.blockSignals(True)
@@ -81,6 +84,9 @@ class IntegerOption(GenericOption):
 
     def reload(self, keyboard):
         value = super().reload(keyboard)
+        # Handle case where firmware advertises setting but doesn't return a value
+        if value is None:
+            value = 0
         self.spinbox.blockSignals(True)
         self.spinbox.setValue(value)
         self.spinbox.blockSignals(False)
@@ -263,7 +269,9 @@ class QmkSettings(BasicEditor):
         for x, tab in enumerate(self.tabs):
             tab_changed = False
             for opt in tab:
-                if qsid_values[opt.qsid] != self.keyboard.settings[opt.qsid]:
+                # Handle case where firmware advertises setting but doesn't return a value
+                stored_value = self.keyboard.settings.get(opt.qsid, 0)
+                if qsid_values[opt.qsid] != stored_value:
                     changed = True
                     tab_changed = True
             title = self.tabs_widget.tabText(x).rstrip("*")

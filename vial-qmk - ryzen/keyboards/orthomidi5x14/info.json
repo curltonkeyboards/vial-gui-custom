@@ -12,8 +12,8 @@
 
 
     "matrix_pins": {
-        "cols": ["A1","A0","A3","A4","A5","A7","B0","B1","B9","B10","B13","B14","B15","A8",],
-        "rows": ["C15","A15","B12","A6","A2"]
+        "cols": ["A1","A0","A3","A4","A5","A7","B0","B1","B9","B10","B13","B14","B15","A8"],
+        "rows": ["C15","A15","B12","A6","A2","NO_PIN"]
     },
     "processor": "STM32F412",
     "url": "",
@@ -23,7 +23,7 @@
         "vid": "0xFEED"
     },
     "layouts": {
-        "LAYOUT_ortho_5x14": {
+        "LAYOUT_ortho_6x14": {
             "layout": [
                 {"matrix": [0, 0], "x": 0, "y": 0},
                 {"matrix": [0, 1], "x": 1, "y": 0},
@@ -94,7 +94,10 @@
                 {"matrix": [4, 10], "x": 10, "y": 4},
                 {"matrix": [4, 11], "x": 11, "y": 4},
                 {"matrix": [4, 12], "x": 12, "y": 4},
-                {"matrix": [4, 13], "x": 13, "y": 4}
+                {"matrix": [4, 13], "x": 13, "y": 4},
+                {"matrix": [5, 0], "x": 0, "y": 5, "label": "Enc1"},
+                {"matrix": [5, 1], "x": 1, "y": 5, "label": "Enc2"},
+                {"matrix": [5, 2], "x": 2, "y": 5, "label": "Sustain"}
             ]
         }
     }

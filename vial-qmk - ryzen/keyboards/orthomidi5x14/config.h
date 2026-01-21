@@ -86,7 +86,6 @@
 
 // The pin connected to the data pin of the LEDs
 #define WS2812_DI_PIN B8
-#define WS2812_EXTERNAL_PULLUP 
 // The number of LEDs connected
 #define RGB_MATRIX_LED_COUNT 70
 
@@ -154,15 +153,16 @@
 
 #define OLED_TIMEOUT 0
 
-#define MATRIX_ROWS 5   // 5 rows (ADC1-ADC5 = PA4-PA0)
+#define MATRIX_ROWS 6   // 5 physical rows (ADC1-ADC5) + 1 virtual row for encoders/sustain
 #define MATRIX_COLS 14  // 14 columns (mux channels 0-13)
 
 // ADC-capable pins for reading row analog values
 // Each ADC pin reads one row of Hall effect sensors
 // PCB wiring: ADC1=PA4 (row 0), ADC2=PA3 (row 1), ADC3=PA2 (row 2), ADC4=PA1 (row 3), ADC5=PA0 (row 4)
 // Reversed order so firmware row 0 = physical row 0
-#define MATRIX_ROW_PINS { A4, A3, A2, A1, A0 }
-//                        PA4  PA3  PA2  PA1  PA0 (ADC1, ADC2, ADC3, ADC4, ADC5)
+// Row 5 is virtual (encoder clicks + sustain pedal via GPIO polling, not ADC)
+#define MATRIX_ROW_PINS { A4, A3, A2, A1, A0, NO_PIN }
+//                        PA4  PA3  PA2  PA1  PA0  (virtual)
 
 // ============================================================================
 // ADG706 MULTIPLEXER PINS (from your PCB)

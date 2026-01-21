@@ -415,6 +415,64 @@ void load_layer_actuations(void) {
 7. `TROUBLESHOOT: Bypass EMA filter for immediate key response`
 8. `TROUBLESHOOT: Disable QMK debounce (DEBOUNCE=0)`
 9. `PERF: Add key type cache to eliminate EEPROM reads per scan`
+10. `TROUBLESHOOT: Make custom HID handlers conditional`
+
+---
+
+## Issue 11: Vial Configurator Communication Failure
+
+**Problem:** Vial configurator fails to connect to HE keyboard with errors:
+- `LZMAError: Input format not supported by decoder` - LZMA compressed vial.json is corrupted
+- `RuntimeError: failed to communicate with the device` - HID communication failure
+
+**Root Cause Analysis:**
+1. Custom HID handlers in `quantum/vial.c` include keyboard-specific headers that shouldn't be in generic code
+2. Custom packet interception in `quantum/via.c` (0x7D 0x00 0x4D header check) may interfere with standard VIA/Vial protocol
+3. Many custom features (Layer RGB, Custom Animations, Actuation, Gaming, Per-key RGB, etc.) have HID handlers that could conflict
+
+**Fix (Conditional Custom Handlers):**
+
+Wrapped all custom HID handlers in `#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE`:
+
+```c
+// quantum/vial.c - Custom handlers disabled by default
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+#include "orthomidi5x14.h"
+#include "process_midi.h"
+#include "../keyboards/orthomidi5x14/per_key_rgb.h"
+#endif
+
+// In vial_handle_cmd():
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+    case vial_layer_rgb_save:      // 0xBC
+    case vial_layer_rgb_load:      // 0xBD
+    case vial_layer_rgb_enable:    // 0xBE
+    // ... all custom handlers 0xBC-0xE6
+#endif
+
+// quantum/via.c - Dynamic macro intercept disabled by default
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+    if (data[0] == 0x7D && data[1] == 0x00 && data[2] == 0x4D) {
+        // Custom packet routing...
+    }
+#endif
+```
+
+**To Test Minimal Communication:**
+1. Build firmware WITHOUT `ORTHOMIDI_CUSTOM_HID_ENABLE` (default)
+2. Flash firmware
+3. Connect with Vial configurator
+4. Verify basic keymap editing works
+
+**To Re-enable Custom Features:**
+Add to `keyboards/orthomidi5x14/rules.mk`:
+```makefile
+ORTHOMIDI_CUSTOM_HID_ENABLE = yes
+```
+
+**Files Modified:**
+- `quantum/vial.c` - Wrapped custom handlers in ifdef
+- `quantum/via.c` - Wrapped dynamic macro intercept in ifdef
 
 ---
 

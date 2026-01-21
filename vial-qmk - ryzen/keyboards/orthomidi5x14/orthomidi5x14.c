@@ -4742,7 +4742,9 @@ led_config_t g_led_config = {
     // Row 3
     { 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55 },
     // Row 4
-    { 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69 }
+    { 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69 },
+    // Row 5 (virtual: encoder clicks + sustain pedal - no physical LEDs)
+    { NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED }
   },
   // LED Index to Physical Position
   {
@@ -15357,75 +15359,69 @@ void matrix_scan_user(void) {
 	if (current_bpm > 0) {
 	midi_clock_task();}
 
-	// Handle footswitch / sustain pedal (PA9) - active low (pulled high with internal pullup)
-	// Triggers both MIDI CC 64 (sustain) AND a key event at row 5, col 2 for Vial remapping
-	static bool sustain_pedal_prev_state = true;
-	bool sustain_pedal_state = readPin(A9);
-	if (sustain_pedal_state != sustain_pedal_prev_state) {
-		if (!sustain_pedal_state) {
-			// Pedal pressed - send MIDI sustain ON
-			truesustain = true;
-			midi_send_cc(&midi_device, channel_number, 64, 127);
-			// Also trigger key event for Vial remapping (row 5, col 2)
-			action_exec((keyevent_t){
-				.key = (keypos_t){.row = 5, .col = 2},
-				.pressed = true,
-				.time = timer_read()
-			});
+	// Handle footswitch / momentary switch (PA9) - active low (pulled high with internal pullup)
+	// Looks up keycode from Vial dynamic keymap at row 5, col 2
+	static bool footswitch_prev_state = true;
+	static uint16_t footswitch_keycode = KC_NO;
+	bool footswitch_state = readPin(A9);
+	if (footswitch_state != footswitch_prev_state) {
+		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+		if (!footswitch_state) {
+			// Footswitch pressed - get keycode and register it
+			footswitch_keycode = dynamic_keymap_get_keycode(layer, 5, 2);
+			if (footswitch_keycode != KC_NO && footswitch_keycode != KC_TRNS) {
+				register_code16(footswitch_keycode);
+			}
 		} else {
-			// Pedal released - send MIDI sustain OFF
-			truesustain = false;
-			midi_send_cc(&midi_device, channel_number, 64, 0);
-			// Release key event
-			action_exec((keyevent_t){
-				.key = (keypos_t){.row = 5, .col = 2},
-				.pressed = false,
-				.time = timer_read()
-			});
+			// Footswitch released - unregister the same keycode that was pressed
+			if (footswitch_keycode != KC_NO && footswitch_keycode != KC_TRNS) {
+				unregister_code16(footswitch_keycode);
+			}
+			footswitch_keycode = KC_NO;
 		}
-		sustain_pedal_prev_state = sustain_pedal_state;
+		footswitch_prev_state = footswitch_state;
 	}
 
-	// Handle encoder 0 click button (PB14) - triggers key at row 5, col 0
+	// Handle encoder 0 click button (PB14) - looks up keycode from row 5, col 0
 	static bool encoder0_click_prev_state = true;
+	static uint16_t encoder0_click_keycode = KC_NO;
 	bool encoder0_click_state = readPin(B14);
 	if (encoder0_click_state != encoder0_click_prev_state) {
+		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
 		if (!encoder0_click_state) {
 			// Encoder 0 click pressed
-			action_exec((keyevent_t){
-				.key = (keypos_t){.row = 5, .col = 0},
-				.pressed = true,
-				.time = timer_read()
-			});
+			encoder0_click_keycode = dynamic_keymap_get_keycode(layer, 5, 0);
+			if (encoder0_click_keycode != KC_NO && encoder0_click_keycode != KC_TRNS) {
+				register_code16(encoder0_click_keycode);
+			}
 		} else {
 			// Encoder 0 click released
-			action_exec((keyevent_t){
-				.key = (keypos_t){.row = 5, .col = 0},
-				.pressed = false,
-				.time = timer_read()
-			});
+			if (encoder0_click_keycode != KC_NO && encoder0_click_keycode != KC_TRNS) {
+				unregister_code16(encoder0_click_keycode);
+			}
+			encoder0_click_keycode = KC_NO;
 		}
 		encoder0_click_prev_state = encoder0_click_state;
 	}
 
-	// Handle encoder 1 click button (PB15) - triggers key at row 5, col 1
+	// Handle encoder 1 click button (PB15) - looks up keycode from row 5, col 1
 	static bool encoder1_click_prev_state = true;
+	static uint16_t encoder1_click_keycode = KC_NO;
 	bool encoder1_click_state = readPin(B15);
 	if (encoder1_click_state != encoder1_click_prev_state) {
+		uint8_t layer = get_highest_layer(layer_state | default_layer_state);
 		if (!encoder1_click_state) {
 			// Encoder 1 click pressed
-			action_exec((keyevent_t){
-				.key = (keypos_t){.row = 5, .col = 1},
-				.pressed = true,
-				.time = timer_read()
-			});
+			encoder1_click_keycode = dynamic_keymap_get_keycode(layer, 5, 1);
+			if (encoder1_click_keycode != KC_NO && encoder1_click_keycode != KC_TRNS) {
+				register_code16(encoder1_click_keycode);
+			}
 		} else {
 			// Encoder 1 click released
-			action_exec((keyevent_t){
-				.key = (keypos_t){.row = 5, .col = 1},
-				.pressed = false,
-				.time = timer_read()
-			});
+			if (encoder1_click_keycode != KC_NO && encoder1_click_keycode != KC_TRNS) {
+				unregister_code16(encoder1_click_keycode);
+			}
+			encoder1_click_keycode = KC_NO;
 		}
 		encoder1_click_prev_state = encoder1_click_state;
 	}

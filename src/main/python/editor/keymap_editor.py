@@ -2478,27 +2478,32 @@ class EncoderAssignWidget(QWidget):
 
         # Load keycodes from keyboard if provided
         if keyboard is not None:
-            # Map button indices to encoder/key parameters
-            # Buttons 0-5 are encoders, button 6 is sustain pedal
+            # Encoder rotation mapping (only CW and CCW, not press)
             encoder_mapping = {
-                0: (0, 1),  # Encoder 1 Up (enc_idx=0, dir=1)
-                1: (0, 0),  # Encoder 1 Down (enc_idx=0, dir=0)
-                2: (0, 2),  # Encoder 1 Press (enc_idx=0, dir=2)
-                3: (1, 1),  # Encoder 2 Up (enc_idx=1, dir=1)
-                4: (1, 0),  # Encoder 2 Down (enc_idx=1, dir=0)
-                5: (1, 2),  # Encoder 2 Press (enc_idx=1, dir=2)
+                0: (0, 1),  # Encoder 1 Up (enc_idx=0, dir=1 CW)
+                1: (0, 0),  # Encoder 1 Down (enc_idx=0, dir=0 CCW)
+                3: (1, 1),  # Encoder 2 Up (enc_idx=1, dir=1 CW)
+                4: (1, 0),  # Encoder 2 Down (enc_idx=1, dir=0 CCW)
             }
 
-            # Update encoder buttons
-            for idx in range(6):
-                if idx in encoder_mapping:
-                    enc_idx, direction = encoder_mapping[idx]
-                    keycode = keyboard.encoder_layout.get((layer, enc_idx, direction), "KC_NO")
-                    self.buttons[idx].setText(Keycode.label(keycode))
+            # Matrix key mapping for encoder press and sustain pedal
+            matrix_key_mapping = {
+                2: (5, 1),  # Encoder 1 Press -> row 5, col 1
+                5: (5, 0),  # Encoder 2 Press -> row 5, col 0
+                6: (5, 2),  # Sustain Pedal -> row 5, col 2
+            }
 
-            # Update sustain pedal button (row=5, col=2)
-            sustain_keycode = keyboard.layout.get((layer, 5, 2), "KC_NO")
-            self.buttons[6].setText(Keycode.label(sustain_keycode))
+            # Update encoder rotation buttons (from encoder_layout)
+            for idx in encoder_mapping:
+                enc_idx, direction = encoder_mapping[idx]
+                keycode = keyboard.encoder_layout.get((layer, enc_idx, direction), "KC_NO")
+                self.buttons[idx].setText(Keycode.label(keycode))
+
+            # Update encoder press and sustain pedal buttons (from regular matrix layout)
+            for idx in matrix_key_mapping:
+                row, col = matrix_key_mapping[idx]
+                keycode = keyboard.layout.get((layer, row, col), "KC_NO")
+                self.buttons[idx].setText(Keycode.label(keycode))
 
         # Deselect when changing layers
         self.deselect()
@@ -2776,27 +2781,33 @@ class KeymapEditor(BasicEditor):
         """Set keycode for encoder/sustain button and send to keyboard via USB"""
         l = self.current_layer
 
-        # Map button index to encoder parameters or sustain pedal key position
-        # Button 0: Encoder 1 Up (enc_idx=0, dir=1)
-        # Button 1: Encoder 1 Down (enc_idx=0, dir=0)
-        # Button 2: Encoder 1 Press (enc_idx=0, dir=2)
-        # Button 3: Encoder 2 Up (enc_idx=1, dir=1)
-        # Button 4: Encoder 2 Down (enc_idx=1, dir=0)
-        # Button 5: Encoder 2 Press (enc_idx=1, dir=2)
-        # Button 6: Sustain Pedal (row=5, col=2)
+        # Map button index to encoder parameters or matrix key positions
+        # Button 0: Encoder 1 Up (enc_idx=0, dir=1) - encoder rotation
+        # Button 1: Encoder 1 Down (enc_idx=0, dir=0) - encoder rotation
+        # Button 2: Encoder 1 Press - matrix key at row=5, col=1
+        # Button 3: Encoder 2 Up (enc_idx=1, dir=1) - encoder rotation
+        # Button 4: Encoder 2 Down (enc_idx=1, dir=0) - encoder rotation
+        # Button 5: Encoder 2 Press - matrix key at row=5, col=0
+        # Button 6: Sustain Pedal - matrix key at row=5, col=2
 
-        if button_index == 6:
-            # Sustain pedal is a regular matrix key at row=5, col=2
-            self.keyboard.set_key(l, 5, 2, keycode)
+        # Matrix key mappings for encoder clicks and sustain pedal
+        matrix_key_mapping = {
+            2: (5, 1),  # Encoder 1 Press -> row 5, col 1
+            5: (5, 0),  # Encoder 2 Press -> row 5, col 0
+            6: (5, 2),  # Sustain Pedal -> row 5, col 2
+        }
+
+        if button_index in matrix_key_mapping:
+            # These are regular matrix keys, not encoder actions
+            row, col = matrix_key_mapping[button_index]
+            self.keyboard.set_key(l, row, col, keycode)
         else:
-            # Map button index to encoder index and direction
+            # Map button index to encoder index and direction (rotation only)
             encoder_mapping = {
-                0: (0, 1),  # Encoder 1 Up
-                1: (0, 0),  # Encoder 1 Down
-                2: (0, 2),  # Encoder 1 Press
-                3: (1, 1),  # Encoder 2 Up
-                4: (1, 0),  # Encoder 2 Down
-                5: (1, 2),  # Encoder 2 Press
+                0: (0, 1),  # Encoder 1 Up (CW)
+                1: (0, 0),  # Encoder 1 Down (CCW)
+                3: (1, 1),  # Encoder 2 Up (CW)
+                4: (1, 0),  # Encoder 2 Down (CCW)
             }
 
             if button_index in encoder_mapping:
