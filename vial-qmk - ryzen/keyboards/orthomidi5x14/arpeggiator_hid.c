@@ -657,13 +657,13 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             // Toggle Keys commands (0xF5-0xF9)
             case HID_CMD_TOGGLE_GET_SLOT:  // 0xF5
-                // Format: [slot_num] at data[4]
-                handle_toggle_get_slot(data[4], &response[4]);
+                // Format: [slot_num] at data[6] (Python _create_hid_packet puts data at byte 6)
+                handle_toggle_get_slot(data[6], &response[4]);
                 break;
 
             case HID_CMD_TOGGLE_SET_SLOT:  // 0xF6
-                // Format: [slot_num, target_keycode_low, target_keycode_high, reserved[2]] at data[4]
-                handle_toggle_set_slot(&data[4]);
+                // Format: [slot_num, target_keycode_low, target_keycode_high, reserved[2]] at data[6]
+                handle_toggle_set_slot(&data[6]);
                 response[4] = 0;  // Success status
                 break;
 
