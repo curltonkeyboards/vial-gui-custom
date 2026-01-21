@@ -4742,7 +4742,9 @@ led_config_t g_led_config = {
     // Row 3
     { 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55 },
     // Row 4
-    { 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69 }
+    { 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69 },
+    // Row 5 (virtual: encoder clicks + sustain pedal - no physical LEDs)
+    { NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED }
   },
   // LED Index to Physical Position
   {

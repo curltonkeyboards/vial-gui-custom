@@ -161,8 +161,9 @@
 // Each ADC pin reads one row of Hall effect sensors
 // PCB wiring: ADC1=PA4 (row 0), ADC2=PA3 (row 1), ADC3=PA2 (row 2), ADC4=PA1 (row 3), ADC5=PA0 (row 4)
 // Reversed order so firmware row 0 = physical row 0
-#define MATRIX_ROW_PINS { A4, A3, A2, A1, A0 }
-//                        PA4  PA3  PA2  PA1  PA0 (ADC1, ADC2, ADC3, ADC4, ADC5)
+// Row 5 is virtual (encoder clicks + sustain pedal via GPIO polling, not ADC)
+#define MATRIX_ROW_PINS { A4, A3, A2, A1, A0, NO_PIN }
+//                        PA4  PA3  PA2  PA1  PA0  (virtual)
 
 // ============================================================================
 // ADG706 MULTIPLEXER PINS (from your PCB)
