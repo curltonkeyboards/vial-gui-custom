@@ -4830,10 +4830,6 @@ void keyboard_post_init_user(void) {
 	// PA15/PB3 are JTAG pins remapped to USART1 AF7
 	setup_serial_midi();
 #endif
-
-	// AUTO-RUN EEPROM DIAGNOSTIC ON BOOT - for debugging
-	// Press any key to exit diagnostic display and return to normal
-	eeprom_diag_run_test();
 }
 
    
@@ -15404,13 +15400,13 @@ bool oled_task_user(void) {
     // Buffer to store the formatted string
     char str[22] = "";
     char name[124] = "";  // Define `name` buffer to be used later
+    // Get the current layer and format it into `str`
+    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
 
-    // DEBUG: Show RAM values for toggle 24-27
-    snprintf(str, sizeof(str), "%04X %04X %04X %04X",
-        toggle_slots[24].target_keycode,
-        toggle_slots[25].target_keycode,
-        toggle_slots[26].target_keycode,
-        toggle_slots[27].target_keycode);
+    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
+	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
+    // Write the layer information to the OLED
     oled_write(str, false);
 
     // Display temporary mode message if active

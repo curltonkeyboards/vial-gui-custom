@@ -129,15 +129,15 @@ class ProtocolToggle:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_GET_SLOT, 0, [slot_num])
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response or len(response) < (6 + TOGGLE_SLOT_SIZE):
+            if not response or len(response) < (5 + TOGGLE_SLOT_SIZE):
                 return None
 
-            # Check status byte
-            if response[5] != 0:
+            # Check status byte (firmware puts it at index 4)
+            if response[4] != 0:
                 return None
 
-            # Extract slot data
-            slot_data = response[6:6 + TOGGLE_SLOT_SIZE]
+            # Extract slot data (firmware puts it at index 5)
+            slot_data = response[5:5 + TOGGLE_SLOT_SIZE]
             slot = ToggleSlot.from_bytes(slot_data)
 
             # Cache it
@@ -169,7 +169,7 @@ class ProtocolToggle:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_SLOT, 0, data)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            success = response and len(response) > 5 and response[5] == 0
+            success = response and len(response) > 4 and response[4] == 0
 
             # Update cache
             if success:
@@ -190,7 +190,7 @@ class ProtocolToggle:
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SAVE_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
-            return response and len(response) > 5 and response[5] == 0
+            return response and len(response) > 4 and response[4] == 0
         except Exception as e:
             print(f"Toggle: Error saving to EEPROM: {e}")
             return False
@@ -205,7 +205,7 @@ class ProtocolToggle:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_LOAD_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            success = response and len(response) > 5 and response[5] == 0
+            success = response and len(response) > 4 and response[4] == 0
 
             if success:
                 self.slots_cache.clear()
@@ -225,7 +225,7 @@ class ProtocolToggle:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_RESET_ALL, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            success = response and len(response) > 5 and response[5] == 0
+            success = response and len(response) > 4 and response[4] == 0
 
             if success:
                 self.slots_cache.clear()
