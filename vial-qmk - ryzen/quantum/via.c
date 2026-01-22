@@ -63,6 +63,16 @@
 #include "vialrgb.h"
 #endif
 
+// =============================================================================
+// HID DEBUGGING FLAGS - Mirror from vial.c for custom routing control
+// If ORTHOMIDI_CUSTOM_HID_ENABLE is defined, enable all debug categories
+// =============================================================================
+#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+    #ifndef HID_DEBUG_CUSTOM_ROUTING
+        #define HID_DEBUG_CUSTOM_ROUTING
+    #endif
+#endif
+
 // Forward declare some helpers.
 #if defined(VIA_QMK_BACKLIGHT_ENABLE)
 void via_qmk_backlight_set_value(uint8_t *data);
@@ -215,12 +225,17 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     // dprintf("VIA HID: Received %d bytes: [%02X %02X %02X %02X %02X %02X]\n",
     //         length, data[0], data[1], data[2], data[3], data[4], data[5]);
 
-#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+// =============================================================================
+// HID_DEBUG_CUSTOM_ROUTING: Controls custom packet routing (0x7D 0x00 0x4D header)
+// This is the FIRST thing to test - if this causes issues, the keyboard can't
+// communicate with the GUI at all for custom features.
+// =============================================================================
+#ifdef HID_DEBUG_CUSTOM_ROUTING
     // Forward declaration
     void dynamic_macro_hid_receive(uint8_t *data, uint8_t length);
 
     // CUSTOM HID: Intercept custom packets (0x7D 0x00 0x4D header)
-    // TROUBLESHOOTING: This is disabled when ORTHOMIDI_CUSTOM_HID_ENABLE is not defined
+    // TROUBLESHOOTING: This is disabled when HID_DEBUG_CUSTOM_ROUTING is not defined
     if (length >= 32 && length <= 48 &&  // Reasonable size limits
         data[0] == 0x7D &&  // HID_MANUFACTURER_ID
         data[1] == 0x00 &&  // HID_SUB_ID
@@ -254,7 +269,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             return;
         }
     }
-#endif // ORTHOMIDI_CUSTOM_HID_ENABLE
+#endif // HID_DEBUG_CUSTOM_ROUTING
 
     // ALWAYS intercept custom HID packets (0x7D 0x00 0x4D header) for arpeggiator,
     // per-key actuation, null bind, toggle, and EEPROM diag commands.

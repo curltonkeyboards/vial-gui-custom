@@ -18,9 +18,48 @@
 
 #include <string.h>
 
-// TROUBLESHOOTING: Conditionally include keyboard-specific headers
-// These should be moved to keyboard-level code, not in quantum/vial.c
+// =============================================================================
+// HID DEBUGGING FLAGS - Enable one at a time to isolate communication issues
+// =============================================================================
+// Master flag: ORTHOMIDI_CUSTOM_HID_ENABLE enables ALL custom HID handlers
+// Individual flags (for debugging): enable specific categories independently
+//
+// To debug, comment out ORTHOMIDI_CUSTOM_HID_ENABLE in rules.mk and instead
+// define individual flags like: HID_DEBUG_LAYER_RGB = yes
+//
+// Test order (least to most likely problematic):
+//   1. HID_DEBUG_LAYER_RGB      - Layer RGB save/load (0xBC-0xBF)
+//   2. HID_DEBUG_PER_KEY_RGB    - Per-key RGB palette/presets (0xD3-0xD8)
+//   3. HID_DEBUG_CUSTOM_ANIM    - Custom animations (0xC0-0xC9)
+//   4. HID_DEBUG_USER_CURVES    - Response curves (0xD9-0xDE)
+//   5. HID_DEBUG_LAYER_ACT      - Layer-wide actuation (0xCA-0xCD)
+//   6. HID_DEBUG_PER_KEY_ACT    - Per-key actuation (0xE0-0xE6)
+//   7. HID_DEBUG_GAMING         - Gaming/joystick (0xCE-0xD2) - needs JOYSTICK_ENABLE
+//   8. HID_DEBUG_CUSTOM_ROUTING - Custom packet routing in via.c (0x7D header)
+// =============================================================================
+
+// If master flag is enabled, enable all debug categories
 #ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
+    #define HID_DEBUG_LAYER_RGB
+    #define HID_DEBUG_PER_KEY_RGB
+    #define HID_DEBUG_CUSTOM_ANIM
+    #define HID_DEBUG_USER_CURVES
+    #define HID_DEBUG_LAYER_ACT
+    #define HID_DEBUG_PER_KEY_ACT
+    #define HID_DEBUG_GAMING
+    #define HID_DEBUG_CUSTOM_ROUTING
+#endif
+
+// Check if ANY debug flag is enabled (for conditional includes)
+#if defined(HID_DEBUG_LAYER_RGB) || defined(HID_DEBUG_PER_KEY_RGB) || \
+    defined(HID_DEBUG_CUSTOM_ANIM) || defined(HID_DEBUG_USER_CURVES) || \
+    defined(HID_DEBUG_LAYER_ACT) || defined(HID_DEBUG_PER_KEY_ACT) || \
+    defined(HID_DEBUG_GAMING)
+    #define HID_DEBUG_ANY_ENABLED
+#endif
+
+// Conditionally include keyboard-specific headers only when needed
+#ifdef HID_DEBUG_ANY_ENABLED
 #include "orthomidi5x14.h"
 #include "process_midi.h"
 #include "../keyboards/orthomidi5x14/per_key_rgb.h"
@@ -281,14 +320,13 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
         }
 #endif
 
-#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
         // ============================================================================
-        // ORTHOMIDI CUSTOM HID HANDLERS (Layer RGB, Custom Animations, Actuation, etc.)
-        // These handlers require keyboard-specific code and are disabled by default
-        // for troubleshooting. Enable with ORTHOMIDI_CUSTOM_HID_ENABLE=yes in rules.mk
+        // ORTHOMIDI CUSTOM HID HANDLERS - Each category has its own debug flag
+        // Enable ORTHOMIDI_CUSTOM_HID_ENABLE for all, or individual flags for debugging
         // ============================================================================
 
-        // ADD YOUR LAYER RGB CASES HERE
+#ifdef HID_DEBUG_LAYER_RGB
+        // === LAYER RGB (0xBC-0xBF) ===
         case vial_layer_rgb_save: {  // 0xBC
             uint8_t layer = msg[2];
             if (layer < NUM_LAYERS) {
@@ -316,7 +354,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			bool new_value = (enable != 0);
 			// This function sets the global variable AND saves to EEPROM slot 0
 			update_layer_animations_setting_slot0_direct(new_value);
-			
+
 			msg[0] = 0x01; // Success response
 			break;
 		}
@@ -327,17 +365,19 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             // msg[2-31] reserved for future use, already zeroed by memset if needed
             break;
         }
-		
-		case vial_custom_rescan_led: {  // vial_custom_anim_rescan_leds
+#endif // HID_DEBUG_LAYER_RGB
+
+#ifdef HID_DEBUG_CUSTOM_ANIM
+        // === CUSTOM ANIMATIONS (0xC0-0xC9) ===
+		case vial_custom_rescan_led: {  // 0xC8 - vial_custom_anim_rescan_leds
             // Call the LED scanning functions
             scan_keycode_categories();
             scan_current_layer_midi_leds();
-            
+
             msg[0] = 0x01; // Success response
             break;
-			}
-		
-		        // ADD YOUR CUSTOM ANIMATION CASES HERE (after the layer RGB cases)
+		}
+
         case vial_custom_anim_set_param: {  // 0xC0
 			uint8_t slot = msg[2];
 			uint8_t param = msg[3];
@@ -501,7 +541,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			msg[0] = 0x01; // Success
 			msg[1] = NUM_CUSTOM_SLOTS; // Number of available slots (50)
 			msg[2] = current_custom_slot; // Currently active slot
-			
+
 			// Pack enabled status for all slots into bytes 3-9 (50 bits needed = 7 bytes)
 			memset(&msg[3], 0, 7); // Clear 7 bytes for enabled flags
 			for (uint8_t i = 0; i < NUM_CUSTOM_SLOTS; i++) {
@@ -511,17 +551,17 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 					msg[3 + byte_index] |= (1 << bit_index);
 				}
 			}
-			
+
 			// Add parameter count info for GUI
 			msg[10] = NUM_CUSTOM_PARAMETERS;  // Should be 12 parameters
-			
+
 			// msg[12-31] reserved for future use
 			break;
 		}
-		
-		// Add these cases to the switch statement in vial_handle_cmd()
-		// (around where you have the other custom commands like vial_layer_rgb_save)
+#endif // HID_DEBUG_CUSTOM_ANIM
 
+#ifdef HID_DEBUG_LAYER_ACT
+		// === LAYER ACTUATION (0xCA-0xCD) ===
 		case 0xCA: {  // HID_CMD_SET_LAYER_ACTUATION
 			if (length >= 13) {  // Magic (1) + Cmd (1) + layer (1) + 10 params = 13 bytes minimum
 				handle_set_layer_actuation(&msg[2]);
@@ -554,8 +594,10 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			msg[0] = 0x01; // Success
 			break;
 		}
+#endif // HID_DEBUG_LAYER_ACT
 
-		// Gaming/Joystick HID Commands (0xCE-0xD2)
+#ifdef HID_DEBUG_GAMING
+		// === GAMING/JOYSTICK (0xCE-0xD2) - also requires JOYSTICK_ENABLE ===
 #ifdef JOYSTICK_ENABLE
 		case 0xCE: {  // HID_CMD_GAMING_SET_MODE
 			if (length >= 3) {
@@ -667,9 +709,11 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			msg[0] = 0x01; // Success
 			break;
 		}
-#endif
+#endif // JOYSTICK_ENABLE
+#endif // HID_DEBUG_GAMING
 
-		// User Curve Commands (0xD9-0xDE)
+#ifdef HID_DEBUG_USER_CURVES
+		// === USER CURVES (0xD9-0xDE) ===
 		case HID_CMD_USER_CURVE_SET: {  // 0xD9
 			// Set user curve: [cmd, slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
 			extern user_curves_t user_curves;
@@ -770,8 +814,10 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 #endif
 			break;
 		}
+#endif // HID_DEBUG_USER_CURVES
 
-		// Per-Key RGB Commands (0xD3-0xD8)
+#ifdef HID_DEBUG_PER_KEY_RGB
+		// === PER-KEY RGB (0xD3-0xD8) ===
 		case vial_per_key_get_palette: {  // 0xD3
 			// Initialize per-key RGB if not already done
 			if (!per_key_rgb_initialized) {
@@ -891,8 +937,10 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			msg[0] = 0x01; // Success
 			break;
 		}
+#endif // HID_DEBUG_PER_KEY_RGB
 
-		// Per-Key Actuation Commands (0xE0-0xE6)
+#ifdef HID_DEBUG_PER_KEY_ACT
+		// === PER-KEY ACTUATION (0xE0-0xE6) ===
 		case HID_CMD_SET_PER_KEY_ACTUATION: {  // 0xE0
 			// Format: [layer, key_index, actuation, deadzone_top, deadzone_bottom, velocity_curve,
 			//          flags, rapidfire_press_sens, rapidfire_release_sens, rapidfire_velocity_mod]
@@ -967,9 +1015,9 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			}
 			break;
 		}
+#endif // HID_DEBUG_PER_KEY_ACT
 
-        // END LAYER RGB CASES
-#endif // ORTHOMIDI_CUSTOM_HID_ENABLE
+        // === END CUSTOM HID HANDLERS ===
 
         case vial_dynamic_entry_op: {
             switch (msg[2]) {
