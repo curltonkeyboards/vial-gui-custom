@@ -55,6 +55,7 @@
 #define vial_per_key_set_led_color      0xD6
 #define vial_per_key_save               0xD7
 #define vial_per_key_load               0xD8
+#define vial_per_key_debug              0xDF  // Debug command for per-key RGB
 
 // User Curve Commands (0xD9-0xDE)
 #define HID_CMD_USER_CURVE_SET          0xD9  // Set user curve points
@@ -778,10 +779,29 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				per_key_rgb_init();
 			}
 
-			// Return entire 48-byte palette (16 colors × 3 bytes HSV)
+			// Paginated palette reading (48 bytes total, 16 colors × 3 bytes HSV)
+			// Format: [cmd, channel, offset, count] where offset/count are in BYTES
+			// Response: [success, data...] up to 31 bytes of palette data
+			uint8_t offset = msg[2];  // Byte offset into palette (0-47)
+			uint8_t count = msg[3];   // Number of bytes to read
+
+			// Default to full read if not specified (backwards compatibility)
+			if (offset == 0 && count == 0) {
+				count = 31;  // Max that fits in response
+			}
+
+			// Limit count to fit in response (31 bytes max) and palette bounds
+			if (count > 31) count = 31;
+			if (offset >= 48) offset = 0;
+			if (offset + count > 48) count = 48 - offset;
+
 			memset(msg, 0, length);
 			msg[0] = 0x01; // Success
-			per_key_get_palette(&msg[1]); // Writes 48 bytes starting at msg[1]
+
+			// Get palette data starting at offset
+			uint8_t palette_buffer[48];
+			per_key_get_palette(palette_buffer);
+			memcpy(&msg[1], &palette_buffer[offset], count);
 			break;
 		}
 
@@ -897,6 +917,49 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				}
 			}
 			msg[0] = 0x01; // Success
+			break;
+		}
+
+		case vial_per_key_debug: {  // 0xDF - Debug command
+			// Returns diagnostic info about per-key RGB state
+			// Response format:
+			// [0] = success (0x01)
+			// [1] = per_key_rgb_initialized (0 or 1)
+			// [2-3] = magic number from EEPROM (little endian)
+			// [4-5] = expected magic (0xC0DE)
+			// [6] = first byte of preset 0
+			// [7] = first byte of preset 1
+			// [8-15] = first 8 bytes of RAM preset 0
+			// [16-23] = first 8 bytes of EEPROM at preset 0 offset
+			memset(msg, 0, length);
+			msg[0] = 0x01; // Success
+			msg[1] = per_key_rgb_initialized ? 1 : 0;
+
+			// Read magic number from EEPROM
+			uint16_t magic = eeprom_read_word((uint16_t*)PER_KEY_MAGIC_ADDR);
+			msg[2] = magic & 0xFF;
+			msg[3] = (magic >> 8) & 0xFF;
+
+			// Expected magic
+			msg[4] = PER_KEY_MAGIC_NUMBER & 0xFF;
+			msg[5] = (PER_KEY_MAGIC_NUMBER >> 8) & 0xFF;
+
+			// First byte of preset 0 and 1 from RAM
+			msg[6] = per_key_rgb_config.presets[0][0];
+			msg[7] = per_key_rgb_config.presets[1][0];
+
+			// First 8 bytes of RAM preset 0
+			for (int i = 0; i < 8 && i < PER_KEY_NUM_LEDS; i++) {
+				msg[8 + i] = per_key_rgb_config.presets[0][i];
+			}
+
+			// First 8 bytes of EEPROM at preset 0 offset
+			uint8_t eeprom_data[8];
+			eeprom_read_block(eeprom_data,
+				(void*)(PER_KEY_RGB_EEPROM_ADDR + PER_KEY_PALETTE_SIZE_BYTES), 8);
+			for (int i = 0; i < 8; i++) {
+				msg[16 + i] = eeprom_data[i];
+			}
 			break;
 		}
 

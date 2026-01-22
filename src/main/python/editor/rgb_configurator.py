@@ -17,7 +17,7 @@ from protocol.constants import CMD_VIA_VIAL_PREFIX, CMD_VIAL_LAYER_RGB_SAVE, CMD
     CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, \
     CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS, CMD_VIAL_PER_KEY_GET_PALETTE, \
     CMD_VIAL_PER_KEY_SET_PALETTE_COLOR, CMD_VIAL_PER_KEY_GET_PRESET_DATA, CMD_VIAL_PER_KEY_SET_LED_COLOR, \
-    CMD_VIAL_PER_KEY_SAVE, CMD_VIAL_PER_KEY_LOAD
+    CMD_VIAL_PER_KEY_SAVE, CMD_VIAL_PER_KEY_LOAD, CMD_VIAL_PER_KEY_DEBUG
 import time
 
 NUM_CUSTOM_SLOTS = 50  # Change this to your desi5red number
@@ -1706,6 +1706,12 @@ class PerKeyRGBHandler(BasicHandler):
         self.btn_reset.setStyleSheet("QPushButton { border-radius: 5px; background-color: #cc4444; color: white; }")
         palette_container_layout.addWidget(self.btn_reset)
 
+        self.btn_debug = QPushButton(tr("RGBConfigurator", "Debug EEPROM"))
+        self.btn_debug.clicked.connect(self.on_debug_eeprom)
+        self.btn_debug.setFixedHeight(35)
+        self.btn_debug.setStyleSheet("QPushButton { border-radius: 5px; background-color: #666699; color: white; }")
+        palette_container_layout.addWidget(self.btn_debug)
+
         palette_container_layout.addStretch()
 
         main_layout.addWidget(palette_container)
@@ -2001,27 +2007,89 @@ class PerKeyRGBHandler(BasicHandler):
             self.update_palette_display()
             self.update_keyboard_display()
 
+    def on_debug_eeprom(self):
+        """Debug EEPROM state - read magic number and raw data"""
+        if hasattr(self, 'keyboard') and self.keyboard:
+            import struct
+            self.clear_debug()
+            self.debug_log("=== EEPROM DEBUG INFO ===")
+
+            try:
+                data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_DEBUG)
+                response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+
+                if response and len(response) >= 24 and response[0] == 0x01:
+                    initialized = response[1]
+                    magic_read = response[2] | (response[3] << 8)
+                    magic_expected = response[4] | (response[5] << 8)
+                    preset0_first = response[6]
+                    preset1_first = response[7]
+
+                    self.debug_log(f"Initialized: {initialized} (1=yes, 0=no)")
+                    self.debug_log(f"EEPROM Magic: 0x{magic_read:04X} (expected 0x{magic_expected:04X})")
+                    self.debug_log(f"Magic valid: {'YES' if magic_read == magic_expected else 'NO'}")
+                    self.debug_log(f"Preset 0 LED[0]: {preset0_first}")
+                    self.debug_log(f"Preset 1 LED[0]: {preset1_first}")
+
+                    # RAM data for preset 0
+                    ram_data = [response[8 + i] for i in range(8)]
+                    self.debug_log(f"RAM preset 0 [0-7]: {ram_data}")
+
+                    # EEPROM data for preset 0
+                    eeprom_data = [response[16 + i] for i in range(8)]
+                    self.debug_log(f"EEPROM preset 0 [0-7]: {eeprom_data}")
+
+                    # Analysis
+                    if magic_read != magic_expected:
+                        self.debug_log("WARNING: Magic mismatch - EEPROM data may be corrupted or uninitialized!")
+                    if ram_data != eeprom_data:
+                        self.debug_log("WARNING: RAM and EEPROM data differ!")
+                    if any(v > 15 for v in ram_data):
+                        self.debug_log("ERROR: RAM contains invalid palette indices (>15)!")
+                    if any(v > 15 for v in eeprom_data):
+                        self.debug_log("ERROR: EEPROM contains invalid palette indices (>15)!")
+                else:
+                    self.debug_log(f"ERROR: Debug command failed. Response: {list(response) if response else 'None'}")
+            except Exception as e:
+                self.debug_log(f"ERROR during debug: {e}")
+
+            self.debug_log("=== DEBUG COMPLETE ===")
+
     def load_palette_from_firmware(self):
-        """Load 16-color palette from firmware"""
+        """Load 16-color palette from firmware (paginated - 48 bytes in chunks)"""
         if not hasattr(self, 'keyboard') or not self.keyboard:
             return
 
         try:
             import struct
-            data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PALETTE)
-            response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+            # Load palette in chunks (31 bytes per request due to HID packet size)
+            # Palette is 48 bytes total (16 colors × 3 bytes HSV)
+            palette_data = bytearray(48)
+            offset = 0
 
-            if response and len(response) >= 49:  # 1 success byte + 48 bytes palette
-                self.debug_log("Palette loaded from firmware:")
-                for i in range(16):
-                    h = response[1 + i * 3]
-                    s = response[1 + i * 3 + 1]
-                    v = response[1 + i * 3 + 2]
-                    self.palette[i] = [h, s, v]
-                    self.debug_log(f"  Color {i}: H={h} S={s} V={v}")
-                self.update_palette_display()
-            else:
-                self.debug_log(f"ERROR: Invalid palette response length: {len(response) if response else 'None'}")
+            while offset < 48:
+                count = min(31, 48 - offset)
+                data = struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PALETTE,
+                                   offset, count)
+                response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+
+                if response and len(response) >= count + 1 and response[0] == 0x01:
+                    for i in range(count):
+                        palette_data[offset + i] = response[1 + i]
+                    offset += count
+                else:
+                    self.debug_log(f"ERROR: Palette chunk read failed at offset {offset}")
+                    return
+
+            # Parse the palette data into 16 HSV colors
+            self.debug_log("Palette loaded from firmware:")
+            for i in range(16):
+                h = palette_data[i * 3]
+                s = palette_data[i * 3 + 1]
+                v = palette_data[i * 3 + 2]
+                self.palette[i] = [h, s, v]
+                self.debug_log(f"  Color {i}: H={h} S={s} V={v}")
+            self.update_palette_display()
         except Exception as e:
             self.debug_log(f"ERROR loading palette: {e}")
 
