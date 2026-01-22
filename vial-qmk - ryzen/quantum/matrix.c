@@ -390,6 +390,14 @@ static void refresh_key_type_cache(uint8_t layer) {
 // PER-KEY ACTUATION LOOKUP (reads from per_key_actuations[] in RAM)
 // ============================================================================
 
+// Flag to track if per-key actuations have been initialized
+// Prevents using zero-initialized array before keyboard_post_init_user() runs
+static bool per_key_actuations_ready = false;
+
+void mark_per_key_actuations_ready(void) {
+    per_key_actuations_ready = true;
+}
+
 static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *actuation_point,
                                             uint8_t *rt_down,
@@ -397,8 +405,11 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *flags) {
     // Bounds checking
     if (layer >= 12) layer = 0;
-    if (key_idx >= NUM_KEYS) {
-        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
+
+    // If per-key actuations not yet initialized, use layer-wide settings
+    // This prevents issues during early matrix scans before keyboard_post_init_user()
+    if (!per_key_actuations_ready || key_idx >= NUM_KEYS) {
+        *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
         *rt_down = 0;
         *rt_up = 0;
         *flags = 0;

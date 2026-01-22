@@ -4843,6 +4843,7 @@ void keyboard_post_init_user(void) {
 	// Load per-key actuations from EEPROM into RAM
 	// Uses magic number to detect first flash and initialize defaults
 	load_per_key_actuations();
+	mark_per_key_actuations_ready();  // Signal matrix scanning to use per-key values
 
 	// Load user curves from EEPROM
 	user_curves_load();

@@ -198,6 +198,9 @@ void analog_matrix_init(void);
 // Process analog matrix (call from matrix_scan_kb)
 void analog_matrix_task(void);
 
+// Mark per-key actuations as ready (call after loading from EEPROM)
+void mark_per_key_actuations_ready(void);
+
 // Get current travel distance for a key (0-240 = 0.0mm to 4.0mm scaled)
 uint8_t analog_matrix_get_travel(uint8_t row, uint8_t col);
 
