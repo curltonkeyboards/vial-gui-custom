@@ -881,12 +881,20 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 		case vial_per_key_load: {  // 0xD8
 			// Load all per-key data from EEPROM
-			// Initialize per-key RGB if not already done (this will auto-load if magic is valid)
-			if (!per_key_rgb_initialized) {
-				per_key_rgb_init();
+			// If msg[2] == 0xFF, force reset to defaults instead
+			if (msg[2] == 0xFF) {
+				// Force reset to defaults
+				per_key_rgb_reset_to_defaults();
+				per_key_rgb_save_to_eeprom();
+				per_key_rgb_initialized = true;
 			} else {
-				// Already initialized, force reload from EEPROM
-				per_key_rgb_load_from_eeprom();
+				// Normal load from EEPROM
+				if (!per_key_rgb_initialized) {
+					per_key_rgb_init();
+				} else {
+					// Already initialized, force reload from EEPROM
+					per_key_rgb_load_from_eeprom();
+				}
 			}
 			msg[0] = 0x01; // Success
 			break;

@@ -1700,6 +1700,12 @@ class PerKeyRGBHandler(BasicHandler):
         self.btn_load.setStyleSheet("QPushButton { border-radius: 5px; }")
         palette_container_layout.addWidget(self.btn_load)
 
+        self.btn_reset = QPushButton(tr("RGBConfigurator", "Reset to Defaults"))
+        self.btn_reset.clicked.connect(self.on_reset_defaults)
+        self.btn_reset.setFixedHeight(35)
+        self.btn_reset.setStyleSheet("QPushButton { border-radius: 5px; background-color: #cc4444; color: white; }")
+        palette_container_layout.addWidget(self.btn_reset)
+
         palette_container_layout.addStretch()
 
         main_layout.addWidget(palette_container)
@@ -1949,6 +1955,26 @@ class PerKeyRGBHandler(BasicHandler):
             self.update_keyboard_display()
             print("Loaded per-key RGB from EEPROM")
 
+    def on_reset_defaults(self):
+        """Reset per-key RGB to defaults (clears all presets)"""
+        if hasattr(self, 'keyboard') and self.keyboard:
+            import struct
+            # Send load command with 0xFF parameter to trigger reset
+            data = struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD, 0xFF)
+            self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+            print("Reset per-key RGB to defaults")
+
+            # Reload palette and ALL presets from firmware after reset
+            self.load_palette_from_firmware()
+            print("Reloading all presets after reset...")
+            for preset_idx in range(12):
+                self.load_preset_from_firmware(preset_idx)
+            print("All presets reloaded after reset.")
+
+            # Update displays
+            self.update_palette_display()
+            self.update_keyboard_display()
+
     def load_palette_from_firmware(self):
         """Load 16-color palette from firmware"""
         if not hasattr(self, 'keyboard') or not self.keyboard:
@@ -1978,6 +2004,7 @@ class PerKeyRGBHandler(BasicHandler):
             import struct
             # Load in chunks (31 bytes per request due to HID packet size)
             offset = 0
+            non_zero_count = 0
             while offset < 70:
                 count = min(31, 70 - offset)
                 data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PRESET_DATA,
@@ -1986,10 +2013,17 @@ class PerKeyRGBHandler(BasicHandler):
 
                 if response and len(response) >= count + 1:
                     for i in range(count):
-                        self.preset_data[preset][offset + i] = response[1 + i]
+                        val = response[1 + i]
+                        self.preset_data[preset][offset + i] = val
+                        if val != 0:
+                            non_zero_count += 1
+                            # Debug: print non-zero values
+                            print(f"  Preset {preset}, LED {offset + i}: palette index {val}")
 
                 offset += count
 
+            if non_zero_count > 0:
+                print(f"Preset {preset}: {non_zero_count} non-zero LED colors found")
             self.update_keyboard_display()
         except Exception as e:
             print(f"Error loading preset {preset}: {e}")

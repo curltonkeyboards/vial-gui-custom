@@ -22,11 +22,14 @@
 
 // Total: 48 (palette) + 840 (presets) + 2 (magic) = 890 bytes
 
-// Data Structures
-typedef struct {
+// Data Structures - MUST be packed to ensure correct EEPROM layout
+typedef struct __attribute__((packed)) {
     HSV palette[PER_KEY_PALETTE_SIZE];           // Global 16-color palette (48 bytes)
     uint8_t presets[PER_KEY_NUM_PRESETS][PER_KEY_NUM_LEDS]; // 12 presets × 70 LEDs (840 bytes)
 } per_key_rgb_config_t;
+
+// Compile-time size verification
+_Static_assert(sizeof(per_key_rgb_config_t) == 888, "per_key_rgb_config_t size mismatch!");
 
 // Global instance (in RAM)
 extern per_key_rgb_config_t per_key_rgb_config;
