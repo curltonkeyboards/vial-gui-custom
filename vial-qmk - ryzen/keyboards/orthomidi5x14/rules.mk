@@ -20,6 +20,8 @@ KEYLOGGER_ENABLE      = yes
 WPM_ENABLE = yes
 JOYSTICK_ENABLE = yes       # Enable joystick/gaming controller support
 
+HID_DEBUG_LAYER_RGB = yes
+HID_DEBUG_PER_KEY_RGB = yes
 
 KEYBOARD_SHARED_EP = yes
 
