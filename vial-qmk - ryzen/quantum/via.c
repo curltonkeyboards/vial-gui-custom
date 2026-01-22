@@ -237,10 +237,12 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             dynamic_macro_hid_receive(data, length);
             return; // Don't process with VIA
         }
-        // Arpeggiator commands (0xC0-0xCC)
+        // Arpeggiator commands (0xC0-0xCC), Layer actuations (0xCD)
+        // Gaming commands (0xCE-0xD2), User curves (0xD9-0xDC)
+        // Gaming response (0xDD-0xDE), ADC Matrix Tester (0xDF)
         // Per-key actuation commands (0xE0-0xE6)
         // Null bind, Toggle, EEPROM diag commands (0xF0-0xFB)
-        else if ((cmd >= 0xC0 && cmd <= 0xCC) ||
+        else if ((cmd >= 0xC0 && cmd <= 0xDF) ||
                  (cmd >= 0xE0 && cmd <= 0xE6) ||
                  (cmd >= 0xF0 && cmd <= 0xFB)) {
             // Forward to keyboard-level handler, which sends its own response
@@ -267,9 +269,10 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
 
         uint8_t cmd = data[3];
 
-        // Arpeggiator (0xC0-0xCC), Per-key actuation (0xE0-0xE6),
-        // Null bind/Toggle/EEPROM diag (0xF0-0xFB)
-        if ((cmd >= 0xC0 && cmd <= 0xCC) ||
+        // Arpeggiator (0xC0-0xCC), Layer actuations (0xCD), Gaming (0xCE-0xD2),
+        // User curves (0xD9-0xDC), Gaming response (0xDD-0xDE), ADC Matrix (0xDF),
+        // Per-key actuation (0xE0-0xE6), Null bind/Toggle/EEPROM diag (0xF0-0xFB)
+        if ((cmd >= 0xC0 && cmd <= 0xDF) ||
             (cmd >= 0xE0 && cmd <= 0xE6) ||
             (cmd >= 0xF0 && cmd <= 0xFB)) {
             raw_hid_receive_kb(data, length);
