@@ -125,90 +125,91 @@ VIALRGB_EFFECTS = [
     VialRGBEffect(43, "Pixel Rain"),
     VialRGBEffect(44, "Pixel Fractal"),
     VialRGBEffect(45, "MIDI Switch Auto Light"),
-    VialRGBEffect(46, "Reactive Lightning"),
-    VialRGBEffect(47, "Reactive Ripple"),
-    VialRGBEffect(48, "Reactive Fireworks"),
-    VialRGBEffect(49, "Comet Trail"),
-    VialRGBEffect(50, "Tetris Vertical"),
-    VialRGBEffect(51, "Tetris Horizontal"),
-    VialRGBEffect(52, "Fireplace"),
-    VialRGBEffect(53, "Pong"),
-    VialRGBEffect(54, "L/R Sweep Static"),
-    VialRGBEffect(55, "L/R Sweep Rainbow"),
+    VialRGBEffect(46, "Layer Sets"),
+    VialRGBEffect(47, "Reactive Lightning"),
+    VialRGBEffect(48, "Reactive Ripple"),
+    VialRGBEffect(49, "Reactive Fireworks"),
+    VialRGBEffect(50, "Comet Trail"),
+    VialRGBEffect(51, "Tetris Vertical"),
+    VialRGBEffect(52, "Tetris Horizontal"),
+    VialRGBEffect(53, "Fireplace"),
+    VialRGBEffect(54, "Pong"),
+    VialRGBEffect(55, "L/R Sweep Static"),
     VialRGBEffect(56, "L/R Sweep Random"),
-    # Per Key RGB Presets (57-68)
-    VialRGBEffect(57, "Per Key 1"),
-    VialRGBEffect(58, "Per Key 2"),
-    VialRGBEffect(59, "Per Key 3"),
-    VialRGBEffect(60, "Per Key 4"),
-    VialRGBEffect(61, "Per Key 5"),
-    VialRGBEffect(62, "Per Key 6"),
-    VialRGBEffect(63, "Per Key 7"),
-    VialRGBEffect(64, "Per Key 8"),
-    VialRGBEffect(65, "Per Key 9"),
-    VialRGBEffect(66, "Per Key 10"),
-    VialRGBEffect(67, "Per Key 11"),
-    VialRGBEffect(68, "Per Key 12"),
-    # Random Effects (69-77)
-    VialRGBEffect(69, "Random 1 - Loop"),
-    VialRGBEffect(70, "Random 2 - Loop"),
-    VialRGBEffect(71, "Random 3 - Loop"),
-    VialRGBEffect(72, "Random 1 - BPM"),
-    VialRGBEffect(73, "Random 2 - BPM"),
-    VialRGBEffect(74, "Random 3 - BPM"),
-    VialRGBEffect(75, "Random 1 - Manual"),
-    VialRGBEffect(76, "Random 2 - Manual"),
-    VialRGBEffect(77, "Random 3 - Manual"),
-    # Custom Animation Slots (78-126)
-    VialRGBEffect(78, "Custom Slot 0"),
-    VialRGBEffect(79, "Custom Slot 1"),
-    VialRGBEffect(80, "Custom Slot 2"),
-    VialRGBEffect(81, "Custom Slot 3"),
-    VialRGBEffect(82, "Custom Slot 4"),
-    VialRGBEffect(83, "Custom Slot 5"),
-    VialRGBEffect(84, "Custom Slot 6"),
-    VialRGBEffect(85, "Custom Slot 7"),
-    VialRGBEffect(86, "Custom Slot 8"),
-    VialRGBEffect(87, "Custom Slot 9"),
-    VialRGBEffect(88, "Custom Slot 10"),
-    VialRGBEffect(89, "Custom Slot 11"),
-    VialRGBEffect(90, "Custom Slot 12"),
-    VialRGBEffect(91, "Custom Slot 13"),
-    VialRGBEffect(92, "Custom Slot 14"),
-    VialRGBEffect(93, "Custom Slot 15"),
-    VialRGBEffect(94, "Custom Slot 16"),
-    VialRGBEffect(95, "Custom Slot 17"),
-    VialRGBEffect(96, "Custom Slot 18"),
-    VialRGBEffect(97, "Custom Slot 19"),
-    VialRGBEffect(98, "Custom Slot 20"),
-    VialRGBEffect(99, "Custom Slot 21"),
-    VialRGBEffect(100, "Custom Slot 22"),
-    VialRGBEffect(101, "Custom Slot 23"),
-    VialRGBEffect(102, "Custom Slot 24"),
-    VialRGBEffect(103, "Custom Slot 25"),
-    VialRGBEffect(104, "Custom Slot 26"),
-    VialRGBEffect(105, "Custom Slot 27"),
-    VialRGBEffect(106, "Custom Slot 28"),
-    VialRGBEffect(107, "Custom Slot 29"),
-    VialRGBEffect(108, "Custom Slot 30"),
-    VialRGBEffect(109, "Custom Slot 31"),
-    VialRGBEffect(110, "Custom Slot 32"),
-    VialRGBEffect(111, "Custom Slot 33"),
-    VialRGBEffect(112, "Custom Slot 34"),
-    VialRGBEffect(113, "Custom Slot 35"),
-    VialRGBEffect(114, "Custom Slot 36"),
-    VialRGBEffect(115, "Custom Slot 37"),
-    VialRGBEffect(116, "Custom Slot 38"),
-    VialRGBEffect(117, "Custom Slot 39"),
-    VialRGBEffect(118, "Custom Slot 40"),
-    VialRGBEffect(119, "Custom Slot 41"),
-    VialRGBEffect(120, "Custom Slot 42"),
-    VialRGBEffect(121, "Custom Slot 43"),
-    VialRGBEffect(122, "Custom Slot 44"),
-    VialRGBEffect(123, "Custom Slot 45"),
-    VialRGBEffect(124, "Custom Slot 46"),
-    VialRGBEffect(125, "Custom Slot 47"),
-    VialRGBEffect(126, "Custom Slot 48"),
+    VialRGBEffect(57, "Bouncing Column Random"),
+    # Per Key RGB Presets (58-69)
+    VialRGBEffect(58, "Per Key 1"),
+    VialRGBEffect(59, "Per Key 2"),
+    VialRGBEffect(60, "Per Key 3"),
+    VialRGBEffect(61, "Per Key 4"),
+    VialRGBEffect(62, "Per Key 5"),
+    VialRGBEffect(63, "Per Key 6"),
+    VialRGBEffect(64, "Per Key 7"),
+    VialRGBEffect(65, "Per Key 8"),
+    VialRGBEffect(66, "Per Key 9"),
+    VialRGBEffect(67, "Per Key 10"),
+    VialRGBEffect(68, "Per Key 11"),
+    VialRGBEffect(69, "Per Key 12"),
+    # Random Effects (70-78)
+    VialRGBEffect(70, "Random 1 - Loop"),
+    VialRGBEffect(71, "Random 2 - Loop"),
+    VialRGBEffect(72, "Random 3 - Loop"),
+    VialRGBEffect(73, "Random 1 - BPM"),
+    VialRGBEffect(74, "Random 2 - BPM"),
+    VialRGBEffect(75, "Random 3 - BPM"),
+    VialRGBEffect(76, "Random 1 - Manual"),
+    VialRGBEffect(77, "Random 2 - Manual"),
+    VialRGBEffect(78, "Random 3 - Manual"),
+    # Custom Animation Slots (79-127)
+    VialRGBEffect(79, "Custom Slot 0"),
+    VialRGBEffect(80, "Custom Slot 1"),
+    VialRGBEffect(81, "Custom Slot 2"),
+    VialRGBEffect(82, "Custom Slot 3"),
+    VialRGBEffect(83, "Custom Slot 4"),
+    VialRGBEffect(84, "Custom Slot 5"),
+    VialRGBEffect(85, "Custom Slot 6"),
+    VialRGBEffect(86, "Custom Slot 7"),
+    VialRGBEffect(87, "Custom Slot 8"),
+    VialRGBEffect(88, "Custom Slot 9"),
+    VialRGBEffect(89, "Custom Slot 10"),
+    VialRGBEffect(90, "Custom Slot 11"),
+    VialRGBEffect(91, "Custom Slot 12"),
+    VialRGBEffect(92, "Custom Slot 13"),
+    VialRGBEffect(93, "Custom Slot 14"),
+    VialRGBEffect(94, "Custom Slot 15"),
+    VialRGBEffect(95, "Custom Slot 16"),
+    VialRGBEffect(96, "Custom Slot 17"),
+    VialRGBEffect(97, "Custom Slot 18"),
+    VialRGBEffect(98, "Custom Slot 19"),
+    VialRGBEffect(99, "Custom Slot 20"),
+    VialRGBEffect(100, "Custom Slot 21"),
+    VialRGBEffect(101, "Custom Slot 22"),
+    VialRGBEffect(102, "Custom Slot 23"),
+    VialRGBEffect(103, "Custom Slot 24"),
+    VialRGBEffect(104, "Custom Slot 25"),
+    VialRGBEffect(105, "Custom Slot 26"),
+    VialRGBEffect(106, "Custom Slot 27"),
+    VialRGBEffect(107, "Custom Slot 28"),
+    VialRGBEffect(108, "Custom Slot 29"),
+    VialRGBEffect(109, "Custom Slot 30"),
+    VialRGBEffect(110, "Custom Slot 31"),
+    VialRGBEffect(111, "Custom Slot 32"),
+    VialRGBEffect(112, "Custom Slot 33"),
+    VialRGBEffect(113, "Custom Slot 34"),
+    VialRGBEffect(114, "Custom Slot 35"),
+    VialRGBEffect(115, "Custom Slot 36"),
+    VialRGBEffect(116, "Custom Slot 37"),
+    VialRGBEffect(117, "Custom Slot 38"),
+    VialRGBEffect(118, "Custom Slot 39"),
+    VialRGBEffect(119, "Custom Slot 40"),
+    VialRGBEffect(120, "Custom Slot 41"),
+    VialRGBEffect(121, "Custom Slot 42"),
+    VialRGBEffect(122, "Custom Slot 43"),
+    VialRGBEffect(123, "Custom Slot 44"),
+    VialRGBEffect(124, "Custom Slot 45"),
+    VialRGBEffect(125, "Custom Slot 46"),
+    VialRGBEffect(126, "Custom Slot 47"),
+    VialRGBEffect(127, "Custom Slot 48"),
 ]
 
 
@@ -1576,25 +1577,25 @@ class PaletteButton(QPushButton):
 class PerKeyRGBHandler(BasicHandler):
     """Handler for per-key RGB configuration with 12 presets and 16-color palette"""
 
-    # Default palette colors: Red, Green, Blue, Yellow, Cyan, Magenta, White, Orange,
-    # Purple, Pink, Lime, Teal, Navy, Maroon, Olive, Silver
+    # Default palette colors - MUST MATCH FIRMWARE per_key_rgb_reset_to_defaults()
+    # Index 0 is Black (off), Index 1+ are colors
     DEFAULT_PALETTE = [
-        [0, 255, 255],      # Red
-        [85, 255, 255],     # Green
-        [170, 255, 255],    # Blue
-        [43, 255, 255],     # Yellow
-        [128, 255, 255],    # Cyan
-        [213, 255, 255],    # Magenta
-        [0, 0, 255],        # White
-        [21, 255, 255],     # Orange
-        [192, 255, 255],    # Purple
-        [234, 128, 255],    # Pink
-        [64, 255, 255],     # Lime
-        [149, 255, 200],    # Teal
-        [170, 255, 128],    # Navy
-        [0, 200, 128],      # Maroon
-        [43, 200, 128],     # Olive
-        [0, 0, 192],        # Silver
+        [0, 0, 0],          # 0: Black (off)
+        [0, 255, 255],      # 1: Red
+        [28, 255, 255],     # 2: Orange
+        [43, 255, 255],     # 3: Yellow
+        [85, 255, 255],     # 4: Green
+        [128, 255, 255],    # 5: Cyan
+        [170, 255, 255],    # 6: Blue
+        [191, 255, 255],    # 7: Purple
+        [213, 255, 255],    # 8: Magenta
+        [234, 255, 255],    # 9: Pink
+        [0, 0, 255],        # 10: White
+        [28, 50, 255],      # 11: Warm White
+        [106, 255, 255],    # 12: Spring Green
+        [11, 176, 255],     # 13: Coral
+        [36, 255, 218],     # 14: Gold
+        [132, 102, 255],    # 15: Azure
     ]
 
     def __init__(self, container):
@@ -1916,8 +1917,8 @@ class PerKeyRGBHandler(BasicHandler):
 
             # Set each layer to its corresponding Per Key preset
             for layer in range(12):
-                # Set RGB mode to Per Key preset (VIALRGB indices 57-68)
-                per_key_mode = 57 + layer
+                # Set RGB mode to Per Key preset (VIALRGB indices 58-69)
+                per_key_mode = 58 + layer
                 # This would require a method to set the RGB mode for a specific layer
                 # For now, this is a placeholder
                 print(f"Would set layer {layer} to Per Key {layer + 1} (mode {per_key_mode})")
