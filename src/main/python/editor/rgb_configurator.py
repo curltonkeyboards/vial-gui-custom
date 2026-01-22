@@ -1700,6 +1700,12 @@ class PerKeyRGBHandler(BasicHandler):
         self.btn_load.setStyleSheet("QPushButton { border-radius: 5px; }")
         palette_container_layout.addWidget(self.btn_load)
 
+        self.btn_reset = QPushButton(tr("RGBConfigurator", "Reset to Defaults"))
+        self.btn_reset.clicked.connect(self.on_reset_defaults)
+        self.btn_reset.setFixedHeight(35)
+        self.btn_reset.setStyleSheet("QPushButton { border-radius: 5px; background-color: #cc4444; color: white; }")
+        palette_container_layout.addWidget(self.btn_reset)
+
         palette_container_layout.addStretch()
 
         main_layout.addWidget(palette_container)
@@ -1722,6 +1728,20 @@ class PerKeyRGBHandler(BasicHandler):
         container.addWidget(main_widget, row, 0, 1, 2)
         row += 1
 
+        # Debug output area
+        from PyQt5.QtWidgets import QTextEdit
+        self.lbl_debug = QLabel(tr("RGBConfigurator", "Debug Output (select all and copy to share):"))
+        self.lbl_debug.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        container.addWidget(self.lbl_debug, row, 0, 1, 2)
+        row += 1
+
+        self.debug_output = QTextEdit()
+        self.debug_output.setReadOnly(True)
+        self.debug_output.setFixedHeight(150)
+        self.debug_output.setStyleSheet("font-family: monospace; font-size: 10pt;")
+        container.addWidget(self.debug_output, row, 0, 1, 2)
+        row += 1
+
         # State variables
         self.current_preset = 0
         self.selected_palette_index = 0
@@ -1732,13 +1752,24 @@ class PerKeyRGBHandler(BasicHandler):
 
         self.widgets = [
             self.lbl_title, self.lbl_description, self.lbl_preset, preset_button_widget,
-            main_widget
+            main_widget, self.lbl_debug, self.debug_output
         ]
 
         # Initialize palette display with default colors
         self.update_palette_display()
         self.update_palette_selection()
         self.update_preset_button_selection()
+
+    def debug_log(self, message):
+        """Append message to debug output widget"""
+        self.debug_output.append(message)
+        # Auto-scroll to bottom
+        scrollbar = self.debug_output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def clear_debug(self):
+        """Clear debug output"""
+        self.debug_output.clear()
 
     def on_preset_changed(self, index):
         """Handle preset selection change - switches to local cached preset data"""
@@ -1751,24 +1782,21 @@ class PerKeyRGBHandler(BasicHandler):
     def on_key_clicked(self):
         """Handle keyboard key click - assign current palette color to clicked key"""
         if not self.keyboard_widget.active_key:
-            print("No active key")
             return
 
         # Find the LED index for the clicked key
         key_index = self.get_key_index(self.keyboard_widget.active_key)
-        print(f"Clicked key index: {key_index}")
         if key_index is None or key_index >= 70:
-            print(f"Invalid key index: {key_index}")
+            self.debug_log(f"Invalid key index: {key_index}")
             return
 
         # Assign the selected palette color to this key
-        print(f"Assigning palette {self.selected_palette_index} to key {key_index}")
         if hasattr(self, 'keyboard') and self.keyboard:
             self.set_led_color(self.current_preset, key_index, self.selected_palette_index)
             self.preset_data[self.current_preset][key_index] = self.selected_palette_index
             self.update_keyboard_display()
         else:
-            print("No keyboard device available")
+            self.debug_log("No keyboard device available")
 
     def on_palette_selected(self, palette_index):
         """Handle palette button single-click - select this color for painting"""
@@ -1928,26 +1956,50 @@ class PerKeyRGBHandler(BasicHandler):
             import struct
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SAVE)
             self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
-            print("Saved per-key RGB to EEPROM")
+            self.debug_log("=== SAVE TO EEPROM ===")
+            self.debug_log("Saved per-key RGB data to EEPROM")
 
     def on_load(self):
         """Load per-key data from EEPROM"""
         if hasattr(self, 'keyboard') and self.keyboard:
             import struct
+            self.clear_debug()
+            self.debug_log("=== LOAD FROM EEPROM ===")
             data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD)
             self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
 
             # Reload palette and ALL presets from firmware after EEPROM load
             self.load_palette_from_firmware()
-            print("Reloading all presets from EEPROM...")
+            self.debug_log("Loading all presets from EEPROM...")
             for preset_idx in range(12):
                 self.load_preset_from_firmware(preset_idx)
-            print("All presets reloaded from EEPROM.")
+            self.debug_log("All presets loaded from EEPROM.")
 
             # Update displays
             self.update_palette_display()
             self.update_keyboard_display()
-            print("Loaded per-key RGB from EEPROM")
+
+    def on_reset_defaults(self):
+        """Reset per-key RGB to defaults (clears all presets)"""
+        if hasattr(self, 'keyboard') and self.keyboard:
+            import struct
+            self.clear_debug()
+            self.debug_log("=== RESET TO DEFAULTS ===")
+            # Send load command with 0xFF parameter to trigger reset
+            data = struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_LOAD, 0xFF)
+            self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+            self.debug_log("Sent reset command to firmware")
+
+            # Reload palette and ALL presets from firmware after reset
+            self.load_palette_from_firmware()
+            self.debug_log("Loading all presets after reset...")
+            for preset_idx in range(12):
+                self.load_preset_from_firmware(preset_idx)
+            self.debug_log("All presets loaded after reset.")
+
+            # Update displays
+            self.update_palette_display()
+            self.update_keyboard_display()
 
     def load_palette_from_firmware(self):
         """Load 16-color palette from firmware"""
@@ -1960,14 +2012,18 @@ class PerKeyRGBHandler(BasicHandler):
             response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
 
             if response and len(response) >= 49:  # 1 success byte + 48 bytes palette
+                self.debug_log("Palette loaded from firmware:")
                 for i in range(16):
                     h = response[1 + i * 3]
                     s = response[1 + i * 3 + 1]
                     v = response[1 + i * 3 + 2]
                     self.palette[i] = [h, s, v]
+                    self.debug_log(f"  Color {i}: H={h} S={s} V={v}")
                 self.update_palette_display()
+            else:
+                self.debug_log(f"ERROR: Invalid palette response length: {len(response) if response else 'None'}")
         except Exception as e:
-            print(f"Error loading palette: {e}")
+            self.debug_log(f"ERROR loading palette: {e}")
 
     def load_preset_from_firmware(self, preset):
         """Load preset LED data from firmware (paginated)"""
@@ -1978,6 +2034,7 @@ class PerKeyRGBHandler(BasicHandler):
             import struct
             # Load in chunks (31 bytes per request due to HID packet size)
             offset = 0
+            non_zero_leds = []
             while offset < 70:
                 count = min(31, 70 - offset)
                 data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PRESET_DATA,
@@ -1986,13 +2043,23 @@ class PerKeyRGBHandler(BasicHandler):
 
                 if response and len(response) >= count + 1:
                     for i in range(count):
-                        self.preset_data[preset][offset + i] = response[1 + i]
+                        val = response[1 + i]
+                        self.preset_data[preset][offset + i] = val
+                        if val != 0:
+                            led_idx = offset + i
+                            row = led_idx // 14
+                            col = led_idx % 14
+                            non_zero_leds.append(f"r{row}c{col}={val}")
 
                 offset += count
 
+            if non_zero_leds:
+                self.debug_log(f"Preset {preset}: {len(non_zero_leds)} colored LEDs: {', '.join(non_zero_leds)}")
+            else:
+                self.debug_log(f"Preset {preset}: all LEDs are black (0)")
             self.update_keyboard_display()
         except Exception as e:
-            print(f"Error loading preset {preset}: {e}")
+            self.debug_log(f"ERROR loading preset {preset}: {e}")
 
     def set_palette_color(self, palette_index, h, s, v):
         """Set a palette color in firmware"""
@@ -2017,9 +2084,8 @@ class PerKeyRGBHandler(BasicHandler):
             data = struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_SET_LED_COLOR,
                                preset, led_index, palette_index)
             self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
-            print(f"Set LED {led_index} to palette color {palette_index}")  # Debug
         except Exception as e:
-            print(f"Error setting LED color: {e}")
+            self.debug_log(f"ERROR setting LED color: {e}")
 
     def set_device(self, device):
         """Set device and initialize keyboard widget"""
@@ -2032,15 +2098,19 @@ class PerKeyRGBHandler(BasicHandler):
             self.keyboard_widget.set_keys(keys, encoders)
             self.keyboard_widget.update_layout()
 
+            # Clear and start fresh debug output
+            self.clear_debug()
+            self.debug_log("=== INITIAL LOAD ON CONNECT ===")
+
             # Load palette from firmware
             self.load_palette_from_firmware()
 
             # Load ALL presets from firmware to cache them locally
             # This allows switching between presets without losing unsaved changes
-            print("Loading all presets from firmware...")
+            self.debug_log("Loading all 12 presets from firmware...")
             for preset_idx in range(12):
                 self.load_preset_from_firmware(preset_idx)
-            print("All presets loaded.")
+            self.debug_log("=== INITIAL LOAD COMPLETE ===")
 
             # Update display for current preset
             self.update_keyboard_display()
@@ -2053,10 +2123,8 @@ class PerKeyRGBHandler(BasicHandler):
     def update_keyboard_display(self):
         """Update keyboard key colors based on current preset"""
         if not self.keyboard_widget.widgets:
-            print("No keyboard widgets available")
             return
 
-        print(f"Updating keyboard display, {len(self.keyboard_widget.widgets)} widgets")
         for widget in self.keyboard_widget.widgets:
             key_index = self.get_key_index(widget)
             if key_index is not None and key_index < 70:
@@ -2064,7 +2132,7 @@ class PerKeyRGBHandler(BasicHandler):
 
                 # Bounds check - ensure palette index is valid (0-15)
                 if palette_index < 0 or palette_index >= 16:
-                    print(f"Warning: Invalid palette index {palette_index} for key {key_index}, defaulting to 0")
+                    self.debug_log(f"WARNING: Invalid palette index {palette_index} for key {key_index}, defaulting to 0")
                     palette_index = 0
                     self.preset_data[self.current_preset][key_index] = 0
 
@@ -2073,11 +2141,9 @@ class PerKeyRGBHandler(BasicHandler):
                 # Set the key color
                 color = QColor(rgb[0], rgb[1], rgb[2])
                 widget.setColor(color)
-                print(f"Key {key_index}: palette {palette_index} -> RGB{rgb} -> {color.name()}")
 
         # Trigger repaint
         self.keyboard_widget.update()
-        print("Keyboard display updated")
 
     @staticmethod
     def hsv_to_rgb(h, s, v):
