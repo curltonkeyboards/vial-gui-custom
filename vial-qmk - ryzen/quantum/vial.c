@@ -773,15 +773,38 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 		// Per-Key RGB Commands (0xD3-0xD8)
 		case vial_per_key_get_palette: {  // 0xD3
+			// Format: [cmd, channel, offset, count] - offset/count in palette color indices
+			// Returns: [success, h0, s0, v0, h1, s1, v1, ...] - count*3 bytes
 			// Initialize per-key RGB if not already done
 			if (!per_key_rgb_initialized) {
 				per_key_rgb_init();
 			}
 
-			// Return entire 48-byte palette (16 colors × 3 bytes HSV)
+			uint8_t offset = msg[2];  // Palette color index offset (0-15)
+			uint8_t count = msg[3];   // Number of colors to return
+
+			// Validate and limit parameters
+			if (offset >= PER_KEY_PALETTE_SIZE) {
+				offset = 0;
+				count = 10;  // Default: first 10 colors
+			}
+			if (count == 0) count = 10;  // Default count
+			if (offset + count > PER_KEY_PALETTE_SIZE) {
+				count = PER_KEY_PALETTE_SIZE - offset;
+			}
+			// Limit to what fits in response (31 bytes max = 10 colors max)
+			if (count > 10) count = 10;
+
 			memset(msg, 0, length);
 			msg[0] = 0x01; // Success
-			per_key_get_palette(&msg[1]); // Writes 48 bytes starting at msg[1]
+
+			// Write requested palette colors
+			for (uint8_t i = 0; i < count; i++) {
+				uint8_t idx = offset + i;
+				msg[1 + i * 3] = per_key_rgb_config.palette[idx].h;
+				msg[1 + i * 3 + 1] = per_key_rgb_config.palette[idx].s;
+				msg[1 + i * 3 + 2] = per_key_rgb_config.palette[idx].v;
+			}
 			break;
 		}
 

@@ -2002,26 +2002,44 @@ class PerKeyRGBHandler(BasicHandler):
             self.update_keyboard_display()
 
     def load_palette_from_firmware(self):
-        """Load 16-color palette from firmware"""
+        """Load 16-color palette from firmware (paginated due to 32-byte HID limit)"""
         if not hasattr(self, 'keyboard') or not self.keyboard:
             return
 
         try:
             import struct
-            data = struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PALETTE)
-            response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+            self.debug_log("Loading palette from firmware (paginated)...")
 
-            if response and len(response) >= 49:  # 1 success byte + 48 bytes palette
-                self.debug_log("Palette loaded from firmware:")
-                for i in range(16):
-                    h = response[1 + i * 3]
-                    s = response[1 + i * 3 + 1]
-                    v = response[1 + i * 3 + 2]
-                    self.palette[i] = [h, s, v]
-                    self.debug_log(f"  Color {i}: H={h} S={s} V={v}")
-                self.update_palette_display()
-            else:
-                self.debug_log(f"ERROR: Invalid palette response length: {len(response) if response else 'None'}")
+            # Load palette in chunks (max 10 colors per request due to 31-byte response limit)
+            # Request format: [prefix, cmd, offset, count] where offset/count are color indices
+            # Response format: [success, h0, s0, v0, h1, s1, v1, ...] = 1 + count*3 bytes
+            palette_offset = 0
+            while palette_offset < 16:
+                count = min(10, 16 - palette_offset)  # Max 10 colors (30 bytes) per request
+                data = struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_PER_KEY_GET_PALETTE,
+                                   palette_offset, count)
+                response = self.keyboard.usb_send(self.keyboard.dev, data, retries=20)
+
+                expected_len = 1 + count * 3  # 1 success + count*3 HSV bytes
+                if response and len(response) >= expected_len and response[0] == 0x01:
+                    for i in range(count):
+                        h = response[1 + i * 3]
+                        s = response[1 + i * 3 + 1]
+                        v = response[1 + i * 3 + 2]
+                        self.palette[palette_offset + i] = [h, s, v]
+                else:
+                    self.debug_log(f"ERROR: Palette chunk failed at offset {palette_offset}, "
+                                   f"response length: {len(response) if response else 'None'}")
+                    return
+
+                palette_offset += count
+
+            # Log loaded palette
+            self.debug_log("Palette loaded from firmware:")
+            for i in range(16):
+                h, s, v = self.palette[i]
+                self.debug_log(f"  Color {i}: H={h} S={s} V={v}")
+            self.update_palette_display()
         except Exception as e:
             self.debug_log(f"ERROR loading palette: {e}")
 
