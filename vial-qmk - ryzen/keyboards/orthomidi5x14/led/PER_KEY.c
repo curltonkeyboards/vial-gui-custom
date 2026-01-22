@@ -144,6 +144,11 @@ void per_key_get_preset_data(uint8_t preset, uint8_t offset, uint8_t count, uint
 
 // Helper function to render a per-key preset
 static bool per_key_effect_runner(effect_params_t* params, uint8_t preset) {
+    // Ensure per-key RGB is initialized (loads from EEPROM if valid)
+    if (!per_key_rgb_initialized) {
+        per_key_rgb_init();
+    }
+
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
 
     for (uint8_t i = led_min; i < led_max; i++) {
