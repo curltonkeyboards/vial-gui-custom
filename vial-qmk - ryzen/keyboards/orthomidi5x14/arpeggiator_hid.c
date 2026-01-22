@@ -638,19 +638,21 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             response[4] = row;
             response[5] = 0x01;  // Success
 
-            // Get ADC values for each column in the row
-            // Use 8-bit values (scale 12-bit ADC to 8-bit) to fit all 14 columns
-            // response[6+] = adc_scaled_0, adc_scaled_1, ... (one byte per column)
-            // With 32-byte packet and 6-byte header, we have 26 bytes = up to 26 columns
-            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-                // Get raw ADC value (0-4095) and scale to 8-bit (0-255)
+            // Get raw ADC values for each column in the row
+            // Use 16-bit little-endian format for full 12-bit resolution (0-4095)
+            // response[6+] = adc_low_0, adc_high_0, adc_low_1, adc_high_1, ...
+            // With 32-byte packet and 6-byte header, we have 26 bytes = 13 columns max
+            uint8_t max_cols = (MATRIX_COLS < 13) ? MATRIX_COLS : 13;
+            for (uint8_t col = 0; col < max_cols; col++) {
                 uint16_t adc_value = analog_matrix_get_raw_adc(row, col);
-                response[6 + col] = (uint8_t)(adc_value >> 4);  // Scale 12-bit to 8-bit
+                response[6 + col * 2] = adc_value & 0xFF;           // Low byte
+                response[6 + col * 2 + 1] = (adc_value >> 8) & 0xFF; // High byte
             }
 
             dprintf("ADC Matrix row %d: ", row);
-            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-                dprintf("%d ", response[6 + col]);
+            for (uint8_t col = 0; col < max_cols; col++) {
+                uint16_t val = response[6 + col * 2] | (response[6 + col * 2 + 1] << 8);
+                dprintf("%d ", val);
             }
             dprintf("\n");
         }

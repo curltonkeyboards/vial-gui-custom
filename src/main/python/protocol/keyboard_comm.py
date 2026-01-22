@@ -665,12 +665,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             row: Matrix row index (0-based)
 
         Returns:
-            list: ADC values (0-255 scaled from 12-bit) for each column in the row, or None on error
+            list: Raw ADC values (0-4095, 12-bit) for each column in the row, or None on error
 
         Protocol:
             Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_ADC_MATRIX, row, 0...]
             Response: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_ADC_MATRIX, row, status,
-                      adc_scaled_0, adc_scaled_1, ...] (8-bit values, scaled from 12-bit ADC)
+                      adc_low_0, adc_high_0, adc_low_1, adc_high_1, ...] (16-bit little-endian values)
         """
         try:
             packet = self._create_hid_packet(HID_CMD_GET_ADC_MATRIX, row, None)
@@ -684,16 +684,17 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 return None
 
             # Parse ADC values from response (starting at index 6)
-            # Each ADC value is 1 byte (scaled from 12-bit to 8-bit)
+            # Each ADC value is 2 bytes (16-bit little-endian), max 13 columns
             adc_values = []
             data_start = 6
-            max_cols = min(self.cols, 26) if hasattr(self, 'cols') else 14
+            max_cols = min(self.cols, 13) if hasattr(self, 'cols') else 13
 
             for col in range(max_cols):
-                offset = data_start + col
-                if offset < len(response):
-                    # 8-bit scaled value (0-255)
-                    adc_values.append(response[offset])
+                offset = data_start + col * 2
+                if offset + 1 < len(response):
+                    # 16-bit little-endian value (raw 12-bit ADC, 0-4095)
+                    adc_value = response[offset] | (response[offset + 1] << 8)
+                    adc_values.append(adc_value)
                 else:
                     break
 
