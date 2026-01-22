@@ -3217,7 +3217,8 @@ void save_per_key_actuations(void) {
 }
 
 // Load per-key actuations from EEPROM (with magic number validation)
-// If magic number is invalid (first flash), initializes to defaults and saves
+// If magic number is invalid (first flash), initializes to defaults in RAM only
+// EEPROM save is deferred until user changes settings via HID (prevents init hang)
 void load_per_key_actuations(void) {
     uint16_t magic = eeprom_read_word((uint16_t*)PER_KEY_ACTUATION_MAGIC_ADDR);
 
@@ -3227,9 +3228,10 @@ void load_per_key_actuations(void) {
                           (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                           PER_KEY_ACTUATION_SIZE);
     } else {
-        // First flash or corrupted data - initialize to defaults and save
+        // First flash or corrupted data - initialize to defaults in RAM only
+        // DO NOT save here - writing 6.7KB to EEPROM during init causes USB disconnect
+        // EEPROM will be written when user changes settings via HID or calls reset
         initialize_per_key_actuations();
-        save_per_key_actuations();
     }
 }
 
