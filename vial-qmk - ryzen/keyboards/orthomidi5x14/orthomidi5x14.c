@@ -3207,12 +3207,42 @@ void initialize_per_key_actuations(void) {
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
-// Save per-key actuations to EEPROM
+// Save per-key actuations to EEPROM (ALL 6.7KB - use sparingly!)
+// WARNING: This writes 6720 bytes and takes a long time. Only use for bulk operations.
 void save_per_key_actuations(void) {
     eeprom_update_block(per_key_actuations,
                         (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                         PER_KEY_ACTUATION_SIZE);
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
+}
+
+// Save a single key's actuation settings to EEPROM (only 8 bytes)
+// This is much faster than save_per_key_actuations() and won't cause USB timeouts
+void save_single_per_key_actuation(uint8_t layer, uint8_t key_index) {
+    if (layer >= 12 || key_index >= 70) return;
+
+    // Calculate EEPROM offset for this specific key
+    // Structure: per_key_actuations[layer].keys[key_index]
+    // Offset = layer * sizeof(layer_key_actuations_t) + key_index * sizeof(per_key_actuation_t)
+    uint16_t offset = (uint16_t)layer * (70 * sizeof(per_key_actuation_t)) +
+                      (uint16_t)key_index * sizeof(per_key_actuation_t);
+
+    eeprom_update_block(&per_key_actuations[layer].keys[key_index],
+                        (uint8_t*)(PER_KEY_ACTUATION_EEPROM_ADDR + offset),
+                        sizeof(per_key_actuation_t));  // Only 8 bytes!
+}
+
+// Save an entire layer's actuation settings to EEPROM (560 bytes)
+// Used after copy layer operations
+void save_layer_per_key_actuations(uint8_t layer) {
+    if (layer >= 12) return;
+
+    // Calculate EEPROM offset for this layer
+    uint16_t offset = (uint16_t)layer * (70 * sizeof(per_key_actuation_t));
+
+    eeprom_update_block(&per_key_actuations[layer],
+                        (uint8_t*)(PER_KEY_ACTUATION_EEPROM_ADDR + offset),
+                        70 * sizeof(per_key_actuation_t));  // 560 bytes per layer
 }
 
 // Load per-key actuations from EEPROM
@@ -3289,7 +3319,8 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
     per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
 
-    save_per_key_actuations();
+    // Save only this key's 8 bytes to EEPROM (not all 6.7KB!)
+    save_single_per_key_actuation(layer, key_index);
 }
 
 // Get per-key actuation and send back via HID
@@ -3357,7 +3388,8 @@ void handle_copy_layer_actuations(const uint8_t* data) {
         per_key_actuations[dest].keys[i] = per_key_actuations[source].keys[i];
     }
 
-    save_per_key_actuations();
+    // Save only the destination layer (560 bytes, not all 6.7KB!)
+    save_layer_per_key_actuations(dest);
 }
 
 // =============================================================================

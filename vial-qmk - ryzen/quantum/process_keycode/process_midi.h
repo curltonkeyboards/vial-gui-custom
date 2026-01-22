@@ -988,6 +988,8 @@ void handle_reset_layer_actuations(void);
 // Initialization and EEPROM functions
 void initialize_per_key_actuations(void);
 void save_per_key_actuations(void);
+void save_single_per_key_actuation(uint8_t layer, uint8_t key_index);
+void save_layer_per_key_actuations(uint8_t layer);
 void load_per_key_actuations(void);
 void reset_per_key_actuations(void);
 
