@@ -65,10 +65,9 @@
 
 // Updated for CAT24C512WI-GT3 (64KB EEPROM)
 #define EEPROM_I2C_CAT24C512
-
-// Allocate 20KB for VIA text macros (addresses 1817-21999)
-// This prevents macros from overwriting custom features starting at 22000
-#define DYNAMIC_KEYMAP_EEPROM_MAX_ADDR 21999
+// Limit VIA macro space to make room for custom features
+// Macros: 4509-20000 (~15KB), Custom features: 21000-52000
+#define DYNAMIC_KEYMAP_EEPROM_MAX_ADDR 20000
 
 // Joystick/Gaming Controller Configuration
 #define JOYSTICK_BUTTON_COUNT 16        // Face buttons, shoulder, dpad, stick clicks

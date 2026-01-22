@@ -564,14 +564,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
         switch (cmd) {
             case 0xE0:  // HID_CMD_SET_PER_KEY_ACTUATION
-                // Format: [layer, row, col, actuation_value] at data[4-7]
-                handle_set_per_key_actuation(&data[4]);
+                // Format: [layer, key_index, settings...] at data[6] (Python puts data at byte 6)
+                handle_set_per_key_actuation(&data[6]);
                 response[4] = 0x01;  // Success
                 break;
 
             case 0xE1:  // HID_CMD_GET_PER_KEY_ACTUATION
-                // Format: [layer, row, col] at data[4-6]
-                handle_get_per_key_actuation(&data[4], &response[4]);
+                // Format: [layer, key_index] at data[6]
+                handle_get_per_key_actuation(&data[6], &response[4]);
                 break;
 
             case 0xE2:  // HID_CMD_GET_ALL_PER_KEY_ACTUATIONS
@@ -585,8 +585,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
 
             case 0xE4:  // HID_CMD_SET_PER_KEY_MODE
-                // Format: [mode_enabled, per_layer_enabled] at data[4-5]
-                handle_set_per_key_mode(&data[4]);
+                // Format: [mode_enabled, per_layer_enabled] at data[6]
+                handle_set_per_key_mode(&data[6]);
                 response[4] = 0x01;  // Success
                 break;
 
@@ -595,8 +595,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
 
             case 0xE6:  // HID_CMD_COPY_LAYER_ACTUATIONS
-                // Format: [source_layer, dest_layer] at data[4-5]
-                handle_copy_layer_actuations(&data[4]);
+                // Format: [source_layer, dest_layer] at data[6]
+                handle_copy_layer_actuations(&data[6]);
                 response[4] = 0x01;  // Success
                 break;
 
@@ -610,14 +610,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a null bind command (0xF0-0xF4)
+    // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xF0 && data[3] <= 0xF4) {
+        data[3] >= 0xF0 && data[3] <= 0xFB) {
 
-        dprintf("raw_hid_receive_kb: Null bind command detected (0x%02X)\n", data[3]);
+        dprintf("raw_hid_receive_kb: Command detected (0x%02X)\n", data[3]);
 
         uint8_t cmd = data[3];
         uint8_t response[32] = {0};
@@ -630,13 +630,13 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
         switch (cmd) {
             case HID_CMD_NULLBIND_GET_GROUP:  // 0xF0
-                // Format: [group_num] at data[4]
-                handle_nullbind_get_group(data[4], &response[4]);
+                // Format: [group_num] at data[6] (Python _create_hid_packet puts data at byte 6)
+                handle_nullbind_get_group(data[6], &response[4]);
                 break;
 
             case HID_CMD_NULLBIND_SET_GROUP:  // 0xF1
-                // Format: [group_num, behavior, key_count, keys[8], reserved[8]] at data[4]
-                handle_nullbind_set_group(&data[4]);
+                // Format: [group_num, behavior, key_count, keys[8], reserved[8]] at data[6]
+                handle_nullbind_set_group(&data[6]);
                 response[4] = 0;  // Success status
                 break;
 
@@ -657,13 +657,13 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             // Toggle Keys commands (0xF5-0xF9)
             case HID_CMD_TOGGLE_GET_SLOT:  // 0xF5
-                // Format: [slot_num] at data[4]
-                handle_toggle_get_slot(data[4], &response[4]);
+                // Format: [slot_num] at data[6] (Python _create_hid_packet puts data at byte 6)
+                handle_toggle_get_slot(data[6], &response[4]);
                 break;
 
             case HID_CMD_TOGGLE_SET_SLOT:  // 0xF6
-                // Format: [slot_num, target_keycode_low, target_keycode_high, reserved[2]] at data[4]
-                handle_toggle_set_slot(&data[4]);
+                // Format: [slot_num, target_keycode_low, target_keycode_high, reserved[2]] at data[6]
+                handle_toggle_set_slot(&data[6]);
                 response[4] = 0;  // Success status
                 break;
 
@@ -680,6 +680,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             case HID_CMD_TOGGLE_RESET_ALL:  // 0xF9
                 handle_toggle_reset_all();
                 response[4] = 0;  // Success status
+                break;
+
+            case HID_CMD_EEPROM_DIAG_RUN:  // 0xFA
+                handle_eeprom_diag_run(response);
+                break;
+
+            case HID_CMD_EEPROM_DIAG_GET:  // 0xFB
+                handle_eeprom_diag_get(response);
                 break;
 
             default:

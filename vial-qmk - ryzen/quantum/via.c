@@ -219,7 +219,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     // Forward declaration
     void dynamic_macro_hid_receive(uint8_t *data, uint8_t length);
 
-    // CUSTOM HID: Intercept dynamic macro packets (0x7D 0x00 0x4D header)
+    // CUSTOM HID: Intercept custom packets (0x7D 0x00 0x4D header)
     // TROUBLESHOOTING: This is disabled when ORTHOMIDI_CUSTOM_HID_ENABLE is not defined
     if (length >= 32 && length <= 48 &&  // Reasonable size limits
         data[0] == 0x7D &&  // HID_MANUFACTURER_ID
@@ -236,14 +236,46 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             dprintf("VIA HID: Dynamic macro packet (cmd: 0x%02X), forwarding\n", cmd);
             dynamic_macro_hid_receive(data, length);
             return; // Don't process with VIA
-        } else {
-            dprintf("VIA HID: Invalid dynamic macro command 0x%02X\n", cmd);
+        }
+        // Arpeggiator commands (0xC0-0xCC)
+        // Per-key actuation commands (0xE0-0xE6)
+        // Null bind, Toggle, EEPROM diag commands (0xF0-0xFB)
+        else if ((cmd >= 0xC0 && cmd <= 0xCC) ||
+                 (cmd >= 0xE0 && cmd <= 0xE6) ||
+                 (cmd >= 0xF0 && cmd <= 0xFB)) {
+            // Forward to keyboard-level handler, which sends its own response
+            raw_hid_receive_kb(data, length);
+            return; // Don't let VIA send duplicate response
+        }
+        else {
+            dprintf("VIA HID: Invalid custom command 0x%02X\n", cmd);
             data[5] = 1; // Set error status
             raw_hid_send(data, length);
             return;
         }
     }
 #endif // ORTHOMIDI_CUSTOM_HID_ENABLE
+
+    // ALWAYS intercept custom HID packets (0x7D 0x00 0x4D header) for arpeggiator,
+    // per-key actuation, null bind, toggle, and EEPROM diag commands.
+    // These handlers send their own response, so we must return early to prevent
+    // VIA from sending a duplicate response (the original request data).
+    if (length >= 32 &&
+        data[0] == 0x7D &&  // HID_MANUFACTURER_ID
+        data[1] == 0x00 &&  // HID_SUB_ID
+        data[2] == 0x4D) {  // HID_DEVICE_ID
+
+        uint8_t cmd = data[3];
+
+        // Arpeggiator (0xC0-0xCC), Per-key actuation (0xE0-0xE6),
+        // Null bind/Toggle/EEPROM diag (0xF0-0xFB)
+        if ((cmd >= 0xC0 && cmd <= 0xCC) ||
+            (cmd >= 0xE0 && cmd <= 0xE6) ||
+            (cmd >= 0xF0 && cmd <= 0xFB)) {
+            raw_hid_receive_kb(data, length);
+            return; // Handler sends its own response
+        }
+    }
 
 #ifdef VIAL_ENABLE
     /* When unlock is in progress, we can only react to a subset of commands */

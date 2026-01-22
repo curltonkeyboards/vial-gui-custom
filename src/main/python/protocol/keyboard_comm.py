@@ -1656,7 +1656,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             ])
             packet = self._create_hid_packet(HID_CMD_SET_PER_KEY_ACTUATION, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 4 and response[4] == 0x01
         except Exception as e:
             return False
 
@@ -1679,20 +1679,20 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_ACTUATION, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
 
-            if response and len(response) >= 14:
-                # Response format: [header (6 bytes)] + [8 per-key fields]
+            if response and len(response) >= 13:
+                # Response format: [header (4 bytes) + status (1 byte)] + [8 per-key fields at index 5]
                 # Convert unsigned byte to signed for velocity mod
-                velocity_mod_byte = response[13]
+                velocity_mod_byte = response[12]
                 velocity_mod = velocity_mod_byte if velocity_mod_byte < 128 else velocity_mod_byte - 256
 
                 return {
-                    'actuation': response[6],
-                    'deadzone_top': response[7],
-                    'deadzone_bottom': response[8],
-                    'velocity_curve': response[9],
-                    'flags': response[10],  # Now using flags field
-                    'rapidfire_press_sens': response[11],
-                    'rapidfire_release_sens': response[12],
+                    'actuation': response[5],
+                    'deadzone_top': response[6],
+                    'deadzone_bottom': response[7],
+                    'velocity_curve': response[8],
+                    'flags': response[9],  # Now using flags field
+                    'rapidfire_press_sens': response[10],
+                    'rapidfire_release_sens': response[11],
                     'rapidfire_velocity_mod': velocity_mod
                 }
             return None
@@ -1722,7 +1722,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [1 if mode_enabled else 0, 1 if per_layer_enabled else 0]
             packet = self._create_hid_packet(HID_CMD_SET_PER_KEY_MODE, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 4 and response[4] == 0x01
         except Exception as e:
             return True  # Return success anyway - this is a no-op
 
@@ -1740,10 +1740,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_MODE, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            if response and len(response) > 7:
+            if response and len(response) > 6:
                 return {
-                    'mode_enabled': response[6] != 0,
-                    'per_layer_enabled': response[7] != 0
+                    'mode_enabled': response[5] != 0,
+                    'per_layer_enabled': response[6] != 0
                 }
             # If query fails, return enabled defaults
             return {'mode_enabled': True, 'per_layer_enabled': True}
@@ -1759,7 +1759,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_RESET_PER_KEY_ACTUATIONS, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 4 and response[4] == 0x01
         except Exception as e:
             return False
 
@@ -1777,6 +1777,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [source_layer, dest_layer]
             packet = self._create_hid_packet(HID_CMD_COPY_LAYER_ACTUATIONS, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 4 and response[4] == 0x01
         except Exception as e:
             return False

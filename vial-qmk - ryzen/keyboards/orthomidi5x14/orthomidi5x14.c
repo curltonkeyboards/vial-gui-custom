@@ -4011,7 +4011,147 @@ void handle_toggle_load_eeprom(void) {
 // HID handler: Reset all toggle slots
 void handle_toggle_reset_all(void) {
     toggle_reset_all();
+    toggle_save_to_eeprom();  // Persist the reset to EEPROM
 }
+
+// =============================================================================
+// EEPROM DIAGNOSTIC SYSTEM IMPLEMENTATION
+// =============================================================================
+
+eeprom_diag_t eeprom_diag = {0};
+bool eeprom_diag_display_mode = false;
+static uint32_t eeprom_diag_timer = 0;
+
+void eeprom_diag_run_test(void) {
+    // Read values from test addresses
+    eeprom_diag.read_val[0] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_1);
+    eeprom_diag.read_val[1] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_2);
+    eeprom_diag.read_val[2] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_3);
+    eeprom_diag.read_val[3] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_4);
+    eeprom_diag.read_val[4] = eeprom_read_byte((uint8_t*)EEPROM_DIAG_ADDR_5);
+
+    // Read raw bytes from toggle EEPROM area
+    for (int i = 0; i < 8; i++) {
+        eeprom_diag.toggle_raw[i] = eeprom_read_byte((uint8_t*)(TOGGLE_EEPROM_ADDR + i));
+    }
+
+    // Read null bind group 1 (18 bytes at NULLBIND_EEPROM_ADDR + 18)
+    for (int i = 0; i < 18; i++) {
+        eeprom_diag.nullbind_g1[i] = eeprom_read_byte((uint8_t*)(NULLBIND_EEPROM_ADDR + 18 + i));
+    }
+
+    // Read tap dance 37 using the dynamic_keymap function
+    vial_tap_dance_entry_t td37;
+    if (dynamic_keymap_get_tap_dance(37, &td37) == 0) {
+        // Copy raw bytes from the tap dance entry (10 bytes)
+        uint8_t *td_bytes = (uint8_t*)&td37;
+        for (int i = 0; i < 10; i++) {
+            eeprom_diag.tapdance_37[i] = td_bytes[i];
+        }
+    } else {
+        // Error reading - fill with 0xFF
+        for (int i = 0; i < 10; i++) {
+            eeprom_diag.tapdance_37[i] = 0xFF;
+        }
+    }
+
+    eeprom_diag.test_complete = true;
+    eeprom_diag_display_mode = true;
+    eeprom_diag_timer = timer_read32();
+}
+
+void eeprom_diag_display_oled(void) {
+    char buf[64];
+
+    // Refresh every 2 seconds
+    if (timer_elapsed32(eeprom_diag_timer) > 2000) {
+        eeprom_diag_run_test();
+    }
+
+    oled_clear();
+
+    // Line 0: Title
+    oled_set_cursor(0, 0);
+    oled_write_P(PSTR("NB G1 + TD37 DBG"), false);
+
+    // Line 1-2: Null bind group 1 (first 8 bytes: behavior, key_count, keys[0-5])
+    // Format: [behavior, key_count, keys[8], layer, reserved[7]]
+    oled_set_cursor(0, 1);
+    snprintf(buf, 22, "NB1:%02X %02X k:%02X%02X",
+        eeprom_diag.nullbind_g1[0],  // behavior
+        eeprom_diag.nullbind_g1[1],  // key_count
+        eeprom_diag.nullbind_g1[2],  // keys[0]
+        eeprom_diag.nullbind_g1[3]); // keys[1]
+    oled_write(buf, false);
+
+    // Line 2: More null bind keys
+    oled_set_cursor(0, 2);
+    snprintf(buf, 22, "k:%02X%02X%02X%02X L:%02X",
+        eeprom_diag.nullbind_g1[4],  // keys[2]
+        eeprom_diag.nullbind_g1[5],  // keys[3]
+        eeprom_diag.nullbind_g1[6],  // keys[4]
+        eeprom_diag.nullbind_g1[7],  // keys[5]
+        eeprom_diag.nullbind_g1[10]); // layer
+    oled_write(buf, false);
+
+    // Line 3-4: Tap dance 37 (10 bytes = 5 uint16 keycodes)
+    // Format: [on_tap(2), on_hold(2), on_double_tap(2), on_tap_hold(2), tapping_term(2)]
+    uint16_t td_tap = eeprom_diag.tapdance_37[0] | (eeprom_diag.tapdance_37[1] << 8);
+    uint16_t td_hold = eeprom_diag.tapdance_37[2] | (eeprom_diag.tapdance_37[3] << 8);
+    uint16_t td_dtap = eeprom_diag.tapdance_37[4] | (eeprom_diag.tapdance_37[5] << 8);
+
+    oled_set_cursor(0, 3);
+    snprintf(buf, 22, "TD37 T:%04X H:%04X", td_tap, td_hold);
+    oled_write(buf, false);
+
+    uint16_t td_thold = eeprom_diag.tapdance_37[6] | (eeprom_diag.tapdance_37[7] << 8);
+    uint16_t td_term = eeprom_diag.tapdance_37[8] | (eeprom_diag.tapdance_37[9] << 8);
+
+    oled_set_cursor(0, 4);
+    snprintf(buf, 22, "DT:%04X TH:%04X", td_dtap, td_thold);
+    oled_write(buf, false);
+
+    oled_set_cursor(0, 5);
+    snprintf(buf, 22, "Term:%04X", td_term);
+    oled_write(buf, false);
+
+    // Line 6-7: Raw bytes for reference
+    oled_set_cursor(0, 6);
+    snprintf(buf, 22, "NB:%02X%02X%02X%02X%02X%02X",
+        eeprom_diag.nullbind_g1[0], eeprom_diag.nullbind_g1[1],
+        eeprom_diag.nullbind_g1[2], eeprom_diag.nullbind_g1[3],
+        eeprom_diag.nullbind_g1[4], eeprom_diag.nullbind_g1[5]);
+    oled_write(buf, false);
+
+    oled_set_cursor(0, 7);
+    snprintf(buf, 22, "TD:%02X%02X%02X%02X%02X%02X",
+        eeprom_diag.tapdance_37[0], eeprom_diag.tapdance_37[1],
+        eeprom_diag.tapdance_37[2], eeprom_diag.tapdance_37[3],
+        eeprom_diag.tapdance_37[4], eeprom_diag.tapdance_37[5]);
+    oled_write(buf, false);
+}
+
+void handle_eeprom_diag_run(uint8_t* response) {
+    eeprom_diag_run_test();
+    response[0] = 0;  // Success
+}
+
+void handle_eeprom_diag_get(uint8_t* response) {
+    response[0] = eeprom_diag.test_complete ? 0 : 1;  // 0 = complete, 1 = not ready
+    response[1] = eeprom_diag.match[0] ? 1 : 0;
+    response[2] = eeprom_diag.match[1] ? 1 : 0;
+    response[3] = eeprom_diag.match[2] ? 1 : 0;
+    response[4] = eeprom_diag.match[3] ? 1 : 0;
+    response[5] = eeprom_diag.match[4] ? 1 : 0;
+    // Raw toggle bytes
+    for (int i = 0; i < 8; i++) {
+        response[6 + i] = eeprom_diag.toggle_raw[i];
+    }
+}
+
+// =============================================================================
+// END EEPROM DIAGNOSTIC SYSTEM
+// =============================================================================
 
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
@@ -10980,42 +11120,20 @@ snprintf(keylog_str + strlen(keylog_str), sizeof(keylog_str) - strlen(keylog_str
 
 void oled_render_keylog(void) {
 	char name[124];
+
+	snprintf(name, sizeof(name), "\n\n\n\n---------------------");
+
 	int total_length = strlen(getRootName()) + strlen(getChordName()) + strlen(getBassName());
 	int total_padding = 22 - total_length;
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
-	
-	
-	if (keysplittransposestatus == 1) {snprintf(name, sizeof(name), "\n  TRA%+3d // TRA%+3d", transpose_number + octave_number, transpose_number2 + octave_number2);
-	}else if (keysplittransposestatus == 2) {snprintf(name, sizeof(name), "\n T%+3d / T%+3d  /T%+3d", transpose_number + octave_number,transpose_number2 + octave_number2 ,transpose_number3 + octave_number3);
-	}else if (keysplittransposestatus == 3) {snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
-	}else { snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
-	}
-	
-	// Get HE velocity settings from global keyboard settings (no longer per-layer)
-	uint8_t he_min = keyboard_settings.he_velocity_min;
-	uint8_t he_max = keyboard_settings.he_velocity_max;
-
-	// Show HE velocity range for current layer
-	if (he_min == he_max) {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
-	} else {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
-	}
-	
-	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
-	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
-	}else if (keysplitstatus == 3) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
-	}else { snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1)); //
-	}
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
 	// Append the RootName, ChordName, and BassName
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
 	// Add right padding and the ending characters
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", right_padding, "");
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "- - - - - - - - - -\n");
-	
-	//snprintf(name + strlen(name), sizeof(name) - strlen(name), "     %s%s%s\n---------------------\n     ", getRootName(), getChordName(), getBassName());
+
     oled_write(name, false);
     oled_write(keylog_str, false);
 
@@ -12596,6 +12714,12 @@ update_keylog_display();
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static uint8_t base_note = 0;
     static uint8_t interval_note = 0;
+
+    // Exit EEPROM diagnostic display mode on any keypress
+    if (eeprom_diag_display_mode && record->event.pressed) {
+        eeprom_diag_display_mode = false;
+        return true;  // Continue processing the keypress
+    }
 
     // =============================================================================
     // TOGGLE KEYS (TGL_00 - TGL_99, keycodes 0xEE00-0xEE63)
@@ -15298,7 +15422,7 @@ bool oled_task_user(void) {
     if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
 	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
     // Write the layer information to the OLED
-    oled_write_P(str, false);
+    oled_write(str, false);
 
     // Display temporary mode message if active
     if (mode_display_active) {

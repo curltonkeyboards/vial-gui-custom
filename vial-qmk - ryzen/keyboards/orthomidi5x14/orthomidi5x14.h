@@ -424,19 +424,61 @@ typedef struct {
 } gaming_settings_t;
 
 // EEPROM address for gaming settings (100 bytes allocated)
-// REORGANIZED: Now at 36500 (after 20KB VIA macro space)
-#define GAMING_SETTINGS_EEPROM_ADDR 36500
+// Reorganized: 42000 (was 74100 - exceeded 64KB limit!)
+#define GAMING_SETTINGS_EEPROM_ADDR 42000
 #define GAMING_SETTINGS_MAGIC 0x47A3
 
 // EEPROM address for null bind settings (360 bytes: 20 groups × 18 bytes each)
-// Located at 45000 (after per-key actuations which end around 44722)
-#define NULLBIND_EEPROM_ADDR 45000
+// Reorganized: 21000 (was 50000)
+#define NULLBIND_EEPROM_ADDR 21000
 #define NULLBIND_MAGIC 0x4E42  // "NB" for Null Bind
 
 // EEPROM address for toggle settings (400 bytes: 100 slots × 4 bytes each)
-// Located at 45500 (after null bind which ends at 45360)
-#define TOGGLE_EEPROM_ADDR 45500
+// Reorganized: 22000 (was 51000)
+#define TOGGLE_EEPROM_ADDR 22000
 #define TOGGLE_MAGIC 0x5447  // "TG" for Toggle
+
+// =============================================================================
+// EEPROM DIAGNOSTIC SYSTEM
+// =============================================================================
+// Test addresses for EEPROM verification
+#define EEPROM_DIAG_ADDR_1 1000
+#define EEPROM_DIAG_ADDR_2 2000
+#define EEPROM_DIAG_ADDR_3 10000
+#define EEPROM_DIAG_ADDR_4 30000
+#define EEPROM_DIAG_ADDR_5 22000  // Same as toggle addr
+
+// Test values to write
+#define EEPROM_DIAG_VAL_1 0xAA
+#define EEPROM_DIAG_VAL_2 0xBB
+#define EEPROM_DIAG_VAL_3 0xCC
+#define EEPROM_DIAG_VAL_4 0xDD
+#define EEPROM_DIAG_VAL_5 0xEE
+
+// Diagnostic state
+typedef struct {
+    bool test_complete;
+    bool test_running;
+    uint8_t write_val[5];   // Values we wrote
+    uint8_t read_val[5];    // Values we read back
+    bool match[5];          // Whether read == write
+    uint8_t toggle_raw[8];  // Raw bytes from toggle EEPROM area
+    uint8_t nullbind_g1[18]; // Null bind group 1 raw data (18 bytes)
+    uint8_t tapdance_37[10]; // Tap dance 37 raw data (10 bytes)
+} eeprom_diag_t;
+
+extern eeprom_diag_t eeprom_diag;
+extern bool eeprom_diag_display_mode;
+
+// HID command for EEPROM diagnostics
+#define HID_CMD_EEPROM_DIAG_RUN 0xFA    // Run EEPROM diagnostic test
+#define HID_CMD_EEPROM_DIAG_GET 0xFB    // Get diagnostic results
+
+// Function declarations
+void eeprom_diag_run_test(void);
+void eeprom_diag_display_oled(void);
+void handle_eeprom_diag_run(uint8_t* response);
+void handle_eeprom_diag_get(uint8_t* response);
 
 // =============================================================================
 // CURVE SYSTEM (For Gaming Analog & Velocity Curves)
@@ -456,8 +498,8 @@ typedef struct {
 } user_curves_t;
 
 // EEPROM address for user curves (242 bytes: 10 curves × 24 + 2 magic)
-// REORGANIZED: Now at 36000 (after 20KB VIA macro space)
-#define USER_CURVES_EEPROM_ADDR 36000
+// Reorganized: 41000 (was 68100 - exceeded 64KB limit!)
+#define USER_CURVES_EEPROM_ADDR 41000
 #define USER_CURVES_MAGIC 0xCF01
 
 extern user_curves_t user_curves;
@@ -635,9 +677,9 @@ typedef struct {
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
-// REORGANIZED: Custom features start at 22000 (after 20KB VIA macro space at 0-21999)
-#define ARP_EEPROM_ADDR 22000       // Starting address for user arp presets (20 × 200 = 4000 bytes, ends at 25999)
-#define SEQ_EEPROM_ADDR 26000       // Starting address for user seq presets (20 × 392 = 7840 bytes, ends at 33839)
+// Reorganized: 23000 and 27500 (was 56000/60000)
+#define ARP_EEPROM_ADDR 23000       // Starting address for user arp presets (20 × 200 = 4000 bytes)
+#define SEQ_EEPROM_ADDR 27500       // Starting address for user seq presets (20 × 392 = 7840 bytes)
 #define ARP_PRESET_MAGIC 0xA89F     // Magic number for preset validation
 #define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
 #define ARP_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_ARP_PRESET_NOTES * 3))  // 8 + 192 = 200 bytes
