@@ -151,8 +151,13 @@ static bool per_key_effect_runner(effect_params_t* params, uint8_t preset) {
 
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
 
+    // Get global brightness setting
+    uint8_t base_val = rgb_matrix_get_val();
+
     for (uint8_t i = led_min; i < led_max; i++) {
         HSV hsv = per_key_get_color(preset, i);
+        // Scale the color's value by global brightness
+        hsv.v = (uint8_t)((uint16_t)hsv.v * base_val / 255);
         RGB rgb = rgb_matrix_hsv_to_rgb(hsv);
         rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
     }
