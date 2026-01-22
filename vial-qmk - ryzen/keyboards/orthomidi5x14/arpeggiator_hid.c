@@ -648,13 +648,6 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 response[6 + col * 2] = adc_value & 0xFF;           // Low byte
                 response[6 + col * 2 + 1] = (adc_value >> 8) & 0xFF; // High byte
             }
-
-            dprintf("ADC Matrix row %d: ", row);
-            for (uint8_t col = 0; col < max_cols; col++) {
-                uint16_t val = response[6 + col * 2] | (response[6 + col * 2 + 1] << 8);
-                dprintf("%d ", val);
-            }
-            dprintf("\n");
         }
 
         // Send response
