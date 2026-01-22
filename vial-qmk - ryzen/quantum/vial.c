@@ -64,6 +64,9 @@
 #define HID_CMD_GAMING_SET_RESPONSE     0xDD  // Set gamepad response settings
 #define HID_CMD_GAMING_GET_RESPONSE     0xDE  // Get gamepad response settings
 
+// ADC Matrix Tester Command (0xDF)
+#define HID_CMD_GET_ADC_MATRIX          0xDF  // Get ADC values for matrix row
+
 #define HID_CMD_SET_LOOP_CONFIG 0xB0
 #define HID_CMD_SET_MAIN_LOOP_CCS 0xB1  
 #define HID_CMD_SET_OVERDUB_CCS 0xB2

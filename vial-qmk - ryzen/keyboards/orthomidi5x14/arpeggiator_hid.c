@@ -610,6 +610,51 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is an ADC matrix tester command (0xDF)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xDF) {
+
+        dprintf("raw_hid_receive_kb: ADC Matrix command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xDF;
+
+        uint8_t row = data[4];  // Row index from request
+
+        // Validate row number
+        if (row >= MATRIX_ROWS) {
+            response[4] = row;
+            response[5] = 0x00;  // Error - invalid row
+        } else {
+            response[4] = row;
+            response[5] = 0x01;  // Success
+
+            // Get ADC values for each column in the row
+            // Each ADC value is 16-bit (0-4095), stored as little-endian
+            // response[6+] = adc_low_0, adc_high_0, adc_low_1, adc_high_1, ...
+            // With 32-byte packet and 6-byte header, we have 26 bytes = 13 ADC values max
+            uint8_t max_cols = (MATRIX_COLS < 13) ? MATRIX_COLS : 13;
+
+            for (uint8_t col = 0; col < max_cols; col++) {
+                uint16_t adc_value = analog_matrix_get_filtered_adc(row, col);
+                response[6 + col * 2] = adc_value & 0xFF;         // Low byte
+                response[6 + col * 2 + 1] = (adc_value >> 8) & 0xFF;  // High byte
+            }
+        }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
