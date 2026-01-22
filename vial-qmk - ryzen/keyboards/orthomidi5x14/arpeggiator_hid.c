@@ -638,14 +638,11 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             response[4] = row;
             response[5] = 0x01;  // Success
 
-            // Get ADC values for each column in the row
-            // Use 8-bit values (scale 12-bit ADC to 8-bit) to fit all 14 columns
-            // response[6+] = adc_scaled_0, adc_scaled_1, ... (one byte per column)
-            // With 32-byte packet and 6-byte header, we have 26 bytes = up to 26 columns
+            // Get travel values for each column in the row
+            // Use analog_matrix_get_travel_normalized() which returns 0-255
+            // This is the same function used by MIDI velocity and gaming code
             for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-                // Get raw ADC value (0-4095) and scale to 8-bit (0-255)
-                uint16_t adc_value = analog_matrix_get_raw_adc(row, col);
-                response[6 + col] = (uint8_t)(adc_value >> 4);  // Scale 12-bit to 8-bit
+                response[6 + col] = analog_matrix_get_travel_normalized(row, col);
             }
 
             dprintf("ADC Matrix row %d: ", row);
