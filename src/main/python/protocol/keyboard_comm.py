@@ -95,6 +95,9 @@ HID_CMD_GAMING_SET_ANALOG_CONFIG = 0xD0  # Set min/max travel and deadzone
 HID_CMD_GAMING_GET_SETTINGS = 0xD1       # Get current gaming settings
 HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
 
+# ADC Matrix Tester Command (0xDF)
+HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
+
 # Per-Key Actuation Commands (0xE0-0xE6)
 HID_CMD_SET_PER_KEY_ACTUATION = 0xE0     # Set actuation for specific key
 HID_CMD_GET_PER_KEY_ACTUATION = 0xE1     # Get actuation for specific key
@@ -654,6 +657,50 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_GET_KEYBOARD_VALUE, VIA_SWITCH_MATRIX_STATE),
                              retries=3)
         return data
+
+    def adc_matrix_poll(self, row):
+        """Poll ADC values for a specific matrix row
+
+        Args:
+            row: Matrix row index (0-based)
+
+        Returns:
+            list: ADC values (0-255 scaled from 12-bit) for each column in the row, or None on error
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_ADC_MATRIX, row, 0...]
+            Response: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_ADC_MATRIX, row, status,
+                      adc_scaled_0, adc_scaled_1, ...] (8-bit values, scaled from 12-bit ADC)
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_GET_ADC_MATRIX, row, None)
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 6:
+                return None
+
+            # Check if command was successful (status byte at index 5)
+            if response[5] != 0x01:
+                return None
+
+            # Parse ADC values from response (starting at index 6)
+            # Each ADC value is 1 byte (scaled from 12-bit to 8-bit)
+            adc_values = []
+            data_start = 6
+            max_cols = min(self.cols, 26) if hasattr(self, 'cols') else 14
+
+            for col in range(max_cols):
+                offset = data_start + col
+                if offset < len(response):
+                    # 8-bit scaled value (0-255)
+                    adc_values.append(response[offset])
+                else:
+                    break
+
+            return adc_values
+
+        except Exception:
+            return None
 
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings

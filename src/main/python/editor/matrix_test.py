@@ -99,6 +99,11 @@ class MatrixTest(BasicEditor):
         self.timer = QTimer()
         self.timer.timeout.connect(self.matrix_poller)
 
+        # ADC polling timer - runs slower to avoid overloading HID
+        self.adc_timer = QTimer()
+        self.adc_timer.timeout.connect(self.adc_poller)
+        self.adc_poll_half = 0  # 0 = first half of rows, 1 = second half
+
         self.unlock_btn.clicked.connect(self.unlock)
         self.reset_btn.clicked.connect(self.reset_keyboard_widget)
 
@@ -123,6 +128,7 @@ class MatrixTest(BasicEditor):
         for w in self.KeyboardWidget2.widgets:
             w.setPressed(False)
             w.setOn(False)
+            w.setAdcValue(None)  # Clear ADC values
 
         self.KeyboardWidget2.update_layout()
         self.KeyboardWidget2.update()
@@ -195,16 +201,74 @@ class MatrixTest(BasicEditor):
         self.KeyboardWidget2.update()
         self.KeyboardWidget2.updateGeometry()
 
+    def adc_poller(self):
+        """Poll ADC values for half the matrix rows each cycle"""
+        if not self.valid():
+            self.adc_timer.stop()
+            return
+
+        try:
+            unlocked = self.keyboard.get_unlock_status(1)
+        except (RuntimeError, ValueError):
+            return
+
+        if not unlocked:
+            return
+
+        rows = self.keyboard.rows
+        cols = self.keyboard.cols
+
+        # Determine which rows to poll this cycle (alternate between first and second half)
+        half_rows = (rows + 1) // 2  # Round up for odd number of rows
+        if self.adc_poll_half == 0:
+            row_start = 0
+            row_end = half_rows
+        else:
+            row_start = half_rows
+            row_end = rows
+
+        # Poll ADC values for the selected rows
+        adc_matrix = {}
+        for row in range(row_start, row_end):
+            try:
+                adc_values = self.keyboard.adc_matrix_poll(row)
+                if adc_values:
+                    adc_matrix[row] = adc_values
+            except (RuntimeError, ValueError):
+                continue
+
+        # Update keyboard widget with ADC values
+        for w in self.KeyboardWidget2.widgets:
+            if w.desc.row is not None and w.desc.col is not None:
+                row = w.desc.row
+                col = w.desc.col
+
+                # Only update keys in the rows we just polled
+                if row in adc_matrix and col < len(adc_matrix[row]):
+                    w.setAdcValue(adc_matrix[row][col])
+
+        # Alternate to the other half for next poll
+        self.adc_poll_half = 1 - self.adc_poll_half
+
+        self.KeyboardWidget2.update()
+
     def unlock(self):
         Unlocker.unlock(self.keyboard)
 
     def activate(self):
         self.grabber.grabKeyboard()
         self.timer.start(20)
+        # Start ADC polling at 500ms intervals (slower to avoid HID overload)
+        self.adc_poll_half = 0  # Reset to first half
+        self.adc_timer.start(500)
 
     def deactivate(self):
         self.grabber.releaseKeyboard()
         self.timer.stop()
+        self.adc_timer.stop()
+        # Clear ADC values when leaving the matrix tester
+        for w in self.KeyboardWidget2.widgets:
+            w.setAdcValue(None)
 
 
 class ThruLoopConfigurator(BasicEditor):

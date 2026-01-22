@@ -610,6 +610,7 @@ class KeyWidget2:
         self.color = None
         self.mask_color = None
         self.scale = 0
+        self.adc_value = None  # ADC value for matrix tester (None = not shown, 0-4095 = value)
 
         self.rotation_angle = desc.rotation_angle
 
@@ -781,6 +782,10 @@ class KeyWidget2:
 
     def setMaskColor(self, color):
         self.mask_color = color
+
+    def setAdcValue(self, value):
+        """Set ADC value for matrix tester display (None to hide, 0-4095 for value)"""
+        self.adc_value = value
 
     def __repr__(self):
         qualifiers = ["KeyboardWidget2"]
@@ -1164,6 +1169,23 @@ class KeyboardWidget2(QWidget):
                 smaller_font.setPointSize(smaller_font.pointSize() - 1)
                 qp.setFont(smaller_font)
                 qp.drawText(key.text_rect, Qt.AlignCenter, key.text)
+
+            # draw ADC value if set (for matrix tester)
+            if key.adc_value is not None:
+                adc_font = qp.font()
+                adc_font.setPointSize(max(6, adc_font.pointSize() - 2))
+                adc_font.setBold(True)
+                qp.setFont(adc_font)
+                # Draw ADC value in a contrasting color
+                qp.setPen(QColor("#00FF00") if key.pressed else QColor("#FFFF00"))
+                # Create a rect at the bottom of the key for ADC value
+                adc_rect = QRect(
+                    round(key.x),
+                    round(key.y + key.h * 0.65),
+                    round(key.w),
+                    round(key.h * 0.30)
+                )
+                qp.drawText(adc_rect, Qt.AlignCenter, str(key.adc_value))
 
             # draw the extra shape (encoder arrow)
             qp.setPen(extra_pen)

@@ -610,6 +610,56 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is an ADC matrix tester command (0xDF)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xDF) {
+
+        dprintf("raw_hid_receive_kb: ADC Matrix command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xDF;
+
+        uint8_t row = data[4];  // Row index from request
+
+        // Validate row number
+        if (row >= MATRIX_ROWS) {
+            response[4] = row;
+            response[5] = 0x00;  // Error - invalid row
+            dprintf("ADC Matrix: Invalid row %d (max %d)\n", row, MATRIX_ROWS);
+        } else {
+            response[4] = row;
+            response[5] = 0x01;  // Success
+
+            // Get ADC values for each column in the row
+            // Use 8-bit values (scale 12-bit ADC to 8-bit) to fit all 14 columns
+            // response[6+] = adc_scaled_0, adc_scaled_1, ... (one byte per column)
+            // With 32-byte packet and 6-byte header, we have 26 bytes = up to 26 columns
+            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+                // Get raw ADC value (0-4095) and scale to 8-bit (0-255)
+                uint16_t adc_value = analog_matrix_get_raw_adc(row, col);
+                response[6 + col] = (uint8_t)(adc_value >> 4);  // Scale 12-bit to 8-bit
+            }
+
+            dprintf("ADC Matrix row %d: ", row);
+            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+                dprintf("%d ", response[6 + col]);
+            }
+            dprintf("\n");
+        }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
