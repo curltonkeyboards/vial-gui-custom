@@ -3053,18 +3053,22 @@ void set_and_save_custom_slot_use_influence(uint8_t slot, bool value) {
 
 // Save all layer actuations to EEPROM
 void save_layer_actuations(void) {
-    eeprom_update_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    eeprom_update_block(layer_actuations, (uint8_t*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
+    eeprom_update_word((uint16_t*)LAYER_ACTUATION_MAGIC_ADDR, LAYER_ACTUATION_MAGIC);
 }
 
-// Load all layer actuations from EEPROM
+// Load all layer actuations from EEPROM (with magic number validation)
 void load_layer_actuations(void) {
-    // TROUBLESHOOTING: Bypass EEPROM and use hardcoded defaults
-    // This ensures we have known-good actuation values for testing
-    // TODO: Re-enable EEPROM loading once key detection is working
-    initialize_layer_actuations();
+    uint16_t magic = eeprom_read_word((uint16_t*)LAYER_ACTUATION_MAGIC_ADDR);
 
-    // Original EEPROM loading code (disabled for troubleshooting):
-    // eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    if (magic == LAYER_ACTUATION_MAGIC) {
+        // Valid data exists, load from EEPROM
+        eeprom_read_block(layer_actuations, (uint8_t*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
+    } else {
+        // First flash or corrupted - use defaults (30% actuation)
+        initialize_layer_actuations();
+        // Don't save during init - layer actuations are small but be consistent
+    }
 }
 
 // Reset all layer actuations to defaults
@@ -3301,7 +3305,9 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
     per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
 
-    save_per_key_actuations();
+    // NOTE: Don't save to EEPROM here - 6.7KB write per key change causes crash
+    // User must explicitly save via reset command or GUI "save all" action
+    // save_per_key_actuations();
 }
 
 // Get per-key actuation and send back via HID

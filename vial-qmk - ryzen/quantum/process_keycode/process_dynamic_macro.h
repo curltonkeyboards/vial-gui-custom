@@ -250,6 +250,8 @@ void set_custom_animations_eeprom_initialized(void);
 // Layer Actuation EEPROM addresses
 #define LAYER_ACTUATION_EEPROM_ADDR 40000  // Layer actuation (60 bytes)
 #define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 60 bytes for 12 layers (5 bytes per layer)
+#define LAYER_ACTUATION_MAGIC_ADDR (LAYER_ACTUATION_EEPROM_ADDR + LAYER_ACTUATION_SIZE)
+#define LAYER_ACTUATION_MAGIC 0xLA30  // "LA30" - validates layer actuation data
 
 // Function declarations (updated signatures - removed rapidfire params)
 void save_layer_actuations(void);
