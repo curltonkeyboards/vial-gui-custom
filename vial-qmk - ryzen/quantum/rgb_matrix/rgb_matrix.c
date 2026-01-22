@@ -30,27 +30,39 @@ const led_point_t k_rgb_matrix_center = {112, 32};
 const led_point_t k_rgb_matrix_center = RGB_MATRIX_CENTER;
 #endif
 
-// Helper function to apply brightness scaling to any RGB values
+// Helper function to apply brightness scaling to limit power draw to ~800mA
+// Based on measured current draw:
+//   1 channel at 255: 877mA -> need 91% scale for 800mA
+//   2 channels at 255: 1127mA -> need 71% scale for 800mA
+//   3 channels at 255: 1120mA -> need 71% scale for 800mA
 static void apply_brightness_scaling_to_rgb(uint8_t *red, uint8_t *green, uint8_t *blue) {
-    // Calculate cumulative RGB values
-    uint16_t rgb_sum = (uint16_t)*red + (uint16_t)*green + (uint16_t)*blue;
-    
-    uint16_t scale_factor = 100; // Default 100% (no scaling)
-    
-    if (rgb_sum >= 250) {
-        if (rgb_sum <= 550) {
-            // Stronger scaling from 250 to 550: 100% down to 50%
-            scale_factor = 100 - ((rgb_sum - 250) * 60) / (550 - 250);
-        } else {
-            // Weaker scaling from 550 to 765: 50% down to 35%
-            scale_factor = 50 - ((rgb_sum - 550) * 30) / (765 - 550);
-        }
-        
-        // Apply scaling to all RGB components
-        *red = ((uint16_t)*red * scale_factor) / 100;
-        *green = ((uint16_t)*green * scale_factor) / 100;
-        *blue = ((uint16_t)*blue * scale_factor) / 100;
+    // Count active channels (threshold of 10 to ignore very dim values)
+    uint8_t active_channels = 0;
+    if (*red > 10) active_channels++;
+    if (*green > 10) active_channels++;
+    if (*blue > 10) active_channels++;
+
+    // Scale factor based on channel count (using 256 as divisor for fast bit-shift)
+    // 1 channel: 91% = 233/256
+    // 2 channels: 71% = 182/256
+    // 3 channels: 71% = 182/256
+    uint8_t scale;
+    switch (active_channels) {
+        case 1:
+            scale = 233;  // 91% for 800mA target
+            break;
+        case 2:
+        case 3:
+            scale = 182;  // 71% for 800mA target
+            break;
+        default:
+            return;  // 0 channels, nothing to scale
     }
+
+    // Apply scaling using fast multiply and shift
+    *red = ((uint16_t)*red * scale) >> 8;
+    *green = ((uint16_t)*green * scale) >> 8;
+    *blue = ((uint16_t)*blue * scale) >> 8;
 }
 
 __attribute__((weak)) RGB rgb_matrix_hsv_to_rgb(HSV hsv) {
