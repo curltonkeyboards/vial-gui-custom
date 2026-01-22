@@ -22,6 +22,12 @@ JOYSTICK_ENABLE = yes       # Enable joystick/gaming controller support
 
 HID_DEBUG_LAYER_RGB = yes
 HID_DEBUG_PER_KEY_RGB = yes
+ORTHOMIDI_CUSTOM_HID_ENABLE = yes
+
+# Convert custom flags to C defines
+ifeq ($(ORTHOMIDI_CUSTOM_HID_ENABLE), yes)
+    OPT_DEFS += -DORTHOMIDI_CUSTOM_HID_ENABLE
+endif
 
 KEYBOARD_SHARED_EP = yes
 
