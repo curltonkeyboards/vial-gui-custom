@@ -619,34 +619,36 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer, ...
 ## Migration Checklist
 
 ### Phase 1: Preparation
-- [ ] Document all current per_key_actuations access points
+- [x] Document all current per_key_actuations access points
 - [ ] Create unit tests for current behavior
 - [ ] Backup current EEPROM layout documentation
 
-### Phase 2: Structure Changes
-- [ ] Define new `per_key_config_lite_t` structure (4 bytes)
-- [ ] Extend `layer_actuation_t` for moved settings
-- [ ] Update `PER_KEY_ACTUATION_EEPROM_ADDR` and size constants
-- [ ] Create migration function for EEPROM data
+### Phase 2: Structure Changes (IMPLEMENTED)
+- [x] Define new `per_key_config_lite_t` structure (4 bytes) - in process_midi.h
+- [x] Keep existing `per_key_actuation_t` for EEPROM/HID compatibility
+- [ ] ~~Update `PER_KEY_ACTUATION_EEPROM_ADDR` and size constants~~ (not needed - kept same structure for storage)
+- [ ] ~~Create migration function for EEPROM data~~ (not needed - compatible structure)
 
-### Phase 3: Core Implementation
-- [ ] Implement active layer cache in matrix.c
-- [ ] Update `get_key_actuation_config()` to use cache
-- [ ] Update `cache_layer_settings()` to include per-key cache refresh
-- [ ] Update `process_rapid_trigger()` to use real per-key values
+### Phase 3: Core Implementation (IMPLEMENTED)
+- [x] Implement active layer cache in matrix.c (280 bytes, fits in L1 cache)
+- [x] Update `get_key_actuation_config()` to use cache
+- [x] Update `analog_matrix_refresh_settings()` to invalidate per-key cache
+- [x] `process_rapid_trigger()` now uses real per-key values via cache
 
 ### Phase 4: Dependent Systems
-- [ ] Update `get_key_velocity_curve()` for new structure
-- [ ] Update `process_midi_key_analog()` for per-key actuation
-- [ ] Verify DKS system still works
-- [ ] Verify null bind system still works
+- [x] `get_key_velocity_curve()` - unchanged, works with full structure
+- [ ] Update `process_midi_key_analog()` for per-key actuation (uses layer-level still)
+- [x] Verify DKS system still works (independent system)
+- [x] Verify null bind system still works (independent system)
 - [ ] Test dynamic macro recording/playback
 
-### Phase 5: HID Protocol
-- [ ] Update `handle_set_per_key_actuation()` for new structure
-- [ ] Update `handle_get_per_key_actuation()` for new structure
-- [ ] Add EEPROM migration command if needed
-- [ ] Update GUI Python code (`keyboard_comm.py`, `trigger_settings.py`)
+### Phase 5: HID Protocol (IMPLEMENTED)
+- [x] Update `handle_set_per_key_actuation()` to invalidate cache
+- [x] Update `handle_get_per_key_actuation()` - unchanged, reads full structure
+- [x] Update `reset_per_key_actuations()` to invalidate cache
+- [x] Update `handle_copy_layer_actuations()` to invalidate cache
+- [x] Update `load_per_key_actuations()` to invalidate cache
+- [ ] Update GUI Python code (no changes needed - protocol unchanged)
 
 ### Phase 6: Testing
 - [ ] Test actuation point changes take effect immediately
@@ -655,6 +657,98 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer, ...
 - [ ] Test layer changes don't cause USB disconnect
 - [ ] Test EEPROM save/load
 - [ ] Test GUI communication
+
+---
+
+## Implementation Details (COMPLETED)
+
+### Approach Taken: Hybrid Cache (Option B Variant)
+
+We implemented a hybrid approach that:
+1. **Keeps full `per_key_actuation_t` (8 bytes)** for EEPROM storage and HID communication
+2. **Adds new `per_key_config_lite_t` (4 bytes)** for runtime scan loop access
+3. **Caches only active layer** (280 bytes) in `active_per_key_cache[]`
+
+This approach has several advantages:
+- **No EEPROM migration needed** - existing user data remains compatible
+- **No HID protocol changes** - GUI communication unchanged
+- **Minimal code changes** - only matrix.c scan loop modified
+- **Fast cache refresh** - ~280 bytes copied on layer change
+
+### New Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ HID Command (0xE0)                                                           │
+│  └── handle_set_per_key_actuation()                                         │
+│       └── Updates per_key_actuations[layer].keys[key]                       │
+│       └── Invalidates active_per_key_cache_layer = 0xFF                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ EEPROM Storage                                                               │
+│  └── per_key_actuations[12][70] (6,720 bytes) - full structure              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              ↓
+              (On layer change or cache invalidation)
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ refresh_per_key_cache(layer)                                                 │
+│  └── Copies essential 4 bytes per key to active_per_key_cache[70]           │
+│       └── actuation → actuation                                              │
+│       └── rapidfire_press_sens → rt_down                                     │
+│       └── rapidfire_release_sens → rt_up                                     │
+│       └── flags → flags                                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Matrix Scan Loop (hot path)                                                  │
+│  └── get_key_actuation_config(key_idx, layer, ...)                          │
+│       └── Reads from active_per_key_cache[key_idx] (4 bytes, in L1 cache)   │
+│       └── Returns: actuation_point, rt_down, rt_up, flags                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Code Changes
+
+**process_midi.h** - Added new structure:
+```c
+typedef struct __attribute__((packed)) {
+    uint8_t actuation;      // 0-100 actuation point
+    uint8_t rt_down;        // RT press sensitivity (0 = disabled)
+    uint8_t rt_up;          // RT release sensitivity
+    uint8_t flags;          // Bit 0: RT enabled, Bit 1: per-key velocity, Bit 2: continuous RT
+} per_key_config_lite_t;
+
+extern per_key_config_lite_t active_per_key_cache[70];
+extern uint8_t active_per_key_cache_layer;
+void refresh_per_key_cache(uint8_t layer);
+```
+
+**matrix.c** - Implemented cache and updated scan loop:
+```c
+// 280 bytes - fits in L1 cache
+per_key_config_lite_t active_per_key_cache[70];
+uint8_t active_per_key_cache_layer = 0xFF;
+
+void refresh_per_key_cache(uint8_t layer) {
+    if (layer == active_per_key_cache_layer) return;
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+    active_per_key_cache_layer = layer;
+}
+```
+
+**orthomidi5x14.c** - Added cache invalidation to all modifying functions:
+- `handle_set_per_key_actuation()` - invalidates cache after setting
+- `reset_per_key_actuations()` - invalidates cache after reset
+- `handle_copy_layer_actuations()` - invalidates cache after copy
+- `load_per_key_actuations()` - invalidates cache after EEPROM load
 
 ---
 

@@ -916,7 +916,7 @@ typedef struct {
 // PER-KEY ACTUATION SYSTEM
 // ============================================================================
 
-// Per-key actuation settings (8 bytes per key)
+// Per-key actuation settings (8 bytes per key) - FULL structure for EEPROM/HID
 typedef struct {
     uint8_t actuation;              // 0-100 (0-2.5mm) - Default: 60 (1.5mm)
     uint8_t deadzone_top;           // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
@@ -927,6 +927,23 @@ typedef struct {
     uint8_t rapidfire_release_sens; // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
     int8_t  rapidfire_velocity_mod; // -64 to +64 (velocity offset per RT) - Default: 0
 } per_key_actuation_t;
+
+// ============================================================================
+// OPTIMIZED PER-KEY CACHE (4 bytes per key) - For fast matrix scan access
+// ============================================================================
+// This lightweight structure is cached in RAM for the active layer only.
+// Total cache size: 70 keys × 4 bytes = 280 bytes (fits in L1 cache)
+// The full per_key_actuation_t is still used for EEPROM and HID communication.
+
+typedef struct __attribute__((packed)) {
+    uint8_t actuation;      // 0-100 (0-2.5mm) actuation point
+    uint8_t rt_down;        // Rapid trigger press sensitivity (0 = RT disabled)
+    uint8_t rt_up;          // Rapid trigger release sensitivity
+    uint8_t flags;          // Bit 0: RT enabled, Bit 1: per-key velocity, Bit 2: continuous RT
+} per_key_config_lite_t;
+
+// Compile-time size check
+_Static_assert(sizeof(per_key_config_lite_t) == 4, "per_key_config_lite_t must be exactly 4 bytes");
 
 // Per-key flag bit definitions
 #define PER_KEY_FLAG_RAPIDFIRE_ENABLED          (1 << 0)
@@ -958,6 +975,14 @@ extern uint8_t analog_mode;  // Global analog mode
 extern layer_key_actuations_t per_key_actuations[12];  // 6720 bytes total (560 bytes × 12 layers)
 // NOTE: per_key_mode_enabled and per_key_per_layer_enabled have been REMOVED
 // Firmware now ALWAYS uses per-key per-layer settings.
+
+// Optimized per-key cache for active layer (280 bytes - fits in L1 cache)
+// This cache is refreshed on layer change and used during matrix scan.
+extern per_key_config_lite_t active_per_key_cache[70];
+extern uint8_t active_per_key_cache_layer;
+
+// Refresh the per-key cache for a given layer
+void refresh_per_key_cache(uint8_t layer);
 
 void save_layer_actuations(void);
 void load_layer_actuations(void);

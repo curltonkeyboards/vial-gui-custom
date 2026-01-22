@@ -3221,12 +3221,16 @@ void load_per_key_actuations(void) {
                       (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                       PER_KEY_ACTUATION_SIZE);
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
+    // Invalidate per-key cache so loaded values take effect
+    active_per_key_cache_layer = 0xFF;
 }
 
 // Reset all per-key actuations to default
 void reset_per_key_actuations(void) {
     initialize_per_key_actuations();
     save_per_key_actuations();
+    // Invalidate per-key cache so changes take effect immediately
+    active_per_key_cache_layer = 0xFF;
 }
 
 // Get actuation point for a specific key
@@ -3288,6 +3292,9 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     per_key_actuations[layer].keys[key_index].rapidfire_press_sens = data[7];
     per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
     per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
+
+    // Invalidate per-key cache so changes take effect immediately
+    active_per_key_cache_layer = 0xFF;
 
     save_per_key_actuations();
 }
@@ -3356,6 +3363,9 @@ void handle_copy_layer_actuations(const uint8_t* data) {
     for (uint8_t i = 0; i < 70; i++) {
         per_key_actuations[dest].keys[i] = per_key_actuations[source].keys[i];
     }
+
+    // Invalidate per-key cache so changes take effect immediately
+    active_per_key_cache_layer = 0xFF;
 
     save_per_key_actuations();
 }

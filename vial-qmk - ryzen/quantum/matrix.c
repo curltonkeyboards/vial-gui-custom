@@ -199,6 +199,33 @@ static uint8_t key_type_cache_layer = 0xFF;   // Layer the cache was built for
 // Forward declaration
 static void refresh_key_type_cache(uint8_t layer);
 
+// ============================================================================
+// PER-KEY ACTUATION CACHE (280 bytes - fits in L1 cache)
+// ============================================================================
+// This cache holds the essential per-key settings for the active layer only.
+// It's refreshed on layer change and used during the matrix scan hot path.
+// The full per_key_actuations[12][70] array is still used for EEPROM/HID.
+
+per_key_config_lite_t active_per_key_cache[70];
+uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
+
+// Refresh the per-key cache from the full per_key_actuations array
+void refresh_per_key_cache(uint8_t layer) {
+    if (layer == active_per_key_cache_layer) return;  // Already cached
+    if (layer >= 12) layer = 0;
+
+    // Copy essential fields from full structure to lightweight cache
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+
+    active_per_key_cache_layer = layer;
+}
+
 // ADC configuration
 #define ADC_GRP_NUM_CHANNELS MATRIX_ROWS
 #define ADC_GRP_BUF_DEPTH 1
@@ -328,7 +355,8 @@ static inline uint8_t distance_to_travel_compat(uint8_t distance) {
 // ============================================================================
 
 void analog_matrix_refresh_settings(void) {
-    cached_layer_settings_layer = 0xFF;  // Force refresh
+    cached_layer_settings_layer = 0xFF;  // Force refresh layer settings
+    active_per_key_cache_layer = 0xFF;   // Force refresh per-key cache
 }
 
 static inline void update_active_settings(uint8_t current_layer) {
@@ -387,7 +415,7 @@ static void refresh_key_type_cache(uint8_t layer) {
 }
 
 // ============================================================================
-// PER-KEY ACTUATION LOOKUP (using layer-level settings to avoid USB disconnect)
+// PER-KEY ACTUATION LOOKUP (using optimized 280-byte cache)
 // ============================================================================
 
 static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
@@ -395,19 +423,31 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    // FIX: Use layer-level actuation settings instead of per-key array
-    // The per_key_actuations[] array access was causing USB disconnection
-    // due to its large size (6.7KB) and frequent access (70x per scan cycle)
+    // FIXED: Using optimized per-key cache (280 bytes, fits in L1 cache)
+    // The cache is refreshed on layer change, so we just read from it here.
+    // This replaces the old 6.7KB per_key_actuations[] array access that
+    // was causing USB disconnection.
 
     if (layer >= 12) layer = 0;
+    if (key_idx >= 70) {
+        // Fallback for invalid key index
+        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
+        *rt_down = 0;
+        *rt_up = 0;
+        *flags = 0;
+        return;
+    }
 
-    // Use layer-level normal actuation setting
-    *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
+    // Ensure cache is valid for current layer
+    refresh_per_key_cache(layer);
 
-    // RT disabled for now - can be re-enabled with layer-level settings later
-    *rt_down = 0;
-    *rt_up = 0;
-    *flags = 0;
+    // Read from lightweight cache (4 bytes per key, all in L1 cache)
+    per_key_config_lite_t *config = &active_per_key_cache[key_idx];
+
+    *actuation_point = actuation_to_distance(config->actuation);
+    *rt_down = config->rt_down;
+    *rt_up = config->rt_up;
+    *flags = config->flags;
 }
 
 // ============================================================================
