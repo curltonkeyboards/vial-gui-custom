@@ -11120,13 +11120,34 @@ snprintf(keylog_str + strlen(keylog_str), sizeof(keylog_str) - strlen(keylog_str
 
 void oled_render_keylog(void) {
 	char name[124];
-
-	snprintf(name, sizeof(name), "\n\n\n\n---------------------");
-
 	int total_length = strlen(getRootName()) + strlen(getChordName()) + strlen(getBassName());
 	int total_padding = 22 - total_length;
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
+
+
+	if (keysplittransposestatus == 1) {snprintf(name, sizeof(name), "\n  TRA%+3d // TRA%+3d", transpose_number + octave_number, transpose_number2 + octave_number2);
+	}else if (keysplittransposestatus == 2) {snprintf(name, sizeof(name), "\n T%+3d / T%+3d  /T%+3d", transpose_number + octave_number,transpose_number2 + octave_number2 ,transpose_number3 + octave_number3);
+	}else if (keysplittransposestatus == 3) {snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
+	}else { snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
+	}
+
+	// Get HE velocity settings from global keyboard settings (no longer per-layer)
+	uint8_t he_min = keyboard_settings.he_velocity_min;
+	uint8_t he_max = keyboard_settings.he_velocity_max;
+
+	// Show HE velocity range for current layer
+	if (he_min == he_max) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
+	} else {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
+	}
+
+	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
+	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
+	}else if (keysplitstatus == 3) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
+	}else { snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1));
+	}
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
 	// Append the RootName, ChordName, and BassName
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
