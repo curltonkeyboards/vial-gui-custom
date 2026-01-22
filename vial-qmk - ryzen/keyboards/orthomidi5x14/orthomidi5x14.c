@@ -3190,37 +3190,47 @@ void handle_reset_layer_actuations(void) {
 // PER-KEY ACTUATION FUNCTIONS
 // =============================================================================
 
-// Initialize all keys to default 1.5mm (value 60)
+// Initialize all keys to default 30% actuation (matching layer-wide troubleshooting value)
+// 30% = ~0.75mm actuation point, triggers with light press
 void initialize_per_key_actuations(void) {
     for (uint8_t layer = 0; layer < 12; layer++) {
         for (uint8_t key = 0; key < 70; key++) {
-            per_key_actuations[layer].keys[key].actuation = DEFAULT_ACTUATION_VALUE;
+            per_key_actuations[layer].keys[key].actuation = 30;  // 30% matches current layer-wide setting
             per_key_actuations[layer].keys[key].deadzone_top = DEFAULT_DEADZONE_TOP;
             per_key_actuations[layer].keys[key].deadzone_bottom = DEFAULT_DEADZONE_BOTTOM;
             per_key_actuations[layer].keys[key].velocity_curve = DEFAULT_VELOCITY_CURVE;
-            per_key_actuations[layer].keys[key].flags = DEFAULT_PER_KEY_FLAGS;  // Now using flags field
+            per_key_actuations[layer].keys[key].flags = DEFAULT_PER_KEY_FLAGS;  // RT off by default
             per_key_actuations[layer].keys[key].rapidfire_press_sens = DEFAULT_RAPIDFIRE_PRESS_SENS;
             per_key_actuations[layer].keys[key].rapidfire_release_sens = DEFAULT_RAPIDFIRE_RELEASE_SENS;
             per_key_actuations[layer].keys[key].rapidfire_velocity_mod = DEFAULT_RAPIDFIRE_VELOCITY_MOD;
         }
     }
-    // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
-// Save per-key actuations to EEPROM
+// Save per-key actuations to EEPROM (with magic number)
 void save_per_key_actuations(void) {
     eeprom_update_block(per_key_actuations,
                         (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                         PER_KEY_ACTUATION_SIZE);
-    // NOTE: Mode flags removed - firmware always uses per-key per-layer
+    // Write magic number to validate data
+    eeprom_update_word((uint16_t*)PER_KEY_ACTUATION_MAGIC_ADDR, PER_KEY_ACTUATION_MAGIC);
 }
 
-// Load per-key actuations from EEPROM
+// Load per-key actuations from EEPROM (with magic number validation)
+// If magic number is invalid (first flash), initializes to defaults and saves
 void load_per_key_actuations(void) {
-    eeprom_read_block(per_key_actuations,
-                      (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
-                      PER_KEY_ACTUATION_SIZE);
-    // NOTE: Mode flags removed - firmware always uses per-key per-layer
+    uint16_t magic = eeprom_read_word((uint16_t*)PER_KEY_ACTUATION_MAGIC_ADDR);
+
+    if (magic == PER_KEY_ACTUATION_MAGIC) {
+        // Valid data exists, load from EEPROM into RAM
+        eeprom_read_block(per_key_actuations,
+                          (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
+                          PER_KEY_ACTUATION_SIZE);
+    } else {
+        // First flash or corrupted data - initialize to defaults and save
+        initialize_per_key_actuations();
+        save_per_key_actuations();
+    }
 }
 
 // Reset all per-key actuations to default
@@ -4828,15 +4838,9 @@ void keyboard_post_init_user(void) {
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
 
-	// FIX: Skip per_key_actuations EEPROM operations - was causing init hang
-	// Reading/writing 6.7KB from EEPROM during init takes too long
-	// Just initialize to defaults in RAM instead
-	initialize_per_key_actuations();  // Set defaults in RAM only
-	// load_per_key_actuations();  // DISABLED - 6.7KB EEPROM read
-	// if (per_key_actuations[0].keys[0].actuation == 0xFF) {
-	//     initialize_per_key_actuations();
-	//     save_per_key_actuations();  // DISABLED - 6.7KB EEPROM write
-	// }
+	// Load per-key actuations from EEPROM into RAM
+	// Uses magic number to detect first flash and initialize defaults
+	load_per_key_actuations();
 
 	// Load user curves from EEPROM
 	user_curves_load();

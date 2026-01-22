@@ -243,9 +243,9 @@ void set_custom_animations_eeprom_initialized(void);
 // Per-Key Actuation EEPROM addresses
 #define PER_KEY_ACTUATION_EEPROM_ADDR 45000  // Per-key actuation (6720 bytes)
 #define PER_KEY_ACTUATION_SIZE (sizeof(per_key_actuation_t) * 70 * 12)  // 6720 bytes (8 bytes × 70 keys × 12 layers)
-#define PER_KEY_ACTUATION_FLAGS_ADDR (PER_KEY_ACTUATION_EEPROM_ADDR + PER_KEY_ACTUATION_SIZE)
-// NOTE: Mode flags (per_key_mode_enabled, per_key_per_layer_enabled) have been REMOVED.
-// Firmware now ALWAYS uses per-key per-layer settings. The flags EEPROM area is now unused.
+// Magic number address for per-key actuation validation (uses former flags area)
+#define PER_KEY_ACTUATION_MAGIC_ADDR (PER_KEY_ACTUATION_EEPROM_ADDR + PER_KEY_ACTUATION_SIZE)
+#define PER_KEY_ACTUATION_MAGIC 0xAC70  // "ACT0" - validates per-key actuation data is initialized
 
 // Layer Actuation EEPROM addresses
 #define LAYER_ACTUATION_EEPROM_ADDR 40000  // Layer actuation (60 bytes)

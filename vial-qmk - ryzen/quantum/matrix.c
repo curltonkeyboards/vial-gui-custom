@@ -387,7 +387,7 @@ static void refresh_key_type_cache(uint8_t layer) {
 }
 
 // ============================================================================
-// PER-KEY ACTUATION LOOKUP (using layer-level settings to avoid USB disconnect)
+// PER-KEY ACTUATION LOOKUP (reads from per_key_actuations[] in RAM)
 // ============================================================================
 
 static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
@@ -395,19 +395,33 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    // FIX: Use layer-level actuation settings instead of per-key array
-    // The per_key_actuations[] array access was causing USB disconnection
-    // due to its large size (6.7KB) and frequent access (70x per scan cycle)
-
+    // Bounds checking
     if (layer >= 12) layer = 0;
+    if (key_idx >= NUM_KEYS) {
+        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
+        *rt_down = 0;
+        *rt_up = 0;
+        *flags = 0;
+        return;
+    }
 
-    // Use layer-level normal actuation setting
-    *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
+    // Read from per-key actuation array (loaded from EEPROM into RAM at startup)
+    const per_key_actuation_t *key_config = &per_key_actuations[layer].keys[key_idx];
 
-    // RT disabled for now - can be re-enabled with layer-level settings later
-    *rt_down = 0;
-    *rt_up = 0;
-    *flags = 0;
+    // Convert actuation percentage (0-100) to distance (0-255)
+    *actuation_point = actuation_to_distance(key_config->actuation);
+
+    // Rapid Trigger settings - convert sensitivity to distance values
+    // Only active if RT flag is enabled for this key
+    if (key_config->flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) {
+        *rt_down = actuation_to_distance(key_config->rapidfire_press_sens);
+        *rt_up = actuation_to_distance(key_config->rapidfire_release_sens);
+    } else {
+        *rt_down = 0;
+        *rt_up = 0;
+    }
+
+    *flags = key_config->flags;
 }
 
 // ============================================================================
