@@ -236,7 +236,7 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //  21 = INCREMENTAL: 1 key per call, no initial fill loop
 //  22 = Just the 70-write defaults, NO reads at all (verify mode 17 still works here)
 // ============================================================================
-#define DIAG_TEST_MODE 22
+#define DIAG_TEST_MODE 21
 
 // Test array for mode 13 - same structure as per_key_actuations
 #if DIAG_TEST_MODE == 13 || DIAG_TEST_MODE == 16 || DIAG_TEST_MODE == 18
@@ -244,7 +244,7 @@ static per_key_actuation_t local_test_keys[70];
 #endif
 
 // For incremental refresh modes
-#if DIAG_TEST_MODE == 19 || DIAG_TEST_MODE == 20
+#if DIAG_TEST_MODE == 19 || DIAG_TEST_MODE == 20 || DIAG_TEST_MODE == 21
 static uint8_t incremental_refresh_index = 0;
 static uint8_t incremental_refresh_target_layer = 0xFF;
 #endif
