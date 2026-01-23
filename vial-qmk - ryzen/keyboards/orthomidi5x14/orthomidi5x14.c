@@ -426,21 +426,22 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
 uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t split_type) {
     uint8_t key_index = row * 14 + col;
     if (key_index < 70 && layer < 12) {
-        // Check flag using cache if available (avoids large array access in hot path)
-        // If cache is for different layer, fall back to full array access
+        // DIAGNOSTIC: Only use cache, never access large per_key_actuations[] array
+        // This tests whether accessing that array is causing USB disconnect
         uint8_t flags;
         if (layer == active_per_key_cache_layer) {
             flags = active_per_key_cache[key_index].flags;
         } else {
-            flags = per_key_actuations[layer].keys[key_index].flags;
+            // Don't access large array - use 0 (no per-key velocity flag set)
+            flags = 0;
         }
 
         // Priority 1: Check if this specific key uses per-key velocity curve
-        if (flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
-            // Need to access full structure for velocity_curve value
-            // This only happens when per-key velocity curve is enabled
-            return per_key_actuations[layer].keys[key_index].velocity_curve;
-        }
+        // DISABLED: Per-key velocity curve requires accessing large array
+        // if (flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
+        //     return per_key_actuations[layer].keys[key_index].velocity_curve;
+        // }
+        (void)flags;  // Suppress unused variable warning
     }
 
     // Priority 2: Check for split-specific curve

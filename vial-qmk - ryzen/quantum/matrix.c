@@ -214,14 +214,24 @@ void refresh_per_key_cache(uint8_t layer) {
     if (layer == active_per_key_cache_layer) return;  // Already cached
     if (layer >= 12) layer = 0;
 
-    // Copy essential fields from full structure to lightweight cache
+    // DIAGNOSTIC: Use default values instead of reading from large array
+    // This tests whether accessing per_key_actuations[] is causing USB disconnect
+    // TODO: Re-enable once the root cause is identified
     for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;  // 60 = 1.5mm
+        active_per_key_cache[i].rt_down = 0;   // RT disabled
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
     }
+
+    // Original code that reads from large array (DISABLED for testing):
+    // for (uint8_t i = 0; i < 70; i++) {
+    //     per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+    //     active_per_key_cache[i].actuation = full->actuation;
+    //     active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+    //     active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+    //     active_per_key_cache[i].flags = full->flags;
+    // }
 
     active_per_key_cache_layer = layer;
 }
