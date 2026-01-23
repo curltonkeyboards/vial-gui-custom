@@ -571,7 +571,9 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             case 0xE1:  // HID_CMD_GET_PER_KEY_ACTUATION
                 // Format: [layer, key_index] at data[6]
-                handle_get_per_key_actuation(&data[6], &response[4]);
+                // Response: [status at 4] [8 data bytes at 5-12]
+                response[4] = 0x01;  // Success status
+                handle_get_per_key_actuation(&data[6], &response[5]);
                 break;
 
             case 0xE2:  // HID_CMD_GET_ALL_PER_KEY_ACTUATIONS
