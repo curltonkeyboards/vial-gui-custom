@@ -606,7 +606,10 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     // Normal mode: reset when key goes above actuation point
     uint8_t reset_point = (flags & PER_KEY_FLAG_CONTINUOUS_RT) ? 0 : actuation_point;
 
-    if (rt_down == 0) {
+    // Check if rapid trigger is enabled via the flag (not just rt_down != 0)
+    bool rt_enabled = (flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) && (rt_down > 0);
+
+    if (!rt_enabled) {
         // RT disabled - simple threshold mode
         key->is_pressed = (key->distance >= actuation_point);
         key->key_dir = KEY_DIR_INACTIVE;
