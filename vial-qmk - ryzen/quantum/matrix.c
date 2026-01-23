@@ -672,16 +672,21 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool pressed = key->is_pressed;
     uint16_t now = timer_read();
 
-    // Use cached settings
-    uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    // Use per-key actuation from cache (280 bytes, fits in L1 cache)
+    // Cache is refreshed on layer change before this function is called
+    uint8_t per_key_actuation = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+    uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
     uint8_t analog_mode = active_settings.velocity_mode;
 
     state->was_pressed = state->pressed;
     state->pressed = pressed;
 
-    // FIX: Removed per_key_actuations[] access - was causing USB disconnect
-    // RT velocity modifier is disabled for now (was: per_key_settings->rapidfire_velocity_mod)
+    // Get RT velocity modifier from full structure (only accessed on note events, not every scan)
+    // This is acceptable since it's not in the hot path
     int8_t rapidfire_velocity_mod = 0;
+    if (key_idx < 70) {
+        rapidfire_velocity_mod = per_key_actuations[current_layer].keys[key_idx].rapidfire_velocity_mod;
+    }
 
     // ========================================================================
     // VELOCITY MODE PROCESSING
@@ -917,12 +922,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 
     // Aftertouch handling - now sends polyphonic aftertouch + optional CC
-    // Uses per-layer settings from active_settings
+    // Uses per-key actuation from cache for threshold
     if (active_settings.aftertouch_mode > 0 && pressed) {
         uint8_t aftertouch_value = 0;
         bool send_aftertouch = false;
 
-        uint8_t normal_threshold = (active_settings.normal_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+        // Use per-key actuation from cache for aftertouch threshold
+        uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+        uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
 
         switch (active_settings.aftertouch_mode) {
             case 1:  // Reverse
@@ -1235,7 +1242,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Refresh key type cache on layer change (eliminates 140 EEPROM reads per scan)
     refresh_key_type_cache(current_layer);
 
-    // Process MIDI keys (uses cached is_midi_key flag - no EEPROM reads)
+    // Refresh per-key actuation cache on layer change (280 bytes, fits in L1 cache)
+    refresh_per_key_cache(current_layer);
+
+    // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
             if (key_type_cache[i] == KEY_TYPE_MIDI) {
@@ -1255,8 +1265,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         }
     }
 
-    // Build matrix from key states (uses cached key types - no EEPROM reads)
-    uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    // Build matrix from key states (uses cached key types and per-key actuation - no EEPROM reads)
     uint8_t analog_mode = active_settings.velocity_mode;
 
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
@@ -1276,6 +1285,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             } else if (key_type == KEY_TYPE_MIDI) {
                 midi_key_state_t *state = &midi_key_states[key_idx];
                 uint8_t travel = distance_to_travel_compat(key->distance);
+
+                // Use per-key actuation from cache (fast, in L1 cache)
+                uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+                uint8_t midi_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
 
                 switch (analog_mode) {
                     case 0:  // Fixed
