@@ -63,6 +63,10 @@ extern bool aftertouch_pedal_active;
 extern layer_key_actuations_t per_key_actuations[12];
 // NOTE: per_key_per_layer_enabled removed - firmware always uses per-key per-layer
 
+// EEPROM functions from orthomidi5x14.c
+extern void load_per_key_actuations(void);
+extern void initialize_per_key_actuations(void);
+
 // Keysplit/transpose variables for aftertouch channel determination
 extern uint8_t keysplitchannel;
 extern uint8_t keysplit2channel;
@@ -208,6 +212,9 @@ static void refresh_key_type_cache(uint8_t layer);
 per_key_config_lite_t active_per_key_cache[70];
 uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 
+// Deferred EEPROM loading - load on first keypress instead of at init
+static bool per_key_eeprom_loaded = false;
+
 // NOTE: Diagnostic test modes (0-25) have been removed after root cause was found.
 // See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
 // Root cause: refresh_per_key_cache called 71x per scan cycle, must return early.
@@ -243,6 +250,41 @@ void force_load_per_key_cache_at_init(uint8_t layer) {
 
     // Mark cache as valid for this layer
     active_per_key_cache_layer = layer;
+}
+
+// Deferred EEPROM load - called on first keypress
+// This loads from EEPROM into per_key_actuations, then refreshes cache.
+// Will cause lag on first keypress but only happens once per power cycle.
+void deferred_load_per_key_eeprom(void) {
+    if (per_key_eeprom_loaded) return;  // Already loaded
+
+    // Load from EEPROM (6.7KB read)
+    load_per_key_actuations();
+
+    // Check if EEPROM was uninitialized (0xFF = never saved)
+    if (per_key_actuations[0].keys[0].actuation == 0xFF) {
+        initialize_per_key_actuations();
+        // Don't save here - user hasn't set anything yet
+    }
+
+    // Refresh cache from loaded values
+    uint8_t current_layer = active_per_key_cache_layer;
+    if (current_layer < 12) {
+        for (uint8_t i = 0; i < 70; i++) {
+            per_key_actuation_t *full = &per_key_actuations[current_layer].keys[i];
+            active_per_key_cache[i].actuation = full->actuation;
+            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+            active_per_key_cache[i].flags = full->flags;
+        }
+    }
+
+    per_key_eeprom_loaded = true;
+}
+
+// Check if EEPROM has been loaded (for external use)
+bool is_per_key_eeprom_loaded(void) {
+    return per_key_eeprom_loaded;
 }
 
 // DISABLED: This function causes USB disconnect even at 1 key per scan.
@@ -1298,6 +1340,18 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
     // Run analog matrix scan
     analog_matrix_task_internal();
+
+    // Deferred EEPROM load: on first keypress, load per-key settings from EEPROM
+    // This causes lag on first press but only happens once per power cycle.
+    // Check if any key has distance > 20 (someone is pressing a key)
+    if (!per_key_eeprom_loaded) {
+        for (uint32_t i = 0; i < NUM_KEYS; i++) {
+            if (key_matrix[i].distance > 20) {
+                deferred_load_per_key_eeprom();
+                break;  // Only need to trigger once
+            }
+        }
+    }
 
     // Get current layer
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
