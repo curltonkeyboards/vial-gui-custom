@@ -652,12 +652,20 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer, ...
 - [x] Update `load_per_key_actuations()` to invalidate cache
 - [ ] Update GUI Python code (no changes needed - protocol unchanged)
 
+### Phase 5.5: EEPROM Disable (TEMPORARY - TESTING)
+- [x] Disable `load_per_key_actuations()` at init - already disabled
+- [x] Disable `save_per_key_actuations()` in `reset_per_key_actuations()`
+- [x] Disable `save_per_key_actuations()` in `handle_set_per_key_actuation()`
+- [x] Disable `save_per_key_actuations()` in `handle_copy_layer_actuations()`
+
+**NOTE:** EEPROM storage of the 6,720-byte per_key_actuations array is completely disabled to test if this was causing USB disconnects at startup. Settings persist in RAM during the session but are lost on power cycle. Re-enable once stability is confirmed.
+
 ### Phase 6: Testing
 - [ ] Test actuation point changes take effect immediately
 - [ ] Test rapid trigger enable/disable per key
 - [ ] Test RT sensitivity changes per key
 - [ ] Test layer changes don't cause USB disconnect
-- [ ] Test EEPROM save/load
+- [ ] ~~Test EEPROM save/load~~ (currently disabled)
 - [ ] Test GUI communication
 
 ---

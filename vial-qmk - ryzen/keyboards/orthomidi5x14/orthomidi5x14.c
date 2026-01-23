@@ -3236,7 +3236,8 @@ void load_per_key_actuations(void) {
 // Reset all per-key actuations to default
 void reset_per_key_actuations(void) {
     initialize_per_key_actuations();
-    save_per_key_actuations();
+    // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
+    // save_per_key_actuations();
     // Invalidate per-key cache so changes take effect immediately
     active_per_key_cache_layer = 0xFF;
 }
@@ -3304,7 +3305,8 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     // Invalidate per-key cache so changes take effect immediately
     active_per_key_cache_layer = 0xFF;
 
-    save_per_key_actuations();
+    // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
+    // save_per_key_actuations();
 }
 
 // Get per-key actuation and send back via HID
@@ -3375,7 +3377,8 @@ void handle_copy_layer_actuations(const uint8_t* data) {
     // Invalidate per-key cache so changes take effect immediately
     active_per_key_cache_layer = 0xFF;
 
-    save_per_key_actuations();
+    // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
+    // save_per_key_actuations();
 }
 
 // =============================================================================
