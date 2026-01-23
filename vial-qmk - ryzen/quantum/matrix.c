@@ -226,17 +226,25 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //  11 = Read single BYTE using volatile -- WORKS
 //  12 = Check array address range -- WORKS
 //  13 = Read 70x from local array (same pattern) -- FAILS (loop is the problem!)
-//  14 = Empty loop 70x (just loop overhead)
-//  15 = Read 70x from extern array (1 byte each)
+//  14 = Empty loop 70x (just loop overhead) -- WORKS
+//  15 = Read 70x from extern array (1 byte each) -- FAILS
 //  16 = Read only 20 elements from local array
-//  17 = Write 70x to cache only (no reads from arrays)
+//  17 = Write 70x to cache only (no reads from arrays) -- WORKS
 //  18 = Separate read loop then write loop
+//  19 = INCREMENTAL REFRESH: Read only 7 keys per call (spread across 10 cycles)
+//  20 = INCREMENTAL REFRESH: Read only 5 keys per call
 // ============================================================================
-#define DIAG_TEST_MODE 14
+#define DIAG_TEST_MODE 19
 
 // Test array for mode 13 - same structure as per_key_actuations
-#if DIAG_TEST_MODE == 13
+#if DIAG_TEST_MODE == 13 || DIAG_TEST_MODE == 16 || DIAG_TEST_MODE == 18
 static per_key_actuation_t local_test_keys[70];
+#endif
+
+// For incremental refresh modes
+#if DIAG_TEST_MODE == 19 || DIAG_TEST_MODE == 20
+static uint8_t incremental_refresh_index = 0;
+static uint8_t incremental_refresh_target_layer = 0xFF;
 #endif
 
 // Refresh the per-key cache from the full per_key_actuations array
@@ -496,6 +504,83 @@ void refresh_per_key_cache(uint8_t layer) {
             active_per_key_cache[i].rt_up = 0;
             active_per_key_cache[i].flags = 0;
         }
+    }
+
+#elif DIAG_TEST_MODE == 19
+    // Mode 19: INCREMENTAL REFRESH - Read only 7 keys per scan cycle
+    // Takes 10 scan cycles to fully refresh, but never blocks USB
+    {
+        // If layer changed, start fresh
+        if (layer != incremental_refresh_target_layer) {
+            incremental_refresh_target_layer = layer;
+            incremental_refresh_index = 0;
+            // Fill with defaults immediately so keys work during refresh
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+                active_per_key_cache[i].rt_down = 0;
+                active_per_key_cache[i].rt_up = 0;
+                active_per_key_cache[i].flags = 0;
+            }
+        }
+
+        // Read 7 keys per cycle
+        uint8_t start = incremental_refresh_index;
+        uint8_t end = start + 7;
+        if (end > 70) end = 70;
+
+        for (uint8_t i = start; i < end; i++) {
+            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+            active_per_key_cache[i].actuation = full->actuation;
+            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+            active_per_key_cache[i].flags = full->flags;
+        }
+
+        incremental_refresh_index = end;
+        if (incremental_refresh_index >= 70) {
+            // Refresh complete
+            active_per_key_cache_layer = layer;
+            incremental_refresh_index = 0;
+        }
+        return;  // Don't set layer until fully refreshed
+    }
+
+#elif DIAG_TEST_MODE == 20
+    // Mode 20: INCREMENTAL REFRESH - Read only 5 keys per scan cycle
+    // Takes 14 scan cycles to fully refresh
+    {
+        // If layer changed, start fresh
+        if (layer != incremental_refresh_target_layer) {
+            incremental_refresh_target_layer = layer;
+            incremental_refresh_index = 0;
+            // Fill with defaults immediately
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+                active_per_key_cache[i].rt_down = 0;
+                active_per_key_cache[i].rt_up = 0;
+                active_per_key_cache[i].flags = 0;
+            }
+        }
+
+        // Read 5 keys per cycle
+        uint8_t start = incremental_refresh_index;
+        uint8_t end = start + 5;
+        if (end > 70) end = 70;
+
+        for (uint8_t i = start; i < end; i++) {
+            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+            active_per_key_cache[i].actuation = full->actuation;
+            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+            active_per_key_cache[i].flags = full->flags;
+        }
+
+        incremental_refresh_index = end;
+        if (incremental_refresh_index >= 70) {
+            active_per_key_cache_layer = layer;
+            incremental_refresh_index = 0;
+        }
+        return;
     }
 
 #endif
