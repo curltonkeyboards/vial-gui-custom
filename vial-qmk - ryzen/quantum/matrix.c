@@ -213,7 +213,7 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 // DIAGNOSTIC: Test modes to find root cause of USB disconnect
 // Change DIAG_TEST_MODE to test different scenarios:
 //   0 = No array access (known working)
-//   1 = Read single element (index 0) from array
+//   1 = Read single element (index 0) from array  -- FAILS
 //   2 = Read 10 elements from array
 //   3 = Read 35 elements from array
 //   4 = Read all 70 elements from array
@@ -222,8 +222,17 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //   7 = Use memcpy instead of field-by-field copy
 //   8 = Read from layer 0 only, ignore layer parameter
 //   9 = Read all 70 but only actuation field (1 byte per key vs 4)
+//  10 = Just take pointer to array element, don't read
+//  11 = Read single BYTE using volatile pointer
+//  12 = Compare array address to known RAM range
+//  13 = Read from local test array (same access pattern)
 // ============================================================================
-#define DIAG_TEST_MODE 1
+#define DIAG_TEST_MODE 10
+
+// Test array for mode 13 - same structure as per_key_actuations
+#if DIAG_TEST_MODE == 13
+static per_key_actuation_t local_test_keys[70];
+#endif
 
 // Refresh the per-key cache from the full per_key_actuations array
 void refresh_per_key_cache(uint8_t layer) {
@@ -240,7 +249,7 @@ void refresh_per_key_cache(uint8_t layer) {
     }
 
 #elif DIAG_TEST_MODE == 1
-    // Mode 1: Read SINGLE element from array
+    // Mode 1: Read SINGLE element from array -- KNOWN TO FAIL
     per_key_actuation_t *full = &per_key_actuations[layer].keys[0];
     active_per_key_cache[0].actuation = full->actuation;
     active_per_key_cache[0].rt_down = full->rapidfire_press_sens;
@@ -354,6 +363,68 @@ void refresh_per_key_cache(uint8_t layer) {
         active_per_key_cache[i].rt_down = 0;
         active_per_key_cache[i].rt_up = 0;
         active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 10
+    // Mode 10: Just take pointer, don't dereference - tests if address calculation crashes
+    {
+        volatile per_key_actuation_t *ptr = &per_key_actuations[layer].keys[0];
+        (void)ptr;  // Don't actually read from it
+    }
+    // Use defaults
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 11
+    // Mode 11: Read single byte using volatile - most minimal read possible
+    {
+        volatile uint8_t *byte_ptr = (volatile uint8_t *)&per_key_actuations[0].keys[0];
+        volatile uint8_t val = *byte_ptr;  // Read exactly 1 byte
+        (void)val;
+    }
+    // Use defaults
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 12
+    // Mode 12: Check array address validity (STM32F412 RAM is 0x20000000-0x2003FFFF)
+    {
+        uintptr_t addr = (uintptr_t)&per_key_actuations[0];
+        // If address is outside RAM, something is very wrong
+        // This doesn't read, just checks the address
+        if (addr < 0x20000000 || addr > 0x2003FFFF) {
+            // Bad address - but we can't really report this without debug output
+            // Just use a marker value
+            active_per_key_cache[0].actuation = 0xFF;  // Marker for bad address
+        } else {
+            active_per_key_cache[0].actuation = 0x01;  // Marker for good address
+        }
+    }
+    // Use defaults for rest
+    for (uint8_t i = 1; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 13
+    // Mode 13: Read from LOCAL test array with same access pattern
+    // This tests if the problem is the extern array specifically
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuation_t *full = &local_test_keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
     }
 
 #endif
