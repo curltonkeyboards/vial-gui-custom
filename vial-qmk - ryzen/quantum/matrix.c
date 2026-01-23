@@ -214,19 +214,37 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 // Root cause: refresh_per_key_cache called 71x per scan cycle, must return early.
 
 // ============================================================================
-// PER-KEY CACHE LOADING (INCREMENTAL APPROACH DISABLED)
+// PER-KEY CACHE LOADING
 // ============================================================================
-// On layer change:
-//   1. refresh_per_key_cache() fills defaults and sets cache layer immediately
-//   2. Keys work immediately with default values
+// Strategy:
+//   1. At startup (keyboard_post_init), load layer 0 fully - USB not active yet
+//   2. On layer change during operation, only fill defaults (no array reads)
 //
-// NOTE: Incremental loading (incremental_load_per_key_cache) is DISABLED.
-// Even 1 struct read per scan from per_key_actuations causes USB disconnect.
-// The struct field access pattern is problematic regardless of frequency.
+// NOTE: Reading from per_key_actuations during scan causes USB disconnect.
+// Even 1 struct read per scan accumulates to USB starvation.
 // See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
 
 static uint8_t incremental_load_index = 70;  // 70 = done loading
 static uint8_t incremental_load_layer = 0xFF;
+
+// Force load all 70 keys for a layer - ONLY SAFE DURING INIT (before USB active)
+// This function reads from per_key_actuations which causes USB disconnect if
+// called during normal operation. Only call from keyboard_post_init_user.
+void force_load_per_key_cache_at_init(uint8_t layer) {
+    if (layer >= 12) layer = 0;
+
+    // Load all 70 keys from the array
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+
+    // Mark cache as valid for this layer
+    active_per_key_cache_layer = layer;
+}
 
 // DISABLED: This function causes USB disconnect even at 1 key per scan.
 // The struct field access pattern from per_key_actuations array is problematic.

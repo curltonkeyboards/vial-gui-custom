@@ -14,6 +14,7 @@
 #include "matrix.h"
 #include <math.h>
 extern MidiDevice midi_device;
+extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 
 #define BANK_SEL_MSB_CC 0
 #define BANK_SEL_LSB_CC 32
@@ -4859,6 +4860,10 @@ void keyboard_post_init_user(void) {
 	//     initialize_per_key_actuations();
 	//     save_per_key_actuations();  // DISABLED - 6.7KB EEPROM write
 	// }
+
+	// Load per-key cache for layer 0 - safe here because USB not active yet
+	// During operation, only defaults are used on layer change (see matrix.c)
+	force_load_per_key_cache_at_init(0);
 
 	// Load user curves from EEPROM
 	user_curves_load();
