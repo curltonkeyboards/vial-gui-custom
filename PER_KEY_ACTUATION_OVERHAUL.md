@@ -635,9 +635,11 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer, ...
 - [x] Update `analog_matrix_refresh_settings()` to invalidate per-key cache
 - [x] `process_rapid_trigger()` now uses real per-key values via cache
 
-### Phase 4: Dependent Systems
+### Phase 4: Dependent Systems (IMPLEMENTED)
 - [x] `get_key_velocity_curve()` - unchanged, works with full structure
-- [ ] Update `process_midi_key_analog()` for per-key actuation (uses layer-level still)
+- [x] Update `process_midi_key_analog()` for per-key actuation
+- [x] Update matrix building loop for per-key MIDI threshold
+- [x] Update aftertouch processing for per-key actuation
 - [x] Verify DKS system still works (independent system)
 - [x] Verify null bind system still works (independent system)
 - [ ] Test dynamic macro recording/playback
