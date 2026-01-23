@@ -3217,12 +3217,45 @@ void initialize_per_key_actuations(void) {
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
-// Save per-key actuations to EEPROM
+// Save per-key actuations to EEPROM (ALL - 6.7KB, use sparingly)
 void save_per_key_actuations(void) {
     eeprom_update_block(per_key_actuations,
                         (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                         PER_KEY_ACTUATION_SIZE);
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
+}
+
+// Save a SINGLE key's actuation settings to EEPROM (8 bytes only)
+// This is much faster than save_per_key_actuations() and won't cause USB issues
+void save_single_key_actuation(uint8_t layer, uint8_t key_index) {
+    if (layer >= 12 || key_index >= 70) return;
+
+    // Calculate EEPROM offset for this specific key
+    // Layout: per_key_actuations[layer][key] = base + (layer * 70 * 8) + (key * 8)
+    uint32_t offset = PER_KEY_ACTUATION_EEPROM_ADDR +
+                      (layer * 70 * sizeof(per_key_actuation_t)) +
+                      (key_index * sizeof(per_key_actuation_t));
+
+    // Write only this key's 8 bytes
+    eeprom_update_block(&per_key_actuations[layer].keys[key_index],
+                        (uint8_t*)offset,
+                        sizeof(per_key_actuation_t));
+}
+
+// Save a single LAYER's per-key actuation settings to EEPROM (560 bytes)
+// Used for operations like copy layer that affect all keys in one layer
+void save_layer_per_key_actuations(uint8_t layer) {
+    if (layer >= 12) return;
+
+    // Calculate EEPROM offset for this layer
+    // Layout: per_key_actuations[layer] = base + (layer * 70 * 8)
+    uint32_t offset = PER_KEY_ACTUATION_EEPROM_ADDR +
+                      (layer * 70 * sizeof(per_key_actuation_t));
+
+    // Write this layer's 560 bytes (70 keys × 8 bytes)
+    eeprom_update_block(&per_key_actuations[layer],
+                        (uint8_t*)offset,
+                        70 * sizeof(per_key_actuation_t));
 }
 
 // Load per-key actuations from EEPROM
@@ -3238,8 +3271,8 @@ void load_per_key_actuations(void) {
 // Reset all per-key actuations to default
 void reset_per_key_actuations(void) {
     initialize_per_key_actuations();
-    // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
-    // save_per_key_actuations();
+    // Full save is acceptable here - reset is a rare user-initiated action
+    save_per_key_actuations();
     // Invalidate per-key cache so changes take effect immediately
     active_per_key_cache_layer = 0xFF;
 }
@@ -3314,8 +3347,8 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     }
     // If editing a different layer, no cache update needed - it will be loaded when that layer is activated
 
-    // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
-    // save_per_key_actuations();
+    // Save only this key to EEPROM (8 bytes, fast)
+    save_single_key_actuation(layer, key_index);
 }
 
 // Get per-key actuation and send back via HID
@@ -3393,8 +3426,8 @@ void handle_copy_layer_actuations(const uint8_t* data) {
         }
     }
 
-    // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
-    // save_per_key_actuations();
+    // Save only the destination layer (560 bytes instead of 6.7KB)
+    save_layer_per_key_actuations(dest);
 }
 
 // =============================================================================
@@ -4865,18 +4898,20 @@ void keyboard_post_init_user(void) {
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
 
-	// FIX: Skip per_key_actuations EEPROM operations - was causing init hang
-	// Reading/writing 6.7KB from EEPROM during init takes too long
-	// Just initialize to defaults in RAM instead
-	initialize_per_key_actuations();  // Set defaults in RAM only
-	// load_per_key_actuations();  // DISABLED - 6.7KB EEPROM read
-	// if (per_key_actuations[0].keys[0].actuation == 0xFF) {
-	//     initialize_per_key_actuations();
-	//     save_per_key_actuations();  // DISABLED - 6.7KB EEPROM write
-	// }
+	// Load per-key actuations from EEPROM (6.7KB read)
+	// This is safe here because USB is not active yet during keyboard_post_init
+	load_per_key_actuations();
 
-	// Load per-key cache for layer 0 - safe here because USB not active yet
-	// During operation, only defaults are used on layer change (see matrix.c)
+	// Check if EEPROM was uninitialized (0xFF values = never saved)
+	// If so, initialize to defaults and save
+	if (per_key_actuations[0].keys[0].actuation == 0xFF) {
+		initialize_per_key_actuations();
+		// Use full save for first-time init (only happens once)
+		save_per_key_actuations();
+	}
+
+	// Load per-key cache for layer 0 from the array we just loaded
+	// This populates the 280-byte fast cache used during scan loop
 	force_load_per_key_cache_at_init(0);
 
 	// Load user curves from EEPROM
