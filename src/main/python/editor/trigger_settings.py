@@ -2011,28 +2011,30 @@ class TriggerSettingsTab(BasicEditor):
         self.update_actuation_visualizer()
 
     def on_save(self):
-        """Save pending global actuation and per-key changes to device"""
+        """Save pending global actuation and per-key changes to device
+
+        NOTE: Layer-wide actuation changes are converted to per-key commands.
+        The layer actuation HID command (0xCA) is no longer used for actuation
+        because it conflicts with arpeggiator commands. Instead, when the user
+        changes layer-wide actuation, apply_actuation_to_keys() adds all affected
+        keys to pending_per_key_keys, and we send per-key commands (0xE0) for each.
+        """
         has_layer_changes = self.has_unsaved_changes and self.pending_layer_data is not None
         has_per_key_changes = len(self.pending_per_key_keys) > 0
 
         if not has_layer_changes and not has_per_key_changes:
             return
 
-        # Apply pending layer changes
+        # Apply pending layer changes to local state
         if has_layer_changes:
             for i in range(12):
                 self.layer_data[i]['normal'] = self.pending_layer_data[i]['normal']
                 self.layer_data[i]['midi'] = self.pending_layer_data[i]['midi']
+            # NOTE: Layer actuation HID command (0xCA) removed - conflicts with arpeggiator
+            # Actuation is now per-key only. The apply_actuation_to_keys() function already
+            # added all affected keys to pending_per_key_keys, so they'll be sent below.
 
-            # Send layer actuation to device
-            if self.device and isinstance(self.device, VialKeyboard):
-                if self.per_layer_enabled:
-                    for layer in range(12):
-                        self.send_layer_actuation(layer)
-                else:
-                    self.send_layer_actuation(0)
-
-        # Send pending per-key changes to device
+        # Send pending per-key changes to device (includes layer-wide actuation changes)
         if has_per_key_changes and self.device and isinstance(self.device, VialKeyboard):
             for layer, key_index in self.pending_per_key_keys:
                 settings = self.per_key_values[layer][key_index]
@@ -2653,25 +2655,17 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
 
     def send_layer_actuation(self, layer):
-        """Send layer actuation settings to device"""
-        data = self.layer_data[layer]
+        """DEPRECATED: Layer actuation HID command removed.
 
-        # Build flags byte (no velocity curve flag - that's now per-key)
-        flags = 0
-        # Bit 2 (use_fixed_velocity) is set in the actuation settings tab, not here
+        This function is no longer used because:
+        1. Command 0xCA conflicts with arpeggiator (ARP_CMD_SET_NOTE)
+        2. Firmware already uses per-key actuation exclusively
+        3. Layer-wide changes are now sent as 70 per-key commands via apply_actuation_to_keys()
 
-        # Build payload: [layer, normal, midi, velocity, vel_speed, flags] (6 bytes)
-        payload = bytes([
-            layer,
-            data['normal'],
-            data['midi'],
-            data['velocity'],
-            data['vel_speed'],
-            flags
-        ])
-
-        # Send to device
-        self.device.keyboard.set_layer_actuation(payload)
+        Keeping this function for reference but it should not be called.
+        """
+        # DEPRECATED - do not use
+        pass
 
     def is_midi_keycode(self, keycode):
         """Check if a keycode is a MIDI note keycode (base, keysplit, or triplesplit)"""

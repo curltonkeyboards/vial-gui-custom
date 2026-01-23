@@ -895,9 +895,14 @@ uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_i
 
 // Layer actuation structure (per-layer settings)
 // Global MIDI settings (velocity, transpose, channel, etc) moved to keyboard_settings_t
+//
+// NOTE: Actuation points (normal_actuation, midi_actuation) are DEPRECATED.
+// Firmware now uses per-key actuation exclusively via active_per_key_cache.
+// These fields are kept for EEPROM compatibility but are not used.
+// The HID commands 0xCA-0xCC for layer actuation conflict with arpeggiator and are disabled.
 typedef struct {
-    uint8_t normal_actuation;              // 0-100 (0-2.5mm)
-    uint8_t midi_actuation;                // 0-100 (0-2.5mm)
+    uint8_t normal_actuation;              // DEPRECATED - per-key only now
+    uint8_t midi_actuation;                // DEPRECATED - per-key only now
     uint8_t velocity_mode;                 // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
     uint8_t velocity_speed_scale;          // 1-20 (velocity scale multiplier)
     uint8_t flags;                         // Bit 2: use_fixed_velocity (per-key velocity curve now moved to per-key flags)

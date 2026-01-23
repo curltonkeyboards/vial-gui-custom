@@ -816,5 +816,69 @@ void refresh_per_key_cache(uint8_t layer) {
 
 ---
 
+---
+
+## Final Status: IMPLEMENTATION COMPLETE
+
+### Summary of Changes Made
+
+The per-key actuation system has been successfully overhauled with the following key changes:
+
+#### Firmware Changes
+
+1. **Startup Cache Loading** (`orthomidi5x14.c`)
+   - Layer 0 per-key cache loaded at `keyboard_post_init_kb()` before USB active
+   - Avoids array access during scan loop entirely
+
+2. **Direct Cache Updates** (`orthomidi5x14.c`)
+   - HID set commands update `active_per_key_cache[]` directly
+   - No cache invalidation needed (was causing USB disconnect)
+
+3. **Rapid Trigger Flag Fix** (`matrix.c`)
+   - Now checks `(flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) && (rt_down > 0)`
+   - Previously only checked `rt_down == 0`
+
+4. **HID Response Offset Fix** (`arpeggiator_hid.c`)
+   - GET_PER_KEY_ACTUATION (0xE1) response data at offset 5, not 4
+   - Added status byte at offset 4
+
+5. **Deprecated Layer Actuation** (`vial.c`, `process_midi.h`, `matrix.c`)
+   - Commands 0xCA-0xCC conflict with arpeggiator, now deprecated
+   - `normal_actuation`/`midi_actuation` fields marked deprecated
+   - Removed from `active_settings` struct
+
+#### GUI Changes
+
+1. **Per-Key Only Architecture** (`trigger_settings.py`)
+   - Removed `send_layer_actuation()` HID calls
+   - Layer-wide changes send 70 per-key commands (0xE0)
+   - Uses `apply_actuation_to_keys()` for all actuation changes
+
+### What Works Now
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Per-key actuation point | **WORKING** | Layer 0 loaded at startup |
+| Per-key rapid trigger | **WORKING** | Flag + rt_down checked correctly |
+| Per-key deadzones | **WORKING** | Read via HID, used in scan |
+| Per-key velocity curve | **WORKING** | Unchanged, via `get_key_velocity_curve()` |
+| Per-key continuous RT | **WORKING** | Flag bit 2 checked |
+| GUI per-key changes | **WORKING** | Direct cache update |
+| GUI layer-wide changes | **WORKING** | Converted to 70 per-key commands |
+
+### Known Limitations
+
+1. **Layer 0 only** - Other layers use defaults (1.5mm, RT disabled)
+2. **No EEPROM persistence** - Values reset on power cycle
+3. **Command conflict** - 0xCA-0xCC owned by arpeggiator (by design)
+
+### Future Improvements (Optional)
+
+- [ ] Implement background loading for other layers
+- [ ] Re-enable EEPROM storage with chunked writes
+- [ ] Resolve command ID conflict (if arpeggiator not needed)
+
+---
+
 *Document generated for per-key actuation system overhaul planning.*
-*Last updated: Investigation phase complete.*
+*Last updated: Implementation complete - startup loading + per-key only architecture.*

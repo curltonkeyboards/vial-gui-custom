@@ -168,9 +168,8 @@ static uint8_t cached_layer = 0xFF;
 static uint8_t cached_layer_settings_layer = 0xFF;
 
 // Cached layer settings for hot path
+// NOTE: normal_actuation and midi_actuation removed - per-key only now
 static struct {
-    uint8_t normal_actuation;
-    uint8_t midi_actuation;
     uint8_t velocity_mode;
     uint8_t velocity_speed_scale;
     // Per-layer aftertouch settings
@@ -429,8 +428,7 @@ static inline void update_active_settings(uint8_t current_layer) {
     if (current_layer >= 12) current_layer = 0;
 
     if (cached_layer_settings_layer != current_layer) {
-        active_settings.normal_actuation = layer_actuations[current_layer].normal_actuation;
-        active_settings.midi_actuation = layer_actuations[current_layer].midi_actuation;
+        // NOTE: normal_actuation and midi_actuation removed - per-key only now
         active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
         active_settings.velocity_speed_scale = layer_actuations[current_layer].velocity_speed_scale;
         // Per-layer aftertouch settings

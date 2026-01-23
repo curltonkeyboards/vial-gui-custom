@@ -154,8 +154,189 @@ Even though mode 25 works, we still can't read all 70 keys from `per_key_actuati
 
 ---
 
-## Next Steps
+## Implementation Status: COMPLETED
 
-1. Implement Option B or D for proper per-key actuation support
-2. Consider restructuring per_key_actuations for better cache performance
-3. Profile actual timing to understand exact USB timing constraints
+### Final Solution: Startup Loading + Per-Key Only Architecture
+
+We implemented a hybrid approach that:
+1. **Loads layer 0 per-key cache at startup** (before USB is active)
+2. **Uses per-key commands exclusively** (layer-wide actuation commands deprecated)
+3. **Updates cache directly on HID changes** (no incremental loading needed)
+
+---
+
+## Session Achievements
+
+### 1. Startup Loading (Layer 0 Only)
+
+**Implementation:** Load the per-key cache for layer 0 during `keyboard_post_init_kb()`, before USB enumeration:
+
+```c
+// In orthomidi5x14.c keyboard_post_init_kb():
+// Load per-key cache for layer 0 BEFORE USB is active
+// This avoids the scan loop array access issue
+refresh_per_key_cache_startup(0);
+```
+
+**Why it works:**
+- No USB stack to starve at startup
+- Single memcpy-style operation completes before scan loop starts
+- Cache is valid from first scan cycle
+
+**Limitation:** Only layer 0 is loaded. Other layers use defaults until we implement background loading.
+
+### 2. HID Response Offset Fix
+
+**Bug:** GUI expected per-key actuation data at `response[5]`, firmware wrote at `response[4]`.
+
+**Symptom:** All keys showed 0.1mm actuation in GUI (reading deadzone_top instead of actuation).
+
+**Fix in `arpeggiator_hid.c`:**
+```c
+case 0xE1:  // HID_CMD_GET_PER_KEY_ACTUATION
+    response[4] = 0x01;  // Success status
+    handle_get_per_key_actuation(&data[6], &response[5]);  // Data at offset 5
+    break;
+```
+
+### 3. Rapid Trigger Flag Fix
+
+**Bug:** Firmware checked `if (rt_down == 0)` to disable RT, but GUI uses flags bit 0.
+
+**Symptom:** RT was always active because GUI sends rt_down=4 even when RT disabled.
+
+**Fix in `matrix.c`:**
+```c
+// Check if rapid trigger is enabled via the flag (not just rt_down != 0)
+bool rt_enabled = (flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) && (rt_down > 0);
+
+if (!rt_enabled) {
+    // RT disabled - simple threshold mode
+    key->is_pressed = (key->distance >= actuation_point);
+}
+```
+
+### 4. Per-Key Cache Direct Update
+
+**Bug:** Cache was invalidated on HID changes, forcing re-read from large array.
+
+**Symptom:** USB disconnect when GUI changed per-key values.
+
+**Fix in `orthomidi5x14.c`:**
+```c
+void handle_set_per_key_actuation(uint8_t *data, uint8_t *response) {
+    // ... save to per_key_actuations ...
+
+    // Update active cache directly (don't invalidate!)
+    if (layer == active_per_key_cache_layer) {
+        active_per_key_cache[key_idx].actuation = settings->actuation;
+        active_per_key_cache[key_idx].rt_down = settings->rapidfire_press_sens;
+        active_per_key_cache[key_idx].rt_up = settings->rapidfire_release_sens;
+        active_per_key_cache[key_idx].flags = settings->flags;
+    }
+}
+```
+
+### 5. Layer Actuation Command Deprecation
+
+**Problem:** Commands 0xCA, 0xCB, 0xCC conflict with arpeggiator commands:
+- 0xCA = ARP_CMD_SET_NOTE (arpeggiator) vs SET_LAYER_ACTUATION
+- 0xCB = ARP_CMD_SET_NOTES_CHUNK (arpeggiator) vs GET_LAYER_ACTUATION
+- 0xCC = ARP_CMD_SET_MODE (arpeggiator) vs GET_ALL_LAYER_ACTUATIONS
+
+**Solution:** Deprecated layer actuation commands. GUI now sends 70 per-key commands (0xE0) for layer-wide changes.
+
+**Changes:**
+- `trigger_settings.py`: Removed `send_layer_actuation()` calls, uses `apply_actuation_to_keys()` only
+- `vial.c`: Added deprecation comments to 0xCA-0xCC cases
+- `process_midi.h`: Marked normal_actuation/midi_actuation fields as deprecated
+- `matrix.c`: Removed unused actuation fields from active_settings struct
+
+---
+
+## Current Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STARTUP (keyboard_post_init_kb)                                              │
+│  └── refresh_per_key_cache_startup(0)                                        │
+│       └── Loads layer 0 per-key values BEFORE USB active                    │
+│       └── 280 bytes copied to active_per_key_cache[]                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ GUI CHANGES (HID command 0xE0)                                               │
+│  └── handle_set_per_key_actuation()                                          │
+│       └── Updates per_key_actuations[layer].keys[key] (EEPROM disabled)     │
+│       └── Updates active_per_key_cache[key] directly if same layer          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LAYER-WIDE CHANGES (GUI trigger settings)                                    │
+│  └── User changes "Actuation Point" slider                                   │
+│       └── GUI calls apply_actuation_to_keys() for all 70 keys               │
+│       └── Sends 70 × HID command 0xE0 (per-key set)                         │
+│       └── Each command updates cache directly                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ SCAN LOOP (matrix_scan_custom)                                               │
+│  └── process_rapid_trigger()                                                 │
+│       └── get_key_actuation_config()                                         │
+│            └── Reads from active_per_key_cache[key_idx] (280 bytes, L1)     │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Known Limitations
+
+### 1. Layer 0 Only for Per-Key Values
+- Only layer 0 has real per-key values loaded at startup
+- Other layers use default values (1.5mm actuation, RT disabled)
+- **Workaround:** Most users only use layer 0 for gaming
+
+### 2. EEPROM Storage Disabled
+- Per-key values not persisted to EEPROM (6,720 byte array)
+- Values reset to defaults on power cycle
+- Layer actuation values ARE still saved (120 bytes)
+- **Reason:** Large EEPROM operations may cause issues
+
+### 3. Layer-Wide Actuation via Per-Key
+- Changing layer-wide actuation sends 70 HID commands
+- Slightly slower than single command (but works reliably)
+- **Impact:** ~100-200ms to apply layer-wide change
+
+### 4. Command ID Conflict Remains
+- 0xCA-0xCC still handled by arpeggiator_hid.c
+- Layer actuation commands don't work (by design)
+- **Impact:** None - we use per-key only now
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `matrix.c` | RT flag fix, removed unused actuation fields, startup cache loading |
+| `orthomidi5x14.c` | Direct cache update, startup loading function |
+| `arpeggiator_hid.c` | HID response offset fix for 0xE1 |
+| `process_midi.h` | Deprecated layer actuation fields |
+| `vial.c` | Deprecated 0xCA-0xCC command comments |
+| `trigger_settings.py` | Removed layer actuation HID calls |
+
+---
+
+## Testing Checklist
+
+- [x] Per-key actuation changes work in GUI
+- [x] Values read correctly from firmware (0xE1 response)
+- [x] Rapid trigger enable/disable works via flag
+- [x] No USB disconnects during normal operation
+- [x] Layer 0 values loaded at startup
+- [ ] Other layer per-key values (deferred - use defaults)
+- [ ] EEPROM persistence (deferred - disabled)
+
+---
+
+*Document updated after HID audit and per-key only architecture implementation.*
