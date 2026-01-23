@@ -214,17 +214,23 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 // Root cause: refresh_per_key_cache called 71x per scan cycle, must return early.
 
 // ============================================================================
-// PRODUCTION SOLUTION: Incremental cache loading
+// PER-KEY CACHE LOADING (INCREMENTAL APPROACH DISABLED)
 // ============================================================================
 // On layer change:
 //   1. refresh_per_key_cache() fills defaults and sets cache layer immediately
-//   2. incremental_load_per_key_cache() loads 1-2 real values per scan cycle
-// This prevents USB disconnect while still loading real per-key values.
+//   2. Keys work immediately with default values
+//
+// NOTE: Incremental loading (incremental_load_per_key_cache) is DISABLED.
+// Even 1 struct read per scan from per_key_actuations causes USB disconnect.
+// The struct field access pattern is problematic regardless of frequency.
+// See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
 
 static uint8_t incremental_load_index = 70;  // 70 = done loading
 static uint8_t incremental_load_layer = 0xFF;
 
-// Called once per scan from matrix_scan_custom - loads 1 key per call
+// DISABLED: This function causes USB disconnect even at 1 key per scan.
+// The struct field access pattern from per_key_actuations array is problematic.
+// Keeping the code for future reference - need alternative loading approach.
 void incremental_load_per_key_cache(void) {
     if (incremental_load_index >= 70) return;  // Done loading
 
@@ -259,9 +265,11 @@ void refresh_per_key_cache(uint8_t layer) {
     // Set cache layer IMMEDIATELY so next 70 calls return early
     active_per_key_cache_layer = layer;
 
-    // Trigger incremental loading of real values
-    incremental_load_layer = layer;
-    incremental_load_index = 0;  // Start loading from key 0
+    // DISABLED: Incremental loading causes USB disconnect
+    // Even 1 struct read per scan cycle accumulates to USB starvation
+    // TODO: Find alternative approach (timer-based, idle task, etc.)
+    // incremental_load_layer = layer;
+    // incremental_load_index = 0;  // Start loading from key 0
 }
 
 // Old diagnostic modes (0-25) removed - see PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
@@ -1282,9 +1290,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Refresh per-key actuation cache on layer change (fills defaults, marks cache valid)
     refresh_per_key_cache(current_layer);
 
-    // Incrementally load real per-key values (1 key per scan, takes 70 scans to complete)
-    // This is called ONCE per scan (not 71x like refresh_per_key_cache)
-    incremental_load_per_key_cache();
+    // DISABLED: Incremental loading causes USB disconnect even at 1 key per scan
+    // The struct field access pattern from per_key_actuations array is problematic
+    // See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
+    // incremental_load_per_key_cache();
 
     // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
