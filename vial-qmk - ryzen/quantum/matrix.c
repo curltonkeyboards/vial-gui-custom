@@ -681,12 +681,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     state->was_pressed = state->pressed;
     state->pressed = pressed;
 
-    // Get RT velocity modifier from full structure (only accessed on note events, not every scan)
-    // This is acceptable since it's not in the hot path
+    // RT velocity modifier - disabled for now to avoid accessing large array in hot path
+    // TODO: Add to per_key_config_lite_t cache if needed
     int8_t rapidfire_velocity_mod = 0;
-    if (key_idx < 70) {
-        rapidfire_velocity_mod = per_key_actuations[current_layer].keys[key_idx].rapidfire_velocity_mod;
-    }
 
     // ========================================================================
     // VELOCITY MODE PROCESSING
