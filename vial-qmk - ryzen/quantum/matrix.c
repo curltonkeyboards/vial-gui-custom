@@ -233,10 +233,12 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //  18 = Separate read loop then write loop
 //  19 = INCREMENTAL REFRESH: Read only 7 keys per call (spread across 10 cycles)
 //  20 = INCREMENTAL REFRESH: Read only 5 keys per call
-//  21 = INCREMENTAL: 1 key per call, no initial fill loop
-//  22 = Just the 70-write defaults, NO reads at all (verify mode 17 still works here)
+//  21 = INCREMENTAL: 1 key per call, no initial fill loop -- FAILS
+//  22 = Just the 70-write defaults, NO reads at all -- WORKS
+//  23 = Like 21, but always read from layer 0 (hardcoded)
+//  24 = Like 21, but use volatile pointer (like mode 11)
 // ============================================================================
-#define DIAG_TEST_MODE 21
+#define DIAG_TEST_MODE 23
 
 // Test array for mode 13 - same structure as per_key_actuations
 #if DIAG_TEST_MODE == 13 || DIAG_TEST_MODE == 16 || DIAG_TEST_MODE == 18
@@ -244,7 +246,7 @@ static per_key_actuation_t local_test_keys[70];
 #endif
 
 // For incremental refresh modes
-#if DIAG_TEST_MODE == 19 || DIAG_TEST_MODE == 20 || DIAG_TEST_MODE == 21
+#if DIAG_TEST_MODE == 19 || DIAG_TEST_MODE == 20 || DIAG_TEST_MODE == 21 || DIAG_TEST_MODE == 23 || DIAG_TEST_MODE == 24
 static uint8_t incremental_refresh_index = 0;
 static uint8_t incremental_refresh_target_layer = 0xFF;
 #endif
@@ -627,6 +629,71 @@ void refresh_per_key_cache(uint8_t layer) {
         active_per_key_cache[i].rt_down = 0;
         active_per_key_cache[i].rt_up = 0;
         active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 23
+    // Mode 23: Like mode 21, but ALWAYS read from layer 0 (hardcoded)
+    // Tests if variable layer parameter is the problem
+    {
+        if (layer != incremental_refresh_target_layer) {
+            incremental_refresh_target_layer = layer;
+            incremental_refresh_index = 0;
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+                active_per_key_cache[i].rt_down = 0;
+                active_per_key_cache[i].rt_up = 0;
+                active_per_key_cache[i].flags = 0;
+            }
+            return;
+        }
+
+        // Read 1 key, but ALWAYS from layer 0
+        if (incremental_refresh_index < 70) {
+            uint8_t i = incremental_refresh_index;
+            per_key_actuation_t *full = &per_key_actuations[0].keys[i];  // Hardcoded layer 0
+            active_per_key_cache[i].actuation = full->actuation;
+            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+            active_per_key_cache[i].flags = full->flags;
+            incremental_refresh_index++;
+        }
+
+        if (incremental_refresh_index >= 70) {
+            active_per_key_cache_layer = layer;
+        }
+        return;
+    }
+
+#elif DIAG_TEST_MODE == 24
+    // Mode 24: Read 1 key using volatile pointer (like mode 11 but incremental)
+    {
+        if (layer != incremental_refresh_target_layer) {
+            incremental_refresh_target_layer = layer;
+            incremental_refresh_index = 0;
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+                active_per_key_cache[i].rt_down = 0;
+                active_per_key_cache[i].rt_up = 0;
+                active_per_key_cache[i].flags = 0;
+            }
+            return;
+        }
+
+        // Read 1 byte using volatile pointer
+        if (incremental_refresh_index < 70) {
+            uint8_t i = incremental_refresh_index;
+            volatile uint8_t *ptr = (volatile uint8_t *)&per_key_actuations[0].keys[i];
+            active_per_key_cache[i].actuation = ptr[0];  // actuation
+            active_per_key_cache[i].rt_down = ptr[5];    // rapidfire_press_sens
+            active_per_key_cache[i].rt_up = ptr[6];      // rapidfire_release_sens
+            active_per_key_cache[i].flags = ptr[4];      // flags
+            incremental_refresh_index++;
+        }
+
+        if (incremental_refresh_index >= 70) {
+            active_per_key_cache_layer = layer;
+        }
+        return;
     }
 
 #endif
