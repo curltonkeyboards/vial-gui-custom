@@ -213,7 +213,7 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 // DIAGNOSTIC: Test modes to find root cause of USB disconnect
 // Change DIAG_TEST_MODE to test different scenarios:
 //   0 = No array access (known working)
-//   1 = Read single element (index 0) from array  -- FAILS
+//   1 = Read single element (index 0) from array  -- FAILS (but see mode 11!)
 //   2 = Read 10 elements from array
 //   3 = Read 35 elements from array
 //   4 = Read all 70 elements from array
@@ -222,12 +222,17 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //   7 = Use memcpy instead of field-by-field copy
 //   8 = Read from layer 0 only, ignore layer parameter
 //   9 = Read all 70 but only actuation field (1 byte per key vs 4)
-//  10 = Just take pointer to array element, don't read
-//  11 = Read single BYTE using volatile pointer
-//  12 = Compare array address to known RAM range
-//  13 = Read from local test array (same access pattern)
+//  10 = Just take pointer, don't read -- WORKS
+//  11 = Read single BYTE using volatile -- WORKS
+//  12 = Check array address range -- WORKS
+//  13 = Read 70x from local array (same pattern) -- FAILS (loop is the problem!)
+//  14 = Empty loop 70x (just loop overhead)
+//  15 = Read 70x from extern array (1 byte each)
+//  16 = Read only 20 elements from local array
+//  17 = Write 70x to cache only (no reads from arrays)
+//  18 = Separate read loop then write loop
 // ============================================================================
-#define DIAG_TEST_MODE 10
+#define DIAG_TEST_MODE 14
 
 // Test array for mode 13 - same structure as per_key_actuations
 #if DIAG_TEST_MODE == 13
@@ -417,7 +422,7 @@ void refresh_per_key_cache(uint8_t layer) {
     }
 
 #elif DIAG_TEST_MODE == 13
-    // Mode 13: Read from LOCAL test array with same access pattern
+    // Mode 13: Read from LOCAL test array with same access pattern -- FAILS
     // This tests if the problem is the extern array specifically
     for (uint8_t i = 0; i < 70; i++) {
         per_key_actuation_t *full = &local_test_keys[i];
@@ -425,6 +430,72 @@ void refresh_per_key_cache(uint8_t layer) {
         active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
         active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
         active_per_key_cache[i].flags = full->flags;
+    }
+
+#elif DIAG_TEST_MODE == 14
+    // Mode 14: Loop 70 times doing NOTHING (just loop overhead test)
+    {
+        volatile uint8_t dummy = 0;
+        for (uint8_t i = 0; i < 70; i++) {
+            dummy++;
+        }
+        (void)dummy;
+    }
+    // Use defaults
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 15
+    // Mode 15: Read 70 times from extern array (1 byte each, not struct)
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = per_key_actuations[layer].keys[i].actuation;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 16
+    // Mode 16: Read only 20 elements (find threshold)
+    for (uint8_t i = 0; i < 20; i++) {
+        per_key_actuation_t *full = &local_test_keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+    for (uint8_t i = 20; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+#elif DIAG_TEST_MODE == 17
+    // Mode 17: Read 70 but ONLY write to cache (no read from any array)
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = DEFAULT_RAPIDFIRE_PRESS_SENS;
+        active_per_key_cache[i].rt_up = DEFAULT_RAPIDFIRE_RELEASE_SENS;
+        active_per_key_cache[i].flags = DEFAULT_PER_KEY_FLAGS;
+    }
+
+#elif DIAG_TEST_MODE == 18
+    // Mode 18: Two separate loops - first read, then write
+    {
+        volatile uint8_t temp[70];
+        for (uint8_t i = 0; i < 70; i++) {
+            temp[i] = local_test_keys[i].actuation;
+        }
+        for (uint8_t i = 0; i < 70; i++) {
+            active_per_key_cache[i].actuation = temp[i];
+            active_per_key_cache[i].rt_down = 0;
+            active_per_key_cache[i].rt_up = 0;
+            active_per_key_cache[i].flags = 0;
+        }
     }
 
 #endif
