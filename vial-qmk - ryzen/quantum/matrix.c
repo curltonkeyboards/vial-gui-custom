@@ -235,10 +235,11 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //  20 = INCREMENTAL REFRESH: Read only 5 keys per call
 //  21 = INCREMENTAL: 1 key per call, no initial fill loop -- FAILS
 //  22 = Just the 70-write defaults, NO reads at all -- WORKS
-//  23 = Like 21, but always read from layer 0 (hardcoded)
-//  24 = Like 21, but use volatile pointer (like mode 11)
+//  23 = Like 21, but always read from layer 0 (hardcoded) -- FAILS
+//  24 = Like 21, but use volatile pointer (like mode 11) -- FAILS
+//  25 = Fill defaults + 1 volatile read, then done (combines mode 22 + mode 11)
 // ============================================================================
-#define DIAG_TEST_MODE 23
+#define DIAG_TEST_MODE 25
 
 // Test array for mode 13 - same structure as per_key_actuations
 #if DIAG_TEST_MODE == 13 || DIAG_TEST_MODE == 16 || DIAG_TEST_MODE == 18
@@ -694,6 +695,26 @@ void refresh_per_key_cache(uint8_t layer) {
             active_per_key_cache_layer = layer;
         }
         return;
+    }
+
+#elif DIAG_TEST_MODE == 25
+    // Mode 25: Fill defaults + 1 volatile read, then DONE
+    // Combines mode 22 (fill defaults) + mode 11 (1 volatile read)
+    // The key difference from 21-24: we SET active_per_key_cache_layer immediately
+    // so the function won't keep being called every scan cycle
+    {
+        // Fill all with defaults
+        for (uint8_t i = 0; i < 70; i++) {
+            active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+            active_per_key_cache[i].rt_down = 0;
+            active_per_key_cache[i].rt_up = 0;
+            active_per_key_cache[i].flags = 0;
+        }
+        // Do ONE read (like mode 11) - just to prove we can
+        volatile uint8_t *ptr = (volatile uint8_t *)&per_key_actuations[0].keys[0];
+        volatile uint8_t val = *ptr;
+        (void)val;
+        // Function will set active_per_key_cache_layer below, so won't be called again
     }
 
 #endif
