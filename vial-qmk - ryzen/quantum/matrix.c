@@ -233,8 +233,10 @@ uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 //  18 = Separate read loop then write loop
 //  19 = INCREMENTAL REFRESH: Read only 7 keys per call (spread across 10 cycles)
 //  20 = INCREMENTAL REFRESH: Read only 5 keys per call
+//  21 = INCREMENTAL: 1 key per call, no initial fill loop
+//  22 = Just the 70-write defaults, NO reads at all (verify mode 17 still works here)
 // ============================================================================
-#define DIAG_TEST_MODE 19
+#define DIAG_TEST_MODE 22
 
 // Test array for mode 13 - same structure as per_key_actuations
 #if DIAG_TEST_MODE == 13 || DIAG_TEST_MODE == 16 || DIAG_TEST_MODE == 18
@@ -581,6 +583,50 @@ void refresh_per_key_cache(uint8_t layer) {
             incremental_refresh_index = 0;
         }
         return;
+    }
+
+#elif DIAG_TEST_MODE == 21
+    // Mode 21: Read exactly 1 key per call, separate from defaults fill
+    {
+        // First call for this layer: fill defaults only, no reads
+        if (layer != incremental_refresh_target_layer) {
+            incremental_refresh_target_layer = layer;
+            incremental_refresh_index = 0;
+            // Just fill defaults, return immediately
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+                active_per_key_cache[i].rt_down = 0;
+                active_per_key_cache[i].rt_up = 0;
+                active_per_key_cache[i].flags = 0;
+            }
+            return;  // Don't read anything this call
+        }
+
+        // Subsequent calls: read 1 key
+        if (incremental_refresh_index < 70) {
+            uint8_t i = incremental_refresh_index;
+            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+            active_per_key_cache[i].actuation = full->actuation;
+            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+            active_per_key_cache[i].flags = full->flags;
+            incremental_refresh_index++;
+        }
+
+        if (incremental_refresh_index >= 70) {
+            active_per_key_cache_layer = layer;
+        }
+        return;
+    }
+
+#elif DIAG_TEST_MODE == 22
+    // Mode 22: Just fill defaults, never read from per_key_actuations
+    // This should work like mode 17, used to verify baseline
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
     }
 
 #endif
