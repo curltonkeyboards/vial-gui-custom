@@ -3304,8 +3304,15 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
     per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
 
-    // Invalidate per-key cache so changes take effect immediately
-    active_per_key_cache_layer = 0xFF;
+    // Update the cache directly if this is the currently cached layer
+    // This avoids invalidating the cache which would cause it to be refilled with defaults
+    if (layer == active_per_key_cache_layer && key_index < 70) {
+        active_per_key_cache[key_index].actuation = data[2];
+        active_per_key_cache[key_index].rt_down = data[7];   // rapidfire_press_sens
+        active_per_key_cache[key_index].rt_up = data[8];     // rapidfire_release_sens
+        active_per_key_cache[key_index].flags = data[6];
+    }
+    // If editing a different layer, no cache update needed - it will be loaded when that layer is activated
 
     // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
     // save_per_key_actuations();
@@ -3376,8 +3383,15 @@ void handle_copy_layer_actuations(const uint8_t* data) {
         per_key_actuations[dest].keys[i] = per_key_actuations[source].keys[i];
     }
 
-    // Invalidate per-key cache so changes take effect immediately
-    active_per_key_cache_layer = 0xFF;
+    // Update cache directly if destination is the currently cached layer
+    if (dest == active_per_key_cache_layer) {
+        for (uint8_t i = 0; i < 70; i++) {
+            active_per_key_cache[i].actuation = per_key_actuations[dest].keys[i].actuation;
+            active_per_key_cache[i].rt_down = per_key_actuations[dest].keys[i].rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = per_key_actuations[dest].keys[i].rapidfire_release_sens;
+            active_per_key_cache[i].flags = per_key_actuations[dest].keys[i].flags;
+        }
+    }
 
     // DISABLED: save_per_key_actuations() - 6.7KB EEPROM write causes USB disconnect
     // save_per_key_actuations();
