@@ -209,56 +209,46 @@ static void refresh_key_type_cache(uint8_t layer);
 per_key_config_lite_t active_per_key_cache[70];
 uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 
+// NOTE: Diagnostic test modes (0-25) have been removed after root cause was found.
+// See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
+// Root cause: refresh_per_key_cache called 71x per scan cycle, must return early.
+
 // ============================================================================
-// DIAGNOSTIC: Test modes to find root cause of USB disconnect
-// Change DIAG_TEST_MODE to test different scenarios:
-//   0 = No array access (known working)
-//   1 = Read single element (index 0) from array  -- FAILS (but see mode 11!)
-//   2 = Read 10 elements from array
-//   3 = Read 35 elements from array
-//   4 = Read all 70 elements from array
-//   5 = Read same element 70 times (tests cache behavior)
-//   6 = Access array but don't use values (tests read vs computation)
-//   7 = Use memcpy instead of field-by-field copy
-//   8 = Read from layer 0 only, ignore layer parameter
-//   9 = Read all 70 but only actuation field (1 byte per key vs 4)
-//  10 = Just take pointer, don't read -- WORKS
-//  11 = Read single BYTE using volatile -- WORKS
-//  12 = Check array address range -- WORKS
-//  13 = Read 70x from local array (same pattern) -- FAILS (loop is the problem!)
-//  14 = Empty loop 70x (just loop overhead) -- WORKS
-//  15 = Read 70x from extern array (1 byte each) -- FAILS
-//  16 = Read only 20 elements from local array
-//  17 = Write 70x to cache only (no reads from arrays) -- WORKS
-//  18 = Separate read loop then write loop
-//  19 = INCREMENTAL REFRESH: Read only 7 keys per call (spread across 10 cycles)
-//  20 = INCREMENTAL REFRESH: Read only 5 keys per call
-//  21 = INCREMENTAL: 1 key per call, no initial fill loop -- FAILS
-//  22 = Just the 70-write defaults, NO reads at all -- WORKS
-//  23 = Like 21, but always read from layer 0 (hardcoded) -- FAILS
-//  24 = Like 21, but use volatile pointer (like mode 11) -- FAILS
-//  25 = Fill defaults + 1 volatile read, then done (combines mode 22 + mode 11)
+// PRODUCTION SOLUTION: Incremental cache loading
 // ============================================================================
-#define DIAG_TEST_MODE 25
+// On layer change:
+//   1. refresh_per_key_cache() fills defaults and sets cache layer immediately
+//   2. incremental_load_per_key_cache() loads 1-2 real values per scan cycle
+// This prevents USB disconnect while still loading real per-key values.
 
-// Test array for mode 13 - same structure as per_key_actuations
-#if DIAG_TEST_MODE == 13 || DIAG_TEST_MODE == 16 || DIAG_TEST_MODE == 18
-static per_key_actuation_t local_test_keys[70];
-#endif
+static uint8_t incremental_load_index = 70;  // 70 = done loading
+static uint8_t incremental_load_layer = 0xFF;
 
-// For incremental refresh modes
-#if DIAG_TEST_MODE == 19 || DIAG_TEST_MODE == 20 || DIAG_TEST_MODE == 21 || DIAG_TEST_MODE == 23 || DIAG_TEST_MODE == 24
-static uint8_t incremental_refresh_index = 0;
-static uint8_t incremental_refresh_target_layer = 0xFF;
-#endif
+// Called once per scan from matrix_scan_custom - loads 1 key per call
+void incremental_load_per_key_cache(void) {
+    if (incremental_load_index >= 70) return;  // Done loading
 
-// Refresh the per-key cache from the full per_key_actuations array
+    // Load 1 key from the array
+    uint8_t i = incremental_load_index;
+    uint8_t layer = incremental_load_layer;
+
+    if (layer < 12) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+
+    incremental_load_index++;
+}
+
+// Refresh the per-key cache - fills defaults immediately, triggers incremental load
 void refresh_per_key_cache(uint8_t layer) {
     if (layer == active_per_key_cache_layer) return;  // Already cached
     if (layer >= 12) layer = 0;
 
-#if DIAG_TEST_MODE == 0
-    // Mode 0: No array access - use defaults (known working)
+    // Fill all with defaults immediately (keys work right away)
     for (uint8_t i = 0; i < 70; i++) {
         active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
         active_per_key_cache[i].rt_down = 0;
@@ -266,461 +256,15 @@ void refresh_per_key_cache(uint8_t layer) {
         active_per_key_cache[i].flags = 0;
     }
 
-#elif DIAG_TEST_MODE == 1
-    // Mode 1: Read SINGLE element from array -- KNOWN TO FAIL
-    per_key_actuation_t *full = &per_key_actuations[layer].keys[0];
-    active_per_key_cache[0].actuation = full->actuation;
-    active_per_key_cache[0].rt_down = full->rapidfire_press_sens;
-    active_per_key_cache[0].rt_up = full->rapidfire_release_sens;
-    active_per_key_cache[0].flags = full->flags;
-    // Fill rest with defaults
-    for (uint8_t i = 1; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 2
-    // Mode 2: Read 10 elements from array
-    for (uint8_t i = 0; i < 10; i++) {
-        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-    for (uint8_t i = 10; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 3
-    // Mode 3: Read 35 elements from array
-    for (uint8_t i = 0; i < 35; i++) {
-        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-    for (uint8_t i = 35; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 4
-    // Mode 4: Read ALL 70 elements from array (original behavior)
-    for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-
-#elif DIAG_TEST_MODE == 5
-    // Mode 5: Read SAME element 70 times (tests if it's the read count or memory span)
-    for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuation_t *full = &per_key_actuations[layer].keys[0];  // Always index 0
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-
-#elif DIAG_TEST_MODE == 6
-    // Mode 6: Read array but discard values (tests if read itself is the problem)
-    volatile uint8_t dummy = 0;
-    for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-        dummy += full->actuation;  // Read but don't use
-        dummy += full->rapidfire_press_sens;
-        dummy += full->rapidfire_release_sens;
-        dummy += full->flags;
-    }
-    (void)dummy;
-    // Use defaults for actual cache
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 7
-    // Mode 7: Use memcpy for entire layer (tests if loop overhead is the issue)
-    // This copies 560 bytes (70 keys * 8 bytes) but we only need 280 bytes
-    // So we do field-by-field but using memcpy-style pointer arithmetic
-    uint8_t *src = (uint8_t *)&per_key_actuations[layer].keys[0];
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = src[i * 8 + 0];
-        active_per_key_cache[i].rt_down = src[i * 8 + 5];
-        active_per_key_cache[i].rt_up = src[i * 8 + 6];
-        active_per_key_cache[i].flags = src[i * 8 + 4];
-    }
-
-#elif DIAG_TEST_MODE == 8
-    // Mode 8: Always read from layer 0, ignore layer parameter
-    for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuation_t *full = &per_key_actuations[0].keys[i];  // Always layer 0
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-
-#elif DIAG_TEST_MODE == 9
-    // Mode 9: Read only actuation field (1 byte per key instead of 4)
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = per_key_actuations[layer].keys[i].actuation;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 10
-    // Mode 10: Just take pointer, don't dereference - tests if address calculation crashes
-    {
-        volatile per_key_actuation_t *ptr = &per_key_actuations[layer].keys[0];
-        (void)ptr;  // Don't actually read from it
-    }
-    // Use defaults
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 11
-    // Mode 11: Read single byte using volatile - most minimal read possible
-    {
-        volatile uint8_t *byte_ptr = (volatile uint8_t *)&per_key_actuations[0].keys[0];
-        volatile uint8_t val = *byte_ptr;  // Read exactly 1 byte
-        (void)val;
-    }
-    // Use defaults
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 12
-    // Mode 12: Check array address validity (STM32F412 RAM is 0x20000000-0x2003FFFF)
-    {
-        uintptr_t addr = (uintptr_t)&per_key_actuations[0];
-        // If address is outside RAM, something is very wrong
-        // This doesn't read, just checks the address
-        if (addr < 0x20000000 || addr > 0x2003FFFF) {
-            // Bad address - but we can't really report this without debug output
-            // Just use a marker value
-            active_per_key_cache[0].actuation = 0xFF;  // Marker for bad address
-        } else {
-            active_per_key_cache[0].actuation = 0x01;  // Marker for good address
-        }
-    }
-    // Use defaults for rest
-    for (uint8_t i = 1; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 13
-    // Mode 13: Read from LOCAL test array with same access pattern -- FAILS
-    // This tests if the problem is the extern array specifically
-    for (uint8_t i = 0; i < 70; i++) {
-        per_key_actuation_t *full = &local_test_keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-
-#elif DIAG_TEST_MODE == 14
-    // Mode 14: Loop 70 times doing NOTHING (just loop overhead test)
-    {
-        volatile uint8_t dummy = 0;
-        for (uint8_t i = 0; i < 70; i++) {
-            dummy++;
-        }
-        (void)dummy;
-    }
-    // Use defaults
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 15
-    // Mode 15: Read 70 times from extern array (1 byte each, not struct)
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = per_key_actuations[layer].keys[i].actuation;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 16
-    // Mode 16: Read only 20 elements (find threshold)
-    for (uint8_t i = 0; i < 20; i++) {
-        per_key_actuation_t *full = &local_test_keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
-    }
-    for (uint8_t i = 20; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 17
-    // Mode 17: Read 70 but ONLY write to cache (no read from any array)
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = DEFAULT_RAPIDFIRE_PRESS_SENS;
-        active_per_key_cache[i].rt_up = DEFAULT_RAPIDFIRE_RELEASE_SENS;
-        active_per_key_cache[i].flags = DEFAULT_PER_KEY_FLAGS;
-    }
-
-#elif DIAG_TEST_MODE == 18
-    // Mode 18: Two separate loops - first read, then write
-    {
-        volatile uint8_t temp[70];
-        for (uint8_t i = 0; i < 70; i++) {
-            temp[i] = local_test_keys[i].actuation;
-        }
-        for (uint8_t i = 0; i < 70; i++) {
-            active_per_key_cache[i].actuation = temp[i];
-            active_per_key_cache[i].rt_down = 0;
-            active_per_key_cache[i].rt_up = 0;
-            active_per_key_cache[i].flags = 0;
-        }
-    }
-
-#elif DIAG_TEST_MODE == 19
-    // Mode 19: INCREMENTAL REFRESH - Read only 7 keys per scan cycle
-    // Takes 10 scan cycles to fully refresh, but never blocks USB
-    {
-        // If layer changed, start fresh
-        if (layer != incremental_refresh_target_layer) {
-            incremental_refresh_target_layer = layer;
-            incremental_refresh_index = 0;
-            // Fill with defaults immediately so keys work during refresh
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-                active_per_key_cache[i].rt_down = 0;
-                active_per_key_cache[i].rt_up = 0;
-                active_per_key_cache[i].flags = 0;
-            }
-        }
-
-        // Read 7 keys per cycle
-        uint8_t start = incremental_refresh_index;
-        uint8_t end = start + 7;
-        if (end > 70) end = 70;
-
-        for (uint8_t i = start; i < end; i++) {
-            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-            active_per_key_cache[i].actuation = full->actuation;
-            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-            active_per_key_cache[i].flags = full->flags;
-        }
-
-        incremental_refresh_index = end;
-        if (incremental_refresh_index >= 70) {
-            // Refresh complete
-            active_per_key_cache_layer = layer;
-            incremental_refresh_index = 0;
-        }
-        return;  // Don't set layer until fully refreshed
-    }
-
-#elif DIAG_TEST_MODE == 20
-    // Mode 20: INCREMENTAL REFRESH - Read only 5 keys per scan cycle
-    // Takes 14 scan cycles to fully refresh
-    {
-        // If layer changed, start fresh
-        if (layer != incremental_refresh_target_layer) {
-            incremental_refresh_target_layer = layer;
-            incremental_refresh_index = 0;
-            // Fill with defaults immediately
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-                active_per_key_cache[i].rt_down = 0;
-                active_per_key_cache[i].rt_up = 0;
-                active_per_key_cache[i].flags = 0;
-            }
-        }
-
-        // Read 5 keys per cycle
-        uint8_t start = incremental_refresh_index;
-        uint8_t end = start + 5;
-        if (end > 70) end = 70;
-
-        for (uint8_t i = start; i < end; i++) {
-            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-            active_per_key_cache[i].actuation = full->actuation;
-            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-            active_per_key_cache[i].flags = full->flags;
-        }
-
-        incremental_refresh_index = end;
-        if (incremental_refresh_index >= 70) {
-            active_per_key_cache_layer = layer;
-            incremental_refresh_index = 0;
-        }
-        return;
-    }
-
-#elif DIAG_TEST_MODE == 21
-    // Mode 21: Read exactly 1 key per call, separate from defaults fill
-    {
-        // First call for this layer: fill defaults only, no reads
-        if (layer != incremental_refresh_target_layer) {
-            incremental_refresh_target_layer = layer;
-            incremental_refresh_index = 0;
-            // Just fill defaults, return immediately
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-                active_per_key_cache[i].rt_down = 0;
-                active_per_key_cache[i].rt_up = 0;
-                active_per_key_cache[i].flags = 0;
-            }
-            return;  // Don't read anything this call
-        }
-
-        // Subsequent calls: read 1 key
-        if (incremental_refresh_index < 70) {
-            uint8_t i = incremental_refresh_index;
-            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-            active_per_key_cache[i].actuation = full->actuation;
-            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-            active_per_key_cache[i].flags = full->flags;
-            incremental_refresh_index++;
-        }
-
-        if (incremental_refresh_index >= 70) {
-            active_per_key_cache_layer = layer;
-        }
-        return;
-    }
-
-#elif DIAG_TEST_MODE == 22
-    // Mode 22: Just fill defaults, never read from per_key_actuations
-    // This should work like mode 17, used to verify baseline
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
-#elif DIAG_TEST_MODE == 23
-    // Mode 23: Like mode 21, but ALWAYS read from layer 0 (hardcoded)
-    // Tests if variable layer parameter is the problem
-    {
-        if (layer != incremental_refresh_target_layer) {
-            incremental_refresh_target_layer = layer;
-            incremental_refresh_index = 0;
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-                active_per_key_cache[i].rt_down = 0;
-                active_per_key_cache[i].rt_up = 0;
-                active_per_key_cache[i].flags = 0;
-            }
-            return;
-        }
-
-        // Read 1 key, but ALWAYS from layer 0
-        if (incremental_refresh_index < 70) {
-            uint8_t i = incremental_refresh_index;
-            per_key_actuation_t *full = &per_key_actuations[0].keys[i];  // Hardcoded layer 0
-            active_per_key_cache[i].actuation = full->actuation;
-            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-            active_per_key_cache[i].flags = full->flags;
-            incremental_refresh_index++;
-        }
-
-        if (incremental_refresh_index >= 70) {
-            active_per_key_cache_layer = layer;
-        }
-        return;
-    }
-
-#elif DIAG_TEST_MODE == 24
-    // Mode 24: Read 1 key using volatile pointer (like mode 11 but incremental)
-    {
-        if (layer != incremental_refresh_target_layer) {
-            incremental_refresh_target_layer = layer;
-            incremental_refresh_index = 0;
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-                active_per_key_cache[i].rt_down = 0;
-                active_per_key_cache[i].rt_up = 0;
-                active_per_key_cache[i].flags = 0;
-            }
-            return;
-        }
-
-        // Read 1 byte using volatile pointer
-        if (incremental_refresh_index < 70) {
-            uint8_t i = incremental_refresh_index;
-            volatile uint8_t *ptr = (volatile uint8_t *)&per_key_actuations[0].keys[i];
-            active_per_key_cache[i].actuation = ptr[0];  // actuation
-            active_per_key_cache[i].rt_down = ptr[5];    // rapidfire_press_sens
-            active_per_key_cache[i].rt_up = ptr[6];      // rapidfire_release_sens
-            active_per_key_cache[i].flags = ptr[4];      // flags
-            incremental_refresh_index++;
-        }
-
-        if (incremental_refresh_index >= 70) {
-            active_per_key_cache_layer = layer;
-        }
-        return;
-    }
-
-#elif DIAG_TEST_MODE == 25
-    // Mode 25: Fill defaults + 1 volatile read, then DONE
-    // Combines mode 22 (fill defaults) + mode 11 (1 volatile read)
-    // The key difference from 21-24: we SET active_per_key_cache_layer immediately
-    // so the function won't keep being called every scan cycle
-    {
-        // Fill all with defaults
-        for (uint8_t i = 0; i < 70; i++) {
-            active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-            active_per_key_cache[i].rt_down = 0;
-            active_per_key_cache[i].rt_up = 0;
-            active_per_key_cache[i].flags = 0;
-        }
-        // Do ONE read (like mode 11) - just to prove we can
-        volatile uint8_t *ptr = (volatile uint8_t *)&per_key_actuations[0].keys[0];
-        volatile uint8_t val = *ptr;
-        (void)val;
-        // Function will set active_per_key_cache_layer below, so won't be called again
-    }
-
-#endif
-
+    // Set cache layer IMMEDIATELY so next 70 calls return early
     active_per_key_cache_layer = layer;
+
+    // Trigger incremental loading of real values
+    incremental_load_layer = layer;
+    incremental_load_index = 0;  // Start loading from key 0
 }
+
+// Old diagnostic modes (0-25) removed - see PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
 
 // ADC configuration
 #define ADC_GRP_NUM_CHANNELS MATRIX_ROWS
@@ -1735,8 +1279,12 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Refresh key type cache on layer change (eliminates 140 EEPROM reads per scan)
     refresh_key_type_cache(current_layer);
 
-    // Refresh per-key actuation cache on layer change (280 bytes, fits in L1 cache)
+    // Refresh per-key actuation cache on layer change (fills defaults, marks cache valid)
     refresh_per_key_cache(current_layer);
+
+    // Incrementally load real per-key values (1 key per scan, takes 70 scans to complete)
+    // This is called ONCE per scan (not 71x like refresh_per_key_cache)
+    incremental_load_per_key_cache();
 
     // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
