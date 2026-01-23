@@ -4898,21 +4898,17 @@ void keyboard_post_init_user(void) {
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
 
-	// Load per-key actuations from EEPROM (6.7KB read)
-	// This is safe here because USB is not active yet during keyboard_post_init
-	load_per_key_actuations();
+	// EEPROM loading disabled - 6.7KB read during init causes keyboard hang
+	// (OLED gibberish, slow RGB, no keystrokes)
+	// Instead: initialize to defaults, granular saves still work for persistence
+	initialize_per_key_actuations();
 
-	// Check if EEPROM was uninitialized (0xFF values = never saved)
-	// If so, initialize to defaults and save
-	if (per_key_actuations[0].keys[0].actuation == 0xFF) {
-		initialize_per_key_actuations();
-		// Use full save for first-time init (only happens once)
-		save_per_key_actuations();
-	}
-
-	// Load per-key cache for layer 0 from the array we just loaded
+	// Load per-key cache for layer 0 from defaults
 	// This populates the 280-byte fast cache used during scan loop
 	force_load_per_key_cache_at_init(0);
+
+	// TODO: Implement deferred EEPROM loading during idle time
+	// For now, changes are saved per-key (8 bytes) but not restored on boot
 
 	// Load user curves from EEPROM
 	user_curves_load();
