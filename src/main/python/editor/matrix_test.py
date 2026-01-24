@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLa
                            QScrollArea, QSlider, QMenu)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPainterPath, QRegion
+from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QBrush, QPen, QFont, QLinearGradient
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -32,6 +32,103 @@ from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
 from vial_device import VialKeyboard
 from unlocker import Unlocker
+
+
+class ActuationVisualizer(QWidget):
+    """Vertical bar widget that shows key travel distance in real-time"""
+
+    def __init__(self, row, col, label=None, parent=None):
+        super().__init__(parent)
+        self.row = row
+        self.col = col
+        self.label = label if label else f"R{row}C{col}"
+        self.distance_mm = 0.0  # Current distance in mm
+        self.max_travel_mm = 4.0  # Maximum key travel in mm
+
+        # Widget size
+        self.setMinimumWidth(60)
+        self.setMinimumHeight(200)
+        self.setMaximumWidth(80)
+
+    def set_distance(self, distance_hundredths_mm):
+        """Set the current distance in 0.01mm units (0-400 for 0-4.0mm)"""
+        self.distance_mm = distance_hundredths_mm / 100.0
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        width = self.width()
+        height = self.height()
+
+        # Margins
+        margin_top = 25
+        margin_bottom = 35
+        margin_side = 10
+        bar_width = width - 2 * margin_side
+        bar_height = height - margin_top - margin_bottom
+
+        # Draw label at top
+        painter.setPen(QColor(200, 200, 200))
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(9)
+        painter.setFont(font)
+        painter.drawText(0, 0, width, margin_top - 2, Qt.AlignCenter, self.label)
+
+        # Draw outer frame (the track)
+        track_rect = QtCore.QRectF(margin_side, margin_top, bar_width, bar_height)
+        painter.setPen(QPen(QColor(100, 100, 100), 2))
+        painter.setBrush(QBrush(QColor(40, 40, 40)))
+        painter.drawRoundedRect(track_rect, 5, 5)
+
+        # Calculate fill height based on distance (0mm = top, 4mm = bottom)
+        fill_ratio = min(self.distance_mm / self.max_travel_mm, 1.0)
+        fill_height = fill_ratio * (bar_height - 4)  # -4 for inner padding
+
+        # Draw the fill bar (grows from top down as key is pressed)
+        if fill_height > 0:
+            fill_rect = QtCore.QRectF(
+                margin_side + 2,
+                margin_top + 2,
+                bar_width - 4,
+                fill_height
+            )
+
+            # Gradient color: green at top, yellow in middle, red at bottom
+            gradient = QLinearGradient(0, margin_top, 0, margin_top + bar_height)
+            gradient.setColorAt(0.0, QColor(0, 200, 0))      # Green at top (released)
+            gradient.setColorAt(0.5, QColor(255, 200, 0))    # Yellow in middle
+            gradient.setColorAt(1.0, QColor(255, 50, 50))    # Red at bottom (fully pressed)
+
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(gradient))
+            painter.drawRoundedRect(fill_rect, 3, 3)
+
+        # Draw scale markers on the right side
+        painter.setPen(QPen(QColor(150, 150, 150), 1))
+        small_font = QFont()
+        small_font.setPointSize(7)
+        painter.setFont(small_font)
+
+        for mm in [0, 1, 2, 3, 4]:
+            y_pos = margin_top + (mm / self.max_travel_mm) * bar_height
+            # Draw tick mark
+            painter.drawLine(int(width - margin_side + 2), int(y_pos),
+                           int(width - margin_side + 6), int(y_pos))
+            # Draw label
+            painter.drawText(int(width - margin_side + 8), int(y_pos - 6),
+                           30, 12, Qt.AlignLeft | Qt.AlignVCenter, f"{mm}")
+
+        # Draw current distance value at bottom
+        painter.setPen(QColor(255, 255, 255))
+        font.setPointSize(10)
+        font.setBold(True)
+        painter.setFont(font)
+        distance_text = f"{self.distance_mm:.2f}mm"
+        painter.drawText(0, height - margin_bottom + 5, width, margin_bottom - 5,
+                        Qt.AlignCenter, distance_text)
 
 
 class MatrixTest(BasicEditor):
@@ -75,11 +172,52 @@ class MatrixTest(BasicEditor):
         self.reset_btn.setMinimumWidth(80)
         self.reset_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.KeyboardWidget2)
-        layout.setAlignment(self.KeyboardWidget2, Qt.AlignCenter)
+        # Horizontal layout for keyboard widget and actuation visualizers
+        main_content_layout = QHBoxLayout()
+        main_content_layout.setSpacing(20)
 
-        container_layout.addLayout(layout)
+        # Keyboard widget
+        keyboard_layout = QVBoxLayout()
+        keyboard_layout.addWidget(self.KeyboardWidget2)
+        keyboard_layout.setAlignment(self.KeyboardWidget2, Qt.AlignCenter)
+        main_content_layout.addLayout(keyboard_layout)
+
+        # Actuation Visualizer section
+        visualizer_container = QWidget()
+        visualizer_layout = QVBoxLayout()
+        visualizer_layout.setSpacing(5)
+        visualizer_layout.setContentsMargins(0, 0, 0, 0)
+        visualizer_container.setLayout(visualizer_layout)
+
+        # Visualizer title
+        viz_title = QLabel(tr("MatrixTest", "Key Travel (mm)"))
+        viz_title.setStyleSheet("font-weight: bold; font-size: 10pt;")
+        viz_title.setAlignment(Qt.AlignCenter)
+        visualizer_layout.addWidget(viz_title)
+
+        # Create visualizer bars for r0c0, r0c3, r0c11
+        self.actuation_visualizers = {}
+        visualizer_bars_layout = QHBoxLayout()
+        visualizer_bars_layout.setSpacing(10)
+
+        # Keys to visualize: (row, col, label)
+        keys_to_visualize = [
+            (0, 0, "R0C0"),
+            (0, 3, "R0C3"),
+            (0, 11, "R0C11"),
+        ]
+
+        for row, col, label in keys_to_visualize:
+            viz = ActuationVisualizer(row, col, label)
+            self.actuation_visualizers[(row, col)] = viz
+            visualizer_bars_layout.addWidget(viz)
+
+        visualizer_layout.addLayout(visualizer_bars_layout)
+        visualizer_layout.addStretch()
+
+        main_content_layout.addWidget(visualizer_container)
+
+        container_layout.addLayout(main_content_layout)
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
@@ -103,6 +241,12 @@ class MatrixTest(BasicEditor):
         self.adc_timer = QTimer()
         self.adc_timer.timeout.connect(self.adc_poller)
         self.adc_poll_half = 0  # 0 = first half of rows, 1 = second half
+
+        # Distance polling timer for actuation visualizers - fast updates for real-time feel
+        self.distance_timer = QTimer()
+        self.distance_timer.timeout.connect(self.distance_poller)
+        # Keys to poll for distance: [(row, col), ...]
+        self.distance_keys = [(0, 0), (0, 3), (0, 11)]
 
         self.unlock_btn.clicked.connect(self.unlock)
         self.reset_btn.clicked.connect(self.reset_keyboard_widget)
@@ -129,6 +273,10 @@ class MatrixTest(BasicEditor):
             w.setPressed(False)
             w.setOn(False)
             w.setAdcValue(None)  # Clear ADC values
+
+        # Reset actuation visualizers
+        for viz in self.actuation_visualizers.values():
+            viz.set_distance(0)
 
         self.KeyboardWidget2.update_layout()
         self.KeyboardWidget2.update()
@@ -252,6 +400,30 @@ class MatrixTest(BasicEditor):
 
         self.KeyboardWidget2.update()
 
+    def distance_poller(self):
+        """Poll distance values for specific keys to update actuation visualizers"""
+        if not self.valid():
+            self.distance_timer.stop()
+            return
+
+        try:
+            unlocked = self.keyboard.get_unlock_status(1)
+        except (RuntimeError, ValueError):
+            return
+
+        if not unlocked:
+            return
+
+        # Poll distance values for the visualized keys
+        try:
+            distances = self.keyboard.distance_matrix_poll(self.distance_keys)
+            if distances:
+                for (row, col), distance in distances.items():
+                    if (row, col) in self.actuation_visualizers:
+                        self.actuation_visualizers[(row, col)].set_distance(distance)
+        except (RuntimeError, ValueError):
+            pass
+
     def unlock(self):
         Unlocker.unlock(self.keyboard)
 
@@ -261,14 +433,20 @@ class MatrixTest(BasicEditor):
         # Start ADC polling at 500ms intervals (slower to avoid HID overload)
         self.adc_poll_half = 0  # Reset to first half
         self.adc_timer.start(500)
+        # Start distance polling at 50ms intervals for smooth visualization
+        self.distance_timer.start(50)
 
     def deactivate(self):
         self.grabber.releaseKeyboard()
         self.timer.stop()
         self.adc_timer.stop()
+        self.distance_timer.stop()
         # Clear ADC values when leaving the matrix tester
         for w in self.KeyboardWidget2.widgets:
             w.setAdcValue(None)
+        # Reset actuation visualizers
+        for viz in self.actuation_visualizers.values():
+            viz.set_distance(0)
 
 
 class ThruLoopConfigurator(BasicEditor):
