@@ -219,10 +219,14 @@ static bool per_key_eeprom_loaded = false;
 
 // Chunked EEPROM loading state
 // Reads 1 row (14 keys = 112 bytes) per scan cycle to avoid blocking
+// Now loads ALL 12 layers on first keypress (60 chunks total)
 static bool chunked_load_active = false;
-static uint8_t chunked_load_row = 0;
+static uint8_t chunked_load_layer = 0;  // Current layer being loaded (0-11)
+static uint8_t chunked_load_row = 0;    // Current row within layer (0-4)
 #define KEYS_PER_ROW 14
 #define BYTES_PER_ROW (KEYS_PER_ROW * sizeof(per_key_actuation_t))  // 112 bytes
+#define TOTAL_LAYERS 12
+#define ROWS_PER_LAYER 5
 
 // NOTE: Diagnostic test modes (0-25) have been removed after root cause was found.
 // See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
@@ -262,54 +266,63 @@ void force_load_per_key_cache_at_init(uint8_t layer) {
 }
 
 // Start chunked EEPROM loading - called on first keypress
-// This initiates loading 1 row (112 bytes) per scan cycle
+// This initiates loading 1 row (112 bytes) per scan cycle for ALL 12 layers
+// Total: 60 chunks (12 layers × 5 rows) = 6720 bytes loaded over 60 scan cycles
 void start_chunked_eeprom_load(void) {
     if (per_key_eeprom_loaded || chunked_load_active) return;
     chunked_load_active = true;
+    chunked_load_layer = 0;
     chunked_load_row = 0;
 }
 
 // Process one chunk of EEPROM loading (called once per scan cycle)
 // Reads 1 row (14 keys = 112 bytes) from EEPROM into per_key_actuations
-// then updates the active cache for those keys
+// Loads ALL 12 layers (60 chunks total) so layer switching has real data
 void process_chunked_eeprom_load(void) {
     if (!chunked_load_active) return;
-    if (chunked_load_row >= 5) {
-        // Done loading all 5 rows
+
+    // Check if we've finished all layers
+    if (chunked_load_layer >= TOTAL_LAYERS) {
+        // Done loading all 12 layers
         chunked_load_active = false;
         per_key_eeprom_loaded = true;
 
         // Check if EEPROM was uninitialized (0xFF = never saved)
         if (per_key_actuations[0].keys[0].actuation == 0xFF) {
             initialize_per_key_actuations();
-            // Reload cache with initialized defaults
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = per_key_actuations[0].keys[i].actuation;
-                active_per_key_cache[i].rt_down = per_key_actuations[0].keys[i].rapidfire_press_sens;
-                active_per_key_cache[i].rt_up = per_key_actuations[0].keys[i].rapidfire_release_sens;
-                active_per_key_cache[i].flags = per_key_actuations[0].keys[i].flags;
-            }
+        }
+
+        // Reload cache for current layer with actual loaded values
+        uint8_t current_layer = active_per_key_cache_layer;
+        if (current_layer >= 12) current_layer = 0;
+        for (uint8_t i = 0; i < 70; i++) {
+            active_per_key_cache[i].actuation = per_key_actuations[current_layer].keys[i].actuation;
+            active_per_key_cache[i].rt_down = per_key_actuations[current_layer].keys[i].rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = per_key_actuations[current_layer].keys[i].rapidfire_release_sens;
+            active_per_key_cache[i].flags = per_key_actuations[current_layer].keys[i].flags;
         }
         return;
     }
 
-    // Calculate EEPROM offset for this row (layer 0 only for now)
-    // Row 0: keys 0-13, Row 1: keys 14-27, etc.
+    // Calculate EEPROM offset for this layer and row
+    // Layer offset: layer * 70 keys * 8 bytes = layer * 560 bytes
+    // Row offset within layer: row * 14 keys * 8 bytes = row * 112 bytes
     uint8_t start_key = chunked_load_row * KEYS_PER_ROW;
-    uint32_t eeprom_offset = PER_KEY_ACTUATION_EEPROM_ADDR +
-                             (start_key * sizeof(per_key_actuation_t));
+    uint32_t layer_offset = chunked_load_layer * 70 * sizeof(per_key_actuation_t);
+    uint32_t row_offset = start_key * sizeof(per_key_actuation_t);
+    uint32_t eeprom_offset = PER_KEY_ACTUATION_EEPROM_ADDR + layer_offset + row_offset;
 
     // Read 14 keys (112 bytes) from EEPROM directly into per_key_actuations array
-    eeprom_read_block(&per_key_actuations[0].keys[start_key],
+    eeprom_read_block(&per_key_actuations[chunked_load_layer].keys[start_key],
                       (void*)eeprom_offset,
                       BYTES_PER_ROW);
 
-    // Update active cache for these 14 keys (if we're on layer 0)
-    if (active_per_key_cache_layer == 0) {
+    // Update active cache for these 14 keys (only if loading current layer)
+    if (chunked_load_layer == active_per_key_cache_layer) {
         for (uint8_t i = 0; i < KEYS_PER_ROW; i++) {
             uint8_t key_idx = start_key + i;
             if (key_idx < 70) {
-                per_key_actuation_t *full = &per_key_actuations[0].keys[key_idx];
+                per_key_actuation_t *full = &per_key_actuations[chunked_load_layer].keys[key_idx];
                 active_per_key_cache[key_idx].actuation = full->actuation;
                 active_per_key_cache[key_idx].rt_down = full->rapidfire_press_sens;
                 active_per_key_cache[key_idx].rt_up = full->rapidfire_release_sens;
@@ -318,7 +331,12 @@ void process_chunked_eeprom_load(void) {
         }
     }
 
+    // Move to next row, or next layer if row is done
     chunked_load_row++;
+    if (chunked_load_row >= ROWS_PER_LAYER) {
+        chunked_load_row = 0;
+        chunked_load_layer++;
+    }
 }
 
 // Check if EEPROM has been loaded (for external use)
@@ -347,27 +365,34 @@ void incremental_load_per_key_cache(void) {
     incremental_load_index++;
 }
 
-// Refresh the per-key cache - fills defaults immediately, triggers incremental load
+// Refresh the per-key cache - loads actual values from RAM if EEPROM is loaded
 void refresh_per_key_cache(uint8_t layer) {
     if (layer == active_per_key_cache_layer) return;  // Already cached
     if (layer >= 12) layer = 0;
 
-    // Fill all with defaults immediately (keys work right away)
-    for (uint8_t i = 0; i < 70; i++) {
-        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-        active_per_key_cache[i].rt_down = 0;
-        active_per_key_cache[i].rt_up = 0;
-        active_per_key_cache[i].flags = 0;
-    }
-
     // Set cache layer IMMEDIATELY so next 70 calls return early
     active_per_key_cache_layer = layer;
 
-    // DISABLED: Incremental loading causes USB disconnect
-    // Even 1 struct read per scan cycle accumulates to USB starvation
-    // TODO: Find alternative approach (timer-based, idle task, etc.)
-    // incremental_load_layer = layer;
-    // incremental_load_index = 0;  // Start loading from key 0
+    // If EEPROM has been loaded, use actual per-key values from RAM
+    // This is safe because we're reading from RAM (per_key_actuations array),
+    // not from EEPROM. The array was populated during chunked loading.
+    if (per_key_eeprom_loaded) {
+        for (uint8_t i = 0; i < 70; i++) {
+            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+            active_per_key_cache[i].actuation = full->actuation;
+            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+            active_per_key_cache[i].flags = full->flags;
+        }
+    } else {
+        // EEPROM not yet loaded - fill with defaults (keys still work)
+        for (uint8_t i = 0; i < 70; i++) {
+            active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+            active_per_key_cache[i].rt_down = 0;
+            active_per_key_cache[i].rt_up = 0;
+            active_per_key_cache[i].flags = 0;
+        }
+    }
 }
 
 // Old diagnostic modes (0-25) removed - see PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
