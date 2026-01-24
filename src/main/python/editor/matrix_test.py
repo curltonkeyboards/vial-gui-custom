@@ -37,8 +37,8 @@ from unlocker import Unlocker
 class ActuationVisualizerWidget(QWidget):
     """Real-time visualization of key actuation depth in mm.
 
-    Shows a single vertical bar for the most recently pressed key with a moving
-    indicator that goes down as the key is pressed and up as it's released.
+    Shows two vertical bars for R0C0 and R0C3 with moving indicators
+    that go down as keys are pressed and up as they're released.
 
     Uses calibrated distance values directly from firmware (0-255):
     - 0 = key at rest (0mm)
@@ -49,47 +49,27 @@ class ActuationVisualizerWidget(QWidget):
     """
 
     MAX_TRAVEL_MM = 2.5
+    # Fixed keys to monitor
+    MONITORED_KEYS = [(0, 0), (0, 3)]
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(180, 200)
+        self.setMinimumSize(200, 200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Current key being displayed
-        self.current_key = None  # (row, col)
-        self.current_label = ""
-        self.current_distance = 0  # 0-255 from firmware
+        # Distance values for monitored keys: {(row, col): distance}
+        self.distances = {key: 0 for key in self.MONITORED_KEYS}
 
     def set_distance_value(self, row, col, distance, label=""):
-        """Update with calibrated distance value from firmware.
-
-        Args:
-            row: Matrix row
-            col: Matrix column
-            distance: Calibrated distance from firmware (0-255, where 0=rest, 255=pressed)
-            label: Optional key label
-        """
-        if distance is None:
-            return
-
+        """Update with calibrated distance value from firmware."""
         key = (row, col)
-
-        # If key is being pressed (distance > small threshold), show it
-        if distance > 5:  # Small threshold to filter noise
-            self.current_key = key
-            self.current_label = label
-            self.current_distance = distance
-        elif self.current_key == key:
-            # Update current key even when releasing
-            self.current_distance = distance
-
-        self.update()
+        if key in self.distances and distance is not None:
+            self.distances[key] = distance
+            self.update()
 
     def clear_all(self):
         """Clear the display."""
-        self.current_key = None
-        self.current_label = ""
-        self.current_distance = 0
+        self.distances = {key: 0 for key in self.MONITORED_KEYS}
         self.update()
 
     def paintEvent(self, event):
@@ -115,81 +95,82 @@ class ActuationVisualizerWidget(QWidget):
         painter.setFont(title_font)
         painter.drawText(QRect(0, 5, width, 25), Qt.AlignCenter, "Actuation Depth")
 
-        # Placeholder if no key pressed yet
-        if self.current_key is None:
-            font = QFont()
-            font.setPointSize(9)
-            painter.setFont(font)
-            painter.drawText(self.rect(), Qt.AlignCenter, "Press a key")
-            return
-
-        # Single centered bar
-        bar_width = 50
+        # Bar dimensions
+        num_bars = len(self.MONITORED_KEYS)
+        bar_width = 45
+        bar_spacing = 40
+        total_width = num_bars * bar_width + (num_bars - 1) * bar_spacing
+        start_x = (width - total_width) // 2
         bar_height = height - margin_top - margin_bottom
-        bar_x = (width - bar_width) // 2
 
-        # Convert firmware distance (0-255) to ratio and mm
-        # This is exactly what the firmware thinks the position is
-        depth_ratio = self.current_distance / 255.0
-        mm_value = depth_ratio * self.MAX_TRAVEL_MM
-
-        # Bar background
-        painter.setPen(QPen(bar_border, 1))
-        painter.setBrush(bar_bg)
-        painter.drawRoundedRect(bar_x, margin_top, bar_width, bar_height, 6, 6)
-
-        # Filled portion (top down based on depth)
-        fill_height = int(depth_ratio * bar_height)
-        if fill_height > 0:
-            if depth_ratio < 0.5:
-                r, g = int(255 * depth_ratio * 2), 255
-            else:
-                r, g = 255, int(255 * (1 - (depth_ratio - 0.5) * 2))
-            fill_color = QColor(r, g, 0, 180)
-
-            gradient = QLinearGradient(bar_x, margin_top, bar_x, margin_top + fill_height)
-            gradient.setColorAt(0, fill_color.lighter(130))
-            gradient.setColorAt(1, fill_color)
-
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(gradient)
-            painter.drawRoundedRect(bar_x, margin_top, bar_width, fill_height, 6, 6)
-
-        # Indicator line
-        indicator_y = margin_top + fill_height
-        painter.setPen(QPen(highlight_color, 3))
-        painter.drawLine(bar_x - 8, indicator_y, bar_x + bar_width + 8, indicator_y)
-
-        # Indicator circle
-        painter.setBrush(highlight_color)
-        painter.setPen(Qt.NoPen)
-        painter.drawEllipse(bar_x + bar_width // 2 - 5, indicator_y - 5, 10, 10)
-
-        # mm value on the right
-        mm_font = QFont()
-        mm_font.setPointSize(12)
-        mm_font.setBold(True)
-        painter.setFont(mm_font)
-        painter.setPen(text_color)
-        painter.drawText(bar_x + bar_width + 15, indicator_y + 5, f"{mm_value:.2f}mm")
-
-        # Scale markers on left
+        # Draw scale markers on the left (only once)
         scale_font = QFont()
         scale_font.setPointSize(8)
         painter.setFont(scale_font)
+        painter.setPen(text_color)
         for mm in [0, 1.0, 2.0, 2.5]:
             y_pos = margin_top + int((mm / self.MAX_TRAVEL_MM) * bar_height)
-            painter.drawLine(bar_x - 12, y_pos, bar_x - 4, y_pos)
-            painter.drawText(bar_x - 38, y_pos + 4, f"{mm:.1f}")
+            painter.drawLine(start_x - 15, y_pos, start_x - 5, y_pos)
+            painter.drawText(start_x - 40, y_pos + 4, f"{mm:.1f}")
 
-        # Key label at bottom
-        label_font = QFont()
-        label_font.setPointSize(9)
-        painter.setFont(label_font)
-        key_label = self.current_label if self.current_label else f"R{self.current_key[0]}C{self.current_key[1]}"
-        fm = painter.fontMetrics()
-        label_width = fm.horizontalAdvance(key_label)
-        painter.drawText((width - label_width) // 2, height - 8, key_label)
+        # Draw each bar
+        for i, key in enumerate(self.MONITORED_KEYS):
+            bar_x = start_x + i * (bar_width + bar_spacing)
+            distance = self.distances.get(key, 0)
+
+            # Convert firmware distance (0-255) to ratio and mm
+            depth_ratio = distance / 255.0
+            mm_value = depth_ratio * self.MAX_TRAVEL_MM
+
+            # Bar background
+            painter.setPen(QPen(bar_border, 1))
+            painter.setBrush(bar_bg)
+            painter.drawRoundedRect(bar_x, margin_top, bar_width, bar_height, 6, 6)
+
+            # Filled portion (top down based on depth)
+            fill_height = int(depth_ratio * bar_height)
+            if fill_height > 0:
+                if depth_ratio < 0.5:
+                    r, g = int(255 * depth_ratio * 2), 255
+                else:
+                    r, g = 255, int(255 * (1 - (depth_ratio - 0.5) * 2))
+                fill_color = QColor(r, g, 0, 180)
+
+                gradient = QLinearGradient(bar_x, margin_top, bar_x, margin_top + fill_height)
+                gradient.setColorAt(0, fill_color.lighter(130))
+                gradient.setColorAt(1, fill_color)
+
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(gradient)
+                painter.drawRoundedRect(bar_x, margin_top, bar_width, fill_height, 6, 6)
+
+            # Indicator line
+            indicator_y = margin_top + fill_height
+            painter.setPen(QPen(highlight_color, 3))
+            painter.drawLine(bar_x - 5, indicator_y, bar_x + bar_width + 5, indicator_y)
+
+            # Indicator circle
+            painter.setBrush(highlight_color)
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(bar_x + bar_width // 2 - 4, indicator_y - 4, 8, 8)
+
+            # mm value next to indicator
+            mm_font = QFont()
+            mm_font.setPointSize(9)
+            mm_font.setBold(True)
+            painter.setFont(mm_font)
+            painter.setPen(text_color)
+            painter.drawText(bar_x + bar_width + 8, indicator_y + 4, f"{mm_value:.2f}")
+
+            # Key label at bottom
+            label_font = QFont()
+            label_font.setPointSize(9)
+            painter.setFont(label_font)
+            painter.setPen(text_color)
+            label = f"R{key[0]}C{key[1]}"
+            fm = painter.fontMetrics()
+            label_width = fm.horizontalAdvance(label)
+            painter.drawText(bar_x + (bar_width - label_width) // 2, height - 8, label)
 
 
 class MatrixTest(BasicEditor):
