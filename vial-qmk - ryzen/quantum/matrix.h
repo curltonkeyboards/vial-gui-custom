@@ -124,7 +124,8 @@ typedef uint32_t matrix_row_t;
 // Auto-calibration thresholds
 #define AUTO_CALIB_ZERO_TRAVEL_JITTER 50
 #define AUTO_CALIB_FULL_TRAVEL_JITTER 100
-#define AUTO_CALIB_VALID_RELEASE_TIME 1000  // ms
+#define AUTO_CALIB_VALID_RELEASE_TIME 5000  // ms (increased from 1s to prevent slow-press recalibration)
+#define AUTO_CALIB_MAX_DISTANCE 13          // ~5% of 255 max distance - only recalibrate near rest
 
 // ============================================================================
 // KEY MODES AND STATES

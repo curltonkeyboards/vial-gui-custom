@@ -659,8 +659,11 @@ static void update_calibration(uint32_t key_idx) {
         key->is_stable = false;
     }
 
-    // Auto-calibrate rest position when stable and not pressed
+    // Auto-calibrate rest position when stable, not pressed, AND near rest position
+    // The distance check (< 5% of travel) prevents recalibration during slow presses
+    // where the key is held partially down but hasn't triggered actuation yet
     if (key->is_stable && !key->is_pressed &&
+        key->distance < AUTO_CALIB_MAX_DISTANCE &&
         timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
         // For Hall effect sensors: rest value is typically higher ADC
         if (key->adc_filtered > key->adc_rest_value + AUTO_CALIB_ZERO_TRAVEL_JITTER ||
