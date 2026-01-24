@@ -1401,11 +1401,19 @@ void matrix_init_custom(void) {
             wait_us(40);
             adcConvert(&ADCD1, &adcgrpcfg, samples, ADC_GRP_BUF_DEPTH);
 
-            // Initialize EMA with first readings
+            // Initialize EMA with first readings and estimate per-key calibration
             for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
                 uint32_t key_idx = KEY_INDEX(row, col);
-                key_matrix[key_idx].adc_filtered = samples[row];
-                key_matrix[key_idx].adc_rest_value = samples[row];
+                uint16_t rest_value = samples[row];
+
+                key_matrix[key_idx].adc_filtered = rest_value;
+                key_matrix[key_idx].adc_rest_value = rest_value;
+
+                // Smart estimation of bottom-out value based on rest position
+                // Hall effect sensors show ~38% travel range relative to rest ADC
+                // This accounts for per-key sensor sensitivity variations
+                uint16_t estimated_bottom = (uint32_t)rest_value * WARM_UP_BOTTOM_ESTIMATE_PERCENT / 100;
+                key_matrix[key_idx].adc_bottom_out_value = estimated_bottom;
             }
 
             unselect_column();
