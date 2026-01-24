@@ -245,63 +245,120 @@ class MatrixTest(BasicEditor):
 
         visualizer_layout.addLayout(visualizer_bars_layout)
 
-        # Curve tuning controls
-        curve_group = QGroupBox(tr("MatrixTest", "Sensitivity Curve Tuning"))
-        curve_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        curve_layout = QGridLayout()
-        curve_layout.setSpacing(5)
-        curve_group.setLayout(curve_layout)
+        # EQ-Style Sensitivity Curve Controls
+        eq_group = QGroupBox(tr("MatrixTest", "Sensitivity EQ (by Rest ADC Range)"))
+        eq_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        eq_main_layout = QVBoxLayout()
+        eq_main_layout.setSpacing(8)
+        eq_group.setLayout(eq_main_layout)
 
-        # Reference rest value (where no adjustment applies)
-        curve_layout.addWidget(QLabel("Reference Rest:"), 0, 0)
-        self.ref_rest_slider = QSlider(Qt.Horizontal)
-        self.ref_rest_slider.setRange(1700, 2500)
-        self.ref_rest_slider.setValue(1980)
-        self.ref_rest_slider.setTickPosition(QSlider.TicksBelow)
-        self.ref_rest_slider.setTickInterval(100)
-        self.ref_rest_label = QLabel("1980")
-        self.ref_rest_label.setMinimumWidth(40)
-        self.ref_rest_slider.valueChanged.connect(lambda v: self.ref_rest_label.setText(str(v)))
-        self.ref_rest_slider.valueChanged.connect(self.send_curve_settings)
-        curve_layout.addWidget(self.ref_rest_slider, 0, 1)
-        curve_layout.addWidget(self.ref_rest_label, 0, 2)
+        # Range boundary controls
+        range_layout = QHBoxLayout()
+        range_layout.setSpacing(10)
 
-        # Early boost factor for high rest sensors (per 100 ADC offset)
-        curve_layout.addWidget(QLabel("High Rest Early Boost:"), 1, 0)
-        self.early_boost_slider = QSlider(Qt.Horizontal)
-        self.early_boost_slider.setRange(0, 30)
-        self.early_boost_slider.setValue(5)
-        self.early_boost_slider.setTickPosition(QSlider.TicksBelow)
-        self.early_boost_slider.setTickInterval(5)
-        self.early_boost_label = QLabel("5")
-        self.early_boost_label.setMinimumWidth(40)
-        self.early_boost_slider.valueChanged.connect(lambda v: self.early_boost_label.setText(str(v)))
-        self.early_boost_slider.valueChanged.connect(self.send_curve_settings)
-        curve_layout.addWidget(self.early_boost_slider, 1, 1)
-        curve_layout.addWidget(self.early_boost_label, 1, 2)
+        range_layout.addWidget(QLabel("Low/Mid boundary:"))
+        self.eq_range_low_slider = QSlider(Qt.Horizontal)
+        self.eq_range_low_slider.setRange(1600, 2200)
+        self.eq_range_low_slider.setValue(1900)
+        self.eq_range_low_slider.setMaximumWidth(100)
+        self.eq_range_low_label = QLabel("1900")
+        self.eq_range_low_label.setMinimumWidth(35)
+        self.eq_range_low_slider.valueChanged.connect(lambda v: self.eq_range_low_label.setText(str(v)))
+        self.eq_range_low_slider.valueChanged.connect(self.send_eq_settings)
+        range_layout.addWidget(self.eq_range_low_slider)
+        range_layout.addWidget(self.eq_range_low_label)
 
-        # Late reduction factor for high rest sensors
-        curve_layout.addWidget(QLabel("High Rest Late Reduce:"), 2, 0)
-        self.late_reduce_slider = QSlider(Qt.Horizontal)
-        self.late_reduce_slider.setRange(0, 30)
-        self.late_reduce_slider.setValue(5)
-        self.late_reduce_slider.setTickPosition(QSlider.TicksBelow)
-        self.late_reduce_slider.setTickInterval(5)
-        self.late_reduce_label = QLabel("5")
-        self.late_reduce_label.setMinimumWidth(40)
-        self.late_reduce_slider.valueChanged.connect(lambda v: self.late_reduce_label.setText(str(v)))
-        self.late_reduce_slider.valueChanged.connect(self.send_curve_settings)
-        curve_layout.addWidget(self.late_reduce_slider, 2, 1)
-        curve_layout.addWidget(self.late_reduce_label, 2, 2)
+        range_layout.addWidget(QLabel("Mid/High boundary:"))
+        self.eq_range_high_slider = QSlider(Qt.Horizontal)
+        self.eq_range_high_slider.setRange(1800, 2400)
+        self.eq_range_high_slider.setValue(2100)
+        self.eq_range_high_slider.setMaximumWidth(100)
+        self.eq_range_high_label = QLabel("2100")
+        self.eq_range_high_label.setMinimumWidth(35)
+        self.eq_range_high_slider.valueChanged.connect(lambda v: self.eq_range_high_label.setText(str(v)))
+        self.eq_range_high_slider.valueChanged.connect(self.send_eq_settings)
+        range_layout.addWidget(self.eq_range_high_slider)
+        range_layout.addWidget(self.eq_range_high_label)
 
-        # Info label showing effective adjustment for sample rest values
-        self.curve_info_label = QLabel("")
-        self.curve_info_label.setStyleSheet("color: #888; font-size: 8pt;")
-        self.curve_info_label.setWordWrap(True)
-        curve_layout.addWidget(self.curve_info_label, 3, 0, 1, 3)
-        self.update_curve_info()
+        range_layout.addStretch()
+        eq_main_layout.addLayout(range_layout)
 
-        visualizer_layout.addWidget(curve_group)
+        # Band labels for columns
+        band_names = ["Low\n0-20%", "Low-Mid\n20-40%", "Mid\n40-60%", "High-Mid\n60-80%", "High\n80-100%"]
+        range_names = ["Low Rest\n(<boundary)", "Mid Rest\n(between)", "High Rest\n(>=boundary)"]
+
+        # EQ sliders grid: 3 ranges × 5 bands
+        self.eq_sliders = []  # [range][band]
+        self.eq_labels = []
+
+        eq_grid = QGridLayout()
+        eq_grid.setSpacing(3)
+
+        # Header row with band names
+        for band in range(5):
+            header = QLabel(band_names[band])
+            header.setAlignment(Qt.AlignCenter)
+            header.setStyleSheet("font-size: 7pt; color: #aaa;")
+            eq_grid.addWidget(header, 0, band + 1)
+
+        # Create sliders for each range
+        for range_idx in range(3):
+            self.eq_sliders.append([])
+            self.eq_labels.append([])
+
+            # Range label
+            range_label = QLabel(range_names[range_idx])
+            range_label.setStyleSheet("font-size: 8pt; font-weight: bold;")
+            eq_grid.addWidget(range_label, range_idx + 1, 0)
+
+            for band in range(5):
+                # Create vertical slider (25% to 400%, stored as 12-200)
+                slider = QSlider(Qt.Vertical)
+                slider.setRange(12, 200)  # Half-percentage: 12=25%, 50=100%, 200=400%
+                slider.setValue(50)  # Default 100%
+                slider.setMinimumHeight(60)
+                slider.setMaximumHeight(80)
+                slider.setTickPosition(QSlider.TicksBothSides)
+                slider.setTickInterval(25)
+
+                # Create value label
+                value_label = QLabel("100%")
+                value_label.setAlignment(Qt.AlignCenter)
+                value_label.setStyleSheet("font-size: 7pt;")
+                value_label.setMinimumWidth(35)
+
+                # Connect slider to update label and send settings
+                def make_updater(lbl, r, b):
+                    def update(v):
+                        lbl.setText(f"{v*2}%")
+                        self.send_eq_settings()
+                    return update
+
+                slider.valueChanged.connect(make_updater(value_label, range_idx, band))
+
+                # Container for slider + label
+                slider_container = QWidget()
+                slider_layout = QVBoxLayout()
+                slider_layout.setContentsMargins(2, 2, 2, 2)
+                slider_layout.setSpacing(2)
+                slider_layout.addWidget(slider, alignment=Qt.AlignCenter)
+                slider_layout.addWidget(value_label, alignment=Qt.AlignCenter)
+                slider_container.setLayout(slider_layout)
+
+                eq_grid.addWidget(slider_container, range_idx + 1, band + 1)
+
+                self.eq_sliders[range_idx].append(slider)
+                self.eq_labels[range_idx].append(value_label)
+
+        eq_main_layout.addLayout(eq_grid)
+
+        # Reset to defaults button
+        reset_eq_btn = QPushButton("Reset to 100%")
+        reset_eq_btn.setMaximumWidth(100)
+        reset_eq_btn.clicked.connect(self.reset_eq_to_defaults)
+        eq_main_layout.addWidget(reset_eq_btn, alignment=Qt.AlignRight)
+
+        visualizer_layout.addWidget(eq_group)
         visualizer_layout.addStretch()
 
         main_content_layout.addWidget(visualizer_container)
@@ -531,44 +588,48 @@ class MatrixTest(BasicEditor):
             except (RuntimeError, ValueError):
                 pass
 
-    def send_curve_settings(self):
-        """Send curve tuning parameters to the keyboard firmware"""
+    def send_eq_settings(self):
+        """Send EQ curve settings to the keyboard firmware"""
         if not self.keyboard:
             return
 
-        ref_rest = self.ref_rest_slider.value()
-        early_factor = self.early_boost_slider.value()
-        late_factor = self.late_reduce_slider.value()
+        range_low = self.eq_range_low_slider.value()
+        range_high = self.eq_range_high_slider.value()
+
+        # Collect all 15 band values (stored as half-percentage: 50 = 100%)
+        bands = []
+        for range_idx in range(3):
+            for band in range(5):
+                bands.append(self.eq_sliders[range_idx][band].value())
 
         try:
-            self.keyboard.set_curve_settings(ref_rest, early_factor, late_factor)
+            self.keyboard.set_eq_curve_settings(range_low, range_high, bands)
         except (RuntimeError, ValueError, AttributeError):
             pass
 
-        # Update info label
-        self.update_curve_info()
+    def reset_eq_to_defaults(self):
+        """Reset all EQ sliders to 100% (neutral)"""
+        # Block signals to avoid sending multiple updates
+        for range_idx in range(3):
+            for band in range(5):
+                self.eq_sliders[range_idx][band].blockSignals(True)
+                self.eq_sliders[range_idx][band].setValue(50)  # 50 = 100%
+                self.eq_labels[range_idx][band].setText("100%")
+                self.eq_sliders[range_idx][band].blockSignals(False)
 
-    def update_curve_info(self):
-        """Update the curve info label showing effective adjustments"""
-        ref_rest = self.ref_rest_slider.value()
-        early = self.early_boost_slider.value()
-        late = self.late_reduce_slider.value()
+        # Reset range boundaries
+        self.eq_range_low_slider.blockSignals(True)
+        self.eq_range_low_slider.setValue(1900)
+        self.eq_range_low_label.setText("1900")
+        self.eq_range_low_slider.blockSignals(False)
 
-        # Show effective adjustment for sample rest values
-        info_parts = []
-        for sample_rest in [1980, 2100, 2300]:
-            offset = sample_rest - ref_rest
-            if offset > 0:
-                # High rest - apply boost
-                early_adj = (early * offset) // 100
-                late_adj = (late * offset) // 100
-                info_parts.append(f"Rest {sample_rest}: +{early_adj}% early, -{late_adj}% late")
-            elif offset < 0:
-                info_parts.append(f"Rest {sample_rest}: at/below ref")
-            else:
-                info_parts.append(f"Rest {sample_rest}: reference (no adj)")
+        self.eq_range_high_slider.blockSignals(True)
+        self.eq_range_high_slider.setValue(2100)
+        self.eq_range_high_label.setText("2100")
+        self.eq_range_high_slider.blockSignals(False)
 
-        self.curve_info_label.setText(" | ".join(info_parts))
+        # Send the reset values
+        self.send_eq_settings()
 
     def unlock(self):
         Unlocker.unlock(self.keyboard)

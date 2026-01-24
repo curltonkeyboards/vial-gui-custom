@@ -114,68 +114,115 @@ static const uint8_t distance_lut[DISTANCE_LUT_SIZE] PROGMEM = {
 // Global correction strength (0 = linear/no correction, 100 = full logarithmic)
 extern uint8_t lut_correction_strength;
 
-// Tunable curve parameters (can be adjusted via HID)
-// These are declared extern so they can be modified at runtime
-extern int16_t sensitivity_curve_ref_rest;      // Reference rest value (default 1980)
-extern int8_t sensitivity_curve_early_factor;   // Early boost per 100 ADC offset (default 5)
-extern int8_t sensitivity_curve_late_factor;    // Late reduction per 100 ADC offset (default 5)
+// ============================================================================
+// EQ-STYLE SENSITIVITY CURVE SYSTEM
+// ============================================================================
+//
+// 3 Rest Value Ranges:
+//   Range 0 (Low):  rest < eq_range_low
+//   Range 1 (Mid):  eq_range_low <= rest < eq_range_high
+//   Range 2 (High): rest >= eq_range_high
+//
+// 5 Travel Position Bands per Range:
+//   Band 0 (Low):      0-20% travel   (0-204 normalized)
+//   Band 1 (Low-Mid):  20-40% travel  (205-409 normalized)
+//   Band 2 (Mid):      40-60% travel  (410-613 normalized)
+//   Band 3 (High-Mid): 60-80% travel  (614-818 normalized)
+//   Band 4 (High):     80-100% travel (819-1023 normalized)
+//
+// Each band has a sensitivity multiplier: 25% to 400%
+// Stored as uint8_t where actual_percent = stored_value * 2
+// Default value = 50 (100% = no change)
+// ============================================================================
+
+// EQ range boundaries (can be adjusted via HID)
+extern uint16_t eq_range_low;   // Below this = low rest range (default 1900)
+extern uint16_t eq_range_high;  // At or above this = high rest range (default 2100)
+
+// EQ bands: 3 ranges × 5 bands
+// Value stored as half-percentage: actual_percent = value * 2
+// So 50 = 100%, 12 = 25%, 200 = 400%
+extern uint8_t eq_bands[3][5];
+
+// Band boundaries in normalized space (0-1023)
+#define EQ_BAND_0_END   204   // 0-20%
+#define EQ_BAND_1_END   409   // 20-40%
+#define EQ_BAND_2_END   613   // 40-60%
+#define EQ_BAND_3_END   818   // 60-80%
+// Band 4: 819-1023 (80-100%)
 
 /**
- * Apply rest-value-dependent sensitivity curve adjustment (SMOOTH version)
- * For high rest sensors, boost early sensitivity and reduce late sensitivity
- * For low rest sensors, do the opposite
- * Uses smooth quadratic blending to avoid discontinuities
+ * Apply EQ-style sensitivity curve adjustment
+ *
+ * This function applies a 5-band equalizer curve based on the sensor's rest value.
+ * Different rest value ranges can have completely different sensitivity profiles.
  *
  * @param normalized  Linear normalized position (0-1023)
  * @param rest        Rest ADC value for this key
  * @return            Adjusted normalized position (0-1023)
  */
-static inline __attribute__((always_inline)) uint32_t apply_rest_curve_adjustment(
+static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
     uint32_t normalized,
     uint16_t rest
 ) {
-    // Calculate how far from reference rest value (positive = high rest, needs boost early)
-    int16_t rest_offset = (int16_t)rest - sensitivity_curve_ref_rest;
-
-    // If close to reference, no adjustment needed
-    if (rest_offset > -50 && rest_offset < 50) {
-        return normalized;
-    }
-
-    // Calculate early and late adjustment factors based on rest offset
-    // For rest=2300 (offset +320): early_adj = 320/100 * 5 = 16%, late_adj = 320/100 * 5 = 16%
-    int32_t early_adj = (int32_t)rest_offset * sensitivity_curve_early_factor / 100;
-    int32_t late_adj = (int32_t)rest_offset * sensitivity_curve_late_factor / 100;
-
-    // Clamp to reasonable range
-    if (early_adj > 30) early_adj = 30;
-    if (early_adj < -30) early_adj = -30;
-    if (late_adj > 30) late_adj = 30;
-    if (late_adj < -30) late_adj = -30;
-
-    // Apply SMOOTH curve adjustment using quadratic blending
-    // At position 0: full early adjustment (+early_adj%)
-    // At position 512: no adjustment (0%)
-    // At position 1023: full late adjustment (-late_adj%)
-    // Smooth transition using: blend = (512 - normalized) / 512 for early half
-    //                          blend = (normalized - 512) / 511 for late half
-
-    int32_t adjustment_percent;
-    if (normalized <= 512) {
-        // Early half: blend from +early_adj at 0 to 0 at 512
-        // Use quadratic for smoother transition: blend = ((512-n)/512)^2
-        int32_t blend = (512 - (int32_t)normalized);  // 512 to 0
-        // Quadratic blend for smoother curve
-        adjustment_percent = (early_adj * blend * blend) / (512 * 512);
+    // Determine which range based on rest value
+    uint8_t range;
+    if (rest < eq_range_low) {
+        range = 0;  // Low rest sensors
+    } else if (rest < eq_range_high) {
+        range = 1;  // Mid rest sensors
     } else {
-        // Late half: blend from 0 at 512 to -late_adj at 1023
-        int32_t blend = ((int32_t)normalized - 512);  // 0 to 511
-        // Quadratic blend
-        adjustment_percent = -(late_adj * blend * blend) / (511 * 511);
+        range = 2;  // High rest sensors
     }
 
-    // Apply adjustment: adjusted = normalized * (100 + adjustment_percent) / 100
-    int32_t adjusted = (int32_t)normalized * (100 + adjustment_percent) / 100;
+    // Determine which band and interpolation factor based on position
+    // We interpolate between adjacent band values for smooth transitions
+    uint8_t band_low, band_high;
+    uint32_t interp_factor;  // 0-1023 interpolation within band
+
+    if (normalized <= EQ_BAND_0_END) {
+        // Band 0: 0-204
+        band_low = 0;
+        band_high = 0;
+        interp_factor = 512;  // Use band 0 value directly (center of interpolation)
+    } else if (normalized <= EQ_BAND_1_END) {
+        // Transition from band 0 to band 1: 205-409
+        band_low = 0;
+        band_high = 1;
+        // Interpolate: 0 at start (205), 1023 at end (409)
+        interp_factor = ((normalized - EQ_BAND_0_END - 1) * 1023) / (EQ_BAND_1_END - EQ_BAND_0_END);
+    } else if (normalized <= EQ_BAND_2_END) {
+        // Transition from band 1 to band 2: 410-613
+        band_low = 1;
+        band_high = 2;
+        interp_factor = ((normalized - EQ_BAND_1_END - 1) * 1023) / (EQ_BAND_2_END - EQ_BAND_1_END);
+    } else if (normalized <= EQ_BAND_3_END) {
+        // Transition from band 2 to band 3: 614-818
+        band_low = 2;
+        band_high = 3;
+        interp_factor = ((normalized - EQ_BAND_2_END - 1) * 1023) / (EQ_BAND_3_END - EQ_BAND_2_END);
+    } else {
+        // Band 4: 819-1023
+        band_low = 4;
+        band_high = 4;
+        interp_factor = 512;  // Use band 4 value directly
+    }
+
+    // Get the sensitivity multipliers for the two bands (stored as half-percentage)
+    uint16_t mult_low = (uint16_t)eq_bands[range][band_low] * 2;   // Convert to actual percentage
+    uint16_t mult_high = (uint16_t)eq_bands[range][band_high] * 2;
+
+    // Interpolate between the two multipliers
+    // multiplier = mult_low + (mult_high - mult_low) * interp_factor / 1023
+    int32_t multiplier;
+    if (band_low == band_high) {
+        multiplier = mult_low;
+    } else {
+        multiplier = mult_low + ((int32_t)(mult_high - mult_low) * (int32_t)interp_factor) / 1023;
+    }
+
+    // Apply multiplier: adjusted = normalized * multiplier / 100
+    int32_t adjusted = ((int32_t)normalized * multiplier) / 100;
 
     // Clamp to valid range
     if (adjusted < 0) adjusted = 0;
@@ -225,9 +272,9 @@ static inline __attribute__((always_inline)) uint8_t adc_to_distance_corrected(
         uint32_t normalized = ((uint32_t)(rest - adc) * 1023) / (rest - bottom_out);
         if (normalized > 1023) normalized = 1023;
 
-        // Apply rest-value-dependent sensitivity curve adjustment
-        // High rest sensors get more sensitivity early, less late
-        normalized = apply_rest_curve_adjustment(normalized, rest);
+        // Apply EQ-style sensitivity curve adjustment
+        // Different curves for different rest value ranges
+        normalized = apply_eq_curve_adjustment(normalized, rest);
 
         // Calculate adjusted linear distance (0-255) from curve-adjusted normalized
         uint8_t linear_distance = (uint8_t)((normalized * 255) / 1023);

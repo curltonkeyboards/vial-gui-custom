@@ -169,10 +169,23 @@ static bool midi_states_initialized = false;
 static uint32_t last_calibration_change = 0;
 static bool calibration_dirty = false;
 
-// Sensitivity curve tuning (adjustable via HID for real-time tuning)
-int16_t sensitivity_curve_ref_rest = SENSITIVITY_CURVE_REF_REST;       // Default 1980
-int8_t sensitivity_curve_early_factor = SENSITIVITY_CURVE_FACTOR;      // Default 5
-int8_t sensitivity_curve_late_factor = SENSITIVITY_CURVE_FACTOR;       // Default 5
+// EQ-style sensitivity curve tuning (adjustable via HID for real-time tuning)
+// Range boundaries: determines which curve set to use based on rest ADC
+uint16_t eq_range_low = 1900;   // Below this = low rest range
+uint16_t eq_range_high = 2100;  // At or above this = high rest range
+
+// EQ bands: 3 ranges × 5 bands
+// Value stored as half-percentage: actual_percent = value * 2
+// Default = 50 (100% = no change)
+// Range: 12 (25%) to 200 (400%)
+uint8_t eq_bands[3][5] = {
+    // Range 0 (Low rest < 1900): [low, low-mid, mid, high-mid, high]
+    {50, 50, 50, 50, 50},  // All 100% (neutral)
+    // Range 1 (Mid rest 1900-2100): [low, low-mid, mid, high-mid, high]
+    {50, 50, 50, 50, 50},  // All 100% (neutral)
+    // Range 2 (High rest >= 2100): [low, low-mid, mid, high-mid, high]
+    {50, 50, 50, 50, 50},  // All 100% (neutral)
+};
 
 // Layer caching (libhmk style optimization)
 static uint8_t cached_layer = 0xFF;

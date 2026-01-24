@@ -135,13 +135,12 @@ typedef uint32_t matrix_row_t;
 #define WARM_UP_BOTTOM_SLOPE  520   // Multiplier (520 = 0.52 * 1000)
 #define WARM_UP_BOTTOM_OFFSET 200   // Constant offset
 
-// Rest-value-dependent sensitivity curve adjustment
-// For high rest sensors, we "borrow" from the end to give more sensitivity at the start
-// Reference rest value where no adjustment is applied
-#define SENSITIVITY_CURVE_REF_REST 1980
-// How much curve adjustment per 100 ADC units above/below reference (in 0.01 units)
-// Positive = more early sensitivity for high rest, negative for low rest
-#define SENSITIVITY_CURVE_FACTOR 5
+// EQ-style sensitivity curve defaults
+// Range boundaries default values
+#define EQ_RANGE_LOW_DEFAULT  1900   // Below this = low rest range
+#define EQ_RANGE_HIGH_DEFAULT 2100   // At or above this = high rest range
+// Default EQ band value (50 = 100% = no change)
+#define EQ_BAND_DEFAULT 50
 
 // ============================================================================
 // KEY MODES AND STATES

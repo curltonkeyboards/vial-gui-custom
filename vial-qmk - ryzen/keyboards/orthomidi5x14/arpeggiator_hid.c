@@ -772,15 +772,20 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a Sensitivity Curve Tuning command (0xE9)
-    // Sets tunable curve parameters for real-time sensitivity adjustment
+    // Check if this is an EQ Curve Tuning command (0xE9)
+    // Sets EQ-style sensitivity curve parameters for real-time adjustment
+    // Request format: [header(4), _, _,
+    //                  range_low_lo, range_low_hi, range_high_lo, range_high_hi,
+    //                  r0_b0, r0_b1, r0_b2, r0_b3, r0_b4,  (range 0: low rest)
+    //                  r1_b0, r1_b1, r1_b2, r1_b3, r1_b4,  (range 1: mid rest)
+    //                  r2_b0, r2_b1, r2_b2, r2_b3, r2_b4]  (range 2: high rest)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
         data[3] == 0xE9) {
 
-        dprintf("raw_hid_receive_kb: Curve Tuning command detected\n");
+        dprintf("raw_hid_receive_kb: EQ Curve Tuning command detected\n");
 
         uint8_t response[32] = {0};
 
@@ -790,25 +795,32 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         response[2] = HID_DEVICE_ID;
         response[3] = 0xE9;
 
-        // Request format: [header(4), _, _, ref_rest_lo, ref_rest_hi, early_factor, late_factor]
         // Data starts at byte 6 after _create_hid_packet
-        uint16_t ref_rest = data[6] | (data[7] << 8);
-        int8_t early_factor = (int8_t)data[8];
-        int8_t late_factor = (int8_t)data[9];
+        // Parse range boundaries (4 bytes)
+        uint16_t range_low = data[6] | (data[7] << 8);
+        uint16_t range_high = data[8] | (data[9] << 8);
 
-        // Update the global curve tuning variables (defined in matrix.c)
-        extern int16_t sensitivity_curve_ref_rest;
-        extern int8_t sensitivity_curve_early_factor;
-        extern int8_t sensitivity_curve_late_factor;
+        // Update the global EQ variables (defined in matrix.c)
+        extern uint16_t eq_range_low;
+        extern uint16_t eq_range_high;
+        extern uint8_t eq_bands[3][5];
 
-        sensitivity_curve_ref_rest = ref_rest;
-        sensitivity_curve_early_factor = early_factor;
-        sensitivity_curve_late_factor = late_factor;
+        eq_range_low = range_low;
+        eq_range_high = range_high;
+
+        // Parse and set all 15 EQ bands (3 ranges × 5 bands)
+        // Data layout: data[10-14] = range 0, data[15-19] = range 1, data[20-24] = range 2
+        for (uint8_t range = 0; range < 3; range++) {
+            for (uint8_t band = 0; band < 5; band++) {
+                eq_bands[range][band] = data[10 + range * 5 + band];
+            }
+        }
 
         response[4] = 0x01;  // Success
 
-        dprintf("Curve Tuning: ref=%d, early=%d, late=%d\n",
-                ref_rest, early_factor, late_factor);
+        dprintf("EQ Curve: low=%d, high=%d, bands[0]=[%d,%d,%d,%d,%d]\n",
+                range_low, range_high,
+                eq_bands[0][0], eq_bands[0][1], eq_bands[0][2], eq_bands[0][3], eq_bands[0][4]);
 
         // Send response
         raw_hid_send(response, 32);

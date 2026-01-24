@@ -817,27 +817,38 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception:
             return None
 
-    def set_curve_settings(self, ref_rest, early_factor, late_factor):
-        """Set sensitivity curve tuning parameters for real-time adjustment
+    def set_eq_curve_settings(self, range_low, range_high, bands):
+        """Set EQ-style sensitivity curve parameters for real-time adjustment
 
         Args:
-            ref_rest: Reference rest value (typically 1700-2500)
-            early_factor: Early boost factor per 100 ADC offset (0-30)
-            late_factor: Late reduction factor per 100 ADC offset (0-30)
+            range_low: Low/Mid rest boundary (typically 1600-2200)
+            range_high: Mid/High rest boundary (typically 1800-2400)
+            bands: List of 15 band values (3 ranges × 5 bands)
+                   Each value is half-percentage: 50 = 100%, range 12-200 (25%-400%)
 
         Protocol:
             Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE9,
-                      ref_rest_lo, ref_rest_hi, early_factor, late_factor]
+                      range_low_lo, range_low_hi, range_high_lo, range_high_hi,
+                      r0_b0, r0_b1, r0_b2, r0_b3, r0_b4,  (range 0: low rest)
+                      r1_b0, r1_b1, r1_b2, r1_b3, r1_b4,  (range 1: mid rest)
+                      r2_b0, r2_b1, r2_b2, r2_b3, r2_b4]  (range 2: high rest)
             Response: [header(4), status]
         """
         try:
-            # Build request data: [ref_rest_lo, ref_rest_hi, early_factor, late_factor]
+            if len(bands) != 15:
+                return False
+
+            # Build request data
             data = bytearray([
-                ref_rest & 0xFF,           # Low byte of ref_rest
-                (ref_rest >> 8) & 0xFF,    # High byte of ref_rest
-                early_factor & 0xFF,       # Early factor (signed, but we expect 0-30)
-                late_factor & 0xFF,        # Late factor (signed, but we expect 0-30)
+                range_low & 0xFF,           # Low byte of range_low
+                (range_low >> 8) & 0xFF,    # High byte of range_low
+                range_high & 0xFF,          # Low byte of range_high
+                (range_high >> 8) & 0xFF,   # High byte of range_high
             ])
+
+            # Add all 15 band values
+            for band_value in bands:
+                data.append(band_value & 0xFF)
 
             packet = self._create_hid_packet(HID_CMD_SET_CURVE_SETTINGS, 0, bytes(data))
             response = self.usb_send(self.dev, packet, retries=1)
