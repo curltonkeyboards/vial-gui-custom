@@ -666,7 +666,6 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
         dprintf("raw_hid_receive_kb: Distance Matrix command detected\n");
 
-        extern uint8_t nullbind_key_travel[70];
         uint8_t response[32] = {0};
 
         // Copy header to response
@@ -687,15 +686,10 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             response[5] = 0x01;  // Success
 
             // Get calibrated distance values (0-255) for each column in the row
-            // These are the actual values the firmware uses for actuation decisions
+            // Use analog_matrix_get_distance() which returns real-time calibrated values
             uint8_t max_cols = (MATRIX_COLS < 14) ? MATRIX_COLS : 14;
             for (uint8_t col = 0; col < max_cols; col++) {
-                uint8_t key_idx = row * MATRIX_COLS + col;
-                if (key_idx < 70) {
-                    response[6 + col] = nullbind_key_travel[key_idx];
-                } else {
-                    response[6 + col] = 0;
-                }
+                response[6 + col] = analog_matrix_get_distance(row, col);
             }
         }
 
