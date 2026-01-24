@@ -1341,17 +1341,13 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // Deferred EEPROM load: on first keypress, load per-key settings from EEPROM
-    // This causes lag on first press but only happens once per power cycle.
-    // Check if any key has distance > 20 (someone is pressing a key)
-    if (!per_key_eeprom_loaded) {
-        for (uint32_t i = 0; i < NUM_KEYS; i++) {
-            if (key_matrix[i].distance > 20) {
-                deferred_load_per_key_eeprom();
-                break;  // Only need to trigger once
-            }
-        }
-    }
+    // DISABLED: 6.7KB EEPROM read freezes keyboard regardless of timing.
+    // The eeprom_read_block for 6.7KB blocks too long (watchdog/USB issues).
+    // Granular 8-byte saves still work - values persist in EEPROM but aren't
+    // loaded on boot. Keyboard always starts with defaults.
+    //
+    // TODO: Implement chunked EEPROM reading (e.g., 1 layer per scan cycle)
+    // to spread the load and avoid blocking.
 
     // Get current layer
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
