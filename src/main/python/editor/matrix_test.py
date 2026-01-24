@@ -169,7 +169,7 @@ class ActuationVisualizerWidget(QWidget):
             painter.setPen(text_color)
             label = f"R{key[0]}C{key[1]}"
             fm = painter.fontMetrics()
-            label_width = fm.width(label)
+            label_width = fm.horizontalAdvance(label)
             painter.drawText(bar_x + (bar_width - label_width) // 2, height - 8, label)
 
 
