@@ -6,10 +6,10 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider, QMenu)
-from PyQt5.QtCore import Qt, QTimer
+                           QScrollArea, QSlider, QMenu, QApplication)
+from PyQt5.QtCore import Qt, QTimer, QRect
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPainterPath, QRegion
+from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QPen, QBrush, QFont, QPalette, QLinearGradient
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -32,6 +32,204 @@ from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
 from vial_device import VialKeyboard
 from unlocker import Unlocker
+
+
+class ActuationVisualizerWidget(QWidget):
+    """Real-time visualization of key actuation depth in mm.
+
+    Shows a vertical bar for each monitored key with a moving indicator
+    that goes down as the key is pressed and up as it's released.
+    ADC values (0-4095) are converted to mm (0-2.5mm).
+    """
+
+    # Maximum travel distance in mm
+    MAX_TRAVEL_MM = 2.5
+    # Maximum ADC value (12-bit)
+    MAX_ADC = 4095
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(300, 200)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Dictionary mapping (row, col) to ADC value
+        self.key_values = {}
+        # List of keys to display (row, col, label) tuples
+        self.monitored_keys = []
+        # Maximum number of keys to show at once
+        self.max_display_keys = 8
+
+    def set_key_value(self, row, col, adc_value, label=""):
+        """Update the ADC value for a specific key.
+
+        Args:
+            row: Matrix row
+            col: Matrix column
+            adc_value: ADC reading (0-4095) or None to hide
+            label: Optional label for the key
+        """
+        key = (row, col)
+        if adc_value is not None:
+            self.key_values[key] = adc_value
+            # Add to monitored keys if not already there
+            if key not in [(k[0], k[1]) for k in self.monitored_keys]:
+                self.monitored_keys.append((row, col, label))
+                # Keep only the most recent keys
+                if len(self.monitored_keys) > self.max_display_keys:
+                    removed_key = self.monitored_keys.pop(0)
+                    self.key_values.pop((removed_key[0], removed_key[1]), None)
+        else:
+            self.key_values.pop(key, None)
+            self.monitored_keys = [(r, c, l) for r, c, l in self.monitored_keys if (r, c) != key]
+        self.update()
+
+    def clear_all(self):
+        """Clear all monitored keys."""
+        self.key_values.clear()
+        self.monitored_keys.clear()
+        self.update()
+
+    def adc_to_mm(self, adc_value):
+        """Convert ADC value to mm depth."""
+        if adc_value is None:
+            return 0.0
+        return (adc_value / self.MAX_ADC) * self.MAX_TRAVEL_MM
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Get theme colors
+        palette = QApplication.palette()
+        window_color = palette.color(QPalette.Window)
+        brightness = (window_color.red() * 0.299 +
+                      window_color.green() * 0.587 +
+                      window_color.blue() * 0.114)
+        is_dark = brightness < 127
+
+        text_color = palette.color(QPalette.Text)
+        highlight_color = palette.color(QPalette.Highlight)
+        bar_bg = palette.color(QPalette.AlternateBase)
+        bar_border = palette.color(QPalette.Mid)
+
+        # Drawing area
+        width = self.width()
+        height = self.height()
+        margin_top = 40
+        margin_bottom = 30
+        margin_left = 20
+        margin_right = 20
+
+        # If no keys are being monitored, show placeholder
+        if not self.monitored_keys:
+            painter.setPen(text_color)
+            font = QFont()
+            font.setPointSize(10)
+            painter.setFont(font)
+            painter.drawText(self.rect(), Qt.AlignCenter,
+                           "Press keys to see\nactuation depth")
+            return
+
+        # Calculate bar dimensions
+        num_keys = len(self.monitored_keys)
+        available_width = width - margin_left - margin_right
+        bar_spacing = 10
+        bar_width = min(40, (available_width - (num_keys - 1) * bar_spacing) // num_keys)
+        total_bars_width = num_keys * bar_width + (num_keys - 1) * bar_spacing
+        start_x = margin_left + (available_width - total_bars_width) // 2
+
+        bar_height = height - margin_top - margin_bottom
+
+        # Draw title
+        painter.setPen(text_color)
+        title_font = QFont()
+        title_font.setPointSize(10)
+        title_font.setBold(True)
+        painter.setFont(title_font)
+        painter.drawText(QRect(0, 5, width, 25), Qt.AlignCenter, "Actuation Depth (mm)")
+
+        # Draw each key's bar
+        for i, (row, col, label) in enumerate(self.monitored_keys):
+            x = start_x + i * (bar_width + bar_spacing)
+
+            # Get ADC value
+            adc_value = self.key_values.get((row, col), 0)
+            mm_value = self.adc_to_mm(adc_value)
+
+            # Draw bar background
+            painter.setPen(QPen(bar_border, 1))
+            painter.setBrush(bar_bg)
+            painter.drawRoundedRect(x, margin_top, bar_width, bar_height, 4, 4)
+
+            # Draw filled portion (from top down based on depth)
+            fill_height = int((mm_value / self.MAX_TRAVEL_MM) * bar_height)
+            if fill_height > 0:
+                # Create gradient for fill
+                gradient = QLinearGradient(x, margin_top, x, margin_top + fill_height)
+
+                # Color based on depth - green at top, yellow in middle, red at bottom
+                depth_ratio = mm_value / self.MAX_TRAVEL_MM
+                if depth_ratio < 0.5:
+                    # Green to yellow
+                    r = int(255 * (depth_ratio * 2))
+                    g = 255
+                else:
+                    # Yellow to red
+                    r = 255
+                    g = int(255 * (1 - (depth_ratio - 0.5) * 2))
+                fill_color = QColor(r, g, 0, 180)
+
+                gradient.setColorAt(0, fill_color.lighter(130))
+                gradient.setColorAt(1, fill_color)
+
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(gradient)
+                painter.drawRoundedRect(x, margin_top, bar_width, fill_height, 4, 4)
+
+            # Draw current position indicator line
+            indicator_y = margin_top + fill_height
+            painter.setPen(QPen(highlight_color, 3))
+            painter.drawLine(x - 5, indicator_y, x + bar_width + 5, indicator_y)
+
+            # Draw indicator circle
+            painter.setBrush(highlight_color)
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(x + bar_width // 2 - 4, indicator_y - 4, 8, 8)
+
+            # Draw mm value next to indicator
+            mm_font = QFont()
+            mm_font.setPointSize(8)
+            mm_font.setBold(True)
+            painter.setFont(mm_font)
+            painter.setPen(text_color)
+            mm_text = f"{mm_value:.2f}"
+            painter.drawText(x + bar_width + 8, indicator_y + 4, mm_text)
+
+            # Draw scale markers (0, 1.0, 2.0, 2.5mm)
+            scale_font = QFont()
+            scale_font.setPointSize(7)
+            painter.setFont(scale_font)
+            painter.setPen(QPen(text_color, 1, Qt.DotLine))
+
+            if i == 0:  # Only draw scale on first bar
+                for mm in [0, 0.5, 1.0, 1.5, 2.0, 2.5]:
+                    y_pos = margin_top + int((mm / self.MAX_TRAVEL_MM) * bar_height)
+                    # Draw tick mark
+                    painter.drawLine(x - 15, y_pos, x - 5, y_pos)
+                    # Draw mm label
+                    painter.drawText(x - 35, y_pos + 4, f"{mm:.1f}")
+
+            # Draw key label at bottom
+            label_font = QFont()
+            label_font.setPointSize(8)
+            painter.setFont(label_font)
+            painter.setPen(text_color)
+            key_label = label if label else f"R{row}C{col}"
+            # Center the label under the bar
+            fm = painter.fontMetrics()
+            label_width = fm.width(key_label)
+            label_x = x + (bar_width - label_width) // 2
+            painter.drawText(label_x, height - 10, key_label)
 
 
 class MatrixTest(BasicEditor):
@@ -81,6 +279,21 @@ class MatrixTest(BasicEditor):
 
         container_layout.addLayout(layout)
 
+        # Add actuation visualizer section
+        viz_container = QFrame()
+        viz_container.setFrameShape(QFrame.StyledPanel)
+        viz_container.setStyleSheet("QFrame { background-color: palette(base); border-radius: 8px; }")
+        viz_container.setMinimumHeight(250)
+        viz_container.setMaximumHeight(300)
+        viz_layout = QVBoxLayout()
+        viz_layout.setContentsMargins(10, 10, 10, 10)
+
+        self.actuation_visualizer = ActuationVisualizerWidget()
+        viz_layout.addWidget(self.actuation_visualizer)
+
+        viz_container.setLayout(viz_layout)
+        container_layout.addWidget(viz_container)
+
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         self.unlock_lbl = QLabel(tr("MatrixTest", "Unlock the keyboard before testing:"))
@@ -129,6 +342,9 @@ class MatrixTest(BasicEditor):
             w.setPressed(False)
             w.setOn(False)
             w.setAdcValue(None)  # Clear ADC values
+
+        # Clear the actuation visualizer
+        self.actuation_visualizer.clear_all()
 
         self.KeyboardWidget2.update_layout()
         self.KeyboardWidget2.update()
@@ -237,7 +453,7 @@ class MatrixTest(BasicEditor):
             except (RuntimeError, ValueError):
                 continue
 
-        # Update keyboard widget with ADC values
+        # Update keyboard widget and actuation visualizer with ADC values
         for w in self.KeyboardWidget2.widgets:
             if w.desc.row is not None and w.desc.col is not None:
                 row = w.desc.row
@@ -245,7 +461,18 @@ class MatrixTest(BasicEditor):
 
                 # Only update keys in the rows we just polled
                 if row in adc_matrix and col < len(adc_matrix[row]):
-                    w.setAdcValue(adc_matrix[row][col])
+                    adc_value = adc_matrix[row][col]
+                    w.setAdcValue(adc_value)
+
+                    # Update visualizer for keys that are being pressed (ADC > threshold)
+                    # Threshold of ~100 filters out noise from unpressed keys
+                    if adc_value > 100:
+                        # Get key label from widget text or use row/col
+                        label = w.text if hasattr(w, 'text') and w.text else f"R{row}C{col}"
+                        self.actuation_visualizer.set_key_value(row, col, adc_value, label)
+                    else:
+                        # Remove from visualizer when key is released
+                        self.actuation_visualizer.set_key_value(row, col, None)
 
         # Alternate to the other half for next poll
         self.adc_poll_half = 1 - self.adc_poll_half
@@ -258,9 +485,10 @@ class MatrixTest(BasicEditor):
     def activate(self):
         self.grabber.grabKeyboard()
         self.timer.start(20)
-        # Start ADC polling at 500ms intervals (slower to avoid HID overload)
+        # Start ADC polling at 100ms intervals for smoother real-time visualization
+        # This polls half of rows per cycle, so each key updates every 200ms
         self.adc_poll_half = 0  # Reset to first half
-        self.adc_timer.start(500)
+        self.adc_timer.start(100)
 
     def deactivate(self):
         self.grabber.releaseKeyboard()
@@ -269,6 +497,8 @@ class MatrixTest(BasicEditor):
         # Clear ADC values when leaving the matrix tester
         for w in self.KeyboardWidget2.widgets:
             w.setAdcValue(None)
+        # Clear the actuation visualizer
+        self.actuation_visualizer.clear_all()
 
 
 class ThruLoopConfigurator(BasicEditor):
