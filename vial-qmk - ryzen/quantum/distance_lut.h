@@ -114,10 +114,17 @@ static const uint8_t distance_lut[DISTANCE_LUT_SIZE] PROGMEM = {
 // Global correction strength (0 = linear/no correction, 100 = full logarithmic)
 extern uint8_t lut_correction_strength;
 
+// Tunable curve parameters (can be adjusted via HID)
+// These are declared extern so they can be modified at runtime
+extern int16_t sensitivity_curve_ref_rest;      // Reference rest value (default 1980)
+extern int8_t sensitivity_curve_early_factor;   // Early boost per 100 ADC offset (default 5)
+extern int8_t sensitivity_curve_late_factor;    // Late reduction per 100 ADC offset (default 5)
+
 /**
- * Apply rest-value-dependent sensitivity curve adjustment
+ * Apply rest-value-dependent sensitivity curve adjustment (SMOOTH version)
  * For high rest sensors, boost early sensitivity and reduce late sensitivity
  * For low rest sensors, do the opposite
+ * Uses smooth quadratic blending to avoid discontinuities
  *
  * @param normalized  Linear normalized position (0-1023)
  * @param rest        Rest ADC value for this key
@@ -128,48 +135,53 @@ static inline __attribute__((always_inline)) uint32_t apply_rest_curve_adjustmen
     uint16_t rest
 ) {
     // Calculate how far from reference rest value (positive = high rest, needs boost early)
-    int16_t rest_offset = (int16_t)rest - SENSITIVITY_CURVE_REF_REST;
+    int16_t rest_offset = (int16_t)rest - sensitivity_curve_ref_rest;
 
     // If close to reference, no adjustment needed
-    if (rest_offset > -100 && rest_offset < 100) {
+    if (rest_offset > -50 && rest_offset < 50) {
         return normalized;
     }
 
-    // Calculate adjustment factor: how much to "borrow" from end for beginning
-    // factor is in 0.01 units per 100 ADC offset
-    // For rest=2300 (offset +320): factor = 320/100 * 5 = 16 (0.16)
-    // For rest=1748 (offset -232): factor = -232/100 * 5 = -12 (-0.12)
-    int32_t factor_percent = (int32_t)rest_offset * SENSITIVITY_CURVE_FACTOR / 100;
+    // Calculate early and late adjustment factors based on rest offset
+    // For rest=2300 (offset +320): early_adj = 320/100 * 5 = 16%, late_adj = 320/100 * 5 = 16%
+    int32_t early_adj = (int32_t)rest_offset * sensitivity_curve_early_factor / 100;
+    int32_t late_adj = (int32_t)rest_offset * sensitivity_curve_late_factor / 100;
 
-    // Clamp factor to reasonable range (-25% to +25%)
-    if (factor_percent > 25) factor_percent = 25;
-    if (factor_percent < -25) factor_percent = -25;
+    // Clamp to reasonable range
+    if (early_adj > 30) early_adj = 30;
+    if (early_adj < -30) early_adj = -30;
+    if (late_adj > 30) late_adj = 30;
+    if (late_adj < -30) late_adj = -30;
 
-    // Apply piecewise adjustment:
-    // First third (0-341): boost/reduce by factor
-    // Middle third (342-682): no change
-    // Last third (683-1023): reduce/boost by factor (opposite)
+    // Apply SMOOTH curve adjustment using quadratic blending
+    // At position 0: full early adjustment (+early_adj%)
+    // At position 512: no adjustment (0%)
+    // At position 1023: full late adjustment (-late_adj%)
+    // Smooth transition using: blend = (512 - normalized) / 512 for early half
+    //                          blend = (normalized - 512) / 511 for late half
 
-    if (normalized <= 341) {
-        // First third: apply positive adjustment for high rest
-        // adjusted = normalized * (100 + factor) / 100
-        int32_t adjusted = (int32_t)normalized * (100 + factor_percent) / 100;
-        if (adjusted < 0) adjusted = 0;
-        if (adjusted > 1023) adjusted = 1023;
-        return (uint32_t)adjusted;
-    } else if (normalized >= 683) {
-        // Last third: apply negative adjustment for high rest
-        // Map 683-1023 to adjusted range
-        uint32_t third_pos = normalized - 683;  // 0-340
-        int32_t adjusted_third = (int32_t)third_pos * (100 - factor_percent) / 100;
-        if (adjusted_third < 0) adjusted_third = 0;
-        int32_t adjusted = 683 + adjusted_third;
-        if (adjusted > 1023) adjusted = 1023;
-        return (uint32_t)adjusted;
+    int32_t adjustment_percent;
+    if (normalized <= 512) {
+        // Early half: blend from +early_adj at 0 to 0 at 512
+        // Use quadratic for smoother transition: blend = ((512-n)/512)^2
+        int32_t blend = (512 - (int32_t)normalized);  // 512 to 0
+        // Quadratic blend for smoother curve
+        adjustment_percent = (early_adj * blend * blend) / (512 * 512);
+    } else {
+        // Late half: blend from 0 at 512 to -late_adj at 1023
+        int32_t blend = ((int32_t)normalized - 512);  // 0 to 511
+        // Quadratic blend
+        adjustment_percent = -(late_adj * blend * blend) / (511 * 511);
     }
 
-    // Middle third: no adjustment
-    return normalized;
+    // Apply adjustment: adjusted = normalized * (100 + adjustment_percent) / 100
+    int32_t adjusted = (int32_t)normalized * (100 + adjustment_percent) / 100;
+
+    // Clamp to valid range
+    if (adjusted < 0) adjusted = 0;
+    if (adjusted > 1023) adjusted = 1023;
+
+    return (uint32_t)adjusted;
 }
 
 /**

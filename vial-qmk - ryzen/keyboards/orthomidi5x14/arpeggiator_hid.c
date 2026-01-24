@@ -772,6 +772,49 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a Sensitivity Curve Tuning command (0xE9)
+    // Sets tunable curve parameters for real-time sensitivity adjustment
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xE9) {
+
+        dprintf("raw_hid_receive_kb: Curve Tuning command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE9;
+
+        // Request format: [header(4), _, _, ref_rest_lo, ref_rest_hi, early_factor, late_factor]
+        // Data starts at byte 6 after _create_hid_packet
+        uint16_t ref_rest = data[6] | (data[7] << 8);
+        int8_t early_factor = (int8_t)data[8];
+        int8_t late_factor = (int8_t)data[9];
+
+        // Update the global curve tuning variables (defined in matrix.c)
+        extern int16_t sensitivity_curve_ref_rest;
+        extern int8_t sensitivity_curve_early_factor;
+        extern int8_t sensitivity_curve_late_factor;
+
+        sensitivity_curve_ref_rest = ref_rest;
+        sensitivity_curve_early_factor = early_factor;
+        sensitivity_curve_late_factor = late_factor;
+
+        response[4] = 0x01;  // Success
+
+        dprintf("Curve Tuning: ref=%d, early=%d, late=%d\n",
+                ref_rest, early_factor, late_factor);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&

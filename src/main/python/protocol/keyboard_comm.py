@@ -101,6 +101,12 @@ HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
 # Distance Matrix Command (0xE7)
 HID_CMD_GET_DISTANCE_MATRIX = 0xE7        # Get distance (mm) values for specific keys
 
+# Calibration Debug Command (0xE8)
+HID_CMD_CALIBRATION_DEBUG = 0xE8          # Get calibration debug values
+
+# Sensitivity Curve Tuning Command (0xE9)
+HID_CMD_SET_CURVE_SETTINGS = 0xE9         # Set sensitivity curve tuning parameters
+
 # Per-Key Actuation Commands (0xE0-0xE6)
 HID_CMD_SET_PER_KEY_ACTUATION = 0xE0     # Set actuation for specific key
 HID_CMD_GET_PER_KEY_ACTUATION = 0xE1     # Get actuation for specific key
@@ -810,6 +816,37 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         except Exception:
             return None
+
+    def set_curve_settings(self, ref_rest, early_factor, late_factor):
+        """Set sensitivity curve tuning parameters for real-time adjustment
+
+        Args:
+            ref_rest: Reference rest value (typically 1700-2500)
+            early_factor: Early boost factor per 100 ADC offset (0-30)
+            late_factor: Late reduction factor per 100 ADC offset (0-30)
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE9,
+                      ref_rest_lo, ref_rest_hi, early_factor, late_factor]
+            Response: [header(4), status]
+        """
+        try:
+            # Build request data: [ref_rest_lo, ref_rest_hi, early_factor, late_factor]
+            data = bytearray([
+                ref_rest & 0xFF,           # Low byte of ref_rest
+                (ref_rest >> 8) & 0xFF,    # High byte of ref_rest
+                early_factor & 0xFF,       # Early factor (signed, but we expect 0-30)
+                late_factor & 0xFF,        # Late factor (signed, but we expect 0-30)
+            ])
+
+            packet = self._create_hid_packet(HID_CMD_SET_CURVE_SETTINGS, 0, bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            # Check for success response
+            return response and len(response) >= 5 and response[4] == 0x01
+
+        except Exception:
+            return False
 
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings

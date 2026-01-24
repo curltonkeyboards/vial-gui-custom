@@ -240,10 +240,10 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         // Arpeggiator commands (0xC0-0xCC), Layer actuations (0xCD)
         // Gaming commands (0xCE-0xD2), User curves (0xD9-0xDC)
         // Gaming response (0xDD-0xDE), ADC Matrix Tester (0xDF)
-        // Per-key actuation (0xE0-0xE6), Distance Matrix (0xE7), Calibration Debug (0xE8)
+        // Per-key actuation (0xE0-0xE6), Distance (0xE7), Calib Debug (0xE8), Curve Tuning (0xE9)
         // Null bind, Toggle, EEPROM diag commands (0xF0-0xFB)
         else if ((cmd >= 0xC0 && cmd <= 0xDF) ||
-                 (cmd >= 0xE0 && cmd <= 0xE8) ||
+                 (cmd >= 0xE0 && cmd <= 0xE9) ||
                  (cmd >= 0xF0 && cmd <= 0xFB)) {
             // Forward to keyboard-level handler, which sends its own response
             raw_hid_receive_kb(data, length);
@@ -271,9 +271,9 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
 
         // Arpeggiator (0xC0-0xCC), Layer actuations (0xCD), Gaming (0xCE-0xD2),
         // User curves (0xD9-0xDC), Gaming response (0xDD-0xDE), ADC Matrix (0xDF),
-        // Per-key actuation (0xE0-0xE6), Distance (0xE7), Calib Debug (0xE8), Null bind/Toggle/EEPROM (0xF0-0xFB)
+        // Per-key actuation (0xE0-0xE6), Distance (0xE7), Calib Debug (0xE8), Curve Tune (0xE9), Null bind/Toggle/EEPROM (0xF0-0xFB)
         if ((cmd >= 0xC0 && cmd <= 0xDF) ||
-            (cmd >= 0xE0 && cmd <= 0xE8) ||
+            (cmd >= 0xE0 && cmd <= 0xE9) ||
             (cmd >= 0xF0 && cmd <= 0xFB)) {
             raw_hid_receive_kb(data, length);
             return; // Handler sends its own response

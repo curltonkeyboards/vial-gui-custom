@@ -169,6 +169,11 @@ static bool midi_states_initialized = false;
 static uint32_t last_calibration_change = 0;
 static bool calibration_dirty = false;
 
+// Sensitivity curve tuning (adjustable via HID for real-time tuning)
+int16_t sensitivity_curve_ref_rest = SENSITIVITY_CURVE_REF_REST;       // Default 1980
+int8_t sensitivity_curve_early_factor = SENSITIVITY_CURVE_FACTOR;      // Default 5
+int8_t sensitivity_curve_late_factor = SENSITIVITY_CURVE_FACTOR;       // Default 5
+
 // Layer caching (libhmk style optimization)
 static uint8_t cached_layer = 0xFF;
 static uint8_t cached_layer_settings_layer = 0xFF;

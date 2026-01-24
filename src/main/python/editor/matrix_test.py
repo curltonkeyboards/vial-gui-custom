@@ -235,6 +235,7 @@ class MatrixTest(BasicEditor):
             (0, 0, "R0C0"),
             (0, 3, "R0C3"),
             (0, 11, "R0C11"),
+            (3, 0, "R3C0"),
         ]
 
         for row, col, label in keys_to_visualize:
@@ -243,6 +244,64 @@ class MatrixTest(BasicEditor):
             visualizer_bars_layout.addWidget(viz)
 
         visualizer_layout.addLayout(visualizer_bars_layout)
+
+        # Curve tuning controls
+        curve_group = QGroupBox(tr("MatrixTest", "Sensitivity Curve Tuning"))
+        curve_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        curve_layout = QGridLayout()
+        curve_layout.setSpacing(5)
+        curve_group.setLayout(curve_layout)
+
+        # Reference rest value (where no adjustment applies)
+        curve_layout.addWidget(QLabel("Reference Rest:"), 0, 0)
+        self.ref_rest_slider = QSlider(Qt.Horizontal)
+        self.ref_rest_slider.setRange(1700, 2500)
+        self.ref_rest_slider.setValue(1980)
+        self.ref_rest_slider.setTickPosition(QSlider.TicksBelow)
+        self.ref_rest_slider.setTickInterval(100)
+        self.ref_rest_label = QLabel("1980")
+        self.ref_rest_label.setMinimumWidth(40)
+        self.ref_rest_slider.valueChanged.connect(lambda v: self.ref_rest_label.setText(str(v)))
+        self.ref_rest_slider.valueChanged.connect(self.send_curve_settings)
+        curve_layout.addWidget(self.ref_rest_slider, 0, 1)
+        curve_layout.addWidget(self.ref_rest_label, 0, 2)
+
+        # Early boost factor for high rest sensors (per 100 ADC offset)
+        curve_layout.addWidget(QLabel("High Rest Early Boost:"), 1, 0)
+        self.early_boost_slider = QSlider(Qt.Horizontal)
+        self.early_boost_slider.setRange(0, 30)
+        self.early_boost_slider.setValue(5)
+        self.early_boost_slider.setTickPosition(QSlider.TicksBelow)
+        self.early_boost_slider.setTickInterval(5)
+        self.early_boost_label = QLabel("5")
+        self.early_boost_label.setMinimumWidth(40)
+        self.early_boost_slider.valueChanged.connect(lambda v: self.early_boost_label.setText(str(v)))
+        self.early_boost_slider.valueChanged.connect(self.send_curve_settings)
+        curve_layout.addWidget(self.early_boost_slider, 1, 1)
+        curve_layout.addWidget(self.early_boost_label, 1, 2)
+
+        # Late reduction factor for high rest sensors
+        curve_layout.addWidget(QLabel("High Rest Late Reduce:"), 2, 0)
+        self.late_reduce_slider = QSlider(Qt.Horizontal)
+        self.late_reduce_slider.setRange(0, 30)
+        self.late_reduce_slider.setValue(5)
+        self.late_reduce_slider.setTickPosition(QSlider.TicksBelow)
+        self.late_reduce_slider.setTickInterval(5)
+        self.late_reduce_label = QLabel("5")
+        self.late_reduce_label.setMinimumWidth(40)
+        self.late_reduce_slider.valueChanged.connect(lambda v: self.late_reduce_label.setText(str(v)))
+        self.late_reduce_slider.valueChanged.connect(self.send_curve_settings)
+        curve_layout.addWidget(self.late_reduce_slider, 2, 1)
+        curve_layout.addWidget(self.late_reduce_label, 2, 2)
+
+        # Info label showing effective adjustment for sample rest values
+        self.curve_info_label = QLabel("")
+        self.curve_info_label.setStyleSheet("color: #888; font-size: 8pt;")
+        self.curve_info_label.setWordWrap(True)
+        curve_layout.addWidget(self.curve_info_label, 3, 0, 1, 3)
+        self.update_curve_info()
+
+        visualizer_layout.addWidget(curve_group)
         visualizer_layout.addStretch()
 
         main_content_layout.addWidget(visualizer_container)
@@ -276,7 +335,7 @@ class MatrixTest(BasicEditor):
         self.distance_timer = QTimer()
         self.distance_timer.timeout.connect(self.distance_poller)
         # Keys to poll for distance: [(row, col), ...]
-        self.distance_keys = [(0, 0), (0, 3), (0, 11)]
+        self.distance_keys = [(0, 0), (0, 3), (0, 11), (3, 0)]
 
         self.unlock_btn.clicked.connect(self.unlock)
         self.reset_btn.clicked.connect(self.reset_keyboard_widget)
@@ -471,6 +530,45 @@ class MatrixTest(BasicEditor):
                             )
             except (RuntimeError, ValueError):
                 pass
+
+    def send_curve_settings(self):
+        """Send curve tuning parameters to the keyboard firmware"""
+        if not self.keyboard:
+            return
+
+        ref_rest = self.ref_rest_slider.value()
+        early_factor = self.early_boost_slider.value()
+        late_factor = self.late_reduce_slider.value()
+
+        try:
+            self.keyboard.set_curve_settings(ref_rest, early_factor, late_factor)
+        except (RuntimeError, ValueError, AttributeError):
+            pass
+
+        # Update info label
+        self.update_curve_info()
+
+    def update_curve_info(self):
+        """Update the curve info label showing effective adjustments"""
+        ref_rest = self.ref_rest_slider.value()
+        early = self.early_boost_slider.value()
+        late = self.late_reduce_slider.value()
+
+        # Show effective adjustment for sample rest values
+        info_parts = []
+        for sample_rest in [1980, 2100, 2300]:
+            offset = sample_rest - ref_rest
+            if offset > 0:
+                # High rest - apply boost
+                early_adj = (early * offset) // 100
+                late_adj = (late * offset) // 100
+                info_parts.append(f"Rest {sample_rest}: +{early_adj}% early, -{late_adj}% late")
+            elif offset < 0:
+                info_parts.append(f"Rest {sample_rest}: at/below ref")
+            else:
+                info_parts.append(f"Rest {sample_rest}: reference (no adj)")
+
+        self.curve_info_label.setText(" | ".join(info_parts))
 
     def unlock(self):
         Unlocker.unlock(self.keyboard)
