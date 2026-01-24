@@ -127,10 +127,12 @@ typedef uint32_t matrix_row_t;
 #define AUTO_CALIB_VALID_RELEASE_TIME 5000  // ms (increased from 1s to prevent slow-press recalibration)
 #define AUTO_CALIB_MAX_DISTANCE 13          // ~5% of 255 max distance - only recalibrate near rest
 
-// Smart warm-up estimation: estimates bottom_out = rest * PERCENT / 100
-// Based on Hall effect sensor characteristics showing ~38% travel range relative to rest ADC
-// Measured: rest 1748->bottom 1104 (63%), rest 1977->bottom 1208 (61%), rest 2320->bottom 1408 (61%)
-#define WARM_UP_BOTTOM_ESTIMATE_PERCENT 62
+// Smart warm-up estimation using linear formula: bottom = rest * SLOPE / 1000 + OFFSET
+// This accounts for the fact that sensors with higher rest ADC values need proportionally more range
+// Measured data fit: rest 1748->1104, rest 1977->1208, rest 2320->1408
+// Formula: bottom = rest * 0.52 + 200 gives best fit across the range
+#define WARM_UP_BOTTOM_SLOPE  520   // Multiplier (520 = 0.52 * 1000)
+#define WARM_UP_BOTTOM_OFFSET 200   // Constant offset
 
 // ============================================================================
 // KEY MODES AND STATES

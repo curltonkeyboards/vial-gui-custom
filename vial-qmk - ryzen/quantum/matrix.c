@@ -1409,10 +1409,10 @@ void matrix_init_custom(void) {
                 key_matrix[key_idx].adc_filtered = rest_value;
                 key_matrix[key_idx].adc_rest_value = rest_value;
 
-                // Smart estimation of bottom-out value based on rest position
-                // Hall effect sensors show ~38% travel range relative to rest ADC
-                // This accounts for per-key sensor sensitivity variations
-                uint16_t estimated_bottom = (uint32_t)rest_value * WARM_UP_BOTTOM_ESTIMATE_PERCENT / 100;
+                // Smart estimation of bottom-out value using linear formula
+                // bottom = rest * 0.52 + 200 (best fit for measured Hall sensors)
+                // This accounts for sensors with higher rest values needing more range
+                uint16_t estimated_bottom = ((uint32_t)rest_value * WARM_UP_BOTTOM_SLOPE / 1000) + WARM_UP_BOTTOM_OFFSET;
                 key_matrix[key_idx].adc_bottom_out_value = estimated_bottom;
             }
 
