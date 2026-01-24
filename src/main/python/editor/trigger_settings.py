@@ -711,7 +711,8 @@ class TriggerSettingsTab(BasicEditor):
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'vel_speed': 10  # Velocity speed scale
+                'vel_speed': 10,  # Velocity speed scale
+                'flags': 0  # Layer flags (bits 4-5 used for GUI mode preference on layer 0)
             })
 
         # Track unsaved changes for global actuation settings
@@ -2829,10 +2830,10 @@ class TriggerSettingsTab(BasicEditor):
             key_selected = self.container.active_key is not None
             self.trigger_slider.setEnabled(key_selected)
 
-        # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
-        # The call is kept for backward compatibility but is a no-op
-        if self.device and isinstance(self.device, VialKeyboard):
-            self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
+        # Save GUI mode preference to layer 0's flags (bits 4-5)
+        # Bit 4 (0x10): per_key_mode_enabled
+        # Bit 5 (0x20): per_layer_mode_enabled
+        self.save_mode_preference_to_layer0()
 
         # Synchronize with Actuation Settings tab
         if self.actuation_widget_ref:
@@ -2874,10 +2875,8 @@ class TriggerSettingsTab(BasicEditor):
         if not self.per_layer_enabled:
             self.apply_keymap_based_actuations()
 
-        # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
-        # The call is kept for backward compatibility but is a no-op
-        if self.device and isinstance(self.device, VialKeyboard):
-            self.device.keyboard.set_per_key_mode(self.mode_enabled, self.per_layer_enabled)
+        # Save GUI mode preference to layer 0's flags (bits 4-5)
+        self.save_mode_preference_to_layer0()
 
         # Synchronize with Actuation Settings tab
         if self.actuation_widget_ref:
@@ -2886,6 +2885,52 @@ class TriggerSettingsTab(BasicEditor):
             self.actuation_widget_ref.syncing = False
 
         self.refresh_layer_display()
+
+    def save_mode_preference_to_layer0(self):
+        """Save GUI mode preference to layer 0's flags (bits 4-5)
+
+        Bit 4 (0x10): per_key_mode_enabled
+        Bit 5 (0x20): per_layer_mode_enabled
+
+        This persists the user's GUI mode preference so it's remembered
+        across app restarts. The firmware stores this in EEPROM as part
+        of layer 0's actuation settings.
+        """
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+
+        try:
+            # Get current layer 0 data
+            layer0_data = self.layer_data[0]
+
+            # Update flags with mode preference (preserve other bits)
+            flags = layer0_data.get('flags', 0)
+            flags &= ~0x30  # Clear bits 4-5
+            if self.mode_enabled:
+                flags |= 0x10  # Set bit 4
+            if self.per_layer_enabled:
+                flags |= 0x20  # Set bit 5
+            layer0_data['flags'] = flags
+
+            # Build payload and send to device
+            vibrato_decay = layer0_data.get('vibrato_decay_time', 200) if 'vibrato_decay_time' in layer0_data else 200
+            payload = bytearray([
+                0,  # Layer 0
+                layer0_data.get('normal', 80),
+                layer0_data.get('midi', 80),
+                layer0_data.get('velocity', 2),
+                layer0_data.get('vel_speed', 10),
+                flags,
+                layer0_data.get('aftertouch_mode', 0),
+                layer0_data.get('aftertouch_cc', 255),
+                layer0_data.get('vibrato_sensitivity', 100),
+                vibrato_decay & 0xFF,
+                (vibrato_decay >> 8) & 0xFF
+            ])
+
+            self.device.keyboard.set_layer_actuation(payload)
+        except Exception as e:
+            print(f"Error saving mode preference to layer 0: {e}")
 
     def sync_current_layer_to_all_layers(self):
         """Sync current layer's per-key values to all 12 layers
@@ -3100,20 +3145,6 @@ class TriggerSettingsTab(BasicEditor):
             self.container.set_keys(self.keyboard.keys, self.keyboard.encoders)
             self.current_layer = 0
 
-            # Load mode flags from device
-            mode_data = self.keyboard.get_per_key_mode()
-            if mode_data:
-                self.syncing = True
-                self.mode_enabled = mode_data['mode_enabled']
-                self.per_layer_enabled = mode_data['per_layer_enabled']
-                self.enable_checkbox.setChecked(self.mode_enabled)
-                self.per_layer_checkbox.setChecked(self.per_layer_enabled)
-                # Keep per_layer_checkbox always enabled
-                self.copy_layer_btn.setEnabled(self.mode_enabled)
-                self.copy_all_layers_btn.setEnabled(self.mode_enabled)
-                self.reset_btn.setEnabled(self.mode_enabled)
-                self.syncing = False
-
             # Load all per-key values from device (now returns dict with 8 fields)
             # If communication fails or returns None, set safe defaults
             communication_failed = False
@@ -3149,7 +3180,7 @@ class TriggerSettingsTab(BasicEditor):
                             'rapidfire_velocity_mod': 0         # No modifier
                         }
 
-            # Load layer actuation data from device (6 bytes per layer)
+            # Load layer actuation data from device (includes flags)
             try:
                 for layer in range(12):
                     data = self.keyboard.get_layer_actuation(layer)
@@ -3158,11 +3189,46 @@ class TriggerSettingsTab(BasicEditor):
                             'normal': data['normal'],
                             'midi': data['midi'],
                             'velocity': data['velocity'],
-                            'vel_speed': data['vel_speed']
-                            # Removed: 'use_per_key_velocity_curve' - now per-key
+                            'vel_speed': data['vel_speed'],
+                            'flags': data.get('flags', 0)
                         }
             except Exception as e:
                 print(f"Error loading layer actuations: {e}")
+
+            # Read GUI mode preference from layer 0's flags (bits 4-5)
+            # Bit 4 (0x10): per_key_mode_enabled
+            # Bit 5 (0x20): per_layer_mode_enabled
+            layer0_flags = self.layer_data[0].get('flags', 0)
+            gui_mode_stored = (layer0_flags & 0x30) != 0  # Check if any preference bits are set
+            if gui_mode_stored:
+                self.mode_enabled = (layer0_flags & 0x10) != 0
+                self.per_layer_enabled = (layer0_flags & 0x20) != 0
+            else:
+                # No stored preference - default to per-key disabled (global mode)
+                self.mode_enabled = False
+                self.per_layer_enabled = False
+
+            # Update checkboxes based on loaded mode
+            self.syncing = True
+            self.enable_checkbox.setChecked(self.mode_enabled)
+            self.per_layer_checkbox.setChecked(self.per_layer_enabled)
+            self.per_layer_checkbox.setEnabled(not self.mode_enabled)  # Disabled when per-key is on
+            self.copy_layer_btn.setEnabled(self.mode_enabled)
+            self.copy_all_layers_btn.setEnabled(self.mode_enabled)
+            self.reset_btn.setEnabled(self.mode_enabled)
+            self.syncing = False
+
+            # Update widget visibility based on mode
+            self.global_actuation_widget.setVisible(not self.mode_enabled)
+            self.per_key_actuation_widget.setVisible(self.mode_enabled)
+
+            # Sync with QuickActuationWidget if available
+            if self.actuation_widget_ref:
+                self.actuation_widget_ref.syncing = True
+                self.actuation_widget_ref.enable_per_key_checkbox.setChecked(self.mode_enabled)
+                self.actuation_widget_ref.per_layer_checkbox.setChecked(self.per_layer_enabled)
+                self.actuation_widget_ref.update_per_key_ui_state(self.mode_enabled)
+                self.actuation_widget_ref.syncing = False
 
             # Clear any unsaved changes when loading from device
             self.has_unsaved_changes = False

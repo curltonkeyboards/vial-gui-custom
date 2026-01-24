@@ -546,17 +546,28 @@ class QuickActuationWidget(QWidget):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
 
+            # Get GUI mode preference bits from TriggerSettingsTab if available
+            # These are stored in layer 0's flags bits 4-5
+            mode_preference_bits = 0
+            if self.trigger_settings_ref:
+                if self.trigger_settings_ref.mode_enabled:
+                    mode_preference_bits |= 0x10  # Bit 4
+                if self.trigger_settings_ref.per_layer_enabled:
+                    mode_preference_bits |= 0x20  # Bit 5
+
             if self.aftertouch_per_layer_enabled:
                 # Save only current layer
                 data = self.layer_data[self.current_layer]
                 vibrato_decay = data['vibrato_decay_time']
+                # Preserve mode preference bits for layer 0
+                flags = mode_preference_bits if self.current_layer == 0 else 0
                 payload = bytearray([
                     self.current_layer,
                     data['normal'],
                     data['midi'],
                     data['velocity'],
                     data['vel_speed'],
-                    0,  # flags
+                    flags,
                     data['aftertouch_mode'],
                     data['aftertouch_cc'],
                     data['vibrato_sensitivity'],
@@ -574,13 +585,15 @@ class QuickActuationWidget(QWidget):
                 for layer in range(12):
                     data = self.layer_data[layer]
                     vibrato_decay = data['vibrato_decay_time']
+                    # Preserve mode preference bits for layer 0
+                    flags = mode_preference_bits if layer == 0 else 0
                     payload = bytearray([
                         layer,
                         data['normal'],
                         data['midi'],
                         data['velocity'],
                         data['vel_speed'],
-                        0,  # flags
+                        flags,
                         data['aftertouch_mode'],
                         data['aftertouch_cc'],
                         data['vibrato_sensitivity'],
@@ -1863,6 +1876,15 @@ class QuickActuationWidget(QWidget):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
 
+            # Get GUI mode preference bits from TriggerSettingsTab if available
+            # These are stored in layer 0's flags bits 4-5
+            mode_preference_bits = 0
+            if self.trigger_settings_ref:
+                if self.trigger_settings_ref.mode_enabled:
+                    mode_preference_bits |= 0x10  # Bit 4
+                if self.trigger_settings_ref.per_layer_enabled:
+                    mode_preference_bits |= 0x20  # Bit 5
+
             if self.per_layer_enabled:
                 # Save to current layer only
                 data = self.layer_data[self.current_layer]
@@ -1871,6 +1893,9 @@ class QuickActuationWidget(QWidget):
                     flags |= 0x01
                 if data.get('midi_rapidfire_enabled', False):
                     flags |= 0x02
+                # Preserve mode preference bits for layer 0
+                if self.current_layer == 0:
+                    flags |= mode_preference_bits
 
                 vibrato_decay = data.get('vibrato_decay_time', 200)
                 # New structure: 11 bytes (layer + 10 data bytes with aftertouch)
@@ -1902,6 +1927,9 @@ class QuickActuationWidget(QWidget):
                         flags |= 0x01
                     if data.get('midi_rapidfire_enabled', False):
                         flags |= 0x02
+                    # Preserve mode preference bits for layer 0
+                    if layer == 0:
+                        flags |= mode_preference_bits
 
                     vibrato_decay = data.get('vibrato_decay_time', 200)
                     # New structure: 11 bytes (layer + 10 data bytes with aftertouch)

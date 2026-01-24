@@ -4213,19 +4213,27 @@ class LayerActuationConfigurator(BasicEditor):
 
             actuations = self.get_all_actuations()
 
+            # Read current layer 0 flags to preserve GUI mode preference bits (4-5)
+            layer0_data = self.device.keyboard.get_layer_actuation(0)
+            mode_preference_bits = (layer0_data.get('flags', 0) & 0x30) if layer0_data else 0
+
             # Send all 12 layers (11 bytes each)
             # Protocol: [layer, normal, midi, velocity_mode, vel_speed, flags,
             #            aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
             #            vibrato_decay_time_low, vibrato_decay_time_high]
             for layer, values in enumerate(actuations):
                 vibrato_decay = values['vibrato_decay_time']
+                # Preserve mode preference bits for layer 0
+                flags = values['flags']
+                if layer == 0:
+                    flags |= mode_preference_bits
                 data = bytearray([
                     layer,
                     values['normal'],
                     values['midi'],
                     values['velocity'],
                     values['vel_speed'],
-                    values['flags'],
+                    flags,
                     values['aftertouch'],
                     values['aftertouch_cc'],
                     values['vibrato_sensitivity'],
