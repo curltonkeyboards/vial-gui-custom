@@ -39,46 +39,88 @@ class ActuationVisualizerWidget(QWidget):
 
     Shows a single vertical bar for the most recently pressed key with a moving
     indicator that goes down as the key is pressed and up as it's released.
-    ADC values (0-4095) are converted to mm (0-2.5mm).
+
+    Uses auto-calibration like the firmware:
+    - Higher ADC = key at rest (0mm) - Hall sensor further from magnet
+    - Lower ADC = key pressed (2.5mm) - Hall sensor closer to magnet
+    - Tracks max ADC (rest) and min ADC (pressed) to calibrate range
     """
 
     MAX_TRAVEL_MM = 2.5
-    MAX_ADC = 4095
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(180, 200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Current key being displayed (most recently pressed)
+        # Current key being displayed
         self.current_key = None  # (row, col)
         self.current_label = ""
         self.current_adc = 0
 
+        # Per-key calibration: {(row, col): {'rest': max_adc, 'pressed': min_adc}}
+        self.calibration = {}
+
     def set_key_value(self, row, col, adc_value, label=""):
-        """Update the ADC value. Shows the most recently pressed key."""
-        if adc_value is not None and adc_value > 100:
-            # Key is being pressed - make it the current displayed key
-            self.current_key = (row, col)
-            self.current_label = label
-            self.current_adc = adc_value
-        elif self.current_key == (row, col):
-            # Current key released - update value (shows it returning to 0)
-            self.current_adc = adc_value if adc_value else 0
+        """Update the ADC value. Auto-calibrates and shows most recently active key."""
+        if adc_value is None:
+            return
+
+        key = (row, col)
+
+        # Initialize calibration for this key if not seen before
+        if key not in self.calibration:
+            self.calibration[key] = {'rest': adc_value, 'pressed': adc_value}
+
+        # Update calibration bounds
+        cal = self.calibration[key]
+        # Rest position = highest ADC seen (key unpressed, magnet far)
+        if adc_value > cal['rest']:
+            cal['rest'] = adc_value
+        # Pressed position = lowest ADC seen (key pressed, magnet close)
+        if adc_value < cal['pressed']:
+            cal['pressed'] = adc_value
+
+        # Calculate depth ratio based on calibration
+        # Higher ADC = rest (0mm), Lower ADC = pressed (2.5mm)
+        adc_range = cal['rest'] - cal['pressed']
+        if adc_range > 50:  # Need minimum range to avoid noise issues
+            # How far from rest position (0 = at rest, 1 = fully pressed)
+            depth_ratio = (cal['rest'] - adc_value) / adc_range
+            depth_ratio = max(0.0, min(1.0, depth_ratio))  # Clamp 0-1
+
+            # If key is being pressed (moved from rest), make it current
+            if depth_ratio > 0.05:  # Small threshold to filter noise
+                self.current_key = key
+                self.current_label = label
+                self.current_adc = adc_value
+
+            # Update current key's display
+            if self.current_key == key:
+                self.current_adc = adc_value
+
         self.update()
 
+    def get_depth_ratio(self):
+        """Get current key's depth as 0-1 ratio (0=rest, 1=fully pressed)."""
+        if self.current_key is None or self.current_key not in self.calibration:
+            return 0.0
+
+        cal = self.calibration[self.current_key]
+        adc_range = cal['rest'] - cal['pressed']
+        if adc_range < 50:
+            return 0.0
+
+        ratio = (cal['rest'] - self.current_adc) / adc_range
+        return max(0.0, min(1.0, ratio))
+
     def clear_all(self):
-        """Clear the display."""
+        """Clear the display and calibration."""
         self.current_key = None
         self.current_label = ""
         self.current_adc = 0
+        self.calibration.clear()
         self.update()
-
-    def adc_to_mm(self, adc_value):
-        """Convert ADC value to mm depth."""
-        if adc_value is None:
-            return 0.0
-        return (adc_value / self.MAX_ADC) * self.MAX_TRAVEL_MM
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -116,7 +158,9 @@ class ActuationVisualizerWidget(QWidget):
         bar_height = height - margin_top - margin_bottom
         bar_x = (width - bar_width) // 2
 
-        mm_value = self.adc_to_mm(self.current_adc)
+        # Get calibrated depth ratio and convert to mm
+        depth_ratio = self.get_depth_ratio()
+        mm_value = depth_ratio * self.MAX_TRAVEL_MM
 
         # Bar background
         painter.setPen(QPen(bar_border, 1))
@@ -124,9 +168,8 @@ class ActuationVisualizerWidget(QWidget):
         painter.drawRoundedRect(bar_x, margin_top, bar_width, bar_height, 6, 6)
 
         # Filled portion (top down based on depth)
-        fill_height = int((mm_value / self.MAX_TRAVEL_MM) * bar_height)
+        fill_height = int(depth_ratio * bar_height)
         if fill_height > 0:
-            depth_ratio = mm_value / self.MAX_TRAVEL_MM
             if depth_ratio < 0.5:
                 r, g = int(255 * depth_ratio * 2), 255
             else:
@@ -410,15 +453,9 @@ class MatrixTest(BasicEditor):
                     adc_value = adc_matrix[row][col]
                     w.setAdcValue(adc_value)
 
-                    # Update visualizer for keys that are being pressed (ADC > threshold)
-                    # Threshold of ~100 filters out noise from unpressed keys
-                    if adc_value > 100:
-                        # Get key label from widget text or use row/col
-                        label = w.text if hasattr(w, 'text') and w.text else f"R{row}C{col}"
-                        self.actuation_visualizer.set_key_value(row, col, adc_value, label)
-                    else:
-                        # Remove from visualizer when key is released
-                        self.actuation_visualizer.set_key_value(row, col, None)
+                    # Send all ADC values to visualizer - it handles calibration internally
+                    label = w.text if hasattr(w, 'text') and w.text else ""
+                    self.actuation_visualizer.set_key_value(row, col, adc_value, label)
 
         # Alternate to the other half for next poll
         self.adc_poll_half = 1 - self.adc_poll_half
