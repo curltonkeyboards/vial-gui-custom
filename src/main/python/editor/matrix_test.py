@@ -40,10 +40,12 @@ class ActuationVisualizerWidget(QWidget):
     Shows a single vertical bar for the most recently pressed key with a moving
     indicator that goes down as the key is pressed and up as it's released.
 
-    Uses auto-calibration like the firmware:
-    - Higher ADC = key at rest (0mm) - Hall sensor further from magnet
-    - Lower ADC = key pressed (2.5mm) - Hall sensor closer to magnet
-    - Tracks max ADC (rest) and min ADC (pressed) to calibrate range
+    Uses calibrated distance values directly from firmware (0-255):
+    - 0 = key at rest (0mm)
+    - 255 = key fully pressed (2.5mm)
+
+    This shows EXACTLY what the firmware thinks the key position is,
+    including all calibration and linearization applied by the firmware.
     """
 
     MAX_TRAVEL_MM = 2.5
@@ -56,70 +58,38 @@ class ActuationVisualizerWidget(QWidget):
         # Current key being displayed
         self.current_key = None  # (row, col)
         self.current_label = ""
-        self.current_adc = 0
+        self.current_distance = 0  # 0-255 from firmware
 
-        # Per-key calibration: {(row, col): {'rest': max_adc, 'pressed': min_adc}}
-        self.calibration = {}
+    def set_distance_value(self, row, col, distance, label=""):
+        """Update with calibrated distance value from firmware.
 
-    def set_key_value(self, row, col, adc_value, label=""):
-        """Update the ADC value. Auto-calibrates and shows most recently active key."""
-        if adc_value is None:
+        Args:
+            row: Matrix row
+            col: Matrix column
+            distance: Calibrated distance from firmware (0-255, where 0=rest, 255=pressed)
+            label: Optional key label
+        """
+        if distance is None:
             return
 
         key = (row, col)
 
-        # Initialize calibration for this key if not seen before
-        if key not in self.calibration:
-            self.calibration[key] = {'rest': adc_value, 'pressed': adc_value}
-
-        # Update calibration bounds
-        cal = self.calibration[key]
-        # Rest position = highest ADC seen (key unpressed, magnet far)
-        if adc_value > cal['rest']:
-            cal['rest'] = adc_value
-        # Pressed position = lowest ADC seen (key pressed, magnet close)
-        if adc_value < cal['pressed']:
-            cal['pressed'] = adc_value
-
-        # Calculate depth ratio based on calibration
-        # Higher ADC = rest (0mm), Lower ADC = pressed (2.5mm)
-        adc_range = cal['rest'] - cal['pressed']
-        if adc_range > 50:  # Need minimum range to avoid noise issues
-            # How far from rest position (0 = at rest, 1 = fully pressed)
-            depth_ratio = (cal['rest'] - adc_value) / adc_range
-            depth_ratio = max(0.0, min(1.0, depth_ratio))  # Clamp 0-1
-
-            # If key is being pressed (moved from rest), make it current
-            if depth_ratio > 0.05:  # Small threshold to filter noise
-                self.current_key = key
-                self.current_label = label
-                self.current_adc = adc_value
-
-            # Update current key's display
-            if self.current_key == key:
-                self.current_adc = adc_value
+        # If key is being pressed (distance > small threshold), show it
+        if distance > 5:  # Small threshold to filter noise
+            self.current_key = key
+            self.current_label = label
+            self.current_distance = distance
+        elif self.current_key == key:
+            # Update current key even when releasing
+            self.current_distance = distance
 
         self.update()
 
-    def get_depth_ratio(self):
-        """Get current key's depth as 0-1 ratio (0=rest, 1=fully pressed)."""
-        if self.current_key is None or self.current_key not in self.calibration:
-            return 0.0
-
-        cal = self.calibration[self.current_key]
-        adc_range = cal['rest'] - cal['pressed']
-        if adc_range < 50:
-            return 0.0
-
-        ratio = (cal['rest'] - self.current_adc) / adc_range
-        return max(0.0, min(1.0, ratio))
-
     def clear_all(self):
-        """Clear the display and calibration."""
+        """Clear the display."""
         self.current_key = None
         self.current_label = ""
-        self.current_adc = 0
-        self.calibration.clear()
+        self.current_distance = 0
         self.update()
 
     def paintEvent(self, event):
@@ -158,8 +128,9 @@ class ActuationVisualizerWidget(QWidget):
         bar_height = height - margin_top - margin_bottom
         bar_x = (width - bar_width) // 2
 
-        # Get calibrated depth ratio and convert to mm
-        depth_ratio = self.get_depth_ratio()
+        # Convert firmware distance (0-255) to ratio and mm
+        # This is exactly what the firmware thinks the position is
+        depth_ratio = self.current_distance / 255.0
         mm_value = depth_ratio * self.MAX_TRAVEL_MM
 
         # Bar background
@@ -432,17 +403,22 @@ class MatrixTest(BasicEditor):
             row_start = half_rows
             row_end = rows
 
-        # Poll ADC values for the selected rows
+        # Poll ADC values and distance values for the selected rows
         adc_matrix = {}
+        distance_matrix = {}
         for row in range(row_start, row_end):
             try:
                 adc_values = self.keyboard.adc_matrix_poll(row)
                 if adc_values:
                     adc_matrix[row] = adc_values
+                # Also poll calibrated distance values from firmware
+                distance_values = self.keyboard.distance_matrix_poll(row)
+                if distance_values:
+                    distance_matrix[row] = distance_values
             except (RuntimeError, ValueError):
                 continue
 
-        # Update keyboard widget and actuation visualizer with ADC values
+        # Update keyboard widget with raw ADC values (for display on keys)
         for w in self.KeyboardWidget2.widgets:
             if w.desc.row is not None and w.desc.col is not None:
                 row = w.desc.row
@@ -453,9 +429,12 @@ class MatrixTest(BasicEditor):
                     adc_value = adc_matrix[row][col]
                     w.setAdcValue(adc_value)
 
-                    # Send all ADC values to visualizer - it handles calibration internally
+                # Update visualizer with calibrated distance values from firmware
+                # This shows exactly what the firmware thinks the position is
+                if row in distance_matrix and col < len(distance_matrix[row]):
+                    distance = distance_matrix[row][col]
                     label = w.text if hasattr(w, 'text') and w.text else ""
-                    self.actuation_visualizer.set_key_value(row, col, adc_value, label)
+                    self.actuation_visualizer.set_distance_value(row, col, distance, label)
 
         # Alternate to the other half for next poll
         self.adc_poll_half = 1 - self.adc_poll_half
