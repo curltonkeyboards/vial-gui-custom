@@ -692,15 +692,10 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             uint8_t row = data[7 + i * 2];
             uint8_t col = data[8 + i * 2];
 
-            uint16_t rest = 0, bottom = 0, raw = 0;
-
-            if (row < MATRIX_ROWS && col < MATRIX_COLS) {
-                uint32_t key_idx = row * MATRIX_COLS + col;
-                extern key_state_t key_matrix[];
-                rest = key_matrix[key_idx].adc_rest_value;
-                bottom = key_matrix[key_idx].adc_bottom_out_value;
-                raw = key_matrix[key_idx].adc_raw;
-            }
+            // Use accessor functions from matrix.h
+            uint16_t rest = analog_matrix_get_rest_adc(row, col);
+            uint16_t bottom = analog_matrix_get_bottom_adc(row, col);
+            uint16_t raw = analog_matrix_get_raw_adc(row, col);
 
             uint8_t offset = 6 + i * 6;
             response[offset + 0] = rest & 0xFF;

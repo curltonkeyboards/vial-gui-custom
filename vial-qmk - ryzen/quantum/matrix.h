@@ -270,6 +270,12 @@ uint8_t analog_matrix_get_extremum(uint8_t row, uint8_t col);
 // Get EMA-filtered ADC value
 uint16_t analog_matrix_get_filtered_adc(uint8_t row, uint8_t col);
 
+// Get calibration rest ADC value
+uint16_t analog_matrix_get_rest_adc(uint8_t row, uint8_t col);
+
+// Get calibration bottom-out ADC value
+uint16_t analog_matrix_get_bottom_adc(uint8_t row, uint8_t col);
+
 // Refresh cached layer settings (call when layer actuations change)
 void analog_matrix_refresh_settings(void);
 

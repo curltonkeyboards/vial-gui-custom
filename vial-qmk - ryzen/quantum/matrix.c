@@ -1722,3 +1722,17 @@ uint16_t analog_matrix_get_filtered_adc(uint8_t row, uint8_t col) {
     uint32_t key_idx = KEY_INDEX(row, col);
     return key_matrix[key_idx].adc_filtered;
 }
+
+// Get calibration rest ADC value
+uint16_t analog_matrix_get_rest_adc(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return key_matrix[key_idx].adc_rest_value;
+}
+
+// Get calibration bottom-out ADC value
+uint16_t analog_matrix_get_bottom_adc(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return key_matrix[key_idx].adc_bottom_out_value;
+}
