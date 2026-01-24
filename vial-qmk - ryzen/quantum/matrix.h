@@ -124,8 +124,9 @@ typedef uint32_t matrix_row_t;
 // Auto-calibration thresholds
 #define AUTO_CALIB_ZERO_TRAVEL_JITTER 50
 #define AUTO_CALIB_FULL_TRAVEL_JITTER 100
-#define AUTO_CALIB_VALID_RELEASE_TIME 5000  // ms (increased from 1s to prevent slow-press recalibration)
-#define AUTO_CALIB_MAX_DISTANCE 13          // ~5% of 255 max distance - only recalibrate near rest
+#define AUTO_CALIB_VALID_RELEASE_TIME 10000  // ms - must be stable for 10 seconds before recalibrating rest
+#define AUTO_CALIB_MAX_DISTANCE 13           // ~5% of 255 max distance - only recalibrate near rest
+#define AUTO_CALIB_STABILITY_PERCENT 2       // Must be within 2% of stable value to count as stable
 
 // Smart warm-up estimation using linear formula: bottom = rest * SLOPE / 1000 + OFFSET
 // This accounts for the fact that sensors with higher rest ADC values need proportionally more range
@@ -133,6 +134,14 @@ typedef uint32_t matrix_row_t;
 // Formula: bottom = rest * 0.52 + 200 gives best fit across the range
 #define WARM_UP_BOTTOM_SLOPE  520   // Multiplier (520 = 0.52 * 1000)
 #define WARM_UP_BOTTOM_OFFSET 200   // Constant offset
+
+// Rest-value-dependent sensitivity curve adjustment
+// For high rest sensors, we "borrow" from the end to give more sensitivity at the start
+// Reference rest value where no adjustment is applied
+#define SENSITIVITY_CURVE_REF_REST 1980
+// How much curve adjustment per 100 ADC units above/below reference (in 0.01 units)
+// Positive = more early sensitivity for high rest, negative for low rest
+#define SENSITIVITY_CURVE_FACTOR 5
 
 // ============================================================================
 // KEY MODES AND STATES

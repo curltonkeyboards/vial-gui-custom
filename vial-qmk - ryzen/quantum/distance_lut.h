@@ -115,6 +115,64 @@ static const uint8_t distance_lut[DISTANCE_LUT_SIZE] PROGMEM = {
 extern uint8_t lut_correction_strength;
 
 /**
+ * Apply rest-value-dependent sensitivity curve adjustment
+ * For high rest sensors, boost early sensitivity and reduce late sensitivity
+ * For low rest sensors, do the opposite
+ *
+ * @param normalized  Linear normalized position (0-1023)
+ * @param rest        Rest ADC value for this key
+ * @return            Adjusted normalized position (0-1023)
+ */
+static inline __attribute__((always_inline)) uint32_t apply_rest_curve_adjustment(
+    uint32_t normalized,
+    uint16_t rest
+) {
+    // Calculate how far from reference rest value (positive = high rest, needs boost early)
+    int16_t rest_offset = (int16_t)rest - SENSITIVITY_CURVE_REF_REST;
+
+    // If close to reference, no adjustment needed
+    if (rest_offset > -100 && rest_offset < 100) {
+        return normalized;
+    }
+
+    // Calculate adjustment factor: how much to "borrow" from end for beginning
+    // factor is in 0.01 units per 100 ADC offset
+    // For rest=2300 (offset +320): factor = 320/100 * 5 = 16 (0.16)
+    // For rest=1748 (offset -232): factor = -232/100 * 5 = -12 (-0.12)
+    int32_t factor_percent = (int32_t)rest_offset * SENSITIVITY_CURVE_FACTOR / 100;
+
+    // Clamp factor to reasonable range (-25% to +25%)
+    if (factor_percent > 25) factor_percent = 25;
+    if (factor_percent < -25) factor_percent = -25;
+
+    // Apply piecewise adjustment:
+    // First third (0-341): boost/reduce by factor
+    // Middle third (342-682): no change
+    // Last third (683-1023): reduce/boost by factor (opposite)
+
+    if (normalized <= 341) {
+        // First third: apply positive adjustment for high rest
+        // adjusted = normalized * (100 + factor) / 100
+        int32_t adjusted = (int32_t)normalized * (100 + factor_percent) / 100;
+        if (adjusted < 0) adjusted = 0;
+        if (adjusted > 1023) adjusted = 1023;
+        return (uint32_t)adjusted;
+    } else if (normalized >= 683) {
+        // Last third: apply negative adjustment for high rest
+        // Map 683-1023 to adjusted range
+        uint32_t third_pos = normalized - 683;  // 0-340
+        int32_t adjusted_third = (int32_t)third_pos * (100 - factor_percent) / 100;
+        if (adjusted_third < 0) adjusted_third = 0;
+        int32_t adjusted = 683 + adjusted_third;
+        if (adjusted > 1023) adjusted = 1023;
+        return (uint32_t)adjusted;
+    }
+
+    // Middle third: no adjustment
+    return normalized;
+}
+
+/**
  * Convert ADC reading to linearized distance with adjustable correction strength
  *
  * @param adc            Raw ADC value from sensor
@@ -150,20 +208,24 @@ static inline __attribute__((always_inline)) uint8_t adc_to_distance_corrected(
         if (adc >= rest) return 0;        // At or above rest = no travel
         if (adc <= bottom_out) return 255; // At or below bottom = full travel
 
-        // Normalize to 0-1023 range for LUT lookup
+        // Normalize to 0-1023 range
         // For inverted: higher ADC = less pressed, so invert the calculation
         uint32_t normalized = ((uint32_t)(rest - adc) * 1023) / (rest - bottom_out);
         if (normalized > 1023) normalized = 1023;
 
-        // Calculate linear distance (0-255)
-        uint8_t linear_distance = (uint8_t)(((uint32_t)(rest - adc) * 255) / (rest - bottom_out));
+        // Apply rest-value-dependent sensitivity curve adjustment
+        // High rest sensors get more sensitivity early, less late
+        normalized = apply_rest_curve_adjustment(normalized, rest);
 
-        // If no correction, return linear
+        // Calculate adjusted linear distance (0-255) from curve-adjusted normalized
+        uint8_t linear_distance = (uint8_t)((normalized * 255) / 1023);
+
+        // If no LUT correction, return curve-adjusted linear distance
         if (strength == 0) {
             return linear_distance;
         }
 
-        // Look up corrected distance from LUT
+        // Look up corrected distance from LUT using curve-adjusted normalized
         uint8_t lut_distance = pgm_read_byte(&distance_lut[normalized]);
 
         // Blend based on strength
