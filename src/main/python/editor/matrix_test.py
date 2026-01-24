@@ -37,56 +37,41 @@ from unlocker import Unlocker
 class ActuationVisualizerWidget(QWidget):
     """Real-time visualization of key actuation depth in mm.
 
-    Shows a vertical bar for each monitored key with a moving indicator
-    that goes down as the key is pressed and up as it's released.
+    Shows a single vertical bar for the most recently pressed key with a moving
+    indicator that goes down as the key is pressed and up as it's released.
     ADC values (0-4095) are converted to mm (0-2.5mm).
     """
 
-    # Maximum travel distance in mm
     MAX_TRAVEL_MM = 2.5
-    # Maximum ADC value (12-bit)
     MAX_ADC = 4095
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(300, 200)
+        self.setMinimumSize(180, 200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Dictionary mapping (row, col) to ADC value
-        self.key_values = {}
-        # List of keys to display (row, col, label) tuples
-        self.monitored_keys = []
-        # Maximum number of keys to show at once
-        self.max_display_keys = 8
+        # Current key being displayed (most recently pressed)
+        self.current_key = None  # (row, col)
+        self.current_label = ""
+        self.current_adc = 0
 
     def set_key_value(self, row, col, adc_value, label=""):
-        """Update the ADC value for a specific key.
-
-        Args:
-            row: Matrix row
-            col: Matrix column
-            adc_value: ADC reading (0-4095) or None to hide
-            label: Optional label for the key
-        """
-        key = (row, col)
-        if adc_value is not None:
-            self.key_values[key] = adc_value
-            # Add to monitored keys if not already there
-            if key not in [(k[0], k[1]) for k in self.monitored_keys]:
-                self.monitored_keys.append((row, col, label))
-                # Keep only the most recent keys
-                if len(self.monitored_keys) > self.max_display_keys:
-                    removed_key = self.monitored_keys.pop(0)
-                    self.key_values.pop((removed_key[0], removed_key[1]), None)
-        else:
-            self.key_values.pop(key, None)
-            self.monitored_keys = [(r, c, l) for r, c, l in self.monitored_keys if (r, c) != key]
+        """Update the ADC value. Shows the most recently pressed key."""
+        if adc_value is not None and adc_value > 100:
+            # Key is being pressed - make it the current displayed key
+            self.current_key = (row, col)
+            self.current_label = label
+            self.current_adc = adc_value
+        elif self.current_key == (row, col):
+            # Current key released - update value (shows it returning to 0)
+            self.current_adc = adc_value if adc_value else 0
         self.update()
 
     def clear_all(self):
-        """Clear all monitored keys."""
-        self.key_values.clear()
-        self.monitored_keys.clear()
+        """Clear the display."""
+        self.current_key = None
+        self.current_label = ""
+        self.current_adc = 0
         self.update()
 
     def adc_to_mm(self, adc_value):
@@ -99,46 +84,16 @@ class ActuationVisualizerWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Get theme colors
         palette = QApplication.palette()
-        window_color = palette.color(QPalette.Window)
-        brightness = (window_color.red() * 0.299 +
-                      window_color.green() * 0.587 +
-                      window_color.blue() * 0.114)
-        is_dark = brightness < 127
-
         text_color = palette.color(QPalette.Text)
         highlight_color = palette.color(QPalette.Highlight)
         bar_bg = palette.color(QPalette.AlternateBase)
         bar_border = palette.color(QPalette.Mid)
 
-        # Drawing area
         width = self.width()
         height = self.height()
-        margin_top = 40
-        margin_bottom = 30
-        margin_left = 20
-        margin_right = 20
-
-        # If no keys are being monitored, show placeholder
-        if not self.monitored_keys:
-            painter.setPen(text_color)
-            font = QFont()
-            font.setPointSize(10)
-            painter.setFont(font)
-            painter.drawText(self.rect(), Qt.AlignCenter,
-                           "Press keys to see\nactuation depth")
-            return
-
-        # Calculate bar dimensions
-        num_keys = len(self.monitored_keys)
-        available_width = width - margin_left - margin_right
-        bar_spacing = 10
-        bar_width = min(40, (available_width - (num_keys - 1) * bar_spacing) // num_keys)
-        total_bars_width = num_keys * bar_width + (num_keys - 1) * bar_spacing
-        start_x = margin_left + (available_width - total_bars_width) // 2
-
-        bar_height = height - margin_top - margin_bottom
+        margin_top = 35
+        margin_bottom = 25
 
         # Draw title
         painter.setPen(text_color)
@@ -146,90 +101,81 @@ class ActuationVisualizerWidget(QWidget):
         title_font.setPointSize(10)
         title_font.setBold(True)
         painter.setFont(title_font)
-        painter.drawText(QRect(0, 5, width, 25), Qt.AlignCenter, "Actuation Depth (mm)")
+        painter.drawText(QRect(0, 5, width, 25), Qt.AlignCenter, "Actuation Depth")
 
-        # Draw each key's bar
-        for i, (row, col, label) in enumerate(self.monitored_keys):
-            x = start_x + i * (bar_width + bar_spacing)
+        # Placeholder if no key pressed yet
+        if self.current_key is None:
+            font = QFont()
+            font.setPointSize(9)
+            painter.setFont(font)
+            painter.drawText(self.rect(), Qt.AlignCenter, "Press a key")
+            return
 
-            # Get ADC value
-            adc_value = self.key_values.get((row, col), 0)
-            mm_value = self.adc_to_mm(adc_value)
+        # Single centered bar
+        bar_width = 50
+        bar_height = height - margin_top - margin_bottom
+        bar_x = (width - bar_width) // 2
 
-            # Draw bar background
-            painter.setPen(QPen(bar_border, 1))
-            painter.setBrush(bar_bg)
-            painter.drawRoundedRect(x, margin_top, bar_width, bar_height, 4, 4)
+        mm_value = self.adc_to_mm(self.current_adc)
 
-            # Draw filled portion (from top down based on depth)
-            fill_height = int((mm_value / self.MAX_TRAVEL_MM) * bar_height)
-            if fill_height > 0:
-                # Create gradient for fill
-                gradient = QLinearGradient(x, margin_top, x, margin_top + fill_height)
+        # Bar background
+        painter.setPen(QPen(bar_border, 1))
+        painter.setBrush(bar_bg)
+        painter.drawRoundedRect(bar_x, margin_top, bar_width, bar_height, 6, 6)
 
-                # Color based on depth - green at top, yellow in middle, red at bottom
-                depth_ratio = mm_value / self.MAX_TRAVEL_MM
-                if depth_ratio < 0.5:
-                    # Green to yellow
-                    r = int(255 * (depth_ratio * 2))
-                    g = 255
-                else:
-                    # Yellow to red
-                    r = 255
-                    g = int(255 * (1 - (depth_ratio - 0.5) * 2))
-                fill_color = QColor(r, g, 0, 180)
+        # Filled portion (top down based on depth)
+        fill_height = int((mm_value / self.MAX_TRAVEL_MM) * bar_height)
+        if fill_height > 0:
+            depth_ratio = mm_value / self.MAX_TRAVEL_MM
+            if depth_ratio < 0.5:
+                r, g = int(255 * depth_ratio * 2), 255
+            else:
+                r, g = 255, int(255 * (1 - (depth_ratio - 0.5) * 2))
+            fill_color = QColor(r, g, 0, 180)
 
-                gradient.setColorAt(0, fill_color.lighter(130))
-                gradient.setColorAt(1, fill_color)
+            gradient = QLinearGradient(bar_x, margin_top, bar_x, margin_top + fill_height)
+            gradient.setColorAt(0, fill_color.lighter(130))
+            gradient.setColorAt(1, fill_color)
 
-                painter.setPen(Qt.NoPen)
-                painter.setBrush(gradient)
-                painter.drawRoundedRect(x, margin_top, bar_width, fill_height, 4, 4)
-
-            # Draw current position indicator line
-            indicator_y = margin_top + fill_height
-            painter.setPen(QPen(highlight_color, 3))
-            painter.drawLine(x - 5, indicator_y, x + bar_width + 5, indicator_y)
-
-            # Draw indicator circle
-            painter.setBrush(highlight_color)
             painter.setPen(Qt.NoPen)
-            painter.drawEllipse(x + bar_width // 2 - 4, indicator_y - 4, 8, 8)
+            painter.setBrush(gradient)
+            painter.drawRoundedRect(bar_x, margin_top, bar_width, fill_height, 6, 6)
 
-            # Draw mm value next to indicator
-            mm_font = QFont()
-            mm_font.setPointSize(8)
-            mm_font.setBold(True)
-            painter.setFont(mm_font)
-            painter.setPen(text_color)
-            mm_text = f"{mm_value:.2f}"
-            painter.drawText(x + bar_width + 8, indicator_y + 4, mm_text)
+        # Indicator line
+        indicator_y = margin_top + fill_height
+        painter.setPen(QPen(highlight_color, 3))
+        painter.drawLine(bar_x - 8, indicator_y, bar_x + bar_width + 8, indicator_y)
 
-            # Draw scale markers (0, 1.0, 2.0, 2.5mm)
-            scale_font = QFont()
-            scale_font.setPointSize(7)
-            painter.setFont(scale_font)
-            painter.setPen(QPen(text_color, 1, Qt.DotLine))
+        # Indicator circle
+        painter.setBrush(highlight_color)
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(bar_x + bar_width // 2 - 5, indicator_y - 5, 10, 10)
 
-            if i == 0:  # Only draw scale on first bar
-                for mm in [0, 0.5, 1.0, 1.5, 2.0, 2.5]:
-                    y_pos = margin_top + int((mm / self.MAX_TRAVEL_MM) * bar_height)
-                    # Draw tick mark
-                    painter.drawLine(x - 15, y_pos, x - 5, y_pos)
-                    # Draw mm label
-                    painter.drawText(x - 35, y_pos + 4, f"{mm:.1f}")
+        # mm value on the right
+        mm_font = QFont()
+        mm_font.setPointSize(12)
+        mm_font.setBold(True)
+        painter.setFont(mm_font)
+        painter.setPen(text_color)
+        painter.drawText(bar_x + bar_width + 15, indicator_y + 5, f"{mm_value:.2f}mm")
 
-            # Draw key label at bottom
-            label_font = QFont()
-            label_font.setPointSize(8)
-            painter.setFont(label_font)
-            painter.setPen(text_color)
-            key_label = label if label else f"R{row}C{col}"
-            # Center the label under the bar
-            fm = painter.fontMetrics()
-            label_width = fm.width(key_label)
-            label_x = x + (bar_width - label_width) // 2
-            painter.drawText(label_x, height - 10, key_label)
+        # Scale markers on left
+        scale_font = QFont()
+        scale_font.setPointSize(8)
+        painter.setFont(scale_font)
+        for mm in [0, 1.0, 2.0, 2.5]:
+            y_pos = margin_top + int((mm / self.MAX_TRAVEL_MM) * bar_height)
+            painter.drawLine(bar_x - 12, y_pos, bar_x - 4, y_pos)
+            painter.drawText(bar_x - 38, y_pos + 4, f"{mm:.1f}")
+
+        # Key label at bottom
+        label_font = QFont()
+        label_font.setPointSize(9)
+        painter.setFont(label_font)
+        key_label = self.current_label if self.current_label else f"R{self.current_key[0]}C{self.current_key[1]}"
+        fm = painter.fontMetrics()
+        label_width = fm.horizontalAdvance(key_label)
+        painter.drawText((width - label_width) // 2, height - 8, key_label)
 
 
 class MatrixTest(BasicEditor):
