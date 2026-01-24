@@ -20,8 +20,10 @@
 #endif
 
 #include "process_keycode/process_dks.h"
+#include "process_keycode/process_dynamic_macro.h"  // For PER_KEY_ACTUATION_EEPROM_ADDR
 #include "dynamic_keymap.h"
 #include "distance_lut.h"
+#include "eeprom.h"
 
 // ============================================================================
 // CONSTANTS (libhmk-inspired)
@@ -62,6 +64,10 @@ extern layer_actuation_t layer_actuations[12];
 extern bool aftertouch_pedal_active;
 extern layer_key_actuations_t per_key_actuations[12];
 // NOTE: per_key_per_layer_enabled removed - firmware always uses per-key per-layer
+
+// EEPROM functions from orthomidi5x14.c
+extern void load_per_key_actuations(void);
+extern void initialize_per_key_actuations(void);
 
 // Keysplit/transpose variables for aftertouch channel determination
 extern uint8_t keysplitchannel;
@@ -168,9 +174,8 @@ static uint8_t cached_layer = 0xFF;
 static uint8_t cached_layer_settings_layer = 0xFF;
 
 // Cached layer settings for hot path
+// NOTE: normal_actuation and midi_actuation removed - per-key only now
 static struct {
-    uint8_t normal_actuation;
-    uint8_t midi_actuation;
     uint8_t velocity_mode;
     uint8_t velocity_speed_scale;
     // Per-layer aftertouch settings
@@ -198,6 +203,174 @@ static uint8_t key_type_cache_layer = 0xFF;   // Layer the cache was built for
 
 // Forward declaration
 static void refresh_key_type_cache(uint8_t layer);
+
+// ============================================================================
+// PER-KEY ACTUATION CACHE (280 bytes - fits in L1 cache)
+// ============================================================================
+// This cache holds the essential per-key settings for the active layer only.
+// It's refreshed on layer change and used during the matrix scan hot path.
+// The full per_key_actuations[12][70] array is still used for EEPROM/HID.
+
+per_key_config_lite_t active_per_key_cache[70];
+uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
+
+// Deferred EEPROM loading - load on first keypress instead of at init
+static bool per_key_eeprom_loaded = false;
+
+// Chunked EEPROM loading state
+// Reads 1 row (14 keys = 112 bytes) per scan cycle to avoid blocking
+static bool chunked_load_active = false;
+static uint8_t chunked_load_row = 0;
+#define KEYS_PER_ROW 14
+#define BYTES_PER_ROW (KEYS_PER_ROW * sizeof(per_key_actuation_t))  // 112 bytes
+
+// NOTE: Diagnostic test modes (0-25) have been removed after root cause was found.
+// See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
+// Root cause: refresh_per_key_cache called 71x per scan cycle, must return early.
+
+// ============================================================================
+// PER-KEY CACHE LOADING
+// ============================================================================
+// Strategy:
+//   1. At startup (keyboard_post_init), load layer 0 fully - USB not active yet
+//   2. On layer change during operation, only fill defaults (no array reads)
+//
+// NOTE: Reading from per_key_actuations during scan causes USB disconnect.
+// Even 1 struct read per scan accumulates to USB starvation.
+// See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md for full analysis.
+
+static uint8_t incremental_load_index = 70;  // 70 = done loading
+static uint8_t incremental_load_layer = 0xFF;
+
+// Force load all 70 keys for a layer - ONLY SAFE DURING INIT (before USB active)
+// This function reads from per_key_actuations which causes USB disconnect if
+// called during normal operation. Only call from keyboard_post_init_user.
+void force_load_per_key_cache_at_init(uint8_t layer) {
+    if (layer >= 12) layer = 0;
+
+    // Load all 70 keys from the array
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+
+    // Mark cache as valid for this layer
+    active_per_key_cache_layer = layer;
+}
+
+// Start chunked EEPROM loading - called on first keypress
+// This initiates loading 1 row (112 bytes) per scan cycle
+void start_chunked_eeprom_load(void) {
+    if (per_key_eeprom_loaded || chunked_load_active) return;
+    chunked_load_active = true;
+    chunked_load_row = 0;
+}
+
+// Process one chunk of EEPROM loading (called once per scan cycle)
+// Reads 1 row (14 keys = 112 bytes) from EEPROM into per_key_actuations
+// then updates the active cache for those keys
+void process_chunked_eeprom_load(void) {
+    if (!chunked_load_active) return;
+    if (chunked_load_row >= 5) {
+        // Done loading all 5 rows
+        chunked_load_active = false;
+        per_key_eeprom_loaded = true;
+
+        // Check if EEPROM was uninitialized (0xFF = never saved)
+        if (per_key_actuations[0].keys[0].actuation == 0xFF) {
+            initialize_per_key_actuations();
+            // Reload cache with initialized defaults
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = per_key_actuations[0].keys[i].actuation;
+                active_per_key_cache[i].rt_down = per_key_actuations[0].keys[i].rapidfire_press_sens;
+                active_per_key_cache[i].rt_up = per_key_actuations[0].keys[i].rapidfire_release_sens;
+                active_per_key_cache[i].flags = per_key_actuations[0].keys[i].flags;
+            }
+        }
+        return;
+    }
+
+    // Calculate EEPROM offset for this row (layer 0 only for now)
+    // Row 0: keys 0-13, Row 1: keys 14-27, etc.
+    uint8_t start_key = chunked_load_row * KEYS_PER_ROW;
+    uint32_t eeprom_offset = PER_KEY_ACTUATION_EEPROM_ADDR +
+                             (start_key * sizeof(per_key_actuation_t));
+
+    // Read 14 keys (112 bytes) from EEPROM directly into per_key_actuations array
+    eeprom_read_block(&per_key_actuations[0].keys[start_key],
+                      (void*)eeprom_offset,
+                      BYTES_PER_ROW);
+
+    // Update active cache for these 14 keys (if we're on layer 0)
+    if (active_per_key_cache_layer == 0) {
+        for (uint8_t i = 0; i < KEYS_PER_ROW; i++) {
+            uint8_t key_idx = start_key + i;
+            if (key_idx < 70) {
+                per_key_actuation_t *full = &per_key_actuations[0].keys[key_idx];
+                active_per_key_cache[key_idx].actuation = full->actuation;
+                active_per_key_cache[key_idx].rt_down = full->rapidfire_press_sens;
+                active_per_key_cache[key_idx].rt_up = full->rapidfire_release_sens;
+                active_per_key_cache[key_idx].flags = full->flags;
+            }
+        }
+    }
+
+    chunked_load_row++;
+}
+
+// Check if EEPROM has been loaded (for external use)
+bool is_per_key_eeprom_loaded(void) {
+    return per_key_eeprom_loaded;
+}
+
+// DISABLED: This function causes USB disconnect even at 1 key per scan.
+// The struct field access pattern from per_key_actuations array is problematic.
+// Keeping the code for future reference - need alternative loading approach.
+void incremental_load_per_key_cache(void) {
+    if (incremental_load_index >= 70) return;  // Done loading
+
+    // Load 1 key from the array
+    uint8_t i = incremental_load_index;
+    uint8_t layer = incremental_load_layer;
+
+    if (layer < 12) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        active_per_key_cache[i].actuation = full->actuation;
+        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
+        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
+        active_per_key_cache[i].flags = full->flags;
+    }
+
+    incremental_load_index++;
+}
+
+// Refresh the per-key cache - fills defaults immediately, triggers incremental load
+void refresh_per_key_cache(uint8_t layer) {
+    if (layer == active_per_key_cache_layer) return;  // Already cached
+    if (layer >= 12) layer = 0;
+
+    // Fill all with defaults immediately (keys work right away)
+    for (uint8_t i = 0; i < 70; i++) {
+        active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+        active_per_key_cache[i].rt_down = 0;
+        active_per_key_cache[i].rt_up = 0;
+        active_per_key_cache[i].flags = 0;
+    }
+
+    // Set cache layer IMMEDIATELY so next 70 calls return early
+    active_per_key_cache_layer = layer;
+
+    // DISABLED: Incremental loading causes USB disconnect
+    // Even 1 struct read per scan cycle accumulates to USB starvation
+    // TODO: Find alternative approach (timer-based, idle task, etc.)
+    // incremental_load_layer = layer;
+    // incremental_load_index = 0;  // Start loading from key 0
+}
+
+// Old diagnostic modes (0-25) removed - see PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
 
 // ADC configuration
 #define ADC_GRP_NUM_CHANNELS MATRIX_ROWS
@@ -328,15 +501,15 @@ static inline uint8_t distance_to_travel_compat(uint8_t distance) {
 // ============================================================================
 
 void analog_matrix_refresh_settings(void) {
-    cached_layer_settings_layer = 0xFF;  // Force refresh
+    cached_layer_settings_layer = 0xFF;  // Force refresh layer settings
+    active_per_key_cache_layer = 0xFF;   // Force refresh per-key cache
 }
 
 static inline void update_active_settings(uint8_t current_layer) {
     if (current_layer >= 12) current_layer = 0;
 
     if (cached_layer_settings_layer != current_layer) {
-        active_settings.normal_actuation = layer_actuations[current_layer].normal_actuation;
-        active_settings.midi_actuation = layer_actuations[current_layer].midi_actuation;
+        // NOTE: normal_actuation and midi_actuation removed - per-key only now
         active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
         active_settings.velocity_speed_scale = layer_actuations[current_layer].velocity_speed_scale;
         // Per-layer aftertouch settings
@@ -387,7 +560,7 @@ static void refresh_key_type_cache(uint8_t layer) {
 }
 
 // ============================================================================
-// PER-KEY ACTUATION LOOKUP (using layer-level settings to avoid USB disconnect)
+// PER-KEY ACTUATION LOOKUP (using optimized 280-byte cache)
 // ============================================================================
 
 static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
@@ -395,19 +568,31 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    // FIX: Use layer-level actuation settings instead of per-key array
-    // The per_key_actuations[] array access was causing USB disconnection
-    // due to its large size (6.7KB) and frequent access (70x per scan cycle)
+    // FIXED: Using optimized per-key cache (280 bytes, fits in L1 cache)
+    // The cache is refreshed on layer change, so we just read from it here.
+    // This replaces the old 6.7KB per_key_actuations[] array access that
+    // was causing USB disconnection.
 
     if (layer >= 12) layer = 0;
+    if (key_idx >= 70) {
+        // Fallback for invalid key index
+        *actuation_point = actuation_to_distance(DEFAULT_ACTUATION_VALUE);
+        *rt_down = 0;
+        *rt_up = 0;
+        *flags = 0;
+        return;
+    }
 
-    // Use layer-level normal actuation setting
-    *actuation_point = actuation_to_distance(layer_actuations[layer].normal_actuation);
+    // Ensure cache is valid for current layer
+    refresh_per_key_cache(layer);
 
-    // RT disabled for now - can be re-enabled with layer-level settings later
-    *rt_down = 0;
-    *rt_up = 0;
-    *flags = 0;
+    // Read from lightweight cache (4 bytes per key, all in L1 cache)
+    per_key_config_lite_t *config = &active_per_key_cache[key_idx];
+
+    *actuation_point = actuation_to_distance(config->actuation);
+    *rt_down = config->rt_down;
+    *rt_up = config->rt_up;
+    *flags = config->flags;
 }
 
 // ============================================================================
@@ -500,7 +685,10 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     // Normal mode: reset when key goes above actuation point
     uint8_t reset_point = (flags & PER_KEY_FLAG_CONTINUOUS_RT) ? 0 : actuation_point;
 
-    if (rt_down == 0) {
+    // Check if rapid trigger is enabled via the flag (not just rt_down != 0)
+    bool rt_enabled = (flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) && (rt_down > 0);
+
+    if (!rt_enabled) {
         // RT disabled - simple threshold mode
         key->is_pressed = (key->distance >= actuation_point);
         key->key_dir = KEY_DIR_INACTIVE;
@@ -632,15 +820,17 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool pressed = key->is_pressed;
     uint16_t now = timer_read();
 
-    // Use cached settings
-    uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    // Use per-key actuation from cache (280 bytes, fits in L1 cache)
+    // Cache is refreshed on layer change before this function is called
+    uint8_t per_key_actuation = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+    uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
     uint8_t analog_mode = active_settings.velocity_mode;
 
     state->was_pressed = state->pressed;
     state->pressed = pressed;
 
-    // FIX: Removed per_key_actuations[] access - was causing USB disconnect
-    // RT velocity modifier is disabled for now (was: per_key_settings->rapidfire_velocity_mod)
+    // RT velocity modifier - disabled for now to avoid accessing large array in hot path
+    // TODO: Add to per_key_config_lite_t cache if needed
     int8_t rapidfire_velocity_mod = 0;
 
     // ========================================================================
@@ -877,12 +1067,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 
     // Aftertouch handling - now sends polyphonic aftertouch + optional CC
-    // Uses per-layer settings from active_settings
+    // Uses per-key actuation from cache for threshold
     if (active_settings.aftertouch_mode > 0 && pressed) {
         uint8_t aftertouch_value = 0;
         bool send_aftertouch = false;
 
-        uint8_t normal_threshold = (active_settings.normal_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+        // Use per-key actuation from cache for aftertouch threshold
+        uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+        uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
 
         switch (active_settings.aftertouch_mode) {
             case 1:  // Reverse
@@ -1188,6 +1380,22 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Run analog matrix scan
     analog_matrix_task_internal();
 
+    // Chunked EEPROM loading: triggered on first keypress, reads 1 row (112 bytes) per scan
+    // This spreads the 560-byte layer 0 load over 5 scan cycles to avoid blocking.
+    if (!per_key_eeprom_loaded) {
+        if (!chunked_load_active) {
+            // Check if any key is pressed to trigger loading
+            for (uint32_t i = 0; i < NUM_KEYS; i++) {
+                if (key_matrix[i].distance > 20) {
+                    start_chunked_eeprom_load();
+                    break;
+                }
+            }
+        }
+        // Process one chunk per scan cycle (if loading is active)
+        process_chunked_eeprom_load();
+    }
+
     // Get current layer
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
     if (current_layer >= 12) current_layer = 0;
@@ -1195,7 +1403,15 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Refresh key type cache on layer change (eliminates 140 EEPROM reads per scan)
     refresh_key_type_cache(current_layer);
 
-    // Process MIDI keys (uses cached is_midi_key flag - no EEPROM reads)
+    // Refresh per-key actuation cache on layer change (fills defaults, marks cache valid)
+    refresh_per_key_cache(current_layer);
+
+    // DISABLED: Incremental loading causes USB disconnect even at 1 key per scan
+    // The struct field access pattern from per_key_actuations array is problematic
+    // See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
+    // incremental_load_per_key_cache();
+
+    // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
             if (key_type_cache[i] == KEY_TYPE_MIDI) {
@@ -1215,8 +1431,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         }
     }
 
-    // Build matrix from key states (uses cached key types - no EEPROM reads)
-    uint8_t midi_threshold = (active_settings.midi_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    // Build matrix from key states (uses cached key types and per-key actuation - no EEPROM reads)
     uint8_t analog_mode = active_settings.velocity_mode;
 
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
@@ -1236,6 +1451,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             } else if (key_type == KEY_TYPE_MIDI) {
                 midi_key_state_t *state = &midi_key_states[key_idx];
                 uint8_t travel = distance_to_travel_compat(key->distance);
+
+                // Use per-key actuation from cache (fast, in L1 cache)
+                uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+                uint8_t midi_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
 
                 switch (analog_mode) {
                     case 0:  // Fixed

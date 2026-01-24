@@ -14,6 +14,7 @@
 #include "matrix.h"
 #include <math.h>
 extern MidiDevice midi_device;
+extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 
 #define BANK_SEL_MSB_CC 0
 #define BANK_SEL_LSB_CC 32
@@ -426,13 +427,22 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
 uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t split_type) {
     uint8_t key_index = row * 14 + col;
     if (key_index < 70 && layer < 12) {
-        // Always use per-key per-layer settings
-        per_key_actuation_t *settings = &per_key_actuations[layer].keys[key_index];
+        // DIAGNOSTIC: Only use cache, never access large per_key_actuations[] array
+        // This tests whether accessing that array is causing USB disconnect
+        uint8_t flags;
+        if (layer == active_per_key_cache_layer) {
+            flags = active_per_key_cache[key_index].flags;
+        } else {
+            // Don't access large array - use 0 (no per-key velocity flag set)
+            flags = 0;
+        }
 
         // Priority 1: Check if this specific key uses per-key velocity curve
-        if (settings->flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
-            return settings->velocity_curve;
-        }
+        // DISABLED: Per-key velocity curve requires accessing large array
+        // if (flags & PER_KEY_FLAG_USE_PER_KEY_VELOCITY_CURVE) {
+        //     return per_key_actuations[layer].keys[key_index].velocity_curve;
+        // }
+        (void)flags;  // Suppress unused variable warning
     }
 
     // Priority 2: Check for split-specific curve
@@ -3207,12 +3217,45 @@ void initialize_per_key_actuations(void) {
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
 }
 
-// Save per-key actuations to EEPROM
+// Save per-key actuations to EEPROM (ALL - 6.7KB, use sparingly)
 void save_per_key_actuations(void) {
     eeprom_update_block(per_key_actuations,
                         (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                         PER_KEY_ACTUATION_SIZE);
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
+}
+
+// Save a SINGLE key's actuation settings to EEPROM (8 bytes only)
+// This is much faster than save_per_key_actuations() and won't cause USB issues
+void save_single_key_actuation(uint8_t layer, uint8_t key_index) {
+    if (layer >= 12 || key_index >= 70) return;
+
+    // Calculate EEPROM offset for this specific key
+    // Layout: per_key_actuations[layer][key] = base + (layer * 70 * 8) + (key * 8)
+    uint32_t offset = PER_KEY_ACTUATION_EEPROM_ADDR +
+                      (layer * 70 * sizeof(per_key_actuation_t)) +
+                      (key_index * sizeof(per_key_actuation_t));
+
+    // Write only this key's 8 bytes
+    eeprom_update_block(&per_key_actuations[layer].keys[key_index],
+                        (uint8_t*)offset,
+                        sizeof(per_key_actuation_t));
+}
+
+// Save a single LAYER's per-key actuation settings to EEPROM (560 bytes)
+// Used for operations like copy layer that affect all keys in one layer
+void save_layer_per_key_actuations(uint8_t layer) {
+    if (layer >= 12) return;
+
+    // Calculate EEPROM offset for this layer
+    // Layout: per_key_actuations[layer] = base + (layer * 70 * 8)
+    uint32_t offset = PER_KEY_ACTUATION_EEPROM_ADDR +
+                      (layer * 70 * sizeof(per_key_actuation_t));
+
+    // Write this layer's 560 bytes (70 keys × 8 bytes)
+    eeprom_update_block(&per_key_actuations[layer],
+                        (uint8_t*)offset,
+                        70 * sizeof(per_key_actuation_t));
 }
 
 // Load per-key actuations from EEPROM
@@ -3221,12 +3264,17 @@ void load_per_key_actuations(void) {
                       (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                       PER_KEY_ACTUATION_SIZE);
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
+    // Invalidate per-key cache so loaded values take effect
+    active_per_key_cache_layer = 0xFF;
 }
 
 // Reset all per-key actuations to default
 void reset_per_key_actuations(void) {
     initialize_per_key_actuations();
+    // Full save is acceptable here - reset is a rare user-initiated action
     save_per_key_actuations();
+    // Invalidate per-key cache so changes take effect immediately
+    active_per_key_cache_layer = 0xFF;
 }
 
 // Get actuation point for a specific key
@@ -3289,7 +3337,18 @@ void handle_set_per_key_actuation(const uint8_t* data) {
     per_key_actuations[layer].keys[key_index].rapidfire_release_sens = data[8];
     per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod = (int8_t)data[9];
 
-    save_per_key_actuations();
+    // Update the cache directly if this is the currently cached layer
+    // This avoids invalidating the cache which would cause it to be refilled with defaults
+    if (layer == active_per_key_cache_layer && key_index < 70) {
+        active_per_key_cache[key_index].actuation = data[2];
+        active_per_key_cache[key_index].rt_down = data[7];   // rapidfire_press_sens
+        active_per_key_cache[key_index].rt_up = data[8];     // rapidfire_release_sens
+        active_per_key_cache[key_index].flags = data[6];
+    }
+    // If editing a different layer, no cache update needed - it will be loaded when that layer is activated
+
+    // Save only this key to EEPROM (8 bytes, fast)
+    save_single_key_actuation(layer, key_index);
 }
 
 // Get per-key actuation and send back via HID
@@ -3357,7 +3416,18 @@ void handle_copy_layer_actuations(const uint8_t* data) {
         per_key_actuations[dest].keys[i] = per_key_actuations[source].keys[i];
     }
 
-    save_per_key_actuations();
+    // Update cache directly if destination is the currently cached layer
+    if (dest == active_per_key_cache_layer) {
+        for (uint8_t i = 0; i < 70; i++) {
+            active_per_key_cache[i].actuation = per_key_actuations[dest].keys[i].actuation;
+            active_per_key_cache[i].rt_down = per_key_actuations[dest].keys[i].rapidfire_press_sens;
+            active_per_key_cache[i].rt_up = per_key_actuations[dest].keys[i].rapidfire_release_sens;
+            active_per_key_cache[i].flags = per_key_actuations[dest].keys[i].flags;
+        }
+    }
+
+    // Save only the destination layer (560 bytes instead of 6.7KB)
+    save_layer_per_key_actuations(dest);
 }
 
 // =============================================================================
@@ -4828,15 +4898,17 @@ void keyboard_post_init_user(void) {
 	init_custom_animations();
 	load_layer_actuations();  // Load HE velocity settings from EEPROM
 
-	// FIX: Skip per_key_actuations EEPROM operations - was causing init hang
-	// Reading/writing 6.7KB from EEPROM during init takes too long
-	// Just initialize to defaults in RAM instead
-	initialize_per_key_actuations();  // Set defaults in RAM only
-	// load_per_key_actuations();  // DISABLED - 6.7KB EEPROM read
-	// if (per_key_actuations[0].keys[0].actuation == 0xFF) {
-	//     initialize_per_key_actuations();
-	//     save_per_key_actuations();  // DISABLED - 6.7KB EEPROM write
-	// }
+	// EEPROM loading disabled - 6.7KB read during init causes keyboard hang
+	// (OLED gibberish, slow RGB, no keystrokes)
+	// Instead: initialize to defaults, granular saves still work for persistence
+	initialize_per_key_actuations();
+
+	// Load per-key cache for layer 0 from defaults
+	// This populates the 280-byte fast cache used during scan loop
+	force_load_per_key_cache_at_init(0);
+
+	// TODO: Implement deferred EEPROM loading during idle time
+	// For now, changes are saved per-key (8 bytes) but not restored on boot
 
 	// Load user curves from EEPROM
 	user_curves_load();

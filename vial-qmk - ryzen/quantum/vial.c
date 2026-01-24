@@ -522,39 +522,53 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			break;
 		}
 		
-		// Add these cases to the switch statement in vial_handle_cmd()
-		// (around where you have the other custom commands like vial_layer_rgb_save)
+		// =========================================================================
+		// DEPRECATED: Layer actuation commands (0xCA-0xCD)
+		// =========================================================================
+		// These commands conflict with arpeggiator commands in arpeggiator_hid.c:
+		//   0xCA = ARP_CMD_SET_NOTE (arpeggiator) - conflicts with SET_LAYER_ACTUATION
+		//   0xCB = ARP_CMD_SET_NOTES_CHUNK (arpeggiator) - conflicts with GET_LAYER_ACTUATION
+		//   0xCC = ARP_CMD_SET_MODE (arpeggiator) - conflicts with GET_ALL_LAYER_ACTUATIONS
+		//
+		// When using custom HID protocol (0x7D prefix), raw_hid_receive_kb intercepts
+		// 0xC0-0xCC and routes to arp_hid_receive, so these handlers are never reached.
+		//
+		// Layer-wide actuation is now handled via per-key commands (0xE0-0xE6).
+		// The GUI sends 70 per-key commands to set all keys when doing layer-wide changes.
+		// These cases are kept for Vial protocol compatibility but are effectively dead code.
+		// =========================================================================
 
-		case 0xCA: {  // HID_CMD_SET_LAYER_ACTUATION
-			if (length >= 13) {  // Magic (1) + Cmd (1) + layer (1) + 10 params = 13 bytes minimum
+		case 0xCA: {  // DEPRECATED: HID_CMD_SET_LAYER_ACTUATION - conflicts with arpeggiator
+			// This code is never reached via custom HID protocol due to arpeggiator intercept
+			if (length >= 13) {
 				handle_set_layer_actuation(&msg[2]);
-				msg[0] = 0x01; // Success
+				msg[0] = 0x01;
 			} else {
-				msg[0] = 0x00; // Error
+				msg[0] = 0x00;
 			}
 			break;
 		}
 
-		case 0xCB: {  // HID_CMD_GET_LAYER_ACTUATION
+		case 0xCB: {  // DEPRECATED: HID_CMD_GET_LAYER_ACTUATION - conflicts with arpeggiator
+			// This code is never reached via custom HID protocol due to arpeggiator intercept
 			uint8_t layer = msg[2];
 			if (layer < 12) {
 				handle_get_layer_actuation(layer, msg);
-				// Response written to msg[0-10]: success + 10 params (including aftertouch settings)
 			} else {
-				msg[0] = 0x00; // Error
+				msg[0] = 0x00;
 			}
 			break;
 		}
 
-		case 0xCC: {  // HID_CMD_GET_ALL_LAYER_ACTUATIONS
+		case 0xCC: {  // DEPRECATED: HID_CMD_GET_ALL_LAYER_ACTUATIONS - conflicts with arpeggiator
+			// This code is never reached via custom HID protocol due to arpeggiator intercept
 			handle_get_all_layer_actuations();
-			// Response is sent inside the handler
 			break;
 		}
 
-		case 0xCD: {  // HID_CMD_RESET_LAYER_ACTUATIONS
+		case 0xCD: {  // HID_CMD_RESET_LAYER_ACTUATIONS (no conflict, still works)
 			handle_reset_layer_actuations();
-			msg[0] = 0x01; // Success
+			msg[0] = 0x01;
 			break;
 		}
 
