@@ -657,47 +657,6 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a Distance Matrix command (0xE7)
-    if (length >= 32 &&
-        data[0] == HID_MANUFACTURER_ID &&
-        data[1] == HID_SUB_ID &&
-        data[2] == HID_DEVICE_ID &&
-        data[3] == 0xE7) {
-
-        dprintf("raw_hid_receive_kb: Distance Matrix command detected\n");
-
-        uint8_t response[32] = {0};
-
-        // Copy header to response
-        response[0] = HID_MANUFACTURER_ID;
-        response[1] = HID_SUB_ID;
-        response[2] = HID_DEVICE_ID;
-        response[3] = 0xE7;
-
-        uint8_t row = data[4];  // Row index from request
-
-        // Validate row number
-        if (row >= MATRIX_ROWS) {
-            response[4] = row;
-            response[5] = 0x00;  // Error - invalid row
-            dprintf("Distance Matrix: Invalid row %d (max %d)\n", row, MATRIX_ROWS);
-        } else {
-            response[4] = row;
-            response[5] = 0x01;  // Success
-
-            // Get calibrated distance values (0-255) for each column in the row
-            // Use analog_matrix_get_distance() which returns real-time calibrated values
-            uint8_t max_cols = (MATRIX_COLS < 14) ? MATRIX_COLS : 14;
-            for (uint8_t col = 0; col < max_cols; col++) {
-                response[6 + col] = analog_matrix_get_distance(row, col);
-            }
-        }
-
-        // Send response
-        raw_hid_send(response, 32);
-        return;
-    }
-
     // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&

@@ -98,7 +98,7 @@ HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
 # ADC Matrix Tester Command (0xDF)
 HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
 
-# Per-Key Actuation Commands (0xE0-0xE7)
+# Per-Key Actuation Commands (0xE0-0xE6)
 HID_CMD_SET_PER_KEY_ACTUATION = 0xE0     # Set actuation for specific key
 HID_CMD_GET_PER_KEY_ACTUATION = 0xE1     # Get actuation for specific key
 HID_CMD_GET_ALL_PER_KEY_ACTUATIONS = 0xE2  # Get all per-key actuations
@@ -106,7 +106,6 @@ HID_CMD_RESET_PER_KEY_ACTUATIONS = 0xE3  # Reset all to defaults
 HID_CMD_SET_PER_KEY_MODE = 0xE4          # Set per-key mode flags
 HID_CMD_GET_PER_KEY_MODE = 0xE5          # Get per-key mode flags
 HID_CMD_COPY_LAYER_ACTUATIONS = 0xE6     # Copy one layer to another
-HID_CMD_GET_DISTANCE_MATRIX = 0xE7       # Get calibrated distance values (0-255) for matrix row
 
 class ProtocolError(Exception):
     pass
@@ -700,53 +699,6 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     break
 
             return adc_values
-
-        except Exception:
-            return None
-
-    def distance_matrix_poll(self, row):
-        """Poll calibrated distance values for a specific matrix row
-
-        Returns the actual distance values (0-255) that the firmware uses for
-        actuation decisions, including calibration and linearization.
-
-        Args:
-            row: Matrix row index (0-based)
-
-        Returns:
-            list: Calibrated distance values (0-255) for each column in the row, or None on error
-                  0 = key at rest, 255 = fully pressed (2.5mm)
-
-        Protocol:
-            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_DISTANCE_MATRIX, row, 0...]
-            Response: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_DISTANCE_MATRIX, row, status,
-                      d0, d1, d2, ...] (8-bit values, 0-255)
-        """
-        try:
-            packet = self._create_hid_packet(HID_CMD_GET_DISTANCE_MATRIX, row, None)
-            response = self.usb_send(self.dev, packet, retries=1)
-
-            if not response or len(response) < 6:
-                return None
-
-            # Check if command was successful (status byte at index 5)
-            if response[5] != 0x01:
-                return None
-
-            # Parse distance values from response (starting at index 6)
-            # Each distance value is 1 byte (0-255), max 14 columns
-            distance_values = []
-            data_start = 6
-            max_cols = min(self.cols, 14) if hasattr(self, 'cols') else 14
-
-            for col in range(max_cols):
-                offset = data_start + col
-                if offset < len(response):
-                    distance_values.append(response[offset])
-                else:
-                    break
-
-            return distance_values
 
         except Exception:
             return None

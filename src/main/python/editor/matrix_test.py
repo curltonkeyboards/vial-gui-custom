@@ -6,10 +6,10 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider, QMenu, QApplication)
-from PyQt5.QtCore import Qt, QTimer, QRect
+                           QScrollArea, QSlider, QMenu)
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QPen, QBrush, QFont, QPalette, QLinearGradient
+from PyQt5.QtGui import QPainterPath, QRegion
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
@@ -32,145 +32,6 @@ from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
 from vial_device import VialKeyboard
 from unlocker import Unlocker
-
-
-class ActuationVisualizerWidget(QWidget):
-    """Real-time visualization of key actuation depth in mm.
-
-    Shows two vertical bars for R0C0 and R0C3 with moving indicators
-    that go down as keys are pressed and up as they're released.
-
-    Uses calibrated distance values directly from firmware (0-255):
-    - 0 = key at rest (0mm)
-    - 255 = key fully pressed (2.5mm)
-
-    This shows EXACTLY what the firmware thinks the key position is,
-    including all calibration and linearization applied by the firmware.
-    """
-
-    MAX_TRAVEL_MM = 2.5
-    # Fixed keys to monitor
-    MONITORED_KEYS = [(0, 0), (0, 3)]
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setMinimumSize(200, 200)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-        # Distance values for monitored keys: {(row, col): distance}
-        self.distances = {key: 0 for key in self.MONITORED_KEYS}
-
-    def set_distance_value(self, row, col, distance, label=""):
-        """Update with calibrated distance value from firmware."""
-        key = (row, col)
-        if key in self.distances and distance is not None:
-            self.distances[key] = distance
-            self.update()
-
-    def clear_all(self):
-        """Clear the display."""
-        self.distances = {key: 0 for key in self.MONITORED_KEYS}
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        palette = QApplication.palette()
-        text_color = palette.color(QPalette.Text)
-        highlight_color = palette.color(QPalette.Highlight)
-        bar_bg = palette.color(QPalette.AlternateBase)
-        bar_border = palette.color(QPalette.Mid)
-
-        width = self.width()
-        height = self.height()
-        margin_top = 35
-        margin_bottom = 25
-
-        # Draw title
-        painter.setPen(text_color)
-        title_font = QFont()
-        title_font.setPointSize(10)
-        title_font.setBold(True)
-        painter.setFont(title_font)
-        painter.drawText(QRect(0, 5, width, 25), Qt.AlignCenter, "Actuation Depth")
-
-        # Bar dimensions
-        num_bars = len(self.MONITORED_KEYS)
-        bar_width = 45
-        bar_spacing = 40
-        total_width = num_bars * bar_width + (num_bars - 1) * bar_spacing
-        start_x = (width - total_width) // 2
-        bar_height = height - margin_top - margin_bottom
-
-        # Draw scale markers on the left (only once)
-        scale_font = QFont()
-        scale_font.setPointSize(8)
-        painter.setFont(scale_font)
-        painter.setPen(text_color)
-        for mm in [0, 1.0, 2.0, 2.5]:
-            y_pos = margin_top + int((mm / self.MAX_TRAVEL_MM) * bar_height)
-            painter.drawLine(start_x - 15, y_pos, start_x - 5, y_pos)
-            painter.drawText(start_x - 40, y_pos + 4, f"{mm:.1f}")
-
-        # Draw each bar
-        for i, key in enumerate(self.MONITORED_KEYS):
-            bar_x = start_x + i * (bar_width + bar_spacing)
-            distance = self.distances.get(key, 0)
-
-            # Convert firmware distance (0-255) to ratio and mm
-            depth_ratio = distance / 255.0
-            mm_value = depth_ratio * self.MAX_TRAVEL_MM
-
-            # Bar background
-            painter.setPen(QPen(bar_border, 1))
-            painter.setBrush(bar_bg)
-            painter.drawRoundedRect(bar_x, margin_top, bar_width, bar_height, 6, 6)
-
-            # Filled portion (top down based on depth)
-            fill_height = int(depth_ratio * bar_height)
-            if fill_height > 0:
-                if depth_ratio < 0.5:
-                    r, g = int(255 * depth_ratio * 2), 255
-                else:
-                    r, g = 255, int(255 * (1 - (depth_ratio - 0.5) * 2))
-                fill_color = QColor(r, g, 0, 180)
-
-                gradient = QLinearGradient(bar_x, margin_top, bar_x, margin_top + fill_height)
-                gradient.setColorAt(0, fill_color.lighter(130))
-                gradient.setColorAt(1, fill_color)
-
-                painter.setPen(Qt.NoPen)
-                painter.setBrush(gradient)
-                painter.drawRoundedRect(bar_x, margin_top, bar_width, fill_height, 6, 6)
-
-            # Indicator line
-            indicator_y = margin_top + fill_height
-            painter.setPen(QPen(highlight_color, 3))
-            painter.drawLine(bar_x - 5, indicator_y, bar_x + bar_width + 5, indicator_y)
-
-            # Indicator circle
-            painter.setBrush(highlight_color)
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(bar_x + bar_width // 2 - 4, indicator_y - 4, 8, 8)
-
-            # mm value next to indicator
-            mm_font = QFont()
-            mm_font.setPointSize(9)
-            mm_font.setBold(True)
-            painter.setFont(mm_font)
-            painter.setPen(text_color)
-            painter.drawText(bar_x + bar_width + 8, indicator_y + 4, f"{mm_value:.2f}")
-
-            # Key label at bottom
-            label_font = QFont()
-            label_font.setPointSize(9)
-            painter.setFont(label_font)
-            painter.setPen(text_color)
-            label = f"R{key[0]}C{key[1]}"
-            fm = painter.fontMetrics()
-            label_width = fm.width(label)
-            painter.drawText(bar_x + (bar_width - label_width) // 2, height - 8, label)
 
 
 class MatrixTest(BasicEditor):
@@ -220,21 +81,6 @@ class MatrixTest(BasicEditor):
 
         container_layout.addLayout(layout)
 
-        # Add actuation visualizer section
-        viz_container = QFrame()
-        viz_container.setFrameShape(QFrame.StyledPanel)
-        viz_container.setStyleSheet("QFrame { background-color: palette(base); border-radius: 8px; }")
-        viz_container.setMinimumHeight(250)
-        viz_container.setMaximumHeight(300)
-        viz_layout = QVBoxLayout()
-        viz_layout.setContentsMargins(10, 10, 10, 10)
-
-        self.actuation_visualizer = ActuationVisualizerWidget()
-        viz_layout.addWidget(self.actuation_visualizer)
-
-        viz_container.setLayout(viz_layout)
-        container_layout.addWidget(viz_container)
-
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         self.unlock_lbl = QLabel(tr("MatrixTest", "Unlock the keyboard before testing:"))
@@ -283,9 +129,6 @@ class MatrixTest(BasicEditor):
             w.setPressed(False)
             w.setOn(False)
             w.setAdcValue(None)  # Clear ADC values
-
-        # Clear the actuation visualizer
-        self.actuation_visualizer.clear_all()
 
         self.KeyboardWidget2.update_layout()
         self.KeyboardWidget2.update()
@@ -384,22 +227,17 @@ class MatrixTest(BasicEditor):
             row_start = half_rows
             row_end = rows
 
-        # Poll ADC values and distance values for the selected rows
+        # Poll ADC values for the selected rows
         adc_matrix = {}
-        distance_matrix = {}
         for row in range(row_start, row_end):
             try:
                 adc_values = self.keyboard.adc_matrix_poll(row)
                 if adc_values:
                     adc_matrix[row] = adc_values
-                # Also poll calibrated distance values from firmware
-                distance_values = self.keyboard.distance_matrix_poll(row)
-                if distance_values:
-                    distance_matrix[row] = distance_values
             except (RuntimeError, ValueError):
                 continue
 
-        # Update keyboard widget with raw ADC values (for display on keys)
+        # Update keyboard widget with ADC values
         for w in self.KeyboardWidget2.widgets:
             if w.desc.row is not None and w.desc.col is not None:
                 row = w.desc.row
@@ -407,15 +245,7 @@ class MatrixTest(BasicEditor):
 
                 # Only update keys in the rows we just polled
                 if row in adc_matrix and col < len(adc_matrix[row]):
-                    adc_value = adc_matrix[row][col]
-                    w.setAdcValue(adc_value)
-
-                # Update visualizer with calibrated distance values from firmware
-                # This shows exactly what the firmware thinks the position is
-                if row in distance_matrix and col < len(distance_matrix[row]):
-                    distance = distance_matrix[row][col]
-                    label = w.text if hasattr(w, 'text') and w.text else ""
-                    self.actuation_visualizer.set_distance_value(row, col, distance, label)
+                    w.setAdcValue(adc_matrix[row][col])
 
         # Alternate to the other half for next poll
         self.adc_poll_half = 1 - self.adc_poll_half
@@ -428,10 +258,9 @@ class MatrixTest(BasicEditor):
     def activate(self):
         self.grabber.grabKeyboard()
         self.timer.start(20)
-        # Start ADC polling at 100ms intervals for smoother real-time visualization
-        # This polls half of rows per cycle, so each key updates every 200ms
+        # Start ADC polling at 500ms intervals (slower to avoid HID overload)
         self.adc_poll_half = 0  # Reset to first half
-        self.adc_timer.start(100)
+        self.adc_timer.start(500)
 
     def deactivate(self):
         self.grabber.releaseKeyboard()
@@ -440,8 +269,6 @@ class MatrixTest(BasicEditor):
         # Clear ADC values when leaving the matrix tester
         for w in self.KeyboardWidget2.widgets:
             w.setAdcValue(None)
-        # Clear the actuation visualizer
-        self.actuation_visualizer.clear_all()
 
 
 class ThruLoopConfigurator(BasicEditor):
