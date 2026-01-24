@@ -657,6 +657,65 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a Distance Matrix command (0xE7)
+    // Returns key travel distance in 0.01mm units for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xE7) {
+
+        dprintf("raw_hid_receive_kb: Distance Matrix command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE7;
+
+        // Request format: [header(4), num_keys, row0, col0, row1, col1, ...]
+        // Data starts at byte 6 after _create_hid_packet (bytes 4-5 are macro_num and status)
+        uint8_t num_keys = data[6];
+
+        // Validate number of keys (max 8 to fit in response)
+        if (num_keys > 8) {
+            num_keys = 8;
+        }
+
+        response[4] = num_keys;
+        response[5] = 0x01;  // Success
+
+        // Get distance for each requested key
+        // Response format: [header(4), num_keys, status, dist_low_0, dist_high_0, ...]
+        for (uint8_t i = 0; i < num_keys; i++) {
+            uint8_t row = data[7 + i * 2];
+            uint8_t col = data[8 + i * 2];
+
+            uint16_t distance_hundredths = 0;
+
+            if (row < MATRIX_ROWS && col < MATRIX_COLS) {
+                // Get distance from firmware (0-255 scale)
+                uint8_t distance_255 = analog_matrix_get_distance(row, col);
+
+                // Convert to 0.01mm units (0-400 for 0-4.0mm)
+                // 255 = 4.0mm = 400 hundredths, so: hundredths = (distance * 400) / 255
+                distance_hundredths = ((uint32_t)distance_255 * 400) / 255;
+            }
+
+            // Store as 16-bit little-endian
+            response[6 + i * 2] = distance_hundredths & 0xFF;           // Low byte
+            response[6 + i * 2 + 1] = (distance_hundredths >> 8) & 0xFF; // High byte
+        }
+
+        dprintf("Distance Matrix: %d keys queried\n", num_keys);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&

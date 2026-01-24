@@ -67,6 +67,9 @@
 // ADC Matrix Tester Command (0xDF)
 #define HID_CMD_GET_ADC_MATRIX          0xDF  // Get ADC values for matrix row
 
+// Distance Matrix Command (0xE7)
+#define HID_CMD_GET_DISTANCE_MATRIX     0xE7  // Get distance (mm) for specific keys
+
 #define HID_CMD_SET_LOOP_CONFIG 0xB0
 #define HID_CMD_SET_MAIN_LOOP_CCS 0xB1  
 #define HID_CMD_SET_OVERDUB_CCS 0xB2
