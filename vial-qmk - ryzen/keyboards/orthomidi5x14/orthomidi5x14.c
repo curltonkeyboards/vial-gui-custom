@@ -3377,23 +3377,29 @@ void handle_get_per_key_actuation(const uint8_t* data, uint8_t* response) {
     response[7] = (uint8_t)per_key_actuations[layer].keys[key_index].rapidfire_velocity_mod;
 }
 
-// DEPRECATED: Set per-key mode flags
-// NOTE: Mode flags have been REMOVED. Firmware ALWAYS uses per-key per-layer.
-// This handler is kept for backward compatibility with older GUIs - it's a no-op.
+// Set per-key mode flags (GUI preference storage)
+// The firmware always uses per-key, but this stores the GUI's preference
+// so the UI shows the same state after restart.
 // Format: [mode_enabled, per_layer_enabled]
 void handle_set_per_key_mode(const uint8_t* data) {
-    (void)data;  // Unused - modes are removed
-    // No-op: firmware always uses per-key per-layer
+    // Store GUI preference in EEPROM (2 bytes)
+    eeprom_update_byte((uint8_t*)PER_KEY_ACTUATION_FLAGS_ADDR, data[0]);
+    eeprom_update_byte((uint8_t*)(PER_KEY_ACTUATION_FLAGS_ADDR + 1), data[1]);
 }
 
-// DEPRECATED: Get per-key mode flags
-// NOTE: Mode flags have been REMOVED. Firmware ALWAYS uses per-key per-layer.
-// This handler returns 1,1 (both enabled) for backward compatibility.
+// Get per-key mode flags (GUI preference)
+// Returns stored GUI preference, or defaults (1,1) if never set.
 // Response: [mode_enabled, per_layer_enabled]
 void handle_get_per_key_mode(uint8_t* response) {
-    // Always report as enabled for backward compatibility
-    response[0] = 0x01;  // per_key_mode always "enabled"
-    response[1] = 0x01;  // per_layer_mode always "enabled"
+    uint8_t mode_enabled = eeprom_read_byte((uint8_t*)PER_KEY_ACTUATION_FLAGS_ADDR);
+    uint8_t per_layer_enabled = eeprom_read_byte((uint8_t*)(PER_KEY_ACTUATION_FLAGS_ADDR + 1));
+
+    // If EEPROM uninitialized (0xFF), default to enabled
+    if (mode_enabled == 0xFF) mode_enabled = 0x01;
+    if (per_layer_enabled == 0xFF) per_layer_enabled = 0x01;
+
+    response[0] = mode_enabled;
+    response[1] = per_layer_enabled;
 }
 
 // Reset all per-key actuations to default (HID handler)
