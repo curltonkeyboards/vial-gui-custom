@@ -657,6 +657,67 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a Calibration Debug command (0xE8)
+    // Returns calibration values (rest, bottom, raw ADC) for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xE8) {
+
+        dprintf("raw_hid_receive_kb: Calibration Debug command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE8;
+
+        // Request format: [header(4), _, num_keys, row0, col0, row1, col1, ...]
+        uint8_t num_keys = data[6];
+
+        // Max 4 keys per request (each key uses 6 bytes: rest(2) + bottom(2) + raw(2))
+        if (num_keys > 4) {
+            num_keys = 4;
+        }
+
+        response[4] = num_keys;
+        response[5] = 0x01;  // Success
+
+        // Get calibration for each requested key
+        // Response format: [header(4), num_keys, status, rest_lo, rest_hi, bottom_lo, bottom_hi, raw_lo, raw_hi, ...]
+        for (uint8_t i = 0; i < num_keys; i++) {
+            uint8_t row = data[7 + i * 2];
+            uint8_t col = data[8 + i * 2];
+
+            uint16_t rest = 0, bottom = 0, raw = 0;
+
+            if (row < MATRIX_ROWS && col < MATRIX_COLS) {
+                uint32_t key_idx = row * MATRIX_COLS + col;
+                extern key_state_t key_matrix[];
+                rest = key_matrix[key_idx].adc_rest_value;
+                bottom = key_matrix[key_idx].adc_bottom_out_value;
+                raw = key_matrix[key_idx].adc_raw;
+            }
+
+            uint8_t offset = 6 + i * 6;
+            response[offset + 0] = rest & 0xFF;
+            response[offset + 1] = (rest >> 8) & 0xFF;
+            response[offset + 2] = bottom & 0xFF;
+            response[offset + 3] = (bottom >> 8) & 0xFF;
+            response[offset + 4] = raw & 0xFF;
+            response[offset + 5] = (raw >> 8) & 0xFF;
+        }
+
+        dprintf("Calibration Debug: %d keys queried\n", num_keys);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a Distance Matrix command (0xE7)
     // Returns key travel distance in 0.01mm units for specific keys
     if (length >= 32 &&

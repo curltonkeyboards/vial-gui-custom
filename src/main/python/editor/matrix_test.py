@@ -45,14 +45,26 @@ class ActuationVisualizer(QWidget):
         self.distance_mm = 0.0  # Current distance in mm
         self.max_travel_mm = 4.0  # Maximum key travel in mm
 
-        # Widget size
-        self.setMinimumWidth(60)
-        self.setMinimumHeight(200)
-        self.setMaximumWidth(80)
+        # Calibration debug values
+        self.rest_adc = 0
+        self.bottom_adc = 0
+        self.raw_adc = 0
+
+        # Widget size - wider to show debug info
+        self.setMinimumWidth(90)
+        self.setMinimumHeight(280)
+        self.setMaximumWidth(110)
 
     def set_distance(self, distance_hundredths_mm):
         """Set the current distance in 0.01mm units (0-400 for 0-4.0mm)"""
         self.distance_mm = distance_hundredths_mm / 100.0
+        self.update()
+
+    def set_calibration(self, rest, bottom, raw):
+        """Set calibration debug values"""
+        self.rest_adc = rest
+        self.bottom_adc = bottom
+        self.raw_adc = raw
         self.update()
 
     def paintEvent(self, event):
@@ -62,9 +74,9 @@ class ActuationVisualizer(QWidget):
         width = self.width()
         height = self.height()
 
-        # Margins
+        # Margins - increased bottom for debug info
         margin_top = 25
-        margin_bottom = 35
+        margin_bottom = 95  # More space for debug info
         margin_side = 10
         bar_width = width - 2 * margin_side
         bar_height = height - margin_top - margin_bottom
@@ -121,14 +133,32 @@ class ActuationVisualizer(QWidget):
             painter.drawText(int(width - margin_side + 8), int(y_pos - 6),
                            30, 12, Qt.AlignLeft | Qt.AlignVCenter, f"{mm}")
 
-        # Draw current distance value at bottom
+        # Draw current distance value
         painter.setPen(QColor(255, 255, 255))
         font.setPointSize(10)
         font.setBold(True)
         painter.setFont(font)
         distance_text = f"{self.distance_mm:.2f}mm"
-        painter.drawText(0, height - margin_bottom + 5, width, margin_bottom - 5,
-                        Qt.AlignCenter, distance_text)
+        y_start = height - margin_bottom + 5
+        painter.drawText(0, y_start, width, 18, Qt.AlignCenter, distance_text)
+
+        # Draw calibration debug info
+        small_font.setPointSize(7)
+        small_font.setBold(False)
+        painter.setFont(small_font)
+        painter.setPen(QColor(180, 180, 180))
+
+        # Rest ADC
+        painter.drawText(0, y_start + 20, width, 14, Qt.AlignCenter, f"Rest: {self.rest_adc}")
+        # Bottom ADC
+        painter.drawText(0, y_start + 34, width, 14, Qt.AlignCenter, f"Bot: {self.bottom_adc}")
+        # Raw ADC (current)
+        painter.setPen(QColor(100, 200, 255))  # Cyan for current reading
+        painter.drawText(0, y_start + 48, width, 14, Qt.AlignCenter, f"Raw: {self.raw_adc}")
+        # Calculated range
+        painter.setPen(QColor(255, 200, 100))  # Orange for range
+        range_val = self.rest_adc - self.bottom_adc if self.rest_adc > self.bottom_adc else 0
+        painter.drawText(0, y_start + 62, width, 14, Qt.AlignCenter, f"Rng: {range_val}")
 
 
 class MatrixTest(BasicEditor):
@@ -401,7 +431,7 @@ class MatrixTest(BasicEditor):
         self.KeyboardWidget2.update()
 
     def distance_poller(self):
-        """Poll distance values for specific keys to update actuation visualizers"""
+        """Poll distance and calibration values for specific keys to update actuation visualizers"""
         if not self.valid():
             self.distance_timer.stop()
             return
@@ -423,6 +453,24 @@ class MatrixTest(BasicEditor):
                         self.actuation_visualizers[(row, col)].set_distance(distance)
         except (RuntimeError, ValueError):
             pass
+
+        # Poll calibration debug values (less frequently - every other call)
+        if not hasattr(self, '_calib_poll_counter'):
+            self._calib_poll_counter = 0
+        self._calib_poll_counter += 1
+
+        if self._calib_poll_counter >= 4:  # Every 4th poll (~200ms)
+            self._calib_poll_counter = 0
+            try:
+                calibration = self.keyboard.calibration_debug_poll(self.distance_keys)
+                if calibration:
+                    for (row, col), calib in calibration.items():
+                        if (row, col) in self.actuation_visualizers:
+                            self.actuation_visualizers[(row, col)].set_calibration(
+                                calib['rest'], calib['bottom'], calib['raw']
+                            )
+            except (RuntimeError, ValueError):
+                pass
 
     def unlock(self):
         Unlocker.unlock(self.keyboard)

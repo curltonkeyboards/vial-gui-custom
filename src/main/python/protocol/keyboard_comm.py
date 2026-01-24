@@ -759,6 +759,58 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception:
             return None
 
+    def calibration_debug_poll(self, keys):
+        """Poll calibration values (rest, bottom, raw ADC) for specific keys
+
+        Args:
+            keys: List of (row, col) tuples for keys to query (max 4 keys per request)
+
+        Returns:
+            dict: {(row, col): {'rest': int, 'bottom': int, 'raw': int}} or None on error
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE8,
+                      num_keys, row0, col0, row1, col1, ...]
+            Response: [header(4), num_keys, status, rest_lo, rest_hi, bottom_lo, bottom_hi, raw_lo, raw_hi, ...]
+        """
+        HID_CMD_CALIBRATION_DEBUG = 0xE8
+        try:
+            if not keys or len(keys) > 4:
+                return None
+
+            # Build request data: [num_keys, row0, col0, row1, col1, ...]
+            data = bytearray([len(keys)])
+            for row, col in keys:
+                data.append(row)
+                data.append(col)
+
+            packet = self._create_hid_packet(HID_CMD_CALIBRATION_DEBUG, len(keys), bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 6:
+                return None
+
+            # Check if command was successful (status byte at index 5)
+            if response[5] != 0x01:
+                return None
+
+            # Parse calibration values from response (starting at index 6)
+            # Each key has 6 bytes: rest(2) + bottom(2) + raw(2)
+            result = {}
+            data_start = 6
+            for i, (row, col) in enumerate(keys):
+                offset = data_start + i * 6
+                if offset + 5 < len(response):
+                    rest = response[offset] | (response[offset + 1] << 8)
+                    bottom = response[offset + 2] | (response[offset + 3] << 8)
+                    raw = response[offset + 4] | (response[offset + 5] << 8)
+                    result[(row, col)] = {'rest': rest, 'bottom': bottom, 'raw': raw}
+
+            return result
+
+        except Exception:
+            return None
+
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings
         self.settings[qsid] = value
