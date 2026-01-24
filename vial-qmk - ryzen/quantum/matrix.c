@@ -263,21 +263,21 @@ void force_load_per_key_cache_at_init(uint8_t layer) {
     active_per_key_cache_layer = layer;
 }
 
-// Start chunked EEPROM loading for a specific layer
-// This initiates loading 1 row (112 bytes) per scan cycle
-void start_chunked_eeprom_load(uint8_t layer) {
+// Start chunked EEPROM loading for all layers
+// This initiates loading 1 row (112 bytes) per scan cycle, starting from layer 0
+void start_chunked_eeprom_load_all(void) {
     if (chunked_load_active) return;  // Already loading something
-    if (layer >= 12) layer = 0;
-    if (layers_eeprom_loaded & (1 << layer)) return;  // Already loaded this layer
+    if (layers_eeprom_loaded == 0x0FFF) return;  // All layers already loaded
 
     chunked_load_active = true;
     chunked_load_row = 0;
-    chunked_load_layer = layer;
+    chunked_load_layer = 0;  // Start with layer 0
 }
 
 // Process one chunk of EEPROM loading (called once per scan cycle)
 // Reads 1 row (14 keys = 112 bytes) from EEPROM into per_key_actuations
 // then updates the active cache for those keys
+// Automatically continues to next layer until all are loaded
 void process_chunked_eeprom_load(void) {
     if (!chunked_load_active) return;
 
@@ -285,19 +285,24 @@ void process_chunked_eeprom_load(void) {
 
     if (chunked_load_row >= 5) {
         // Done loading all 5 rows for this layer
-        chunked_load_active = false;
         layers_eeprom_loaded |= (1 << layer);  // Mark this layer as loaded
 
-        // If this was layer 0, also set the general "loaded" flag
-        if (layer == 0) {
+        // Check if EEPROM was uninitialized (0xFF = never saved) - only check on layer 0
+        if (layer == 0 && per_key_actuations[0].keys[0].actuation == 0xFF) {
+            initialize_per_key_actuations();
+            // Mark all layers as "loaded" (they now have defaults)
+            layers_eeprom_loaded = 0x0FFF;  // All 12 layers
+            chunked_load_active = false;
             per_key_eeprom_loaded = true;
 
-            // Check if EEPROM was uninitialized (0xFF = never saved)
-            if (per_key_actuations[0].keys[0].actuation == 0xFF) {
-                initialize_per_key_actuations();
-                // Mark all layers as "loaded" (they now have defaults)
-                layers_eeprom_loaded = 0x0FFF;  // All 12 layers
+            // Refresh cache with defaults
+            for (uint8_t i = 0; i < 70; i++) {
+                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
+                active_per_key_cache[i].rt_down = 0;
+                active_per_key_cache[i].rt_up = 0;
+                active_per_key_cache[i].flags = 0;
             }
+            return;
         }
 
         // Refresh cache if we just loaded the currently active layer
@@ -309,6 +314,16 @@ void process_chunked_eeprom_load(void) {
                 active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
                 active_per_key_cache[i].flags = full->flags;
             }
+        }
+
+        // Move to next layer
+        chunked_load_layer++;
+        chunked_load_row = 0;
+
+        // Check if all layers are loaded
+        if (chunked_load_layer >= 12) {
+            chunked_load_active = false;
+            per_key_eeprom_loaded = true;
         }
         return;
     }
@@ -368,7 +383,9 @@ void incremental_load_per_key_cache(void) {
     incremental_load_index++;
 }
 
-// Refresh the per-key cache - fills defaults immediately, triggers chunked EEPROM load
+// Refresh the per-key cache on layer change
+// If all layers loaded from EEPROM, copies from per_key_actuations array
+// Otherwise uses defaults (before first keypress triggers EEPROM load)
 void refresh_per_key_cache(uint8_t layer) {
     if (layer == active_per_key_cache_layer) return;  // Already cached
     if (layer >= 12) layer = 0;
@@ -377,7 +394,7 @@ void refresh_per_key_cache(uint8_t layer) {
     bool layer_loaded = (layers_eeprom_loaded & (1 << layer)) != 0;
 
     if (layer_loaded) {
-        // Layer already loaded from EEPROM - copy from per_key_actuations array
+        // Layer loaded from EEPROM - copy from per_key_actuations array
         for (uint8_t i = 0; i < 70; i++) {
             per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
             active_per_key_cache[i].actuation = full->actuation;
@@ -386,16 +403,13 @@ void refresh_per_key_cache(uint8_t layer) {
             active_per_key_cache[i].flags = full->flags;
         }
     } else {
-        // Layer not loaded yet - fill with defaults, trigger chunked EEPROM load
+        // Layer not loaded yet (before first keypress) - use defaults
         for (uint8_t i = 0; i < 70; i++) {
             active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
             active_per_key_cache[i].rt_down = 0;
             active_per_key_cache[i].rt_up = 0;
             active_per_key_cache[i].flags = 0;
         }
-
-        // Start chunked EEPROM loading for this layer (will update cache as it loads)
-        start_chunked_eeprom_load(layer);
     }
 
     // Set cache layer IMMEDIATELY so next 70 calls return early
@@ -1412,14 +1426,13 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // Chunked EEPROM loading: triggered on first keypress for layer 0
-    // Subsequent layers are loaded when switched to via refresh_per_key_cache()
-    // Reads 1 row (112 bytes) per scan cycle to avoid blocking.
+    // Chunked EEPROM loading: triggered on first keypress, loads ALL 12 layers
+    // Reads 1 row (112 bytes) per scan cycle: 12 layers × 5 rows = 60 scan cycles total
     if (!per_key_eeprom_loaded && !chunked_load_active) {
-        // Check if any key is pressed to trigger loading layer 0
+        // Check if any key is pressed to trigger loading all layers
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
             if (key_matrix[i].distance > 20) {
-                start_chunked_eeprom_load(0);  // Start with layer 0
+                start_chunked_eeprom_load_all();  // Load all 12 layers
                 break;
             }
         }
