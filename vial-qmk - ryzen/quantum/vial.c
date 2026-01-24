@@ -92,6 +92,9 @@
 #define HID_CMD_GET_PER_KEY_MODE            0xE5
 #define HID_CMD_COPY_LAYER_ACTUATIONS       0xE6
 
+// Distance Matrix Command (0xE7) - Returns calibrated distance values (0-255) for visualizer
+#define HID_CMD_GET_DISTANCE_MATRIX         0xE7
+
 #ifdef VIAL_INSECURE
 #pragma message "Building Vial-enabled firmware in insecure mode."
 int vial_unlocked = 1;
@@ -1012,6 +1015,33 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				msg[0] = 0x01; // Success
 			} else {
 				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case HID_CMD_GET_DISTANCE_MATRIX: {  // 0xE7
+			// Returns calibrated distance values (0-255) for a matrix row
+			// Format: Request: [cmd, row]
+			//         Response: [status, d0, d1, d2, ... d13] (up to 14 columns)
+			// Uses nullbind_key_travel[] which is updated during matrix scan
+			// with the actual calibrated/linearized distance values
+			extern uint8_t nullbind_key_travel[70];
+			uint8_t row = msg[2];
+
+			if (row < MATRIX_ROWS) {
+				msg[0] = 0x01; // Success
+				// Copy distance values for this row (up to 14 columns)
+				uint8_t max_cols = (MATRIX_COLS < 14) ? MATRIX_COLS : 14;
+				for (uint8_t col = 0; col < max_cols; col++) {
+					uint8_t key_idx = row * MATRIX_COLS + col;
+					if (key_idx < 70) {
+						msg[1 + col] = nullbind_key_travel[key_idx];
+					} else {
+						msg[1 + col] = 0;
+					}
+				}
+			} else {
+				msg[0] = 0x00; // Error: invalid row
 			}
 			break;
 		}
