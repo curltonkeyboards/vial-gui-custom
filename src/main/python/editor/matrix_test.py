@@ -50,10 +50,10 @@ class ActuationVisualizer(QWidget):
         self.bottom_adc = 0
         self.raw_adc = 0
 
-        # Widget size - wider to show debug info
-        self.setMinimumWidth(90)
+        # Widget size - compact but shows debug info
+        self.setMinimumWidth(85)
         self.setMinimumHeight(280)
-        self.setMaximumWidth(110)
+        self.setMaximumWidth(95)
 
     def set_distance(self, distance_hundredths_mm):
         """Set the current distance in 0.01mm units (0-400 for 0-4.0mm)"""
@@ -74,10 +74,10 @@ class ActuationVisualizer(QWidget):
         width = self.width()
         height = self.height()
 
-        # Margins - increased bottom for debug info
-        margin_top = 25
-        margin_bottom = 95  # More space for debug info
-        margin_side = 10
+        # Margins - reduced for compact display
+        margin_top = 20
+        margin_bottom = 90  # Space for debug info
+        margin_side = 5
         bar_width = width - 2 * margin_side
         bar_height = height - margin_top - margin_bottom
 
@@ -231,7 +231,7 @@ class MatrixTest(BasicEditor):
         self.distance_keys = []  # Will be populated dynamically
 
         visualizer_bars_layout = QHBoxLayout()
-        visualizer_bars_layout.setSpacing(10)
+        visualizer_bars_layout.setSpacing(5)
 
         # Default keys to visualize (0-indexed internally, displayed as 1-indexed)
         default_keys = [(0, 0), (0, 3), (0, 11), (3, 0)]
@@ -246,23 +246,24 @@ class MatrixTest(BasicEditor):
 
             # Row/Col selector dropdowns (displayed as 1-indexed)
             selector_layout = QHBoxLayout()
-            selector_layout.setSpacing(2)
+            selector_layout.setSpacing(1)
+            selector_layout.setContentsMargins(0, 0, 0, 0)
 
-            row_label = QLabel("R")
-            row_label.setStyleSheet("font-size: 8pt;")
+            row_label = QLabel("Row")
+            row_label.setStyleSheet("font-size: 7pt;")
             row_combo = QComboBox()
-            row_combo.setMaximumWidth(45)
-            row_combo.setStyleSheet("font-size: 8pt;")
-            # Add rows 1-8 (internally 0-7)
-            for r in range(1, 9):
+            row_combo.setMaximumWidth(40)
+            row_combo.setStyleSheet("font-size: 7pt; padding: 0px;")
+            # Add rows 1-5 (internally 0-4)
+            for r in range(1, 6):
                 row_combo.addItem(str(r), r - 1)  # Display 1-indexed, store 0-indexed
             row_combo.setCurrentIndex(default_row)
 
-            col_label = QLabel("C")
-            col_label.setStyleSheet("font-size: 8pt;")
+            col_label = QLabel("Col")
+            col_label.setStyleSheet("font-size: 7pt;")
             col_combo = QComboBox()
-            col_combo.setMaximumWidth(45)
-            col_combo.setStyleSheet("font-size: 8pt;")
+            col_combo.setMaximumWidth(40)
+            col_combo.setStyleSheet("font-size: 7pt; padding: 0px;")
             # Add cols 1-14 (internally 0-13)
             for c in range(1, 15):
                 col_combo.addItem(str(c), c - 1)  # Display 1-indexed, store 0-indexed
