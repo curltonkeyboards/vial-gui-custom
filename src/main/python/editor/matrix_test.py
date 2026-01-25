@@ -5854,9 +5854,8 @@ class GamingConfigurator(BasicEditor):
             # Set keyboard reference for tabbed keycodes (so GamingTab can access it)
             self.tabbed_keycodes.set_keyboard(self.keyboard)
             self.tabbed_keycodes.recreate_keycode_buttons()
-            # Load gaming data immediately (optimized with reduced retries)
-            self._load_gaming_data()
-            self._needs_loading = False
+            # Defer gaming data loading until tab is actually opened (lazy loading)
+            self._needs_loading = True
 
     def activate(self):
         """Called when tab is selected - load heavy data if needed"""
