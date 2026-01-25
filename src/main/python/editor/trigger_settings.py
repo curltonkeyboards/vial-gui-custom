@@ -2845,9 +2845,29 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
 
     def update_slider_states(self):
-        """Update slider visibility based on per-key mode (no-op since we removed old sliders)"""
-        # All controls are now in the per-key settings tab
-        pass
+        """Update slider visibility and per-layer checkbox state based on per-key mode"""
+        # Toggle between global and per-key actuation sliders
+        self.global_actuation_widget.setVisible(not self.mode_enabled)
+        self.per_key_actuation_widget.setVisible(self.mode_enabled)
+
+        # When per-key is enabled, per-layer must be enabled and grayed out
+        if self.mode_enabled:
+            self.per_layer_checkbox.setChecked(True)
+            self.per_layer_checkbox.setEnabled(False)
+        else:
+            self.per_layer_checkbox.setEnabled(True)
+
+        # Update trigger slider enabled state when in per-key mode
+        if self.mode_enabled:
+            key_selected = self.container.active_key is not None
+            self.trigger_slider.setEnabled(key_selected)
+
+        # Sync with Actuation Settings tab if available
+        if self.actuation_widget_ref:
+            self.actuation_widget_ref.syncing = True
+            self.actuation_widget_ref.enable_per_key_checkbox.setChecked(self.mode_enabled)
+            self.actuation_widget_ref.update_per_key_ui_state(self.mode_enabled)
+            self.actuation_widget_ref.syncing = False
 
     def on_per_layer_changed(self, state):
         """Handle per-layer checkbox toggle
@@ -3109,7 +3129,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.per_layer_enabled = mode_data['per_layer_enabled']
                 self.enable_checkbox.setChecked(self.mode_enabled)
                 self.per_layer_checkbox.setChecked(self.per_layer_enabled)
-                # Keep per_layer_checkbox always enabled
+                # Enable mode-dependent buttons
                 self.copy_layer_btn.setEnabled(self.mode_enabled)
                 self.copy_all_layers_btn.setEnabled(self.mode_enabled)
                 self.reset_btn.setEnabled(self.mode_enabled)
