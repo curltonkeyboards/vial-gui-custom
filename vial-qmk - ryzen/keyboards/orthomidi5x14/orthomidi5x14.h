@@ -502,6 +502,11 @@ typedef struct {
 #define USER_CURVES_EEPROM_ADDR 41000
 #define USER_CURVES_MAGIC 0xCF01
 
+// EEPROM address for EQ sensitivity curve settings (26 bytes)
+// Layout: [magic(2), range_low(2), range_high(2), bands[15], scale[3], reserved(2)]
+#define EQ_CURVE_EEPROM_ADDR 41300
+#define EQ_CURVE_MAGIC 0xEA01
+
 extern user_curves_t user_curves;
 
 // Curve system functions

@@ -225,25 +225,95 @@ class MatrixTest(BasicEditor):
         viz_title.setAlignment(Qt.AlignCenter)
         visualizer_layout.addWidget(viz_title)
 
-        # Create visualizer bars for r0c0, r0c3, r0c11
+        # Create 4 visualizer slots with dropdown selectors
         self.actuation_visualizers = {}
+        self.visualizer_widgets = []  # Store (viz, row_combo, col_combo) tuples
+        self.distance_keys = []  # Will be populated dynamically
+
         visualizer_bars_layout = QHBoxLayout()
         visualizer_bars_layout.setSpacing(10)
 
-        # Keys to visualize: (row, col, label)
-        keys_to_visualize = [
-            (0, 0, "R0C0"),
-            (0, 3, "R0C3"),
-            (0, 11, "R0C11"),
-            (3, 0, "R3C0"),
-        ]
+        # Default keys to visualize (0-indexed internally, displayed as 1-indexed)
+        default_keys = [(0, 0), (0, 3), (0, 11), (3, 0)]
 
-        for row, col, label in keys_to_visualize:
-            viz = ActuationVisualizer(row, col, label)
-            self.actuation_visualizers[(row, col)] = viz
-            visualizer_bars_layout.addWidget(viz)
+        for idx, (default_row, default_col) in enumerate(default_keys):
+            # Container for each visualizer + its dropdowns
+            viz_container = QWidget()
+            viz_layout = QVBoxLayout()
+            viz_layout.setContentsMargins(0, 0, 0, 0)
+            viz_layout.setSpacing(2)
+            viz_container.setLayout(viz_layout)
+
+            # Row/Col selector dropdowns (displayed as 1-indexed)
+            selector_layout = QHBoxLayout()
+            selector_layout.setSpacing(2)
+
+            row_label = QLabel("R")
+            row_label.setStyleSheet("font-size: 8pt;")
+            row_combo = QComboBox()
+            row_combo.setMaximumWidth(45)
+            row_combo.setStyleSheet("font-size: 8pt;")
+            # Add rows 1-8 (internally 0-7)
+            for r in range(1, 9):
+                row_combo.addItem(str(r), r - 1)  # Display 1-indexed, store 0-indexed
+            row_combo.setCurrentIndex(default_row)
+
+            col_label = QLabel("C")
+            col_label.setStyleSheet("font-size: 8pt;")
+            col_combo = QComboBox()
+            col_combo.setMaximumWidth(45)
+            col_combo.setStyleSheet("font-size: 8pt;")
+            # Add cols 1-14 (internally 0-13)
+            for c in range(1, 15):
+                col_combo.addItem(str(c), c - 1)  # Display 1-indexed, store 0-indexed
+            col_combo.setCurrentIndex(default_col)
+
+            selector_layout.addWidget(row_label)
+            selector_layout.addWidget(row_combo)
+            selector_layout.addWidget(col_label)
+            selector_layout.addWidget(col_combo)
+            viz_layout.addLayout(selector_layout)
+
+            # Create the visualizer bar
+            label = f"R{default_row + 1}C{default_col + 1}"
+            viz = ActuationVisualizer(default_row, default_col, label)
+            viz_layout.addWidget(viz)
+
+            # Connect dropdowns to update visualizer
+            def make_key_updater(v, rc, cc, i):
+                def update():
+                    row = rc.currentData()
+                    col = cc.currentData()
+                    v.row = row
+                    v.col = col
+                    v.label = f"R{row + 1}C{col + 1}"
+                    self.update_distance_keys()
+                return update
+
+            row_combo.currentIndexChanged.connect(make_key_updater(viz, row_combo, col_combo, idx))
+            col_combo.currentIndexChanged.connect(make_key_updater(viz, row_combo, col_combo, idx))
+
+            visualizer_bars_layout.addWidget(viz_container)
+
+            self.visualizer_widgets.append((viz, row_combo, col_combo))
+            self.actuation_visualizers[(default_row, default_col)] = viz
 
         visualizer_layout.addLayout(visualizer_bars_layout)
+        self.update_distance_keys()
+
+        # Show Advanced Tuning toggle button
+        self.advanced_tuning_btn = QPushButton("Show Advanced Tuning")
+        self.advanced_tuning_btn.setCheckable(True)
+        self.advanced_tuning_btn.setMaximumWidth(150)
+        self.advanced_tuning_btn.clicked.connect(self.toggle_advanced_tuning)
+        visualizer_layout.addWidget(self.advanced_tuning_btn)
+
+        # Advanced tuning container (hidden by default)
+        self.advanced_tuning_widget = QWidget()
+        self.advanced_tuning_widget.setVisible(False)
+        advanced_layout = QVBoxLayout()
+        advanced_layout.setContentsMargins(0, 5, 0, 0)
+        self.advanced_tuning_widget.setLayout(advanced_layout)
 
         # EQ-Style Sensitivity Curve Controls
         eq_group = QGroupBox(tr("MatrixTest", "Sensitivity EQ (by Rest ADC Range)"))
@@ -258,10 +328,10 @@ class MatrixTest(BasicEditor):
 
         range_layout.addWidget(QLabel("Low/Mid boundary:"))
         self.eq_range_low_slider = QSlider(Qt.Horizontal)
-        self.eq_range_low_slider.setRange(1600, 2200)
-        self.eq_range_low_slider.setValue(1900)
+        self.eq_range_low_slider.setRange(1400, 2200)
+        self.eq_range_low_slider.setValue(1745)  # Updated default
         self.eq_range_low_slider.setMaximumWidth(100)
-        self.eq_range_low_label = QLabel("1900")
+        self.eq_range_low_label = QLabel("1745")
         self.eq_range_low_label.setMinimumWidth(35)
         self.eq_range_low_slider.valueChanged.connect(lambda v: self.eq_range_low_label.setText(str(v)))
         self.eq_range_low_slider.valueChanged.connect(self.send_eq_settings)
@@ -270,10 +340,10 @@ class MatrixTest(BasicEditor):
 
         range_layout.addWidget(QLabel("Mid/High boundary:"))
         self.eq_range_high_slider = QSlider(Qt.Horizontal)
-        self.eq_range_high_slider.setRange(1800, 2400)
-        self.eq_range_high_slider.setValue(2100)
+        self.eq_range_high_slider.setRange(1600, 2500)
+        self.eq_range_high_slider.setValue(2082)  # Updated default
         self.eq_range_high_slider.setMaximumWidth(100)
-        self.eq_range_high_label = QLabel("2100")
+        self.eq_range_high_label = QLabel("2082")
         self.eq_range_high_label.setMinimumWidth(35)
         self.eq_range_high_slider.valueChanged.connect(lambda v: self.eq_range_high_label.setText(str(v)))
         self.eq_range_high_slider.valueChanged.connect(self.send_eq_settings)
@@ -399,13 +469,25 @@ class MatrixTest(BasicEditor):
 
         eq_main_layout.addLayout(eq_grid)
 
-        # Reset to defaults button
-        reset_eq_btn = QPushButton("Reset to 100%")
-        reset_eq_btn.setMaximumWidth(100)
-        reset_eq_btn.clicked.connect(self.reset_eq_to_defaults)
-        eq_main_layout.addWidget(reset_eq_btn, alignment=Qt.AlignRight)
+        # Buttons row: Reset and Save
+        eq_buttons_layout = QHBoxLayout()
+        eq_buttons_layout.addStretch()
 
-        visualizer_layout.addWidget(eq_group)
+        reset_eq_btn = QPushButton("Reset to Defaults")
+        reset_eq_btn.setMaximumWidth(120)
+        reset_eq_btn.clicked.connect(self.reset_eq_to_defaults)
+        eq_buttons_layout.addWidget(reset_eq_btn)
+
+        save_eq_btn = QPushButton("Save to Device")
+        save_eq_btn.setMaximumWidth(120)
+        save_eq_btn.setStyleSheet("QPushButton { background-color: #4a9f4a; }")
+        save_eq_btn.clicked.connect(self.save_eq_to_eeprom)
+        eq_buttons_layout.addWidget(save_eq_btn)
+
+        eq_main_layout.addLayout(eq_buttons_layout)
+
+        advanced_layout.addWidget(eq_group)
+        visualizer_layout.addWidget(self.advanced_tuning_widget)
         visualizer_layout.addStretch()
 
         main_content_layout.addWidget(visualizer_container)
@@ -660,34 +742,83 @@ class MatrixTest(BasicEditor):
             pass
 
     def reset_eq_to_defaults(self):
-        """Reset all EQ sliders to 100% (neutral)"""
+        """Reset all EQ sliders to tuned baseline values"""
+        # Tuned default values (half-percentage: value * 2 = percentage)
+        # Low rest: 98%, 98%, 100%, 100%, 100% -> 49, 49, 50, 50, 50
+        # Mid rest: 100%, 100%, 100%, 100%, 100% -> 50, 50, 50, 50, 50
+        # High rest: 130%, 118%, 100%, 100%, 100% -> 65, 59, 50, 50, 50
+        default_bands = [
+            [49, 49, 50, 50, 50],  # Low rest
+            [50, 50, 50, 50, 50],  # Mid rest (neutral)
+            [65, 59, 50, 50, 50],  # High rest
+        ]
+        # Range scales: 110%, 100%, 106% -> 55, 50, 53
+        default_scales = [55, 50, 53]
+
         # Block signals to avoid sending multiple updates
         for range_idx in range(3):
             for band in range(5):
+                val = default_bands[range_idx][band]
                 self.eq_sliders[range_idx][band].blockSignals(True)
-                self.eq_sliders[range_idx][band].setValue(50)  # 50 = 100%
-                self.eq_labels[range_idx][band].setText("100%")
+                self.eq_sliders[range_idx][band].setValue(val)
+                self.eq_labels[range_idx][band].setText(f"{val * 2}%")
                 self.eq_sliders[range_idx][band].blockSignals(False)
 
-            # Reset range scale sliders
+            # Set range scale sliders
+            scale_val = default_scales[range_idx]
             self.eq_range_scale_sliders[range_idx].blockSignals(True)
-            self.eq_range_scale_sliders[range_idx].setValue(50)  # 50 = 100%
-            self.eq_range_scale_labels[range_idx].setText("100%")
+            self.eq_range_scale_sliders[range_idx].setValue(scale_val)
+            self.eq_range_scale_labels[range_idx].setText(f"{scale_val * 2}%")
             self.eq_range_scale_sliders[range_idx].blockSignals(False)
 
-        # Reset range boundaries
+        # Reset range boundaries to tuned values
         self.eq_range_low_slider.blockSignals(True)
-        self.eq_range_low_slider.setValue(1900)
-        self.eq_range_low_label.setText("1900")
+        self.eq_range_low_slider.setValue(1745)
+        self.eq_range_low_label.setText("1745")
         self.eq_range_low_slider.blockSignals(False)
 
         self.eq_range_high_slider.blockSignals(True)
-        self.eq_range_high_slider.setValue(2100)
-        self.eq_range_high_label.setText("2100")
+        self.eq_range_high_slider.setValue(2082)
+        self.eq_range_high_label.setText("2082")
         self.eq_range_high_slider.blockSignals(False)
 
         # Send the reset values
         self.send_eq_settings()
+
+    def toggle_advanced_tuning(self):
+        """Toggle visibility of advanced tuning widget"""
+        visible = self.advanced_tuning_btn.isChecked()
+        self.advanced_tuning_widget.setVisible(visible)
+        if visible:
+            self.advanced_tuning_btn.setText("Hide Advanced Tuning")
+        else:
+            self.advanced_tuning_btn.setText("Show Advanced Tuning")
+
+    def update_distance_keys(self):
+        """Update the distance_keys list and actuation_visualizers dict based on dropdown selections"""
+        # Clear and rebuild
+        self.distance_keys = []
+        self.actuation_visualizers = {}
+
+        for viz, row_combo, col_combo in self.visualizer_widgets:
+            row = row_combo.currentData()
+            col = col_combo.currentData()
+            key = (row, col)
+            self.distance_keys.append(key)
+            self.actuation_visualizers[key] = viz
+
+    def save_eq_to_eeprom(self):
+        """Save current EQ settings to device EEPROM for persistence"""
+        if not self.keyboard:
+            return
+
+        try:
+            success = self.keyboard.save_eq_to_eeprom()
+            if success:
+                # Visual feedback could be added here (e.g., button flash)
+                pass
+        except (RuntimeError, ValueError, AttributeError):
+            pass
 
     def unlock(self):
         Unlocker.unlock(self.keyboard)

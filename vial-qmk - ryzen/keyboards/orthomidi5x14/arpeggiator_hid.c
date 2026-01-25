@@ -4,6 +4,7 @@
 #include "orthomidi5x14.h"
 #include "raw_hid.h"
 #include "process_midi.h"
+#include "matrix.h"
 #include <string.h>
 
 // =============================================================================
@@ -828,6 +829,35 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         dprintf("EQ Curve: low=%d, high=%d, scale=[%d,%d,%d]\n",
                 range_low, range_high,
                 eq_range_scale[0], eq_range_scale[1], eq_range_scale[2]);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is an EQ Curve Save to EEPROM command (0xEA)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xEA) {
+
+        dprintf("raw_hid_receive_kb: EQ Curve Save to EEPROM command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xEA;
+
+        // Call the save function from matrix.c
+        eq_curve_save_to_eeprom();
+
+        response[4] = 0x01;  // Success
+
+        dprintf("EQ Curve saved to EEPROM\n");
 
         // Send response
         raw_hid_send(response, 32);

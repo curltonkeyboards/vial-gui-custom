@@ -137,8 +137,8 @@ typedef uint32_t matrix_row_t;
 
 // EQ-style sensitivity curve defaults
 // Range boundaries default values
-#define EQ_RANGE_LOW_DEFAULT  1900   // Below this = low rest range
-#define EQ_RANGE_HIGH_DEFAULT 2100   // At or above this = high rest range
+#define EQ_RANGE_LOW_DEFAULT  1745   // Below this = low rest range
+#define EQ_RANGE_HIGH_DEFAULT 2082   // At or above this = high rest range
 // Default EQ band value (50 = 100% = no change)
 #define EQ_BAND_DEFAULT 50
 
@@ -288,6 +288,10 @@ uint16_t analog_matrix_get_bottom_adc(uint8_t row, uint8_t col);
 
 // Refresh cached layer settings (call when layer actuations change)
 void analog_matrix_refresh_settings(void);
+
+// EQ curve EEPROM persistence
+void eq_curve_save_to_eeprom(void);
+void eq_curve_load_from_eeprom(void);
 
 #ifdef __cplusplus
 }

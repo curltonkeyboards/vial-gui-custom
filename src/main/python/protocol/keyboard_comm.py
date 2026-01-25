@@ -872,6 +872,23 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception:
             return False
 
+    def save_eq_to_eeprom(self):
+        """Save current EQ curve settings to device EEPROM for persistence
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xEA]
+            Response: [header(4), status]
+        """
+        try:
+            packet = self._create_hid_packet(0xEA, 0, bytes())
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            # Check for success response
+            return response and len(response) >= 5 and response[4] == 0x01
+
+        except Exception:
+            return False
+
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings
         self.settings[qsid] = value

@@ -171,26 +171,85 @@ static bool calibration_dirty = false;
 
 // EQ-style sensitivity curve tuning (adjustable via HID for real-time tuning)
 // Range boundaries: determines which curve set to use based on rest ADC
-uint16_t eq_range_low = 1900;   // Below this = low rest range
-uint16_t eq_range_high = 2100;  // At or above this = high rest range
+uint16_t eq_range_low = 1745;   // Below this = low rest range
+uint16_t eq_range_high = 2082;  // At or above this = high rest range
 
 // EQ bands: 3 ranges × 5 bands
 // Value stored as half-percentage: actual_percent = value * 2
 // Default = 50 (100% = no change)
 // Range: 12 (25%) to 200 (400%)
 uint8_t eq_bands[3][5] = {
-    // Range 0 (Low rest < 1900): [low, low-mid, mid, high-mid, high]
-    {50, 50, 50, 50, 50},  // All 100% (neutral)
-    // Range 1 (Mid rest 1900-2100): [low, low-mid, mid, high-mid, high]
-    {50, 50, 50, 50, 50},  // All 100% (neutral)
-    // Range 2 (High rest >= 2100): [low, low-mid, mid, high-mid, high]
-    {50, 50, 50, 50, 50},  // All 100% (neutral)
+    // Range 0 (Low rest < 1745): [low, low-mid, mid, high-mid, high]
+    // 98%, 98%, 100%, 100%, 100%
+    {49, 49, 50, 50, 50},
+    // Range 1 (Mid rest 1745-2082): [low, low-mid, mid, high-mid, high]
+    // 100%, 100%, 100%, 100%, 100% (neutral baseline)
+    {50, 50, 50, 50, 50},
+    // Range 2 (High rest >= 2082): [low, low-mid, mid, high-mid, high]
+    // 130%, 118%, 100%, 100%, 100%
+    {65, 59, 50, 50, 50},
 };
 
 // Range scale: overall distance multiplier for each rest range
 // Value stored as half-percentage: actual_percent = value * 2
-// Default = 50 (100% = no change)
-uint8_t eq_range_scale[3] = {50, 50, 50};  // All 100% (neutral)
+// 110%, 100%, 106%
+uint8_t eq_range_scale[3] = {55, 50, 53};
+
+// ============================================================================
+// EQ CURVE EEPROM PERSISTENCE
+// ============================================================================
+
+void eq_curve_save_to_eeprom(void) {
+    // Write magic number first
+    eeprom_update_word((uint16_t*)EQ_CURVE_EEPROM_ADDR, EQ_CURVE_MAGIC);
+
+    // Write range boundaries (4 bytes)
+    eeprom_update_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 2), eq_range_low);
+    eeprom_update_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 4), eq_range_high);
+
+    // Write all 15 band values (15 bytes)
+    for (uint8_t range = 0; range < 3; range++) {
+        for (uint8_t band = 0; band < 5; band++) {
+            eeprom_update_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 6 + range * 5 + band),
+                              eq_bands[range][band]);
+        }
+    }
+
+    // Write 3 range scale values (3 bytes)
+    for (uint8_t range = 0; range < 3; range++) {
+        eeprom_update_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 21 + range),
+                          eq_range_scale[range]);
+    }
+
+    dprintf("EQ Curve saved to EEPROM\n");
+}
+
+void eq_curve_load_from_eeprom(void) {
+    // Check magic number
+    uint16_t magic = eeprom_read_word((uint16_t*)EQ_CURVE_EEPROM_ADDR);
+    if (magic != EQ_CURVE_MAGIC) {
+        dprintf("EQ Curve EEPROM not initialized, using defaults\n");
+        return;
+    }
+
+    // Read range boundaries
+    eq_range_low = eeprom_read_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 2));
+    eq_range_high = eeprom_read_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 4));
+
+    // Read all 15 band values
+    for (uint8_t range = 0; range < 3; range++) {
+        for (uint8_t band = 0; band < 5; band++) {
+            eq_bands[range][band] = eeprom_read_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 6 + range * 5 + band));
+        }
+    }
+
+    // Read 3 range scale values
+    for (uint8_t range = 0; range < 3; range++) {
+        eq_range_scale[range] = eeprom_read_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 21 + range));
+    }
+
+    dprintf("EQ Curve loaded from EEPROM: low=%d, high=%d\n", eq_range_low, eq_range_high);
+}
 
 // Layer caching (libhmk style optimization)
 static uint8_t cached_layer = 0xFF;
