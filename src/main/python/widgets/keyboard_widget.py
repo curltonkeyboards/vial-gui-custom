@@ -1176,8 +1176,14 @@ class KeyboardWidget2(QWidget):
                 adc_font.setPointSize(max(6, adc_font.pointSize() - 2))
                 adc_font.setBold(True)
                 qp.setFont(adc_font)
-                # Draw ADC value in a contrasting color
-                qp.setPen(QColor("#00FF00") if key.pressed else QColor("#FFFF00"))
+                # Green when pressed (actuation met), otherwise white/black based on theme
+                if key.pressed:
+                    qp.setPen(QColor("#00FF00"))
+                else:
+                    # Check if light theme (white text needs dark bg, black text needs light bg)
+                    light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
+                    is_light = Theme.get_theme() in light_themes
+                    qp.setPen(QColor("#000000") if is_light else QColor("#FFFFFF"))
                 # Create a rect at the bottom of the key for ADC value
                 adc_rect = QRect(
                     round(key.x),
