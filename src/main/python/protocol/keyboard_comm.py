@@ -975,6 +975,48 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception:
             return False
 
+    def get_eq_settings(self):
+        """Get current EQ curve settings from keyboard
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xEF]
+            Response: [header(4), range_low(2), range_high(2), bands(15), scales(3), lut(1)]
+
+        Returns:
+            dict with keys: range_low, range_high, bands (list of 15), scales (list of 3), lut_strength
+            or None on error
+        """
+        try:
+            packet = self._create_hid_packet(0xEF, 0, bytes())
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 27:
+                return None
+
+            # Parse range boundaries (bytes 4-7)
+            range_low = response[4] | (response[5] << 8)
+            range_high = response[6] | (response[7] << 8)
+
+            # Parse 15 EQ bands (bytes 8-22)
+            bands = list(response[8:23])
+
+            # Parse 3 range scale values (bytes 23-25)
+            scales = list(response[23:26])
+
+            # Parse LUT correction strength (byte 26)
+            lut_strength = response[26]
+
+            return {
+                'range_low': range_low,
+                'range_high': range_high,
+                'bands': bands,
+                'scales': scales,
+                'lut_strength': lut_strength
+            }
+
+        except Exception:
+            return None
+
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings
         self.settings[qsid] = value

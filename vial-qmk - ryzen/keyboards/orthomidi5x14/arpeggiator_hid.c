@@ -5,6 +5,7 @@
 #include "raw_hid.h"
 #include "process_midi.h"
 #include "matrix.h"
+#include "process_dynamic_macro.h"
 #include <string.h>
 
 // =============================================================================
@@ -997,9 +998,64 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         // Call the save function from matrix.c
         eq_curve_save_to_eeprom();
 
+        // Also save keyboard settings (includes LUT correction strength)
+        save_keyboard_settings();
+
         response[4] = 0x01;  // Success
 
-        dprintf("EQ Curve saved to EEPROM\n");
+        dprintf("EQ Curve and keyboard settings saved to EEPROM\n");
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a GET EQ Curve Settings command (0xEF)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xEF) {
+
+        dprintf("raw_hid_receive_kb: GET EQ Curve Settings command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xEF;
+
+        // Get the global EQ variables (defined in matrix.c)
+        extern uint16_t eq_range_low;
+        extern uint16_t eq_range_high;
+        extern uint8_t eq_bands[3][5];
+        extern uint8_t eq_range_scale[3];
+        extern uint8_t lut_correction_strength;
+
+        // Pack range boundaries (4 bytes)
+        response[4] = eq_range_low & 0xFF;
+        response[5] = (eq_range_low >> 8) & 0xFF;
+        response[6] = eq_range_high & 0xFF;
+        response[7] = (eq_range_high >> 8) & 0xFF;
+
+        // Pack all 15 EQ bands (3 ranges × 5 bands)
+        for (uint8_t range = 0; range < 3; range++) {
+            for (uint8_t band = 0; band < 5; band++) {
+                response[8 + range * 5 + band] = eq_bands[range][band];
+            }
+        }
+
+        // Pack range scale multipliers (3 bytes at response[23-25])
+        response[23] = eq_range_scale[0];
+        response[24] = eq_range_scale[1];
+        response[25] = eq_range_scale[2];
+
+        // Pack LUT correction strength (1 byte at response[26])
+        response[26] = lut_correction_strength;
+
+        dprintf("GET EQ: low=%d, high=%d, lut=%d\n", eq_range_low, eq_range_high, lut_correction_strength);
 
         // Send response
         raw_hid_send(response, 32);
