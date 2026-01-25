@@ -503,7 +503,15 @@ class MatrixTest(BasicEditor):
         btn_layout.addWidget(self.reset_btn)
         container_layout.addLayout(btn_layout)
 
-        self.addWidget(container, alignment=QtCore.Qt.AlignHCenter)
+        # Wrap container in scroll area for resizable window
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(container)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setFrameShape(QScrollArea.NoFrame)
+
+        self.addWidget(scroll_area)
         self.addStretch()
 
         self.keyboard = None
