@@ -817,7 +817,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception:
             return None
 
-    def set_eq_curve_settings(self, range_low, range_high, bands):
+    def set_eq_curve_settings(self, range_low, range_high, bands, range_scales=None):
         """Set EQ-style sensitivity curve parameters for real-time adjustment
 
         Args:
@@ -825,17 +825,26 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             range_high: Mid/High rest boundary (typically 1800-2400)
             bands: List of 15 band values (3 ranges × 5 bands)
                    Each value is half-percentage: 50 = 100%, range 12-200 (25%-400%)
+            range_scales: List of 3 range scale values (one per rest range)
+                   Each value is half-percentage: 50 = 100%, range 25-100 (50%-200%)
 
         Protocol:
             Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE9,
                       range_low_lo, range_low_hi, range_high_lo, range_high_hi,
                       r0_b0, r0_b1, r0_b2, r0_b3, r0_b4,  (range 0: low rest)
                       r1_b0, r1_b1, r1_b2, r1_b3, r1_b4,  (range 1: mid rest)
-                      r2_b0, r2_b1, r2_b2, r2_b3, r2_b4]  (range 2: high rest)
+                      r2_b0, r2_b1, r2_b2, r2_b3, r2_b4,  (range 2: high rest)
+                      scale_0, scale_1, scale_2]          (range scale multipliers)
             Response: [header(4), status]
         """
         try:
             if len(bands) != 15:
+                return False
+
+            # Default range scales to 100% if not provided
+            if range_scales is None:
+                range_scales = [50, 50, 50]
+            if len(range_scales) != 3:
                 return False
 
             # Build request data
@@ -849,6 +858,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             # Add all 15 band values
             for band_value in bands:
                 data.append(band_value & 0xFF)
+
+            # Add 3 range scale values
+            for scale_value in range_scales:
+                data.append(scale_value & 0xFF)
 
             packet = self._create_hid_packet(HID_CMD_SET_CURVE_SETTINGS, 0, bytes(data))
             response = self.usb_send(self.dev, packet, retries=1)

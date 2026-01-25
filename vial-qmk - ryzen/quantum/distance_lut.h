@@ -144,6 +144,11 @@ extern uint16_t eq_range_high;  // At or above this = high rest range (default 2
 // So 50 = 100%, 12 = 25%, 200 = 400%
 extern uint8_t eq_bands[3][5];
 
+// Range scale: overall distance multiplier for each rest range
+// Value stored as half-percentage: actual_percent = value * 2
+// So 50 = 100%, 25 = 50%, 100 = 200%
+extern uint8_t eq_range_scale[3];
+
 // Band boundaries in normalized space (0-1023)
 #define EQ_BAND_0_END   204   // 0-20%
 #define EQ_BAND_1_END   409   // 20-40%
@@ -221,8 +226,13 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
         multiplier = mult_low + ((int32_t)(mult_high - mult_low) * (int32_t)interp_factor) / 1023;
     }
 
-    // Apply multiplier: adjusted = normalized * multiplier / 100
+    // Apply band multiplier: adjusted = normalized * multiplier / 100
     int32_t adjusted = ((int32_t)normalized * multiplier) / 100;
+
+    // Apply range scale (overall distance multiplier for this rest range)
+    // eq_range_scale is stored as half-percentage: value * 2 = actual percent
+    int32_t range_scale = (int32_t)eq_range_scale[range] * 2;
+    adjusted = (adjusted * range_scale) / 100;
 
     // Clamp to valid range
     if (adjusted < 0) adjusted = 0;

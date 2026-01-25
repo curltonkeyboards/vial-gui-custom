@@ -778,7 +778,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     //                  range_low_lo, range_low_hi, range_high_lo, range_high_hi,
     //                  r0_b0, r0_b1, r0_b2, r0_b3, r0_b4,  (range 0: low rest)
     //                  r1_b0, r1_b1, r1_b2, r1_b3, r1_b4,  (range 1: mid rest)
-    //                  r2_b0, r2_b1, r2_b2, r2_b3, r2_b4]  (range 2: high rest)
+    //                  r2_b0, r2_b1, r2_b2, r2_b3, r2_b4,  (range 2: high rest)
+    //                  scale_0, scale_1, scale_2]          (range scale multipliers)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
@@ -804,6 +805,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         extern uint16_t eq_range_low;
         extern uint16_t eq_range_high;
         extern uint8_t eq_bands[3][5];
+        extern uint8_t eq_range_scale[3];
 
         eq_range_low = range_low;
         eq_range_high = range_high;
@@ -816,11 +818,16 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             }
         }
 
+        // Parse range scale multipliers (3 bytes at data[25-27])
+        eq_range_scale[0] = data[25];
+        eq_range_scale[1] = data[26];
+        eq_range_scale[2] = data[27];
+
         response[4] = 0x01;  // Success
 
-        dprintf("EQ Curve: low=%d, high=%d, bands[0]=[%d,%d,%d,%d,%d]\n",
+        dprintf("EQ Curve: low=%d, high=%d, scale=[%d,%d,%d]\n",
                 range_low, range_high,
-                eq_bands[0][0], eq_bands[0][1], eq_bands[0][2], eq_bands[0][3], eq_bands[0][4]);
+                eq_range_scale[0], eq_range_scale[1], eq_range_scale[2]);
 
         // Send response
         raw_hid_send(response, 32);

@@ -287,9 +287,11 @@ class MatrixTest(BasicEditor):
         band_names = ["Low\n0-20%", "Low-Mid\n20-40%", "Mid\n40-60%", "High-Mid\n60-80%", "High\n80-100%"]
         range_names = ["Low Rest\n(<boundary)", "Mid Rest\n(between)", "High Rest\n(>=boundary)"]
 
-        # EQ sliders grid: 3 ranges × 5 bands
+        # EQ sliders grid: 3 ranges × 5 bands + 1 range scale
         self.eq_sliders = []  # [range][band]
         self.eq_labels = []
+        self.eq_range_scale_sliders = []  # [range]
+        self.eq_range_scale_labels = []
 
         eq_grid = QGridLayout()
         eq_grid.setSpacing(3)
@@ -300,6 +302,12 @@ class MatrixTest(BasicEditor):
             header.setAlignment(Qt.AlignCenter)
             header.setStyleSheet("font-size: 7pt; color: #aaa;")
             eq_grid.addWidget(header, 0, band + 1)
+
+        # Range Scale header (column 6)
+        scale_header = QLabel("Range\nScale")
+        scale_header.setAlignment(Qt.AlignCenter)
+        scale_header.setStyleSheet("font-size: 7pt; color: #ffa500; font-weight: bold;")
+        eq_grid.addWidget(scale_header, 0, 6)
 
         # Create sliders for each range
         for range_idx in range(3):
@@ -349,6 +357,42 @@ class MatrixTest(BasicEditor):
 
                 self.eq_sliders[range_idx].append(slider)
                 self.eq_labels[range_idx].append(value_label)
+
+            # Range Scale slider for this range (column 6)
+            scale_slider = QSlider(Qt.Vertical)
+            scale_slider.setRange(25, 100)  # Half-percentage: 25=50%, 50=100%, 100=200%
+            scale_slider.setValue(50)  # Default 100%
+            scale_slider.setMinimumHeight(60)
+            scale_slider.setMaximumHeight(80)
+            scale_slider.setTickPosition(QSlider.TicksBothSides)
+            scale_slider.setTickInterval(25)
+
+            scale_label = QLabel("100%")
+            scale_label.setAlignment(Qt.AlignCenter)
+            scale_label.setStyleSheet("font-size: 7pt; color: #ffa500;")
+            scale_label.setMinimumWidth(35)
+
+            def make_scale_updater(lbl):
+                def update(v):
+                    lbl.setText(f"{v*2}%")
+                    self.send_eq_settings()
+                return update
+
+            scale_slider.valueChanged.connect(make_scale_updater(scale_label))
+
+            # Container for scale slider + label
+            scale_container = QWidget()
+            scale_layout = QVBoxLayout()
+            scale_layout.setContentsMargins(2, 2, 2, 2)
+            scale_layout.setSpacing(2)
+            scale_layout.addWidget(scale_slider, alignment=Qt.AlignCenter)
+            scale_layout.addWidget(scale_label, alignment=Qt.AlignCenter)
+            scale_container.setLayout(scale_layout)
+
+            eq_grid.addWidget(scale_container, range_idx + 1, 6)
+
+            self.eq_range_scale_sliders.append(scale_slider)
+            self.eq_range_scale_labels.append(scale_label)
 
         eq_main_layout.addLayout(eq_grid)
 
@@ -602,8 +646,13 @@ class MatrixTest(BasicEditor):
             for band in range(5):
                 bands.append(self.eq_sliders[range_idx][band].value())
 
+        # Collect 3 range scale values
+        range_scales = []
+        for range_idx in range(3):
+            range_scales.append(self.eq_range_scale_sliders[range_idx].value())
+
         try:
-            self.keyboard.set_eq_curve_settings(range_low, range_high, bands)
+            self.keyboard.set_eq_curve_settings(range_low, range_high, bands, range_scales)
         except (RuntimeError, ValueError, AttributeError):
             pass
 
@@ -616,6 +665,12 @@ class MatrixTest(BasicEditor):
                 self.eq_sliders[range_idx][band].setValue(50)  # 50 = 100%
                 self.eq_labels[range_idx][band].setText("100%")
                 self.eq_sliders[range_idx][band].blockSignals(False)
+
+            # Reset range scale sliders
+            self.eq_range_scale_sliders[range_idx].blockSignals(True)
+            self.eq_range_scale_sliders[range_idx].setValue(50)  # 50 = 100%
+            self.eq_range_scale_labels[range_idx].setText("100%")
+            self.eq_range_scale_sliders[range_idx].blockSignals(False)
 
         # Reset range boundaries
         self.eq_range_low_slider.blockSignals(True)

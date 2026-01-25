@@ -187,6 +187,11 @@ uint8_t eq_bands[3][5] = {
     {50, 50, 50, 50, 50},  // All 100% (neutral)
 };
 
+// Range scale: overall distance multiplier for each rest range
+// Value stored as half-percentage: actual_percent = value * 2
+// Default = 50 (100% = no change)
+uint8_t eq_range_scale[3] = {50, 50, 50};  // All 100% (neutral)
+
 // Layer caching (libhmk style optimization)
 static uint8_t cached_layer = 0xFF;
 static uint8_t cached_layer_settings_layer = 0xFF;
