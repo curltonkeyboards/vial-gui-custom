@@ -372,8 +372,11 @@ class MainWindow(QMainWindow):
             self.on_device_selected()
 
     def on_device_selected(self):
+        _startup_log("on_device_selected() called...")
+        t0 = time.time()
         try:
             self.autorefresh.select_device(self.combobox_devices.currentIndex())
+            _startup_log(f"  autorefresh.select_device() done ({time.time()-t0:.2f}s)")
         except ProtocolError:
             QMessageBox.warning(self, "", "Unsupported protocol version!\n"
                                           "Please download latest Vial from https://get.vial.today/")
@@ -384,10 +387,19 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "", "An example keyboard UID was detected.\n"
                                               "Please change your keyboard UID to be unique before you ship!")
 
+        t0 = time.time()
         self.rebuild()
+        _startup_log(f"  rebuild() total: {time.time()-t0:.2f}s")
+
+        t0 = time.time()
         self.refresh_tabs()
+        _startup_log(f"  refresh_tabs(): {time.time()-t0:.2f}s")
+        _startup_log("on_device_selected() complete")
 
     def rebuild(self):
+        _startup_log("MainWindow.rebuild() starting...")
+        rebuild_start = time.time()
+
         # don't show "Security" menu for bootloader mode, as the bootloader is inherently insecure
         self.security_menu.menuAction().setVisible(isinstance(self.autorefresh.current_device, VialKeyboard))
 
@@ -402,16 +414,42 @@ class MainWindow(QMainWindow):
             self.autorefresh.current_device.keyboard.reload()
 
         # Updated to include the new configurators in the rebuild process
-        for e in [self.layout_editor, self.keymap_editor, self.trigger_settings, self.dks_settings,
-                  self.toggle_settings, self.firmware_flasher, self.macro_recorder, self.tap_dance,
-                  self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
-                  self.rgb_configurator, self.MIDIswitchSettingsConfigurator,
-                  self.thruloop_configurator, self.gaming_configurator, self.midi_patchbay,
-                  self.loop_manager, self.arpeggiator, self.step_sequencer]:
-            e.rebuild(self.autorefresh.current_device)
+        editors_to_rebuild = [
+            (self.layout_editor, "layout_editor"),
+            (self.keymap_editor, "keymap_editor"),
+            (self.trigger_settings, "trigger_settings"),
+            (self.dks_settings, "dks_settings"),
+            (self.toggle_settings, "toggle_settings"),
+            (self.firmware_flasher, "firmware_flasher"),
+            (self.macro_recorder, "macro_recorder"),
+            (self.tap_dance, "tap_dance"),
+            (self.combos, "combos"),
+            (self.key_override, "key_override"),
+            (self.qmk_settings, "qmk_settings"),
+            (self.matrix_tester, "matrix_tester"),
+            (self.rgb_configurator, "rgb_configurator"),
+            (self.MIDIswitchSettingsConfigurator, "MIDIswitchSettingsConfigurator"),
+            (self.thruloop_configurator, "thruloop_configurator"),
+            (self.gaming_configurator, "gaming_configurator"),
+            (self.midi_patchbay, "midi_patchbay"),
+            (self.loop_manager, "loop_manager"),
+            (self.arpeggiator, "arpeggiator"),
+            (self.step_sequencer, "step_sequencer"),
+        ]
+
+        for editor, name in editors_to_rebuild:
+            t0 = time.time()
+            editor.rebuild(self.autorefresh.current_device)
+            elapsed = time.time() - t0
+            if elapsed > 0.1:  # Only log if it took more than 100ms
+                _startup_log(f"  rebuild {name}: {elapsed:.2f}s")
+
+        _startup_log(f"  All editors rebuilt ({time.time()-rebuild_start:.2f}s)")
 
         # Set all editor references on all tabbed_keycodes instances
+        t0 = time.time()
         self._update_all_tabbed_keycodes()
+        _startup_log(f"  _update_all_tabbed_keycodes ({time.time()-t0:.2f}s)")
 
         # Refresh keycode buttons in tray to reflect updated content counts from editors
         self.tray_keycodes.recreate_keycode_buttons()
