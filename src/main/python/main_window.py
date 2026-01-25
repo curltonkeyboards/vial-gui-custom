@@ -481,14 +481,19 @@ class MainWindow(QMainWindow):
             self.tray_keycodes.set_keyboard(self.autorefresh.current_device.keyboard)
 
     def refresh_tabs(self):
-        self.tabs.clear()
-        for container, lbl in self.editors:
-            is_valid = container.valid()
-            if not is_valid:
-                continue
+        # Disable UI updates during tab refresh to speed up the process
+        self.tabs.setUpdatesEnabled(False)
+        try:
+            self.tabs.clear()
+            for container, lbl in self.editors:
+                is_valid = container.valid()
+                if not is_valid:
+                    continue
 
-            c = EditorContainer(container)
-            self.tabs.addTab(c, tr("MainWindow", lbl))
+                c = EditorContainer(container)
+                self.tabs.addTab(c, tr("MainWindow", lbl))
+        finally:
+            self.tabs.setUpdatesEnabled(True)
 
     def load_via_stack_json(self):
         from urllib.request import urlopen
