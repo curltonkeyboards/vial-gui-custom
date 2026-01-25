@@ -169,6 +169,96 @@ static bool midi_states_initialized = false;
 static uint32_t last_calibration_change = 0;
 static bool calibration_dirty = false;
 
+// EQ-style sensitivity curve tuning (adjustable via HID for real-time tuning)
+// Range boundaries: determines which curve set to use based on rest ADC
+uint16_t eq_range_low = 1745;   // Below this = low rest range
+uint16_t eq_range_high = 2082;  // At or above this = high rest range
+
+// EQ bands: 3 ranges × 5 bands
+// Value stored as half-percentage: actual_percent = value * 2
+// Default = 50 (100% = no change)
+// Range: 12 (25%) to 200 (400%)
+uint8_t eq_bands[3][5] = {
+    // Range 0 (Low rest < 1745): [low, low-mid, mid, high-mid, high]
+    // 98%, 98%, 100%, 100%, 100%
+    {49, 49, 50, 50, 50},
+    // Range 1 (Mid rest 1745-2082): [low, low-mid, mid, high-mid, high]
+    // 100%, 100%, 100%, 100%, 100% (neutral baseline)
+    {50, 50, 50, 50, 50},
+    // Range 2 (High rest >= 2082): [low, low-mid, mid, high-mid, high]
+    // 130%, 118%, 100%, 100%, 100%
+    {65, 59, 50, 50, 50},
+};
+
+// Range scale: overall distance multiplier for each rest range
+// Value stored as half-percentage: actual_percent = value * 2
+// 110%, 100%, 106%
+uint8_t eq_range_scale[3] = {55, 50, 53};
+
+// ============================================================================
+// EQ CURVE EEPROM PERSISTENCE
+// ============================================================================
+
+// EEPROM address for EQ curve settings (must match keyboard header)
+#ifndef EQ_CURVE_EEPROM_ADDR
+#define EQ_CURVE_EEPROM_ADDR 41300
+#endif
+#ifndef EQ_CURVE_MAGIC
+#define EQ_CURVE_MAGIC 0xEA01
+#endif
+
+void eq_curve_save_to_eeprom(void) {
+    // Write magic number first
+    eeprom_update_word((uint16_t*)EQ_CURVE_EEPROM_ADDR, EQ_CURVE_MAGIC);
+
+    // Write range boundaries (4 bytes)
+    eeprom_update_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 2), eq_range_low);
+    eeprom_update_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 4), eq_range_high);
+
+    // Write all 15 band values (15 bytes)
+    for (uint8_t range = 0; range < 3; range++) {
+        for (uint8_t band = 0; band < 5; band++) {
+            eeprom_update_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 6 + range * 5 + band),
+                              eq_bands[range][band]);
+        }
+    }
+
+    // Write 3 range scale values (3 bytes)
+    for (uint8_t range = 0; range < 3; range++) {
+        eeprom_update_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 21 + range),
+                          eq_range_scale[range]);
+    }
+
+    dprintf("EQ Curve saved to EEPROM\n");
+}
+
+void eq_curve_load_from_eeprom(void) {
+    // Check magic number
+    uint16_t magic = eeprom_read_word((uint16_t*)EQ_CURVE_EEPROM_ADDR);
+    if (magic != EQ_CURVE_MAGIC) {
+        dprintf("EQ Curve EEPROM not initialized, using defaults\n");
+        return;
+    }
+
+    // Read range boundaries
+    eq_range_low = eeprom_read_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 2));
+    eq_range_high = eeprom_read_word((uint16_t*)(EQ_CURVE_EEPROM_ADDR + 4));
+
+    // Read all 15 band values
+    for (uint8_t range = 0; range < 3; range++) {
+        for (uint8_t band = 0; band < 5; band++) {
+            eq_bands[range][band] = eeprom_read_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 6 + range * 5 + band));
+        }
+    }
+
+    // Read 3 range scale values
+    for (uint8_t range = 0; range < 3; range++) {
+        eq_range_scale[range] = eeprom_read_byte((uint8_t*)(EQ_CURVE_EEPROM_ADDR + 21 + range));
+    }
+
+    dprintf("EQ Curve loaded from EEPROM: low=%d, high=%d\n", eq_range_low, eq_range_high);
+}
+
 // Layer caching (libhmk style optimization)
 static uint8_t cached_layer = 0xFF;
 static uint8_t cached_layer_settings_layer = 0xFF;
@@ -649,25 +739,35 @@ static void update_calibration(uint32_t key_idx) {
     key_state_t *key = &key_matrix[key_idx];
     uint32_t now = timer_read32();
 
-    // Stability detection
-    if (abs((int)key->adc_filtered - (int)key->last_adc_value) < AUTO_CALIB_ZERO_TRAVEL_JITTER) {
+    // Stability detection with percentage-based tolerance
+    // Must stay within X% of the stable reference value for the entire duration
+    uint16_t stability_threshold = (key->adc_rest_value * AUTO_CALIB_STABILITY_PERCENT) / 100;
+    if (stability_threshold < AUTO_CALIB_ZERO_TRAVEL_JITTER) {
+        stability_threshold = AUTO_CALIB_ZERO_TRAVEL_JITTER;  // Minimum threshold
+    }
+
+    // Check if current ADC is close to the last stable reading
+    if (abs((int)key->adc_filtered - (int)key->last_adc_value) < stability_threshold) {
         if (!key->is_stable) {
             key->is_stable = true;
             key->stable_time = now;
         }
+        // Also verify still within range of where stability started
+        // (prevents drift during the stability period)
     } else {
         key->is_stable = false;
     }
 
     // Auto-calibrate rest position when stable, not pressed, AND near rest position
+    // Requires stability for full AUTO_CALIB_VALID_RELEASE_TIME (10 seconds)
     // The distance check (< 5% of travel) prevents recalibration during slow presses
-    // where the key is held partially down but hasn't triggered actuation yet
     if (key->is_stable && !key->is_pressed &&
         key->distance < AUTO_CALIB_MAX_DISTANCE &&
         timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
         // For Hall effect sensors: rest value is typically higher ADC
-        if (key->adc_filtered > key->adc_rest_value + AUTO_CALIB_ZERO_TRAVEL_JITTER ||
-            key->adc_filtered < key->adc_rest_value - AUTO_CALIB_ZERO_TRAVEL_JITTER) {
+        // Only update if significantly different from current rest value
+        if (key->adc_filtered > key->adc_rest_value + stability_threshold ||
+            key->adc_filtered < key->adc_rest_value - stability_threshold) {
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
@@ -1401,11 +1501,19 @@ void matrix_init_custom(void) {
             wait_us(40);
             adcConvert(&ADCD1, &adcgrpcfg, samples, ADC_GRP_BUF_DEPTH);
 
-            // Initialize EMA with first readings
+            // Initialize EMA with first readings and estimate per-key calibration
             for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
                 uint32_t key_idx = KEY_INDEX(row, col);
-                key_matrix[key_idx].adc_filtered = samples[row];
-                key_matrix[key_idx].adc_rest_value = samples[row];
+                uint16_t rest_value = samples[row];
+
+                key_matrix[key_idx].adc_filtered = rest_value;
+                key_matrix[key_idx].adc_rest_value = rest_value;
+
+                // Smart estimation of bottom-out value using linear formula
+                // bottom = rest * 0.52 + 200 (best fit for measured Hall sensors)
+                // This accounts for sensors with higher rest values needing more range
+                uint16_t estimated_bottom = ((uint32_t)rest_value * WARM_UP_BOTTOM_SLOPE / 1000) + WARM_UP_BOTTOM_OFFSET;
+                key_matrix[key_idx].adc_bottom_out_value = estimated_bottom;
             }
 
             unselect_column();
@@ -1713,4 +1821,18 @@ uint16_t analog_matrix_get_filtered_adc(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
     uint32_t key_idx = KEY_INDEX(row, col);
     return key_matrix[key_idx].adc_filtered;
+}
+
+// Get calibration rest ADC value
+uint16_t analog_matrix_get_rest_adc(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return key_matrix[key_idx].adc_rest_value;
+}
+
+// Get calibration bottom-out ADC value
+uint16_t analog_matrix_get_bottom_adc(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return key_matrix[key_idx].adc_bottom_out_value;
 }

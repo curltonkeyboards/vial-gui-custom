@@ -98,6 +98,15 @@ HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
 # ADC Matrix Tester Command (0xDF)
 HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
 
+# Distance Matrix Command (0xE7)
+HID_CMD_GET_DISTANCE_MATRIX = 0xE7        # Get distance (mm) values for specific keys
+
+# Calibration Debug Command (0xE8)
+HID_CMD_CALIBRATION_DEBUG = 0xE8          # Get calibration debug values
+
+# Sensitivity Curve Tuning Command (0xE9)
+HID_CMD_SET_CURVE_SETTINGS = 0xE9         # Set sensitivity curve tuning parameters
+
 # Per-Key Actuation Commands (0xE0-0xE6)
 HID_CMD_SET_PER_KEY_ACTUATION = 0xE0     # Set actuation for specific key
 HID_CMD_GET_PER_KEY_ACTUATION = 0xE1     # Get actuation for specific key
@@ -702,6 +711,183 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         except Exception:
             return None
+
+    def distance_matrix_poll(self, keys):
+        """Poll distance values (in mm * 100) for specific keys using analog_matrix_get_distance
+
+        Args:
+            keys: List of (row, col) tuples for keys to query (max 8 keys per request)
+
+        Returns:
+            dict: {(row, col): distance_mm} where distance_mm is in 0.01mm units (0-400 for 0-4.0mm),
+                  or None on error
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_DISTANCE_MATRIX,
+                      num_keys, row0, col0, row1, col1, ...]
+            Response: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_DISTANCE_MATRIX,
+                      num_keys, status, dist_low_0, dist_high_0, dist_low_1, dist_high_1, ...]
+                      (16-bit little-endian values in 0.01mm units)
+        """
+        try:
+            if not keys or len(keys) > 8:
+                return None
+
+            # Build request data: [num_keys, row0, col0, row1, col1, ...]
+            data = bytearray([len(keys)])
+            for row, col in keys:
+                data.append(row)
+                data.append(col)
+
+            packet = self._create_hid_packet(HID_CMD_GET_DISTANCE_MATRIX, len(keys), bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 6:
+                return None
+
+            # Check if command was successful (status byte at index 5)
+            if response[5] != 0x01:
+                return None
+
+            # Parse distance values from response (starting at index 6)
+            # Each distance value is 2 bytes (16-bit little-endian), in 0.01mm units
+            result = {}
+            data_start = 6
+            for i, (row, col) in enumerate(keys):
+                offset = data_start + i * 2
+                if offset + 1 < len(response):
+                    # 16-bit little-endian value (distance in 0.01mm units)
+                    distance = response[offset] | (response[offset + 1] << 8)
+                    result[(row, col)] = distance
+
+            return result
+
+        except Exception:
+            return None
+
+    def calibration_debug_poll(self, keys):
+        """Poll calibration values (rest, bottom, raw ADC) for specific keys
+
+        Args:
+            keys: List of (row, col) tuples for keys to query (max 4 keys per request)
+
+        Returns:
+            dict: {(row, col): {'rest': int, 'bottom': int, 'raw': int}} or None on error
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE8,
+                      num_keys, row0, col0, row1, col1, ...]
+            Response: [header(4), num_keys, status, rest_lo, rest_hi, bottom_lo, bottom_hi, raw_lo, raw_hi, ...]
+        """
+        HID_CMD_CALIBRATION_DEBUG = 0xE8
+        try:
+            if not keys or len(keys) > 4:
+                return None
+
+            # Build request data: [num_keys, row0, col0, row1, col1, ...]
+            data = bytearray([len(keys)])
+            for row, col in keys:
+                data.append(row)
+                data.append(col)
+
+            packet = self._create_hid_packet(HID_CMD_CALIBRATION_DEBUG, len(keys), bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 6:
+                return None
+
+            # Check if command was successful (status byte at index 5)
+            if response[5] != 0x01:
+                return None
+
+            # Parse calibration values from response (starting at index 6)
+            # Each key has 6 bytes: rest(2) + bottom(2) + raw(2)
+            result = {}
+            data_start = 6
+            for i, (row, col) in enumerate(keys):
+                offset = data_start + i * 6
+                if offset + 5 < len(response):
+                    rest = response[offset] | (response[offset + 1] << 8)
+                    bottom = response[offset + 2] | (response[offset + 3] << 8)
+                    raw = response[offset + 4] | (response[offset + 5] << 8)
+                    result[(row, col)] = {'rest': rest, 'bottom': bottom, 'raw': raw}
+
+            return result
+
+        except Exception:
+            return None
+
+    def set_eq_curve_settings(self, range_low, range_high, bands, range_scales=None):
+        """Set EQ-style sensitivity curve parameters for real-time adjustment
+
+        Args:
+            range_low: Low/Mid rest boundary (typically 1600-2200)
+            range_high: Mid/High rest boundary (typically 1800-2400)
+            bands: List of 15 band values (3 ranges × 5 bands)
+                   Each value is half-percentage: 50 = 100%, range 12-200 (25%-400%)
+            range_scales: List of 3 range scale values (one per rest range)
+                   Each value is half-percentage: 50 = 100%, range 25-100 (50%-200%)
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE9,
+                      range_low_lo, range_low_hi, range_high_lo, range_high_hi,
+                      r0_b0, r0_b1, r0_b2, r0_b3, r0_b4,  (range 0: low rest)
+                      r1_b0, r1_b1, r1_b2, r1_b3, r1_b4,  (range 1: mid rest)
+                      r2_b0, r2_b1, r2_b2, r2_b3, r2_b4,  (range 2: high rest)
+                      scale_0, scale_1, scale_2]          (range scale multipliers)
+            Response: [header(4), status]
+        """
+        try:
+            if len(bands) != 15:
+                return False
+
+            # Default range scales to 100% if not provided
+            if range_scales is None:
+                range_scales = [50, 50, 50]
+            if len(range_scales) != 3:
+                return False
+
+            # Build request data
+            data = bytearray([
+                range_low & 0xFF,           # Low byte of range_low
+                (range_low >> 8) & 0xFF,    # High byte of range_low
+                range_high & 0xFF,          # Low byte of range_high
+                (range_high >> 8) & 0xFF,   # High byte of range_high
+            ])
+
+            # Add all 15 band values
+            for band_value in bands:
+                data.append(band_value & 0xFF)
+
+            # Add 3 range scale values
+            for scale_value in range_scales:
+                data.append(scale_value & 0xFF)
+
+            packet = self._create_hid_packet(HID_CMD_SET_CURVE_SETTINGS, 0, bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            # Check for success response
+            return response and len(response) >= 5 and response[4] == 0x01
+
+        except Exception:
+            return False
+
+    def save_eq_to_eeprom(self):
+        """Save current EQ curve settings to device EEPROM for persistence
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xEA]
+            Response: [header(4), status]
+        """
+        try:
+            packet = self._create_hid_packet(0xEA, 0, bytes())
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            # Check for success response
+            return response and len(response) >= 5 and response[4] == 0x01
+
+        except Exception:
+            return False
 
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings

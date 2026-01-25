@@ -4,6 +4,7 @@
 #include "orthomidi5x14.h"
 #include "raw_hid.h"
 #include "process_midi.h"
+#include "matrix.h"
 #include <string.h>
 
 // =============================================================================
@@ -651,6 +652,212 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 response[6 + col * 2 + 1] = (adc_value >> 8) & 0xFF; // High byte
             }
         }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a Calibration Debug command (0xE8)
+    // Returns calibration values (rest, bottom, raw ADC) for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xE8) {
+
+        dprintf("raw_hid_receive_kb: Calibration Debug command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE8;
+
+        // Request format: [header(4), _, num_keys, row0, col0, row1, col1, ...]
+        uint8_t num_keys = data[6];
+
+        // Max 4 keys per request (each key uses 6 bytes: rest(2) + bottom(2) + raw(2))
+        if (num_keys > 4) {
+            num_keys = 4;
+        }
+
+        response[4] = num_keys;
+        response[5] = 0x01;  // Success
+
+        // Get calibration for each requested key
+        // Response format: [header(4), num_keys, status, rest_lo, rest_hi, bottom_lo, bottom_hi, raw_lo, raw_hi, ...]
+        for (uint8_t i = 0; i < num_keys; i++) {
+            uint8_t row = data[7 + i * 2];
+            uint8_t col = data[8 + i * 2];
+
+            // Use accessor functions from matrix.h
+            uint16_t rest = analog_matrix_get_rest_adc(row, col);
+            uint16_t bottom = analog_matrix_get_bottom_adc(row, col);
+            uint16_t raw = analog_matrix_get_raw_adc(row, col);
+
+            uint8_t offset = 6 + i * 6;
+            response[offset + 0] = rest & 0xFF;
+            response[offset + 1] = (rest >> 8) & 0xFF;
+            response[offset + 2] = bottom & 0xFF;
+            response[offset + 3] = (bottom >> 8) & 0xFF;
+            response[offset + 4] = raw & 0xFF;
+            response[offset + 5] = (raw >> 8) & 0xFF;
+        }
+
+        dprintf("Calibration Debug: %d keys queried\n", num_keys);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a Distance Matrix command (0xE7)
+    // Returns key travel distance in 0.01mm units for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xE7) {
+
+        dprintf("raw_hid_receive_kb: Distance Matrix command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE7;
+
+        // Request format: [header(4), num_keys, row0, col0, row1, col1, ...]
+        // Data starts at byte 6 after _create_hid_packet (bytes 4-5 are macro_num and status)
+        uint8_t num_keys = data[6];
+
+        // Validate number of keys (max 8 to fit in response)
+        if (num_keys > 8) {
+            num_keys = 8;
+        }
+
+        response[4] = num_keys;
+        response[5] = 0x01;  // Success
+
+        // Get distance for each requested key
+        // Response format: [header(4), num_keys, status, dist_low_0, dist_high_0, ...]
+        for (uint8_t i = 0; i < num_keys; i++) {
+            uint8_t row = data[7 + i * 2];
+            uint8_t col = data[8 + i * 2];
+
+            uint16_t distance_hundredths = 0;
+
+            if (row < MATRIX_ROWS && col < MATRIX_COLS) {
+                // Get distance from firmware (0-255 scale)
+                uint8_t distance_255 = analog_matrix_get_distance(row, col);
+
+                // Convert to 0.01mm units (0-400 for 0-4.0mm)
+                // 255 = 4.0mm = 400 hundredths, so: hundredths = (distance * 400) / 255
+                distance_hundredths = ((uint32_t)distance_255 * 400) / 255;
+            }
+
+            // Store as 16-bit little-endian
+            response[6 + i * 2] = distance_hundredths & 0xFF;           // Low byte
+            response[6 + i * 2 + 1] = (distance_hundredths >> 8) & 0xFF; // High byte
+        }
+
+        dprintf("Distance Matrix: %d keys queried\n", num_keys);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is an EQ Curve Tuning command (0xE9)
+    // Sets EQ-style sensitivity curve parameters for real-time adjustment
+    // Request format: [header(4), _, _,
+    //                  range_low_lo, range_low_hi, range_high_lo, range_high_hi,
+    //                  r0_b0, r0_b1, r0_b2, r0_b3, r0_b4,  (range 0: low rest)
+    //                  r1_b0, r1_b1, r1_b2, r1_b3, r1_b4,  (range 1: mid rest)
+    //                  r2_b0, r2_b1, r2_b2, r2_b3, r2_b4,  (range 2: high rest)
+    //                  scale_0, scale_1, scale_2]          (range scale multipliers)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xE9) {
+
+        dprintf("raw_hid_receive_kb: EQ Curve Tuning command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE9;
+
+        // Data starts at byte 6 after _create_hid_packet
+        // Parse range boundaries (4 bytes)
+        uint16_t range_low = data[6] | (data[7] << 8);
+        uint16_t range_high = data[8] | (data[9] << 8);
+
+        // Update the global EQ variables (defined in matrix.c)
+        extern uint16_t eq_range_low;
+        extern uint16_t eq_range_high;
+        extern uint8_t eq_bands[3][5];
+        extern uint8_t eq_range_scale[3];
+
+        eq_range_low = range_low;
+        eq_range_high = range_high;
+
+        // Parse and set all 15 EQ bands (3 ranges × 5 bands)
+        // Data layout: data[10-14] = range 0, data[15-19] = range 1, data[20-24] = range 2
+        for (uint8_t range = 0; range < 3; range++) {
+            for (uint8_t band = 0; band < 5; band++) {
+                eq_bands[range][band] = data[10 + range * 5 + band];
+            }
+        }
+
+        // Parse range scale multipliers (3 bytes at data[25-27])
+        eq_range_scale[0] = data[25];
+        eq_range_scale[1] = data[26];
+        eq_range_scale[2] = data[27];
+
+        response[4] = 0x01;  // Success
+
+        dprintf("EQ Curve: low=%d, high=%d, scale=[%d,%d,%d]\n",
+                range_low, range_high,
+                eq_range_scale[0], eq_range_scale[1], eq_range_scale[2]);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is an EQ Curve Save to EEPROM command (0xEA)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xEA) {
+
+        dprintf("raw_hid_receive_kb: EQ Curve Save to EEPROM command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xEA;
+
+        // Call the save function from matrix.c
+        eq_curve_save_to_eeprom();
+
+        response[4] = 0x01;  // Success
+
+        dprintf("EQ Curve saved to EEPROM\n");
 
         // Send response
         raw_hid_send(response, 32);

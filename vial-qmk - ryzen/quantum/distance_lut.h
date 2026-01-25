@@ -114,6 +114,187 @@ static const uint8_t distance_lut[DISTANCE_LUT_SIZE] PROGMEM = {
 // Global correction strength (0 = linear/no correction, 100 = full logarithmic)
 extern uint8_t lut_correction_strength;
 
+// ============================================================================
+// EQ-STYLE SENSITIVITY CURVE SYSTEM
+// ============================================================================
+//
+// 3 Rest Value Ranges:
+//   Range 0 (Low):  rest < eq_range_low
+//   Range 1 (Mid):  eq_range_low <= rest < eq_range_high
+//   Range 2 (High): rest >= eq_range_high
+//
+// 5 Travel Position Bands per Range:
+//   Band 0 (Low):      0-20% travel   (0-204 normalized)
+//   Band 1 (Low-Mid):  20-40% travel  (205-409 normalized)
+//   Band 2 (Mid):      40-60% travel  (410-613 normalized)
+//   Band 3 (High-Mid): 60-80% travel  (614-818 normalized)
+//   Band 4 (High):     80-100% travel (819-1023 normalized)
+//
+// Each band has a sensitivity multiplier: 25% to 400%
+// Stored as uint8_t where actual_percent = stored_value * 2
+// Default value = 50 (100% = no change)
+// ============================================================================
+
+// EQ range boundaries (can be adjusted via HID)
+extern uint16_t eq_range_low;   // Below this = low rest range (default 1900)
+extern uint16_t eq_range_high;  // At or above this = high rest range (default 2100)
+
+// EQ bands: 3 ranges × 5 bands
+// Value stored as half-percentage: actual_percent = value * 2
+// So 50 = 100%, 12 = 25%, 200 = 400%
+extern uint8_t eq_bands[3][5];
+
+// Range scale: overall distance multiplier for each rest range
+// Value stored as half-percentage: actual_percent = value * 2
+// So 50 = 100%, 25 = 50%, 100 = 200%
+extern uint8_t eq_range_scale[3];
+
+// Band boundaries in normalized space (0-1023)
+#define EQ_BAND_0_END   204   // 0-20%
+#define EQ_BAND_1_END   409   // 20-40%
+#define EQ_BAND_2_END   613   // 40-60%
+#define EQ_BAND_3_END   818   // 60-80%
+// Band 4: 819-1023 (80-100%)
+
+/**
+ * Apply EQ-style sensitivity curve adjustment with REDISTRIBUTIVE bands
+ *
+ * This is a "true EQ" approach where:
+ * - Total travel is ALWAYS 0-1023 (0-4mm) regardless of band settings
+ * - Band weights determine how much OUTPUT range each INPUT band gets
+ * - Higher weight = that section of travel happens faster (more output per input)
+ * - Lower weight = that section of travel happens slower (less output per input)
+ * - Bands automatically balance out - total output is always 0-1023
+ *
+ * EQ Band Interpolation: QUADRATIC (exponential-like)
+ * - Effect scales with square of distance from midpoint
+ * - At boundary: 1x effect, at 2x distance: 4x effect
+ * - Captures the non-linear relationship between rest value and needed adjustment
+ *
+ * Range Scale: DISCRETE (independent per range)
+ * - No interpolation - just picks the scale for whichever range the key falls into
+ * - Low rest keys get their scale, high rest keys get theirs - no borrowing
+ *
+ * @param normalized  Linear normalized position (0-1023)
+ * @param rest        Rest ADC value for this key
+ * @return            Adjusted normalized position (0-1023), always spans full range
+ */
+static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
+    uint32_t normalized,
+    uint16_t rest
+) {
+    // Determine which discrete range this key falls into (for range scale)
+    uint8_t discrete_range;
+    if (rest < eq_range_low) {
+        discrete_range = 0;  // Low rest
+    } else if (rest < eq_range_high) {
+        discrete_range = 1;  // Mid rest
+    } else {
+        discrete_range = 2;  // High rest
+    }
+
+    // Calculate blend factor for EQ band interpolation (QUADRATIC)
+    int32_t midpoint = ((int32_t)eq_range_low + (int32_t)eq_range_high) / 2;
+    int32_t half_span = ((int32_t)eq_range_high - (int32_t)eq_range_low) / 2;
+    if (half_span < 50) half_span = 50;
+
+    int32_t offset = (int32_t)rest - midpoint;
+    // Linear blend factor (can be negative for low rest, positive for high rest)
+    int32_t linear_blend_1024 = (offset * 1024) / half_span;
+
+    // QUADRATIC blend: square the magnitude, preserve sign direction
+    // This makes extreme rest values get disproportionately more adjustment
+    int32_t abs_linear = linear_blend_1024 < 0 ? -linear_blend_1024 : linear_blend_1024;
+    // Quadratic: blend = sign * (abs_blend)^2 / 1024
+    // At boundary (abs=1024): quadratic = 1024
+    // At 2x boundary (abs=2048): quadratic = 4096 (4x effect)
+    int32_t quadratic_blend_1024 = (abs_linear * abs_linear) / 1024;
+    // Cap at reasonable maximum (4x effect = 4096)
+    if (quadratic_blend_1024 > 4096) quadratic_blend_1024 = 4096;
+
+    // Calculate interpolated weights for each band based on rest position
+    int32_t weights[5];
+    int32_t total_weight = 0;
+
+    for (uint8_t i = 0; i < 5; i++) {
+        int32_t val_0 = (int32_t)eq_bands[0][i] * 2;  // Range 0 (low rest)
+        int32_t val_1 = (int32_t)eq_bands[1][i] * 2;  // Range 1 (mid/neutral)
+        int32_t val_2 = (int32_t)eq_bands[2][i] * 2;  // Range 2 (high rest)
+
+        int32_t w;
+        if (linear_blend_1024 <= 0) {
+            // Below midpoint: blend towards Range 0 (low rest) with QUADRATIC scaling
+            w = val_1 + ((val_0 - val_1) * quadratic_blend_1024) / 1024;
+        } else {
+            // Above midpoint: blend towards Range 2 (high rest) with QUADRATIC scaling
+            w = val_1 + ((val_2 - val_1) * quadratic_blend_1024) / 1024;
+        }
+
+        // Clamp weight to reasonable range
+        if (w < 10) w = 10;
+        if (w > 1000) w = 1000;
+
+        weights[i] = w;
+        total_weight += w;
+    }
+
+    // Calculate cumulative output boundaries for each band
+    // Each band gets (weight[i] / total_weight) of the output range
+    int32_t output_ends[5];
+    int32_t cumulative = 0;
+    for (uint8_t i = 0; i < 4; i++) {
+        cumulative += (weights[i] * 1023) / total_weight;
+        output_ends[i] = cumulative;
+    }
+    output_ends[4] = 1023;  // Ensure last band ends exactly at 1023
+
+    // Input band boundaries (fixed - each band is 20% of input)
+    const int32_t input_ends[5] = {EQ_BAND_0_END, EQ_BAND_1_END, EQ_BAND_2_END, EQ_BAND_3_END, 1023};
+
+    // Find which input band we're in and map to corresponding output range
+    int32_t input_start = 0;
+    int32_t output_start = 0;
+
+    for (uint8_t i = 0; i < 5; i++) {
+        if ((int32_t)normalized <= input_ends[i]) {
+            // We're in band i - linear interpolation within this band
+            int32_t input_end = input_ends[i];
+            int32_t output_end = output_ends[i];
+
+            int32_t input_pos = (int32_t)normalized - input_start;
+            int32_t input_range = input_end - input_start;
+            int32_t output_range = output_end - output_start;
+
+            // Avoid division by zero
+            if (input_range <= 0) input_range = 1;
+
+            int32_t output = output_start + (input_pos * output_range) / input_range;
+
+            // Apply range scale - DISCRETE selection, no interpolation
+            // Each range has its own independent scale
+            int32_t range_scale = (int32_t)eq_range_scale[discrete_range] * 2;
+
+            if (range_scale < 20) range_scale = 20;
+            if (range_scale > 400) range_scale = 400;
+
+            output = (output * range_scale) / 100;
+
+            // Clamp final output
+            if (output < 0) output = 0;
+            if (output > 1023) output = 1023;
+
+            return (uint32_t)output;
+        }
+
+        // Move to next band
+        input_start = input_ends[i] + 1;
+        output_start = output_ends[i];
+    }
+
+    // Should never reach here
+    return 1023;
+}
+
 /**
  * Convert ADC reading to linearized distance with adjustable correction strength
  *
@@ -150,20 +331,24 @@ static inline __attribute__((always_inline)) uint8_t adc_to_distance_corrected(
         if (adc >= rest) return 0;        // At or above rest = no travel
         if (adc <= bottom_out) return 255; // At or below bottom = full travel
 
-        // Normalize to 0-1023 range for LUT lookup
+        // Normalize to 0-1023 range
         // For inverted: higher ADC = less pressed, so invert the calculation
         uint32_t normalized = ((uint32_t)(rest - adc) * 1023) / (rest - bottom_out);
         if (normalized > 1023) normalized = 1023;
 
-        // Calculate linear distance (0-255)
-        uint8_t linear_distance = (uint8_t)(((uint32_t)(rest - adc) * 255) / (rest - bottom_out));
+        // Apply EQ-style sensitivity curve adjustment
+        // Different curves for different rest value ranges
+        normalized = apply_eq_curve_adjustment(normalized, rest);
 
-        // If no correction, return linear
+        // Calculate adjusted linear distance (0-255) from curve-adjusted normalized
+        uint8_t linear_distance = (uint8_t)((normalized * 255) / 1023);
+
+        // If no LUT correction, return curve-adjusted linear distance
         if (strength == 0) {
             return linear_distance;
         }
 
-        // Look up corrected distance from LUT
+        // Look up corrected distance from LUT using curve-adjusted normalized
         uint8_t lut_distance = pgm_read_byte(&distance_lut[normalized]);
 
         // Blend based on strength
