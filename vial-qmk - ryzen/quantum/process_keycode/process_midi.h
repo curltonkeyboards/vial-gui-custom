@@ -1143,8 +1143,9 @@ void handle_nullbind_reset_all(void);
 #define TOGGLE_EEPROM_SIZE          (TOGGLE_NUM_SLOTS * TOGGLE_SLOT_SIZE)  // 400 bytes total
 
 // Toggle keycode range (100 keycodes: TGL_00 through TGL_99)
-#define TOGGLE_KEY_BASE             0xEE00
-#define TOGGLE_KEY_MAX              (TOGGLE_KEY_BASE + TOGGLE_NUM_SLOTS - 1)  // 0xEE63
+// NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
+#define TOGGLE_KEY_BASE             0xEF10
+#define TOGGLE_KEY_MAX              (TOGGLE_KEY_BASE + TOGGLE_NUM_SLOTS - 1)  // 0xEF73
 
 // Toggle slot structure (4 bytes per slot)
 typedef struct {
