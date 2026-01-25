@@ -693,11 +693,17 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
 
     uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
 
-    midi_send_noteon(&midi_device, channel, note, final_velocity);
+    // Check if arpeggiator key is held - if so, only track the note, don't send MIDI
+    extern bool arp_is_key_held(void);
+    bool arp_mute = arp_is_key_held();
+
+    if (!arp_mute) {
+        midi_send_noteon(&midi_device, channel, note, final_velocity);
+        smartchordaddnotes(channel, note, final_velocity);
+    }
     noteondisplayupdates(note);
-    smartchordaddnotes(channel, note, final_velocity);
     smartchorddisplayupdates(note);
-    add_live_note(channel, note, final_velocity);
+    add_live_note(channel, note, final_velocity);  // Always track for arpeggiator
     add_lighting_live_note(channel, note);
 
     // Use raw_travel if available, otherwise use final_velocity as fallback
@@ -727,6 +733,10 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         return; // Don't let live note-offs stop macro notes unless the note is actually live
     }
 
+    // Check if arpeggiator key is held - if so, only untrack the note, don't send MIDI
+    extern bool arp_is_key_held(void);
+    bool arp_mute = arp_is_key_held();
+
     bool was_live_note = false;
     for (uint8_t i = 0; i < live_note_count; i++) {
         if (live_notes[i][0] == channel && live_notes[i][1] == note) {
@@ -735,10 +745,12 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         }
     }
 
-    // Remove from live notes tracking
+    // Remove from live notes tracking (always, so arpeggiator knows note was released)
     remove_live_note(channel, note);
     noteoffdisplayupdates(note);
-    smartchordremovenotes(channel, note, velocity);
+    if (!arp_mute) {
+        smartchordremovenotes(channel, note, velocity);
+    }
 
     // Use raw_travel if available, otherwise use velocity as fallback
     uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : velocity;
@@ -761,13 +773,13 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
     }
 
     // Handle sustain logic
-    if (sustain_active && !ignore_sustain) {
+    if (sustain_active && !ignore_sustain && !arp_mute) {
         // Add to sustain queue instead of sending immediately
         add_sustain_note(channel, note, velocity);
 
         // Don't record the note-off in the macro yet!
         // We'll record it when the sustain pedal is released
-    } else {
+    } else if (!arp_mute) {
         // Send noteoff immediately (for macro playback notes or when sustain is not active)
         midi_send_noteoff(&midi_device, channel, note, velocity);
         remove_lighting_live_note(channel, note);
@@ -778,6 +790,7 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
                                           current_macro_pointer, current_recording_start_time);
         }
     }
+    // When arp_mute is true, we don't send MIDI or add to sustain - just track removal
 }
 
 // =============================================================================

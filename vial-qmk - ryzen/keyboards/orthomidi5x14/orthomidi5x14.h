@@ -720,6 +720,7 @@ void arp_update(void);
 void seq_update(void);  // Update all active sequencer slots
 void arp_start(uint8_t preset_id);
 void arp_stop(void);
+bool arp_is_key_held(void);  // Check if arp key is currently held (for muting direct MIDI)
 void seq_start(uint8_t preset_id);  // Start sequencer in available slot
 void seq_stop(uint8_t slot);        // Stop specific sequencer slot
 void seq_stop_all(void);            // Stop all sequencers

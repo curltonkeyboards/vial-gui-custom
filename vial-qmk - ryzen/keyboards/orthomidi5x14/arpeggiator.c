@@ -582,6 +582,11 @@ void arp_stop(void) {
     // Let the gate timing system handle it naturally
 }
 
+// Check if arp key is currently held (used to mute direct MIDI output)
+bool arp_is_key_held(void) {
+    return arp_state.key_held;
+}
+
 void arp_update(void) {
     // Process any notes that need to be gated off
     process_arp_note_offs();
