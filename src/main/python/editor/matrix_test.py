@@ -285,7 +285,10 @@ class MatrixTest(BasicEditor):
 
         # Band labels for columns
         band_names = ["Low\n0-20%", "Low-Mid\n20-40%", "Mid\n40-60%", "High-Mid\n60-80%", "High\n80-100%"]
-        range_names = ["Low Rest\n(<boundary)", "Mid Rest\n(between)", "High Rest\n(>=boundary)"]
+        # Range 1 (Mid) is the neutral baseline at the midpoint between boundaries
+        # Range 0 (Low) defines adjustment at/below low boundary (extrapolates further below)
+        # Range 2 (High) defines adjustment at/above high boundary (extrapolates further above)
+        range_names = ["Low Rest\n(at low bound)", "Mid Rest\n(NEUTRAL)", "High Rest\n(at high bound)"]
 
         # EQ sliders grid: 3 ranges × 5 bands + 1 range scale
         self.eq_sliders = []  # [range][band]

@@ -157,10 +157,19 @@ extern uint8_t eq_range_scale[3];
 // Band 4: 819-1023 (80-100%)
 
 /**
- * Apply EQ-style sensitivity curve adjustment
+ * Apply EQ-style sensitivity curve adjustment with continuous interpolation
  *
  * This function applies a 5-band equalizer curve based on the sensor's rest value.
- * Different rest value ranges can have completely different sensitivity profiles.
+ * Range 1 (Mid) is the neutral baseline. Range 0 and Range 2 define adjustments
+ * at the boundaries, with linear interpolation/extrapolation based on distance
+ * from the midpoint.
+ *
+ * Example with boundaries 1600 and 1800 (midpoint 1700, half_span 100):
+ *   - rest 1700: 100% Range 1 (neutral)
+ *   - rest 1600: 100% Range 0 effect
+ *   - rest 1500: 200% Range 0 effect (extrapolated)
+ *   - rest 1800: 100% Range 2 effect
+ *   - rest 1900: 200% Range 2 effect (extrapolated)
  *
  * @param normalized  Linear normalized position (0-1023)
  * @param rest        Rest ADC value for this key
@@ -170,15 +179,16 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
     uint32_t normalized,
     uint16_t rest
 ) {
-    // Determine which range based on rest value
-    uint8_t range;
-    if (rest < eq_range_low) {
-        range = 0;  // Low rest sensors
-    } else if (rest < eq_range_high) {
-        range = 1;  // Mid rest sensors
-    } else {
-        range = 2;  // High rest sensors
-    }
+    // Calculate midpoint and half-span for interpolation
+    int32_t midpoint = ((int32_t)eq_range_low + (int32_t)eq_range_high) / 2;
+    int32_t half_span = ((int32_t)eq_range_high - (int32_t)eq_range_low) / 2;
+    if (half_span < 50) half_span = 50;  // Prevent division issues
+
+    // Calculate blend factor: 0 at midpoint, -1 at low boundary, +1 at high boundary
+    // Can be < -1 or > +1 for extrapolation beyond boundaries
+    // Using fixed-point: blend_1024 = offset * 1024 / half_span
+    int32_t offset = (int32_t)rest - midpoint;
+    int32_t blend_1024 = (offset * 1024) / half_span;
 
     // Determine which band and interpolation factor based on position
     // We interpolate between adjacent band values for smooth transitions
@@ -194,7 +204,6 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
         // Transition from band 0 to band 1: 205-409
         band_low = 0;
         band_high = 1;
-        // Interpolate: 0 at start (205), 1023 at end (409)
         interp_factor = ((normalized - EQ_BAND_0_END - 1) * 1023) / (EQ_BAND_1_END - EQ_BAND_0_END);
     } else if (normalized <= EQ_BAND_2_END) {
         // Transition from band 1 to band 2: 410-613
@@ -213,25 +222,67 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
         interp_factor = 512;  // Use band 4 value directly
     }
 
-    // Get the sensitivity multipliers for the two bands (stored as half-percentage)
-    uint16_t mult_low = (uint16_t)eq_bands[range][band_low] * 2;   // Convert to actual percentage
-    uint16_t mult_high = (uint16_t)eq_bands[range][band_high] * 2;
+    // Get band values for all three ranges (stored as half-percentage, * 2 for actual %)
+    int32_t val_low_0 = (int32_t)eq_bands[0][band_low] * 2;   // Range 0 (low rest)
+    int32_t val_low_1 = (int32_t)eq_bands[1][band_low] * 2;   // Range 1 (mid rest / neutral)
+    int32_t val_low_2 = (int32_t)eq_bands[2][band_low] * 2;   // Range 2 (high rest)
 
-    // Interpolate between the two multipliers
-    // multiplier = mult_low + (mult_high - mult_low) * interp_factor / 1023
+    int32_t val_high_0 = (int32_t)eq_bands[0][band_high] * 2;
+    int32_t val_high_1 = (int32_t)eq_bands[1][band_high] * 2;
+    int32_t val_high_2 = (int32_t)eq_bands[2][band_high] * 2;
+
+    // Interpolate/extrapolate band values based on rest position
+    // Formula: final = mid + (target - mid) * |blend|
+    // If blend < 0: target = low (Range 0)
+    // If blend >= 0: target = high (Range 2)
+    int32_t mult_low, mult_high;
+
+    if (blend_1024 <= 0) {
+        // Below or at midpoint: blend towards Range 0
+        int32_t abs_blend = -blend_1024;  // Positive value
+        mult_low = val_low_1 + ((val_low_0 - val_low_1) * abs_blend) / 1024;
+        mult_high = val_high_1 + ((val_high_0 - val_high_1) * abs_blend) / 1024;
+    } else {
+        // Above midpoint: blend towards Range 2
+        mult_low = val_low_1 + ((val_low_2 - val_low_1) * blend_1024) / 1024;
+        mult_high = val_high_1 + ((val_high_2 - val_high_1) * blend_1024) / 1024;
+    }
+
+    // Clamp multipliers to reasonable range (10% to 800%)
+    if (mult_low < 10) mult_low = 10;
+    if (mult_low > 800) mult_low = 800;
+    if (mult_high < 10) mult_high = 10;
+    if (mult_high > 800) mult_high = 800;
+
+    // Interpolate between the two band multipliers based on position within band
     int32_t multiplier;
     if (band_low == band_high) {
         multiplier = mult_low;
     } else {
-        multiplier = mult_low + ((int32_t)(mult_high - mult_low) * (int32_t)interp_factor) / 1023;
+        multiplier = mult_low + ((mult_high - mult_low) * (int32_t)interp_factor) / 1023;
     }
 
     // Apply band multiplier: adjusted = normalized * multiplier / 100
     int32_t adjusted = ((int32_t)normalized * multiplier) / 100;
 
-    // Apply range scale (overall distance multiplier for this rest range)
-    // eq_range_scale is stored as half-percentage: value * 2 = actual percent
-    int32_t range_scale = (int32_t)eq_range_scale[range] * 2;
+    // Interpolate/extrapolate range scale based on rest position
+    int32_t scale_0 = (int32_t)eq_range_scale[0] * 2;
+    int32_t scale_1 = (int32_t)eq_range_scale[1] * 2;
+    int32_t scale_2 = (int32_t)eq_range_scale[2] * 2;
+
+    int32_t range_scale;
+    if (blend_1024 <= 0) {
+        int32_t abs_blend = -blend_1024;
+        range_scale = scale_1 + ((scale_0 - scale_1) * abs_blend) / 1024;
+    } else {
+        range_scale = scale_1 + ((scale_2 - scale_1) * blend_1024) / 1024;
+    }
+
+    // Clamp range scale (20% to 400%)
+    if (range_scale < 20) range_scale = 20;
+    if (range_scale > 400) range_scale = 400;
+
+    // Apply range scale
     adjusted = (adjusted * range_scale) / 100;
 
     // Clamp to valid range
