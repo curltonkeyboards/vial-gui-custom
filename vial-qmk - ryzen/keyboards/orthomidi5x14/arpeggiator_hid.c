@@ -552,7 +552,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         data[2] == HID_DEVICE_ID &&
         data[3] >= 0xE0 && data[3] <= 0xE6) {
 
-        dprintf("raw_hid_receive_kb: Per-key actuation command detected\n");
+        dprintf("raw_hid_receive_kb: Per-key actuation command detected (0x%02X)\n", data[3]);
 
         uint8_t cmd = data[3];
         uint8_t response[32] = {0};
@@ -577,10 +577,58 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 handle_get_per_key_actuation(&data[6], &response[5]);
                 break;
 
-            case 0xE2:  // HID_CMD_GET_ALL_PER_KEY_ACTUATIONS
-                // TODO: Implement chunking for large data transfer
-                response[4] = 0x00;  // Not implemented yet
-                break;
+            case 0xE2: {  // HID_CMD_GET_ALL_PER_KEY_ACTUATIONS
+                // Bulk read: Returns all 70 keys for one layer in multiple packets
+                // Request format: data[6] = layer number (0-11)
+                // Response: 24 packets, each with up to 3 keys (8 bytes each)
+                // Packet format: [header(4)] [status(1)] [layer(1)] [packet_num(1)] [total(1)] [key_data(24)]
+                uint8_t layer = data[6];
+
+                if (layer >= 12) {
+                    response[4] = 0x00;  // Error - invalid layer
+                    raw_hid_send(response, 32);
+                    break;
+                }
+
+                // Send 24 packets (70 keys / 3 per packet = 24 packets, last has 1 key)
+                const uint8_t KEYS_PER_PACKET = 3;
+                const uint8_t TOTAL_PACKETS = 24;
+
+                for (uint8_t pkt = 0; pkt < TOTAL_PACKETS; pkt++) {
+                    uint8_t bulk_response[32] = {0};
+
+                    // Header
+                    bulk_response[0] = HID_MANUFACTURER_ID;
+                    bulk_response[1] = HID_SUB_ID;
+                    bulk_response[2] = HID_DEVICE_ID;
+                    bulk_response[3] = 0xE2;
+
+                    // Metadata
+                    bulk_response[4] = 0x01;  // Success
+                    bulk_response[5] = layer;
+                    bulk_response[6] = pkt;
+                    bulk_response[7] = TOTAL_PACKETS;
+
+                    // Key data (up to 3 keys × 8 bytes = 24 bytes at offset 8)
+                    uint8_t start_key = pkt * KEYS_PER_PACKET;
+                    for (uint8_t k = 0; k < KEYS_PER_PACKET && (start_key + k) < 70; k++) {
+                        uint8_t key_idx = start_key + k;
+                        uint8_t offset = 8 + (k * 8);
+
+                        bulk_response[offset + 0] = per_key_actuations[layer].keys[key_idx].actuation;
+                        bulk_response[offset + 1] = per_key_actuations[layer].keys[key_idx].deadzone_top;
+                        bulk_response[offset + 2] = per_key_actuations[layer].keys[key_idx].deadzone_bottom;
+                        bulk_response[offset + 3] = per_key_actuations[layer].keys[key_idx].velocity_curve;
+                        bulk_response[offset + 4] = per_key_actuations[layer].keys[key_idx].flags;
+                        bulk_response[offset + 5] = per_key_actuations[layer].keys[key_idx].rapidfire_press_sens;
+                        bulk_response[offset + 6] = per_key_actuations[layer].keys[key_idx].rapidfire_release_sens;
+                        bulk_response[offset + 7] = (uint8_t)per_key_actuations[layer].keys[key_idx].rapidfire_velocity_mod;
+                    }
+
+                    raw_hid_send(bulk_response, 32);
+                }
+                return;  // Already sent responses, don't send again
+            }
 
             case 0xE3:  // HID_CMD_RESET_PER_KEY_ACTUATIONS
                 handle_reset_per_key_actuations_hid();
@@ -600,6 +648,100 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             case 0xE6:  // HID_CMD_COPY_LAYER_ACTUATIONS
                 // Format: [source_layer, dest_layer] at data[6]
                 handle_copy_layer_actuations(&data[6]);
+                response[4] = 0x01;  // Success
+                break;
+
+            default:
+                response[4] = 0x00;  // Error - unknown command
+                break;
+        }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // =================================================================
+    // LAYER ACTUATION COMMANDS (0xEB-0xEE)
+    // Moved from 0xCA-0xCD to avoid conflict with arpeggiator commands
+    // Using 0xEB-0xEE to avoid conflict with 0xE9 (EQ Curve Tuning)
+    // =================================================================
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xEB && data[3] <= 0xEE) {
+
+        dprintf("raw_hid_receive_kb: Layer actuation command detected (0x%02X)\n", data[3]);
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xEB: {  // HID_CMD_GET_LAYER_ACTUATION (individual)
+                // Format: data[6] = layer number (0-11)
+                // Response: [status, normal, midi, velocity, vel_speed, flags,
+                //            aftertouch_mode, aftertouch_cc, vibrato_sens, decay_lo, decay_hi]
+                uint8_t layer = data[6];
+                if (layer < 12) {
+                    handle_get_layer_actuation(layer, &response[5]);
+                    response[4] = 0x01;  // Success
+                } else {
+                    response[4] = 0x00;  // Error - invalid layer
+                }
+                break;
+            }
+
+            case 0xEC: {  // HID_CMD_SET_LAYER_ACTUATION
+                // Format: data[6...] = layer settings
+                handle_set_layer_actuation(&data[6]);
+                response[4] = 0x01;  // Success
+                break;
+            }
+
+            case 0xED: {  // HID_CMD_GET_ALL_LAYER_ACTUATIONS (bulk)
+                // Response: 6 packets with all 12 layers (10 bytes each = 120 bytes total)
+                // Each packet has 2 layers (20 bytes) to fit in 32-byte packets
+                const uint8_t BYTES_PER_LAYER = 10;
+                const uint8_t LAYERS_PER_PACKET = 2;  // 2 layers × 10 bytes = 20 bytes per packet
+                const uint8_t TOTAL_PACKETS = 6;  // 12 layers / 2 = 6 packets
+
+                for (uint8_t pkt = 0; pkt < TOTAL_PACKETS; pkt++) {
+                    uint8_t bulk_response[32] = {0};
+
+                    // Header
+                    bulk_response[0] = HID_MANUFACTURER_ID;
+                    bulk_response[1] = HID_SUB_ID;
+                    bulk_response[2] = HID_DEVICE_ID;
+                    bulk_response[3] = 0xED;
+
+                    // Metadata
+                    bulk_response[4] = 0x01;  // Success
+                    bulk_response[5] = pkt;   // Packet number
+                    bulk_response[6] = TOTAL_PACKETS;
+
+                    // Layer data (2 layers per packet, 10 bytes each)
+                    for (uint8_t l = 0; l < LAYERS_PER_PACKET; l++) {
+                        uint8_t layer_idx = pkt * LAYERS_PER_PACKET + l;
+                        if (layer_idx >= 12) break;
+
+                        uint8_t offset = 7 + (l * BYTES_PER_LAYER);
+                        handle_get_layer_actuation(layer_idx, &bulk_response[offset]);
+                    }
+
+                    raw_hid_send(bulk_response, 32);
+                }
+                return;  // Already sent responses
+            }
+
+            case 0xEE:  // HID_CMD_RESET_LAYER_ACTUATIONS
+                handle_reset_layer_actuations();
                 response[4] = 0x01;  // Success
                 break;
 
