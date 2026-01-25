@@ -13,6 +13,7 @@ from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QBrush, QPen, Q
 
 from widgets.combo_box import ArrowComboBox
 from editor.basic_editor import BasicEditor
+from themes import Theme
 from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
 from tabbed_keycodes import GamepadWidget, DpadButton
 from protocol.keyboard_comm import (
@@ -74,6 +75,10 @@ class ActuationVisualizer(QWidget):
         width = self.width()
         height = self.height()
 
+        # Check if light theme
+        light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
+        is_light = Theme.get_theme() in light_themes
+
         # Margins - reduced for compact display
         margin_top = 20
         margin_bottom = 90  # Space for debug info
@@ -82,7 +87,7 @@ class ActuationVisualizer(QWidget):
         bar_height = height - margin_top - margin_bottom
 
         # Draw label at top
-        painter.setPen(QColor(200, 200, 200))
+        painter.setPen(QColor(60, 60, 60) if is_light else QColor(200, 200, 200))
         font = QFont()
         font.setBold(True)
         font.setPointSize(9)
@@ -91,8 +96,8 @@ class ActuationVisualizer(QWidget):
 
         # Draw outer frame (the track)
         track_rect = QtCore.QRectF(margin_side, margin_top, bar_width, bar_height)
-        painter.setPen(QPen(QColor(100, 100, 100), 2))
-        painter.setBrush(QBrush(QColor(40, 40, 40)))
+        painter.setPen(QPen(QColor(150, 150, 150) if is_light else QColor(100, 100, 100), 2))
+        painter.setBrush(QBrush(QColor(220, 220, 220) if is_light else QColor(40, 40, 40)))
         painter.drawRoundedRect(track_rect, 5, 5)
 
         # Calculate fill height based on distance (0mm = top, 4mm = bottom)
@@ -119,7 +124,7 @@ class ActuationVisualizer(QWidget):
             painter.drawRoundedRect(fill_rect, 3, 3)
 
         # Draw scale markers on the right side
-        painter.setPen(QPen(QColor(150, 150, 150), 1))
+        painter.setPen(QPen(QColor(100, 100, 100) if is_light else QColor(150, 150, 150), 1))
         small_font = QFont()
         small_font.setPointSize(7)
         painter.setFont(small_font)
@@ -134,7 +139,7 @@ class ActuationVisualizer(QWidget):
                            30, 12, Qt.AlignLeft | Qt.AlignVCenter, f"{mm}")
 
         # Draw current distance value
-        painter.setPen(QColor(255, 255, 255))
+        painter.setPen(QColor(0, 0, 0) if is_light else QColor(255, 255, 255))
         font.setPointSize(10)
         font.setBold(True)
         painter.setFont(font)
@@ -146,7 +151,7 @@ class ActuationVisualizer(QWidget):
         small_font.setPointSize(7)
         small_font.setBold(False)
         painter.setFont(small_font)
-        painter.setPen(QColor(180, 180, 180))
+        painter.setPen(QColor(80, 80, 80) if is_light else QColor(180, 180, 180))
 
         # Rest ADC
         painter.drawText(0, y_start + 20, width, 14, Qt.AlignCenter, f"Rest: {self.rest_adc}")
@@ -257,7 +262,7 @@ class MatrixTest(BasicEditor):
         # Show Advanced Tuning toggle button (above the hidden content)
         self.advanced_tuning_btn = QPushButton("Show Advanced Tuning")
         self.advanced_tuning_btn.setCheckable(True)
-        self.advanced_tuning_btn.setMaximumWidth(180)
+        self.advanced_tuning_btn.setMinimumWidth(200)
         self.advanced_tuning_btn.clicked.connect(self.toggle_advanced_tuning)
         main_content_layout.addWidget(self.advanced_tuning_btn, alignment=Qt.AlignCenter)
 
