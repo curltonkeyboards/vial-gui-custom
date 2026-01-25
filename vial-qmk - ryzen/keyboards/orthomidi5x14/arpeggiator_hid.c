@@ -5,6 +5,7 @@
 #include "raw_hid.h"
 #include "process_midi.h"
 #include "matrix.h"
+#include "process_dynamic_macro.h"
 #include <string.h>
 
 // =============================================================================
@@ -997,9 +998,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         // Call the save function from matrix.c
         eq_curve_save_to_eeprom();
 
+        // Also save keyboard settings (includes LUT correction strength)
+        save_keyboard_settings();
+
         response[4] = 0x01;  // Success
 
-        dprintf("EQ Curve saved to EEPROM\n");
+        dprintf("EQ Curve and keyboard settings saved to EEPROM\n");
 
         // Send response
         raw_hid_send(response, 32);
