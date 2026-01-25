@@ -273,13 +273,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         self.reload_layer_actuations()
         _startup_log(f"  Layer actuations done ({time.time()-t0:.2f}s)")
 
-        # TEMPORARILY SKIPPED - gaming settings takes too long
-        # _startup_log("  Loading gaming settings...")
-        # t0 = time.time()
-        # self.reload_gaming_settings()
-        # _startup_log(f"  Gaming settings done ({time.time()-t0:.2f}s)")
-        _startup_log("  Gaming settings SKIPPED (disabled for testing)")
-        self.gaming_settings = None  # Set to None so rebuild doesn't fail
+        _startup_log("  Loading gaming settings...")
+        t0 = time.time()
+        self.reload_gaming_settings()
+        _startup_log(f"  Gaming settings done ({time.time()-t0:.2f}s)")
 
         total_time = time.time() - reload_start
         _startup_log(f"Keyboard reload complete! Total time: {total_time:.2f}s")

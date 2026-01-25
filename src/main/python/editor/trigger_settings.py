@@ -3115,8 +3115,9 @@ class TriggerSettingsTab(BasicEditor):
                 self.reset_btn.setEnabled(self.mode_enabled)
                 self.syncing = False
 
-            # LAZY LOADING: Defer the heavy per-key loading (840 HID calls!) until tab is activated
-            self._needs_loading = True
+            # Load per-key data immediately (optimized with bulk read + reduced retries)
+            self._load_per_key_data()
+            self._needs_loading = False
 
             # Clear any unsaved changes when loading from device
             self.has_unsaved_changes = False
