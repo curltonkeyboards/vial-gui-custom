@@ -157,139 +157,125 @@ extern uint8_t eq_range_scale[3];
 // Band 4: 819-1023 (80-100%)
 
 /**
- * Apply EQ-style sensitivity curve adjustment with continuous interpolation
+ * Apply EQ-style sensitivity curve adjustment with REDISTRIBUTIVE bands
  *
- * This function applies a 5-band equalizer curve based on the sensor's rest value.
- * Range 1 (Mid) is the neutral baseline. Range 0 and Range 2 define adjustments
- * at the boundaries, with linear interpolation/extrapolation based on distance
- * from the midpoint.
+ * This is a "true EQ" approach where:
+ * - Total travel is ALWAYS 0-1023 (0-4mm) regardless of settings
+ * - Band weights determine how much OUTPUT range each INPUT band gets
+ * - Higher weight = that section of travel happens faster (more output per input)
+ * - Lower weight = that section of travel happens slower (less output per input)
+ * - Bands automatically balance out - total output is always 0-1023
  *
- * Example with boundaries 1600 and 1800 (midpoint 1700, half_span 100):
- *   - rest 1700: 100% Range 1 (neutral)
- *   - rest 1600: 100% Range 0 effect
- *   - rest 1500: 200% Range 0 effect (extrapolated)
- *   - rest 1800: 100% Range 2 effect
- *   - rest 1900: 200% Range 2 effect (extrapolated)
+ * Example with weights [200, 100, 100, 100, 100] (total 600):
+ *   - Band 0 (0-20% input) gets 200/600 = 33% of output range
+ *   - At 20% physical travel, you've reached 33% of output (1.33mm instead of 0.8mm)
+ *   - Remaining bands share the rest proportionally
  *
  * @param normalized  Linear normalized position (0-1023)
  * @param rest        Rest ADC value for this key
- * @return            Adjusted normalized position (0-1023)
+ * @return            Adjusted normalized position (0-1023), always spans full range
  */
 static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
     uint32_t normalized,
     uint16_t rest
 ) {
-    // Calculate midpoint and half-span for interpolation
+    // Calculate blend factor for rest-based interpolation
     int32_t midpoint = ((int32_t)eq_range_low + (int32_t)eq_range_high) / 2;
     int32_t half_span = ((int32_t)eq_range_high - (int32_t)eq_range_low) / 2;
-    if (half_span < 50) half_span = 50;  // Prevent division issues
+    if (half_span < 50) half_span = 50;
 
-    // Calculate blend factor: 0 at midpoint, -1 at low boundary, +1 at high boundary
-    // Can be < -1 or > +1 for extrapolation beyond boundaries
-    // Using fixed-point: blend_1024 = offset * 1024 / half_span
     int32_t offset = (int32_t)rest - midpoint;
     int32_t blend_1024 = (offset * 1024) / half_span;
 
-    // Determine which band and interpolation factor based on position
-    // We interpolate between adjacent band values for smooth transitions
-    uint8_t band_low, band_high;
-    uint32_t interp_factor;  // 0-1023 interpolation within band
+    // Calculate interpolated weights for each band based on rest position
+    int32_t weights[5];
+    int32_t total_weight = 0;
 
-    if (normalized <= EQ_BAND_0_END) {
-        // Band 0: 0-204
-        band_low = 0;
-        band_high = 0;
-        interp_factor = 512;  // Use band 0 value directly (center of interpolation)
-    } else if (normalized <= EQ_BAND_1_END) {
-        // Transition from band 0 to band 1: 205-409
-        band_low = 0;
-        band_high = 1;
-        interp_factor = ((normalized - EQ_BAND_0_END - 1) * 1023) / (EQ_BAND_1_END - EQ_BAND_0_END);
-    } else if (normalized <= EQ_BAND_2_END) {
-        // Transition from band 1 to band 2: 410-613
-        band_low = 1;
-        band_high = 2;
-        interp_factor = ((normalized - EQ_BAND_1_END - 1) * 1023) / (EQ_BAND_2_END - EQ_BAND_1_END);
-    } else if (normalized <= EQ_BAND_3_END) {
-        // Transition from band 2 to band 3: 614-818
-        band_low = 2;
-        band_high = 3;
-        interp_factor = ((normalized - EQ_BAND_2_END - 1) * 1023) / (EQ_BAND_3_END - EQ_BAND_2_END);
-    } else {
-        // Band 4: 819-1023
-        band_low = 4;
-        band_high = 4;
-        interp_factor = 512;  // Use band 4 value directly
+    for (uint8_t i = 0; i < 5; i++) {
+        int32_t val_0 = (int32_t)eq_bands[0][i] * 2;  // Range 0 (low rest)
+        int32_t val_1 = (int32_t)eq_bands[1][i] * 2;  // Range 1 (mid/neutral)
+        int32_t val_2 = (int32_t)eq_bands[2][i] * 2;  // Range 2 (high rest)
+
+        int32_t w;
+        if (blend_1024 <= 0) {
+            int32_t abs_blend = -blend_1024;
+            w = val_1 + ((val_0 - val_1) * abs_blend) / 1024;
+        } else {
+            w = val_1 + ((val_2 - val_1) * blend_1024) / 1024;
+        }
+
+        // Clamp weight to reasonable range
+        if (w < 10) w = 10;
+        if (w > 1000) w = 1000;
+
+        weights[i] = w;
+        total_weight += w;
     }
 
-    // Get band values for all three ranges (stored as half-percentage, * 2 for actual %)
-    int32_t val_low_0 = (int32_t)eq_bands[0][band_low] * 2;   // Range 0 (low rest)
-    int32_t val_low_1 = (int32_t)eq_bands[1][band_low] * 2;   // Range 1 (mid rest / neutral)
-    int32_t val_low_2 = (int32_t)eq_bands[2][band_low] * 2;   // Range 2 (high rest)
+    // Calculate cumulative output boundaries for each band
+    // Each band gets (weight[i] / total_weight) of the output range
+    int32_t output_ends[5];
+    int32_t cumulative = 0;
+    for (uint8_t i = 0; i < 4; i++) {
+        cumulative += (weights[i] * 1023) / total_weight;
+        output_ends[i] = cumulative;
+    }
+    output_ends[4] = 1023;  // Ensure last band ends exactly at 1023
 
-    int32_t val_high_0 = (int32_t)eq_bands[0][band_high] * 2;
-    int32_t val_high_1 = (int32_t)eq_bands[1][band_high] * 2;
-    int32_t val_high_2 = (int32_t)eq_bands[2][band_high] * 2;
+    // Input band boundaries (fixed - each band is 20% of input)
+    const int32_t input_ends[5] = {EQ_BAND_0_END, EQ_BAND_1_END, EQ_BAND_2_END, EQ_BAND_3_END, 1023};
 
-    // Interpolate/extrapolate band values based on rest position
-    // Formula: final = mid + (target - mid) * |blend|
-    // If blend < 0: target = low (Range 0)
-    // If blend >= 0: target = high (Range 2)
-    int32_t mult_low, mult_high;
+    // Find which input band we're in and map to corresponding output range
+    int32_t input_start = 0;
+    int32_t output_start = 0;
 
-    if (blend_1024 <= 0) {
-        // Below or at midpoint: blend towards Range 0
-        int32_t abs_blend = -blend_1024;  // Positive value
-        mult_low = val_low_1 + ((val_low_0 - val_low_1) * abs_blend) / 1024;
-        mult_high = val_high_1 + ((val_high_0 - val_high_1) * abs_blend) / 1024;
-    } else {
-        // Above midpoint: blend towards Range 2
-        mult_low = val_low_1 + ((val_low_2 - val_low_1) * blend_1024) / 1024;
-        mult_high = val_high_1 + ((val_high_2 - val_high_1) * blend_1024) / 1024;
+    for (uint8_t i = 0; i < 5; i++) {
+        if ((int32_t)normalized <= input_ends[i]) {
+            // We're in band i - linear interpolation within this band
+            int32_t input_end = input_ends[i];
+            int32_t output_end = output_ends[i];
+
+            int32_t input_pos = (int32_t)normalized - input_start;
+            int32_t input_range = input_end - input_start;
+            int32_t output_range = output_end - output_start;
+
+            // Avoid division by zero
+            if (input_range <= 0) input_range = 1;
+
+            int32_t output = output_start + (input_pos * output_range) / input_range;
+
+            // Apply range scale (affects overall scaling, can exceed 1023 or fall short)
+            int32_t scale_0 = (int32_t)eq_range_scale[0] * 2;
+            int32_t scale_1 = (int32_t)eq_range_scale[1] * 2;
+            int32_t scale_2 = (int32_t)eq_range_scale[2] * 2;
+
+            int32_t range_scale;
+            if (blend_1024 <= 0) {
+                int32_t abs_blend = -blend_1024;
+                range_scale = scale_1 + ((scale_0 - scale_1) * abs_blend) / 1024;
+            } else {
+                range_scale = scale_1 + ((scale_2 - scale_1) * blend_1024) / 1024;
+            }
+
+            if (range_scale < 20) range_scale = 20;
+            if (range_scale > 400) range_scale = 400;
+
+            output = (output * range_scale) / 100;
+
+            // Clamp final output
+            if (output < 0) output = 0;
+            if (output > 1023) output = 1023;
+
+            return (uint32_t)output;
+        }
+
+        // Move to next band
+        input_start = input_ends[i] + 1;
+        output_start = output_ends[i];
     }
 
-    // Clamp multipliers to reasonable range (10% to 800%)
-    if (mult_low < 10) mult_low = 10;
-    if (mult_low > 800) mult_low = 800;
-    if (mult_high < 10) mult_high = 10;
-    if (mult_high > 800) mult_high = 800;
-
-    // Interpolate between the two band multipliers based on position within band
-    int32_t multiplier;
-    if (band_low == band_high) {
-        multiplier = mult_low;
-    } else {
-        multiplier = mult_low + ((mult_high - mult_low) * (int32_t)interp_factor) / 1023;
-    }
-
-    // Apply band multiplier: adjusted = normalized * multiplier / 100
-    int32_t adjusted = ((int32_t)normalized * multiplier) / 100;
-
-    // Interpolate/extrapolate range scale based on rest position
-    int32_t scale_0 = (int32_t)eq_range_scale[0] * 2;
-    int32_t scale_1 = (int32_t)eq_range_scale[1] * 2;
-    int32_t scale_2 = (int32_t)eq_range_scale[2] * 2;
-
-    int32_t range_scale;
-    if (blend_1024 <= 0) {
-        int32_t abs_blend = -blend_1024;
-        range_scale = scale_1 + ((scale_0 - scale_1) * abs_blend) / 1024;
-    } else {
-        range_scale = scale_1 + ((scale_2 - scale_1) * blend_1024) / 1024;
-    }
-
-    // Clamp range scale (20% to 400%)
-    if (range_scale < 20) range_scale = 20;
-    if (range_scale > 400) range_scale = 400;
-
-    // Apply range scale
-    adjusted = (adjusted * range_scale) / 100;
-
-    // Clamp to valid range
-    if (adjusted < 0) adjusted = 0;
-    if (adjusted > 1023) adjusted = 1023;
-
-    return (uint32_t)adjusted;
+    // Should never reach here
+    return 1023;
 }
 
 /**
