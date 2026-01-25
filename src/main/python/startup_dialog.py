@@ -90,16 +90,19 @@ class StartupDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Curlton KeyStation - Startup")
+        self.setWindowTitle("Curlton KeyStation - Startup Log")
         self.setMinimumSize(600, 400)
         self.resize(700, 500)
+
+        # Start as modal, will become non-modal after startup
         self.setModal(True)
 
-        # Don't show close button, force user to use buttons
-        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint)
+        # Allow close button
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
 
         self._should_start = False
         self._is_running = False
+        self._startup_complete = False
 
         self._setup_ui()
         self._setup_logger()
@@ -119,11 +122,11 @@ class StartupDialog(QDialog):
         layout.addWidget(title)
 
         # Description
-        desc = QLabel("The application needs to scan for HID devices and load keyboard data.\n"
-                      "This can take some time. The log below will show progress.")
-        desc.setAlignment(Qt.AlignCenter)
-        desc.setWordWrap(True)
-        layout.addWidget(desc)
+        self.desc_label = QLabel("The application needs to scan for HID devices and load keyboard data.\n"
+                                  "This can take some time. The log below will show progress.")
+        self.desc_label.setAlignment(Qt.AlignCenter)
+        self.desc_label.setWordWrap(True)
+        layout.addWidget(self.desc_label)
 
         # Progress bar (hidden initially, shown during loading)
         self.progress_bar = QProgressBar()
@@ -131,12 +134,16 @@ class StartupDialog(QDialog):
         self.progress_bar.hide()
         layout.addWidget(self.progress_bar)
 
-        # Log output
-        log_label = QLabel("Startup Log:")
+        # Log output - make it selectable and copyable
+        log_label = QLabel("Startup Log (select text to copy):")
         layout.addWidget(log_label)
 
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        # Enable text selection and copying
+        self.log_output.setTextInteractionFlags(
+            Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard
+        )
         self.log_output.setFont(QFont("Consolas", 9) if hasattr(QFont, "Consolas") else QFont("monospace", 9))
         self.log_output.setStyleSheet("""
             QTextEdit {
@@ -144,6 +151,8 @@ class StartupDialog(QDialog):
                 color: #d4d4d4;
                 border: 1px solid #3c3c3c;
                 padding: 5px;
+                selection-background-color: #264f78;
+                selection-color: #ffffff;
             }
         """)
         layout.addWidget(self.log_output, 1)  # Stretch factor 1
@@ -152,16 +161,21 @@ class StartupDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
+        self.copy_button = QPushButton("Copy Log")
+        self.copy_button.setMinimumWidth(100)
+        self.copy_button.clicked.connect(self._on_copy)
+        button_layout.addWidget(self.copy_button)
+
         self.start_button = QPushButton("Start Application")
         self.start_button.setMinimumWidth(150)
         self.start_button.setDefault(True)
         self.start_button.clicked.connect(self._on_start)
         button_layout.addWidget(self.start_button)
 
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setMinimumWidth(100)
-        self.cancel_button.clicked.connect(self._on_cancel)
-        button_layout.addWidget(self.cancel_button)
+        self.close_button = QPushButton("Cancel")
+        self.close_button.setMinimumWidth(100)
+        self.close_button.clicked.connect(self._on_close)
+        button_layout.addWidget(self.close_button)
 
         button_layout.addStretch()
         layout.addLayout(button_layout)
@@ -180,13 +194,22 @@ class StartupDialog(QDialog):
         # Process events to update UI
         QApplication.processEvents()
 
+    def _on_copy(self):
+        """Copy all log text to clipboard."""
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.log_output.toPlainText())
+        # Brief visual feedback
+        old_text = self.copy_button.text()
+        self.copy_button.setText("Copied!")
+        QTimer.singleShot(1000, lambda: self.copy_button.setText(old_text))
+
     def _on_start(self):
         """Handle start button click."""
         self._should_start = True
         self._is_running = True
         self.start_button.setEnabled(False)
         self.start_button.setText("Starting...")
-        self.cancel_button.setText("Cancel Startup")
+        self.close_button.setText("Cancel Startup")
         self.progress_bar.show()
 
         startup_log("User requested application start")
@@ -194,22 +217,45 @@ class StartupDialog(QDialog):
         # Emit signal to start the app (after a small delay to let UI update)
         QTimer.singleShot(100, self.start_requested.emit)
 
-    def _on_cancel(self):
-        """Handle cancel button click."""
-        if self._is_running:
+    def _on_close(self):
+        """Handle close button click."""
+        if self._startup_complete:
+            # After startup, just close the log window
+            self.close()
+        elif self._is_running:
             startup_log("Startup cancelled by user")
-        self._should_start = False
-        self.reject()
+            self._should_start = False
+            self.reject()
+        else:
+            self._should_start = False
+            self.reject()
 
     def should_start(self):
         """Return whether the user chose to start the app."""
         return self._should_start
 
     def finish_startup(self):
-        """Called when startup is complete - close the dialog."""
-        startup_log("Startup complete - opening main window")
-        self.logger.disable()
-        self.accept()
+        """Called when startup is complete - keep dialog open for reference."""
+        startup_log("Startup complete - main window is now open")
+        startup_log("=" * 50)
+        startup_log("You can copy this log or close this window")
+
+        self._startup_complete = True
+        self._is_running = False
+
+        # Update UI to show startup is complete
+        self.progress_bar.hide()
+        self.start_button.hide()
+        self.close_button.setText("Close Log")
+        self.desc_label.setText("Startup complete! This log window stays open for reference.\n"
+                                "You can select and copy text, or use the Copy Log button.")
+        self.setWindowTitle("Curlton KeyStation - Startup Log (Complete)")
+
+        # Make non-modal so it doesn't block the main window
+        self.setModal(False)
+
+        # Don't call accept() - keep the dialog open
+        # The main window will be shown by the caller
 
     def log(self, message):
         """Log a message to the startup log."""

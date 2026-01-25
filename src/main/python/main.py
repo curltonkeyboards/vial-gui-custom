@@ -78,6 +78,7 @@ class StartupManager:
         self.appctxt = appctxt
         self.window = None
         self.startup_dialog = None
+        self._startup_complete = False
 
     def run_with_startup_dialog(self):
         """Show startup dialog, then launch main window."""
@@ -89,16 +90,11 @@ class StartupManager:
         self.startup_dialog = StartupDialog()
         self.startup_dialog.start_requested.connect(self._on_start_requested)
 
-        # Show the dialog
-        result = self.startup_dialog.exec_()
+        # Show the dialog (modal until startup completes)
+        self.startup_dialog.show()
 
-        if result == StartupDialog.Accepted and self.window:
-            # Dialog was accepted and window was created - run main event loop
-            self.window.show()
-            return self.appctxt.app.exec_()
-        else:
-            # User cancelled
-            return 0
+        # Run the event loop - this will process events until app exits
+        return self.appctxt.app.exec_()
 
     def _on_start_requested(self):
         """Called when user clicks Start in the startup dialog."""
@@ -114,8 +110,12 @@ class StartupManager:
             self.window = MainWindow(self.appctxt)
             startup_log(f"Main window created ({time.time()-t0:.2f}s)")
 
-            # Close the startup dialog
+            # Mark startup complete and update dialog
             self.startup_dialog.finish_startup()
+
+            # Show the main window
+            self.window.show()
+
         except Exception as e:
             startup_log(f"ERROR: {e}")
             import traceback
