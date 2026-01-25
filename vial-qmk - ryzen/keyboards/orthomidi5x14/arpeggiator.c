@@ -596,11 +596,12 @@ void arp_update(void) {
     if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR) {
         // Arpeggiator requires live notes (master note)
         if (live_note_count == 0) {
-            // No notes held - stop if not in latch mode
-            if (!arp_state.latch_mode) {
+            // No notes held - if key is held or in latch mode, just wait for notes
+            // Otherwise, stop the arpeggiator
+            if (!arp_state.key_held && !arp_state.latch_mode) {
                 arp_stop();
             }
-            return;
+            return;  // Either way, nothing to play without notes
         }
     }
     // Step sequencer plays independently, no live notes required

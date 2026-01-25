@@ -12861,8 +12861,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // ARPEGGIATOR CONTROL KEYCODES (0xEE00-0xEE0F)
     if (keycode == ARP_PLAY) {
         if (record->event.pressed) {
-            arp_toggle();  // Simple toggle on/off
+            // Hold-to-play: Start arp when key is pressed
+            arp_state.key_held = true;
+            if (!arp_state.active) {
+                arp_start(arp_state.current_preset_id);
+            }
             set_keylog(keycode, record);
+        } else {
+            // Release: Stop arp when key is released (unless in latch mode)
+            arp_state.key_held = false;
+            if (!arp_state.latch_mode) {
+                arp_stop();
+            }
         }
         return false;
     }
