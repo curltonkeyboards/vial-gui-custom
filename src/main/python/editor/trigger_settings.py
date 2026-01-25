@@ -1657,6 +1657,8 @@ class TriggerSettingsTab(BasicEditor):
         tab_names = ['actuation', 'rapidfire', 'velocity', 'nullbind']
         if index >= 0 and index < len(tab_names):
             self.active_tab = tab_names[index]
+            # Sync checkbox states across all tabs when switching
+            self.sync_all_tab_checkboxes()
             self.refresh_layer_display()
             self.update_actuation_visualizer()
             # Update null bind display when switching to that tab
@@ -2719,16 +2721,37 @@ class TriggerSettingsTab(BasicEditor):
         if not self.valid() or not self.keyboard:
             return
 
+        # Safe defaults: 1.5mm actuation (60), 0.1mm deadzones (4)
+        DEFAULT_ACTUATION = 60  # 1.5mm (60/40 = 1.5)
+        DEFAULT_DEADZONE = 4   # 0.1mm (4/40 = 0.1)
+        MIN_ACTUATION = 8      # 0.2mm minimum to prevent keyboard crash
+
         # Get current layer actuation values (use as source for all layers)
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
         normal_actuation = data_source[self.current_layer]['normal']
         midi_actuation = data_source[self.current_layer]['midi']
 
-        # Get deadzone values from the global sliders
+        # Use safe defaults if values are too low (could crash keyboard)
+        if normal_actuation < MIN_ACTUATION:
+            normal_actuation = DEFAULT_ACTUATION
+        if midi_actuation < MIN_ACTUATION:
+            midi_actuation = DEFAULT_ACTUATION
+
+        # Get deadzone values from the global sliders, with safe defaults
         normal_dz_bottom = self.global_normal_slider.get_deadzone_bottom()
         normal_dz_top = self.global_normal_slider.get_deadzone_top()
         midi_dz_bottom = self.global_midi_slider.get_deadzone_bottom()
         midi_dz_top = self.global_midi_slider.get_deadzone_top()
+
+        # Ensure deadzones have safe minimum values
+        if normal_dz_bottom < 1:
+            normal_dz_bottom = DEFAULT_DEADZONE
+        if normal_dz_top < 1:
+            normal_dz_top = DEFAULT_DEADZONE
+        if midi_dz_bottom < 1:
+            midi_dz_bottom = DEFAULT_DEADZONE
+        if midi_dz_top < 1:
+            midi_dz_top = DEFAULT_DEADZONE
 
         # Apply to ALL 12 layers for uniformity (firmware always uses per-key per-layer)
         for layer in range(12):
@@ -2762,6 +2785,11 @@ class TriggerSettingsTab(BasicEditor):
                             settings = self.per_key_values[layer][key_index]
                             self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
 
+        # Update layer_data with the safe values used, so global sliders show correct values
+        for layer in range(12):
+            self.layer_data[layer]['normal'] = normal_actuation
+            self.layer_data[layer]['midi'] = midi_actuation
+
     def on_enable_changed(self, state):
         """Handle enable checkbox toggle
 
@@ -2791,10 +2819,8 @@ class TriggerSettingsTab(BasicEditor):
             )
 
             if ret != QMessageBox.Yes:
-                # User cancelled - revert checkbox state
-                self.syncing = True
-                self.enable_checkbox.setChecked(True)
-                self.syncing = False
+                # User cancelled - revert all checkbox states (user may have clicked from any tab)
+                self.sync_all_tab_checkboxes()
                 return
 
             # User confirmed - apply keymap-based actuations before disabling
@@ -2802,15 +2828,12 @@ class TriggerSettingsTab(BasicEditor):
 
         self.mode_enabled = new_mode_enabled
 
-        # When per-key is enabled, per-layer MUST be enabled (and grayed out)
+        # When per-key is enabled, per-layer MUST be enabled
         if self.mode_enabled:
-            self.syncing = True
-            self.per_layer_checkbox.setChecked(True)
-            self.per_layer_checkbox.setEnabled(False)  # Gray out - can't uncheck
             self.per_layer_enabled = True
-            self.syncing = False
-        else:
-            self.per_layer_checkbox.setEnabled(True)  # Re-enable when per-key is off
+
+        # Sync all tab checkboxes to reflect the new state
+        self.sync_all_tab_checkboxes()
 
         self.copy_layer_btn.setEnabled(self.mode_enabled)
         self.copy_all_layers_btn.setEnabled(self.mode_enabled)
@@ -2845,9 +2868,63 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
 
     def update_slider_states(self):
-        """Update slider visibility based on per-key mode (no-op since we removed old sliders)"""
-        # All controls are now in the per-key settings tab
-        pass
+        """Update slider visibility and checkbox state based on per-key mode"""
+        # Toggle between global and per-key actuation sliders
+        self.global_actuation_widget.setVisible(not self.mode_enabled)
+        self.per_key_actuation_widget.setVisible(self.mode_enabled)
+
+        # When per-key is enabled, per-layer must be enabled
+        if self.mode_enabled:
+            self.per_layer_enabled = True
+
+        # Sync all tab checkboxes to reflect current state
+        self.sync_all_tab_checkboxes()
+
+        # Update trigger slider enabled state when in per-key mode
+        if self.mode_enabled:
+            key_selected = self.container.active_key is not None
+            self.trigger_slider.setEnabled(key_selected)
+
+        # Sync with Actuation Settings tab if available
+        if self.actuation_widget_ref:
+            self.actuation_widget_ref.syncing = True
+            self.actuation_widget_ref.enable_per_key_checkbox.setChecked(self.mode_enabled)
+            self.actuation_widget_ref.update_per_key_ui_state(self.mode_enabled)
+            self.actuation_widget_ref.syncing = False
+
+    def sync_all_tab_checkboxes(self):
+        """Sync all tab checkboxes to the shared mode_enabled and per_layer_enabled state.
+
+        Each tab (Actuation, Rapidfire, Velocity Curve, Null Bind) has its own checkbox
+        widgets, but they all control the same shared state. This method ensures all
+        checkboxes visually reflect the current state.
+        """
+        # Guard: checkboxes may not exist yet during early initialization
+        if not hasattr(self, 'rf_enable_checkbox'):
+            return
+
+        self.syncing = True
+
+        # Sync all per-key enable checkboxes
+        self.enable_checkbox.setChecked(self.mode_enabled)
+        self.rf_enable_checkbox.setChecked(self.mode_enabled)
+        self.vc_enable_checkbox.setChecked(self.mode_enabled)
+        self.nb_enable_checkbox.setChecked(self.mode_enabled)
+
+        # Sync all per-layer checkboxes
+        self.per_layer_checkbox.setChecked(self.per_layer_enabled)
+        self.rf_per_layer_checkbox.setChecked(self.per_layer_enabled)
+        self.vc_per_layer_checkbox.setChecked(self.per_layer_enabled)
+        self.nb_per_layer_checkbox.setChecked(self.per_layer_enabled)
+
+        # Update enabled state of per-layer checkboxes (grayed out when per-key is enabled)
+        per_layer_enabled_state = not self.mode_enabled
+        self.per_layer_checkbox.setEnabled(per_layer_enabled_state)
+        self.rf_per_layer_checkbox.setEnabled(per_layer_enabled_state)
+        self.vc_per_layer_checkbox.setEnabled(per_layer_enabled_state)
+        self.nb_per_layer_checkbox.setEnabled(per_layer_enabled_state)
+
+        self.syncing = False
 
     def on_per_layer_changed(self, state):
         """Handle per-layer checkbox toggle
@@ -2861,19 +2938,36 @@ class TriggerSettingsTab(BasicEditor):
         if self.syncing:
             return
 
-        # If per-key is enabled, per-layer cannot be disabled
+        # If per-key is enabled, per-layer cannot be disabled (should be grayed out anyway)
         if self.mode_enabled and state != Qt.Checked:
-            self.syncing = True
-            self.per_layer_checkbox.setChecked(True)
-            self.syncing = False
+            self.sync_all_tab_checkboxes()
             return
 
-        self.per_layer_enabled = (state == Qt.Checked)
+        new_per_layer_enabled = (state == Qt.Checked)
 
-        # If per-layer was just disabled, apply keymap-based actuations to all layers
-        # This ensures each layer's keys get the correct actuation based on their keymap
-        if not self.per_layer_enabled:
-            self.apply_keymap_based_actuations()
+        # If user is disabling per-layer mode, show confirmation dialog
+        if self.per_layer_enabled and not new_per_layer_enabled:
+            ret = QMessageBox.warning(
+                self.widget(),
+                tr("TriggerSettings", "Disable Per-Layer Actuation"),
+                tr("TriggerSettings", "Are you sure? All 12 layers will be set to the same values.\n\n"
+                   "The current layer's actuation values will be copied to all other layers."),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if ret != QMessageBox.Yes:
+                # User cancelled - revert all checkbox states
+                self.sync_all_tab_checkboxes()
+                return
+
+            # User confirmed - sync current layer to all layers
+            self.sync_current_layer_to_all_layers()
+
+        self.per_layer_enabled = new_per_layer_enabled
+
+        # Sync all tab checkboxes to reflect the new state
+        self.sync_all_tab_checkboxes()
 
         # NOTE: set_per_key_mode is deprecated - firmware always uses per-key per-layer
         # The call is kept for backward compatibility but is a no-op
@@ -3068,6 +3162,10 @@ class TriggerSettingsTab(BasicEditor):
 
         self.syncing = True
 
+        # Safe defaults: 1.5mm actuation (60)
+        DEFAULT_ACTUATION = 60  # 1.5mm (60/40 = 1.5)
+        MIN_ACTUATION = 8       # 0.2mm minimum
+
         # Get layer to use
         layer = self.current_layer
 
@@ -3076,11 +3174,15 @@ class TriggerSettingsTab(BasicEditor):
 
         # Load normal actuation values using TriggerSlider methods
         normal_act = data_source[layer]['normal']
+        if normal_act < MIN_ACTUATION:
+            normal_act = DEFAULT_ACTUATION
         self.global_normal_slider.set_actuation(normal_act)
         self.global_normal_value_label.setText(f"Act: {self.value_to_mm(normal_act)}")
 
         # Load MIDI actuation values using TriggerSlider methods
         midi_act = data_source[layer]['midi']
+        if midi_act < MIN_ACTUATION:
+            midi_act = DEFAULT_ACTUATION
         self.global_midi_slider.set_actuation(midi_act)
         self.global_midi_value_label.setText(f"Act: {self.value_to_mm(midi_act)}")
 
@@ -3109,7 +3211,7 @@ class TriggerSettingsTab(BasicEditor):
                 self.per_layer_enabled = mode_data['per_layer_enabled']
                 self.enable_checkbox.setChecked(self.mode_enabled)
                 self.per_layer_checkbox.setChecked(self.per_layer_enabled)
-                # Keep per_layer_checkbox always enabled
+                # Enable mode-dependent buttons
                 self.copy_layer_btn.setEnabled(self.mode_enabled)
                 self.copy_all_layers_btn.setEnabled(self.mode_enabled)
                 self.reset_btn.setEnabled(self.mode_enabled)
