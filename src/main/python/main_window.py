@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import logging
 import platform
+import time
 from json import JSONDecodeError
 
 from PyQt5.QtCore import Qt, QSettings, QStandardPaths, QTimer, QRect, QT_VERSION_STR
@@ -10,6 +11,14 @@ from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxL
 
 import os
 import sys
+
+# Startup logging helper
+def _startup_log(msg):
+    try:
+        from startup_dialog import startup_log
+        startup_log(msg)
+    except ImportError:
+        pass
 
 from widgets.combo_box import ArrowComboBox
 from about_keyboard import AboutKeyboard
@@ -49,6 +58,9 @@ class MainWindow(QMainWindow):
 
     def __init__(self, appctx):
         super().__init__()
+        _startup_log("MainWindow.__init__ starting...")
+        init_start = time.time()
+
         self.appctx = appctx
 
         self.ui_lock_count = 0
@@ -94,11 +106,15 @@ class MainWindow(QMainWindow):
         if sys.platform != "emscripten":
             layout_combobox.addWidget(self.btn_refresh_devices)
 
+        _startup_log("Creating UI editors...")
+        t0 = time.time()
         self.layout_editor = LayoutEditor()
         self.keymap_editor = KeymapEditor(self.layout_editor)
-        print("Creating TriggerSettingsTab...")
+        _startup_log(f"  LayoutEditor + KeymapEditor ({time.time()-t0:.2f}s)")
+
+        t0 = time.time()
         self.trigger_settings = TriggerSettingsTab(self.layout_editor)
-        print(f"TriggerSettingsTab created: {self.trigger_settings}")
+        _startup_log(f"  TriggerSettingsTab ({time.time()-t0:.2f}s)")
 
         # Set up references between Actuation Settings and Trigger Settings for synchronization
         self.keymap_editor.quick_actuation.trigger_settings_ref = self.trigger_settings
@@ -108,15 +124,16 @@ class MainWindow(QMainWindow):
         self.keymap_editor.quick_actuation.enable_per_key_requested.connect(self.switch_to_trigger_settings)
 
         # Create DKS Settings tab
-        print("Creating DKSSettingsTab...")
+        t0 = time.time()
         self.dks_settings = DKSSettingsTab(self.layout_editor)
-        print(f"DKSSettingsTab created: {self.dks_settings}")
+        _startup_log(f"  DKSSettingsTab ({time.time()-t0:.2f}s)")
 
         # Create Toggle Settings tab
-        print("Creating ToggleSettingsTab...")
+        t0 = time.time()
         self.toggle_settings = ToggleSettingsTab(self.layout_editor)
-        print(f"ToggleSettingsTab created: {self.toggle_settings}")
+        _startup_log(f"  ToggleSettingsTab ({time.time()-t0:.2f}s)")
 
+        t0 = time.time()
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -126,11 +143,13 @@ class MainWindow(QMainWindow):
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
+        _startup_log(f"  Core editors (Firmware, Macro, TapDance, etc) ({time.time()-t0:.2f}s)")
 
         # Connect keymap_editor to matrix_tester for status value adjustments
         self.keymap_editor.set_matrix_test_reference(self.matrix_tester)
         
         # Initialize the new configurators
+        t0 = time.time()
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
         self.gaming_configurator = GamingConfigurator()
@@ -140,6 +159,7 @@ class MainWindow(QMainWindow):
         self.loop_manager = LoopManager()
         self.arpeggiator = Arpeggiator()
         self.step_sequencer = StepSequencer()
+        _startup_log(f"  MIDI configurators ({time.time()-t0:.2f}s)")
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
@@ -203,8 +223,11 @@ class MainWindow(QMainWindow):
 
         self.init_menu()
 
+        _startup_log("Initializing autorefresh (device scanning)...")
+        t0 = time.time()
         self.autorefresh = Autorefresh()
         self.autorefresh.devices_updated.connect(self.on_devices_updated)
+        _startup_log(f"  Autorefresh initialized ({time.time()-t0:.2f}s)")
 
         # cache for via definition files
         self.cache_path = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
@@ -213,16 +236,23 @@ class MainWindow(QMainWindow):
 
         # check if the via defitions already exist
         if os.path.isfile(os.path.join(self.cache_path, "via_keyboards.json")):
+            _startup_log("Loading cached VIA definitions...")
+            t0 = time.time()
             with open(os.path.join(self.cache_path, "via_keyboards.json")) as vf:
                 data = vf.read()
             try:
                 self.autorefresh.load_via_stack(data)
+                _startup_log(f"  VIA definitions loaded ({time.time()-t0:.2f}s)")
             except JSONDecodeError as e:
                 # the saved file is invalid - just ignore this
                 logging.warning("Failed to parse stored via_keyboards.json: {}".format(e))
+                _startup_log(f"  VIA definitions failed to parse")
 
         # make sure initial state is valid
+        _startup_log("Starting initial device refresh...")
+        t0 = time.time()
         self.on_click_refresh()
+        _startup_log(f"Initial device refresh complete ({time.time()-t0:.2f}s)")
 
         if sys.platform == "emscripten":
             import vialglue
@@ -413,17 +443,14 @@ class MainWindow(QMainWindow):
             self.tray_keycodes.set_keyboard(self.autorefresh.current_device.keyboard)
 
     def refresh_tabs(self):
-        print("refresh_tabs() called")
         self.tabs.clear()
         for container, lbl in self.editors:
             is_valid = container.valid()
-            print(f"  Tab '{lbl}': valid={is_valid}, container={container}")
             if not is_valid:
                 continue
 
             c = EditorContainer(container)
             self.tabs.addTab(c, tr("MainWindow", lbl))
-            print(f"    -> Added tab '{lbl}'")
 
     def load_via_stack_json(self):
         from urllib.request import urlopen

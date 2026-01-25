@@ -6,6 +6,14 @@ import time
 from collections import OrderedDict
 
 from keycodes.keycodes import RESET_KEYCODE, Keycode, recreate_keyboard_keycodes
+
+# Startup logging - import lazily to avoid circular imports
+def _startup_log(msg):
+    try:
+        from startup_dialog import startup_log
+        startup_log(msg)
+    except ImportError:
+        pass
 from kle_serial import Serial as KleSerial, Key
 from protocol.combo import ProtocolCombo
 from protocol.constants import CMD_VIA_GET_PROTOCOL_VERSION, CMD_VIA_GET_KEYBOARD_VALUE, CMD_VIA_SET_KEYBOARD_VALUE, \
@@ -168,38 +176,110 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def reload(self, sideload_json=None):
         """ Load information about the keyboard: number of layers, physical key layout """
+        import time
+        _startup_log("Keyboard reload starting...")
+        reload_start = time.time()
 
         self.rowcol = OrderedDict()
         self.encoderpos = OrderedDict()
         self.layout = dict()
         self.encoder_layout = dict()
 
+        _startup_log("  Loading keyboard layout definition...")
+        t0 = time.time()
         self.reload_layout(sideload_json)
+        _startup_log(f"  Layout loaded ({time.time()-t0:.2f}s) - {self.rows}x{self.cols} matrix")
+
+        _startup_log("  Getting layer count...")
+        t0 = time.time()
         self.reload_layers()
+        _startup_log(f"  Layers: {self.layers} ({time.time()-t0:.2f}s)")
 
+        _startup_log("  Loading macros (early)...")
+        t0 = time.time()
         self.reload_macros_early()
-        self.reload_persistent_rgb()
-        self.reload_rgb()
-        self.reload_layer_rgb_support()
-        self.reload_settings()
+        _startup_log(f"  Macros early done ({time.time()-t0:.2f}s)")
 
+        _startup_log("  Loading RGB settings (persistent)...")
+        t0 = time.time()
+        self.reload_persistent_rgb()
+        _startup_log(f"  RGB persistent done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading RGB state...")
+        t0 = time.time()
+        self.reload_rgb()
+        _startup_log(f"  RGB state done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Checking layer RGB support...")
+        t0 = time.time()
+        self.reload_layer_rgb_support()
+        _startup_log(f"  Layer RGB check done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading QMK settings...")
+        t0 = time.time()
+        self.reload_settings()
+        _startup_log(f"  QMK settings done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading dynamic config...")
+        t0 = time.time()
         self.reload_dynamic()
+        _startup_log(f"  Dynamic config done ({time.time()-t0:.2f}s)")
 
         # based on the number of macros, tapdance, etc, this will generate global keycode arrays
+        _startup_log("  Recreating keyboard keycodes...")
+        t0 = time.time()
         recreate_keyboard_keycodes(self)
+        _startup_log(f"  Keycodes recreated ({time.time()-t0:.2f}s)")
 
         # at this stage we have correct keycode info and can reload everything that depends on keycodes
+        _startup_log("  Loading keymap (this may take a while)...")
+        t0 = time.time()
         self.reload_keymap()
+        _startup_log(f"  Keymap loaded ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading macros (late)...")
+        t0 = time.time()
         self.reload_macros_late()
+        _startup_log(f"  Macros late done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading tap dance...")
+        t0 = time.time()
         self.reload_tap_dance()
+        _startup_log(f"  Tap dance done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading combos...")
+        t0 = time.time()
         self.reload_combo()
+        _startup_log(f"  Combos done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading key overrides...")
+        t0 = time.time()
         self.reload_key_override()
+        _startup_log(f"  Key overrides done ({time.time()-t0:.2f}s)")
 
         # Load custom tab settings
+        _startup_log("  Loading ThruLoop config...")
+        t0 = time.time()
         self.reload_thruloop_config()
+        _startup_log(f"  ThruLoop config done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading MIDI config...")
+        t0 = time.time()
         self.reload_midi_config()
+        _startup_log(f"  MIDI config done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading layer actuations...")
+        t0 = time.time()
         self.reload_layer_actuations()
+        _startup_log(f"  Layer actuations done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading gaming settings...")
+        t0 = time.time()
         self.reload_gaming_settings()
+        _startup_log(f"  Gaming settings done ({time.time()-t0:.2f}s)")
+
+        total_time = time.time() - reload_start
+        _startup_log(f"Keyboard reload complete! Total time: {total_time:.2f}s")
 
     def reload_layers(self):
         """ Get how many layers the keyboard has """

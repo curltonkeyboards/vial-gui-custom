@@ -7,6 +7,14 @@ from protocol.keyboard_comm import Keyboard
 from protocol.dummy_keyboard import DummyKeyboard
 from util import MSG_LEN, pad_for_vibl
 
+# Startup logging helper
+def _startup_log(msg):
+    try:
+        from startup_dialog import startup_log
+        startup_log(msg)
+    except ImportError:
+        pass
+
 
 class VialDevice:
 
@@ -19,12 +27,15 @@ class VialDevice:
         self.hid_lock = threading.RLock()
 
     def open(self, override_json=None):
+        _startup_log(f"Opening HID device: {self.desc.get('product_string', 'Unknown')}")
         self.dev = hid.device()
         for x in range(10):
             try:
                 self.dev.open_path(self.desc["path"])
+                _startup_log("  HID device opened successfully")
                 return
             except OSError:
+                _startup_log(f"  Open attempt {x+1}/10 failed, retrying...")
                 time.sleep(1)
         raise RuntimeError("unable to open the device")
 
@@ -52,7 +63,9 @@ class VialKeyboard(VialDevice):
 
     def open(self, override_json=None):
         super().open(override_json)
+        _startup_log("Creating Keyboard communication object...")
         self.keyboard = Keyboard(self.dev)
+        _startup_log("Starting keyboard data reload...")
         self.keyboard.reload(override_json)
 
     def title(self):
