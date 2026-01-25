@@ -552,6 +552,46 @@ class MatrixTest(BasicEditor):
         # Add EQ container to the advanced section
         advanced_section_layout.addWidget(eq_container)
 
+        # Sensor Linearization section (to the right of EQ)
+        linearization_group = QGroupBox(tr("MatrixTest", "Sensor Linearization"))
+        linearization_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        linearization_group.setMaximumWidth(250)
+        linearization_layout = QVBoxLayout()
+        linearization_layout.setSpacing(8)
+        linearization_layout.setContentsMargins(10, 10, 10, 10)
+        linearization_group.setLayout(linearization_layout)
+
+        # Description label
+        linearization_desc = QLabel(
+            "Compensates for Hall effect sensor non-linearity.\n"
+            "0% = Linear (no correction)\n"
+            "100% = Full logarithmic correction"
+        )
+        linearization_desc.setStyleSheet("font-size: 8pt; color: #aaa;")
+        linearization_desc.setWordWrap(True)
+        linearization_layout.addWidget(linearization_desc)
+
+        # Slider with value label
+        slider_layout = QHBoxLayout()
+        self.lut_strength_slider = QSlider(Qt.Horizontal)
+        self.lut_strength_slider.setMinimum(0)
+        self.lut_strength_slider.setMaximum(100)
+        self.lut_strength_slider.setValue(0)
+        self.lut_strength_slider.setTickPosition(QSlider.TicksBelow)
+        self.lut_strength_slider.setTickInterval(25)
+        self.lut_strength_slider.valueChanged.connect(self.on_lut_strength_changed)
+        slider_layout.addWidget(self.lut_strength_slider)
+
+        self.lut_strength_value_label = QLabel("0%")
+        self.lut_strength_value_label.setStyleSheet("font-weight: bold; color: palette(highlight); min-width: 35px;")
+        slider_layout.addWidget(self.lut_strength_value_label)
+
+        linearization_layout.addLayout(slider_layout)
+        linearization_layout.addStretch()
+
+        # Add linearization to the advanced section
+        advanced_section_layout.addWidget(linearization_group)
+
         # Add stretch on right to center content
         advanced_section_layout.addStretch()
 
@@ -894,6 +934,15 @@ class MatrixTest(BasicEditor):
             self.advanced_tuning_btn.setText("Hide Advanced Tuning")
         else:
             self.advanced_tuning_btn.setText("Show Advanced Tuning")
+
+    def on_lut_strength_changed(self, value):
+        """Handle LUT correction strength slider change - immediate send to keyboard"""
+        self.lut_strength_value_label.setText(f"{value}%")
+
+        # Send immediately to keyboard (global setting, no save required)
+        if self.device and isinstance(self.device, VialKeyboard):
+            from protocol.keyboard_comm import PARAM_LUT_CORRECTION_STRENGTH
+            self.device.keyboard.set_keyboard_param_single(PARAM_LUT_CORRECTION_STRENGTH, value)
 
     def update_distance_keys(self):
         """Update the distance_keys list and actuation_visualizers dict based on dropdown selections"""
