@@ -237,7 +237,7 @@ class MatrixTest(BasicEditor):
         for idx, (default_row, default_col) in enumerate(default_keys):
             # Container for each visualizer + its dropdown
             viz_container = QWidget()
-            viz_container.setFixedWidth(95)
+            viz_container.setFixedWidth(100)
             viz_layout = QVBoxLayout()
             viz_layout.setContentsMargins(0, 0, 0, 0)
             viz_layout.setSpacing(2)
@@ -247,19 +247,18 @@ class MatrixTest(BasicEditor):
             key_combo = QComboBox()
             key_combo.setStyleSheet("""
                 QComboBox {
-                    min-width: 0px;
-                    max-width: 90px;
-                    padding: 2px 4px;
-                    padding-right: 18px;
-                    font-size: 8pt;
+                    min-width: 85px;
+                    max-width: 95px;
+                    padding: 2px 2px 2px 4px;
+                    font-size: 7pt;
+                }
+                QComboBox::drop-down {
+                    width: 16px;
                 }
             """)
-            key_combo.setMaximumWidth(90)
-            key_combo.setMaximumHeight(24)
+            key_combo.setFixedWidth(95)
+            key_combo.setMaximumHeight(22)
             key_combo.setMaxVisibleItems(10)
-            key_combo.setEditable(True)
-            key_combo.lineEdit().setReadOnly(True)
-            key_combo.lineEdit().setAlignment(Qt.AlignCenter)
 
             # Add all row/col combinations (5 rows x 14 cols)
             default_index = 0
@@ -303,17 +302,19 @@ class MatrixTest(BasicEditor):
         self.advanced_tuning_btn.setMaximumWidth(150)
         self.advanced_tuning_btn.clicked.connect(self.toggle_advanced_tuning)
         visualizer_layout.addWidget(self.advanced_tuning_btn)
+        visualizer_layout.addStretch()
 
-        # Advanced tuning container (hidden by default)
+        # Advanced tuning container (hidden by default) - will be placed to the right
         self.advanced_tuning_widget = QWidget()
         self.advanced_tuning_widget.setVisible(False)
         advanced_layout = QVBoxLayout()
-        advanced_layout.setContentsMargins(0, 5, 0, 0)
+        advanced_layout.setContentsMargins(10, 0, 0, 0)
         self.advanced_tuning_widget.setLayout(advanced_layout)
 
         # EQ-Style Sensitivity Curve Controls
         eq_group = QGroupBox(tr("MatrixTest", "Sensitivity EQ (by Rest ADC Range)"))
         eq_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        eq_group.setMaximumWidth(600)
         eq_main_layout = QVBoxLayout()
         eq_main_layout.setSpacing(8)
         eq_group.setLayout(eq_main_layout)
@@ -389,14 +390,16 @@ class MatrixTest(BasicEditor):
             eq_grid.addWidget(range_label, range_idx + 1, 0)
 
             for band in range(5):
-                # Create vertical slider (25% to 400%, stored as 12-200)
+                # Create vertical slider (25% to 400%, stored as actual percentage)
                 slider = QSlider(Qt.Vertical)
-                slider.setRange(12, 200)  # Half-percentage: 12=25%, 50=100%, 200=400%
-                slider.setValue(50)  # Default 100%
+                slider.setRange(25, 400)  # Actual percentage
+                slider.setValue(100)  # Default 100%
+                slider.setSingleStep(1)  # 1% increments
+                slider.setPageStep(10)  # 10% for page up/down
                 slider.setMinimumHeight(60)
                 slider.setMaximumHeight(80)
                 slider.setTickPosition(QSlider.TicksBothSides)
-                slider.setTickInterval(25)
+                slider.setTickInterval(50)
 
                 # Create value label
                 value_label = QLabel("100%")
@@ -407,7 +410,7 @@ class MatrixTest(BasicEditor):
                 # Connect slider to update label and send settings
                 def make_updater(lbl, r, b):
                     def update(v):
-                        lbl.setText(f"{v*2}%")
+                        lbl.setText(f"{v}%")
                         self.send_eq_settings()
                     return update
 
@@ -429,8 +432,10 @@ class MatrixTest(BasicEditor):
 
             # Range Scale slider for this range (column 6)
             scale_slider = QSlider(Qt.Vertical)
-            scale_slider.setRange(25, 100)  # Half-percentage: 25=50%, 50=100%, 100=200%
-            scale_slider.setValue(50)  # Default 100%
+            scale_slider.setRange(50, 200)  # Actual percentage: 50% to 200%
+            scale_slider.setValue(100)  # Default 100%
+            scale_slider.setSingleStep(1)  # 1% increments
+            scale_slider.setPageStep(10)  # 10% for page up/down
             scale_slider.setMinimumHeight(60)
             scale_slider.setMaximumHeight(80)
             scale_slider.setTickPosition(QSlider.TicksBothSides)
@@ -443,7 +448,7 @@ class MatrixTest(BasicEditor):
 
             def make_scale_updater(lbl):
                 def update(v):
-                    lbl.setText(f"{v*2}%")
+                    lbl.setText(f"{v}%")
                     self.send_eq_settings()
                 return update
 
@@ -483,10 +488,16 @@ class MatrixTest(BasicEditor):
         eq_main_layout.addLayout(eq_buttons_layout)
 
         advanced_layout.addWidget(eq_group)
-        visualizer_layout.addWidget(self.advanced_tuning_widget)
-        visualizer_layout.addStretch()
+        advanced_layout.addStretch()
 
-        main_content_layout.addWidget(visualizer_container)
+        # Horizontal layout for visualizer (left) and advanced tuning (right)
+        bottom_section_layout = QHBoxLayout()
+        bottom_section_layout.setSpacing(20)
+        bottom_section_layout.addWidget(visualizer_container)
+        bottom_section_layout.addWidget(self.advanced_tuning_widget)
+        bottom_section_layout.addStretch()
+
+        main_content_layout.addLayout(bottom_section_layout)
 
         container_layout.addLayout(main_content_layout)
 
@@ -729,16 +740,18 @@ class MatrixTest(BasicEditor):
         range_low = self.eq_range_low_slider.value()
         range_high = self.eq_range_high_slider.value()
 
-        # Collect all 15 band values (stored as half-percentage: 50 = 100%)
+        # Collect all 15 band values, convert from percentage to half-percentage for firmware
         bands = []
         for range_idx in range(3):
             for band in range(5):
-                bands.append(self.eq_sliders[range_idx][band].value())
+                pct = self.eq_sliders[range_idx][band].value()
+                bands.append(pct // 2)  # Convert to half-percentage
 
-        # Collect 3 range scale values
+        # Collect 3 range scale values, convert from percentage to half-percentage
         range_scales = []
         for range_idx in range(3):
-            range_scales.append(self.eq_range_scale_sliders[range_idx].value())
+            pct = self.eq_range_scale_sliders[range_idx].value()
+            range_scales.append(pct // 2)  # Convert to half-percentage
 
         try:
             self.keyboard.set_eq_curve_settings(range_low, range_high, bands, range_scales)
@@ -747,17 +760,17 @@ class MatrixTest(BasicEditor):
 
     def reset_eq_to_defaults(self):
         """Reset all EQ sliders to tuned baseline values"""
-        # Tuned default values (half-percentage: value * 2 = percentage)
-        # Low rest: 98%, 98%, 100%, 100%, 100% -> 49, 49, 50, 50, 50
-        # Mid rest: 100%, 100%, 100%, 100%, 100% -> 50, 50, 50, 50, 50
-        # High rest: 130%, 118%, 100%, 100%, 100% -> 65, 59, 50, 50, 50
+        # Tuned default values (actual percentages)
+        # Low rest: 98%, 98%, 100%, 100%, 100%
+        # Mid rest: 100%, 100%, 100%, 100%, 100%
+        # High rest: 130%, 118%, 100%, 100%, 100%
         default_bands = [
-            [49, 49, 50, 50, 50],  # Low rest
-            [50, 50, 50, 50, 50],  # Mid rest (neutral)
-            [65, 59, 50, 50, 50],  # High rest
+            [98, 98, 100, 100, 100],  # Low rest
+            [100, 100, 100, 100, 100],  # Mid rest (neutral)
+            [130, 118, 100, 100, 100],  # High rest
         ]
-        # Range scales: 110%, 100%, 106% -> 55, 50, 53
-        default_scales = [55, 50, 53]
+        # Range scales: 110%, 100%, 106%
+        default_scales = [110, 100, 106]
 
         # Block signals to avoid sending multiple updates
         for range_idx in range(3):
@@ -765,14 +778,14 @@ class MatrixTest(BasicEditor):
                 val = default_bands[range_idx][band]
                 self.eq_sliders[range_idx][band].blockSignals(True)
                 self.eq_sliders[range_idx][band].setValue(val)
-                self.eq_labels[range_idx][band].setText(f"{val * 2}%")
+                self.eq_labels[range_idx][band].setText(f"{val}%")
                 self.eq_sliders[range_idx][band].blockSignals(False)
 
             # Set range scale sliders
             scale_val = default_scales[range_idx]
             self.eq_range_scale_sliders[range_idx].blockSignals(True)
             self.eq_range_scale_sliders[range_idx].setValue(scale_val)
-            self.eq_range_scale_labels[range_idx].setText(f"{scale_val * 2}%")
+            self.eq_range_scale_labels[range_idx].setText(f"{scale_val}%")
             self.eq_range_scale_sliders[range_idx].blockSignals(False)
 
         # Reset range boundaries to tuned values
