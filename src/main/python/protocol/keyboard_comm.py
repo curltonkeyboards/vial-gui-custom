@@ -1736,7 +1736,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_GET_SETTINGS, 0, None)
-            response = self.usb_send(self.dev, packet, retries=20)
+            response = self.usb_send(self.dev, packet, retries=3)
 
             if not response or len(response) < 13:
                 return None
@@ -1829,7 +1829,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         data = bytearray([slot])
         packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_USER_CURVE_GET
-        response = self.usb_send(self.dev, packet, retries=20)
+        response = self.usb_send(self.dev, packet, retries=3)
 
         if not response or len(response) < 26 or response[5] != 0x01:
             return None
@@ -1855,7 +1855,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             list: 10 curve names (may be truncated to 10 chars each)
         """
         packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
-        response = self.usb_send(self.dev, packet, retries=20)
+        response = self.usb_send(self.dev, packet, retries=3)
 
         if not response or len(response) < 106 or response[5] != 0x01:
             # Return defaults if failed
@@ -1922,7 +1922,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             } or None
         """
         packet = self._create_hid_packet(0xDE, 0, bytearray())  # HID_CMD_GAMING_GET_RESPONSE
-        response = self.usb_send(self.dev, packet, retries=20)
+        response = self.usb_send(self.dev, packet, retries=3)
 
         if not response or len(response) < 11 or response[5] != 0x01:
             return None
@@ -1994,7 +1994,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             data = [layer, key_index]
             packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_ACTUATION, 0, data)
-            response = self.usb_send(self.dev, packet, retries=20)
+            # Reduced retries from 20 to 3 for faster loading
+            response = self.usb_send(self.dev, packet, retries=3)
 
             if response and len(response) >= 13:
                 # Response format: [header (4 bytes) + status (1 byte)] + [8 per-key fields at index 5]
@@ -2013,6 +2014,88 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     'rapidfire_velocity_mod': velocity_mod
                 }
             return None
+        except Exception as e:
+            return None
+
+    def get_all_per_key_actuations(self, layer):
+        """Get all per-key actuation settings for a layer using bulk read
+
+        This is much faster than calling get_per_key_actuation 70 times.
+        Uses HID_CMD_GET_ALL_PER_KEY_ACTUATIONS (0xE2) to fetch all keys at once.
+
+        Args:
+            layer: Layer number (0-11)
+
+        Returns:
+            list: List of 70 dicts with per-key settings, or None on error
+        """
+        try:
+            # Request all per-key actuations for this layer
+            data = [layer]
+            packet = self._create_hid_packet(HID_CMD_GET_ALL_PER_KEY_ACTUATIONS, 0, data)
+            self.usb_send(self.dev, packet, retries=3)
+
+            # Collect response packets
+            # 70 keys × 8 bytes = 560 bytes
+            # ~20 bytes per packet = 28 packets needed
+            expected_packets = 28
+            packets = {}
+
+            for attempt in range(100):  # Max 100 read attempts
+                try:
+                    if hasattr(self.dev, 'read'):
+                        response = self.dev.read(32, timeout_ms=50)
+                    else:
+                        response = self.dev.get_feature_report(0, 32)
+
+                    if response and len(response) >= 6:
+                        # Check if this is a response to our command
+                        if response[0] == HID_MANUFACTURER_ID and response[3] == HID_CMD_GET_ALL_PER_KEY_ACTUATIONS:
+                            packet_num = response[4]
+                            if packet_num < expected_packets and packet_num not in packets:
+                                # Store the data portion (bytes 6 onwards)
+                                packets[packet_num] = bytes(response[6:26])  # 20 bytes of key data
+
+                    if len(packets) >= expected_packets:
+                        break
+                except:
+                    continue
+
+            if len(packets) < expected_packets:
+                # Bulk read not supported or failed, return None to trigger fallback
+                return None
+
+            # Reconstruct all 70 keys from packets
+            all_data = bytearray()
+            for i in range(expected_packets):
+                if i in packets:
+                    all_data.extend(packets[i])
+                else:
+                    return None  # Missing packet
+
+            # Parse 70 keys (8 bytes each)
+            keys = []
+            for key_idx in range(70):
+                offset = key_idx * 8
+                if offset + 8 > len(all_data):
+                    break
+
+                velocity_mod_byte = all_data[offset + 7]
+                velocity_mod = velocity_mod_byte if velocity_mod_byte < 128 else velocity_mod_byte - 256
+
+                keys.append({
+                    'actuation': all_data[offset + 0],
+                    'deadzone_top': all_data[offset + 1],
+                    'deadzone_bottom': all_data[offset + 2],
+                    'velocity_curve': all_data[offset + 3],
+                    'flags': all_data[offset + 4],
+                    'rapidfire_press_sens': all_data[offset + 5],
+                    'rapidfire_release_sens': all_data[offset + 6],
+                    'rapidfire_velocity_mod': velocity_mod
+                })
+
+            return keys if len(keys) == 70 else None
+
         except Exception as e:
             return None
 

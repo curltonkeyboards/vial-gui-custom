@@ -3158,43 +3158,67 @@ class TriggerSettingsTab(BasicEditor):
             self._needs_loading = False
 
     def _load_per_key_data(self):
-        """Load all per-key actuation data from device (heavy operation - 840 HID calls)"""
-        print("TriggerSettingsTab: Loading per-key data (this may take a while)...")
+        """Load all per-key actuation data from device"""
+        print("TriggerSettingsTab: Loading per-key data...")
 
-        # Load all per-key values from device (now returns dict with 8 fields)
-        # If communication fails or returns None, set safe defaults
-        communication_failed = False
-        try:
-            for layer in range(12):
-                for key_index in range(70):
-                    settings = self.keyboard.get_per_key_actuation(layer, key_index)
-                    if settings is not None:
-                        # get_per_key_actuation now returns a dict with all 8 fields
-                        self.per_key_values[layer][key_index] = settings
+        # Try bulk read first (much faster - 12 calls instead of 840)
+        bulk_success = False
+        if hasattr(self.keyboard, 'get_all_per_key_actuations'):
+            print("  Attempting bulk read (12 layer reads)...")
+            try:
+                bulk_success = True
+                for layer in range(12):
+                    layer_data = self.keyboard.get_all_per_key_actuations(layer)
+                    if layer_data and len(layer_data) == 70:
+                        for key_index, settings in enumerate(layer_data):
+                            self.per_key_values[layer][key_index] = settings
                     else:
-                        communication_failed = True
+                        bulk_success = False
+                        print(f"  Bulk read failed for layer {layer}, falling back to individual reads")
                         break
-                if communication_failed:
-                    break
-        except Exception as e:
-            print(f"Error loading per-key actuations from device: {e}")
-            communication_failed = True
+                if bulk_success:
+                    print("  Bulk read successful!")
+            except Exception as e:
+                print(f"  Bulk read error: {e}, falling back to individual reads")
+                bulk_success = False
 
-        # If communication failed, set all keys to safe defaults
-        if communication_failed:
-            print("Setting all keys to safe defaults: 0.1mm deadzones, 2.0mm actuation")
-            for layer in range(12):
-                for key_index in range(70):
-                    self.per_key_values[layer][key_index] = {
-                        'actuation': 80,                    # 2.0mm (80/40 = 2.0)
-                        'deadzone_top': 4,                  # 0.1mm from right
-                        'deadzone_bottom': 4,               # 0.1mm from left
-                        'velocity_curve': 2,                # Medium
-                        'flags': 0,                         # All disabled
-                        'rapidfire_press_sens': 4,          # 0.1mm from left
-                        'rapidfire_release_sens': 4,        # 0.1mm from right
-                        'rapidfire_velocity_mod': 0         # No modifier
-                    }
+        # Fall back to individual reads if bulk read not supported
+        if not bulk_success:
+            print("  Using individual reads (840 calls, reduced retries)...")
+            communication_failed = False
+            try:
+                for layer in range(12):
+                    for key_index in range(70):
+                        settings = self.keyboard.get_per_key_actuation(layer, key_index)
+                        if settings is not None:
+                            self.per_key_values[layer][key_index] = settings
+                        else:
+                            communication_failed = True
+                            break
+                    if communication_failed:
+                        break
+                    # Progress indicator
+                    if layer % 3 == 0:
+                        print(f"    Layer {layer}/12 loaded...")
+            except Exception as e:
+                print(f"Error loading per-key actuations from device: {e}")
+                communication_failed = True
+
+            # If communication failed, set all keys to safe defaults
+            if communication_failed:
+                print("Setting all keys to safe defaults: 0.1mm deadzones, 2.0mm actuation")
+                for layer in range(12):
+                    for key_index in range(70):
+                        self.per_key_values[layer][key_index] = {
+                            'actuation': 80,                    # 2.0mm (80/40 = 2.0)
+                            'deadzone_top': 4,                  # 0.1mm from right
+                            'deadzone_bottom': 4,               # 0.1mm from left
+                            'velocity_curve': 2,                # Medium
+                            'flags': 0,                         # All disabled
+                            'rapidfire_press_sens': 4,          # 0.1mm from left
+                            'rapidfire_release_sens': 4,        # 0.1mm from right
+                            'rapidfire_velocity_mod': 0         # No modifier
+                        }
 
         # Load layer actuation data from device (6 bytes per layer)
         try:
