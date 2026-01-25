@@ -168,11 +168,9 @@ class MatrixTest(BasicEditor):
 
         self.layout_editor = layout_editor
 
-        self.addStretch()
-
         # Container for title, description, keyboard widget and buttons
         container = QWidget()
-        container.setMinimumWidth(900)
+        container.setMinimumWidth(850)
         container_layout = QVBoxLayout()
         container_layout.setSpacing(10)
         container_layout.setContentsMargins(20, 20, 20, 20)
@@ -237,71 +235,63 @@ class MatrixTest(BasicEditor):
         default_keys = [(0, 0), (0, 3), (0, 11), (3, 0)]
 
         for idx, (default_row, default_col) in enumerate(default_keys):
-            # Container for each visualizer + its dropdowns
+            # Container for each visualizer + its dropdown
             viz_container = QWidget()
-            viz_container.setFixedWidth(90)
+            viz_container.setFixedWidth(95)
             viz_layout = QVBoxLayout()
             viz_layout.setContentsMargins(0, 0, 0, 0)
             viz_layout.setSpacing(2)
             viz_container.setLayout(viz_layout)
 
-            # Row/Col selector dropdowns (displayed as 1-indexed)
-            selector_layout = QHBoxLayout()
-            selector_layout.setSpacing(0)
-            selector_layout.setContentsMargins(0, 0, 0, 0)
+            # Single key selector dropdown (Row X Col Y format)
+            key_combo = QComboBox()
+            key_combo.setStyleSheet("""
+                QComboBox {
+                    min-width: 0px;
+                    max-width: 90px;
+                    padding: 2px 4px;
+                    padding-right: 18px;
+                    font-size: 8pt;
+                }
+            """)
+            key_combo.setMaximumWidth(90)
+            key_combo.setMaximumHeight(24)
+            key_combo.setMaxVisibleItems(10)
+            key_combo.setEditable(True)
+            key_combo.lineEdit().setReadOnly(True)
+            key_combo.lineEdit().setAlignment(Qt.AlignCenter)
 
-            row_label = QLabel("R")
-            row_label.setFixedWidth(10)
-            row_label.setStyleSheet("font-size: 7pt;")
-            row_combo = QComboBox()
-            row_combo.setFixedWidth(32)
-            row_combo.setMaxVisibleItems(5)
-            row_combo.setStyleSheet("QComboBox { font-size: 7pt; padding: 1px; }")
-            # Add rows 1-5 (internally 0-4)
-            for r in range(1, 6):
-                row_combo.addItem(str(r), r - 1)  # Display 1-indexed, store 0-indexed
-            row_combo.setCurrentIndex(default_row)
+            # Add all row/col combinations (5 rows x 14 cols)
+            default_index = 0
+            for r in range(5):
+                for c in range(14):
+                    key_combo.addItem(f"Row {r+1} Col {c+1}", (r, c))
+                    if r == default_row and c == default_col:
+                        default_index = key_combo.count() - 1
+            key_combo.setCurrentIndex(default_index)
 
-            col_label = QLabel("C")
-            col_label.setFixedWidth(10)
-            col_label.setStyleSheet("font-size: 7pt;")
-            col_combo = QComboBox()
-            col_combo.setFixedWidth(32)
-            col_combo.setMaxVisibleItems(5)
-            col_combo.setStyleSheet("QComboBox { font-size: 7pt; padding: 1px; }")
-            # Add cols 1-14 (internally 0-13)
-            for c in range(1, 15):
-                col_combo.addItem(str(c), c - 1)  # Display 1-indexed, store 0-indexed
-            col_combo.setCurrentIndex(default_col)
-
-            selector_layout.addWidget(row_label)
-            selector_layout.addWidget(row_combo)
-            selector_layout.addWidget(col_label)
-            selector_layout.addWidget(col_combo)
-            viz_layout.addLayout(selector_layout)
+            viz_layout.addWidget(key_combo)
 
             # Create the visualizer bar
             label = f"R{default_row + 1}C{default_col + 1}"
             viz = ActuationVisualizer(default_row, default_col, label)
             viz_layout.addWidget(viz)
 
-            # Connect dropdowns to update visualizer
-            def make_key_updater(v, rc, cc, i):
+            # Connect dropdown to update visualizer
+            def make_key_updater(v, kc, i):
                 def update():
-                    row = rc.currentData()
-                    col = cc.currentData()
+                    row, col = kc.currentData()
                     v.row = row
                     v.col = col
                     v.label = f"R{row + 1}C{col + 1}"
                     self.update_distance_keys()
                 return update
 
-            row_combo.currentIndexChanged.connect(make_key_updater(viz, row_combo, col_combo, idx))
-            col_combo.currentIndexChanged.connect(make_key_updater(viz, row_combo, col_combo, idx))
+            key_combo.currentIndexChanged.connect(make_key_updater(viz, key_combo, idx))
 
             visualizer_bars_layout.addWidget(viz_container)
 
-            self.visualizer_widgets.append((viz, row_combo, col_combo))
+            self.visualizer_widgets.append((viz, key_combo))
             self.actuation_visualizers[(default_row, default_col)] = viz
 
         visualizer_layout.addLayout(visualizer_bars_layout)
@@ -515,9 +505,9 @@ class MatrixTest(BasicEditor):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setFrameShape(QScrollArea.NoFrame)
+        scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.addWidget(scroll_area)
-        self.addStretch()
+        self.addWidget(scroll_area, stretch=1)
 
         self.keyboard = None
         self.device = None
@@ -814,10 +804,8 @@ class MatrixTest(BasicEditor):
         self.distance_keys = []
         self.actuation_visualizers = {}
 
-        for viz, row_combo, col_combo in self.visualizer_widgets:
-            row = row_combo.currentData()
-            col = col_combo.currentData()
-            key = (row, col)
+        for viz, key_combo in self.visualizer_widgets:
+            key = key_combo.currentData()  # Returns (row, col) tuple
             self.distance_keys.append(key)
             self.actuation_visualizers[key] = viz
 
