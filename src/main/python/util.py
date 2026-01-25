@@ -96,8 +96,20 @@ def is_rawhid(desc, quiet):
 def find_vial_devices(via_stack_json, sideload_vid=None, sideload_pid=None, quiet=False):
     from vial_device import VialBootloader, VialKeyboard, VialDummyKeyboard
 
+    # Startup logging
+    try:
+        from startup_dialog import startup_log
+        startup_log("Enumerating HID devices...")
+    except ImportError:
+        startup_log = lambda x: None
+
+    import time
+    t0 = time.time()
+    all_devices = list(hid.enumerate())
+    startup_log(f"Found {len(all_devices)} HID devices ({time.time()-t0:.2f}s)")
+
     filtered = []
-    for dev in hid.enumerate():
+    for dev in all_devices:
         if dev["vendor_id"] == sideload_vid and dev["product_id"] == sideload_pid:
             if not quiet:
                 logging.info("Trying VID={:04X}, PID={:04X}, serial={}, path={} - sideload".format(
@@ -129,6 +141,7 @@ def find_vial_devices(via_stack_json, sideload_vid=None, sideload_pid=None, quie
     if sideload_vid == sideload_pid == 0:
         filtered.append(VialDummyKeyboard())
 
+    startup_log(f"Found {len(filtered)} Vial-compatible device(s)")
     return filtered
 
 

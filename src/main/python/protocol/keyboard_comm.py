@@ -6,6 +6,14 @@ import time
 from collections import OrderedDict
 
 from keycodes.keycodes import RESET_KEYCODE, Keycode, recreate_keyboard_keycodes
+
+# Startup logging - import lazily to avoid circular imports
+def _startup_log(msg):
+    try:
+        from startup_dialog import startup_log
+        startup_log(msg)
+    except ImportError:
+        pass
 from kle_serial import Serial as KleSerial, Key
 from protocol.combo import ProtocolCombo
 from protocol.constants import CMD_VIA_GET_PROTOCOL_VERSION, CMD_VIA_GET_KEYBOARD_VALUE, CMD_VIA_SET_KEYBOARD_VALUE, \
@@ -116,6 +124,12 @@ HID_CMD_SET_PER_KEY_MODE = 0xE4          # Set per-key mode flags
 HID_CMD_GET_PER_KEY_MODE = 0xE5          # Get per-key mode flags
 HID_CMD_COPY_LAYER_ACTUATIONS = 0xE6     # Copy one layer to another
 
+# Layer Actuation Commands (0xEB-0xEE) - moved from 0xCA-0xCD to avoid arpeggiator conflict
+HID_CMD_GET_LAYER_ACTUATION = 0xEB       # Get actuation for specific layer
+HID_CMD_SET_LAYER_ACTUATION = 0xEC       # Set actuation for specific layer
+HID_CMD_GET_ALL_LAYER_ACTUATIONS = 0xED  # Get all layer actuations (bulk)
+HID_CMD_RESET_LAYER_ACTUATIONS = 0xEE    # Reset all layer actuations
+
 class ProtocolError(Exception):
     pass
 
@@ -168,38 +182,110 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def reload(self, sideload_json=None):
         """ Load information about the keyboard: number of layers, physical key layout """
+        import time
+        _startup_log("Keyboard reload starting...")
+        reload_start = time.time()
 
         self.rowcol = OrderedDict()
         self.encoderpos = OrderedDict()
         self.layout = dict()
         self.encoder_layout = dict()
 
+        _startup_log("  Loading keyboard layout definition...")
+        t0 = time.time()
         self.reload_layout(sideload_json)
+        _startup_log(f"  Layout loaded ({time.time()-t0:.2f}s) - {self.rows}x{self.cols} matrix")
+
+        _startup_log("  Getting layer count...")
+        t0 = time.time()
         self.reload_layers()
+        _startup_log(f"  Layers: {self.layers} ({time.time()-t0:.2f}s)")
 
+        _startup_log("  Loading macros (early)...")
+        t0 = time.time()
         self.reload_macros_early()
-        self.reload_persistent_rgb()
-        self.reload_rgb()
-        self.reload_layer_rgb_support()
-        self.reload_settings()
+        _startup_log(f"  Macros early done ({time.time()-t0:.2f}s)")
 
+        _startup_log("  Loading RGB settings (persistent)...")
+        t0 = time.time()
+        self.reload_persistent_rgb()
+        _startup_log(f"  RGB persistent done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading RGB state...")
+        t0 = time.time()
+        self.reload_rgb()
+        _startup_log(f"  RGB state done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Checking layer RGB support...")
+        t0 = time.time()
+        self.reload_layer_rgb_support()
+        _startup_log(f"  Layer RGB check done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading QMK settings...")
+        t0 = time.time()
+        self.reload_settings()
+        _startup_log(f"  QMK settings done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading dynamic config...")
+        t0 = time.time()
         self.reload_dynamic()
+        _startup_log(f"  Dynamic config done ({time.time()-t0:.2f}s)")
 
         # based on the number of macros, tapdance, etc, this will generate global keycode arrays
+        _startup_log("  Recreating keyboard keycodes...")
+        t0 = time.time()
         recreate_keyboard_keycodes(self)
+        _startup_log(f"  Keycodes recreated ({time.time()-t0:.2f}s)")
 
         # at this stage we have correct keycode info and can reload everything that depends on keycodes
+        _startup_log("  Loading keymap (this may take a while)...")
+        t0 = time.time()
         self.reload_keymap()
+        _startup_log(f"  Keymap loaded ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading macros (late)...")
+        t0 = time.time()
         self.reload_macros_late()
+        _startup_log(f"  Macros late done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading tap dance...")
+        t0 = time.time()
         self.reload_tap_dance()
+        _startup_log(f"  Tap dance done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading combos...")
+        t0 = time.time()
         self.reload_combo()
+        _startup_log(f"  Combos done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading key overrides...")
+        t0 = time.time()
         self.reload_key_override()
+        _startup_log(f"  Key overrides done ({time.time()-t0:.2f}s)")
 
         # Load custom tab settings
+        _startup_log("  Loading ThruLoop config...")
+        t0 = time.time()
         self.reload_thruloop_config()
+        _startup_log(f"  ThruLoop config done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading MIDI config...")
+        t0 = time.time()
         self.reload_midi_config()
+        _startup_log(f"  MIDI config done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading layer actuations...")
+        t0 = time.time()
         self.reload_layer_actuations()
+        _startup_log(f"  Layer actuations done ({time.time()-t0:.2f}s)")
+
+        _startup_log("  Loading gaming settings...")
+        t0 = time.time()
         self.reload_gaming_settings()
+        _startup_log(f"  Gaming settings done ({time.time()-t0:.2f}s)")
+
+        total_time = time.time() - reload_start
+        _startup_log(f"Keyboard reload complete! Total time: {total_time:.2f}s")
 
     def reload_layers(self):
         """ Get how many layers the keyboard has """
@@ -1464,10 +1550,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         Note: Rapidfire settings are now per-key only (removed from layer settings).
               Aftertouch settings (mode, cc, vibrato_sensitivity, vibrato_decay_time) are per-layer.
+              Uses new command 0xEC (moved from 0xCA to avoid arpeggiator conflict)
         """
         try:
-            packet = self._create_hid_packet(0xCA, 0, data)
-            response = self.usb_send(self.dev, packet, retries=20)
+            packet = self._create_hid_packet(HID_CMD_SET_LAYER_ACTUATION, 0, data)
+            response = self.usb_send(self.dev, packet, retries=3)
             return response and len(response) > 0 and response[5] == 0x01
         except Exception as e:
             return False
@@ -1486,8 +1573,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
               Aftertouch settings are per-layer.
         """
         try:
-            packet = self._create_hid_packet(0xCB, layer, None)
-            response = self.usb_send(self.dev, packet, retries=20)
+            # Use new command code 0xEB (moved from 0xCB to avoid arpeggiator conflict)
+            packet = self._create_hid_packet(HID_CMD_GET_LAYER_ACTUATION, 0, [layer])
+            response = self.usb_send(self.dev, packet, retries=3)
 
             if not response or len(response) < 16:  # 5 header + 11 data bytes
                 return None
@@ -1510,7 +1598,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return None
 
     def get_all_layer_actuations(self):
-        """Get all layer actuations at once
+        """Get all layer actuations at once using bulk read
 
         Returns:
             list: 120 bytes (12 layers × 10 bytes) or None on error
@@ -1519,50 +1607,76 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                         vibrato_decay_time_low, vibrato_decay_time_high]
 
         Note: Aftertouch settings are now per-layer.
+              Uses new command 0xED (moved from 0xCC to avoid arpeggiator conflict)
         """
         try:
-            packet = self._create_hid_packet(0xCC, 0, None)
-            self.usb_send(self.dev, packet, retries=20)
+            packet = self._create_hid_packet(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, None)
+
+            # Send request - use write directly to avoid waiting for response
+            if hasattr(self.dev, 'write'):
+                self.dev.write(b"\x00" + packet)
+            else:
+                self.dev.send_feature_report(packet)
 
             # Collect 6 packets (120 bytes total, 20 bytes per packet - 2 layers each)
-            packets = []
+            # Response format: [header(4)] [status(1)] [packet_num(1)] [total(1)] [layer_data(20)]
+            EXPECTED_PACKETS = 6
+            packets = {}
+
             for attempt in range(60):
                 try:
                     if hasattr(self.dev, 'read'):
-                        data = self.dev.read(32, timeout_ms=100)
+                        data = bytes(self.dev.read(32, timeout_ms=50))
                     else:
-                        data = self.dev.get_feature_report(0, 32)
+                        data = bytes(self.dev.get_feature_report(0, 32))
 
-                    if data and len(data) >= 4 and data[0] == HID_MANUFACTURER_ID and data[3] == 0xCC:
-                        packet_num = data[4]
-                        if packet_num < 6:
-                            packets.append((packet_num, data[6:26]))  # 20 bytes of data
+                    if not data or len(data) < 8:
+                        continue
 
-                    if len(packets) >= 6:
+                    # Check if this is our response
+                    if (data[0] == HID_MANUFACTURER_ID and
+                        data[3] == HID_CMD_GET_ALL_LAYER_ACTUATIONS):
+
+                        status = data[4]
+                        packet_num = data[5]
+                        total_packets = data[6]
+
+                        if status != 0x01:
+                            return None  # Error response
+
+                        if packet_num < EXPECTED_PACKETS and packet_num not in packets:
+                            # Extract layer data (20 bytes at offset 7)
+                            packets[packet_num] = data[7:27]
+
+                    if len(packets) >= EXPECTED_PACKETS:
                         break
-                except:
-                    time.sleep(0.01)
+
+                except Exception:
                     continue
 
-            if len(packets) < 6:
+            if len(packets) < EXPECTED_PACKETS:
                 return None
 
             # Sort packets and combine
-            packets.sort(key=lambda x: x[0])
             actuations = bytearray()
-            for _, packet_data in packets:
-                actuations.extend(packet_data)
+            for i in range(EXPECTED_PACKETS):
+                if i not in packets:
+                    return None  # Missing packet
+                actuations.extend(packets[i])
 
             return actuations[:120]  # 12 layers × 10 bytes
         except Exception as e:
             return None
 
     def reset_layer_actuations(self):
-        """Reset all layer actuations to defaults"""
+        """Reset all layer actuations to defaults
+
+        Uses new command 0xEE (moved from 0xCD to avoid arpeggiator conflict)
+        """
         try:
-            packet = self._create_hid_packet(0xCD, 0, None)
-            response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[5] == 0
+            packet = self._create_hid_packet(HID_CMD_RESET_LAYER_ACTUATIONS, 0, None)
+            response = self.usb_send(self.dev, packet, retries=3)
+            return response and len(response) > 0 and response[5] == 0x01
         except Exception as e:
             return False
             
@@ -1653,7 +1767,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_GET_SETTINGS, 0, None)
-            response = self.usb_send(self.dev, packet, retries=20)
+            response = self.usb_send(self.dev, packet, retries=3)
 
             if not response or len(response) < 13:
                 return None
@@ -1746,7 +1860,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         data = bytearray([slot])
         packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_USER_CURVE_GET
-        response = self.usb_send(self.dev, packet, retries=20)
+        response = self.usb_send(self.dev, packet, retries=3)
 
         if not response or len(response) < 26 or response[5] != 0x01:
             return None
@@ -1772,7 +1886,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             list: 10 curve names (may be truncated to 10 chars each)
         """
         packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
-        response = self.usb_send(self.dev, packet, retries=20)
+        response = self.usb_send(self.dev, packet, retries=3)
 
         if not response or len(response) < 106 or response[5] != 0x01:
             # Return defaults if failed
@@ -1839,7 +1953,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             } or None
         """
         packet = self._create_hid_packet(0xDE, 0, bytearray())  # HID_CMD_GAMING_GET_RESPONSE
-        response = self.usb_send(self.dev, packet, retries=20)
+        response = self.usb_send(self.dev, packet, retries=3)
 
         if not response or len(response) < 11 or response[5] != 0x01:
             return None
@@ -1911,7 +2025,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             data = [layer, key_index]
             packet = self._create_hid_packet(HID_CMD_GET_PER_KEY_ACTUATION, 0, data)
-            response = self.usb_send(self.dev, packet, retries=20)
+            # Reduced retries from 20 to 3 for faster loading
+            response = self.usb_send(self.dev, packet, retries=3)
 
             if response and len(response) >= 13:
                 # Response format: [header (4 bytes) + status (1 byte)] + [8 per-key fields at index 5]
@@ -1930,6 +2045,118 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     'rapidfire_velocity_mod': velocity_mod
                 }
             return None
+        except Exception as e:
+            return None
+
+    def get_all_per_key_actuations(self, layer):
+        """Get all per-key actuation settings for a layer using bulk read
+
+        This is much faster than calling get_per_key_actuation 70 times.
+        Uses HID_CMD_GET_ALL_PER_KEY_ACTUATIONS (0xE2) to fetch all keys at once.
+
+        Firmware sends 24 packets with 3 keys each (70 keys total):
+        - Bytes 0-3: Header [0x7D, 0x00, 0x4D, 0xE2]
+        - Byte 4: Status (0x01 = success)
+        - Byte 5: Layer number
+        - Byte 6: Packet number (0-23)
+        - Byte 7: Total packets (24)
+        - Bytes 8-31: Key data (up to 3 keys × 8 bytes = 24 bytes)
+
+        Args:
+            layer: Layer number (0-11)
+
+        Returns:
+            list: List of 70 dicts with per-key settings, or None on error
+        """
+        try:
+            # Request all per-key actuations for this layer
+            data = [layer]
+            packet = self._create_hid_packet(HID_CMD_GET_ALL_PER_KEY_ACTUATIONS, 0, data)
+
+            # Send request - use write directly to avoid waiting for response
+            if hasattr(self.dev, 'write'):
+                self.dev.write(b"\x00" + packet)
+            else:
+                self.dev.send_feature_report(packet)
+
+            # Collect response packets (24 packets with 3 keys each)
+            EXPECTED_PACKETS = 24
+            KEYS_PER_PACKET = 3
+            packets = {}
+
+            # Read packets with short timeout - firmware sends them all quickly
+            for attempt in range(100):  # Max 100 read attempts
+                try:
+                    if hasattr(self.dev, 'read'):
+                        response = bytes(self.dev.read(32, timeout_ms=50))
+                    else:
+                        response = bytes(self.dev.get_feature_report(0, 32))
+
+                    if not response or len(response) < 8:
+                        continue
+
+                    # Check if this is a response to our command
+                    if (response[0] == HID_MANUFACTURER_ID and
+                        response[3] == HID_CMD_GET_ALL_PER_KEY_ACTUATIONS):
+
+                        status = response[4]
+                        resp_layer = response[5]
+                        packet_num = response[6]
+                        total_packets = response[7]
+
+                        # Validate response
+                        if status != 0x01 or resp_layer != layer:
+                            return None  # Error response
+
+                        if packet_num < EXPECTED_PACKETS and packet_num not in packets:
+                            # Extract key data (bytes 8-31, up to 24 bytes = 3 keys × 8)
+                            key_data = response[8:32]
+                            packets[packet_num] = key_data
+
+                    if len(packets) >= EXPECTED_PACKETS:
+                        break
+
+                except Exception:
+                    continue
+
+            if len(packets) < EXPECTED_PACKETS:
+                # Bulk read failed, return None to trigger fallback
+                return None
+
+            # Parse keys from packets (3 keys per packet, 8 bytes per key)
+            keys = []
+            for pkt_num in range(EXPECTED_PACKETS):
+                if pkt_num not in packets:
+                    return None  # Missing packet
+
+                pkt_data = packets[pkt_num]
+                start_key = pkt_num * KEYS_PER_PACKET
+
+                for k in range(KEYS_PER_PACKET):
+                    key_idx = start_key + k
+                    if key_idx >= 70:
+                        break
+
+                    offset = k * 8
+                    if offset + 8 > len(pkt_data):
+                        break
+
+                    velocity_mod_byte = pkt_data[offset + 7]
+                    velocity_mod = velocity_mod_byte if velocity_mod_byte < 128 else velocity_mod_byte - 256
+
+                    keys.append({
+                        'actuation': pkt_data[offset + 0],
+                        'deadzone_top': pkt_data[offset + 1],
+                        'deadzone_bottom': pkt_data[offset + 2],
+                        'velocity_curve': pkt_data[offset + 3],
+                        'flags': pkt_data[offset + 4],
+                        'rapidfire_press_sens': pkt_data[offset + 5],
+                        'rapidfire_release_sens': pkt_data[offset + 6],
+                        'rapidfire_velocity_mod': velocity_mod
+                    })
+
+            return keys if len(keys) == 70 else None
+
         except Exception as e:
             return None
 

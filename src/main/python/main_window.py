@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import logging
 import platform
+import time
 from json import JSONDecodeError
 
 from PyQt5.QtCore import Qt, QSettings, QStandardPaths, QTimer, QRect, QT_VERSION_STR
@@ -10,6 +11,14 @@ from PyQt5.QtWidgets import QWidget, QComboBox, QToolButton, QHBoxLayout, QVBoxL
 
 import os
 import sys
+
+# Startup logging helper
+def _startup_log(msg):
+    try:
+        from startup_dialog import startup_log
+        startup_log(msg)
+    except ImportError:
+        pass
 
 from widgets.combo_box import ArrowComboBox
 from about_keyboard import AboutKeyboard
@@ -49,6 +58,9 @@ class MainWindow(QMainWindow):
 
     def __init__(self, appctx):
         super().__init__()
+        _startup_log("MainWindow.__init__ starting...")
+        init_start = time.time()
+
         self.appctx = appctx
 
         self.ui_lock_count = 0
@@ -94,11 +106,15 @@ class MainWindow(QMainWindow):
         if sys.platform != "emscripten":
             layout_combobox.addWidget(self.btn_refresh_devices)
 
+        _startup_log("Creating UI editors...")
+        t0 = time.time()
         self.layout_editor = LayoutEditor()
         self.keymap_editor = KeymapEditor(self.layout_editor)
-        print("Creating TriggerSettingsTab...")
+        _startup_log(f"  LayoutEditor + KeymapEditor ({time.time()-t0:.2f}s)")
+
+        t0 = time.time()
         self.trigger_settings = TriggerSettingsTab(self.layout_editor)
-        print(f"TriggerSettingsTab created: {self.trigger_settings}")
+        _startup_log(f"  TriggerSettingsTab ({time.time()-t0:.2f}s)")
 
         # Set up references between Actuation Settings and Trigger Settings for synchronization
         self.keymap_editor.quick_actuation.trigger_settings_ref = self.trigger_settings
@@ -108,15 +124,16 @@ class MainWindow(QMainWindow):
         self.keymap_editor.quick_actuation.enable_per_key_requested.connect(self.switch_to_trigger_settings)
 
         # Create DKS Settings tab
-        print("Creating DKSSettingsTab...")
+        t0 = time.time()
         self.dks_settings = DKSSettingsTab(self.layout_editor)
-        print(f"DKSSettingsTab created: {self.dks_settings}")
+        _startup_log(f"  DKSSettingsTab ({time.time()-t0:.2f}s)")
 
         # Create Toggle Settings tab
-        print("Creating ToggleSettingsTab...")
+        t0 = time.time()
         self.toggle_settings = ToggleSettingsTab(self.layout_editor)
-        print(f"ToggleSettingsTab created: {self.toggle_settings}")
+        _startup_log(f"  ToggleSettingsTab ({time.time()-t0:.2f}s)")
 
+        t0 = time.time()
         self.firmware_flasher = FirmwareFlasher(self)
         self.macro_recorder = MacroRecorder()
         self.tap_dance = TapDance()
@@ -126,11 +143,13 @@ class MainWindow(QMainWindow):
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
+        _startup_log(f"  Core editors (Firmware, Macro, TapDance, etc) ({time.time()-t0:.2f}s)")
 
         # Connect keymap_editor to matrix_tester for status value adjustments
         self.keymap_editor.set_matrix_test_reference(self.matrix_tester)
         
         # Initialize the new configurators
+        t0 = time.time()
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
         self.thruloop_configurator = ThruLoopConfigurator()
         self.gaming_configurator = GamingConfigurator()
@@ -140,6 +159,7 @@ class MainWindow(QMainWindow):
         self.loop_manager = LoopManager()
         self.arpeggiator = Arpeggiator()
         self.step_sequencer = StepSequencer()
+        _startup_log(f"  MIDI configurators ({time.time()-t0:.2f}s)")
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
         self.editors = [(self.keymap_editor, "Keymap"), (self.trigger_settings, "Trigger Settings"),
@@ -203,8 +223,11 @@ class MainWindow(QMainWindow):
 
         self.init_menu()
 
+        _startup_log("Initializing autorefresh (device scanning)...")
+        t0 = time.time()
         self.autorefresh = Autorefresh()
         self.autorefresh.devices_updated.connect(self.on_devices_updated)
+        _startup_log(f"  Autorefresh initialized ({time.time()-t0:.2f}s)")
 
         # cache for via definition files
         self.cache_path = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
@@ -213,16 +236,23 @@ class MainWindow(QMainWindow):
 
         # check if the via defitions already exist
         if os.path.isfile(os.path.join(self.cache_path, "via_keyboards.json")):
+            _startup_log("Loading cached VIA definitions...")
+            t0 = time.time()
             with open(os.path.join(self.cache_path, "via_keyboards.json")) as vf:
                 data = vf.read()
             try:
                 self.autorefresh.load_via_stack(data)
+                _startup_log(f"  VIA definitions loaded ({time.time()-t0:.2f}s)")
             except JSONDecodeError as e:
                 # the saved file is invalid - just ignore this
                 logging.warning("Failed to parse stored via_keyboards.json: {}".format(e))
+                _startup_log(f"  VIA definitions failed to parse")
 
         # make sure initial state is valid
+        _startup_log("Starting initial device refresh...")
+        t0 = time.time()
         self.on_click_refresh()
+        _startup_log(f"Initial device refresh complete ({time.time()-t0:.2f}s)")
 
         if sys.platform == "emscripten":
             import vialglue
@@ -342,8 +372,11 @@ class MainWindow(QMainWindow):
             self.on_device_selected()
 
     def on_device_selected(self):
+        _startup_log("on_device_selected() called...")
+        t0 = time.time()
         try:
             self.autorefresh.select_device(self.combobox_devices.currentIndex())
+            _startup_log(f"  autorefresh.select_device() done ({time.time()-t0:.2f}s)")
         except ProtocolError:
             QMessageBox.warning(self, "", "Unsupported protocol version!\n"
                                           "Please download latest Vial from https://get.vial.today/")
@@ -354,10 +387,19 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "", "An example keyboard UID was detected.\n"
                                               "Please change your keyboard UID to be unique before you ship!")
 
+        t0 = time.time()
         self.rebuild()
+        _startup_log(f"  rebuild() total: {time.time()-t0:.2f}s")
+
+        t0 = time.time()
         self.refresh_tabs()
+        _startup_log(f"  refresh_tabs(): {time.time()-t0:.2f}s")
+        _startup_log("on_device_selected() complete")
 
     def rebuild(self):
+        _startup_log("MainWindow.rebuild() starting...")
+        rebuild_start = time.time()
+
         # don't show "Security" menu for bootloader mode, as the bootloader is inherently insecure
         self.security_menu.menuAction().setVisible(isinstance(self.autorefresh.current_device, VialKeyboard))
 
@@ -372,16 +414,42 @@ class MainWindow(QMainWindow):
             self.autorefresh.current_device.keyboard.reload()
 
         # Updated to include the new configurators in the rebuild process
-        for e in [self.layout_editor, self.keymap_editor, self.trigger_settings, self.dks_settings,
-                  self.toggle_settings, self.firmware_flasher, self.macro_recorder, self.tap_dance,
-                  self.combos, self.key_override, self.qmk_settings, self.matrix_tester,
-                  self.rgb_configurator, self.MIDIswitchSettingsConfigurator,
-                  self.thruloop_configurator, self.gaming_configurator, self.midi_patchbay,
-                  self.loop_manager, self.arpeggiator, self.step_sequencer]:
-            e.rebuild(self.autorefresh.current_device)
+        editors_to_rebuild = [
+            (self.layout_editor, "layout_editor"),
+            (self.keymap_editor, "keymap_editor"),
+            (self.trigger_settings, "trigger_settings"),
+            (self.dks_settings, "dks_settings"),
+            (self.toggle_settings, "toggle_settings"),
+            (self.firmware_flasher, "firmware_flasher"),
+            (self.macro_recorder, "macro_recorder"),
+            (self.tap_dance, "tap_dance"),
+            (self.combos, "combos"),
+            (self.key_override, "key_override"),
+            (self.qmk_settings, "qmk_settings"),
+            (self.matrix_tester, "matrix_tester"),
+            (self.rgb_configurator, "rgb_configurator"),
+            (self.MIDIswitchSettingsConfigurator, "MIDIswitchSettingsConfigurator"),
+            (self.thruloop_configurator, "thruloop_configurator"),
+            (self.gaming_configurator, "gaming_configurator"),
+            (self.midi_patchbay, "midi_patchbay"),
+            (self.loop_manager, "loop_manager"),
+            (self.arpeggiator, "arpeggiator"),
+            (self.step_sequencer, "step_sequencer"),
+        ]
+
+        for editor, name in editors_to_rebuild:
+            t0 = time.time()
+            editor.rebuild(self.autorefresh.current_device)
+            elapsed = time.time() - t0
+            if elapsed > 0.1:  # Only log if it took more than 100ms
+                _startup_log(f"  rebuild {name}: {elapsed:.2f}s")
+
+        _startup_log(f"  All editors rebuilt ({time.time()-rebuild_start:.2f}s)")
 
         # Set all editor references on all tabbed_keycodes instances
+        t0 = time.time()
         self._update_all_tabbed_keycodes()
+        _startup_log(f"  _update_all_tabbed_keycodes ({time.time()-t0:.2f}s)")
 
         # Refresh keycode buttons in tray to reflect updated content counts from editors
         self.tray_keycodes.recreate_keycode_buttons()
@@ -413,17 +481,19 @@ class MainWindow(QMainWindow):
             self.tray_keycodes.set_keyboard(self.autorefresh.current_device.keyboard)
 
     def refresh_tabs(self):
-        print("refresh_tabs() called")
-        self.tabs.clear()
-        for container, lbl in self.editors:
-            is_valid = container.valid()
-            print(f"  Tab '{lbl}': valid={is_valid}, container={container}")
-            if not is_valid:
-                continue
+        # Disable UI updates during tab refresh to speed up the process
+        self.tabs.setUpdatesEnabled(False)
+        try:
+            self.tabs.clear()
+            for container, lbl in self.editors:
+                is_valid = container.valid()
+                if not is_valid:
+                    continue
 
-            c = EditorContainer(container)
-            self.tabs.addTab(c, tr("MainWindow", lbl))
-            print(f"    -> Added tab '{lbl}'")
+                c = EditorContainer(container)
+                self.tabs.addTab(c, tr("MainWindow", lbl))
+        finally:
+            self.tabs.setUpdatesEnabled(True)
 
     def load_via_stack_json(self):
         from urllib.request import urlopen

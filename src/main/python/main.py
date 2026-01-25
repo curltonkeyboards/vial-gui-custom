@@ -71,6 +71,64 @@ class VialApplicationContext(ApplicationContext):
         result.setApplicationVersion(self.build_settings["version"])
         return result
 
+class StartupManager:
+    """Manages the startup flow with optional startup dialog."""
+
+    def __init__(self, appctxt):
+        self.appctxt = appctxt
+        self.window = None
+        self.startup_dialog = None
+        self._startup_complete = False
+
+    def run_with_startup_dialog(self):
+        """Show startup dialog, then launch main window."""
+        from startup_dialog import StartupDialog, startup_log
+
+        startup_log("Application context created")
+        startup_log("Initializing startup dialog...")
+
+        self.startup_dialog = StartupDialog()
+        self.startup_dialog.start_requested.connect(self._on_start_requested)
+
+        # Show the dialog (modal until startup completes)
+        self.startup_dialog.show()
+
+        # Run the event loop - this will process events until app exits
+        return self.appctxt.app.exec_()
+
+    def _on_start_requested(self):
+        """Called when user clicks Start in the startup dialog."""
+        from startup_dialog import startup_log
+        from PyQt5.QtWidgets import QApplication
+        import time
+
+        startup_log("Creating main window...")
+        t0 = time.time()
+
+        try:
+            # Create the main window (this triggers device scanning and loading)
+            self.window = MainWindow(self.appctxt)
+            startup_log(f"Main window created ({time.time()-t0:.2f}s)")
+
+            # Mark startup complete and update dialog
+            self.startup_dialog.finish_startup()
+
+            # Show the main window
+            self.window.show()
+
+        except Exception as e:
+            startup_log(f"ERROR: {e}")
+            import traceback
+            startup_log(traceback.format_exc())
+            raise
+
+    def run_without_dialog(self):
+        """Run without startup dialog (original behavior)."""
+        self.window = MainWindow(self.appctxt)
+        self.window.show()
+        return self.appctxt.app.exec_()
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 2 and sys.argv[1] == "--linux-recorder":
         from linux_keystroke_recorder import linux_keystroke_recorder
@@ -80,7 +138,14 @@ if __name__ == '__main__':
         appctxt = VialApplicationContext()       # 1. Instantiate ApplicationContext
         init_logger()
         qt_exception_hook = UncaughtHook()
-        window = MainWindow(appctxt)
-        window.show()
-        exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+
+        # Check for --no-startup-dialog flag to skip the dialog
+        use_startup_dialog = "--no-startup-dialog" not in sys.argv
+
+        manager = StartupManager(appctxt)
+        if use_startup_dialog:
+            exit_code = manager.run_with_startup_dialog()
+        else:
+            exit_code = manager.run_without_dialog()
+
         sys.exit(exit_code)
