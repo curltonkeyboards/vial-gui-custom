@@ -235,27 +235,15 @@ class StartupDialog(QDialog):
         return self._should_start
 
     def finish_startup(self):
-        """Called when startup is complete - keep dialog open for reference."""
+        """Called when startup is complete - close the dialog automatically."""
         startup_log("Startup complete - main window is now open")
-        startup_log("=" * 50)
-        startup_log("You can copy this log or close this window")
 
         self._startup_complete = True
         self._is_running = False
 
-        # Update UI to show startup is complete
-        self.progress_bar.hide()
-        self.start_button.hide()
-        self.close_button.setText("Close Log")
-        self.desc_label.setText("Startup complete! This log window stays open for reference.\n"
-                                "You can select and copy text, or use the Copy Log button.")
-        self.setWindowTitle("Curlton KeyStation - Startup Log (Complete)")
-
-        # Make non-modal so it doesn't block the main window
-        self.setModal(False)
-
-        # Don't call accept() - keep the dialog open
-        # The main window will be shown by the caller
+        # Close the dialog automatically after a brief delay
+        # This allows the final log message to be visible momentarily
+        QTimer.singleShot(500, self.accept)
 
     def log(self, message):
         """Log a message to the startup log."""
