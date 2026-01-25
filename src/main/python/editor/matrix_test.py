@@ -162,7 +162,7 @@ class ActuationVisualizer(QWidget):
 
 
 class EditableSlider(QSlider):
-    """Custom slider with mousewheel step of 1 and double-click to edit value"""
+    """Custom slider with mousewheel step of 1"""
 
     def __init__(self, orientation, parent=None):
         super().__init__(orientation, parent)
@@ -177,18 +177,32 @@ class EditableSlider(QSlider):
             self.setValue(self.value() - 1)
         event.accept()
 
+
+class ClickableValueLabel(QLabel):
+    """Label that opens input dialog on double-click to edit the value"""
+
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.linked_slider = None
+        self.setCursor(Qt.PointingHandCursor)
+
+    def set_linked_slider(self, slider):
+        """Link this label to a slider for value editing"""
+        self.linked_slider = slider
+
     def mouseDoubleClickEvent(self, event):
         """Open input dialog on double-click"""
-        value, ok = QInputDialog.getInt(
-            self, "Set Value",
-            "Enter percentage:",
-            self.value(),
-            self.minimum(),
-            self.maximum(),
-            1
-        )
-        if ok:
-            self.setValue(value)
+        if self.linked_slider:
+            value, ok = QInputDialog.getInt(
+                self, "Set Value",
+                "Enter percentage:",
+                self.linked_slider.value(),
+                self.linked_slider.minimum(),
+                self.linked_slider.maximum(),
+                1
+            )
+            if ok:
+                self.linked_slider.setValue(value)
         event.accept()
 
 
@@ -258,18 +272,13 @@ class MatrixTest(BasicEditor):
         # Add stretch on left to center content
         advanced_section_layout.addStretch()
 
-        # Actuation Visualizer section
-        visualizer_container = QWidget()
+        # Actuation Visualizer section (in QGroupBox to align with EQ title)
+        viz_group = QGroupBox(tr("MatrixTest", "Key Travel (mm)"))
+        viz_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         visualizer_layout = QVBoxLayout()
         visualizer_layout.setSpacing(5)
-        visualizer_layout.setContentsMargins(0, 0, 0, 0)
-        visualizer_container.setLayout(visualizer_layout)
-
-        # Visualizer title
-        viz_title = QLabel(tr("MatrixTest", "Key Travel (mm)"))
-        viz_title.setStyleSheet("font-weight: bold; font-size: 10pt;")
-        viz_title.setAlignment(Qt.AlignCenter)
-        visualizer_layout.addWidget(viz_title)
+        visualizer_layout.setContentsMargins(5, 5, 5, 5)
+        viz_group.setLayout(visualizer_layout)
 
         # Create 4 visualizer slots with dropdown selectors
         self.actuation_visualizers = {}
@@ -346,7 +355,7 @@ class MatrixTest(BasicEditor):
         self.update_distance_keys()
 
         # Add visualizer to the advanced section
-        advanced_section_layout.addWidget(visualizer_container)
+        advanced_section_layout.addWidget(viz_group)
 
         # EQ tuning container (to the right of key travel)
         eq_container = QWidget()
@@ -444,11 +453,12 @@ class MatrixTest(BasicEditor):
                 slider.setTickPosition(QSlider.TicksBothSides)
                 slider.setTickInterval(50)
 
-                # Create value label
-                value_label = QLabel("100%")
+                # Create clickable value label (double-click to edit)
+                value_label = ClickableValueLabel("100%")
                 value_label.setAlignment(Qt.AlignCenter)
                 value_label.setStyleSheet("font-size: 7pt;")
                 value_label.setMinimumWidth(35)
+                value_label.set_linked_slider(slider)
 
                 # Connect slider to update label and send settings
                 def make_updater(lbl, r, b):
@@ -484,10 +494,11 @@ class MatrixTest(BasicEditor):
             scale_slider.setTickPosition(QSlider.TicksBothSides)
             scale_slider.setTickInterval(25)
 
-            scale_label = QLabel("100%")
+            scale_label = ClickableValueLabel("100%")
             scale_label.setAlignment(Qt.AlignCenter)
             scale_label.setStyleSheet("font-size: 7pt; color: #ffa500;")
             scale_label.setMinimumWidth(35)
+            scale_label.set_linked_slider(scale_slider)
 
             def make_scale_updater(lbl):
                 def update(v):
@@ -541,6 +552,9 @@ class MatrixTest(BasicEditor):
 
         # Add the combined advanced section to main layout
         main_content_layout.addWidget(self.advanced_section_widget)
+
+        # Add stretch to push content up when advanced section is hidden
+        main_content_layout.addStretch()
 
         container_layout.addLayout(main_content_layout)
 
