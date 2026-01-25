@@ -6,7 +6,7 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider, QMenu)
+                           QScrollArea, QSlider, QMenu, QInputDialog)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QBrush, QPen, QFont, QLinearGradient
@@ -161,6 +161,37 @@ class ActuationVisualizer(QWidget):
         painter.drawText(0, y_start + 62, width, 14, Qt.AlignCenter, f"Rng: {range_val}")
 
 
+class EditableSlider(QSlider):
+    """Custom slider with mousewheel step of 1 and double-click to edit value"""
+
+    def __init__(self, orientation, parent=None):
+        super().__init__(orientation, parent)
+        self.setSingleStep(1)
+
+    def wheelEvent(self, event):
+        """Override wheel event to use step of 1"""
+        delta = event.angleDelta().y()
+        if delta > 0:
+            self.setValue(self.value() + 1)
+        elif delta < 0:
+            self.setValue(self.value() - 1)
+        event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        """Open input dialog on double-click"""
+        value, ok = QInputDialog.getInt(
+            self, "Set Value",
+            "Enter percentage:",
+            self.value(),
+            self.minimum(),
+            self.maximum(),
+            1
+        )
+        if ok:
+            self.setValue(value)
+        event.accept()
+
+
 class MatrixTest(BasicEditor):
 
     def __init__(self, layout_editor):
@@ -209,7 +240,25 @@ class MatrixTest(BasicEditor):
         self.KeyboardWidget2.setMinimumWidth(800)
         main_content_layout.addWidget(self.KeyboardWidget2, alignment=Qt.AlignCenter)
 
-        # Actuation Visualizer section - horizontal row below keyboard
+        # Show Advanced Tuning toggle button (above the hidden content)
+        self.advanced_tuning_btn = QPushButton("Show Advanced Tuning")
+        self.advanced_tuning_btn.setCheckable(True)
+        self.advanced_tuning_btn.setMaximumWidth(180)
+        self.advanced_tuning_btn.clicked.connect(self.toggle_advanced_tuning)
+        main_content_layout.addWidget(self.advanced_tuning_btn, alignment=Qt.AlignCenter)
+
+        # Combined container for key travel + EQ (both hidden by default)
+        self.advanced_section_widget = QWidget()
+        self.advanced_section_widget.setVisible(False)
+        advanced_section_layout = QHBoxLayout()
+        advanced_section_layout.setSpacing(30)
+        advanced_section_layout.setContentsMargins(0, 10, 0, 0)
+        self.advanced_section_widget.setLayout(advanced_section_layout)
+
+        # Add stretch on left to center content
+        advanced_section_layout.addStretch()
+
+        # Actuation Visualizer section
         visualizer_container = QWidget()
         visualizer_layout = QVBoxLayout()
         visualizer_layout.setSpacing(5)
@@ -296,20 +345,14 @@ class MatrixTest(BasicEditor):
         visualizer_layout.addLayout(visualizer_bars_layout)
         self.update_distance_keys()
 
-        # Show Advanced Tuning toggle button
-        self.advanced_tuning_btn = QPushButton("Show Advanced Tuning")
-        self.advanced_tuning_btn.setCheckable(True)
-        self.advanced_tuning_btn.setMaximumWidth(150)
-        self.advanced_tuning_btn.clicked.connect(self.toggle_advanced_tuning)
-        visualizer_layout.addWidget(self.advanced_tuning_btn)
-        visualizer_layout.addStretch()
+        # Add visualizer to the advanced section
+        advanced_section_layout.addWidget(visualizer_container)
 
-        # Advanced tuning container (hidden by default) - will be placed to the right
-        self.advanced_tuning_widget = QWidget()
-        self.advanced_tuning_widget.setVisible(False)
+        # EQ tuning container (to the right of key travel)
+        eq_container = QWidget()
         advanced_layout = QVBoxLayout()
-        advanced_layout.setContentsMargins(10, 0, 0, 0)
-        self.advanced_tuning_widget.setLayout(advanced_layout)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+        eq_container.setLayout(advanced_layout)
 
         # EQ-Style Sensitivity Curve Controls
         eq_group = QGroupBox(tr("MatrixTest", "Sensitivity EQ (by Rest ADC Range)"))
@@ -391,7 +434,7 @@ class MatrixTest(BasicEditor):
 
             for band in range(5):
                 # Create vertical slider (25% to 400%, stored as actual percentage)
-                slider = QSlider(Qt.Vertical)
+                slider = EditableSlider(Qt.Vertical)
                 slider.setRange(25, 400)  # Actual percentage
                 slider.setValue(100)  # Default 100%
                 slider.setSingleStep(1)  # 1% increments
@@ -431,7 +474,7 @@ class MatrixTest(BasicEditor):
                 self.eq_labels[range_idx].append(value_label)
 
             # Range Scale slider for this range (column 6)
-            scale_slider = QSlider(Qt.Vertical)
+            scale_slider = EditableSlider(Qt.Vertical)
             scale_slider.setRange(50, 200)  # Actual percentage: 50% to 200%
             scale_slider.setValue(100)  # Default 100%
             scale_slider.setSingleStep(1)  # 1% increments
@@ -490,14 +533,14 @@ class MatrixTest(BasicEditor):
         advanced_layout.addWidget(eq_group)
         advanced_layout.addStretch()
 
-        # Horizontal layout for visualizer (left) and advanced tuning (right)
-        bottom_section_layout = QHBoxLayout()
-        bottom_section_layout.setSpacing(20)
-        bottom_section_layout.addWidget(visualizer_container)
-        bottom_section_layout.addWidget(self.advanced_tuning_widget)
-        bottom_section_layout.addStretch()
+        # Add EQ container to the advanced section
+        advanced_section_layout.addWidget(eq_container)
 
-        main_content_layout.addLayout(bottom_section_layout)
+        # Add stretch on right to center content
+        advanced_section_layout.addStretch()
+
+        # Add the combined advanced section to main layout
+        main_content_layout.addWidget(self.advanced_section_widget)
 
         container_layout.addLayout(main_content_layout)
 
@@ -675,6 +718,28 @@ class MatrixTest(BasicEditor):
             except (RuntimeError, ValueError):
                 continue
 
+        # Poll final column (col 13) separately using calibration_debug_poll
+        # since adc_matrix_poll is limited to 13 columns due to HID packet size
+        if cols > 13:
+            final_col = cols - 1  # Column 13 for 14-column keyboard
+            # Build list of keys for final column in the rows we're polling
+            final_col_keys = [(row, final_col) for row in range(row_start, row_end)]
+            # Poll in batches of 4 (calibration_debug_poll limit)
+            for i in range(0, len(final_col_keys), 4):
+                batch = final_col_keys[i:i+4]
+                try:
+                    calib_data = self.keyboard.calibration_debug_poll(batch)
+                    if calib_data:
+                        for (row, col), data in calib_data.items():
+                            if row not in adc_matrix:
+                                adc_matrix[row] = [0] * cols
+                            # Extend the list if needed
+                            while len(adc_matrix[row]) <= col:
+                                adc_matrix[row].append(0)
+                            adc_matrix[row][col] = data['raw']
+                except (RuntimeError, ValueError):
+                    pass
+
         # Update keyboard widget with ADC values
         for w in self.KeyboardWidget2.widgets:
             if w.desc.row is not None and w.desc.col is not None:
@@ -803,9 +868,9 @@ class MatrixTest(BasicEditor):
         self.send_eq_settings()
 
     def toggle_advanced_tuning(self):
-        """Toggle visibility of advanced tuning widget"""
+        """Toggle visibility of key travel and EQ tuning section"""
         visible = self.advanced_tuning_btn.isChecked()
-        self.advanced_tuning_widget.setVisible(visible)
+        self.advanced_section_widget.setVisible(visible)
         if visible:
             self.advanced_tuning_btn.setText("Hide Advanced Tuning")
         else:
