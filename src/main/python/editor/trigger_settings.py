@@ -2899,6 +2899,10 @@ class TriggerSettingsTab(BasicEditor):
         widgets, but they all control the same shared state. This method ensures all
         checkboxes visually reflect the current state.
         """
+        # Guard: checkboxes may not exist yet during early initialization
+        if not hasattr(self, 'rf_enable_checkbox'):
+            return
+
         self.syncing = True
 
         # Sync all per-key enable checkboxes
