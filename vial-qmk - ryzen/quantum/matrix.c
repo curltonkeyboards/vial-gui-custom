@@ -199,6 +199,14 @@ uint8_t eq_range_scale[3] = {55, 50, 53};
 // EQ CURVE EEPROM PERSISTENCE
 // ============================================================================
 
+// EEPROM address for EQ curve settings (must match keyboard header)
+#ifndef EQ_CURVE_EEPROM_ADDR
+#define EQ_CURVE_EEPROM_ADDR 41300
+#endif
+#ifndef EQ_CURVE_MAGIC
+#define EQ_CURVE_MAGIC 0xEA01
+#endif
+
 void eq_curve_save_to_eeprom(void) {
     // Write magic number first
     eeprom_update_word((uint16_t*)EQ_CURVE_EEPROM_ADDR, EQ_CURVE_MAGIC);
