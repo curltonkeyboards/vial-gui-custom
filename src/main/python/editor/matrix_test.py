@@ -969,6 +969,61 @@ class MatrixTest(BasicEditor):
         self.adc_timer.start(500)
         # Start distance polling at 50ms intervals for smooth visualization
         self.distance_timer.start(50)
+        # Load EQ settings from keyboard
+        self.load_eq_settings_from_keyboard()
+
+    def load_eq_settings_from_keyboard(self):
+        """Load EQ curve settings from the keyboard and update UI"""
+        if not self.keyboard:
+            return
+
+        try:
+            settings = self.keyboard.get_eq_settings()
+            if not settings:
+                return
+
+            # Block signals to avoid sending updates while setting values
+            self.eq_range_low_slider.blockSignals(True)
+            self.eq_range_high_slider.blockSignals(True)
+
+            # Apply range boundaries
+            self.eq_range_low_slider.setValue(settings['range_low'])
+            self.eq_range_low_label.setText(str(settings['range_low']))
+            self.eq_range_high_slider.setValue(settings['range_high'])
+            self.eq_range_high_label.setText(str(settings['range_high']))
+
+            self.eq_range_low_slider.blockSignals(False)
+            self.eq_range_high_slider.blockSignals(False)
+
+            # Apply EQ bands (15 values: 3 ranges × 5 bands)
+            # Values are stored as half-percentage in firmware, convert to full percentage
+            bands = settings['bands']
+            for range_idx in range(3):
+                for band in range(5):
+                    value = bands[range_idx * 5 + band] * 2  # Convert from half-percentage
+                    self.eq_sliders[range_idx][band].blockSignals(True)
+                    self.eq_sliders[range_idx][band].setValue(value)
+                    self.eq_labels[range_idx][band].setText(f"{value}%")
+                    self.eq_sliders[range_idx][band].blockSignals(False)
+
+            # Apply range scale values
+            scales = settings['scales']
+            for range_idx in range(3):
+                value = scales[range_idx] * 2  # Convert from half-percentage
+                self.eq_range_scale_sliders[range_idx].blockSignals(True)
+                self.eq_range_scale_sliders[range_idx].setValue(value)
+                self.eq_range_scale_labels[range_idx].setText(f"{value}%")
+                self.eq_range_scale_sliders[range_idx].blockSignals(False)
+
+            # Apply LUT correction strength
+            lut_value = settings['lut_strength']
+            self.lut_strength_slider.blockSignals(True)
+            self.lut_strength_slider.setValue(lut_value)
+            self.lut_strength_value_label.setText(f"{lut_value}%")
+            self.lut_strength_slider.blockSignals(False)
+
+        except (RuntimeError, ValueError, AttributeError) as e:
+            print(f"Failed to load EQ settings: {e}")
 
     def deactivate(self):
         self.grabber.releaseKeyboard()
