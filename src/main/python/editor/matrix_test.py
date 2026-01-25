@@ -172,9 +172,10 @@ class MatrixTest(BasicEditor):
 
         # Container for title, description, keyboard widget and buttons
         container = QWidget()
+        container.setMinimumWidth(900)
         container_layout = QVBoxLayout()
-        container_layout.setSpacing(6)
-        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(10)
+        container_layout.setContentsMargins(20, 20, 20, 20)
         container.setLayout(container_layout)
 
         # Title
@@ -202,17 +203,15 @@ class MatrixTest(BasicEditor):
         self.reset_btn.setMinimumWidth(80)
         self.reset_btn.setStyleSheet("QPushButton { border-radius: 5px; }")
 
-        # Horizontal layout for keyboard widget and actuation visualizers
-        main_content_layout = QHBoxLayout()
-        main_content_layout.setSpacing(20)
+        # Vertical layout for keyboard widget then actuation visualizers below
+        main_content_layout = QVBoxLayout()
+        main_content_layout.setSpacing(15)
 
-        # Keyboard widget
-        keyboard_layout = QVBoxLayout()
-        keyboard_layout.addWidget(self.KeyboardWidget2)
-        keyboard_layout.setAlignment(self.KeyboardWidget2, Qt.AlignCenter)
-        main_content_layout.addLayout(keyboard_layout)
+        # Keyboard widget centered
+        self.KeyboardWidget2.setMinimumWidth(800)
+        main_content_layout.addWidget(self.KeyboardWidget2, alignment=Qt.AlignCenter)
 
-        # Actuation Visualizer section
+        # Actuation Visualizer section - horizontal row below keyboard
         visualizer_container = QWidget()
         visualizer_layout = QVBoxLayout()
         visualizer_layout.setSpacing(5)
@@ -231,7 +230,8 @@ class MatrixTest(BasicEditor):
         self.distance_keys = []  # Will be populated dynamically
 
         visualizer_bars_layout = QHBoxLayout()
-        visualizer_bars_layout.setSpacing(5)
+        visualizer_bars_layout.setSpacing(15)
+        visualizer_bars_layout.setAlignment(Qt.AlignCenter)
 
         # Default keys to visualize (0-indexed internally, displayed as 1-indexed)
         default_keys = [(0, 0), (0, 3), (0, 11), (3, 0)]
@@ -239,6 +239,7 @@ class MatrixTest(BasicEditor):
         for idx, (default_row, default_col) in enumerate(default_keys):
             # Container for each visualizer + its dropdowns
             viz_container = QWidget()
+            viz_container.setFixedWidth(90)
             viz_layout = QVBoxLayout()
             viz_layout.setContentsMargins(0, 0, 0, 0)
             viz_layout.setSpacing(2)
@@ -246,24 +247,28 @@ class MatrixTest(BasicEditor):
 
             # Row/Col selector dropdowns (displayed as 1-indexed)
             selector_layout = QHBoxLayout()
-            selector_layout.setSpacing(1)
+            selector_layout.setSpacing(0)
             selector_layout.setContentsMargins(0, 0, 0, 0)
 
-            row_label = QLabel("Row")
+            row_label = QLabel("R")
+            row_label.setFixedWidth(10)
             row_label.setStyleSheet("font-size: 7pt;")
             row_combo = QComboBox()
-            row_combo.setMaximumWidth(40)
-            row_combo.setStyleSheet("font-size: 7pt; padding: 0px;")
+            row_combo.setFixedWidth(32)
+            row_combo.setMaxVisibleItems(5)
+            row_combo.setStyleSheet("QComboBox { font-size: 7pt; padding: 1px; }")
             # Add rows 1-5 (internally 0-4)
             for r in range(1, 6):
                 row_combo.addItem(str(r), r - 1)  # Display 1-indexed, store 0-indexed
             row_combo.setCurrentIndex(default_row)
 
-            col_label = QLabel("Col")
+            col_label = QLabel("C")
+            col_label.setFixedWidth(10)
             col_label.setStyleSheet("font-size: 7pt;")
             col_combo = QComboBox()
-            col_combo.setMaximumWidth(40)
-            col_combo.setStyleSheet("font-size: 7pt; padding: 0px;")
+            col_combo.setFixedWidth(32)
+            col_combo.setMaxVisibleItems(5)
+            col_combo.setStyleSheet("QComboBox { font-size: 7pt; padding: 1px; }")
             # Add cols 1-14 (internally 0-13)
             for c in range(1, 15):
                 col_combo.addItem(str(c), c - 1)  # Display 1-indexed, store 0-indexed
