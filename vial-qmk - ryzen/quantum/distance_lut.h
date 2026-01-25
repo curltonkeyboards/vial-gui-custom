@@ -160,16 +160,20 @@ extern uint8_t eq_range_scale[3];
  * Apply EQ-style sensitivity curve adjustment with REDISTRIBUTIVE bands
  *
  * This is a "true EQ" approach where:
- * - Total travel is ALWAYS 0-1023 (0-4mm) regardless of settings
+ * - Total travel is ALWAYS 0-1023 (0-4mm) regardless of band settings
  * - Band weights determine how much OUTPUT range each INPUT band gets
  * - Higher weight = that section of travel happens faster (more output per input)
  * - Lower weight = that section of travel happens slower (less output per input)
  * - Bands automatically balance out - total output is always 0-1023
  *
- * Example with weights [200, 100, 100, 100, 100] (total 600):
- *   - Band 0 (0-20% input) gets 200/600 = 33% of output range
- *   - At 20% physical travel, you've reached 33% of output (1.33mm instead of 0.8mm)
- *   - Remaining bands share the rest proportionally
+ * EQ Band Interpolation: QUADRATIC (exponential-like)
+ * - Effect scales with square of distance from midpoint
+ * - At boundary: 1x effect, at 2x distance: 4x effect
+ * - Captures the non-linear relationship between rest value and needed adjustment
+ *
+ * Range Scale: DISCRETE (independent per range)
+ * - No interpolation - just picks the scale for whichever range the key falls into
+ * - Low rest keys get their scale, high rest keys get theirs - no borrowing
  *
  * @param normalized  Linear normalized position (0-1023)
  * @param rest        Rest ADC value for this key
@@ -179,13 +183,34 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
     uint32_t normalized,
     uint16_t rest
 ) {
-    // Calculate blend factor for rest-based interpolation
+    // Determine which discrete range this key falls into (for range scale)
+    uint8_t discrete_range;
+    if (rest < eq_range_low) {
+        discrete_range = 0;  // Low rest
+    } else if (rest < eq_range_high) {
+        discrete_range = 1;  // Mid rest
+    } else {
+        discrete_range = 2;  // High rest
+    }
+
+    // Calculate blend factor for EQ band interpolation (QUADRATIC)
     int32_t midpoint = ((int32_t)eq_range_low + (int32_t)eq_range_high) / 2;
     int32_t half_span = ((int32_t)eq_range_high - (int32_t)eq_range_low) / 2;
     if (half_span < 50) half_span = 50;
 
     int32_t offset = (int32_t)rest - midpoint;
-    int32_t blend_1024 = (offset * 1024) / half_span;
+    // Linear blend factor (can be negative for low rest, positive for high rest)
+    int32_t linear_blend_1024 = (offset * 1024) / half_span;
+
+    // QUADRATIC blend: square the magnitude, preserve sign direction
+    // This makes extreme rest values get disproportionately more adjustment
+    int32_t abs_linear = linear_blend_1024 < 0 ? -linear_blend_1024 : linear_blend_1024;
+    // Quadratic: blend = sign * (abs_blend)^2 / 1024
+    // At boundary (abs=1024): quadratic = 1024
+    // At 2x boundary (abs=2048): quadratic = 4096 (4x effect)
+    int32_t quadratic_blend_1024 = (abs_linear * abs_linear) / 1024;
+    // Cap at reasonable maximum (4x effect = 4096)
+    if (quadratic_blend_1024 > 4096) quadratic_blend_1024 = 4096;
 
     // Calculate interpolated weights for each band based on rest position
     int32_t weights[5];
@@ -197,11 +222,12 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
         int32_t val_2 = (int32_t)eq_bands[2][i] * 2;  // Range 2 (high rest)
 
         int32_t w;
-        if (blend_1024 <= 0) {
-            int32_t abs_blend = -blend_1024;
-            w = val_1 + ((val_0 - val_1) * abs_blend) / 1024;
+        if (linear_blend_1024 <= 0) {
+            // Below midpoint: blend towards Range 0 (low rest) with QUADRATIC scaling
+            w = val_1 + ((val_0 - val_1) * quadratic_blend_1024) / 1024;
         } else {
-            w = val_1 + ((val_2 - val_1) * blend_1024) / 1024;
+            // Above midpoint: blend towards Range 2 (high rest) with QUADRATIC scaling
+            w = val_1 + ((val_2 - val_1) * quadratic_blend_1024) / 1024;
         }
 
         // Clamp weight to reasonable range
@@ -244,18 +270,9 @@ static inline __attribute__((always_inline)) uint32_t apply_eq_curve_adjustment(
 
             int32_t output = output_start + (input_pos * output_range) / input_range;
 
-            // Apply range scale (affects overall scaling, can exceed 1023 or fall short)
-            int32_t scale_0 = (int32_t)eq_range_scale[0] * 2;
-            int32_t scale_1 = (int32_t)eq_range_scale[1] * 2;
-            int32_t scale_2 = (int32_t)eq_range_scale[2] * 2;
-
-            int32_t range_scale;
-            if (blend_1024 <= 0) {
-                int32_t abs_blend = -blend_1024;
-                range_scale = scale_1 + ((scale_0 - scale_1) * abs_blend) / 1024;
-            } else {
-                range_scale = scale_1 + ((scale_2 - scale_1) * blend_1024) / 1024;
-            }
+            // Apply range scale - DISCRETE selection, no interpolation
+            // Each range has its own independent scale
+            int32_t range_scale = (int32_t)eq_range_scale[discrete_range] * 2;
 
             if (range_scale < 20) range_scale = 20;
             if (range_scale > 400) range_scale = 400;
