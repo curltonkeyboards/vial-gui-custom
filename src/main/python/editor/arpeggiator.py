@@ -2706,19 +2706,22 @@ class Arpeggiator(BasicEditor):
             self.update_status(f"User preset {index} selected")
 
     def send_hid_command(self, cmd, params):
-        """Send HID command to device"""
+        """Send HID command to device and check response
+
+        Returns True if command was sent and firmware returned success status (0)
+        """
         if not isinstance(self.device, VialKeyboard):
             self.update_status("Error: Device not connected", error=True)
             return False
 
-        # Build HID packet
+        # Build HID packet (arpeggiator format: header at 0-3, params at 4+)
         data = bytearray(32)
         data[0] = self.MANUFACTURER_ID
         data[1] = self.SUB_ID
         data[2] = self.DEVICE_ID
         data[3] = cmd
 
-        # Add parameters
+        # Add parameters starting at byte 4
         for i, param in enumerate(params):
             if i + 4 < len(data):
                 if isinstance(param, int):
@@ -2732,9 +2735,27 @@ class Arpeggiator(BasicEditor):
                     break
 
         try:
-            self.device.keyboard.raw_hid_send(bytes(data))
-            logger.info(f"Sent HID command: 0x{cmd:02X}")
+            # Send packet and wait for response using proper usb_send
+            response = self.device.keyboard.usb_send(
+                self.device.keyboard.dev,
+                bytes(data),
+                retries=3
+            )
+
+            # Check response
+            if not response or len(response) < 5:
+                logger.error(f"HID command 0x{cmd:02X}: No response or response too short")
+                return False
+
+            # Status is at response[4] for arpeggiator commands
+            status = response[4]
+            if status != 0:
+                logger.error(f"HID command 0x{cmd:02X}: Firmware returned error status {status}")
+                return False
+
+            logger.info(f"HID command 0x{cmd:02X}: Success")
             return True
+
         except Exception as e:
             logger.error(f"HID send error: {e}")
             self.update_status(f"HID error: {e}", error=True)
