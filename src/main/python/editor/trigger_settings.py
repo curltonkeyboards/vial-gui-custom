@@ -2719,16 +2719,37 @@ class TriggerSettingsTab(BasicEditor):
         if not self.valid() or not self.keyboard:
             return
 
+        # Safe defaults: 1.5mm actuation (60), 0.1mm deadzones (4)
+        DEFAULT_ACTUATION = 60  # 1.5mm (60/40 = 1.5)
+        DEFAULT_DEADZONE = 4   # 0.1mm (4/40 = 0.1)
+        MIN_ACTUATION = 8      # 0.2mm minimum to prevent keyboard crash
+
         # Get current layer actuation values (use as source for all layers)
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
         normal_actuation = data_source[self.current_layer]['normal']
         midi_actuation = data_source[self.current_layer]['midi']
 
-        # Get deadzone values from the global sliders
+        # Use safe defaults if values are too low (could crash keyboard)
+        if normal_actuation < MIN_ACTUATION:
+            normal_actuation = DEFAULT_ACTUATION
+        if midi_actuation < MIN_ACTUATION:
+            midi_actuation = DEFAULT_ACTUATION
+
+        # Get deadzone values from the global sliders, with safe defaults
         normal_dz_bottom = self.global_normal_slider.get_deadzone_bottom()
         normal_dz_top = self.global_normal_slider.get_deadzone_top()
         midi_dz_bottom = self.global_midi_slider.get_deadzone_bottom()
         midi_dz_top = self.global_midi_slider.get_deadzone_top()
+
+        # Ensure deadzones have safe minimum values
+        if normal_dz_bottom < 1:
+            normal_dz_bottom = DEFAULT_DEADZONE
+        if normal_dz_top < 1:
+            normal_dz_top = DEFAULT_DEADZONE
+        if midi_dz_bottom < 1:
+            midi_dz_bottom = DEFAULT_DEADZONE
+        if midi_dz_top < 1:
+            midi_dz_top = DEFAULT_DEADZONE
 
         # Apply to ALL 12 layers for uniformity (firmware always uses per-key per-layer)
         for layer in range(12):
@@ -2761,6 +2782,11 @@ class TriggerSettingsTab(BasicEditor):
                         if self.device and isinstance(self.device, VialKeyboard):
                             settings = self.per_key_values[layer][key_index]
                             self.device.keyboard.set_per_key_actuation(layer, key_index, settings)
+
+        # Update layer_data with the safe values used, so global sliders show correct values
+        for layer in range(12):
+            self.layer_data[layer]['normal'] = normal_actuation
+            self.layer_data[layer]['midi'] = midi_actuation
 
     def on_enable_changed(self, state):
         """Handle enable checkbox toggle
@@ -3088,6 +3114,10 @@ class TriggerSettingsTab(BasicEditor):
 
         self.syncing = True
 
+        # Safe defaults: 1.5mm actuation (60)
+        DEFAULT_ACTUATION = 60  # 1.5mm (60/40 = 1.5)
+        MIN_ACTUATION = 8       # 0.2mm minimum
+
         # Get layer to use
         layer = self.current_layer
 
@@ -3096,11 +3126,15 @@ class TriggerSettingsTab(BasicEditor):
 
         # Load normal actuation values using TriggerSlider methods
         normal_act = data_source[layer]['normal']
+        if normal_act < MIN_ACTUATION:
+            normal_act = DEFAULT_ACTUATION
         self.global_normal_slider.set_actuation(normal_act)
         self.global_normal_value_label.setText(f"Act: {self.value_to_mm(normal_act)}")
 
         # Load MIDI actuation values using TriggerSlider methods
         midi_act = data_source[layer]['midi']
+        if midi_act < MIN_ACTUATION:
+            midi_act = DEFAULT_ACTUATION
         self.global_midi_slider.set_actuation(midi_act)
         self.global_midi_value_label.setText(f"Act: {self.value_to_mm(midi_act)}")
 
