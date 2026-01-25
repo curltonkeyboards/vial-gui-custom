@@ -5113,6 +5113,7 @@ class GamingConfigurator(BasicEditor):
         self.keyboard = None
         self.gaming_controls = {}
         self.active_control_id = None  # Track which control is being assigned
+        self._needs_loading = False  # Flag for lazy loading - defer heavy HID calls until tab is opened
         self.setup_ui()
 
     def create_help_label(self, tooltip_text):
@@ -5853,78 +5854,90 @@ class GamingConfigurator(BasicEditor):
             # Set keyboard reference for tabbed keycodes (so GamingTab can access it)
             self.tabbed_keycodes.set_keyboard(self.keyboard)
             self.tabbed_keycodes.recreate_keycode_buttons()
-            # Try to load settings silently without showing message boxes
-            try:
-                # Use cached gaming settings if available, otherwise fetch them
-                settings = getattr(self.keyboard, 'gaming_settings', None) or self.keyboard.get_gaming_settings()
-                if settings:
-                    # Block signals while updating
-                    self.ls_min_travel_slider.blockSignals(True)
-                    self.ls_max_travel_slider.blockSignals(True)
-                    self.rs_min_travel_slider.blockSignals(True)
-                    self.rs_max_travel_slider.blockSignals(True)
-                    self.trigger_min_travel_slider.blockSignals(True)
-                    self.trigger_max_travel_slider.blockSignals(True)
+            # LAZY LOADING: Defer the heavy HID calls until tab is actually opened
+            self._needs_loading = True
 
-                    self.ls_min_travel_slider.setValue(settings.get('ls_min_travel_mm_x10', 10))
-                    self.ls_max_travel_slider.setValue(settings.get('ls_max_travel_mm_x10', 20))
-                    self.rs_min_travel_slider.setValue(settings.get('rs_min_travel_mm_x10', 10))
-                    self.rs_max_travel_slider.setValue(settings.get('rs_max_travel_mm_x10', 20))
-                    self.trigger_min_travel_slider.setValue(settings.get('trigger_min_travel_mm_x10', 10))
-                    self.trigger_max_travel_slider.setValue(settings.get('trigger_max_travel_mm_x10', 20))
+    def activate(self):
+        """Called when tab is selected - load heavy data if needed"""
+        if self._needs_loading and self.keyboard:
+            self._load_gaming_data()
+            self._needs_loading = False
 
-                    self.ls_min_travel_slider.blockSignals(False)
-                    self.ls_max_travel_slider.blockSignals(False)
-                    self.rs_min_travel_slider.blockSignals(False)
-                    self.rs_max_travel_slider.blockSignals(False)
-                    self.trigger_min_travel_slider.blockSignals(False)
-                    self.trigger_max_travel_slider.blockSignals(False)
+    def _load_gaming_data(self):
+        """Load gaming settings from device (heavy operation - multiple HID calls)"""
+        print("GamingConfigurator: Loading gaming data (this may take a while)...")
+        try:
+            # Use cached gaming settings if available, otherwise fetch them
+            settings = getattr(self.keyboard, 'gaming_settings', None) or self.keyboard.get_gaming_settings()
+            if settings:
+                # Block signals while updating
+                self.ls_min_travel_slider.blockSignals(True)
+                self.ls_max_travel_slider.blockSignals(True)
+                self.rs_min_travel_slider.blockSignals(True)
+                self.rs_max_travel_slider.blockSignals(True)
+                self.trigger_min_travel_slider.blockSignals(True)
+                self.trigger_max_travel_slider.blockSignals(True)
 
-                    # Update labels (with inline format)
-                    self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                    self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                    self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                    self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                    self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                    self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                self.ls_min_travel_slider.setValue(settings.get('ls_min_travel_mm_x10', 10))
+                self.ls_max_travel_slider.setValue(settings.get('ls_max_travel_mm_x10', 20))
+                self.rs_min_travel_slider.setValue(settings.get('rs_min_travel_mm_x10', 10))
+                self.rs_max_travel_slider.setValue(settings.get('rs_max_travel_mm_x10', 20))
+                self.trigger_min_travel_slider.setValue(settings.get('trigger_min_travel_mm_x10', 10))
+                self.trigger_max_travel_slider.setValue(settings.get('trigger_max_travel_mm_x10', 20))
 
-                # Load user curve names (so dropdown is populated)
-                user_curve_names = self.keyboard.get_all_user_curve_names()
-                if user_curve_names and len(user_curve_names) == 10:
-                    self.curve_editor.set_user_curve_names(user_curve_names)
+                self.ls_min_travel_slider.blockSignals(False)
+                self.ls_max_travel_slider.blockSignals(False)
+                self.rs_min_travel_slider.blockSignals(False)
+                self.rs_max_travel_slider.blockSignals(False)
+                self.trigger_min_travel_slider.blockSignals(False)
+                self.trigger_max_travel_slider.blockSignals(False)
 
-                # Load gamepad response settings including curve
-                response = self.keyboard.get_gaming_response()
-                if response:
-                    self.angle_adj_checkbox.blockSignals(True)
-                    self.diagonal_angle_slider.blockSignals(True)
-                    self.square_output_checkbox.blockSignals(True)
-                    self.snappy_joystick_checkbox.blockSignals(True)
+                # Update labels (with inline format)
+                self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
+                self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
+                self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
+                self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
+                self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
+                self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
 
-                    self.angle_adj_checkbox.setChecked(response.get('angle_adj_enabled', False))
-                    self.diagonal_angle_slider.setValue(response.get('diagonal_angle', 0))
-                    self.diagonal_angle_label.setText(f"Diagonal Angle: {response.get('diagonal_angle', 0)}°")
-                    self.square_output_checkbox.setChecked(response.get('square_output', False))
-                    self.snappy_joystick_checkbox.setChecked(response.get('snappy_joystick', False))
+            # Load user curve names (so dropdown is populated)
+            user_curve_names = self.keyboard.get_all_user_curve_names()
+            if user_curve_names and len(user_curve_names) == 10:
+                self.curve_editor.set_user_curve_names(user_curve_names)
 
-                    self.angle_adj_checkbox.blockSignals(False)
-                    self.diagonal_angle_slider.blockSignals(False)
-                    self.square_output_checkbox.blockSignals(False)
-                    self.snappy_joystick_checkbox.blockSignals(False)
+            # Load gamepad response settings including curve
+            response = self.keyboard.get_gaming_response()
+            if response:
+                self.angle_adj_checkbox.blockSignals(True)
+                self.diagonal_angle_slider.blockSignals(True)
+                self.square_output_checkbox.blockSignals(True)
+                self.snappy_joystick_checkbox.blockSignals(True)
 
-                    # Select curve in combo box
-                    curve_index = response.get('curve_index', 0)
-                    self.curve_editor.select_curve(curve_index)
+                self.angle_adj_checkbox.setChecked(response.get('angle_adj_enabled', False))
+                self.diagonal_angle_slider.setValue(response.get('diagonal_angle', 0))
+                self.diagonal_angle_label.setText(f"Diagonal Angle: {response.get('diagonal_angle', 0)}°")
+                self.square_output_checkbox.setChecked(response.get('square_output', False))
+                self.snappy_joystick_checkbox.setChecked(response.get('snappy_joystick', False))
 
-                    # If it's a user curve (7-16), load the actual points
-                    if curve_index >= 7 and curve_index <= 16:
-                        slot_index = curve_index - 7
-                        curve_data = self.keyboard.get_user_curve(slot_index)
-                        if curve_data and 'points' in curve_data:
-                            self.curve_editor.load_user_curve_points(curve_data['points'])
-            except:
-                # Silently fail during rebuild - user can manually load if needed
-                pass
+                self.angle_adj_checkbox.blockSignals(False)
+                self.diagonal_angle_slider.blockSignals(False)
+                self.square_output_checkbox.blockSignals(False)
+                self.snappy_joystick_checkbox.blockSignals(False)
+
+                # Select curve in combo box
+                curve_index = response.get('curve_index', 0)
+                self.curve_editor.select_curve(curve_index)
+
+                # If it's a user curve (7-16), load the actual points
+                if curve_index >= 7 and curve_index <= 16:
+                    slot_index = curve_index - 7
+                    curve_data = self.keyboard.get_user_curve(slot_index)
+                    if curve_data and 'points' in curve_data:
+                        self.curve_editor.load_user_curve_points(curve_data['points'])
+            print("GamingConfigurator: Gaming data loading complete")
+        except Exception as e:
+            # Silently fail during load - user can manually load if needed
+            print(f"GamingConfigurator: Error loading data: {e}")
 
     def valid(self):
         return isinstance(self.device, VialKeyboard)

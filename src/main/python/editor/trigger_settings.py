@@ -675,6 +675,7 @@ class TriggerSettingsTab(BasicEditor):
         self.current_layer = 0
         self.syncing = False
         self.actuation_widget_ref = None  # Reference to QuickActuationWidget for synchronization
+        self._needs_loading = False  # Flag for lazy loading - defer heavy HID calls until tab is opened
 
         # Track which tab is active (replaces hover_state)
         # Possible values: 'actuation', 'rapidfire', 'velocity'
@@ -3090,7 +3091,7 @@ class TriggerSettingsTab(BasicEditor):
         self.refresh_layer_display()
 
     def rebuild(self, device):
-        """Rebuild UI with new device"""
+        """Rebuild UI with new device - uses lazy loading to defer heavy HID calls"""
         print(f"TriggerSettingsTab.rebuild() called with device={device}")
         super().rebuild(device)
         if self.valid():
@@ -3100,7 +3101,7 @@ class TriggerSettingsTab(BasicEditor):
             self.container.set_keys(self.keyboard.keys, self.keyboard.encoders)
             self.current_layer = 0
 
-            # Load mode flags from device
+            # Load mode flags from device (quick, single call)
             mode_data = self.keyboard.get_per_key_mode()
             if mode_data:
                 self.syncing = True
@@ -3114,55 +3115,8 @@ class TriggerSettingsTab(BasicEditor):
                 self.reset_btn.setEnabled(self.mode_enabled)
                 self.syncing = False
 
-            # Load all per-key values from device (now returns dict with 8 fields)
-            # If communication fails or returns None, set safe defaults
-            communication_failed = False
-            try:
-                for layer in range(12):
-                    for key_index in range(70):
-                        settings = self.keyboard.get_per_key_actuation(layer, key_index)
-                        if settings is not None:
-                            # get_per_key_actuation now returns a dict with all 8 fields
-                            self.per_key_values[layer][key_index] = settings
-                        else:
-                            communication_failed = True
-                            break
-                    if communication_failed:
-                        break
-            except Exception as e:
-                print(f"Error loading per-key actuations from device: {e}")
-                communication_failed = True
-
-            # If communication failed, set all keys to safe defaults
-            if communication_failed:
-                print("Setting all keys to safe defaults: 0.1mm deadzones, 2.0mm actuation")
-                for layer in range(12):
-                    for key_index in range(70):
-                        self.per_key_values[layer][key_index] = {
-                            'actuation': 80,                    # 2.0mm (80/40 = 2.0)
-                            'deadzone_top': 4,                  # 0.1mm from right
-                            'deadzone_bottom': 4,               # 0.1mm from left
-                            'velocity_curve': 2,                # Medium
-                            'flags': 0,                         # All disabled
-                            'rapidfire_press_sens': 4,          # 0.1mm from left
-                            'rapidfire_release_sens': 4,        # 0.1mm from right
-                            'rapidfire_velocity_mod': 0         # No modifier
-                        }
-
-            # Load layer actuation data from device (6 bytes per layer)
-            try:
-                for layer in range(12):
-                    data = self.keyboard.get_layer_actuation(layer)
-                    if data:
-                        self.layer_data[layer] = {
-                            'normal': data['normal'],
-                            'midi': data['midi'],
-                            'velocity': data['velocity'],
-                            'vel_speed': data['vel_speed']
-                            # Removed: 'use_per_key_velocity_curve' - now per-key
-                        }
-            except Exception as e:
-                print(f"Error loading layer actuations: {e}")
+            # LAZY LOADING: Defer the heavy per-key loading (840 HID calls!) until tab is activated
+            self._needs_loading = True
 
             # Clear any unsaved changes when loading from device
             self.has_unsaved_changes = False
@@ -3172,18 +3126,10 @@ class TriggerSettingsTab(BasicEditor):
             # Update slider states
             self.update_slider_states()
 
-            # Load current layer data into controls
+            # Load current layer data into controls (uses cached defaults until real data loads)
             self.load_layer_controls()
 
             self.refresh_layer_display()
-
-            # Load user curve names for velocity curve editor
-            try:
-                user_curve_names = self.keyboard.get_all_user_curve_names()
-                if user_curve_names and len(user_curve_names) == 10:
-                    self.velocity_curve_editor.set_user_curve_names(user_curve_names)
-            except Exception as e:
-                print(f"Error loading user curve names: {e}")
 
             # Initialize LUT correction strength slider
             # Note: Currently defaults to 0 (linear). In the future, this could be
@@ -3204,6 +3150,79 @@ class TriggerSettingsTab(BasicEditor):
                 self.nullbind_groups = [NullBindGroup() for _ in range(NULLBIND_NUM_GROUPS)]
 
         self.container.setEnabled(self.valid())
+
+    def activate(self):
+        """Called when tab is selected - load heavy data if needed"""
+        if self._needs_loading and self.keyboard:
+            self._load_per_key_data()
+            self._needs_loading = False
+
+    def _load_per_key_data(self):
+        """Load all per-key actuation data from device (heavy operation - 840 HID calls)"""
+        print("TriggerSettingsTab: Loading per-key data (this may take a while)...")
+
+        # Load all per-key values from device (now returns dict with 8 fields)
+        # If communication fails or returns None, set safe defaults
+        communication_failed = False
+        try:
+            for layer in range(12):
+                for key_index in range(70):
+                    settings = self.keyboard.get_per_key_actuation(layer, key_index)
+                    if settings is not None:
+                        # get_per_key_actuation now returns a dict with all 8 fields
+                        self.per_key_values[layer][key_index] = settings
+                    else:
+                        communication_failed = True
+                        break
+                if communication_failed:
+                    break
+        except Exception as e:
+            print(f"Error loading per-key actuations from device: {e}")
+            communication_failed = True
+
+        # If communication failed, set all keys to safe defaults
+        if communication_failed:
+            print("Setting all keys to safe defaults: 0.1mm deadzones, 2.0mm actuation")
+            for layer in range(12):
+                for key_index in range(70):
+                    self.per_key_values[layer][key_index] = {
+                        'actuation': 80,                    # 2.0mm (80/40 = 2.0)
+                        'deadzone_top': 4,                  # 0.1mm from right
+                        'deadzone_bottom': 4,               # 0.1mm from left
+                        'velocity_curve': 2,                # Medium
+                        'flags': 0,                         # All disabled
+                        'rapidfire_press_sens': 4,          # 0.1mm from left
+                        'rapidfire_release_sens': 4,        # 0.1mm from right
+                        'rapidfire_velocity_mod': 0         # No modifier
+                    }
+
+        # Load layer actuation data from device (6 bytes per layer)
+        try:
+            for layer in range(12):
+                data = self.keyboard.get_layer_actuation(layer)
+                if data:
+                    self.layer_data[layer] = {
+                        'normal': data['normal'],
+                        'midi': data['midi'],
+                        'velocity': data['velocity'],
+                        'vel_speed': data['vel_speed']
+                        # Removed: 'use_per_key_velocity_curve' - now per-key
+                    }
+        except Exception as e:
+            print(f"Error loading layer actuations: {e}")
+
+        # Load user curve names for velocity curve editor
+        try:
+            user_curve_names = self.keyboard.get_all_user_curve_names()
+            if user_curve_names and len(user_curve_names) == 10:
+                self.velocity_curve_editor.set_user_curve_names(user_curve_names)
+        except Exception as e:
+            print(f"Error loading user curve names: {e}")
+
+        # Refresh UI with loaded data
+        self.load_layer_controls()
+        self.refresh_layer_display()
+        print("TriggerSettingsTab: Per-key data loading complete")
 
     def valid(self):
         """Check if device is valid"""
