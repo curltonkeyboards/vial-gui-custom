@@ -249,10 +249,12 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define ARP_RATE_SIXTEENTH_TRIP 0xEE22  // Sixteenth note triplet
 #define ARP_RATE_RESET          0xEE23  // Reset to preset's default rate
 
-// Arpeggiator Modes (0xEE24-0xEE26)
-#define ARP_MODE_SINGLE         0xEE24  // Single note mode (classic arp)
-#define ARP_MODE_CHORD_BASIC    0xEE25  // Chord basic mode (all notes per step)
-#define ARP_MODE_CHORD_ADVANCED 0xEE26  // Chord advanced mode (staggered notes)
+// Arpeggiator Modes (0xEE24-0xEE28)
+#define ARP_MODE_SINGLE_SYNCED    0xEE24  // Single note synced mode
+#define ARP_MODE_SINGLE_UNSYNCED  0xEE25  // Single note unsynced mode
+#define ARP_MODE_CHORD_SYNCED     0xEE26  // Chord synced mode (all notes per step)
+#define ARP_MODE_CHORD_UNSYNCED   0xEE27  // Chord unsynced mode (independent timing)
+#define ARP_MODE_CHORD_ADVANCED   0xEE28  // Chord advanced mode (rotation at base rate)
 
 // Direct Arpeggiator Preset Selection (0xEE30-0xEE73) - 68 presets (0-67)
 #define ARP_PRESET_BASE         0xEE30  // Base address for arp presets (0xEE30 + preset_id)
@@ -589,9 +591,11 @@ typedef enum {
 
 // Arpeggiator mode types (internal enum values)
 typedef enum {
-    ARPMODE_SINGLE_NOTE = 0,      // One note at a time (classic arp)
-    ARPMODE_CHORD_BASIC,          // All notes at once per step
-    ARPMODE_CHORD_ADVANCED,       // Staggers notes evenly across step time
+    ARPMODE_SINGLE_NOTE_SYNCED = 0,  // Single note: continues pattern position on overlap, restarts on gap
+    ARPMODE_SINGLE_NOTE_UNSYNCED,    // Single note: same as synced (classic arp behavior)
+    ARPMODE_CHORD_SYNCED,            // Chord: all notes at once per step (synced timing)
+    ARPMODE_CHORD_UNSYNCED,          // Chord: each note runs its own independent arp timing
+    ARPMODE_CHORD_ADVANCED,          // Chord: rotates through notes at base rate (no subdivision)
     ARPMODE_COUNT
 } arp_mode_t;
 
@@ -651,7 +655,7 @@ typedef struct {
     bool active;                        // Is arp currently running
     bool sync_mode;                     // Sync to BPM beat boundaries
     bool latch_mode;                    // Continue after keys released (double-tap)
-    arp_mode_t mode;                    // Single note / Chord basic / Chord advanced
+    arp_mode_t mode;                    // Playback mode (see arp_mode_t enum)
     uint8_t current_preset_id;          // Which preset is selected (for NEXT/PREV)
     uint8_t loaded_preset_id;           // Which preset is currently loaded in RAM
     uint32_t next_note_time;            // When to play next note

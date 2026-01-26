@@ -2252,9 +2252,11 @@ class Arpeggiator(BasicEditor):
         self.combo_mode.setEditable(True)
         self.combo_mode.lineEdit().setReadOnly(True)
         self.combo_mode.lineEdit().setAlignment(Qt.AlignCenter)
-        self.combo_mode.addItem("Single Note (Classic Arp)", 0)
-        self.combo_mode.addItem("Chord Basic (All Notes)", 1)
-        self.combo_mode.addItem("Chord Advanced (Rotation)", 2)
+        self.combo_mode.addItem("Single Note Synced", 0)
+        self.combo_mode.addItem("Single Note Unsynced", 1)
+        self.combo_mode.addItem("Chord Synced", 2)
+        self.combo_mode.addItem("Chord Unsynced", 3)
+        self.combo_mode.addItem("Chord Advanced", 4)
         self.combo_mode.setToolTip("Select how the arpeggiator plays notes")
         self.combo_mode.currentIndexChanged.connect(self.on_mode_changed)
         params_layout.addWidget(lbl_mode, 0, 0)
@@ -2544,7 +2546,7 @@ class Arpeggiator(BasicEditor):
         if mode is None:
             mode = 0  # Default to Single Note
 
-        mode_names = ["Single Note", "Chord Basic", "Chord Advanced"]
+        mode_names = ["Single Note Synced", "Single Note Unsynced", "Chord Synced", "Chord Unsynced", "Chord Advanced"]
         mode_name = mode_names[mode] if mode < len(mode_names) else f"Mode {mode}"
 
         # Send mode change to device

@@ -12988,18 +12988,34 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // ARPEGGIATOR MODES (0xCD20-0xCD2F)
-    if (keycode == ARP_MODE_SINGLE) {
+    // ARPEGGIATOR MODES (0xEE24-0xEE28)
+    if (keycode == ARP_MODE_SINGLE_SYNCED) {
         if (record->event.pressed) {
-            arp_set_mode(ARPMODE_SINGLE_NOTE);
+            arp_set_mode(ARPMODE_SINGLE_NOTE_SYNCED);
             set_keylog(keycode, record);
         }
         return false;
     }
 
-    if (keycode == ARP_MODE_CHORD_BASIC) {
+    if (keycode == ARP_MODE_SINGLE_UNSYNCED) {
         if (record->event.pressed) {
-            arp_set_mode(ARPMODE_CHORD_BASIC);
+            arp_set_mode(ARPMODE_SINGLE_NOTE_UNSYNCED);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_MODE_CHORD_SYNCED) {
+        if (record->event.pressed) {
+            arp_set_mode(ARPMODE_CHORD_SYNCED);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == ARP_MODE_CHORD_UNSYNCED) {
+        if (record->event.pressed) {
+            arp_set_mode(ARPMODE_CHORD_UNSYNCED);
             set_keylog(keycode, record);
         }
         return false;
