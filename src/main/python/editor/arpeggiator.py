@@ -2923,10 +2923,37 @@ class Arpeggiator(BasicEditor):
         self.debug_log(f"HID TX RAW: [{hex_str}]", "HID_TX")
 
         try:
-            self.device.keyboard.raw_hid_send(bytes(data))
+            response = self.device.keyboard.usb_send(
+                self.device.keyboard.dev, bytes(data), retries=20)
             logger.info(f"Sent HID command: 0x{cmd:02X}")
-            self.debug_log(f"HID TX OK: {cmd_name} sent successfully", "HID_TX")
+
+            # Log and process response
+            if response:
+                hex_str = ' '.join(f'{b:02X}' for b in response[:32])
+                self.debug_log(f"HID RX RAW: [{hex_str}] ({len(response)} bytes)", "HID_RX")
+
+                resp_status = response[4] if len(response) > 4 else 0xFF
+                resp_cmd = response[3] if len(response) > 3 else 0
+                resp_cmd_name = cmd_names.get(resp_cmd, f"0x{resp_cmd:02X}")
+                self.debug_log(f"HID RX: cmd={resp_cmd_name} status=0x{resp_status:02X}", "HID_RX")
+
+                # Process response data (applies preset data for GET_PRESET, etc.)
+                self._process_hid_response(response)
+
+                if resp_status != 0:
+                    self.debug_log(f"HID {cmd_name}: device returned error status 0x{resp_status:02X}", "ERROR")
+                    return False
+
+                self.debug_log(f"HID TX+RX OK: {cmd_name} completed successfully", "HID_TX")
+            else:
+                self.debug_log(f"HID TX: empty response for {cmd_name}", "WARN")
+
             return True
+        except RuntimeError as e:
+            logger.error(f"HID send error: {e}")
+            self.debug_log(f"HID TX FAIL: {cmd_name} RuntimeError: {e}", "ERROR")
+            self.update_status(f"HID error: {e}", error=True)
+            return False
         except Exception as e:
             logger.error(f"HID send error: {e}")
             self.debug_log(f"HID TX FAIL: {cmd_name} exception: {type(e).__name__}: {e}", "ERROR")
@@ -3039,14 +3066,21 @@ class Arpeggiator(BasicEditor):
         return True
 
     def handle_hid_response(self, data):
-        """Handle HID response from device"""
-        # Log raw response data
+        """Handle HID response from device (called via signal from external data).
+
+        Logs raw data then delegates to _process_hid_response.
+        """
+        # Log raw response data (only when called via signal, not from send_hid_command)
         if data:
             hex_str = ' '.join(f'{b:02X}' for b in data[:32])
-            self.debug_log(f"HID RX RAW: [{hex_str}] ({len(data)} bytes)", "HID_RX")
+            self.debug_log(f"HID RX RAW (signal): [{hex_str}] ({len(data)} bytes)", "HID_RX")
 
-        if len(data) < 4:
-            self.debug_log(f"HID RX: response too short ({len(data)} bytes), ignoring", "WARN")
+        self._process_hid_response(data)
+
+    def _process_hid_response(self, data):
+        """Core response processing logic. Called by both handle_hid_response and send_hid_command."""
+        if not data or len(data) < 4:
+            self.debug_log(f"HID RX: response too short ({len(data) if data else 0} bytes), ignoring", "WARN")
             return
 
         cmd = data[3]
@@ -3060,11 +3094,8 @@ class Arpeggiator(BasicEditor):
             0xCC: "SET_MODE"
         }
         cmd_name = cmd_names.get(cmd, f"UNKNOWN(0x{cmd:02X})")
-        self.debug_log(f"HID RX: cmd=0x{cmd:02X} ({cmd_name}) status=0x{status:02X}", "HID_RX")
 
         if status == 0:
-            self.update_status("Command successful")
-
             if cmd == self.ARP_CMD_GET_PRESET:
                 # Parse preset data (new protocol without name field)
                 # data[4] = status
