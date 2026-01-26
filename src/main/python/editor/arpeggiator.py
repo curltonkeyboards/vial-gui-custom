@@ -2666,19 +2666,25 @@ class Arpeggiator(BasicEditor):
 
     def sync_advanced_to_basic(self):
         """Sync data from Advanced view to Basic grid"""
-        # Gather current data from advanced view
-        self.gather_preset_data()
-
-        # Get current rate and timing
+        # Read directly from step widgets (Advanced tab) - don't use gather_preset_data()
+        # because the Basic tab is already active when this is called
         rate_16ths, note_value, timing_mode = self.get_rate_and_timing_from_combo()
-
-        # preset_data['steps'] is already a flat list with timing_16ths
-        # Just pass it directly to the basic grid
-        flat_notes = self.preset_data.get('steps', [])
         num_steps = self.spin_num_steps.value()
 
+        all_notes = []
+        for i, widget in enumerate(self.step_widgets):
+            step_notes = widget.get_step_data()
+            timing_16ths = i * rate_16ths
+            for note_data in step_notes:
+                note_data['timing_16ths'] = timing_16ths
+                all_notes.append(note_data)
+
+        # Update preset_data with step widget data
+        self.preset_data['steps'] = all_notes
+        self.preset_data['note_count'] = len(all_notes)
+
         # Set grid data (includes num_steps sync and rate)
-        self.basic_grid.set_grid_data(flat_notes, num_steps, rate_16ths)
+        self.basic_grid.set_grid_data(all_notes, num_steps, rate_16ths)
 
     def sync_basic_to_advanced(self):
         """Sync data from Basic grid to Advanced view"""
@@ -2756,44 +2762,51 @@ class Arpeggiator(BasicEditor):
         self.preset_data['timing_mode'] = timing_mode  # 0=straight, 1=triplet, 2=dotted
         self.preset_data['note_value'] = note_value    # 0=quarter, 1=eighth, 2=sixteenth
 
-        # Gather notes from all steps
-        # Each step can have multiple notes, all at the same timing
-        # IMPORTANT: Preserve ALL notes including empty ones (semitone_offset = -1) for tab switching
-        all_notes = []
-        for i, widget in enumerate(self.step_widgets):
-            step_notes = widget.get_step_data()  # Returns list of note dicts
-            timing_16ths = i * rate_16ths
+        # Check which tab is active: Basic (index 0) or Advanced (index 1)
+        # If Basic tab is active, gather from the basic grid instead of step_widgets
+        active_tab = self.tabs.currentIndex() if hasattr(self, 'tabs') else 1
 
-            for note_data in step_notes:
-                # Add timing to note
-                note_data['timing_16ths'] = timing_16ths
+        if active_tab == 0 and hasattr(self, 'basic_grid') and self.basic_grid is not None:
+            # Basic tab is active - gather from basic grid
+            grid_data = self.basic_grid.get_grid_data(rate_16ths)
+            all_notes = self._get_complete_steps_from_grid(grid_data, num_steps, rate_16ths)
+        else:
+            # Advanced tab is active - gather from step widgets
+            all_notes = []
+            for i, widget in enumerate(self.step_widgets):
+                step_notes = widget.get_step_data()  # Returns list of note dicts
+                timing_16ths = i * rate_16ths
 
-                # Convert to firmware format
-                if self.is_step_sequencer:
-                    # Step sequencer: note_index already contains absolute note (0-11)
-                    # octave_offset contains absolute octave (0-7)
-                    pass  # Data is already in the right format
-                else:
-                    # Arpeggiator: Convert flat semitones to (interval, octave) for firmware
-                    # GUI stores semitone_offset and octave_offset separately
-                    # Firmware needs them combined as flat semitones, then split into note_index and octave_offset
-                    semitone = note_data.get('semitone_offset', 0)
-                    octave = note_data.get('octave_offset', 0)
+                for note_data in step_notes:
+                    # Add timing to note
+                    note_data['timing_16ths'] = timing_16ths
 
-                    # Convert to flat semitones
-                    flat_semitones = interval_octave_to_flat_semitones(semitone, octave)
+                    # Convert to firmware format
+                    if self.is_step_sequencer:
+                        # Step sequencer: note_index already contains absolute note (0-11)
+                        # octave_offset contains absolute octave (0-7)
+                        pass  # Data is already in the right format
+                    else:
+                        # Arpeggiator: Convert flat semitones to (interval, octave) for firmware
+                        # GUI stores semitone_offset and octave_offset separately
+                        # Firmware needs them combined as flat semitones, then split into note_index and octave_offset
+                        semitone = note_data.get('semitone_offset', 0)
+                        octave = note_data.get('octave_offset', 0)
 
-                    # Convert back to firmware format (interval within octave + octave offset)
-                    interval, octave_offset = flat_semitones_to_interval_octave(flat_semitones)
+                        # Convert to flat semitones
+                        flat_semitones = interval_octave_to_flat_semitones(semitone, octave)
 
-                    # Store in firmware format
-                    note_data['note_index'] = interval
-                    note_data['octave_offset'] = octave_offset
+                        # Convert back to firmware format (interval within octave + octave offset)
+                        interval, octave_offset = flat_semitones_to_interval_octave(flat_semitones)
 
-                # Raw travel is velocity
-                note_data['raw_travel'] = note_data.get('velocity', 200)
+                        # Store in firmware format
+                        note_data['note_index'] = interval
+                        note_data['octave_offset'] = octave_offset
 
-                all_notes.append(note_data)
+                    # Raw travel is velocity
+                    note_data['raw_travel'] = note_data.get('velocity', 200)
+
+                    all_notes.append(note_data)
 
         self.preset_data['steps'] = all_notes
         # Note count includes ALL notes for internal tracking - firmware will filter empty ones
@@ -3139,11 +3152,18 @@ class Arpeggiator(BasicEditor):
             self.debug_console.mark_operation_start()
         self.debug_log(f"LOAD: Starting load for preset_id={self.current_preset_id}", "INFO")
 
-        self.gather_preset_data()
-
         preset_id = self.current_preset_id
-        self.send_hid_command(self.ARP_CMD_GET_PRESET, [preset_id])
         self.update_status(f"Requesting preset {preset_id} from device...")
+
+        if self.send_hid_command(self.ARP_CMD_GET_PRESET, [preset_id]):
+            # Response was processed in _process_hid_response which calls apply_preset_data
+            # and sets status to "Loaded preset X"
+            if hasattr(self, 'debug_console'):
+                self.debug_console.mark_operation_end(success=True)
+        else:
+            self.update_status(f"Error: Failed to load preset {preset_id}", error=True)
+            if hasattr(self, 'debug_console'):
+                self.debug_console.mark_operation_end(success=False)
 
     def save_preset(self):
         """Save preset to device via HID"""
