@@ -106,7 +106,14 @@ void arp_track_note_pressed(uint8_t live_note_index) {
 void arp_track_note_moved(uint8_t from_index, uint8_t to_index) {
     if (from_index < MAX_LIVE_NOTES && to_index < MAX_LIVE_NOTES) {
         live_note_sequence[to_index] = live_note_sequence[from_index];
+        live_note_sequence[from_index] = 0;  // Clear stale source slot
     }
+}
+
+// Reset sequence tracking (called when all live notes are force-cleared)
+void arp_reset_note_sequence(void) {
+    memset(live_note_sequence, 0, sizeof(live_note_sequence));
+    live_note_next_sequence = 1;
 }
 
 // Get index of most recently pressed note that's still held
@@ -479,6 +486,10 @@ void arp_init(void) {
     memset(&arp_active_preset, 0, sizeof(arp_preset_t));
     memset(seq_active_presets, 0, sizeof(seq_active_presets));
 
+    // Reset press order tracking (prevents stale sequence data)
+    memset(live_note_sequence, 0, sizeof(live_note_sequence));
+    live_note_next_sequence = 1;
+
     // Reset arpeggiator state
     arp_state.active = false;
     arp_state.latch_mode = false;
@@ -558,9 +569,17 @@ void arp_start(uint8_t preset_id) {
         }
     }
 
+    // Flush any notes that had their note-on sent before arp was active
+    // This prevents stuck notes when keys are held before arp activates
+    extern void flush_live_notes_for_arp(void);
+    if (!arp_state.active) {
+        flush_live_notes_for_arp();
+    }
+
     arp_state.current_preset_id = preset_id;
     arp_state.active = true;
     arp_state.current_note_in_chord = 0;
+    arp_state.notes_released = false;
     arp_state.next_note_time = timer_read32();  // Start immediately
 
     dprintf("arp: started preset %d\n", preset_id);

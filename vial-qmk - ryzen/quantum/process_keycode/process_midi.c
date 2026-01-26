@@ -93,10 +93,14 @@ static void remove_live_note(uint8_t channel, uint8_t note) {
 
 void force_clear_all_live_notes(void) {
     dprintf("midi: force clearing all live notes (count: %d)\n", live_note_count);
-    
-    // Simply reset the count to 0 to clear all live notes
+
+    // Reset the count to 0 to clear all live notes
     live_note_count = 0;
-    
+
+    // Also reset arpeggiator press order tracking (prevents stale sequence data)
+    extern void arp_reset_note_sequence(void);
+    arp_reset_note_sequence();
+
     dprintf("midi: cleared all live notes\n");
 }
 
@@ -804,6 +808,22 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
 // =============================================================================
 // ARPEGGIATOR MIDI FUNCTIONS
 // =============================================================================
+// Flush function: send note-offs for all currently held notes when arp activates.
+// Notes pressed before arp was active had their note-on sent via MIDI.
+// Without this, those notes would be stuck because arp suppresses note-offs.
+void flush_live_notes_for_arp(void) {
+    for (uint8_t i = 0; i < live_note_count; i++) {
+        uint8_t channel = live_notes[i][0];
+        uint8_t note = live_notes[i][1];
+        uint8_t velocity = live_notes[i][2];
+        midi_send_noteoff(&midi_device, channel, note, velocity);
+        smartchordremovenotes(channel, note, velocity);
+    }
+    dprintf("midi: flushed %d live notes for arp activation\n", live_note_count);
+    // Don't remove from live_notes[] - arp needs them as base notes
+    // Don't remove lighting - keys are still physically held
+}
+
 // These functions are similar to midi_send_noteon/off_with_recording, but:
 // - Do NOT add to live_notes[] (would pollute master note tracking)
 // - Instead add to arp_notes[] for gate timing management
