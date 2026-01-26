@@ -339,7 +339,16 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             hid_edit_preset.gate_length_percent = params[5];
             hid_edit_preset.timing_mode = params[6];
             hid_edit_preset.note_value = params[7];
-            hid_edit_preset.magic = ARP_PRESET_MAGIC;
+
+            // Set magic at the correct struct offset based on preset type.
+            // arp_preset_t has magic at offset 198 (after 64 notes),
+            // seq_preset_t has magic at offset 390 (after 128 notes).
+            // Since hid_edit_preset is seq_preset_t, we must cast for arp presets.
+            if (hid_edit_preset.preset_type == PRESET_TYPE_ARPEGGIATOR) {
+                ((arp_preset_t*)&hid_edit_preset)->magic = ARP_PRESET_MAGIC;
+            } else {
+                hid_edit_preset.magic = ARP_PRESET_MAGIC;
+            }
 
             // Validate using appropriate function
             bool valid = false;
