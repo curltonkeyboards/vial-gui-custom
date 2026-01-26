@@ -112,8 +112,10 @@ HID_CMD_GET_DISTANCE_MATRIX = 0xE7        # Get distance (mm) values for specifi
 # Calibration Debug Command (0xE8)
 HID_CMD_CALIBRATION_DEBUG = 0xE8          # Get calibration debug values
 
-# Sensitivity Curve Tuning Command (0xE9)
+# Sensitivity Curve Tuning Commands (0xE9-0xEA, 0xEF)
 HID_CMD_SET_CURVE_SETTINGS = 0xE9         # Set sensitivity curve tuning parameters
+HID_CMD_SAVE_EQ_SETTINGS = 0xEA           # Save EQ curve settings to EEPROM
+HID_CMD_GET_EQ_SETTINGS = 0xEF            # Get EQ curve settings from keyboard
 
 # Per-Key Actuation Commands (0xE0-0xE6)
 HID_CMD_SET_PER_KEY_ACTUATION = 0xE0     # Set actuation for specific key
@@ -962,11 +964,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Save current EQ curve settings to device EEPROM for persistence
 
         Protocol:
-            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xEA]
-            Response: [header(4), status]
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_SAVE_EQ_SETTINGS]
+            Response: [header(6), status]
         """
         try:
-            packet = self._create_hid_packet(0xEA, 0, bytes())
+            packet = self._create_hid_packet(HID_CMD_SAVE_EQ_SETTINGS, 0, bytes())
             response = self.usb_send(self.dev, packet, retries=1)
 
             # Check for success response
@@ -979,32 +981,33 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get current EQ curve settings from keyboard
 
         Protocol:
-            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xEF]
-            Response: [header(4), range_low(2), range_high(2), bands(15), scales(3), lut(1)]
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, HID_CMD_GET_EQ_SETTINGS]
+            Response: [header(6), range_low(2), range_high(2), bands(15), scales(3), lut(1)]
+                      header = [MFG_ID, SUB_ID, DEV_ID, CMD, MACRO_NUM, STATUS]
 
         Returns:
             dict with keys: range_low, range_high, bands (list of 15), scales (list of 3), lut_strength
             or None on error
         """
         try:
-            packet = self._create_hid_packet(0xEF, 0, bytes())
+            packet = self._create_hid_packet(HID_CMD_GET_EQ_SETTINGS, 0, bytes())
             response = self.usb_send(self.dev, packet, retries=1)
 
-            if not response or len(response) < 27:
+            if not response or len(response) < 29:
                 return None
 
-            # Parse range boundaries (bytes 4-7)
-            range_low = response[4] | (response[5] << 8)
-            range_high = response[6] | (response[7] << 8)
+            # Parse range boundaries (bytes 6-9, after 6-byte header)
+            range_low = response[6] | (response[7] << 8)
+            range_high = response[8] | (response[9] << 8)
 
-            # Parse 15 EQ bands (bytes 8-22)
-            bands = list(response[8:23])
+            # Parse 15 EQ bands (bytes 10-24)
+            bands = list(response[10:25])
 
-            # Parse 3 range scale values (bytes 23-25)
-            scales = list(response[23:26])
+            # Parse 3 range scale values (bytes 25-27)
+            scales = list(response[25:28])
 
-            # Parse LUT correction strength (byte 26)
-            lut_strength = response[26]
+            # Parse LUT correction strength (byte 28)
+            lut_strength = response[28]
 
             return {
                 'range_low': range_low,
