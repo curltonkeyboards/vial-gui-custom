@@ -701,8 +701,7 @@ void arp_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                // Scale velocity from 0-127 to raw_travel (0-255)
-                uint8_t raw_travel = (note->velocity * 2);  // Simple 2x scaling
+                uint8_t raw_travel = note->velocity;
                 uint8_t channel = channel_number;  // Use current MIDI channel
 
                 // Send note-on
@@ -744,8 +743,7 @@ void arp_update(void) {
                     if (final_note < 0) final_note = 0;
                     if (final_note > 127) final_note = 127;
 
-                    // Scale velocity from 0-127 to raw_travel (0-255)
-                    uint8_t raw_travel = (note->velocity * 2);
+                    uint8_t raw_travel = note->velocity;
 
                     // Send note-on
                     midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -779,7 +777,7 @@ void arp_update(void) {
                         if (final_note < 0) final_note = 0;
                         if (final_note > 127) final_note = 127;
 
-                        uint8_t raw_travel = (note->velocity * 2);
+                        uint8_t raw_travel = note->velocity;
 
                         // Send note-on
                         midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -823,7 +821,7 @@ void arp_update(void) {
                 if (final_note < 0) final_note = 0;
                 if (final_note > 127) final_note = 127;
 
-                uint8_t raw_travel = (note->velocity * 2);
+                uint8_t raw_travel = note->velocity;
 
                 // Calculate subdivided gate time (shorter for subdivided notes)
                 uint32_t subdivision_ms = ms_per_16th / live_note_count;
@@ -1007,7 +1005,7 @@ void seq_update(void) {
 
                 // Add to arp_notes for gate tracking (use locked channel)
                 uint32_t note_off_time = current_time + gate_duration_ms;
-                add_arp_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity * 2, note_off_time);
+                add_arp_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time);
             }
         }
 
@@ -1051,8 +1049,7 @@ void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127) {
     // Scale from 0-127 to min_vel-max_vel
     uint8_t scaled_velocity = min_vel + ((velocity_0_127 * (max_vel - min_vel)) / 127);
 
-    // Convert to raw_travel (0-255) for MIDI sending
-    uint8_t raw_travel = scaled_velocity * 2;
+    uint8_t raw_travel = scaled_velocity;
 
     // Send the note
     midi_send_noteon_arp(channel, (uint8_t)transposed_note, raw_travel, raw_travel);
