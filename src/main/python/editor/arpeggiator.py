@@ -479,10 +479,10 @@ class BasicStepSequencerGrid(QWidget):
 
         # Add 4 default rows
         default_notes = [
-            ('C', 1),
-            ('D', 1),
-            ('E', 1),
-            ('F', 1)
+            ('C', 3),
+            ('D', 3),
+            ('E', 3),
+            ('F', 3)
         ]
         note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         for note_name, octave in default_notes:
@@ -602,7 +602,7 @@ class BasicStepSequencerGrid(QWidget):
         # Use red background with white text
         warning_color = QColor.fromHsv(0, 200, 200)  # Red hue, medium saturation/value
         delete_btn.setStyleSheet(f"background-color: {warning_color.name()}; color: white; font-weight: bold; border-radius: 3px;")
-        delete_btn.clicked.connect(lambda: self.delete_note_row(row_idx))
+        delete_btn.clicked.connect(lambda checked, r=row_idx: self.delete_note_row(r))
         note_layout.addWidget(delete_btn)
 
         # Note label - clickable with theme styling (50x50 square)
@@ -623,7 +623,7 @@ class BasicStepSequencerGrid(QWidget):
             }}
         """)
         note_label.setCursor(Qt.PointingHandCursor)
-        note_label.clicked.connect(lambda: self.edit_note_row(row_idx))
+        note_label.clicked.connect(lambda checked, r=row_idx: self.edit_note_row(r))
         note_layout.addWidget(note_label)
 
         note_widget.setLayout(note_layout)
@@ -743,6 +743,12 @@ class BasicStepSequencerGrid(QWidget):
                     'octave': cell.octave
                 })
             cell_states.append(row_states)
+
+        # Remove persistent widgets from grid before clearing to prevent deletion
+        self.grid_layout.removeWidget(self.btn_add_note)
+        self.grid_layout.removeWidget(self.note_title)
+        if hasattr(self, 'add_note_label'):
+            self.grid_layout.removeWidget(self.add_note_label)
 
         # Clear grid widgets
         for i in reversed(range(self.grid_layout.count())):
@@ -933,14 +939,14 @@ class BasicStepSequencerGrid(QWidget):
         self.num_steps = num_steps
         self.rebuild_header()
 
-        # If no data AND no existing rows, create default rows (C1, D1, E1, F1)
+        # If no data AND no existing rows, create default rows (C3, D3, E3, F3)
         if not note_groups:
             note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
             default_notes = [
-                ('C', 1),
-                ('D', 1),
-                ('E', 1),
-                ('F', 1)
+                ('C', 3),
+                ('D', 3),
+                ('E', 3),
+                ('F', 3)
             ]
             for note_name, octave in default_notes:
                 note_index = note_names.index(note_name)
