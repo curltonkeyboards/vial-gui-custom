@@ -53,6 +53,18 @@ static void add_live_note(uint8_t channel, uint8_t note, uint8_t velocity) {
         }
     }
 
+    // Check if this note is already in live_notes (e.g., kept there by arp+sustain)
+    // If so, just update velocity and refresh press order - don't add a duplicate
+    for (uint8_t i = 0; i < live_note_count; i++) {
+        if (live_notes[i][0] == channel && live_notes[i][1] == note) {
+            live_notes[i][2] = velocity;
+            arp_track_note_pressed(i);
+            dprintf("midi: refreshed live note ch:%d note:%d vel:%d (already present)\n",
+                    channel, note, velocity);
+            return;
+        }
+    }
+
     // Now add to live notes
     if (live_note_count < MAX_LIVE_NOTES) {
         uint8_t new_index = live_note_count;
