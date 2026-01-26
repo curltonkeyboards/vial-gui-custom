@@ -31,8 +31,9 @@ TOGGLE_NUM_SLOTS = 100                 # Number of toggle slots (TGL_00 - TGL_99
 TOGGLE_SLOT_SIZE = 4                   # Bytes per slot in firmware
 
 # Toggle Keycode Range
-TOGGLE_KEY_BASE = 0xEE00               # TGL_00
-TOGGLE_KEY_MAX = 0xEE63                # TGL_99 (0xEE00 + 99)
+# NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
+TOGGLE_KEY_BASE = 0xEF10               # TGL_00
+TOGGLE_KEY_MAX = 0xEF73                # TGL_99 (0xEF10 + 99)
 
 
 def is_toggle_keycode(keycode: int) -> bool:

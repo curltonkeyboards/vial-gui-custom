@@ -2513,8 +2513,9 @@ class keycodes_v6:
         # DKS (Dynamic Keystroke) Slots (0xED00-0xED31) - 50 slots
         "DKS_00": 0xED00,  # Base for DKS slot selection
 
-        # Toggle Key Slots (0xEE00-0xEE63) - 100 slots
-        "TGL_00": 0xEE00,  # Base for Toggle slot selection
+        # Toggle Key Slots (0xEF10-0xEF73) - 100 slots
+        # NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
+        "TGL_00": 0xEF10,  # Base for Toggle slot selection
 
         "QK_KB": 0xCC57, #custom keycodes safe range
 
