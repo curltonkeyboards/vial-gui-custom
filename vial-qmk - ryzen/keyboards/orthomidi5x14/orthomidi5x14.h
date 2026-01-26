@@ -659,6 +659,7 @@ typedef struct {
     uint32_t pattern_start_time;        // When current pattern loop started
     uint32_t last_tap_time;             // For double-tap detection
     bool key_held;                      // Is arp button physically held
+    bool notes_released;                // True when all MIDI keys released while arp active (for pattern restart)
 } arp_state_t;
 
 // Step Sequencer runtime state (per slot)
@@ -731,6 +732,8 @@ void seq_next_preset(void);
 void seq_prev_preset(void);
 void arp_handle_button_press(void);
 void arp_handle_button_release(void);
+void arp_handle_key_press(uint8_t preset_id);
+void arp_handle_key_release(void);
 void arp_set_master_gate(uint8_t gate_percent);
 void seq_set_master_gate(uint8_t gate_percent);
 void arp_set_mode(arp_mode_t mode);
