@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 import struct
 import logging
+from datetime import datetime
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QFont, QPalette
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
@@ -8,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
                              QComboBox, QSpinBox, QLineEdit, QScrollArea,
                              QFrame, QButtonGroup, QRadioButton, QCheckBox, QSlider,
                              QInputDialog, QTabWidget, QDialog, QDialogButtonBox,
-                             QApplication, QToolButton)
+                             QApplication, QToolButton, QTextEdit, QSizePolicy)
 
 from editor.basic_editor import BasicEditor
 from util import tr
@@ -16,6 +17,175 @@ from vial_device import VialKeyboard
 from widgets.combo_box import ArrowComboBox
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# DEBUG CONSOLE WIDGET
+# =============================================================================
+
+class DebugConsole(QWidget):
+    """Collapsible debug console for logging HID commands and save operations.
+
+    Provides a text log with timestamps, color-coded messages, and buttons
+    to copy the log to clipboard or clear it.
+    """
+
+    def __init__(self, title="Debug Console", parent=None):
+        super().__init__(parent)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        # Toggle button to show/hide console
+        self.btn_toggle = QPushButton(f">>> {title}")
+        self.btn_toggle.setCheckable(True)
+        self.btn_toggle.setChecked(False)
+        self.btn_toggle.setStyleSheet(
+            "QPushButton { text-align: left; padding: 4px 8px; "
+            "border: 1px solid gray; border-radius: 3px; font-weight: bold; }"
+            "QPushButton:checked { border-bottom-left-radius: 0px; "
+            "border-bottom-right-radius: 0px; }"
+        )
+        self.btn_toggle.clicked.connect(self._toggle_console)
+        layout.addWidget(self.btn_toggle)
+
+        # Console container (hidden by default)
+        self.console_container = QWidget()
+        console_layout = QVBoxLayout()
+        console_layout.setContentsMargins(0, 0, 0, 0)
+        console_layout.setSpacing(4)
+
+        # Text display
+        self.text_edit = QTextEdit()
+        self.text_edit.setReadOnly(True)
+        self.text_edit.setFont(QFont("Consolas", 9) if QFont("Consolas").exactMatch()
+                               else QFont("Monospace", 9))
+        self.text_edit.setMinimumHeight(120)
+        self.text_edit.setMaximumHeight(200)
+        self.text_edit.setStyleSheet(
+            "QTextEdit { background-color: #1e1e1e; color: #cccccc; "
+            "border: 1px solid gray; border-top: none; padding: 4px; }"
+        )
+        console_layout.addWidget(self.text_edit)
+
+        # Button row
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(4)
+
+        btn_style = ("QPushButton { min-height: 24px; max-height: 24px; "
+                     "padding: 2px 12px; border-radius: 3px; }")
+
+        self.btn_copy = QPushButton("Copy Log")
+        self.btn_copy.setStyleSheet(btn_style)
+        self.btn_copy.setToolTip("Copy entire debug log to clipboard")
+        self.btn_copy.clicked.connect(self._copy_to_clipboard)
+        btn_layout.addWidget(self.btn_copy)
+
+        self.btn_copy_last = QPushButton("Copy Last Operation")
+        self.btn_copy_last.setStyleSheet(btn_style)
+        self.btn_copy_last.setToolTip("Copy log entries from the last save/load operation")
+        self.btn_copy_last.clicked.connect(self._copy_last_operation)
+        btn_layout.addWidget(self.btn_copy_last)
+
+        self.btn_clear = QPushButton("Clear")
+        self.btn_clear.setStyleSheet(btn_style)
+        self.btn_clear.setToolTip("Clear all debug log entries")
+        self.btn_clear.clicked.connect(self._clear_log)
+        btn_layout.addWidget(self.btn_clear)
+
+        btn_layout.addStretch()
+        console_layout.addLayout(btn_layout)
+
+        self.console_container.setLayout(console_layout)
+        self.console_container.setVisible(False)
+        layout.addWidget(self.console_container)
+
+        self.setLayout(layout)
+
+        # Track operation boundaries for "Copy Last Operation"
+        self._last_operation_start = 0
+        self._plain_log = []  # Store plain text entries for clipboard
+
+    def _toggle_console(self, checked):
+        """Toggle console visibility"""
+        self.console_container.setVisible(checked)
+        title = self.btn_toggle.text().replace(">>> ", "").replace("<<< ", "")
+        if checked:
+            self.btn_toggle.setText(f"<<< {title}")
+        else:
+            self.btn_toggle.setText(f">>> {title}")
+
+    def log(self, message, level="INFO"):
+        """Append a timestamped message to the debug console.
+
+        Args:
+            message: The log message text
+            level: One of 'INFO', 'ERROR', 'WARN', 'DEBUG', 'HID_TX', 'HID_RX', 'DATA'
+        """
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
+        color_map = {
+            "INFO": "#cccccc",
+            "ERROR": "#ff6b6b",
+            "WARN": "#ffd93d",
+            "DEBUG": "#888888",
+            "HID_TX": "#6bcfff",
+            "HID_RX": "#6bff8a",
+            "DATA": "#c4a7ff",
+        }
+        color = color_map.get(level, "#cccccc")
+
+        # Plain text entry for clipboard
+        plain_entry = f"[{timestamp}] [{level:6s}] {message}"
+        self._plain_log.append(plain_entry)
+
+        # HTML formatted entry for display
+        html = (f'<span style="color:#888;">[{timestamp}]</span> '
+                f'<span style="color:{color};font-weight:bold;">[{level:6s}]</span> '
+                f'<span style="color:{color};">{message}</span>')
+        self.text_edit.append(html)
+
+        # Auto-scroll to bottom
+        scrollbar = self.text_edit.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def mark_operation_start(self):
+        """Mark the start of a new operation (save/load) for 'Copy Last Operation'"""
+        self._last_operation_start = len(self._plain_log)
+        self.log("--- Operation started ---", "DEBUG")
+
+    def mark_operation_end(self, success=True):
+        """Mark the end of an operation"""
+        status = "COMPLETED" if success else "FAILED"
+        self.log(f"--- Operation {status} ---", "DEBUG")
+
+    def _copy_to_clipboard(self):
+        """Copy the entire log to system clipboard"""
+        clipboard = QApplication.clipboard()
+        text = "\n".join(self._plain_log)
+        if not text:
+            text = "(empty log)"
+        clipboard.setText(text)
+        self.log("Log copied to clipboard", "DEBUG")
+
+    def _copy_last_operation(self):
+        """Copy only the last operation's log entries to clipboard"""
+        clipboard = QApplication.clipboard()
+        if self._last_operation_start < len(self._plain_log):
+            entries = self._plain_log[self._last_operation_start:]
+            text = "\n".join(entries)
+        else:
+            text = "(no operation logged yet)"
+        clipboard.setText(text)
+        self.log("Last operation log copied to clipboard", "DEBUG")
+
+    def _clear_log(self):
+        """Clear the debug log"""
+        self.text_edit.clear()
+        self._plain_log.clear()
+        self._last_operation_start = 0
+        self.log("Console cleared", "DEBUG")
 
 
 # =============================================================================
@@ -2201,6 +2371,10 @@ class Arpeggiator(BasicEditor):
         self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
 
+        # Debug console
+        self.debug_console = DebugConsole("Arpeggiator Debug Console")
+        main_layout.addWidget(self.debug_console)
+
         self.addLayout(main_layout)
 
         # Initialize with first preset
@@ -2707,9 +2881,22 @@ class Arpeggiator(BasicEditor):
 
     def send_hid_command(self, cmd, params):
         """Send HID command to device"""
+        # Map command codes to names for debug output
+        cmd_names = {
+            0xC0: "GET_PRESET", 0xC1: "SET_PRESET", 0xC2: "SAVE_PRESET",
+            0xC3: "LOAD_PRESET", 0xC4: "CLEAR_PRESET", 0xC5: "COPY_PRESET",
+            0xC6: "RESET_ALL", 0xC7: "GET_STATE", 0xC8: "SET_STATE",
+            0xC9: "GET_INFO", 0xCA: "SET_NOTE", 0xCB: "SET_NOTES_CHUNK",
+            0xCC: "SET_MODE"
+        }
+        cmd_name = cmd_names.get(cmd, f"UNKNOWN(0x{cmd:02X})")
+
         if not isinstance(self.device, VialKeyboard):
+            self.debug_log(f"HID TX BLOCKED - device not connected (cmd={cmd_name})", "ERROR")
             self.update_status("Error: Device not connected", error=True)
             return False
+
+        self.debug_log(f"HID TX: cmd=0x{cmd:02X} ({cmd_name}) params=[{', '.join(f'0x{p:02X}' if isinstance(p, int) else repr(p) for p in params)}] ({len(params)} params)", "HID_TX")
 
         # Build HID packet
         data = bytearray(32)
@@ -2731,12 +2918,45 @@ class Arpeggiator(BasicEditor):
                             data[i + 4 + j] = byte
                     break
 
+        # Log raw packet hex
+        hex_str = ' '.join(f'{b:02X}' for b in data)
+        self.debug_log(f"HID TX RAW: [{hex_str}]", "HID_TX")
+
         try:
-            self.device.keyboard.raw_hid_send(bytes(data))
+            response = self.device.keyboard.usb_send(
+                self.device.keyboard.dev, bytes(data), retries=20)
             logger.info(f"Sent HID command: 0x{cmd:02X}")
+
+            # Log and process response
+            if response:
+                hex_str = ' '.join(f'{b:02X}' for b in response[:32])
+                self.debug_log(f"HID RX RAW: [{hex_str}] ({len(response)} bytes)", "HID_RX")
+
+                resp_status = response[4] if len(response) > 4 else 0xFF
+                resp_cmd = response[3] if len(response) > 3 else 0
+                resp_cmd_name = cmd_names.get(resp_cmd, f"0x{resp_cmd:02X}")
+                self.debug_log(f"HID RX: cmd={resp_cmd_name} status=0x{resp_status:02X}", "HID_RX")
+
+                # Process response data (applies preset data for GET_PRESET, etc.)
+                self._process_hid_response(response)
+
+                if resp_status != 0:
+                    self.debug_log(f"HID {cmd_name}: device returned error status 0x{resp_status:02X}", "ERROR")
+                    return False
+
+                self.debug_log(f"HID TX+RX OK: {cmd_name} completed successfully", "HID_TX")
+            else:
+                self.debug_log(f"HID TX: empty response for {cmd_name}", "WARN")
+
             return True
+        except RuntimeError as e:
+            logger.error(f"HID send error: {e}")
+            self.debug_log(f"HID TX FAIL: {cmd_name} RuntimeError: {e}", "ERROR")
+            self.update_status(f"HID error: {e}", error=True)
+            return False
         except Exception as e:
             logger.error(f"HID send error: {e}")
+            self.debug_log(f"HID TX FAIL: {cmd_name} exception: {type(e).__name__}: {e}", "ERROR")
             self.update_status(f"HID error: {e}", error=True)
             return False
 
@@ -2794,13 +3014,17 @@ class Arpeggiator(BasicEditor):
         Returns True if all chunks sent successfully.
         """
         if not notes:
+            self.debug_log("CHUNKS: No notes to send, returning True", "INFO")
             logger.info("No notes to send")
             return True
 
         chunk_size = 9  # Maximum 9 notes per packet (27 bytes + 3 byte header = 30 bytes)
         total_notes = len(notes)
+        total_chunks = (total_notes + chunk_size - 1) // chunk_size
         chunks_sent = 0
 
+        self.debug_log(f"CHUNKS: Sending {total_notes} notes in {total_chunks} chunks "
+                       f"(max {chunk_size} notes/chunk, 3 bytes/note)", "INFO")
         logger.info(f"Sending {total_notes} notes in chunks of {chunk_size}")
 
         for start_idx in range(0, total_notes, chunk_size):
@@ -2821,10 +3045,14 @@ class Arpeggiator(BasicEditor):
                 params.extend(packed_bytes)
 
             # Send chunk
+            self.debug_log(f"CHUNKS: Sending chunk {chunks_sent + 1}/{total_chunks}: "
+                           f"notes[{start_idx}..{end_idx - 1}] ({chunk_count} notes, "
+                           f"{len(params)} param bytes)", "DATA")
             logger.info(f"Sending chunk {chunks_sent + 1}: notes {start_idx}-{end_idx - 1} ({chunk_count} notes)")
 
             if not self.send_hid_command(self.ARP_CMD_SET_NOTES_CHUNK, params):
                 logger.error(f"Failed to send chunk {chunks_sent + 1}")
+                self.debug_log(f"CHUNKS: FAILED at chunk {chunks_sent + 1}/{total_chunks}", "ERROR")
                 self.update_status(f"Error: Failed to send notes (chunk {chunks_sent + 1})", error=True)
                 return False
 
@@ -2833,20 +3061,41 @@ class Arpeggiator(BasicEditor):
             # Small delay between chunks to avoid overwhelming the device
             QTimer.singleShot(10, lambda: None)
 
+        self.debug_log(f"CHUNKS: All {chunks_sent} chunks sent successfully ({total_notes} notes)", "INFO")
         logger.info(f"Successfully sent {chunks_sent} chunks ({total_notes} notes)")
         return True
 
     def handle_hid_response(self, data):
-        """Handle HID response from device"""
-        if len(data) < 4:
+        """Handle HID response from device (called via signal from external data).
+
+        Logs raw data then delegates to _process_hid_response.
+        """
+        # Log raw response data (only when called via signal, not from send_hid_command)
+        if data:
+            hex_str = ' '.join(f'{b:02X}' for b in data[:32])
+            self.debug_log(f"HID RX RAW (signal): [{hex_str}] ({len(data)} bytes)", "HID_RX")
+
+        self._process_hid_response(data)
+
+    def _process_hid_response(self, data):
+        """Core response processing logic. Called by both handle_hid_response and send_hid_command."""
+        if not data or len(data) < 4:
+            self.debug_log(f"HID RX: response too short ({len(data) if data else 0} bytes), ignoring", "WARN")
             return
 
         cmd = data[3]
         status = data[4] if len(data) > 4 else 0xFF
 
-        if status == 0:
-            self.update_status("Command successful")
+        cmd_names = {
+            0xC0: "GET_PRESET", 0xC1: "SET_PRESET", 0xC2: "SAVE_PRESET",
+            0xC3: "LOAD_PRESET", 0xC4: "CLEAR_PRESET", 0xC5: "COPY_PRESET",
+            0xC6: "RESET_ALL", 0xC7: "GET_STATE", 0xC8: "SET_STATE",
+            0xC9: "GET_INFO", 0xCA: "SET_NOTE", 0xCB: "SET_NOTES_CHUNK",
+            0xCC: "SET_MODE"
+        }
+        cmd_name = cmd_names.get(cmd, f"UNKNOWN(0x{cmd:02X})")
 
+        if status == 0:
             if cmd == self.ARP_CMD_GET_PRESET:
                 # Parse preset data (new protocol without name field)
                 # data[4] = status
@@ -2863,6 +3112,10 @@ class Arpeggiator(BasicEditor):
                 timing_mode = data[10] if len(data) > 10 else 0
                 note_value = data[11] if len(data) > 11 else 2  # Default to sixteenth
 
+                self.debug_log(f"HID RX PRESET: type={preset_type} notes={note_count} "
+                               f"pattern_len={pattern_length} gate={gate_length}% "
+                               f"timing={timing_mode} note_val={note_value}", "DATA")
+
                 self.preset_data['preset_type'] = preset_type
                 self.preset_data['note_count'] = note_count
                 self.preset_data['pattern_length_16ths'] = pattern_length
@@ -2877,10 +3130,15 @@ class Arpeggiator(BasicEditor):
                 1: "Error: Invalid preset or operation failed",
                 0xFF: "Error: Unknown command"
             }.get(status, f"Error: Status code {status}")
+            self.debug_log(f"HID RX ERROR: {cmd_name} returned status 0x{status:02X}: {error_msg}", "ERROR")
             self.update_status(error_msg, error=True)
 
     def load_preset(self):
         """Load preset from device via HID"""
+        if hasattr(self, 'debug_console'):
+            self.debug_console.mark_operation_start()
+        self.debug_log(f"LOAD: Starting load for preset_id={self.current_preset_id}", "INFO")
+
         self.gather_preset_data()
 
         preset_id = self.current_preset_id
@@ -2889,23 +3147,55 @@ class Arpeggiator(BasicEditor):
 
     def save_preset(self):
         """Save preset to device via HID"""
+        if hasattr(self, 'debug_console'):
+            self.debug_console.mark_operation_start()
+
+        preset_type_name = "StepSequencer" if self.is_step_sequencer else "Arpeggiator"
+        self.debug_log(f"SAVE: Starting save for preset_id={self.current_preset_id} "
+                       f"type={preset_type_name}", "INFO")
+
         # Check factory preset threshold based on preset type
         # Arpeggiator: factory 0-47, user 48-67
         # Step Sequencer: factory 68-115, user 116-135
         if self.is_step_sequencer:
             if self.current_preset_id < 116:
+                self.debug_log(f"SAVE: BLOCKED - preset_id {self.current_preset_id} is factory (< 116)", "ERROR")
                 self.update_status("Cannot save to factory preset (68-115)!", error=True)
+                if hasattr(self, 'debug_console'):
+                    self.debug_console.mark_operation_end(success=False)
                 return
         else:
             if self.current_preset_id < 48:
+                self.debug_log(f"SAVE: BLOCKED - preset_id {self.current_preset_id} is factory (< 48)", "ERROR")
                 self.update_status("Cannot save to factory preset (0-47)!", error=True)
+                if hasattr(self, 'debug_console'):
+                    self.debug_console.mark_operation_end(success=False)
                 return
 
         self.gather_preset_data()
 
+        # Log the gathered preset data
+        self.debug_log(f"SAVE: preset_data = {{"
+                       f"preset_type={self.preset_data.get('preset_type', '?')}, "
+                       f"note_count={self.preset_data.get('note_count', '?')}, "
+                       f"pattern_length_16ths={self.preset_data.get('pattern_length_16ths', '?')}, "
+                       f"gate_length_percent={self.preset_data.get('gate_length_percent', '?')}, "
+                       f"timing_mode={self.preset_data.get('timing_mode', '?')}, "
+                       f"note_value={self.preset_data.get('note_value', '?')}, "
+                       f"steps_count={len(self.preset_data.get('steps', []))}"
+                       f"}}", "DATA")
+
         # Get filtered notes for firmware (excludes empty arpeggiator notes)
         firmware_notes = self.get_firmware_notes()
         firmware_note_count = len(firmware_notes)
+        self.debug_log(f"SAVE: firmware_notes={firmware_note_count} (filtered from "
+                       f"{len(self.preset_data.get('steps', []))} steps)", "DATA")
+
+        # Log first few notes for debugging
+        for i, note in enumerate(firmware_notes[:5]):
+            self.debug_log(f"SAVE: note[{i}] = {note}", "DATA")
+        if firmware_note_count > 5:
+            self.debug_log(f"SAVE: ... and {firmware_note_count - 5} more notes", "DATA")
 
         # Build parameter list (new protocol without name field)
         # params[0] = preset_id
@@ -2927,42 +3217,61 @@ class Arpeggiator(BasicEditor):
             self.preset_data.get('note_value', 2)
         ]
 
+        self.debug_log(f"SAVE Step 1/3: Sending metadata via SET_PRESET", "INFO")
+
         # Step 1: Send preset metadata
         if self.send_hid_command(self.ARP_CMD_SET_PRESET, params):
             self.update_status(f"Saving preset {self.current_preset_id} (metadata sent)...")
 
             # Step 2: Send note data in chunks (after a short delay)
             if firmware_note_count > 0:
+                self.debug_log(f"SAVE Step 2/3: Scheduling note send ({firmware_note_count} notes, 50ms delay)", "INFO")
                 QTimer.singleShot(50, lambda: self._save_preset_send_notes(
                     self.current_preset_id, firmware_notes))
             else:
+                self.debug_log(f"SAVE Step 2/3: No notes to send, skipping to EEPROM write", "INFO")
                 # No notes to send, go straight to EEPROM save
                 QTimer.singleShot(50, lambda: self._save_preset_finalize(
                     self.current_preset_id))
         else:
+            self.debug_log(f"SAVE Step 1/3: FAILED - SET_PRESET command failed", "ERROR")
             self.update_status(f"Error: Failed to save preset {self.current_preset_id}", error=True)
+            if hasattr(self, 'debug_console'):
+                self.debug_console.mark_operation_end(success=False)
 
     def _save_preset_send_notes(self, preset_id, notes):
         """Helper: Send note data after metadata (step 2 of save)"""
+        self.debug_log(f"SAVE Step 2/3: Sending {len(notes)} notes for preset {preset_id}", "INFO")
         self.update_status(f"Saving preset {preset_id} (sending {len(notes)} notes)...")
 
         if self.send_notes_chunked(preset_id, notes):
+            self.debug_log(f"SAVE Step 2/3: Notes sent OK, scheduling EEPROM write (100ms delay)", "INFO")
             # Step 3: Save to EEPROM (after notes are sent)
             QTimer.singleShot(100, lambda: self._save_preset_finalize(preset_id))
         else:
+            self.debug_log(f"SAVE Step 2/3: FAILED - send_notes_chunked returned False", "ERROR")
             self.update_status(f"Error: Failed to send notes for preset {preset_id}", error=True)
+            if hasattr(self, 'debug_console'):
+                self.debug_console.mark_operation_end(success=False)
 
     def _save_preset_finalize(self, preset_id):
         """Helper: Finalize preset save to EEPROM (step 3 of save)"""
+        self.debug_log(f"SAVE Step 3/3: Writing preset {preset_id} to EEPROM via SAVE_PRESET", "INFO")
         self.update_status(f"Saving preset {preset_id} (writing to EEPROM)...")
 
         if self.send_hid_command(self.ARP_CMD_SAVE_PRESET, [preset_id]):
+            self.debug_log(f"SAVE Step 3/3: EEPROM write OK - preset {preset_id} saved!", "INFO")
             self.update_status(f"Preset {preset_id} saved successfully!")
+            if hasattr(self, 'debug_console'):
+                self.debug_console.mark_operation_end(success=True)
         else:
+            self.debug_log(f"SAVE Step 3/3: FAILED - SAVE_PRESET command failed", "ERROR")
             self.update_status(f"Error: Failed to save preset {preset_id} to EEPROM", error=True)
+            if hasattr(self, 'debug_console'):
+                self.debug_console.mark_operation_end(success=False)
 
     def update_status(self, message, error=False):
-        """Update status label"""
+        """Update status label and debug console"""
         logger.info(message)
         self.lbl_status.setText(message)
         # Use theme-based colors for status
@@ -2973,6 +3282,17 @@ class Arpeggiator(BasicEditor):
         else:
             info_color = palette_upd.color(QPalette.Highlight)
             self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
+
+        # Also log to debug console
+        if hasattr(self, 'debug_console'):
+            level = "ERROR" if error else "INFO"
+            self.debug_console.log(message, level)
+
+    def debug_log(self, message, level="DEBUG"):
+        """Log a message to the debug console only (not the status bar)"""
+        logger.debug(message)
+        if hasattr(self, 'debug_console'):
+            self.debug_console.log(message, level)
 
     def valid(self):
         """Check if this tab should be visible"""
@@ -3170,6 +3490,10 @@ class StepSequencer(Arpeggiator):
         info_color = palette_status.color(QPalette.Highlight)
         self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
+
+        # Debug console
+        self.debug_console = DebugConsole("Step Sequencer Debug Console")
+        main_layout.addWidget(self.debug_console)
 
         self.addLayout(main_layout)
 
