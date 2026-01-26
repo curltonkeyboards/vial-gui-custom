@@ -693,10 +693,19 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
 
     uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
 
-    midi_send_noteon(&midi_device, channel, note, final_velocity);
+    // Check if arpeggiator is active - suppress direct MIDI output
+    // The arp engine will generate its own notes from the live_notes[] array
+    extern bool arp_is_active(void);
+    bool arp_suppressed = arp_is_active();
+
+    if (!arp_suppressed) {
+        midi_send_noteon(&midi_device, channel, note, final_velocity);
+        smartchordaddnotes(channel, note, final_velocity);
+        smartchorddisplayupdates(note);
+    }
+
+    // Always update display and live note tracking (arp reads live_notes[])
     noteondisplayupdates(note);
-    smartchordaddnotes(channel, note, final_velocity);
-    smartchorddisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
 
@@ -710,14 +719,17 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
         quick_build_handle_note(channel, note, final_velocity, raw_travel);
     }
 
-    if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
-    }
+    // Skip preroll and macro recording when arp is active (arp records its own output)
+    if (!arp_suppressed) {
+        if (collecting_preroll) {
+            collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
+        }
 
-    if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, travel_for_recording, current_macro_id,
-                                     current_macro_buffer1, current_macro_buffer2,
-                                     current_macro_pointer, current_recording_start_time);
+        if (current_macro_id > 0) {
+            dynamic_macro_intercept_noteon(channel, note, travel_for_recording, current_macro_id,
+                                         current_macro_buffer1, current_macro_buffer2,
+                                         current_macro_pointer, current_recording_start_time);
+        }
     }
 }
 
@@ -735,9 +747,18 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         }
     }
 
-    // Remove from live notes tracking
+    // Always remove from live notes tracking (arp reads live_notes[])
     remove_live_note(channel, note);
     noteoffdisplayupdates(note);
+
+    // Check if arpeggiator is active - suppress direct MIDI output
+    // Note-on was never sent, so no note-off needed either
+    extern bool arp_is_active(void);
+    if (arp_is_active()) {
+        remove_lighting_live_note(channel, note);
+        return;
+    }
+
     smartchordremovenotes(channel, note, velocity);
 
     // Use raw_travel if available, otherwise use velocity as fallback

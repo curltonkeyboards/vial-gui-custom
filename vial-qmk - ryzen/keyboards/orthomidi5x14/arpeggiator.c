@@ -32,7 +32,8 @@ arp_state_t arp_state = {
     .master_gate_override = 0,
     .pattern_start_time = 0,
     .last_tap_time = 0,
-    .key_held = false
+    .key_held = false,
+    .notes_released = false
 };
 
 // Step Sequencer runtime state (8 slots)
@@ -49,6 +50,11 @@ seq_state_t seq_state[MAX_SEQ_SLOTS] = {
 
 // Step Sequencer modifier tracking
 bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, false, false, false};
+
+// Helper: check if arpeggiator is active (used by process_midi.c to suppress direct MIDI output)
+bool arp_is_active(void) {
+    return arp_state.active;
+}
 
 // =============================================================================
 // QUICK BUILD SYSTEM
@@ -577,6 +583,7 @@ void arp_stop(void) {
     arp_state.active = false;
     arp_state.latch_mode = false;
     arp_state.key_held = false;
+    arp_state.notes_released = false;
 
     // Note: We don't immediately send note-offs here
     // Let the gate timing system handle it naturally
@@ -594,13 +601,21 @@ void arp_update(void) {
 
     // Check requirements based on preset type
     if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR) {
-        // Arpeggiator requires live notes (master note)
         if (live_note_count == 0) {
-            // No notes held - stop if not in latch mode
-            if (!arp_state.latch_mode) {
-                arp_stop();
-            }
+            // No notes held - mark for pattern restart when notes return
+            // Don't stop: arp stays armed while button is held or latched
+            arp_state.notes_released = true;
             return;
+        }
+
+        // Notes are held - check if we need to restart pattern from step 0
+        if (arp_state.notes_released) {
+            arp_state.notes_released = false;
+            arp_state.current_position_16ths = 0;
+            arp_state.current_note_in_chord = 0;
+            arp_state.pattern_start_time = timer_read32();
+            arp_state.next_note_time = timer_read32();  // Play immediately
+            dprintf("arp: pattern restart (new note after release)\n");
         }
     }
     // Step sequencer plays independently, no live notes required
@@ -1135,15 +1150,74 @@ void arp_prev_preset(void) {
 
 #define ARP_DOUBLE_TAP_WINDOW 300  // ms for double-tap detection
 
-// Simple toggle arpeggiator on/off
+// Handle arp key press (momentary + double-tap latch)
+// Called for both ARP_PLAY and ARP_PRESET_BASE keycodes
+void arp_handle_key_press(uint8_t preset_id) {
+    uint32_t now = timer_read32();
+
+    // If currently latched with the same preset, unlatch and stop
+    if (arp_state.active && arp_state.latch_mode && arp_state.current_preset_id == preset_id) {
+        arp_stop();
+        arp_state.last_tap_time = 0;  // Reset to prevent accidental re-latch
+        dprintf("arp: unlatched preset %d\n", preset_id);
+        return;
+    }
+
+    // If a different arp is active (latched or momentary), deactivate it first
+    if (arp_state.active) {
+        arp_stop();
+        dprintf("arp: deactivated previous arp for new preset %d\n", preset_id);
+    }
+
+    // Check for double-tap to enable latch
+    bool is_double_tap = (arp_state.last_tap_time > 0) &&
+                         (now - arp_state.last_tap_time) < ARP_DOUBLE_TAP_WINDOW;
+
+    // Initialize BPM if not set
+    if (current_bpm == 0) {
+        current_bpm = 12000000;  // 120.00000 BPM
+        dprintf("arp: initialized BPM to 120\n");
+    }
+
+    // Start arp with the requested preset
+    arp_start(preset_id);
+
+    if (is_double_tap) {
+        arp_state.latch_mode = true;
+        dprintf("arp: LATCHED preset %d (double-tap)\n", preset_id);
+    } else {
+        dprintf("arp: momentary ON preset %d\n", preset_id);
+    }
+
+    arp_state.key_held = true;
+    arp_state.last_tap_time = now;
+}
+
+// Handle arp key release (stop if not latched)
+void arp_handle_key_release(void) {
+    arp_state.key_held = false;
+
+    if (arp_state.latch_mode) {
+        // Latched - keep running after release
+        dprintf("arp: key released (latched, staying on)\n");
+        return;
+    }
+
+    // Momentary - stop on release
+    if (arp_state.active) {
+        arp_stop();
+        dprintf("arp: momentary OFF (key released)\n");
+    }
+}
+
+// Legacy toggle (kept for any other callers)
 void arp_toggle(void) {
     if (arp_state.active) {
         arp_stop();
         dprintf("arp: toggled OFF\n");
     } else {
-        // Initialize BPM if not set
         if (current_bpm == 0) {
-            current_bpm = 12000000;  // 120.00000 BPM
+            current_bpm = 12000000;
             dprintf("arp: initialized BPM to 120\n");
         }
         arp_start(arp_state.current_preset_id);
@@ -1151,35 +1225,19 @@ void arp_toggle(void) {
     }
 }
 
-// Smart preset selection: switch preset and/or toggle on/off
+// Legacy select (kept for any other callers)
 void arp_select_preset(uint8_t preset_id) {
     if (preset_id >= MAX_ARP_PRESETS) return;
-
-    if (arp_state.current_preset_id == preset_id) {
-        // Same preset: toggle on/off
-        arp_toggle();
-    } else {
-        // Different preset: switch to it and turn on
-        arp_state.current_preset_id = preset_id;
-
-        // Initialize BPM if not set
-        if (current_bpm == 0) {
-            current_bpm = 12000000;  // 120.00000 BPM
-            dprintf("arp: initialized BPM to 120\n");
-        }
-
-        arp_start(preset_id);
-        dprintf("arp: switched to preset %d and turned ON\n", preset_id);
-    }
+    arp_handle_key_press(preset_id);
 }
 
-// DEPRECATED: Old button press/release handlers (kept for compatibility)
+// DEPRECATED: Old button press/release handlers
 void arp_handle_button_press(void) {
-    arp_toggle();
+    arp_handle_key_press(arp_state.current_preset_id);
 }
 
 void arp_handle_button_release(void) {
-    // No longer used - toggle handles everything
+    arp_handle_key_release();
 }
 
 void arp_toggle_sync_mode(void) {

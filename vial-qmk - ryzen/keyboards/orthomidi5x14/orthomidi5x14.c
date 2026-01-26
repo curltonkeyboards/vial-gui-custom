@@ -12861,9 +12861,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // ARPEGGIATOR CONTROL KEYCODES (0xEE00-0xEE0F)
     if (keycode == ARP_PLAY) {
         if (record->event.pressed) {
-            arp_toggle();  // Simple toggle on/off
-            set_keylog(keycode, record);
+            arp_handle_key_press(arp_state.current_preset_id);
+        } else {
+            arp_handle_key_release();
         }
+        set_keylog(keycode, record);
         return false;
     }
 
@@ -13015,11 +13017,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // Smart behavior: press to toggle/switch, checks BPM and initializes if needed
     if (keycode >= ARP_PRESET_BASE && keycode < ARP_PRESET_BASE + 68) {
         uint8_t preset_id = keycode - ARP_PRESET_BASE;
-        if (record->event.pressed) {
-            if (preset_id < MAX_ARP_PRESETS) {
-                arp_select_preset(preset_id);  // Smart toggle/switch with BPM check
-                set_keylog(keycode, record);
+        if (preset_id < MAX_ARP_PRESETS) {
+            if (record->event.pressed) {
+                arp_handle_key_press(preset_id);
+            } else {
+                arp_handle_key_release();
             }
+            set_keylog(keycode, record);
         }
         return false;
     }
