@@ -664,8 +664,8 @@ void arp_update(void) {
         uint32_t note_duration_ms = ms_per_16th;  // Default: one 16th note
         uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
-        // Handle Step Sequencer (absolute notes)
-        if (preset->preset_type == PRESET_TYPE_STEP_SEQUENCER) {
+        // Handle Step Sequencer (absolute notes) - use preset ID range, not preset_type
+        if (!is_arp_preset) {
             // Step sequencer: play absolute MIDI notes
             for (uint8_t i = 0; i < note_count_to_play; i++) {
                 uint8_t preset_note_idx = notes_to_play[i];
