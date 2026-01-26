@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout,
                              QComboBox, QSpinBox, QLineEdit, QScrollArea,
                              QFrame, QButtonGroup, QRadioButton, QCheckBox, QSlider,
                              QInputDialog, QTabWidget, QDialog, QDialogButtonBox,
-                             QApplication, QToolButton)
+                             QApplication, QToolButton, QTextEdit)
 
 from editor.basic_editor import BasicEditor
 from util import tr
