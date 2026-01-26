@@ -120,30 +120,34 @@ static void add_sustain_note(uint8_t channel, uint8_t note, uint8_t velocity) {
 // Function to send all accumulated sustain note-offs
 static void flush_sustain_notes(void) {
     dprintf("midi: flushing %d sustain notes\n", sustain_note_count);
-    
+
     for (uint8_t i = 0; i < sustain_note_count; i++) {
         // Send the actual note-off
-        midi_send_noteoff(&midi_device, 
-                          sustain_notes[i][0], 
-                          sustain_notes[i][1], 
+        midi_send_noteoff(&midi_device,
+                          sustain_notes[i][0],
+                          sustain_notes[i][1],
                           sustain_notes[i][2]);
+        // Also remove from live_notes[] - notes may have been kept there
+        // for the arpeggiator while sustain was active (no-op if not found)
+        remove_live_note(sustain_notes[i][0], sustain_notes[i][1]);
+        noteoffdisplayupdates(sustain_notes[i][1]);
         remove_lighting_live_note(sustain_notes[i][0], sustain_notes[i][1]);
         // Also record this note-off in the macro if we're recording
         if (current_macro_id > 0) {
-            dynamic_macro_intercept_noteoff(sustain_notes[i][0], 
-                                          sustain_notes[i][1], 
-                                          sustain_notes[i][2], 
-                                          current_macro_id, 
-                                          current_macro_buffer1, 
-                                          current_macro_buffer2, 
-                                          current_macro_pointer, 
+            dynamic_macro_intercept_noteoff(sustain_notes[i][0],
+                                          sustain_notes[i][1],
+                                          sustain_notes[i][2],
+                                          current_macro_id,
+                                          current_macro_buffer1,
+                                          current_macro_buffer2,
+                                          current_macro_pointer,
                                           current_recording_start_time);
         }
-        
+
         dprintf("midi: sent noteoff for sustained note ch:%d note:%d vel:%d\n",
                 sustain_notes[i][0], sustain_notes[i][1], sustain_notes[i][2]);
     }
-    
+
     sustain_note_count = 0;
 }
 
@@ -751,14 +755,37 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         }
     }
 
-    // Always remove from live notes tracking (arp reads live_notes[])
+    // Check if this note type should ignore sustain
+    // note_type: 0=base, 1=keysplit, 2=triplesplit
+    // sustain value: 0=allow (add to sustain queue), 1=ignore (send immediately)
+    bool ignore_sustain = false;
+    if (note_type == 0 && base_sustain == 1) {
+        ignore_sustain = true;  // Base notes ignore sustain
+    } else if (note_type == 1 && keysplit_sustain == 1) {
+        ignore_sustain = true;  // Keysplit notes ignore sustain
+    } else if (note_type == 2 && triplesplit_sustain == 1) {
+        ignore_sustain = true;  // Triplesplit notes ignore sustain
+    }
+
+    extern bool arp_is_active(void);
+    bool arp_active = arp_is_active();
+
+    // When arp + sustain are both active: keep note in live_notes[] so arp
+    // continues playing it. Queue it for cleanup when sustain is released.
+    if (arp_active && sustain_active && !ignore_sustain) {
+        // Don't remove from live_notes - arp needs this note as a base
+        // Add to sustain queue so flush_sustain_notes() will clean up later
+        add_sustain_note(channel, note, velocity);
+        // Don't update display or lighting - note is still "active" via sustain
+        return;
+    }
+
+    // Remove from live notes tracking
     remove_live_note(channel, note);
     noteoffdisplayupdates(note);
 
-    // Check if arpeggiator is active - suppress direct MIDI output
-    // Note-on was never sent, so no note-off needed either
-    extern bool arp_is_active(void);
-    if (arp_is_active()) {
+    // Arp active (no sustain): suppress MIDI output, arp handles its own notes
+    if (arp_active) {
         remove_lighting_live_note(channel, note);
         return;
     }
@@ -771,18 +798,6 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
     // Collect for preroll if it's active (only for slave recordings)
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, travel_for_recording);
-    }
-
-    // Check if this note type should ignore sustain
-    // note_type: 0=base, 1=keysplit, 2=triplesplit
-    // sustain value: 0=allow (add to sustain queue), 1=ignore (send immediately)
-    bool ignore_sustain = false;
-    if (note_type == 0 && base_sustain == 1) {
-        ignore_sustain = true;  // Base notes ignore sustain
-    } else if (note_type == 1 && keysplit_sustain == 1) {
-        ignore_sustain = true;  // Keysplit notes ignore sustain
-    } else if (note_type == 2 && triplesplit_sustain == 1) {
-        ignore_sustain = true;  // Triplesplit notes ignore sustain
     }
 
     // Handle sustain logic
