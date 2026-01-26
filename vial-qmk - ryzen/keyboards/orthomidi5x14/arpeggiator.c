@@ -237,6 +237,7 @@ bool arp_load_preset_into_slot(uint8_t preset_id) {
     }
 
     arp_state.loaded_preset_id = preset_id;
+    arp_state.current_preset_id = preset_id;  // Also set current so ARP_PLAY uses this preset
     dprintf("arp: loaded preset %d into active slot\n", preset_id);
     return true;
 }
@@ -269,6 +270,7 @@ bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
     }
 
     seq_state[slot].loaded_preset_id = preset_id;
+    seq_state[slot].current_preset_id = preset_id;  // Also set current so SEQ_PLAY uses this preset
     dprintf("seq: loaded preset %d into slot %d\n", preset_id, slot);
     return true;
 }

@@ -2734,6 +2734,9 @@ class Arpeggiator(BasicEditor):
                             data[i + 4 + j] = byte
                     break
 
+        # Log what we're sending for debugging
+        logger.info(f"HID cmd 0x{cmd:02X} sending: params={params[:8] if len(params) > 8 else params}")
+
         try:
             # Send packet and wait for response using proper usb_send
             response = self.device.keyboard.usb_send(
@@ -2744,13 +2747,13 @@ class Arpeggiator(BasicEditor):
 
             # Check response
             if not response or len(response) < 5:
-                logger.error(f"HID command 0x{cmd:02X}: No response or response too short")
+                logger.error(f"HID command 0x{cmd:02X}: No response or response too short (len={len(response) if response else 0})")
                 return False
 
             # Status is at response[4] for arpeggiator commands
             status = response[4]
             if status != 0:
-                logger.error(f"HID command 0x{cmd:02X}: Firmware returned error status {status}")
+                logger.error(f"HID command 0x{cmd:02X}: Firmware returned error status {status}, response bytes: {list(response[:12])}")
                 return False
 
             logger.info(f"HID command 0x{cmd:02X}: Success")
@@ -2948,6 +2951,10 @@ class Arpeggiator(BasicEditor):
             self.preset_data.get('note_value', 2)
         ]
 
+        # Log params for debugging
+        logger.info(f"save_preset: id={self.current_preset_id}, type={params[1]}, notes={firmware_note_count}, "
+                    f"pattern_len={params[3]*256+params[4]}, gate={params[5]}, timing={params[6]}, note_val={params[7]}")
+
         # Step 1: Send preset metadata
         if self.send_hid_command(self.ARP_CMD_SET_PRESET, params):
             self.update_status(f"Saving preset {self.current_preset_id} (metadata sent)...")
@@ -2961,7 +2968,7 @@ class Arpeggiator(BasicEditor):
                 QTimer.singleShot(50, lambda: self._save_preset_finalize(
                     self.current_preset_id))
         else:
-            self.update_status(f"Error: Failed to save preset {self.current_preset_id}", error=True)
+            self.update_status(f"Error: Failed to set preset {self.current_preset_id} metadata (check logs)", error=True)
 
     def _save_preset_send_notes(self, preset_id, notes):
         """Helper: Send note data after metadata (step 2 of save)"""
@@ -2978,7 +2985,13 @@ class Arpeggiator(BasicEditor):
         self.update_status(f"Saving preset {preset_id} (writing to EEPROM)...")
 
         if self.send_hid_command(self.ARP_CMD_SAVE_PRESET, [preset_id]):
-            self.update_status(f"Preset {preset_id} saved successfully!")
+            # After successful save, also load the preset so it's ready to play
+            # params[0] = preset_id, params[1] = seq_slot (0 for default slot)
+            seq_slot = 0 if self.is_step_sequencer else 0
+            if self.send_hid_command(self.ARP_CMD_LOAD_PRESET, [preset_id, seq_slot]):
+                self.update_status(f"Preset {preset_id} saved and loaded!")
+            else:
+                self.update_status(f"Preset {preset_id} saved (load failed)", error=True)
         else:
             self.update_status(f"Error: Failed to save preset {preset_id} to EEPROM", error=True)
 
