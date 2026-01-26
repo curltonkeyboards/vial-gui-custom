@@ -2213,11 +2213,20 @@ class Arpeggiator(BasicEditor):
         self.debug_console.setStyleSheet("font-family: monospace; font-size: 9pt;")
         debug_layout.addWidget(self.debug_console)
 
-        # Clear button
-        btn_clear = QPushButton("Clear Log")
-        btn_clear.setMaximumWidth(100)
+        # Button row
+        btn_layout = QHBoxLayout()
+        btn_clear = QPushButton("Clear")
+        btn_clear.setMaximumWidth(80)
         btn_clear.clicked.connect(lambda: self.debug_console.clear())
-        debug_layout.addWidget(btn_clear)
+        btn_layout.addWidget(btn_clear)
+
+        btn_copy = QPushButton("Copy Log")
+        btn_copy.setMaximumWidth(80)
+        btn_copy.clicked.connect(self._copy_debug_log)
+        btn_layout.addWidget(btn_copy)
+
+        btn_layout.addStretch()
+        debug_layout.addLayout(btn_layout)
 
         self.debug_group.setLayout(debug_layout)
         self.debug_group.toggled.connect(self._on_debug_toggled)
@@ -3061,6 +3070,13 @@ class Arpeggiator(BasicEditor):
         # Just update the visibility - groupbox handles show/hide automatically
         pass
 
+    def _copy_debug_log(self):
+        """Copy debug log contents to clipboard"""
+        if hasattr(self, 'debug_console'):
+            text = self.debug_console.toPlainText()
+            QApplication.clipboard().setText(text)
+            self.update_status("Log copied to clipboard")
+
     def valid(self):
         """Check if this tab should be visible"""
         return isinstance(self.device, VialKeyboard)
@@ -3270,11 +3286,20 @@ class StepSequencer(Arpeggiator):
         self.debug_console.setStyleSheet("font-family: monospace; font-size: 9pt;")
         debug_layout.addWidget(self.debug_console)
 
-        # Clear button
-        btn_clear = QPushButton("Clear Log")
-        btn_clear.setMaximumWidth(100)
+        # Button row
+        btn_layout = QHBoxLayout()
+        btn_clear = QPushButton("Clear")
+        btn_clear.setMaximumWidth(80)
         btn_clear.clicked.connect(lambda: self.debug_console.clear())
-        debug_layout.addWidget(btn_clear)
+        btn_layout.addWidget(btn_clear)
+
+        btn_copy = QPushButton("Copy Log")
+        btn_copy.setMaximumWidth(80)
+        btn_copy.clicked.connect(self._copy_debug_log)
+        btn_layout.addWidget(btn_copy)
+
+        btn_layout.addStretch()
+        debug_layout.addLayout(btn_layout)
 
         self.debug_group.setLayout(debug_layout)
         self.debug_group.toggled.connect(self._on_debug_toggled)

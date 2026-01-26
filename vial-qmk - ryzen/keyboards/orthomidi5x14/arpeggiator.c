@@ -1414,9 +1414,9 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
-    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
-        dprintf("arp: validate failed - pattern_length %d not in [1,127]\n",
+    // Check pattern length bounds (at least 1 16th, max 512 = 32 bars at 1/16 or 128 steps at 1/4)
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 512) {
+        dprintf("arp: validate failed - pattern_length %d not in [1,512]\n",
                 preset->pattern_length_16ths);
         return false;
     }
@@ -1478,9 +1478,9 @@ bool seq_validate_preset(const seq_preset_t *preset) {
         return false;
     }
 
-    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
-    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
-        dprintf("seq: validate failed - pattern_length %d not in [1,127]\n",
+    // Check pattern length bounds (at least 1 16th, max 512 = 32 bars at 1/16 or 128 steps at 1/4)
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 512) {
+        dprintf("seq: validate failed - pattern_length %d not in [1,512]\n",
                 preset->pattern_length_16ths);
         return false;
     }
