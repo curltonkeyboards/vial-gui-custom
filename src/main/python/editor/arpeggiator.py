@@ -2201,6 +2201,28 @@ class Arpeggiator(BasicEditor):
         self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
 
+        # Debug Console (collapsible)
+        self.debug_group = QGroupBox("Debug Console")
+        self.debug_group.setCheckable(True)
+        self.debug_group.setChecked(False)  # Start collapsed
+        debug_layout = QVBoxLayout()
+
+        self.debug_console = QTextEdit()
+        self.debug_console.setReadOnly(True)
+        self.debug_console.setMaximumHeight(150)
+        self.debug_console.setStyleSheet("font-family: monospace; font-size: 9pt;")
+        debug_layout.addWidget(self.debug_console)
+
+        # Clear button
+        btn_clear = QPushButton("Clear Log")
+        btn_clear.setMaximumWidth(100)
+        btn_clear.clicked.connect(lambda: self.debug_console.clear())
+        debug_layout.addWidget(btn_clear)
+
+        self.debug_group.setLayout(debug_layout)
+        self.debug_group.toggled.connect(self._on_debug_toggled)
+        main_layout.addWidget(self.debug_group)
+
         self.addLayout(main_layout)
 
         # Initialize with first preset
@@ -2735,7 +2757,13 @@ class Arpeggiator(BasicEditor):
                     break
 
         # Log what we're sending for debugging
-        logger.info(f"HID cmd 0x{cmd:02X} sending: params={params[:8] if len(params) > 8 else params}")
+        cmd_names = {
+            0xC0: "GET_PRESET", 0xC1: "SET_PRESET", 0xC2: "SAVE_PRESET",
+            0xC3: "LOAD_PRESET", 0xC4: "CLEAR_PRESET", 0xC9: "GET_INFO",
+            0xCB: "SET_NOTES_CHUNK"
+        }
+        cmd_name = cmd_names.get(cmd, f"0x{cmd:02X}")
+        self.log_debug(f"TX {cmd_name}: params={params[:8] if len(params) > 8 else params}")
 
         try:
             # Send packet and wait for response using proper usb_send
@@ -2747,20 +2775,20 @@ class Arpeggiator(BasicEditor):
 
             # Check response
             if not response or len(response) < 5:
-                logger.error(f"HID command 0x{cmd:02X}: No response or response too short (len={len(response) if response else 0})")
+                self.log_debug(f"RX {cmd_name}: No response or too short (len={len(response) if response else 0})", error=True)
                 return False
 
             # Status is at response[4] for arpeggiator commands
             status = response[4]
             if status != 0:
-                logger.error(f"HID command 0x{cmd:02X}: Firmware returned error status {status}, response bytes: {list(response[:12])}")
+                self.log_debug(f"RX {cmd_name}: Error status={status}, bytes={list(response[:12])}", error=True)
                 return False
 
-            logger.info(f"HID command 0x{cmd:02X}: Success")
+            self.log_debug(f"RX {cmd_name}: OK")
             return True
 
         except Exception as e:
-            logger.error(f"HID send error: {e}")
+            self.log_debug(f"RX {cmd_name}: Exception: {e}", error=True)
             self.update_status(f"HID error: {e}", error=True)
             return False
 
@@ -2952,8 +2980,8 @@ class Arpeggiator(BasicEditor):
         ]
 
         # Log params for debugging
-        logger.info(f"save_preset: id={self.current_preset_id}, type={params[1]}, notes={firmware_note_count}, "
-                    f"pattern_len={params[3]*256+params[4]}, gate={params[5]}, timing={params[6]}, note_val={params[7]}")
+        self.log_debug(f"save_preset: id={self.current_preset_id}, type={params[1]}, notes={firmware_note_count}, "
+                       f"pattern_len={params[3]*256+params[4]}, gate={params[5]}, timing={params[6]}, note_val={params[7]}")
 
         # Step 1: Send preset metadata
         if self.send_hid_command(self.ARP_CMD_SET_PRESET, params):
@@ -3007,6 +3035,31 @@ class Arpeggiator(BasicEditor):
         else:
             info_color = palette_upd.color(QPalette.Highlight)
             self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
+
+    def log_debug(self, message, error=False):
+        """Log message to the debug console"""
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        prefix = "[ERR]" if error else "[LOG]"
+        formatted = f"{timestamp} {prefix} {message}"
+
+        # Add to console
+        if hasattr(self, 'debug_console'):
+            self.debug_console.append(formatted)
+            # Auto-scroll to bottom
+            scrollbar = self.debug_console.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
+
+        # Also log to standard logger
+        if error:
+            logger.error(message)
+        else:
+            logger.info(message)
+
+    def _on_debug_toggled(self, checked):
+        """Handle debug console visibility toggle"""
+        # Just update the visibility - groupbox handles show/hide automatically
+        pass
 
     def valid(self):
         """Check if this tab should be visible"""
@@ -3204,6 +3257,28 @@ class StepSequencer(Arpeggiator):
         info_color = palette_status.color(QPalette.Highlight)
         self.lbl_status.setStyleSheet(f"color: {info_color.name()}; padding: 5px;")
         main_layout.addWidget(self.lbl_status)
+
+        # Debug Console (collapsible)
+        self.debug_group = QGroupBox("Debug Console")
+        self.debug_group.setCheckable(True)
+        self.debug_group.setChecked(False)  # Start collapsed
+        debug_layout = QVBoxLayout()
+
+        self.debug_console = QTextEdit()
+        self.debug_console.setReadOnly(True)
+        self.debug_console.setMaximumHeight(150)
+        self.debug_console.setStyleSheet("font-family: monospace; font-size: 9pt;")
+        debug_layout.addWidget(self.debug_console)
+
+        # Clear button
+        btn_clear = QPushButton("Clear Log")
+        btn_clear.setMaximumWidth(100)
+        btn_clear.clicked.connect(lambda: self.debug_console.clear())
+        debug_layout.addWidget(btn_clear)
+
+        self.debug_group.setLayout(debug_layout)
+        self.debug_group.toggled.connect(self._on_debug_toggled)
+        main_layout.addWidget(self.debug_group)
 
         self.addLayout(main_layout)
 

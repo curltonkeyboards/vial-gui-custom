@@ -599,8 +599,11 @@ void arp_update(void) {
     // Use the active preset slot (already loaded by arp_start)
     arp_preset_t *preset = &arp_active_preset;
 
-    // Check requirements based on preset type
-    if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR) {
+    // Arpeggiator presets (0-67) ALWAYS require live notes to play
+    // Check by preset ID range, not preset_type (more robust against corruption)
+    bool is_arp_preset = (arp_state.current_preset_id < 68);
+
+    if (is_arp_preset) {
         // Arpeggiator requires live notes (master note)
         if (live_note_count == 0) {
             // No notes held - if key is held or in latch mode, just wait for notes
@@ -611,7 +614,7 @@ void arp_update(void) {
             return;  // Either way, nothing to play without notes
         }
     }
-    // Step sequencer plays independently, no live notes required
+    // Step sequencer presets (68+) play independently, no live notes required
 
     // Check if it's time to play next note
     uint32_t current_time = timer_read32();
@@ -638,7 +641,8 @@ void arp_update(void) {
     uint8_t note_count_to_play = 0;
     unpacked_note_t unpacked_notes[MAX_ARP_PRESET_NOTES];
 
-    bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
+    // Use preset ID to determine type (more robust than preset_type field)
+    bool is_arpeggiator = is_arp_preset;  // Already computed above from preset ID
 
     for (uint8_t i = 0; i < preset->note_count; i++) {
         // Unpack the note to check its timing
