@@ -605,7 +605,8 @@ typedef struct {
 } arp_note_t;
 
 // Individual note definition within a preset (OPTIMIZED: 3 bytes per note, was 5)
-typedef struct {
+// PACKED to prevent ARM alignment padding (uint16_t would pad to 4 bytes otherwise)
+typedef struct __attribute__((packed)) {
     // Byte 0-1: Packed timing and velocity
     uint16_t packed_timing_vel;
       // bits 0-6:   timing_16ths (0-127 = max 8 bars)
@@ -620,7 +621,8 @@ typedef struct {
 } arp_preset_note_t;  // 3 bytes total (was 5 bytes)
 
 // Arpeggiator preset definition (200 bytes for 64 notes)
-typedef struct {
+// PACKED to ensure sizeof matches ARP_PRESET_SIZE for EEPROM storage
+typedef struct __attribute__((packed)) {
     uint8_t preset_type;                // Always PRESET_TYPE_ARPEGGIATOR
     uint8_t note_count;                 // Number of notes in this preset (1-64)
     uint8_t pattern_length_16ths;       // Total pattern length in 16th notes (1-127 = max 8 bars)
@@ -629,10 +631,11 @@ typedef struct {
     uint8_t note_value;                 // Base note value (NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH)
     arp_preset_note_t notes[MAX_ARP_PRESET_NOTES];  // Note definitions (3 bytes each × 64)
     uint16_t magic;                     // 0xA89F for validation
-} arp_preset_t;  // Total: 8 + (64 × 3) = 200 bytes
+} arp_preset_t;  // Total: 6 + (64 × 3) + 2 = 200 bytes
 
 // Step Sequencer preset definition (392 bytes for 128 notes)
-typedef struct {
+// PACKED to ensure sizeof matches SEQ_PRESET_SIZE for EEPROM storage
+typedef struct __attribute__((packed)) {
     uint8_t preset_type;                // Always PRESET_TYPE_STEP_SEQUENCER
     uint8_t note_count;                 // Number of notes in this preset (1-128)
     uint8_t pattern_length_16ths;       // Total pattern length in 16th notes (1-127 = max 8 bars)
@@ -641,7 +644,7 @@ typedef struct {
     uint8_t note_value;                 // Base note value (NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH)
     arp_preset_note_t notes[MAX_SEQ_PRESET_NOTES];  // Note definitions (3 bytes each × 128)
     uint16_t magic;                     // 0xA89F for validation
-} seq_preset_t;  // Total: 8 + (128 × 3) = 392 bytes
+} seq_preset_t;  // Total: 6 + (128 × 3) + 2 = 392 bytes
 
 // Arpeggiator runtime state
 typedef struct {
@@ -690,6 +693,12 @@ typedef struct {
 #define ARP_PRESET_HEADER_SIZE 8    // Header size (type, count, length, gate, timing_mode, note_value, magic)
 #define ARP_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_ARP_PRESET_NOTES * 3))  // 8 + 192 = 200 bytes
 #define SEQ_PRESET_SIZE (ARP_PRESET_HEADER_SIZE + (MAX_SEQ_PRESET_NOTES * 3))  // 8 + 384 = 392 bytes
+
+// Compile-time checks: struct sizes must match EEPROM layout constants.
+// If these fire, the __attribute__((packed)) was removed or the struct changed.
+_Static_assert(sizeof(arp_preset_note_t) == 3, "arp_preset_note_t must be 3 bytes (check packed attribute)");
+_Static_assert(sizeof(arp_preset_t) == ARP_PRESET_SIZE, "arp_preset_t size must match ARP_PRESET_SIZE");
+_Static_assert(sizeof(seq_preset_t) == SEQ_PRESET_SIZE, "seq_preset_t size must match SEQ_PRESET_SIZE");
 
 // Helper macros for unpacking note data
 #define NOTE_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
