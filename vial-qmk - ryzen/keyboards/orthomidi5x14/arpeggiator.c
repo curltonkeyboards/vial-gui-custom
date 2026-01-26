@@ -51,6 +51,11 @@ seq_state_t seq_state[MAX_SEQ_SLOTS] = {
 // Step Sequencer modifier tracking
 bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, false, false, false};
 
+// Helper: check if arpeggiator is active (used by process_midi.c to suppress direct MIDI output)
+bool arp_is_active(void) {
+    return arp_state.active;
+}
+
 // =============================================================================
 // QUICK BUILD SYSTEM
 // =============================================================================
