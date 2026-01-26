@@ -2985,7 +2985,7 @@ class Arpeggiator(BasicEditor):
         - note_index: 0-11 (4 bits)
         - octave_offset: -8 to +7 (4 bits signed)
         """
-        timing = note.get('timing', 0) & 0x7F
+        timing = note.get('timing_16ths', 0) & 0x7F
         velocity = note.get('velocity', 200) // 2  # Convert 0-255 to 0-127
         velocity = max(0, min(127, velocity))
 
