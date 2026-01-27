@@ -33,18 +33,20 @@ extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 #define MI_PROG_DWN ((0x8000 + 128 * 6) + 128 * 128 + 4)
 #define KC_CUSTOM ((0x8000 + 128 * 6) + 128 * 128 + 5)
 #define MI_VELOCITY_0 ((0x8000 + 128 * 6) + 128 * 128 + 5)
-#define ENCODER_STEP_1 ( (0x8000 + 128 * 7) + 128 * 128 + 5)
+#define ENCODER_STEP_1 0xEF74  // Moved from 0xC385 to avoid collision with MI_INV (SmartChord intervals)
 #undef KC_CUSTOM
 #define KC_CUSTOM (0x8000 + 128 * 7) + 128 * 128 + 5 + 17
 
-// MIDI Routing Toggle Keycodes (after gaming controls)
-#define MIDI_IN_MODE_TOG    (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
-#define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
-#define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
+// MIDI Routing Toggle Keycodes - Fixed addresses (0xEE29-0xEE2B)
+// Moved from KC_CUSTOM+1/2/3 (0xC397-0xC399) to avoid collision with SmartChord MI_CHORD_1/2/3
+#define MIDI_IN_MODE_TOG    0xEE29  // Toggle MIDI In routing mode
+#define USB_MIDI_MODE_TOG   0xEE2A  // Toggle USB MIDI routing mode
+#define MIDI_CLOCK_SRC_TOG  0xEE2B  // Toggle MIDI clock source
 
-// HE Velocity Curve and Range Keycodes - Fixed addresses (not relative to KC_CUSTOM)
-#define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
-#define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
+// HE Velocity Curve Keycodes - Fixed addresses (0xEE2C-0xEE2D)
+// Moved from KC_CUSTOM+4/5 (0xC39A-0xC39B) to avoid collision with SmartChord MI_CHORD_4/5
+#define HE_VEL_CURVE_UP     0xEE2C  // Cycle to next velocity curve
+#define HE_VEL_CURVE_DOWN   0xEE2D  // Cycle to previous velocity curve
 
 // Direct HE Curve Selection (5 keycodes: 0xCCB0-0xCCB4)
 #define HE_CURVE_SOFTEST    0xCCB0
@@ -11008,7 +11010,7 @@ break;
 	
 	
 
-	} else if (keycode == 0xC4B0) {
+	} else if (keycode == 0xEE2E) {  // MI_SCAN - moved from 0xC4B0 to avoid collision with RGB_KC_58
 		if (record->event.pressed) {
 			scan_current_layer_midi_leds();
 			snprintf(name, sizeof(name), "Scanned Layer %d", get_highest_layer(layer_state | default_layer_state));

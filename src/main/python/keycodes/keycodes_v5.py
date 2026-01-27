@@ -1465,7 +1465,7 @@ class keycodes_v5:
         
         "MI_TAP":0xC929,
         
-        "MI_SCAN":0xC4B0,
+        "MI_SCAN":0xEE2E,  # Moved from 0xC4B0 to avoid collision with RGB_KC_58
         
         "MI_ET_1":0xC92A,# Positive intervals up to P5 
         "MI_ET_2":0xC92B,# Negative intervals up to P5
@@ -2354,10 +2354,10 @@ class keycodes_v5:
         # HE Velocity Range base (for dynamic generation, starts at 0xCCB5)
         "HE_VEL_RANGE_1_1": 0xCCB5,  # Base for range keycodes (allows min == max)
 
-        # MIDI Routing Controls (0xEE27-0xEE29) - Moved from 0xC397-0xC399 to avoid collision with SmartChord MI_CHORD_1/2/3
-        "MIDI_IN_MODE_TOG": 0xEE27,  # Hardware MIDI IN routing mode toggle (PROC/THRU/CLK/IGN)
-        "USB_MIDI_MODE_TOG": 0xEE28,  # USB MIDI routing mode toggle (PROC/THRU/CLK/IGN)
-        "MIDI_CLOCK_SRC_TOG": 0xEE29,  # MIDI clock source toggle (LOCAL/USB/MIDI_IN)
+        # MIDI Routing Controls (0xEE29-0xEE2B) - Moved from 0xC397-0xC399 to avoid collision with SmartChord MI_CHORD_1/2/3
+        "MIDI_IN_MODE_TOG": 0xEE29,  # Hardware MIDI IN routing mode toggle (PROC/THRU/CLK/IGN)
+        "USB_MIDI_MODE_TOG": 0xEE2A,  # USB MIDI routing mode toggle (PROC/THRU/CLK/IGN)
+        "MIDI_CLOCK_SRC_TOG": 0xEE2B,  # MIDI clock source toggle (LOCAL/USB/MIDI_IN)
 
         # Arpeggiator Control (0xEE00-0xEE0F) - Moved to avoid overlap with HE Velocity Range
         "ARP_PLAY": 0xEE00,  # Arpeggiator play/stop
