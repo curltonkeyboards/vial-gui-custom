@@ -611,6 +611,7 @@ class KeyWidget2:
         self.mask_color = None
         self.scale = 0
         self.adc_value = None  # ADC value for matrix tester (None = not shown, 0-4095 = value)
+        self.velocity_data = None  # Velocity data tuple (raw_velocity, travel_time_ms) or None
 
         self.rotation_angle = desc.rotation_angle
 
@@ -786,6 +787,10 @@ class KeyWidget2:
     def setAdcValue(self, value):
         """Set ADC value for matrix tester display (None to hide, 0-4095 for value)"""
         self.adc_value = value
+
+    def setVelocityData(self, data):
+        """Set velocity data for velocity tab display (None to hide, or (raw_velocity, travel_time_ms))"""
+        self.velocity_data = data
 
     def __repr__(self):
         qualifiers = ["KeyboardWidget2"]
@@ -1192,6 +1197,41 @@ class KeyboardWidget2(QWidget):
                     round(key.h * 0.30)
                 )
                 qp.drawText(adc_rect, Qt.AlignCenter, str(key.adc_value))
+
+            # draw velocity data if set (for velocity tab)
+            if key.velocity_data is not None:
+                raw_vel, travel_ms = key.velocity_data
+                vel_font = qp.font()
+                vel_font.setPointSize(max(6, vel_font.pointSize() - 2))
+                vel_font.setBold(True)
+                qp.setFont(vel_font)
+                # Color based on velocity value: red(high) -> yellow(mid) -> cyan(low)
+                if raw_vel > 170:
+                    qp.setPen(QColor("#FF4444"))
+                elif raw_vel > 85:
+                    qp.setPen(QColor("#FFAA00"))
+                elif raw_vel > 0:
+                    qp.setPen(QColor("#00CCCC"))
+                else:
+                    light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
+                    is_light = Theme.get_theme() in light_themes
+                    qp.setPen(QColor("#666666") if is_light else QColor("#999999"))
+                # Top line: velocity value
+                vel_top_rect = QRect(
+                    round(key.x),
+                    round(key.y + key.h * 0.05),
+                    round(key.w),
+                    round(key.h * 0.30)
+                )
+                qp.drawText(vel_top_rect, Qt.AlignCenter, f"V:{raw_vel}")
+                # Bottom line: travel time
+                vel_bot_rect = QRect(
+                    round(key.x),
+                    round(key.y + key.h * 0.65),
+                    round(key.w),
+                    round(key.h * 0.30)
+                )
+                qp.drawText(vel_bot_rect, Qt.AlignCenter, f"{travel_ms}ms")
 
             # draw the extra shape (encoder arrow)
             qp.setPen(extra_pen)

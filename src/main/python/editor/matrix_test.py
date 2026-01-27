@@ -259,6 +259,50 @@ class MatrixTest(BasicEditor):
         self.KeyboardWidget2.setMinimumWidth(800)
         main_content_layout.addWidget(self.KeyboardWidget2, alignment=Qt.AlignCenter)
 
+        # Velocity View Controls (horizontal bar below keyboard widget)
+        velocity_controls = QHBoxLayout()
+        velocity_controls.setSpacing(10)
+        velocity_controls.setContentsMargins(0, 0, 0, 0)
+        velocity_controls.addStretch()
+
+        # View mode toggle
+        velocity_controls.addWidget(QLabel("Overlay:"))
+        self.view_mode_combo = QComboBox()
+        self.view_mode_combo.addItem("ADC Values", "adc")
+        self.view_mode_combo.addItem("Velocity Data", "velocity")
+        self.view_mode_combo.setMaximumWidth(140)
+        self.view_mode_combo.currentIndexChanged.connect(self.on_view_mode_changed)
+        velocity_controls.addWidget(self.view_mode_combo)
+
+        # Layer selector (only visible in velocity mode)
+        self.velocity_layer_label = QLabel("Layer:")
+        self.velocity_layer_label.setVisible(False)
+        velocity_controls.addWidget(self.velocity_layer_label)
+        self.velocity_layer_combo = QComboBox()
+        for i in range(12):
+            self.velocity_layer_combo.addItem(f"Layer {i}", i)
+        self.velocity_layer_combo.setMaximumWidth(100)
+        self.velocity_layer_combo.setVisible(False)
+        self.velocity_layer_combo.currentIndexChanged.connect(self.on_velocity_layer_changed)
+        velocity_controls.addWidget(self.velocity_layer_combo)
+
+        # Auto-calibrate button (only visible in velocity mode)
+        self.auto_calibrate_btn = QPushButton("Auto-Calibrate")
+        self.auto_calibrate_btn.setCheckable(True)
+        self.auto_calibrate_btn.setMaximumWidth(130)
+        self.auto_calibrate_btn.setVisible(False)
+        self.auto_calibrate_btn.clicked.connect(self.toggle_auto_calibrate)
+        velocity_controls.addWidget(self.auto_calibrate_btn)
+
+        # Calibration status label
+        self.calibration_status = QLabel("")
+        self.calibration_status.setStyleSheet("color: gray; font-size: 9pt;")
+        self.calibration_status.setVisible(False)
+        velocity_controls.addWidget(self.calibration_status)
+
+        velocity_controls.addStretch()
+        main_content_layout.addLayout(velocity_controls)
+
         # Show Advanced Tuning toggle button (above the hidden content)
         self.advanced_tuning_btn = QPushButton("Show Advanced Tuning")
         self.advanced_tuning_btn.setCheckable(True)
@@ -630,6 +674,18 @@ class MatrixTest(BasicEditor):
         # Keys to poll for distance: [(row, col), ...]
         self.distance_keys = [(0, 0), (0, 3), (0, 11), (3, 0)]
 
+        # Velocity polling timer and state
+        self.velocity_timer = QTimer()
+        self.velocity_timer.timeout.connect(self.velocity_poller)
+        self.velocity_poll_half = 0
+        self.velocity_view_active = False
+        self.velocity_layer = 0
+        self.midi_key_positions = set()  # Set of (row, col) with MIDI keycodes on selected layer
+        # Auto-calibration state
+        self.auto_calibrating = False
+        self.calibration_fastest_ms = 255
+        self.calibration_slowest_ms = 0
+
         self.unlock_btn.clicked.connect(self.unlock)
         self.reset_btn.clicked.connect(self.reset_keyboard_widget)
 
@@ -654,7 +710,8 @@ class MatrixTest(BasicEditor):
         for w in self.KeyboardWidget2.widgets:
             w.setPressed(False)
             w.setOn(False)
-            w.setAdcValue(None)  # Clear ADC values
+            w.setAdcValue(None)
+            w.setVelocityData(None)
 
         # Reset actuation visualizers
         for viz in self.actuation_visualizers.values():
@@ -966,7 +1023,11 @@ class MatrixTest(BasicEditor):
         self.timer.start(20)
         # Start ADC polling at 500ms intervals (slower to avoid HID overload)
         self.adc_poll_half = 0  # Reset to first half
-        self.adc_timer.start(500)
+        if not self.velocity_view_active:
+            self.adc_timer.start(500)
+        else:
+            self.velocity_poll_half = 0
+            self.velocity_timer.start(500)
         # Start distance polling at 50ms intervals for smooth visualization
         self.distance_timer.start(50)
         # Load EQ settings from keyboard
@@ -1029,13 +1090,198 @@ class MatrixTest(BasicEditor):
         self.grabber.releaseKeyboard()
         self.timer.stop()
         self.adc_timer.stop()
+        self.velocity_timer.stop()
         self.distance_timer.stop()
-        # Clear ADC values when leaving the matrix tester
+        # Clear ADC and velocity values when leaving the matrix tester
         for w in self.KeyboardWidget2.widgets:
             w.setAdcValue(None)
+            w.setVelocityData(None)
         # Reset actuation visualizers
         for viz in self.actuation_visualizers.values():
             viz.set_distance(0)
+        # Reset auto-calibration
+        if self.auto_calibrating:
+            self.auto_calibrating = False
+            self.auto_calibrate_btn.setChecked(False)
+
+    def on_view_mode_changed(self, index):
+        """Toggle between ADC and Velocity overlay modes"""
+        mode = self.view_mode_combo.itemData(index)
+        self.velocity_view_active = (mode == "velocity")
+
+        # Show/hide velocity controls
+        self.velocity_layer_label.setVisible(self.velocity_view_active)
+        self.velocity_layer_combo.setVisible(self.velocity_view_active)
+        self.auto_calibrate_btn.setVisible(self.velocity_view_active)
+        self.calibration_status.setVisible(self.velocity_view_active)
+
+        # Clear overlay data from previous mode
+        for w in self.KeyboardWidget2.widgets:
+            w.setAdcValue(None)
+            w.setVelocityData(None)
+
+        if self.velocity_view_active:
+            # Switch from ADC to Velocity polling
+            self.adc_timer.stop()
+            self.velocity_poll_half = 0
+            self.velocity_timer.start(500)
+            # Detect MIDI keys for the selected layer
+            self.detect_midi_keys()
+        else:
+            # Switch from Velocity to ADC polling
+            self.velocity_timer.stop()
+            self.adc_poll_half = 0
+            self.adc_timer.start(500)
+            # Reset auto-calibration
+            if self.auto_calibrating:
+                self.auto_calibrating = False
+                self.auto_calibrate_btn.setChecked(False)
+                self.calibration_status.setText("")
+
+        self.KeyboardWidget2.update()
+
+    def on_velocity_layer_changed(self, index):
+        """Handle velocity layer selector change"""
+        self.velocity_layer = self.velocity_layer_combo.itemData(index)
+        # Clear existing velocity data
+        for w in self.KeyboardWidget2.widgets:
+            w.setVelocityData(None)
+        # Re-detect MIDI keys for the new layer
+        self.detect_midi_keys()
+        self.KeyboardWidget2.update()
+
+    def detect_midi_keys(self):
+        """Detect which keys on the selected layer have MIDI keycodes"""
+        self.midi_key_positions = set()
+
+        if not self.keyboard:
+            return
+
+        layout = getattr(self.keyboard, 'layout', None)
+        if not layout:
+            return
+
+        layer = self.velocity_layer
+
+        for w in self.KeyboardWidget2.widgets:
+            if w.desc.row is not None and w.desc.col is not None:
+                row, col = w.desc.row, w.desc.col
+                keycode = layout.get((layer, row, col), "KC_NO")
+                if self._is_midi_keycode(keycode):
+                    self.midi_key_positions.add((row, col))
+
+    @staticmethod
+    def _is_midi_keycode(keycode):
+        """Check if a keycode is a MIDI note keycode"""
+        if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
+            return False
+
+        if keycode.startswith("MI_SPLIT2_") or keycode.startswith("MI_SPLIT_"):
+            if keycode.startswith("MI_SPLIT2_"):
+                remaining = keycode[10:]
+            else:
+                remaining = keycode[9:]
+            if remaining and remaining[0] in 'CDEFGAB':
+                return True
+            return False
+
+        if keycode.startswith("MI_"):
+            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
+            for prefix in note_prefixes:
+                if keycode.startswith(prefix):
+                    remaining = keycode[len(prefix):]
+                    if remaining == '' or remaining.startswith('s') or remaining.startswith('b'):
+                        return True
+                    if remaining.startswith('_') or remaining[0].isdigit():
+                        return True
+            return False
+
+        return False
+
+    def velocity_poller(self):
+        """Poll velocity data for half the matrix rows each cycle"""
+        if not self.valid():
+            self.velocity_timer.stop()
+            return
+
+        try:
+            unlocked = self.keyboard.get_unlock_status(1)
+        except (RuntimeError, ValueError):
+            return
+
+        if not unlocked:
+            return
+
+        rows = self.keyboard.rows
+        cols = self.keyboard.cols
+
+        # Determine which rows to poll this cycle (alternate halves)
+        half_rows = (rows + 1) // 2
+        if self.velocity_poll_half == 0:
+            row_start = 0
+            row_end = half_rows
+        else:
+            row_start = half_rows
+            row_end = rows
+
+        # Poll velocity data for the selected rows
+        velocity_matrix = {}
+        for row in range(row_start, row_end):
+            try:
+                vel_data = self.keyboard.velocity_matrix_poll(row)
+                if vel_data:
+                    velocity_matrix[row] = vel_data
+            except (RuntimeError, ValueError):
+                continue
+
+        # Update keyboard widget with velocity data (only for MIDI keys)
+        for w in self.KeyboardWidget2.widgets:
+            if w.desc.row is not None and w.desc.col is not None:
+                row, col = w.desc.row, w.desc.col
+
+                if row in velocity_matrix and col < len(velocity_matrix[row]):
+                    if (row, col) in self.midi_key_positions:
+                        raw_vel, travel_ms = velocity_matrix[row][col]
+                        w.setVelocityData((raw_vel, travel_ms))
+                        # Auto-calibration: track fastest and slowest travel times
+                        if self.auto_calibrating and travel_ms > 0:
+                            if travel_ms < self.calibration_fastest_ms:
+                                self.calibration_fastest_ms = travel_ms
+                            if travel_ms > self.calibration_slowest_ms:
+                                self.calibration_slowest_ms = travel_ms
+                            self.calibration_status.setText(
+                                f"Fastest: {self.calibration_fastest_ms}ms  "
+                                f"Slowest: {self.calibration_slowest_ms}ms")
+                    else:
+                        # Non-MIDI key: show nothing
+                        w.setVelocityData(None)
+
+        # Alternate to the other half for next poll
+        self.velocity_poll_half = 1 - self.velocity_poll_half
+        self.KeyboardWidget2.update()
+
+    def toggle_auto_calibrate(self, checked):
+        """Toggle auto-calibration mode"""
+        if checked:
+            # Start auto-calibration
+            self.auto_calibrating = True
+            self.calibration_fastest_ms = 255
+            self.calibration_slowest_ms = 0
+            self.auto_calibrate_btn.setText("Stop Calibration")
+            self.auto_calibrate_btn.setStyleSheet("QPushButton { background-color: #cc4444; }")
+            self.calibration_status.setText("Play soft and hard presses...")
+        else:
+            # Stop auto-calibration and show results
+            self.auto_calibrating = False
+            self.auto_calibrate_btn.setText("Auto-Calibrate")
+            self.auto_calibrate_btn.setStyleSheet("")
+            if self.calibration_slowest_ms > 0 and self.calibration_fastest_ms < 255:
+                self.calibration_status.setText(
+                    f"Result: Fastest={self.calibration_fastest_ms}ms  "
+                    f"Slowest={self.calibration_slowest_ms}ms  "
+                    f"(Set these in Advanced Settings)")
+            else:
+                self.calibration_status.setText("No key presses detected during calibration.")
 
 
 class ThruLoopConfigurator(BasicEditor):
@@ -3630,7 +3876,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'rapid': 4,
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
-                'vel_speed': 10,
+                'fastest_press_ms': 5,
+                'slowest_press_ms': 100,
                 'aftertouch_cc': 255,  # 255 = off (no CC sent)
                 'vibrato_sensitivity': 100,  # 100% = normal
                 'vibrato_decay_time': 200,   # 200ms decay
@@ -4045,26 +4292,48 @@ class LayerActuationConfigurator(BasicEditor):
             lambda: self.on_master_combo_changed('velocity', velocity_combo)
         )
         
-        # Velocity Speed Scale (dropdown)
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Velocity Speed Scale:"))
-        label.setMinimumWidth(200)
-        combo_layout.addWidget(label)
-        
-        vel_speed_combo = ArrowComboBox()
-        vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 21):
-            vel_speed_combo.addItem(str(i), i)
-        vel_speed_combo.setCurrentIndex(9)
-        vel_speed_combo.setEditable(True)
-        vel_speed_combo.lineEdit().setReadOnly(True)
-        vel_speed_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(vel_speed_combo)
-        combo_layout.addStretch()
-        
-        advanced_layout.addLayout(combo_layout)
-        vel_speed_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('vel_speed', vel_speed_combo)
+        # Fastest Press Time slider (ms)
+        fastest_layout = QHBoxLayout()
+        fastest_label = QLabel(tr("LayerActuationConfigurator", "Fastest Press:"))
+        fastest_label.setMinimumWidth(200)
+        fastest_layout.addWidget(fastest_label)
+
+        fastest_press_slider = QSlider(Qt.Horizontal)
+        fastest_press_slider.setMinimum(1)
+        fastest_press_slider.setMaximum(254)
+        fastest_press_slider.setValue(5)
+        fastest_layout.addWidget(fastest_press_slider)
+
+        fastest_press_value = QLabel("5 ms")
+        fastest_press_value.setMinimumWidth(50)
+        fastest_press_value.setStyleSheet("QLabel { font-weight: bold; }")
+        fastest_layout.addWidget(fastest_press_value)
+
+        advanced_layout.addLayout(fastest_layout)
+        fastest_press_slider.valueChanged.connect(
+            lambda v, lbl=fastest_press_value: self.on_master_speed_slider_changed('fastest_press_ms', v, lbl)
+        )
+
+        # Slowest Press Time slider (ms)
+        slowest_layout = QHBoxLayout()
+        slowest_label = QLabel(tr("LayerActuationConfigurator", "Slowest Press:"))
+        slowest_label.setMinimumWidth(200)
+        slowest_layout.addWidget(slowest_label)
+
+        slowest_press_slider = QSlider(Qt.Horizontal)
+        slowest_press_slider.setMinimum(2)
+        slowest_press_slider.setMaximum(255)
+        slowest_press_slider.setValue(100)
+        slowest_layout.addWidget(slowest_press_slider)
+
+        slowest_press_value = QLabel("100 ms")
+        slowest_press_value.setMinimumWidth(50)
+        slowest_press_value.setStyleSheet("QLabel { font-weight: bold; }")
+        slowest_layout.addWidget(slowest_press_value)
+
+        advanced_layout.addLayout(slowest_layout)
+        slowest_press_slider.valueChanged.connect(
+            lambda v, lbl=slowest_press_value: self.on_master_speed_slider_changed('slowest_press_ms', v, lbl)
         )
         
         # Enable MIDI Rapidfire checkbox
@@ -4292,7 +4561,10 @@ class LayerActuationConfigurator(BasicEditor):
             'vibrato_decay_time_label': vibrato_decay_value_label,
             'vibrato_decay_time_widget': vibrato_decay_widget,
             'velocity_combo': velocity_combo,
-            'vel_speed_combo': vel_speed_combo,
+            'fastest_press_slider': fastest_press_slider,
+            'fastest_press_label': fastest_press_value,
+            'slowest_press_slider': slowest_press_slider,
+            'slowest_press_label': slowest_press_value,
             'rapid_checkbox': rapid_checkbox,
             'rapid_slider': rapid_slider,
             'rapid_label': rapid_value_label,
@@ -4512,28 +4784,53 @@ class LayerActuationConfigurator(BasicEditor):
         )
         self.layer_widgets['velocity_combo'] = combo
         
-        # Velocity Speed Scale combo
-        combo_layout = QHBoxLayout()
-        label = QLabel(tr("LayerActuationConfigurator", "Velocity Speed Scale:"))
-        label.setMinimumWidth(180)
-        combo_layout.addWidget(label)
-        
-        combo = ArrowComboBox()
-        combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        for i in range(1, 21):
-            combo.addItem(str(i), i)
-        combo.setCurrentIndex(9)
-        combo.setEditable(True)
-        combo.lineEdit().setReadOnly(True)
-        combo.lineEdit().setAlignment(Qt.AlignCenter)
-        combo_layout.addWidget(combo)
-        combo_layout.addStretch()
+        # Fastest Press Time slider (ms)
+        fastest_layout = QHBoxLayout()
+        fastest_lbl = QLabel(tr("LayerActuationConfigurator", "Fastest Press:"))
+        fastest_lbl.setMinimumWidth(180)
+        fastest_layout.addWidget(fastest_lbl)
 
-        layer_advanced_layout.addLayout(combo_layout)
-        combo.currentIndexChanged.connect(
-            lambda: self.on_layer_combo_changed('vel_speed', combo)
+        layer_fastest_slider = QSlider(Qt.Horizontal)
+        layer_fastest_slider.setMinimum(1)
+        layer_fastest_slider.setMaximum(254)
+        layer_fastest_slider.setValue(5)
+        fastest_layout.addWidget(layer_fastest_slider)
+
+        layer_fastest_label = QLabel("5 ms")
+        layer_fastest_label.setMinimumWidth(50)
+        layer_fastest_label.setStyleSheet("QLabel { font-weight: bold; }")
+        fastest_layout.addWidget(layer_fastest_label)
+
+        layer_advanced_layout.addLayout(fastest_layout)
+        layer_fastest_slider.valueChanged.connect(
+            lambda v, lbl=layer_fastest_label: self.on_layer_speed_slider_changed('fastest_press_ms', v, lbl)
         )
-        self.layer_widgets['vel_speed_combo'] = combo
+        self.layer_widgets['fastest_press_slider'] = layer_fastest_slider
+        self.layer_widgets['fastest_press_label'] = layer_fastest_label
+
+        # Slowest Press Time slider (ms)
+        slowest_layout = QHBoxLayout()
+        slowest_lbl = QLabel(tr("LayerActuationConfigurator", "Slowest Press:"))
+        slowest_lbl.setMinimumWidth(180)
+        slowest_layout.addWidget(slowest_lbl)
+
+        layer_slowest_slider = QSlider(Qt.Horizontal)
+        layer_slowest_slider.setMinimum(2)
+        layer_slowest_slider.setMaximum(255)
+        layer_slowest_slider.setValue(100)
+        slowest_layout.addWidget(layer_slowest_slider)
+
+        layer_slowest_label = QLabel("100 ms")
+        layer_slowest_label.setMinimumWidth(50)
+        layer_slowest_label.setStyleSheet("QLabel { font-weight: bold; }")
+        slowest_layout.addWidget(layer_slowest_label)
+
+        layer_advanced_layout.addLayout(slowest_layout)
+        layer_slowest_slider.valueChanged.connect(
+            lambda v, lbl=layer_slowest_label: self.on_layer_speed_slider_changed('slowest_press_ms', v, lbl)
+        )
+        self.layer_widgets['slowest_press_slider'] = layer_slowest_slider
+        self.layer_widgets['slowest_press_label'] = layer_slowest_label
         
         # Enable MIDI Rapidfire checkbox
         midi_rapid_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable MIDI Rapidfire"))
@@ -4777,7 +5074,8 @@ class LayerActuationConfigurator(BasicEditor):
         self.layer_data[layer]['rapid'] = self.layer_widgets['rapid_slider'].value()
         self.layer_data[layer]['midi_rapid_sens'] = self.layer_widgets['midi_rapid_sens_slider'].value()
         self.layer_data[layer]['midi_rapid_vel'] = self.layer_widgets['midi_rapid_vel_slider'].value()
-        self.layer_data[layer]['vel_speed'] = self.layer_widgets['vel_speed_combo'].currentData()
+        self.layer_data[layer]['fastest_press_ms'] = self.layer_widgets['fastest_press_slider'].value()
+        self.layer_data[layer]['slowest_press_ms'] = self.layer_widgets['slowest_press_slider'].value()
         self.layer_data[layer]['aftertouch_cc'] = self.layer_widgets['aftertouch_cc_combo'].currentData()
         self.layer_data[layer]['rapidfire_enabled'] = self.layer_widgets['rapid_checkbox'].isChecked()
         self.layer_data[layer]['midi_rapidfire_enabled'] = self.layer_widgets['midi_rapid_checkbox'].isChecked()
@@ -4796,12 +5094,18 @@ class LayerActuationConfigurator(BasicEditor):
         self.layer_widgets['midi_slider'].setValue(data['midi'])
 
         # Set combos
-        for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed', 'he_curve']:
+        for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'he_curve']:
             combo = self.layer_widgets[f'{key}_combo']
             for i in range(combo.count()):
                 if combo.itemData(i) == data[key]:
                     combo.setCurrentIndex(i)
                     break
+
+        # Set fastest/slowest press time sliders
+        self.layer_widgets['fastest_press_slider'].setValue(data.get('fastest_press_ms', 5))
+        self.layer_widgets['fastest_press_label'].setText(f"{data.get('fastest_press_ms', 5)} ms")
+        self.layer_widgets['slowest_press_slider'].setValue(data.get('slowest_press_ms', 100))
+        self.layer_widgets['slowest_press_label'].setText(f"{data.get('slowest_press_ms', 100)} ms")
 
         # Set rapidfire
         self.layer_widgets['rapid_checkbox'].setChecked(data['rapidfire_enabled'])
@@ -4885,7 +5189,19 @@ class LayerActuationConfigurator(BasicEditor):
             value = combo.currentData()
             for layer_data in self.layer_data:
                 layer_data[key] = value
-    
+
+    def on_master_speed_slider_changed(self, key, value, label):
+        """Handle master fastest/slowest press time slider changes"""
+        label.setText(f"{value} ms")
+        if not self.per_layer_enabled:
+            for layer_data in self.layer_data:
+                layer_data[key] = value
+
+    def on_layer_speed_slider_changed(self, key, value, label):
+        """Handle layer fastest/slowest press time slider changes"""
+        label.setText(f"{value} ms")
+        self.layer_data[self.current_layer][key] = value
+
     def on_layer_slider_changed(self, key, value, label):
         """Handle layer slider changes"""
         if key in ['normal', 'midi']:
@@ -4918,7 +5234,8 @@ class LayerActuationConfigurator(BasicEditor):
             'rapid': self.master_widgets['rapid_slider'].value(),
             'midi_rapid_sens': self.master_widgets['midi_rapid_sens_slider'].value(),
             'midi_rapid_vel': self.master_widgets['midi_rapid_vel_slider'].value(),
-            'vel_speed': self.master_widgets['vel_speed_combo'].currentData(),
+            'fastest_press_ms': self.master_widgets['fastest_press_slider'].value(),
+            'slowest_press_ms': self.master_widgets['slowest_press_slider'].value(),
             'aftertouch_cc': self.master_widgets['aftertouch_cc_combo'].currentData(),
             'vibrato_sensitivity': self.master_widgets['vibrato_sensitivity_slider'].value(),
             'vibrato_decay_time': self.master_widgets['vibrato_decay_time_slider'].value(),
@@ -4955,7 +5272,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'rapid': layer_data['rapid'],
                 'midi_rapid_sens': layer_data['midi_rapid_sens'],
                 'midi_rapid_vel': layer_data['midi_rapid_vel'],
-                'vel_speed': layer_data['vel_speed'],
+                'fastest_press_ms': layer_data.get('fastest_press_ms', 5),
+                'slowest_press_ms': layer_data.get('slowest_press_ms', 100),
                 'aftertouch_cc': layer_data.get('aftertouch_cc', 255),
                 'vibrato_sensitivity': layer_data.get('vibrato_sensitivity', 100),
                 'vibrato_decay_time': layer_data.get('vibrato_decay_time', 200),
@@ -4980,10 +5298,10 @@ class LayerActuationConfigurator(BasicEditor):
 
             actuations = self.get_all_actuations()
 
-            # Send all 12 layers (11 bytes each)
-            # Protocol: [layer, normal, midi, velocity_mode, vel_speed, flags,
+            # Send all 12 layers (12 bytes each)
+            # Protocol: [layer, normal, midi, velocity_mode, fastest_press_ms, flags,
             #            aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
-            #            vibrato_decay_time_low, vibrato_decay_time_high]
+            #            vibrato_decay_time_low, vibrato_decay_time_high, slowest_press_ms]
             for layer, values in enumerate(actuations):
                 vibrato_decay = values['vibrato_decay_time']
                 data = bytearray([
@@ -4991,13 +5309,14 @@ class LayerActuationConfigurator(BasicEditor):
                     values['normal'],
                     values['midi'],
                     values['velocity'],
-                    values['vel_speed'],
+                    values.get('fastest_press_ms', 5),
                     values['flags'],
                     values['aftertouch'],
                     values['aftertouch_cc'],
                     values['vibrato_sensitivity'],
                     vibrato_decay & 0xFF,           # Low byte
-                    (vibrato_decay >> 8) & 0xFF     # High byte
+                    (vibrato_decay >> 8) & 0xFF,    # High byte
+                    values.get('slowest_press_ms', 100)
                 ])
 
                 if not self.device.keyboard.set_layer_actuation(data):
@@ -5016,29 +5335,29 @@ class LayerActuationConfigurator(BasicEditor):
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
 
-            # Get all actuations (120 bytes = 12 layers × 10 bytes)
-            # [normal, midi, velocity_mode, vel_speed, flags,
+            # Get all actuations (144 bytes = 12 layers × 12 bytes)
+            # [normal, midi, velocity_mode, fastest_press_ms, flags,
             #  aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
-            #  vibrato_decay_time_low, vibrato_decay_time_high]
+            #  vibrato_decay_time_low, vibrato_decay_time_high, slowest_press_ms, reserved]
             actuations = self.device.keyboard.get_all_layer_actuations()
 
-            if not actuations or len(actuations) < 120:
+            if not actuations or len(actuations) < 144:
                 raise RuntimeError("Failed to load actuations from keyboard")
 
             # Check if all layers are the same
             all_same = True
             first_values = {}
 
-            # New protocol: 10 bytes per layer
-            keys = ['normal', 'midi', 'velocity', 'vel_speed', 'flags',
+            # Protocol: 12 bytes per layer
+            keys = ['normal', 'midi', 'velocity', 'fastest_press_ms', 'flags',
                     'aftertouch', 'aftertouch_cc', 'vibrato_sensitivity',
-                    'vibrato_decay_low', 'vibrato_decay_high']
+                    'vibrato_decay_low', 'vibrato_decay_high', 'slowest_press_ms', 'reserved']
 
             for key_idx, key in enumerate(keys):
                 first_values[key] = actuations[key_idx]
 
                 for layer in range(1, 12):
-                    offset = layer * 10 + key_idx
+                    offset = layer * 12 + key_idx
                     if actuations[offset] != first_values[key]:
                         all_same = False
                         break
@@ -5050,7 +5369,7 @@ class LayerActuationConfigurator(BasicEditor):
 
             # Load into layer data
             for layer in range(12):
-                offset = layer * 10
+                offset = layer * 12
                 flags = actuations[offset + 4]
                 vibrato_decay = actuations[offset + 8] | (actuations[offset + 9] << 8)
 
@@ -5058,11 +5377,12 @@ class LayerActuationConfigurator(BasicEditor):
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
                     'velocity': actuations[offset + 2],
-                    'vel_speed': actuations[offset + 3],
+                    'fastest_press_ms': actuations[offset + 3],
                     'aftertouch': actuations[offset + 5],
                     'aftertouch_cc': actuations[offset + 6],
                     'vibrato_sensitivity': actuations[offset + 7],
                     'vibrato_decay_time': vibrato_decay,
+                    'slowest_press_ms': actuations[offset + 10],
                     'rapidfire_enabled': (flags & 0x01) != 0,
                     'midi_rapidfire_enabled': (flags & 0x02) != 0,
                     'use_fixed_velocity': (flags & 0x04) != 0,
@@ -5079,12 +5399,18 @@ class LayerActuationConfigurator(BasicEditor):
             self.master_widgets['normal_slider'].setValue(first_values['normal'])
             self.master_widgets['midi_slider'].setValue(first_values['midi'])
 
-            for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed']:
+            for key in ['aftertouch', 'aftertouch_cc', 'velocity']:
                 combo = self.master_widgets[f'{key}_combo']
                 for i in range(combo.count()):
                     if combo.itemData(i) == first_values[key]:
                         combo.setCurrentIndex(i)
                         break
+
+            # Set fastest/slowest press time sliders
+            self.master_widgets['fastest_press_slider'].setValue(first_values.get('fastest_press_ms', 5))
+            self.master_widgets['fastest_press_label'].setText(f"{first_values.get('fastest_press_ms', 5)} ms")
+            self.master_widgets['slowest_press_slider'].setValue(first_values.get('slowest_press_ms', 100))
+            self.master_widgets['slowest_press_label'].setText(f"{first_values.get('slowest_press_ms', 100)} ms")
 
             # Vibrato sensitivity and decay
             self.master_widgets['vibrato_sensitivity_slider'].setValue(first_values['vibrato_sensitivity'])
@@ -5147,7 +5473,8 @@ class LayerActuationConfigurator(BasicEditor):
                     'rapid': 4,
                     'midi_rapid_sens': 10,
                     'midi_rapid_vel': 10,
-                    'vel_speed': 10,
+                    'fastest_press_ms': 5,
+                    'slowest_press_ms': 100,
                     'aftertouch_cc': 255,  # 255 = off (no CC sent)
                     'vibrato_sensitivity': 100,  # 100% = normal
                     'vibrato_decay_time': 200,   # 200ms decay
@@ -5163,12 +5490,18 @@ class LayerActuationConfigurator(BasicEditor):
                 self.master_widgets['normal_slider'].setValue(defaults['normal'])
                 self.master_widgets['midi_slider'].setValue(defaults['midi'])
 
-                for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed']:
+                for key in ['aftertouch', 'aftertouch_cc', 'velocity']:
                     combo = self.master_widgets[f'{key}_combo']
                     for i in range(combo.count()):
                         if combo.itemData(i) == defaults[key]:
                             combo.setCurrentIndex(i)
                             break
+
+                # Reset fastest/slowest press time sliders
+                self.master_widgets['fastest_press_slider'].setValue(5)
+                self.master_widgets['fastest_press_label'].setText("5 ms")
+                self.master_widgets['slowest_press_slider'].setValue(100)
+                self.master_widgets['slowest_press_label'].setText("100 ms")
 
                 # Vibrato controls
                 self.master_widgets['vibrato_sensitivity_slider'].setValue(defaults['vibrato_sensitivity'])
@@ -5218,73 +5551,94 @@ class LayerActuationConfigurator(BasicEditor):
         """Load settings without showing success message"""
         if not self.device or not isinstance(self.device, VialKeyboard):
             return
-        
+
         actuations = self.device.keyboard.get_all_layer_actuations()
-        
-        if not actuations or len(actuations) != 120:
+
+        if not actuations or len(actuations) < 144:  # 12 layers × 12 bytes
             return
-        
+
         # Parse and apply (same logic as on_load_from_keyboard but silent)
         all_same = True
         first_values = {}
-        
-        for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 
-                                      'midi_rapid_sens', 'midi_rapid_vel', 'vel_speed', 
-                                      'aftertouch_cc', 'flags']):
+
+        # Protocol: 12 bytes per layer
+        keys = ['normal', 'midi', 'velocity', 'fastest_press_ms', 'flags',
+                'aftertouch', 'aftertouch_cc', 'vibrato_sensitivity',
+                'vibrato_decay_low', 'vibrato_decay_high', 'slowest_press_ms', 'reserved']
+
+        for key_idx, key in enumerate(keys):
             first_values[key] = actuations[key_idx]
-            
+
             for layer in range(1, 12):
-                offset = layer * 10 + key_idx
+                offset = layer * 12 + key_idx
                 if actuations[offset] != first_values[key]:
                     all_same = False
                     break
             if not all_same:
                 break
-        
+
+        first_values['vibrato_decay_time'] = first_values.get('vibrato_decay_low', 0) | (first_values.get('vibrato_decay_high', 0) << 8)
+
         for layer in range(12):
-            offset = layer * 10
-            flags = actuations[offset + 9]
-            
+            offset = layer * 12
+            flags = actuations[offset + 4]
+            vibrato_decay = actuations[offset + 8] | (actuations[offset + 9] << 8)
+
             self.layer_data[layer] = {
                 'normal': actuations[offset + 0],
                 'midi': actuations[offset + 1],
-                'aftertouch': actuations[offset + 2],
-                'velocity': actuations[offset + 3],
-                'rapid': actuations[offset + 4],
-                'midi_rapid_sens': actuations[offset + 5],
-                'midi_rapid_vel': actuations[offset + 6],
-                'vel_speed': actuations[offset + 7],
-                'aftertouch_cc': actuations[offset + 8],
+                'velocity': actuations[offset + 2],
+                'fastest_press_ms': actuations[offset + 3],
+                'aftertouch': actuations[offset + 5],
+                'aftertouch_cc': actuations[offset + 6],
+                'vibrato_sensitivity': actuations[offset + 7],
+                'vibrato_decay_time': vibrato_decay,
+                'slowest_press_ms': actuations[offset + 10],
                 'rapidfire_enabled': (flags & 0x01) != 0,
-                'midi_rapidfire_enabled': (flags & 0x02) != 0
+                'midi_rapidfire_enabled': (flags & 0x02) != 0,
+                'use_fixed_velocity': (flags & 0x04) != 0,
+                # Defaults for fields not in protocol
+                'rapid': 4,
+                'midi_rapid_sens': 4,
+                'midi_rapid_vel': 0,
+                'he_curve': 2,
+                'he_min': 1,
+                'he_max': 127
             }
-        
+
         self.master_widgets['normal_slider'].setValue(first_values['normal'])
         self.master_widgets['midi_slider'].setValue(first_values['midi'])
-        
-        for key in ['aftertouch', 'aftertouch_cc', 'velocity', 'vel_speed']:
+
+        for key in ['aftertouch', 'aftertouch_cc', 'velocity']:
             combo = self.master_widgets[f'{key}_combo']
             for i in range(combo.count()):
                 if combo.itemData(i) == first_values[key]:
                     combo.setCurrentIndex(i)
                     break
-        
-        first_flags = first_values['flags']
+
+        # Set fastest/slowest press time sliders
+        self.master_widgets['fastest_press_slider'].setValue(first_values.get('fastest_press_ms', 5))
+        self.master_widgets['fastest_press_label'].setText(f"{first_values.get('fastest_press_ms', 5)} ms")
+        self.master_widgets['slowest_press_slider'].setValue(first_values.get('slowest_press_ms', 100))
+        self.master_widgets['slowest_press_label'].setText(f"{first_values.get('slowest_press_ms', 100)} ms")
+
+        # Vibrato settings
+        self.master_widgets['vibrato_sensitivity_slider'].setValue(first_values.get('vibrato_sensitivity', 100))
+        self.master_widgets['vibrato_decay_time_slider'].setValue(first_values.get('vibrato_decay_time', 200))
+
+        first_flags = first_values.get('flags', 0)
         rapid_enabled = (first_flags & 0x01) != 0
         self.master_widgets['rapid_checkbox'].setChecked(rapid_enabled)
         self.master_widgets['rapid_widget'].setVisible(rapid_enabled)
-        self.master_widgets['rapid_slider'].setValue(first_values['rapid'])
-        
+
         midi_rapid_enabled = (first_flags & 0x02) != 0
         self.master_widgets['midi_rapid_checkbox'].setChecked(midi_rapid_enabled)
         self.master_widgets['midi_rapid_sens_widget'].setVisible(midi_rapid_enabled)
         self.master_widgets['midi_rapid_vel_widget'].setVisible(midi_rapid_enabled)
-        self.master_widgets['midi_rapid_sens_slider'].setValue(first_values['midi_rapid_sens'])
-        self.master_widgets['midi_rapid_vel_slider'].setValue(first_values['midi_rapid_vel'])
-        
+
         if self.per_layer_enabled:
             self.load_layer_to_ui(self.current_layer)
-        
+
         self.per_layer_checkbox.setChecked(not all_same)
 
 

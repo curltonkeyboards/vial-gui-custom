@@ -224,6 +224,9 @@ uint8_t analog_matrix_get_travel_normalized(uint8_t row, uint8_t col);
 // This is the pre-calculated velocity before curve application
 uint8_t analog_matrix_get_velocity_raw(uint8_t row, uint8_t col);
 
+// Get travel time in ms (0-255) captured when velocity was determined
+uint8_t analog_matrix_get_travel_time_ms(uint8_t row, uint8_t col);
+
 // Get current velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Combined)
 uint8_t analog_matrix_get_velocity_mode(void);
 

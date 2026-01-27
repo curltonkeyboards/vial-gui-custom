@@ -2217,16 +2217,16 @@ uint8_t (*optimized_midi_velocities)[72] = NULL;     // Dynamic 2D array for vel
 bool aftertouch_pedal_active = false;
 
 // Layer actuations with per-layer aftertouch settings
-// {normal_actuation, midi_actuation, velocity_mode, velocity_speed_scale, flags,
-//  aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time}
+// {normal_actuation, midi_actuation, velocity_mode, fastest_press_ms, flags,
+//  aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time, slowest_press_ms}
 // FIX: Set actuation to 99 (nearly full press) to prevent empty sockets from triggering
 layer_actuation_t layer_actuations[12] = {
-    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
-    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
-    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
-    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
-    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200},
-    {99, 99, 2, 10, 0, 0, 255, 100, 200}, {99, 99, 2, 10, 0, 0, 255, 100, 200}
+    {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}, {99, 99, 2, 5, 0, 0, 255, 100, 200, 100},
+    {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}, {99, 99, 2, 5, 0, 0, 255, 100, 200, 100},
+    {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}, {99, 99, 2, 5, 0, 0, 255, 100, 200, 100},
+    {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}, {99, 99, 2, 5, 0, 0, 255, 100, 200, 100},
+    {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}, {99, 99, 2, 5, 0, 0, 255, 100, 200, 100},
+    {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}, {99, 99, 2, 5, 0, 0, 255, 100, 200, 100}
 };
 
 // =============================================================================
@@ -2265,12 +2265,13 @@ void initialize_layer_actuations(void) {
         layer_actuations[i].normal_actuation = 30;
         layer_actuations[i].midi_actuation = 30;
         layer_actuations[i].velocity_mode = 2;      // Speed-Based (matches GUI default)
-        layer_actuations[i].velocity_speed_scale = 10;
+        layer_actuations[i].fastest_press_ms = 5;   // 5ms = very fast press -> max velocity
         layer_actuations[i].flags = 0;              // All flags off
         layer_actuations[i].aftertouch_mode = 0;    // Off
         layer_actuations[i].aftertouch_cc = 255;    // Off (no CC)
         layer_actuations[i].vibrato_sensitivity = 100;  // 100% (normal)
         layer_actuations[i].vibrato_decay_time = 200;   // 200ms
+        layer_actuations[i].slowest_press_ms = 100; // 100ms = slow press -> min velocity
         // Note: Rapidfire settings are now per-key in per_key_actuations
         // Note: Velocity curve/min/max settings and aftertouch are now global in keyboard_settings
     }
@@ -3072,10 +3073,11 @@ void load_layer_actuations(void) {
     eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
 
     // Validate loaded data - if EEPROM is erased (0xFF) or corrupt, use defaults
-    // Check first layer as canary: velocity_mode must be 0-3, velocity_speed_scale 1-20
+    // Check first layer as canary: velocity_mode must be 0-3, fastest_press_ms must be valid
     if (layer_actuations[0].velocity_mode > 3 ||
-        layer_actuations[0].velocity_speed_scale == 0 ||
-        layer_actuations[0].velocity_speed_scale > 20) {
+        layer_actuations[0].fastest_press_ms == 0 ||
+        layer_actuations[0].slowest_press_ms == 0 ||
+        layer_actuations[0].fastest_press_ms >= layer_actuations[0].slowest_press_ms) {
         initialize_layer_actuations();
         save_layer_actuations();
     }
@@ -3087,40 +3089,42 @@ void reset_layer_actuations(void) {
     save_layer_actuations();
 }
 
-// Set layer actuation parameters (extended with aftertouch settings)
+// Set layer actuation parameters (extended with aftertouch and speed calibration)
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t vel_speed, uint8_t flags, uint8_t aftertouch_mode,
+                         uint8_t fastest_press_ms, uint8_t flags, uint8_t aftertouch_mode,
                          uint8_t aftertouch_cc, uint8_t vibrato_sensitivity,
-                         uint16_t vibrato_decay_time) {
+                         uint16_t vibrato_decay_time, uint8_t slowest_press_ms) {
     if (layer >= 12) return;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
     layer_actuations[layer].velocity_mode = velocity;
-    layer_actuations[layer].velocity_speed_scale = vel_speed;
+    layer_actuations[layer].fastest_press_ms = fastest_press_ms;
     layer_actuations[layer].flags = flags;
     layer_actuations[layer].aftertouch_mode = aftertouch_mode;
     layer_actuations[layer].aftertouch_cc = aftertouch_cc;
     layer_actuations[layer].vibrato_sensitivity = vibrato_sensitivity;
     layer_actuations[layer].vibrato_decay_time = vibrato_decay_time;
+    layer_actuations[layer].slowest_press_ms = slowest_press_ms;
 }
 
-// Get layer actuation parameters (extended with aftertouch settings)
+// Get layer actuation parameters (extended with aftertouch and speed calibration)
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *vel_speed, uint8_t *flags, uint8_t *aftertouch_mode,
+                         uint8_t *fastest_press_ms, uint8_t *flags, uint8_t *aftertouch_mode,
                          uint8_t *aftertouch_cc, uint8_t *vibrato_sensitivity,
-                         uint16_t *vibrato_decay_time) {
+                         uint16_t *vibrato_decay_time, uint8_t *slowest_press_ms) {
     if (layer >= 12) return;
 
     *normal = layer_actuations[layer].normal_actuation;
     *midi = layer_actuations[layer].midi_actuation;
     *velocity = layer_actuations[layer].velocity_mode;
-    *vel_speed = layer_actuations[layer].velocity_speed_scale;
+    *fastest_press_ms = layer_actuations[layer].fastest_press_ms;
     *flags = layer_actuations[layer].flags;
     *aftertouch_mode = layer_actuations[layer].aftertouch_mode;
     *aftertouch_cc = layer_actuations[layer].aftertouch_cc;
     *vibrato_sensitivity = layer_actuations[layer].vibrato_sensitivity;
     *vibrato_decay_time = layer_actuations[layer].vibrato_decay_time;
+    *slowest_press_ms = layer_actuations[layer].slowest_press_ms;
 }
 
 // Helper function for flag checking (already defined in orthomidi5x14.c earlier - this is the implementation)
@@ -3136,27 +3140,29 @@ bool layer_use_fixed_velocity(uint8_t layer) {
 
 // HID command IDs are defined in quantum/process_keycode/process_dynamic_macro.h
 
-// Set layer actuation from HID data (extended with aftertouch settings)
+// Set layer actuation from HID data (extended with aftertouch and speed calibration)
 void handle_set_layer_actuation(const uint8_t* data) {
-    // New protocol: 11 bytes per layer
-    // [0]=layer, [1]=normal, [2]=midi, [3]=velocity_mode, [4]=vel_speed, [5]=flags,
+    // Protocol: 12 bytes per layer
+    // [0]=layer, [1]=normal, [2]=midi, [3]=velocity_mode, [4]=fastest_press_ms, [5]=flags,
     // [6]=aftertouch_mode, [7]=aftertouch_cc, [8]=vibrato_sensitivity,
-    // [9-10]=vibrato_decay_time (little endian)
+    // [9-10]=vibrato_decay_time (little endian), [11]=slowest_press_ms
     uint8_t layer = data[0];
     if (layer >= 12) return;
 
     uint8_t normal = data[1];
     uint8_t midi = data[2];
     uint8_t velocity = data[3];
-    uint8_t vel_speed = data[4];
+    uint8_t fastest_press_ms = data[4];
     uint8_t flags = data[5];
     uint8_t aftertouch_mode = data[6];
     uint8_t aftertouch_cc = data[7];
     uint8_t vibrato_sensitivity = data[8];
     uint16_t vibrato_decay_time = data[9] | (data[10] << 8);  // Little endian
+    uint8_t slowest_press_ms = data[11];
 
-    set_layer_actuation(layer, normal, midi, velocity, vel_speed, flags,
-                        aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time);
+    set_layer_actuation(layer, normal, midi, velocity, fastest_press_ms, flags,
+                        aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+                        vibrato_decay_time, slowest_press_ms);
     save_layer_actuations();
 
     // Invalidate active_settings cache so new values take effect immediately
@@ -3166,31 +3172,36 @@ void handle_set_layer_actuation(const uint8_t* data) {
 }
 
 // Get layer actuation and send back via HID
-// Response format: [success, normal, midi, velocity_mode, vel_speed, flags, aftertouch_mode, aftertouch_cc, vibrato_sensitivity, decay_lo, decay_hi] (11 bytes)
+// Response format: [success, normal, midi, velocity_mode, fastest_press_ms, flags,
+//                   aftertouch_mode, aftertouch_cc, vibrato_sensitivity, decay_lo, decay_hi,
+//                   slowest_press_ms] (12 bytes)
 void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
     if (layer >= 12) {
         response[0] = 0;  // Error indicator
         return;
     }
 
-    uint8_t normal, midi, velocity, vel_speed, flags;
+    uint8_t normal, midi, velocity, fastest_press_ms, flags;
     uint8_t aftertouch_mode, aftertouch_cc, vibrato_sensitivity;
     uint16_t vibrato_decay_time;
+    uint8_t slowest_press_ms;
 
-    get_layer_actuation(layer, &normal, &midi, &velocity, &vel_speed, &flags,
-                        &aftertouch_mode, &aftertouch_cc, &vibrato_sensitivity, &vibrato_decay_time);
+    get_layer_actuation(layer, &normal, &midi, &velocity, &fastest_press_ms, &flags,
+                        &aftertouch_mode, &aftertouch_cc, &vibrato_sensitivity,
+                        &vibrato_decay_time, &slowest_press_ms);
 
     response[0] = 0x01;  // Success
     response[1] = normal;
     response[2] = midi;
     response[3] = velocity;
-    response[4] = vel_speed;
+    response[4] = fastest_press_ms;
     response[5] = flags;
     response[6] = aftertouch_mode;
     response[7] = aftertouch_cc;
     response[8] = vibrato_sensitivity;
     response[9] = vibrato_decay_time & 0xFF;         // Low byte
     response[10] = (vibrato_decay_time >> 8) & 0xFF; // High byte
+    response[11] = slowest_press_ms;
 }
 
 // Get all layer actuations

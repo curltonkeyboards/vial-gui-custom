@@ -103,6 +103,9 @@ HID_CMD_GAMING_SET_ANALOG_CONFIG = 0xD0  # Set min/max travel and deadzone
 HID_CMD_GAMING_GET_SETTINGS = 0xD1       # Get current gaming settings
 HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
 
+# Velocity Matrix Command (0xD3)
+HID_CMD_GET_VELOCITY_MATRIX = 0xD3       # Get velocity data for matrix row
+
 # ADC Matrix Tester Command (0xDF)
 HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
 
@@ -794,6 +797,44 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     break
 
             return adc_values
+
+        except Exception:
+            return None
+
+    def velocity_matrix_poll(self, row):
+        """Poll velocity data (raw_velocity, travel_time_ms) for a matrix row
+
+        Args:
+            row: Matrix row index (0-based)
+
+        Returns:
+            list of tuples: [(raw_velocity, travel_time_ms), ...] for each column,
+                           or None on error. raw_velocity is 0-255, travel_time_ms is 0-255.
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD3, row, 0...]
+            Response: [header(4), row, status, raw_vel_0..raw_vel_12, time_0..time_12]
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_GET_VELOCITY_MATRIX, row, None)
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 6:
+                return None
+
+            if response[5] != 0x01:
+                return None
+
+            # Parse velocity data: raw_velocity at offset 6-18, travel_time at offset 19-31
+            result = []
+            max_cols = min(self.cols, 13) if hasattr(self, 'cols') else 13
+
+            for col in range(max_cols):
+                raw_vel = response[6 + col] if (6 + col) < len(response) else 0
+                travel_ms = response[19 + col] if (19 + col) < len(response) else 0
+                result.append((raw_vel, travel_ms))
+
+            return result
 
         except Exception:
             return None
@@ -1586,13 +1627,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         Args:
             data: bytearray [layer, normal_actuation, midi_actuation, velocity_mode,
-                            velocity_speed_scale, flags, aftertouch_mode, aftertouch_cc,
-                            vibrato_sensitivity, vibrato_decay_time_low, vibrato_decay_time_high]
-                  (11 bytes total)
+                            fastest_press_ms, flags, aftertouch_mode, aftertouch_cc,
+                            vibrato_sensitivity, vibrato_decay_time_low, vibrato_decay_time_high,
+                            slowest_press_ms]
+                  (12 bytes total)
 
         Note: Rapidfire settings are now per-key only (removed from layer settings).
               Aftertouch settings (mode, cc, vibrato_sensitivity, vibrato_decay_time) are per-layer.
-              Uses new command 0xEC (moved from 0xCA to avoid arpeggiator conflict)
+              fastest_press_ms/slowest_press_ms replace the old velocity_speed_scale.
         """
         try:
             packet = self._create_hid_packet(HID_CMD_SET_LAYER_ACTUATION, 0, data)
@@ -1608,18 +1650,18 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             layer: Layer number (0-11)
 
         Returns:
-            dict: {normal, midi, velocity, vel_speed, flags, aftertouch_mode, aftertouch_cc,
-                   vibrato_sensitivity, vibrato_decay_time} or None
+            dict: {normal, midi, velocity, fastest_press_ms, slowest_press_ms, flags,
+                   aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time} or None
 
         Note: Rapidfire settings are now per-key only (removed from layer settings).
               Aftertouch settings are per-layer.
+              fastest_press_ms/slowest_press_ms replace the old velocity_speed_scale.
         """
         try:
-            # Use new command code 0xEB (moved from 0xCB to avoid arpeggiator conflict)
             packet = self._create_hid_packet(HID_CMD_GET_LAYER_ACTUATION, 0, [layer])
             response = self.usb_send(self.dev, packet, retries=3)
 
-            if not response or len(response) < 16:  # 5 header + 11 data bytes
+            if not response or len(response) < 17:  # 5 header + 12 data bytes
                 return None
 
             flags = response[10]
@@ -1628,13 +1670,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'normal': response[6],
                 'midi': response[7],
                 'velocity': response[8],
-                'vel_speed': response[9],
+                'fastest_press_ms': response[9],
                 'flags': flags,
                 'use_per_key_velocity_curve': (flags & 0x08) != 0,
                 'aftertouch_mode': response[11],
                 'aftertouch_cc': response[12],
                 'vibrato_sensitivity': response[13],
-                'vibrato_decay_time': vibrato_decay_time
+                'vibrato_decay_time': vibrato_decay_time,
+                'slowest_press_ms': response[16]
             }
         except Exception as e:
             return None
@@ -1643,13 +1686,14 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Get all layer actuations at once using bulk read
 
         Returns:
-            list: 120 bytes (12 layers × 10 bytes) or None on error
-            Each layer: [normal, midi, velocity_mode, vel_speed, flags,
+            list: 144 bytes (12 layers × 12 bytes) or None on error
+            Each layer: [success, normal, midi, velocity_mode, fastest_press_ms, flags,
                         aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
-                        vibrato_decay_time_low, vibrato_decay_time_high]
+                        vibrato_decay_time_low, vibrato_decay_time_high, slowest_press_ms]
 
         Note: Aftertouch settings are now per-layer.
-              Uses new command 0xED (moved from 0xCC to avoid arpeggiator conflict)
+              fastest_press_ms/slowest_press_ms replace the old velocity_speed_scale.
+              Uses command 0xED.
         """
         try:
             packet = self._create_hid_packet(HID_CMD_GET_ALL_LAYER_ACTUATIONS, 0, None)
@@ -1660,8 +1704,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             else:
                 self.dev.send_feature_report(packet)
 
-            # Collect 6 packets (120 bytes total, 20 bytes per packet - 2 layers each)
-            # Response format: [header(4)] [status(1)] [packet_num(1)] [total(1)] [layer_data(20)]
+            # Collect 6 packets (144 bytes total, 24 bytes per packet - 2 layers × 12 bytes each)
+            # Response format: [header(4)] [status(1)] [packet_num(1)] [total(1)] [layer_data(24)]
             EXPECTED_PACKETS = 6
             packets = {}
 
@@ -1687,8 +1731,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                             return None  # Error response
 
                         if packet_num < EXPECTED_PACKETS and packet_num not in packets:
-                            # Extract layer data (20 bytes at offset 7)
-                            packets[packet_num] = data[7:27]
+                            # Extract layer data (24 bytes at offset 7: 2 layers × 12 bytes)
+                            packets[packet_num] = data[7:31]
 
                     if len(packets) >= EXPECTED_PACKETS:
                         break
@@ -1706,7 +1750,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     return None  # Missing packet
                 actuations.extend(packets[i])
 
-            return actuations[:120]  # 12 layers × 10 bytes
+            return actuations[:144]  # 12 layers × 12 bytes
         except Exception as e:
             return None
 

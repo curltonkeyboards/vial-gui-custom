@@ -904,13 +904,14 @@ typedef struct {
     uint8_t normal_actuation;              // DEPRECATED - per-key only now
     uint8_t midi_actuation;                // DEPRECATED - per-key only now
     uint8_t velocity_mode;                 // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
-    uint8_t velocity_speed_scale;          // 1-20 (velocity scale multiplier)
+    uint8_t fastest_press_ms;             // 1-255 ms: fastest press time -> max velocity
     uint8_t flags;                         // Bit 2: use_fixed_velocity (per-key velocity curve now moved to per-key flags)
     // Per-layer aftertouch settings (moved from global)
     uint8_t aftertouch_mode;               // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
     uint8_t aftertouch_cc;                 // 0-127 = CC number, 255 = off (no CC sent, only poly AT)
     uint8_t vibrato_sensitivity;           // 50-200 (percentage, 100 = normal)
     uint16_t vibrato_decay_time;           // 0-2000 (milliseconds, 0 = instant drop)
+    uint8_t slowest_press_ms;             // 1-255 ms: slowest press time -> min velocity
 } layer_actuation_t;
 
 
@@ -993,14 +994,14 @@ void save_layer_actuations(void);
 void load_layer_actuations(void);
 void reset_layer_actuations(void);
 void set_layer_actuation(uint8_t layer, uint8_t normal, uint8_t midi, uint8_t velocity,
-                         uint8_t vel_speed, uint8_t flags, uint8_t aftertouch_mode,
+                         uint8_t fastest_press_ms, uint8_t flags, uint8_t aftertouch_mode,
                          uint8_t aftertouch_cc, uint8_t vibrato_sensitivity,
-                         uint16_t vibrato_decay_time);
+                         uint16_t vibrato_decay_time, uint8_t slowest_press_ms);
 
 void get_layer_actuation(uint8_t layer, uint8_t *normal, uint8_t *midi, uint8_t *velocity,
-                         uint8_t *vel_speed, uint8_t *flags, uint8_t *aftertouch_mode,
+                         uint8_t *fastest_press_ms, uint8_t *flags, uint8_t *aftertouch_mode,
                          uint8_t *aftertouch_cc, uint8_t *vibrato_sensitivity,
-                         uint16_t *vibrato_decay_time);
+                         uint16_t *vibrato_decay_time, uint8_t *slowest_press_ms);
 
 bool layer_use_fixed_velocity(uint8_t layer);
 bool layer_use_per_key_velocity_curve(uint8_t layer);

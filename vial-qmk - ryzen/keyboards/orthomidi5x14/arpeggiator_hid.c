@@ -716,10 +716,10 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             }
 
             case 0xED: {  // HID_CMD_GET_ALL_LAYER_ACTUATIONS (bulk)
-                // Response: 6 packets with all 12 layers (10 bytes each = 120 bytes total)
-                // Each packet has 2 layers (20 bytes) to fit in 32-byte packets
-                const uint8_t BYTES_PER_LAYER = 10;
-                const uint8_t LAYERS_PER_PACKET = 2;  // 2 layers × 10 bytes = 20 bytes per packet
+                // Response: 6 packets with all 12 layers (12 bytes each = 144 bytes total)
+                // Each packet has 2 layers (24 bytes) + 7 header = 31 bytes per packet
+                const uint8_t BYTES_PER_LAYER = 12;
+                const uint8_t LAYERS_PER_PACKET = 2;
                 const uint8_t TOTAL_PACKETS = 6;  // 12 layers / 2 = 6 packets
 
                 for (uint8_t pkt = 0; pkt < TOTAL_PACKETS; pkt++) {
@@ -736,7 +736,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                     bulk_response[5] = pkt;   // Packet number
                     bulk_response[6] = TOTAL_PACKETS;
 
-                    // Layer data (2 layers per packet, 10 bytes each)
+                    // Layer data (2 layers per packet, 12 bytes each)
                     for (uint8_t l = 0; l < LAYERS_PER_PACKET; l++) {
                         uint8_t layer_idx = pkt * LAYERS_PER_PACKET + l;
                         if (layer_idx >= 12) break;
@@ -761,6 +761,44 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         }
 
         // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a Velocity Matrix command (0xD3)
+    // Returns raw_velocity and travel_time_ms for a given row (up to 13 columns)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xD3) {
+
+        uint8_t response[32] = {0};
+
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xD3;
+
+        uint8_t row = data[4];
+
+        if (row >= MATRIX_ROWS) {
+            response[4] = row;
+            response[5] = 0x00;  // Error - invalid row
+        } else {
+            response[4] = row;
+            response[5] = 0x01;  // Success
+
+            // Pack raw_velocity for columns 0-12 (13 bytes at offset 6)
+            // Then travel_time_ms for columns 0-12 (13 bytes at offset 19)
+            // Total: 6 + 13 + 13 = 32 bytes exactly
+            uint8_t max_cols = (MATRIX_COLS < 13) ? MATRIX_COLS : 13;
+            for (uint8_t col = 0; col < max_cols; col++) {
+                response[6 + col] = analog_matrix_get_velocity_raw(row, col);
+                response[19 + col] = analog_matrix_get_travel_time_ms(row, col);
+            }
+        }
+
         raw_hid_send(response, 32);
         return;
     }

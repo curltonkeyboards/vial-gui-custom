@@ -147,6 +147,9 @@ typedef struct {
     // Vibrato decay tracking
     uint8_t vibrato_value;       // Current vibrato value (for decay)
     uint16_t vibrato_last_time;  // Last time vibrato was updated (for decay calculation)
+
+    // Travel time for velocity tab display (captured when velocity is determined)
+    uint8_t travel_time_ms;      // Elapsed time in ms (capped at 255) from rest to velocity capture
 } midi_key_state_t;
 
 // ============================================================================
@@ -265,7 +268,8 @@ static uint8_t cached_layer_settings_layer = 0xFF;
 // NOTE: normal_actuation and midi_actuation removed - per-key only now
 static struct {
     uint8_t velocity_mode;
-    uint8_t velocity_speed_scale;
+    uint8_t fastest_press_ms;    // Min travel time (fastest press) -> max velocity
+    uint8_t slowest_press_ms;    // Max travel time (slowest press) -> min velocity
     // Per-layer aftertouch settings
     uint8_t aftertouch_mode;
     uint8_t aftertouch_cc;
@@ -645,7 +649,8 @@ static inline void update_active_settings(uint8_t current_layer) {
     if (cached_layer_settings_layer != current_layer) {
         // NOTE: normal_actuation and midi_actuation removed - per-key only now
         active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
-        active_settings.velocity_speed_scale = layer_actuations[current_layer].velocity_speed_scale;
+        active_settings.fastest_press_ms = layer_actuations[current_layer].fastest_press_ms;
+        active_settings.slowest_press_ms = layer_actuations[current_layer].slowest_press_ms;
         // Per-layer aftertouch settings
         active_settings.aftertouch_mode = layer_actuations[current_layer].aftertouch_mode;
         active_settings.aftertouch_cc = layer_actuations[current_layer].aftertouch_cc;
@@ -1016,6 +1021,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->peak_travel >= 20 &&
                     travel < state->peak_travel - 5) {
 
+                    // Store travel time for velocity tab display
+                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
+                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                    uint32_t elapsed_ms = elapsed_us / 1000;
+                    state->travel_time_ms = (elapsed_ms > 255) ? 255 : (uint8_t)elapsed_ms;
+
                     // Store raw velocity as normalized peak travel (0-255)
                     // peak_travel is in 0-240 range, scale to 0-255
                     uint16_t raw = ((uint16_t)state->peak_travel * 255) / 240;
@@ -1056,29 +1067,32 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Calculate elapsed time in microseconds (10µs resolution from ChibiOS)
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                    uint32_t elapsed_ms = elapsed_us / 1000;
 
-                    if (elapsed_us > 0) {
-                        // Velocity = distance / time, scaled to 0-255
-                        // velocity_speed_scale adjusts sensitivity:
-                        //   Higher scale = higher velocity for same press speed
-                        //   With scale=10, midi_threshold=144:
-                        //     5ms (5000µs) → 288 (cap 255), 10ms → 144, 30ms → 48, 100ms → 14
-                        // Using µs gives 10µs precision vs 1ms with timer_read()
-                        uint32_t raw = ((uint32_t)midi_threshold * active_settings.velocity_speed_scale * 1000) / elapsed_us;
-                        if (raw > 255) raw = 255;
+                    // Store travel time for velocity tab display
+                    state->travel_time_ms = (elapsed_ms > 255) ? 255 : (uint8_t)elapsed_ms;
 
-                        state->raw_velocity = (uint8_t)raw;
-                        state->velocity_captured = true;
+                    // Map elapsed time to raw velocity using min/max speed calibration
+                    // fastest_press_ms = fastest press time -> maps to max velocity (255)
+                    // slowest_press_ms = slowest press time -> maps to min velocity (0)
+                    uint8_t fastest = active_settings.fastest_press_ms;
+                    uint8_t slowest = active_settings.slowest_press_ms;
 
-                        // Update base_velocity for RT
-                        key->base_velocity = (state->raw_velocity * 127) / 255;
-                        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
-                    } else {
-                        // Instant press (sub-10µs) - max velocity
+                    if (fastest >= slowest) fastest = 1;  // Safety: ensure valid range
+
+                    if (elapsed_ms <= fastest) {
                         state->raw_velocity = 255;
-                        state->velocity_captured = true;
-                        key->base_velocity = MAX_VELOCITY;
+                    } else if (elapsed_ms >= slowest) {
+                        state->raw_velocity = 0;
+                    } else {
+                        // Linear interpolation: faster press = higher velocity
+                        state->raw_velocity = (uint8_t)(255 * (slowest - elapsed_ms) / (slowest - fastest));
                     }
+                    state->velocity_captured = true;
+
+                    // Update base_velocity for RT
+                    key->base_velocity = (state->raw_velocity * 127) / 255;
+                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                 }
 
                 // On release, reset
@@ -1116,16 +1130,24 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Calculate elapsed time in microseconds (10µs resolution)
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                    uint32_t elapsed_ms = elapsed_us / 1000;
 
-                    // Calculate speed component using accumulated average speed
-                    // Speed = peak_travel / time_to_apex, scaled by velocity_speed_scale
-                    uint32_t speed_raw;
-                    if (elapsed_us > 0) {
-                        speed_raw = ((uint32_t)state->peak_travel * active_settings.velocity_speed_scale * 1000) / elapsed_us;
+                    // Store travel time for velocity tab display
+                    state->travel_time_ms = (elapsed_ms > 255) ? 255 : (uint8_t)elapsed_ms;
+
+                    // Calculate speed component using min/max speed calibration
+                    uint8_t fastest = active_settings.fastest_press_ms;
+                    uint8_t slowest = active_settings.slowest_press_ms;
+                    if (fastest >= slowest) fastest = 1;  // Safety
+
+                    uint8_t speed_raw;
+                    if (elapsed_ms <= fastest) {
+                        speed_raw = 255;
+                    } else if (elapsed_ms >= slowest) {
+                        speed_raw = 0;
                     } else {
-                        speed_raw = 255;  // Sub-10µs press = max speed
+                        speed_raw = (uint8_t)(255 * (slowest - elapsed_ms) / (slowest - fastest));
                     }
-                    if (speed_raw > 255) speed_raw = 255;
 
                     // Calculate travel component (0-255)
                     uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
@@ -1665,6 +1687,13 @@ uint8_t analog_matrix_get_velocity_raw(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
     uint32_t key_idx = KEY_INDEX(row, col);
     return midi_key_states[key_idx].raw_velocity;
+}
+
+// Get travel time in ms (0-255) captured when velocity was determined
+uint8_t analog_matrix_get_travel_time_ms(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return midi_key_states[key_idx].travel_time_ms;
 }
 
 // Get current velocity mode for a key's layer
