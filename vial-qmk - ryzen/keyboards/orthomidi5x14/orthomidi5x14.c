@@ -13936,7 +13936,7 @@ if (keycode >= 0xC92A && keycode <= 0xC93B) {
 }
 
 			
-if (keycode >= 0xCA10 && keycode <= 0xCC13) {
+if ((keycode >= 0xCA10 && keycode <= 0xCC07) || keycode == 0xCC13) {  // Chord prog keycodes + CHORD_PROG_STOP (was 0xCA10-0xCC13, narrowed to avoid catching DM_MACRO/DM_MUTE at 0xCC08-0xCC12)
     if (record->event.pressed) {
         if (progression_active) {
             // If any progression is active, stop it
