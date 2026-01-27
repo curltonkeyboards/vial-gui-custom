@@ -130,13 +130,11 @@ typedef struct {
     uint16_t last_time;
     uint8_t calculated_velocity;
     uint8_t peak_velocity;
-    uint8_t peak_speed;          // Peak instantaneous speed (for apex detection)
+    uint16_t peak_speed;         // Peak speed (uint16_t to avoid overflow)
     uint8_t travel_at_actuation; // Travel when actuation point was crossed (for Mode 2)
 
-    // Mode 3: Speed threshold
-    bool speed_threshold_met;
-    uint8_t speed_samples[4];
-    uint8_t speed_sample_idx;
+    // Mode 1 & 3: Apex detection + timing
+    uint32_t move_start_time;    // ChibiOS system ticks when key started moving (10µs resolution)
 
     // Raw velocity for curve application (0-255)
     uint8_t raw_velocity;        // Raw velocity value before curve/scaling
@@ -994,47 +992,38 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             break;
 
         case 1:  // Peak Travel at Apex
-            // Measures peak travel distance, captures velocity when speed drastically slows
-            // Ignores actuation point - just uses deadzone to avoid misstriggers
+            // Measures peak travel distance, captures velocity when travel starts decreasing
+            // Uses travel-based apex detection (robust regardless of timer resolution)
             {
-                uint16_t time_delta = now - state->last_time;
-                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-
-                // Calculate current instantaneous speed (travel units per ms * 100 for precision)
-                uint8_t current_speed = (time_delta > 0) ? ((travel_delta * 100) / time_delta) : 0;
-
-                // Track peak speed during descent
-                if (current_speed > state->peak_speed) {
-                    state->peak_speed = current_speed;
+                // Track when key starts moving from rest
+                // Use ChibiOS system ticks (100kHz = 10µs resolution) instead of
+                // timer_read() (1ms) for precise velocity timing
+                if (state->last_travel == 0 && travel > 0) {
+                    state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                 }
 
-                // Track peak travel during descent
+                // Track peak travel during press
                 if (travel > state->peak_travel) {
                     state->peak_travel = travel;
                 }
 
-                // Detect fast movement started
-                if (current_speed >= SPEED_TRIGGER_THRESHOLD) {
-                    state->speed_threshold_met = true;
-                }
-
-                // Apex detection: speed has dropped significantly from peak (drastic slowing)
-                // Capture velocity when:
-                // 1. We've seen fast movement (speed_threshold_met)
-                // 2. Current speed has dropped below threshold (apex reached)
-                // 3. We haven't already captured for this press
-                // 4. Key has moved past deadzone (travel > 0 means past deadzone)
-                if (state->speed_threshold_met &&
-                    current_speed < SPEED_TRIGGER_THRESHOLD &&
-                    travel > 0 &&
-                    !state->velocity_captured) {
+                // Apex detection: travel has decreased from peak
+                // Requirements:
+                // 1. Key reached minimum depth (avoid noise triggers)
+                // 2. Travel decreased meaningfully from peak (real reversal, not ADC jitter)
+                // 3. Velocity not already captured for this press
+                if (!state->velocity_captured &&
+                    state->peak_travel >= 20 &&
+                    travel < state->peak_travel - 5) {
 
                     // Store raw velocity as normalized peak travel (0-255)
                     // peak_travel is in 0-240 range, scale to 0-255
-                    state->raw_velocity = (state->peak_travel * 255) / 240;
+                    uint16_t raw = ((uint16_t)state->peak_travel * 255) / 240;
+                    if (raw > 255) raw = 255;
+                    state->raw_velocity = (uint8_t)raw;
                     state->velocity_captured = true;
 
-                    // Also update base_velocity for RT accumulation (scaled to 1-127 for now)
+                    // Also update base_velocity for RT accumulation (scaled to 1-127)
                     key->base_velocity = (state->raw_velocity * 127) / 255;
                     if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                 }
@@ -1042,8 +1031,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 // On release, reset tracking state
                 if (state->was_pressed && !pressed) {
                     state->peak_travel = 0;
-                    state->peak_speed = 0;
-                    state->speed_threshold_met = false;
                     state->velocity_captured = false;
                 }
 
@@ -1053,34 +1040,31 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             break;
 
         case 2:  // Speed-based (deadzone to actuation)
-            // Measures average speed from key release/deadzone to actuation point
+            // Measures average speed from key rest/deadzone to actuation point
             // Deeper actuation point = more travel distance = more reliable speed measurement
             {
-                uint16_t time_delta = now - state->last_time;
-
                 // Track when key starts moving from rest (crosses deadzone)
+                // Use ChibiOS system ticks (100kHz = 10µs resolution) for precise timing
                 if (state->last_travel == 0 && travel > 0) {
-                    // Key just started moving - record start time
-                    state->last_time = now;
+                    state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                     state->travel_at_actuation = 0;
                     state->velocity_captured = false;
                 }
 
                 // Capture velocity when actuation point is crossed
                 if (!state->velocity_captured && travel >= midi_threshold && state->last_travel < midi_threshold) {
-                    // Calculate average speed from deadzone to actuation
-                    // time_delta = time from when key started moving
-                    // travel at actuation = midi_threshold
-                    if (time_delta > 0) {
-                        // Speed = distance / time, normalize to 0-255
-                        // midi_threshold is typically 80-200 (in 0-240 range)
-                        // Scale speed to give good dynamic range
-                        uint32_t avg_speed = ((uint32_t)midi_threshold * 1000) / time_delta;
+                    // Calculate elapsed time in microseconds (10µs resolution from ChibiOS)
+                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
+                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
 
-                        // Scale speed to 0-255 range
-                        // Typical fast press: ~50-100 travel units in 20-50ms = ~2000-5000 units/sec
-                        // Scale factor adjusts sensitivity
-                        uint32_t raw = (avg_speed * active_settings.velocity_speed_scale) / 100;
+                    if (elapsed_us > 0) {
+                        // Velocity = distance / time, scaled to 0-255
+                        // velocity_speed_scale adjusts sensitivity:
+                        //   Higher scale = higher velocity for same press speed
+                        //   With scale=10, midi_threshold=144:
+                        //     5ms (5000µs) → 288 (cap 255), 10ms → 144, 30ms → 48, 100ms → 14
+                        // Using µs gives 10µs precision vs 1ms with timer_read()
+                        uint32_t raw = ((uint32_t)midi_threshold * active_settings.velocity_speed_scale * 1000) / elapsed_us;
                         if (raw > 255) raw = 255;
 
                         state->raw_velocity = (uint8_t)raw;
@@ -1090,7 +1074,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         key->base_velocity = (state->raw_velocity * 127) / 255;
                         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                     } else {
-                        // Instant press - max velocity
+                        // Instant press (sub-10µs) - max velocity
                         state->raw_velocity = 255;
                         state->velocity_captured = true;
                         key->base_velocity = MAX_VELOCITY;
@@ -1104,54 +1088,51 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 }
 
                 state->last_travel = travel;
-                // Only update last_time if key is at rest (for next press measurement)
-                if (travel == 0) {
-                    state->last_time = now;
-                }
+                state->last_time = now;
             }
             break;
 
         case 3:  // Speed + Peak Combined
-            // Measures both speed and peak travel until apex (drastic slowing)
             // Blends speed (70%) and peak travel (30%) for final velocity
+            // Uses travel-based apex detection and accumulated average speed
             {
-                uint16_t time_delta = now - state->last_time;
-                uint8_t travel_delta = (travel > state->last_travel) ? (travel - state->last_travel) : 0;
-
-                // Calculate current instantaneous speed
-                uint8_t current_speed = (time_delta > 0) ? ((travel_delta * 100) / time_delta) : 0;
-
-                // Track peak speed during descent
-                if (current_speed > state->peak_speed) {
-                    state->peak_speed = current_speed;
+                // Track when key starts moving from rest
+                // Use ChibiOS system ticks (100kHz = 10µs resolution)
+                if (state->last_travel == 0 && travel > 0) {
+                    state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                 }
 
-                // Track peak travel during descent
+                // Track peak travel during press
                 if (travel > state->peak_travel) {
                     state->peak_travel = travel;
                 }
 
-                // Detect fast movement started
-                if (current_speed >= SPEED_TRIGGER_THRESHOLD) {
-                    state->speed_threshold_met = true;
-                }
+                // Apex detection: travel has decreased from peak
+                // Same approach as mode 1 - robust regardless of timer resolution
+                if (!state->velocity_captured &&
+                    state->peak_travel >= 20 &&
+                    travel < state->peak_travel - 5) {
 
-                // Apex detection: speed has dropped significantly
-                if (state->speed_threshold_met &&
-                    current_speed < SPEED_TRIGGER_THRESHOLD &&
-                    travel > 0 &&
-                    !state->velocity_captured) {
+                    // Calculate elapsed time in microseconds (10µs resolution)
+                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
+                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
 
-                    // Calculate speed component (0-255)
-                    // peak_speed is in travel_units*100/ms, scale to 0-255
-                    uint32_t speed_raw = ((uint32_t)state->peak_speed * active_settings.velocity_speed_scale) / 10;
+                    // Calculate speed component using accumulated average speed
+                    // Speed = peak_travel / time_to_apex, scaled by velocity_speed_scale
+                    uint32_t speed_raw;
+                    if (elapsed_us > 0) {
+                        speed_raw = ((uint32_t)state->peak_travel * active_settings.velocity_speed_scale * 1000) / elapsed_us;
+                    } else {
+                        speed_raw = 255;  // Sub-10µs press = max speed
+                    }
                     if (speed_raw > 255) speed_raw = 255;
 
                     // Calculate travel component (0-255)
-                    uint8_t travel_raw = (state->peak_travel * 255) / 240;
+                    uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
+                    if (travel_raw > 255) travel_raw = 255;
 
                     // Blend: 70% speed + 30% travel
-                    state->raw_velocity = (uint8_t)(((uint16_t)speed_raw * 70 + (uint16_t)travel_raw * 30) / 100);
+                    state->raw_velocity = (uint8_t)(((uint16_t)speed_raw * 70 + travel_raw * 30) / 100);
                     state->velocity_captured = true;
 
                     // Update base_velocity for RT
@@ -1163,7 +1144,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 if (state->was_pressed && !pressed) {
                     state->peak_travel = 0;
                     state->peak_speed = 0;
-                    state->speed_threshold_met = false;
                     state->velocity_captured = false;
                 }
 

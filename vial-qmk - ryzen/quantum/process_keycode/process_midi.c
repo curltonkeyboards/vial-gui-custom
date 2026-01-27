@@ -934,19 +934,18 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
         case MIDI_TONE_MIN ... MIDI_TONE_MAX: {
             uint8_t channel  = channel_number;
             uint8_t tone     = keycode - MIDI_TONE_MIN;
-            uint8_t velocity = velocity_number;
-
-            // Get raw travel from analog matrix (0-255) for macro recording
-            uint8_t raw_travel = get_raw_travel_from_record(record);
-
-            // Use HE velocity curve if analog_mode is enabled
-            if (analog_mode > 0) {
-                velocity = apply_he_velocity_from_record(velocity, record);
-            } else {
-                velocity = apply_velocity_mode(velocity, current_layer, tone);
-            }
 
             if (record->event.pressed) {
+                uint8_t velocity = velocity_number;
+                uint8_t raw_travel = get_raw_travel_from_record(record);
+
+                // Only compute velocity for note-on (note-off uses fixed 127)
+                if (analog_mode > 0) {
+                    velocity = apply_he_velocity_from_record(velocity, record);
+                } else {
+                    velocity = apply_velocity_mode(velocity, current_layer, tone);
+                }
+
                 uint8_t note = midi_compute_note(keycode);
                 midi_send_noteon_with_recording(channel, note, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, note, velocity);
@@ -958,8 +957,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t note = tone_status[0][tone];
                 tone_status[1][tone] -= 1;
                 if (tone_status[1][tone] == 0) {
-                    midi_send_noteoff_with_recording(channel, note, velocity, raw_travel, 0);  // note_type=0 (base)
-                    dprintf("midi noteoff channel:%d note:%d velocity:%d\n", channel, note, velocity);
+                    midi_send_noteoff_with_recording(channel, note, 127, 0, 0);  // note_type=0 (base)
+                    dprintf("midi noteoff channel:%d note:%d velocity:127\n", channel, note);
                     tone_status[0][tone] = MIDI_INVALID_NOTE;
                 }
             }
@@ -975,26 +974,24 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 channel = channel_number;
             }
             uint8_t toneb     = keycode - 50684;
-            uint8_t velocity = 0;
-
-            // Get raw travel from analog matrix (0-255) for macro recording
-            uint8_t raw_travel = get_raw_travel_from_record(record);
-
-            // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
-            if (keysplitvelocitystatus == 1 || keysplitvelocitystatus == 3) {
-                // Use Keysplit HE velocity curve from layer settings
-                velocity = get_keysplit_he_velocity_from_position(record->event.key.row, record->event.key.col);
-            } else {
-                // Use base velocity method (same as MIDI_TONE_MIN...MIDI_TONE_MAX)
-                velocity = velocity_number;
-                if (analog_mode > 0) {
-                    velocity = apply_he_velocity_from_record(velocity, record);
-                } else {
-                    velocity = apply_velocity_mode(velocity, current_layer, toneb);
-                }
-            }
 
             if (record->event.pressed) {
+                uint8_t velocity = 0;
+                uint8_t raw_travel = get_raw_travel_from_record(record);
+
+                // Only compute velocity for note-on (note-off uses fixed 127)
+                // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
+                if (keysplitvelocitystatus == 1 || keysplitvelocitystatus == 3) {
+                    velocity = get_keysplit_he_velocity_from_position(record->event.key.row, record->event.key.col);
+                } else {
+                    velocity = velocity_number;
+                    if (analog_mode > 0) {
+                        velocity = apply_he_velocity_from_record(velocity, record);
+                    } else {
+                        velocity = apply_velocity_mode(velocity, current_layer, toneb);
+                    }
+                }
+
                 uint8_t noteb = midi_compute_note2(keycode);
                 midi_send_noteon_with_recording(channel, noteb, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
@@ -1006,8 +1003,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t noteb = toneb_status[0][toneb];
                 toneb_status[1][toneb] -= 1;
                 if (toneb_status[1][toneb] == 0) {
-                    midi_send_noteoff_with_recording(channel, noteb, velocity, raw_travel, 1);  // note_type=1 (keysplit)
-                    dprintf("midi noteoff channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
+                    midi_send_noteoff_with_recording(channel, noteb, 127, 0, 1);  // note_type=1 (keysplit)
+                    dprintf("midi noteoff channel:%d note:%d velocity:127\n", channel, noteb);
                     toneb_status[0][toneb] = MIDI_INVALID_NOTE;
                 }
             }
@@ -1022,26 +1019,24 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 channel = channel_number;
             }
             uint8_t tonec     = keycode - 50796;
-            uint8_t velocity = 0;
-
-            // Get raw travel from analog matrix (0-255) for macro recording
-            uint8_t raw_travel = get_raw_travel_from_record(record);
-
-            // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
-            if (keysplitvelocitystatus == 2 || keysplitvelocitystatus == 3) {
-                // Use Triplesplit HE velocity curve from layer settings
-                velocity = get_triplesplit_he_velocity_from_position(record->event.key.row, record->event.key.col);
-            } else {
-                // Use base velocity method (same as MIDI_TONE_MIN...MIDI_TONE_MAX)
-                velocity = velocity_number;
-                if (analog_mode > 0) {
-                    velocity = apply_he_velocity_from_record(velocity, record);
-                } else {
-                    velocity = apply_velocity_mode(velocity, current_layer, tonec);
-                }
-            }
 
             if (record->event.pressed) {
+                uint8_t velocity = 0;
+                uint8_t raw_travel = get_raw_travel_from_record(record);
+
+                // Only compute velocity for note-on (note-off uses fixed 127)
+                // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
+                if (keysplitvelocitystatus == 2 || keysplitvelocitystatus == 3) {
+                    velocity = get_triplesplit_he_velocity_from_position(record->event.key.row, record->event.key.col);
+                } else {
+                    velocity = velocity_number;
+                    if (analog_mode > 0) {
+                        velocity = apply_he_velocity_from_record(velocity, record);
+                    } else {
+                        velocity = apply_velocity_mode(velocity, current_layer, tonec);
+                    }
+                }
+
                 uint8_t notec = midi_compute_note3(keycode);
                 midi_send_noteon_with_recording(channel, notec, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, notec, velocity);
@@ -1053,8 +1048,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t notec = tonec_status[0][tonec];
                 tonec_status[1][tonec] -= 1;
                 if (tonec_status[1][tonec] == 0) {
-                    midi_send_noteoff_with_recording(channel, notec, velocity, raw_travel, 2);  // note_type=2 (triplesplit)
-                    dprintf("midi noteoff channel:%d note:%d velocity:%d\n", channel, notec, velocity);
+                    midi_send_noteoff_with_recording(channel, notec, 127, 0, 2);  // note_type=2 (triplesplit)
+                    dprintf("midi noteoff channel:%d note:%d velocity:127\n", channel, notec);
                     tonec_status[0][tonec] = MIDI_INVALID_NOTE;
                 }
             }
