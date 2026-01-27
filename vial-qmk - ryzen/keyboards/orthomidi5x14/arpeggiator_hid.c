@@ -520,7 +520,7 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
 
         case ARP_CMD_SET_MODE: {
             // Set arpeggiator mode only (without affecting active state)
-            // params[0] = mode (0=SINGLE_NOTE, 1=CHORD_BASIC, 2=CHORD_ADVANCED)
+            // params[0] = mode (0=SINGLE_SYNCED, 1=SINGLE_UNSYNCED, 2=CHORD_SYNCED, 3=CHORD_UNSYNCED, 4=CHORD_ADVANCED)
             uint8_t mode = params[0];
             if (mode < ARPMODE_COUNT) {
                 arp_set_mode((arp_mode_t)mode);
