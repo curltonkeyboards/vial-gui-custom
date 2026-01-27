@@ -5297,7 +5297,6 @@ class GamingConfigurator(BasicEditor):
         self.keyboard = None
         self.gaming_controls = {}
         self.active_control_id = None  # Track which control is being assigned
-        self._needs_loading = False  # Flag for lazy loading - defer heavy HID calls until tab is opened
         self.setup_ui()
 
     def create_help_label(self, tooltip_text):
@@ -6038,14 +6037,12 @@ class GamingConfigurator(BasicEditor):
             # Set keyboard reference for tabbed keycodes (so GamingTab can access it)
             self.tabbed_keycodes.set_keyboard(self.keyboard)
             self.tabbed_keycodes.recreate_keycode_buttons()
-            # Defer gaming data loading until tab is actually opened (lazy loading)
-            self._needs_loading = True
+            # Load gaming data immediately during device connection
+            self._load_gaming_data()
 
     def activate(self):
-        """Called when tab is selected - load heavy data if needed"""
-        if self._needs_loading and self.keyboard:
-            self._load_gaming_data()
-            self._needs_loading = False
+        """Called when tab is selected"""
+        pass
 
     def _load_gaming_data(self):
         """Load gaming settings from device (heavy operation - multiple HID calls)"""
