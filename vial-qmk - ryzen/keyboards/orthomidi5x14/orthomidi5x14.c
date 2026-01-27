@@ -13621,8 +13621,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
 #ifdef JOYSTICK_ENABLE
-    // Gaming Mode Toggle (0xCC60)
-    if (keycode == 0xCC60) {
+    // Gaming Mode Toggle (0xCC79) - Moved from 0xCC60 to avoid collision with USER09
+    if (keycode == 0xCC79) {
         if (record->event.pressed) {
             gaming_mode_active = !gaming_mode_active;
             gaming_settings.gaming_mode_enabled = gaming_mode_active;
@@ -13633,10 +13633,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // Gaming button handlers (0xCC61-0xCC78)
+    // Gaming button handlers (0xCC7A-0xCC91) - Moved from 0xCC61-0xCC78 to avoid collision with USER keycodes
     // These keycodes are handled by the gaming_update_joystick() in matrix_scan
     // But we still need to prevent them from triggering normal keyboard actions
-    if (gaming_mode_active && keycode >= 0xCC61 && keycode <= 0xCC78) {
+    if (gaming_mode_active && keycode >= 0xCC7A && keycode <= 0xCC91) {
         // When gaming mode is active and these keys are mapped,
         // they should not send keyboard events
         // The actual joystick state is updated in gaming_update_joystick()
