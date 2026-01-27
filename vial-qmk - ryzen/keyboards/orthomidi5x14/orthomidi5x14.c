@@ -3069,13 +3069,16 @@ void save_layer_actuations(void) {
 
 // Load all layer actuations from EEPROM
 void load_layer_actuations(void) {
-    // TROUBLESHOOTING: Bypass EEPROM and use hardcoded defaults
-    // This ensures we have known-good actuation values for testing
-    // TODO: Re-enable EEPROM loading once key detection is working
-    initialize_layer_actuations();
+    eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
 
-    // Original EEPROM loading code (disabled for troubleshooting):
-    // eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    // Validate loaded data - if EEPROM is erased (0xFF) or corrupt, use defaults
+    // Check first layer as canary: velocity_mode must be 0-3, velocity_speed_scale 1-20
+    if (layer_actuations[0].velocity_mode > 3 ||
+        layer_actuations[0].velocity_speed_scale == 0 ||
+        layer_actuations[0].velocity_speed_scale > 20) {
+        initialize_layer_actuations();
+        save_layer_actuations();
+    }
 }
 
 // Reset all layer actuations to defaults
@@ -3155,6 +3158,11 @@ void handle_set_layer_actuation(const uint8_t* data) {
     set_layer_actuation(layer, normal, midi, velocity, vel_speed, flags,
                         aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time);
     save_layer_actuations();
+
+    // Invalidate active_settings cache so new values take effect immediately
+    // Without this, update_active_settings() skips the update because
+    // cached_layer_settings_layer == current_layer (same layer, stale values)
+    analog_matrix_refresh_settings();
 }
 
 // Get layer actuation and send back via HID
