@@ -2354,10 +2354,10 @@ class keycodes_v5:
         # HE Velocity Range base (for dynamic generation, starts at 0xCCB5)
         "HE_VEL_RANGE_1_1": 0xCCB5,  # Base for range keycodes (allows min == max)
 
-        # MIDI Routing Controls (0xC397-0xC399)
-        "MIDI_IN_MODE_TOG": 0xC397,  # Hardware MIDI IN routing mode toggle (PROC/THRU/CLK/IGN)
-        "USB_MIDI_MODE_TOG": 0xC398,  # USB MIDI routing mode toggle (PROC/THRU/CLK/IGN)
-        "MIDI_CLOCK_SRC_TOG": 0xC399,  # MIDI clock source toggle (LOCAL/USB/MIDI_IN)
+        # MIDI Routing Controls (0xEE27-0xEE29) - Moved from 0xC397-0xC399 to avoid collision with SmartChord MI_CHORD_1/2/3
+        "MIDI_IN_MODE_TOG": 0xEE27,  # Hardware MIDI IN routing mode toggle (PROC/THRU/CLK/IGN)
+        "USB_MIDI_MODE_TOG": 0xEE28,  # USB MIDI routing mode toggle (PROC/THRU/CLK/IGN)
+        "MIDI_CLOCK_SRC_TOG": 0xEE29,  # MIDI clock source toggle (LOCAL/USB/MIDI_IN)
 
         # Arpeggiator Control (0xEE00-0xEE0F) - Moved to avoid overlap with HE Velocity Range
         "ARP_PLAY": 0xEE00,  # Arpeggiator play/stop
