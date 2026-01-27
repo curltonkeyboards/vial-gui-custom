@@ -1526,13 +1526,13 @@ class QuickActuationWidget(QWidget):
     def save_ui_to_memory(self):
         """Save current UI state to memory (for current layer if per-layer, all if master)"""
         if self.per_layer_enabled:
-            # Save only to current layer
-            self.layer_data[self.current_layer] = {
+            # Update only the basic actuation keys, preserving advanced settings
+            self.layer_data[self.current_layer].update({
                 'normal': self.normal_slider.value(),
                 'midi': self.midi_slider.value(),
                 'velocity': self.velocity_combo.currentData(),
                 'vel_speed': self.vel_speed_combo.currentData()
-            }
+            })
         else:
             # Save to all layers (master mode)
             data = {
@@ -1542,7 +1542,7 @@ class QuickActuationWidget(QWidget):
                 'vel_speed': self.vel_speed_combo.currentData()
             }
             for i in range(12):
-                self.layer_data[i] = data.copy()
+                self.layer_data[i].update(data)
     
     def load_layer_from_memory(self):
         """Load layer settings from memory cache"""

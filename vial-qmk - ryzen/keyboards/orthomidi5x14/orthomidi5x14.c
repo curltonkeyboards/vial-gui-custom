@@ -479,17 +479,18 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     uint8_t raw_value;
 
     if (velocity_mode == 0) {
-        // Mode 0: Fixed velocity - use current travel with curve
-        raw_value = analog_matrix_get_travel_normalized(row, col);
-    } else {
-        // Modes 1-3: Use pre-calculated raw velocity from matrix.c
-        // This is the velocity calculated from peak travel, speed, or combined
-        raw_value = analog_matrix_get_velocity_raw(row, col);
+        // Mode 0: Fixed velocity - use the global velocity_number directly
+        // No curve or scaling applied, just the user's chosen fixed velocity
+        return velocity_number;
+    }
 
-        // If raw_velocity is 0 (not yet captured), fall back to current travel
-        if (raw_value == 0) {
-            raw_value = analog_matrix_get_travel_normalized(row, col);
-        }
+    // Modes 1-3: Use pre-calculated raw velocity from matrix.c
+    // This is the velocity calculated from peak travel, speed, or combined
+    raw_value = analog_matrix_get_velocity_raw(row, col);
+
+    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    if (raw_value == 0) {
+        raw_value = analog_matrix_get_travel_normalized(row, col);
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -514,24 +515,22 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get velocity mode from layer settings
     uint8_t velocity_mode = analog_matrix_get_velocity_mode();
 
+    if (velocity_mode == 0) {
+        // Mode 0: Fixed velocity - use the global velocity_number directly
+        return velocity_number;
+    }
+
     // Get velocity curve (per-key or global) and keysplit min/max
     uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 1);  // split_type=1 (keysplit)
     uint8_t min_vel = keyboard_settings.keysplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.keysplit_he_velocity_max;
 
-    uint8_t raw_value;
+    // Modes 1-3: Use pre-calculated raw velocity from matrix.c
+    uint8_t raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    if (velocity_mode == 0) {
-        // Mode 0: Fixed velocity - use current travel with curve
+    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    if (raw_value == 0) {
         raw_value = analog_matrix_get_travel_normalized(row, col);
-    } else {
-        // Modes 1-3: Use pre-calculated raw velocity from matrix.c
-        raw_value = analog_matrix_get_velocity_raw(row, col);
-
-        // If raw_velocity is 0 (not yet captured), fall back to current travel
-        if (raw_value == 0) {
-            raw_value = analog_matrix_get_travel_normalized(row, col);
-        }
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -556,24 +555,22 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Get velocity mode from layer settings
     uint8_t velocity_mode = analog_matrix_get_velocity_mode();
 
+    if (velocity_mode == 0) {
+        // Mode 0: Fixed velocity - use the global velocity_number directly
+        return velocity_number;
+    }
+
     // Get velocity curve (per-key or global) and triplesplit min/max
     uint8_t curve_index = get_key_velocity_curve(current_layer, row, col, 2);  // split_type=2 (triplesplit)
     uint8_t min_vel = keyboard_settings.triplesplit_he_velocity_min;
     uint8_t max_vel = keyboard_settings.triplesplit_he_velocity_max;
 
-    uint8_t raw_value;
+    // Modes 1-3: Use pre-calculated raw velocity from matrix.c
+    uint8_t raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    if (velocity_mode == 0) {
-        // Mode 0: Fixed velocity - use current travel with curve
+    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    if (raw_value == 0) {
         raw_value = analog_matrix_get_travel_normalized(row, col);
-    } else {
-        // Modes 1-3: Use pre-calculated raw velocity from matrix.c
-        raw_value = analog_matrix_get_velocity_raw(row, col);
-
-        // If raw_velocity is 0 (not yet captured), fall back to current travel
-        if (raw_value == 0) {
-            raw_value = analog_matrix_get_travel_normalized(row, col);
-        }
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -2267,9 +2264,13 @@ void initialize_layer_actuations(void) {
         // This should trigger with even a light press
         layer_actuations[i].normal_actuation = 30;
         layer_actuations[i].midi_actuation = 30;
-        layer_actuations[i].velocity_mode = 0;      // Fixed
+        layer_actuations[i].velocity_mode = 2;      // Speed-Based (matches GUI default)
         layer_actuations[i].velocity_speed_scale = 10;
         layer_actuations[i].flags = 0;              // All flags off
+        layer_actuations[i].aftertouch_mode = 0;    // Off
+        layer_actuations[i].aftertouch_cc = 255;    // Off (no CC)
+        layer_actuations[i].vibrato_sensitivity = 100;  // 100% (normal)
+        layer_actuations[i].vibrato_decay_time = 200;   // 200ms
         // Note: Rapidfire settings are now per-key in per_key_actuations
         // Note: Velocity curve/min/max settings and aftertouch are now global in keyboard_settings
     }
@@ -4897,6 +4898,11 @@ void gaming_update_joystick(void) {
 // =============================================================================
 
 void keyboard_post_init_user(void) {
+	// Enable analog (HE) velocity mode - this keyboard has analog hall-effect sensors
+	// Without this, process_midi.c bypasses get_he_velocity_from_position() entirely
+	// and always uses the fixed velocity_number slider value
+	analog_mode = 1;
+
 	scan_keycode_categories();
 	scan_current_layer_midi_leds();
 	load_keyboard_settings();

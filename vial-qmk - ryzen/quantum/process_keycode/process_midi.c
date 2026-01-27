@@ -483,8 +483,11 @@ uint8_t get_raw_travel_from_record(keyrecord_t *record) {
 
 // Modified noteon functions
 void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
+    // Velocity has already been determined by the caller (chord generator, arp, etc.)
+    // Do NOT re-process it - just clamp to valid range
+    uint8_t final_velocity = velocity;
+    if (final_velocity < 1) final_velocity = 1;
+    if (final_velocity > 127) final_velocity = 127;
 
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
@@ -541,9 +544,11 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
 }
 
 void midi_send_noteon_trainer(uint8_t channel, uint8_t note, uint8_t velocity) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-
-    uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
+    // Velocity has already been determined by the caller
+    // Do NOT re-process it - just clamp to valid range
+    uint8_t final_velocity = velocity;
+    if (final_velocity < 1) final_velocity = 1;
+    if (final_velocity > 127) final_velocity = 127;
 
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
@@ -709,9 +714,11 @@ void midi_send_pitchbend_with_recording(uint8_t channel, int16_t bend_value) {
 }
 
 void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-
-    uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
+    // Velocity has already been calculated by the caller via get_he_velocity_from_position()
+    // or apply_he_velocity_from_record(). Do NOT re-process it here.
+    uint8_t final_velocity = velocity;
+    if (final_velocity < 1) final_velocity = 1;
+    if (final_velocity > 127) final_velocity = 127;
 
     // Check if arpeggiator is active - suppress direct MIDI output
     // The arp engine will generate its own notes from the live_notes[] array
@@ -858,10 +865,11 @@ void flush_live_notes_for_arp(void) {
 // - Still trigger LED lighting
 
 void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-
-    // Apply velocity mode conversion (reuses existing velocity curve logic)
-    uint8_t final_velocity = apply_velocity_mode(velocity, current_layer, note);
+    // Velocity has already been determined by the arpeggiator engine
+    // Do NOT re-process it - just clamp to valid range
+    uint8_t final_velocity = velocity;
+    if (final_velocity < 1) final_velocity = 1;
+    if (final_velocity > 127) final_velocity = 127;
 
     // Send MIDI note-on
     midi_send_noteon(&midi_device, channel, note, final_velocity);
