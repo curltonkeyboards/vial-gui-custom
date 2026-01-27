@@ -207,15 +207,6 @@ static int8_t add_unsynced_note(uint8_t midi_note, uint8_t channel, uint32_t sta
     return -1;  // No available slots
 }
 
-// Remove an unsynced note state
-static void remove_unsynced_note(uint8_t midi_note, uint8_t channel) {
-    int8_t idx = find_unsynced_note(midi_note, channel);
-    if (idx >= 0) {
-        unsynced_notes[idx].active = false;
-        unsynced_note_count--;
-    }
-}
-
 // Sync unsynced note tracking with current live_notes array
 // Adds new notes, removes notes no longer held
 static void sync_unsynced_with_live_notes(uint32_t current_time) {
