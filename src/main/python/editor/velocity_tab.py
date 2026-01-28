@@ -263,7 +263,7 @@ class VelocityTab(BasicEditor):
         main_layout.addWidget(self.midi_info_label)
 
         # Keyboard widget
-        self.keyboard_widget = VelocityKeyboardWidget(layout_editor)
+        self.keyboard_widget = VelocityKeyboardWidget(self.layout_editor)
         self.keyboard_widget.setMinimumWidth(800)
         self.keyboard_widget.setMinimumHeight(250)
         main_layout.addWidget(self.keyboard_widget, alignment=Qt.AlignCenter)
