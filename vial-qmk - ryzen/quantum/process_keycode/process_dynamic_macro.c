@@ -13400,31 +13400,33 @@ __attribute__((weak)) bool layer_midi_rapidfire_enabled(uint8_t layer) {
 // ============================================================================
 
 __attribute__((weak)) void handle_set_layer_actuation(const uint8_t* data) {
-    // New protocol: 11 bytes per layer
-    // [0]=layer, [1]=normal, [2]=midi, [3]=velocity_mode, [4]=vel_speed, [5]=flags,
+    // Protocol: 12 bytes per layer
+    // [0]=layer, [1]=normal, [2]=midi, [3]=velocity_mode, [4]=fastest_press_ms, [5]=flags,
     // [6]=aftertouch_mode, [7]=aftertouch_cc, [8]=vibrato_sensitivity,
-    // [9]=vibrato_decay_time_low, [10]=vibrato_decay_time_high
+    // [9]=vibrato_decay_time_low, [10]=vibrato_decay_time_high, [11]=slowest_press_ms
     uint8_t layer = data[0];
     uint8_t normal = data[1];
     uint8_t midi = data[2];
     uint8_t velocity = data[3];
-    uint8_t vel_speed = data[4];
+    uint8_t fastest_press_ms = data[4];
     uint8_t flags = data[5];
     uint8_t aftertouch_mode = data[6];
     uint8_t aftertouch_cc = data[7];
     uint8_t vibrato_sensitivity = data[8];
     uint16_t vibrato_decay_time = data[9] | ((uint16_t)data[10] << 8);
+    uint8_t slowest_press_ms = data[11];
 
     if (layer >= 12) {
         dprintf("HID: Invalid layer %d for actuation\n", layer);
         return;
     }
 
-    set_layer_actuation(layer, normal, midi, velocity, vel_speed, flags,
-                        aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time);
+    set_layer_actuation(layer, normal, midi, velocity, fastest_press_ms, flags,
+                        aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+                        vibrato_decay_time, slowest_press_ms);
     save_layer_actuations();
 
-    dprintf("HID: Set layer %d actuation with aftertouch settings\n", layer);
+    dprintf("HID: Set layer %d actuation\n", layer);
 }
 
 __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer, uint8_t* response) {
@@ -13434,38 +13436,41 @@ __attribute__((weak)) void handle_get_layer_actuation(uint8_t layer, uint8_t* re
         return;
     }
 
-    // Get 10 layer parameters (5 original + 5 aftertouch)
-    uint8_t normal, midi, velocity, vel_speed, flags;
+    uint8_t normal, midi, velocity, fastest_press_ms, flags;
     uint8_t aftertouch_mode, aftertouch_cc, vibrato_sensitivity;
     uint16_t vibrato_decay_time;
+    uint8_t slowest_press_ms;
 
-    get_layer_actuation(layer, &normal, &midi, &velocity, &vel_speed, &flags,
-                        &aftertouch_mode, &aftertouch_cc, &vibrato_sensitivity, &vibrato_decay_time);
+    get_layer_actuation(layer, &normal, &midi, &velocity, &fastest_press_ms, &flags,
+                        &aftertouch_mode, &aftertouch_cc, &vibrato_sensitivity,
+                        &vibrato_decay_time, &slowest_press_ms);
 
     response[0] = 0x01;  // Success
     response[1] = normal;
     response[2] = midi;
     response[3] = velocity;
-    response[4] = vel_speed;
+    response[4] = fastest_press_ms;
     response[5] = flags;
     response[6] = aftertouch_mode;
     response[7] = aftertouch_cc;
     response[8] = vibrato_sensitivity;
     response[9] = vibrato_decay_time & 0xFF;         // Low byte
     response[10] = (vibrato_decay_time >> 8) & 0xFF; // High byte
+    response[11] = slowest_press_ms;
 
-    dprintf("HID: Sent layer %d actuation (11 bytes including aftertouch settings)\n", layer);
+    dprintf("HID: Sent layer %d actuation (12 bytes)\n", layer);
 }
 
 __attribute__((weak)) void handle_get_all_layer_actuations(void) {
     load_layer_actuations();
 
-    // Send data in chunks (12 layers × 10 bytes = 120 bytes, 6 packets of 20 bytes each)
-    // Each layer: normal, midi, velocity_mode, vel_speed, flags,
-    //             aftertouch_mode, aftertouch_cc, vibrato_sensitivity, vibrato_decay_time(2)
+    // Send data in chunks (12 layers × 12 bytes = 144 bytes, 6 packets of 24 bytes each)
+    // Each layer: normal, midi, velocity_mode, fastest_press_ms, flags,
+    //             aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+    //             vibrato_decay_time(2), slowest_press_ms, reserved
 
     for (uint8_t packet = 0; packet < 6; packet++) {
-        uint8_t response[22];  // 2 layers × 11 bytes = 22 bytes max
+        uint8_t response[24];  // 2 layers × 12 bytes = 24 bytes max
         uint8_t idx = 0;
         uint8_t start_layer = packet * 2;
 
@@ -13484,13 +13489,14 @@ __attribute__((weak)) void handle_get_all_layer_actuations(void) {
             response[idx++] = layer_actuations[layer].vibrato_decay_time & 0xFF;         // Low byte
             response[idx++] = (layer_actuations[layer].vibrato_decay_time >> 8) & 0xFF;  // High byte
             response[idx++] = layer_actuations[layer].slowest_press_ms;
+            response[idx++] = 0;  // Reserved
         }
 
         send_hid_response(HID_CMD_GET_ALL_LAYER_ACTUATIONS, packet, 0, response, idx);
         if (packet < 5) wait_ms(10);
     }
 
-    dprintf("HID: Sent all layer actuations (6 packets, 11 bytes/layer)\n");
+    dprintf("HID: Sent all layer actuations (6 packets, 12 bytes/layer)\n");
 }
 __attribute__((weak)) void handle_reset_layer_actuations(void) {
     reset_layer_actuations();

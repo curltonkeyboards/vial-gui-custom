@@ -696,8 +696,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         switch (cmd) {
             case 0xEB: {  // HID_CMD_GET_LAYER_ACTUATION (individual)
                 // Format: data[6] = layer number (0-11)
-                // Response: [status, normal, midi, velocity, vel_speed, flags,
-                //            aftertouch_mode, aftertouch_cc, vibrato_sens, decay_lo, decay_hi]
+                // Response: [status, normal, midi, velocity, fastest_press_ms, flags,
+                //            aftertouch_mode, aftertouch_cc, vibrato_sens, decay_lo, decay_hi, slowest_press_ms]
                 uint8_t layer = data[6];
                 if (layer < 12) {
                     handle_get_layer_actuation(layer, &response[5]);
@@ -737,12 +737,27 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                     bulk_response[6] = TOTAL_PACKETS;
 
                     // Layer data (2 layers per packet, 12 bytes each)
+                    // Write directly from layer_actuations[] to avoid success byte
+                    // Format: [normal, midi, velocity, fastest_press_ms, flags,
+                    //          aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+                    //          vibrato_decay_low, vibrato_decay_high, slowest_press_ms, reserved]
                     for (uint8_t l = 0; l < LAYERS_PER_PACKET; l++) {
                         uint8_t layer_idx = pkt * LAYERS_PER_PACKET + l;
                         if (layer_idx >= 12) break;
 
                         uint8_t offset = 7 + (l * BYTES_PER_LAYER);
-                        handle_get_layer_actuation(layer_idx, &bulk_response[offset]);
+                        bulk_response[offset + 0]  = layer_actuations[layer_idx].normal_actuation;
+                        bulk_response[offset + 1]  = layer_actuations[layer_idx].midi_actuation;
+                        bulk_response[offset + 2]  = layer_actuations[layer_idx].velocity_mode;
+                        bulk_response[offset + 3]  = layer_actuations[layer_idx].fastest_press_ms;
+                        bulk_response[offset + 4]  = layer_actuations[layer_idx].flags;
+                        bulk_response[offset + 5]  = layer_actuations[layer_idx].aftertouch_mode;
+                        bulk_response[offset + 6]  = layer_actuations[layer_idx].aftertouch_cc;
+                        bulk_response[offset + 7]  = layer_actuations[layer_idx].vibrato_sensitivity;
+                        bulk_response[offset + 8]  = layer_actuations[layer_idx].vibrato_decay_time & 0xFF;
+                        bulk_response[offset + 9]  = (layer_actuations[layer_idx].vibrato_decay_time >> 8) & 0xFF;
+                        bulk_response[offset + 10] = layer_actuations[layer_idx].slowest_press_ms;
+                        bulk_response[offset + 11] = 0;  // Reserved
                     }
 
                     raw_hid_send(bulk_response, 32);
