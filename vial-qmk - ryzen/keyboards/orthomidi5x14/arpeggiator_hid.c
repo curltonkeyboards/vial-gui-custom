@@ -1019,6 +1019,137 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a Velocity Matrix Poll command (0xE5)
+    // Returns velocity (0-127, after curve) and travel time (ms) for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xD3) {
+
+        dprintf("raw_hid_receive_kb: Velocity Matrix Poll command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xD3;
+
+        // Request format: [header(4), _, num_keys, row0, col0, row1, col1, ...]
+        uint8_t num_keys = data[6];
+
+        // Validate number of keys (max 6 to fit in response: 6 + 6*4 = 30 bytes)
+        // Each key: velocity(1) + travel_time(2) + raw_velocity(1) = 4 bytes
+        if (num_keys > 6) {
+            num_keys = 6;
+        }
+
+        response[4] = num_keys;
+        response[5] = 0x01;  // Success
+
+        // Get velocity data for each requested key
+        for (uint8_t i = 0; i < num_keys; i++) {
+            uint8_t row = data[7 + i * 2];
+            uint8_t col = data[8 + i * 2];
+
+            uint8_t final_velocity = 0;
+            uint16_t travel_time_ms = 0;
+            uint8_t raw_velocity = 0;
+
+            if (row < MATRIX_ROWS && col < MATRIX_COLS) {
+                // Get the ACTUAL final velocity that was sent with the MIDI note
+                // This shows the real velocity assigned to the note, not the current position
+                final_velocity = analog_matrix_get_final_velocity(row, col);
+                // Get travel time in milliseconds
+                travel_time_ms = analog_matrix_get_travel_time_ms(row, col);
+                // Get raw velocity (before curve)
+                raw_velocity = analog_matrix_get_velocity_raw(row, col);
+            }
+
+            uint8_t offset = 6 + i * 4;
+            response[offset + 0] = final_velocity;
+            response[offset + 1] = travel_time_ms & 0xFF;         // Low byte
+            response[offset + 2] = (travel_time_ms >> 8) & 0xFF;  // High byte
+            response[offset + 3] = raw_velocity;
+        }
+
+        dprintf("Velocity Matrix: %d keys queried\n", num_keys);
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a Global Velocity Time Settings command (0xE6)
+    // Get or Set the global velocity_min_time and velocity_max_time settings
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xD4) {
+
+        dprintf("raw_hid_receive_kb: Global Velocity Time Settings command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xD4;
+
+        // Request format: [header(4), _, sub_cmd, min_time_lo, min_time_hi, max_time_lo, max_time_hi]
+        // sub_cmd: 0 = GET, 1 = SET, 2 = SAVE to EEPROM
+        uint8_t sub_cmd = data[6];
+
+        if (sub_cmd == 0) {
+            // GET: Return current settings
+            response[4] = 0x01;  // Success
+            response[5] = velocity_min_time & 0xFF;
+            response[6] = (velocity_min_time >> 8) & 0xFF;
+            response[7] = velocity_max_time & 0xFF;
+            response[8] = (velocity_max_time >> 8) & 0xFF;
+            dprintf("GET Velocity Time: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+        } else if (sub_cmd == 1) {
+            // SET: Update settings from request
+            uint16_t new_min = data[7] | (data[8] << 8);
+            uint16_t new_max = data[9] | (data[10] << 8);
+
+            // Validate ranges
+            if (new_min >= 10 && new_min <= 400 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
+                velocity_min_time = new_min;
+                velocity_max_time = new_max;
+                response[4] = 0x01;  // Success
+                dprintf("SET Velocity Time: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+            } else {
+                response[4] = 0x00;  // Error - invalid values
+                dprintf("SET Velocity Time: INVALID min=%d, max=%d\n", new_min, new_max);
+            }
+            // Return current values
+            response[5] = velocity_min_time & 0xFF;
+            response[6] = (velocity_min_time >> 8) & 0xFF;
+            response[7] = velocity_max_time & 0xFF;
+            response[8] = (velocity_max_time >> 8) & 0xFF;
+        } else if (sub_cmd == 2) {
+            // SAVE: Save current settings to EEPROM
+            velocity_time_save_to_eeprom();
+            response[4] = 0x01;  // Success
+            response[5] = velocity_min_time & 0xFF;
+            response[6] = (velocity_min_time >> 8) & 0xFF;
+            response[7] = velocity_max_time & 0xFF;
+            response[8] = (velocity_max_time >> 8) & 0xFF;
+            dprintf("SAVE Velocity Time to EEPROM: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+        } else {
+            response[4] = 0x00;  // Error - unknown sub-command
+        }
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a GET EQ Curve Settings command (0xEF)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&

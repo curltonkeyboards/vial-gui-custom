@@ -4933,6 +4933,9 @@ void keyboard_post_init_user(void) {
 	// Load user curves from EEPROM
 	user_curves_load();
 
+	// Load global velocity time settings from EEPROM
+	velocity_time_load_from_eeprom();
+
 	dwt_init();
 
 #ifdef JOYSTICK_ENABLE
