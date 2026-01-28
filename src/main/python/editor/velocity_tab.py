@@ -24,7 +24,6 @@ from widgets.keyboard_widget import KeyboardWidgetSimple
 from themes import Theme
 from util import tr
 from vial_device import VialKeyboard
-from keycodes import Keycode
 
 
 # MIDI note keycode range (from keycodes_v6.py)
@@ -34,19 +33,34 @@ MIDI_NOTE_MAX = 0x714A  # MI_B_5
 
 def is_midi_note_keycode(keycode):
     """Check if a keycode is a MIDI note (not control codes like octave/transpose)"""
+    if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
+        return False
+
+    # Handle string keycodes (most common case from keyboard.layout)
     if isinstance(keycode, str):
-        # Get numeric value from string keycode
-        keycode = Keycode.find_by_qmk_id(keycode)
-        if keycode is None:
-            return False
-        keycode = keycode.qmk_id
-        # Try to get numeric value
-        try:
-            from keycodes.keycodes import KEYCODES_MAP
-            keycode = KEYCODES_MAP.get(keycode, 0)
-        except:
+        # Check for MI_SPLIT_ (keysplit) and MI_SPLIT2_ (triplesplit) first
+        if keycode.startswith("MI_SPLIT2_") or keycode.startswith("MI_SPLIT_"):
+            if keycode.startswith("MI_SPLIT2_"):
+                remaining = keycode[10:]
+            else:
+                remaining = keycode[9:]
+            if remaining and remaining[0] in 'CDEFGAB':
+                return True
             return False
 
+        # Check for MI_ prefix (base MIDI notes like MI_C, MI_C_1, MI_Cs, etc.)
+        if keycode.startswith("MI_"):
+            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
+            for prefix in note_prefixes:
+                if keycode.startswith(prefix):
+                    # Make sure it's not a control code like MI_CHANNEL
+                    remaining = keycode[len(prefix):]
+                    if not remaining or remaining[0] in 'sS_0123456789':
+                        return True
+            return False
+        return False
+
+    # Handle numeric keycodes
     return MIDI_NOTE_MIN <= keycode <= MIDI_NOTE_MAX
 
 
