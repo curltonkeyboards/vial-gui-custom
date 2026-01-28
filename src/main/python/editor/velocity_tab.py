@@ -115,10 +115,16 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
             row = widget.desc.row
             col = widget.desc.col
 
-            # Get widget geometry
-            rect = widget.geometry()
-            center_x = rect.x() + rect.width() // 2
-            center_y = rect.y() + rect.height() // 2
+            # KeyWidget2 uses rect property, not geometry() method
+            # Also need to account for scale and shift transforms
+            scale = self.scale * 1.3
+            rect_x = int((widget.x + widget.shift_x) * scale)
+            rect_y = int((widget.y + widget.shift_y) * scale)
+            rect_w = int(widget.w * scale)
+            rect_h = int(widget.h * scale)
+
+            center_x = rect_x + rect_w // 2
+            center_y = rect_y + rect_h // 2
 
             # Check if this is a MIDI key
             is_midi = (row, col) in self.midi_keys
@@ -141,7 +147,7 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                 # Draw background circle
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(color))
-                circle_size = min(rect.width(), rect.height()) * 0.6
+                circle_size = min(rect_w, rect_h) * 0.6
                 painter.drawEllipse(
                     int(center_x - circle_size/2),
                     int(center_y - circle_size/2),
@@ -152,7 +158,7 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                 # Draw velocity text
                 painter.setPen(QPen(QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)))
                 painter.drawText(
-                    rect.x(), rect.y(), rect.width(), rect.height(),
+                    rect_x, rect_y, rect_w, rect_h,
                     Qt.AlignCenter,
                     str(velocity) if velocity > 0 else "-"
                 )
@@ -161,7 +167,7 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                 painter.setPen(QPen(QColor(120, 120, 120, 100)))
                 painter.setBrush(Qt.NoBrush)
                 painter.drawText(
-                    rect.x(), rect.y(), rect.width(), rect.height(),
+                    rect_x, rect_y, rect_w, rect_h,
                     Qt.AlignCenter,
                     "-"
                 )
@@ -195,16 +201,15 @@ class VelocityTab(BasicEditor):
         self.setup_ui()
 
     def setup_ui(self):
-        self.addStretch()
-
-        # Create scroll area for the main content
+        # Create scroll area for the main content - stretches to fill window
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)  # Show horizontal scroll when needed
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setMinimumSize(900, 700)
+        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
+        main_widget.setMinimumWidth(1000)  # Minimum 1000px width
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_layout.setSpacing(15)
@@ -212,8 +217,7 @@ class VelocityTab(BasicEditor):
         main_widget.setLayout(main_layout)
 
         scroll.setWidget(main_widget)
-        self.addWidget(scroll)
-        self.setAlignment(scroll, QtCore.Qt.AlignHCenter)
+        self.addWidget(scroll, stretch=1)  # Allow scroll area to stretch
 
         # Title
         title_label = QLabel(tr("VelocityTab", "Velocity Monitor"))
@@ -366,8 +370,6 @@ class VelocityTab(BasicEditor):
 
         main_layout.addLayout(bottom_layout)
         main_layout.addStretch()
-
-        self.addStretch()
 
     def valid(self):
         """This tab is always valid for VialKeyboard devices"""
