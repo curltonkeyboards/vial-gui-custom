@@ -1208,6 +1208,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
     }
 
+    // === MIDI-SPECIFIC OPERATIONS (only for actual MIDI keys) ===
+    // Velocity tracking above runs for all keys (for velocity tab display)
+    // But MIDI channel/note and aftertouch only applies to MIDI keys
+    if (!state->is_midi_key) {
+        // Non-MIDI key: velocity is tracked, but no MIDI operations needed
+        return;
+    }
+
     // Capture channel and MIDI note when note first becomes pressed
     if (pressed && !state->was_pressed) {
         // Determine channel and MIDI note based on keycode
@@ -1548,8 +1556,8 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
-    // Initialize MIDI states if needed
-    if (!midi_states_initialized && optimized_midi_positions != NULL) {
+    // Initialize MIDI states unconditionally for velocity tab support
+    if (!midi_states_initialized) {
         initialize_midi_states();
     }
 
@@ -1586,13 +1594,11 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // See PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
     // incremental_load_per_key_cache();
 
-    // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
-    // Always run regardless of velocity_mode so the velocity tab can display data
+    // Process velocity for ALL keys (for velocity tab display and MIDI velocity)
+    // Always run regardless of key type so the velocity tab can display data for any key
     if (midi_states_initialized) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
-            if (key_type_cache[i] == KEY_TYPE_MIDI) {
-                process_midi_key_analog(i, current_layer);
-            }
+            process_midi_key_analog(i, current_layer);
         }
     }
 
