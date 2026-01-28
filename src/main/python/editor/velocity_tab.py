@@ -370,23 +370,25 @@ class VelocityTab(BasicEditor):
         self.addStretch()
 
     def valid(self):
-        # Show tab if we have any device connected
-        return self.device is not None
+        """This tab is always valid for VialKeyboard devices"""
+        return isinstance(self.device, VialKeyboard)
 
     def rebuild(self, device):
         super().rebuild(device)
-        self.keyboard = device.keyboard if device else None
+        if not self.valid():
+            return
 
-        if self.keyboard:
-            try:
-                # Rebuild keyboard widget
-                self.keyboard_widget.set_keys(self.keyboard.keys, self.keyboard.encoders)
-                # Load velocity time settings from keyboard
-                self.load_time_settings()
-                # Scan for MIDI keys on current layer
-                self.scan_midi_keys()
-            except Exception as e:
-                print(f"VelocityTab rebuild error: {e}")
+        self.keyboard = device.keyboard
+
+        try:
+            # Rebuild keyboard widget
+            self.keyboard_widget.set_keys(self.keyboard.keys, self.keyboard.encoders)
+            # Load velocity time settings from keyboard
+            self.load_time_settings()
+            # Scan for MIDI keys on current layer
+            self.scan_midi_keys()
+        except Exception as e:
+            print(f"VelocityTab rebuild error: {e}")
 
     def activate(self):
         """Called when tab becomes active"""
