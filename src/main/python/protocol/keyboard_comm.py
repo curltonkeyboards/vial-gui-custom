@@ -130,6 +130,10 @@ HID_CMD_SET_LAYER_ACTUATION = 0xEC       # Set actuation for specific layer
 HID_CMD_GET_ALL_LAYER_ACTUATIONS = 0xED  # Get all layer actuations (bulk)
 HID_CMD_RESET_LAYER_ACTUATIONS = 0xEE    # Reset all layer actuations
 
+# Velocity Tab Commands (0xD3-0xD4)
+HID_CMD_VELOCITY_MATRIX_POLL = 0xD3      # Poll velocity + travel time for specific keys
+HID_CMD_VELOCITY_TIME_SETTINGS = 0xD4    # Get/Set global velocity min/max time settings
+
 class ProtocolError(Exception):
     pass
 
@@ -1016,6 +1020,163 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
         except Exception:
             return None
+
+    def velocity_matrix_poll(self, keys):
+        """Poll velocity values (final MIDI velocity 0-127, travel time in ms) for specific keys
+
+        Args:
+            keys: List of (row, col) tuples for keys to query (max 6 keys per request)
+
+        Returns:
+            dict: {(row, col): {'velocity': int, 'travel_time_ms': int, 'raw_velocity': int}}
+                  or None on error
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD3,
+                      num_keys, row0, col0, row1, col1, ...]
+            Response: [header(4), num_keys, status, vel0, time_lo0, time_hi0, raw0, ...]
+        """
+        try:
+            if not keys or len(keys) > 6:
+                return None
+
+            # Build request data: [num_keys, row0, col0, row1, col1, ...]
+            data = bytearray([len(keys)])
+            for row, col in keys:
+                data.append(row)
+                data.append(col)
+
+            packet = self._create_hid_packet(HID_CMD_VELOCITY_MATRIX_POLL, len(keys), bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 6:
+                return None
+
+            # Check if command was successful (status byte at index 5)
+            if response[5] != 0x01:
+                return None
+
+            # Parse velocity values from response (starting at index 6)
+            # Each key has 4 bytes: velocity(1) + travel_time(2) + raw_velocity(1)
+            result = {}
+            data_start = 6
+            for i, (row, col) in enumerate(keys):
+                offset = data_start + i * 4
+                if offset + 3 < len(response):
+                    velocity = response[offset]
+                    travel_time_ms = response[offset + 1] | (response[offset + 2] << 8)
+                    raw_velocity = response[offset + 3]
+                    result[(row, col)] = {
+                        'velocity': velocity,
+                        'travel_time_ms': travel_time_ms,
+                        'raw_velocity': raw_velocity
+                    }
+
+            return result
+
+        except Exception:
+            return None
+
+    def get_velocity_time_settings(self):
+        """Get global velocity min/max time settings from keyboard
+
+        Returns:
+            dict: {'min_time': int, 'max_time': int} in milliseconds, or None on error
+            - min_time: Time for slowest press = minimum velocity (10-400ms, default 100)
+            - max_time: Time for fastest press = maximum velocity (5-100ms, default 10)
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD4, _, 0 (GET)]
+            Response: [header(4), status, min_lo, min_hi, max_lo, max_hi]
+        """
+        try:
+            # sub_cmd = 0 for GET
+            data = bytearray([0])  # GET command
+            packet = self._create_hid_packet(HID_CMD_VELOCITY_TIME_SETTINGS, 0, bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            if not response or len(response) < 9:
+                return None
+
+            # Check if command was successful (status byte at index 4)
+            if response[4] != 0x01:
+                return None
+
+            # Parse min/max time values
+            min_time = response[5] | (response[6] << 8)
+            max_time = response[7] | (response[8] << 8)
+
+            return {
+                'min_time': min_time,
+                'max_time': max_time
+            }
+
+        except Exception:
+            return None
+
+    def set_velocity_time_settings(self, min_time, max_time):
+        """Set global velocity min/max time settings
+
+        Args:
+            min_time: Time in ms for slowest press = minimum velocity (10-400ms)
+            max_time: Time in ms for fastest press = maximum velocity (5-100ms)
+            NOTE: max_time must be less than min_time
+
+        Returns:
+            bool: True on success, False on failure
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD4, _, 1 (SET),
+                      min_lo, min_hi, max_lo, max_hi]
+            Response: [header(4), status, min_lo, min_hi, max_lo, max_hi]
+        """
+        try:
+            # Validate inputs
+            if min_time < 10 or min_time > 400:
+                return False
+            if max_time < 5 or max_time > 100:
+                return False
+            if max_time >= min_time:
+                return False
+
+            # sub_cmd = 1 for SET
+            data = bytearray([
+                1,  # SET command
+                min_time & 0xFF,
+                (min_time >> 8) & 0xFF,
+                max_time & 0xFF,
+                (max_time >> 8) & 0xFF
+            ])
+            packet = self._create_hid_packet(HID_CMD_VELOCITY_TIME_SETTINGS, 1, bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            # Check for success response
+            return response and len(response) >= 5 and response[4] == 0x01
+
+        except Exception:
+            return False
+
+    def save_velocity_time_settings(self):
+        """Save current velocity time settings to EEPROM for persistence
+
+        Returns:
+            bool: True on success, False on failure
+
+        Protocol:
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD4, _, 2 (SAVE)]
+            Response: [header(4), status]
+        """
+        try:
+            # sub_cmd = 2 for SAVE
+            data = bytearray([2])  # SAVE command
+            packet = self._create_hid_packet(HID_CMD_VELOCITY_TIME_SETTINGS, 2, bytes(data))
+            response = self.usb_send(self.dev, packet, retries=1)
+
+            # Check for success response
+            return response and len(response) >= 5 and response[4] == 0x01
+
+        except Exception:
+            return False
 
     def qmk_settings_set(self, qsid, value):
         from editor.qmk_settings import QmkSettings

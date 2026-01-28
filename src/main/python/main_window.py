@@ -47,6 +47,7 @@ from editor.matrix_test import MatrixTest
 from editor.matrix_test import MIDIswitchSettingsConfigurator
 from editor.matrix_test import ThruLoopConfigurator
 from editor.matrix_test import GamingConfigurator
+from editor.velocity_tab import VelocityTab
 from editor.midi_patch import MIDIPatchBay
 from editor.loop_manager import LoopManager
 from editor.arpeggiator import Arpeggiator, StepSequencer
@@ -142,6 +143,7 @@ class MainWindow(QMainWindow):
         QmkSettings.initialize(appctx)
         self.qmk_settings = QmkSettings()
         self.matrix_tester = MatrixTest(self.layout_editor)
+        self.velocity_tab = VelocityTab(self.layout_editor)
         self.rgb_configurator = RGBConfigurator()
         _startup_log(f"  Core editors (Firmware, Macro, TapDance, etc) ({time.time()-t0:.2f}s)")
 
@@ -171,7 +173,8 @@ class MainWindow(QMainWindow):
                         (self.arpeggiator, "Arpeggiator"), (self.step_sequencer, "Step Sequencer"),
                         (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
-                        (self.matrix_tester, "Matrix tester"), (self.firmware_flasher, "Firmware updater")]
+                        (self.matrix_tester, "Matrix tester"), (self.velocity_tab, "Velocity"),
+                        (self.firmware_flasher, "Firmware updater")]
 
         Unlocker.global_layout_editor = self.layout_editor
         Unlocker.global_main_window = self

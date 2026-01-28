@@ -293,6 +293,20 @@ void analog_matrix_refresh_settings(void);
 void eq_curve_save_to_eeprom(void);
 void eq_curve_load_from_eeprom(void);
 
+// Global velocity time settings (min/max press time for velocity scaling)
+extern uint16_t velocity_min_time;  // Time in ms for min velocity (slow press, default 100ms)
+extern uint16_t velocity_max_time;  // Time in ms for max velocity (fast press, default 10ms)
+
+// Velocity time settings EEPROM persistence
+void velocity_time_save_to_eeprom(void);
+void velocity_time_load_from_eeprom(void);
+
+// Get last measured travel time for a key (in milliseconds)
+uint16_t analog_matrix_get_travel_time_ms(uint8_t row, uint8_t col);
+
+// Get final velocity (0-127, after curve application) for a key
+uint8_t analog_matrix_get_final_velocity(uint8_t row, uint8_t col);
+
 #ifdef __cplusplus
 }
 #endif
