@@ -65,17 +65,20 @@ def is_midi_note_keycode(keycode):
 
 
 class VelocityKeyboardWidget(KeyboardWidgetSimple):
-    """Extended keyboard widget that displays velocity values on keys"""
+    """Extended keyboard widget that displays velocity values and travel times on keys"""
 
     def __init__(self, layout_editor):
         super().__init__(layout_editor)
         self.velocity_values = {}  # {(row, col): velocity}
+        self.travel_times = {}     # {(row, col): travel_time_ms}
         self.midi_keys = set()     # Set of (row, col) that have MIDI notes
         self.show_velocity = True
 
-    def set_velocity(self, row, col, velocity):
-        """Set velocity value for a specific key"""
+    def set_velocity(self, row, col, velocity, travel_time_ms=None):
+        """Set velocity value and travel time for a specific key"""
         self.velocity_values[(row, col)] = velocity
+        if travel_time_ms is not None:
+            self.travel_times[(row, col)] = travel_time_ms
         self.update()
 
     def set_midi_keys(self, midi_keys):
@@ -84,8 +87,9 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
         self.update()
 
     def clear_velocities(self):
-        """Clear all velocity values"""
+        """Clear all velocity values and travel times"""
         self.velocity_values = {}
+        self.travel_times = {}
         self.update()
 
     def paintEvent(self, event):
@@ -132,6 +136,7 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
             if is_midi:
                 # Draw velocity value for MIDI keys
                 velocity = self.velocity_values.get((row, col), 0)
+                travel_time = self.travel_times.get((row, col), 0)
 
                 # Color based on velocity (low = blue, high = red)
                 if velocity > 0:
@@ -144,24 +149,49 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                 else:
                     color = QColor(100, 100, 100)  # Gray for 0
 
-                # Draw background circle
+                # Draw background rounded rect (taller to fit both lines)
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(color))
-                circle_size = min(rect_w, rect_h) * 0.6
-                painter.drawEllipse(
-                    int(center_x - circle_size/2),
-                    int(center_y - circle_size/2),
-                    int(circle_size),
-                    int(circle_size)
+                box_w = min(rect_w, rect_h) * 0.75
+                box_h = min(rect_w, rect_h) * 0.7
+                painter.drawRoundedRect(
+                    int(center_x - box_w/2),
+                    int(center_y - box_h/2),
+                    int(box_w),
+                    int(box_h),
+                    4, 4
                 )
 
-                # Draw velocity text
-                painter.setPen(QPen(QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)))
+                # Draw velocity text (top line)
+                text_color = QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)
+                painter.setPen(QPen(text_color))
+
+                # Velocity on top
+                vel_text = str(velocity) if velocity > 0 else "-"
                 painter.drawText(
-                    rect_x, rect_y, rect_w, rect_h,
+                    rect_x, int(rect_y - rect_h * 0.08), rect_w, rect_h,
                     Qt.AlignCenter,
-                    str(velocity) if velocity > 0 else "-"
+                    vel_text
                 )
+
+                # Travel time on bottom (smaller font)
+                small_font = QFont()
+                small_font.setBold(False)
+                small_font.setPointSize(6)
+                painter.setFont(small_font)
+
+                time_text = f"{travel_time}ms" if travel_time > 0 else ""
+                painter.drawText(
+                    rect_x, int(rect_y + rect_h * 0.15), rect_w, rect_h,
+                    Qt.AlignCenter,
+                    time_text
+                )
+
+                # Restore font
+                font = QFont()
+                font.setBold(True)
+                font.setPointSize(8)
+                painter.setFont(font)
             else:
                 # Non-MIDI keys - show grayed out indicator
                 painter.setPen(QPen(QColor(120, 120, 120, 100)))
@@ -323,10 +353,23 @@ class VelocityTab(BasicEditor):
         time_layout.setSpacing(15)
         time_group.setLayout(time_layout)
 
-        # Velocity mode display
-        self.velocity_mode_label = QLabel(tr("VelocityTab", "Velocity Mode: -"))
-        self.velocity_mode_label.setStyleSheet("font-weight: bold; color: #4a90d9;")
-        time_layout.addWidget(self.velocity_mode_label)
+        # Velocity mode dropdown (sends changes immediately)
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel(tr("VelocityTab", "Velocity Mode:"))
+        mode_label.setStyleSheet("font-weight: bold;")
+        mode_label.setMinimumWidth(100)
+        mode_layout.addWidget(mode_label)
+
+        self.velocity_mode_combo = ArrowComboBox()
+        self.velocity_mode_combo.addItem("Fixed (64)", 0)
+        self.velocity_mode_combo.addItem("Peak Travel", 1)
+        self.velocity_mode_combo.addItem("Speed-Based", 2)
+        self.velocity_mode_combo.addItem("Speed + Peak", 3)
+        self.velocity_mode_combo.setCurrentIndex(2)  # Default to Speed-Based
+        self.velocity_mode_combo.currentIndexChanged.connect(self.on_velocity_mode_changed)
+        mode_layout.addWidget(self.velocity_mode_combo)
+        mode_layout.addStretch()
+        time_layout.addLayout(mode_layout)
 
         # Description
         time_desc = QLabel(tr("VelocityTab",
@@ -474,7 +517,8 @@ class VelocityTab(BasicEditor):
             if result:
                 for (row, col), data in result.items():
                     velocity = data.get('velocity', 0)
-                    self.keyboard_widget.set_velocity(row, col, velocity)
+                    travel_time_ms = data.get('travel_time_ms', 0)
+                    self.keyboard_widget.set_velocity(row, col, velocity, travel_time_ms)
 
     def load_time_settings(self):
         """Load velocity time settings from keyboard"""
@@ -582,16 +626,14 @@ class VelocityTab(BasicEditor):
             result = self.keyboard.get_layer_actuation(self.current_layer)
             if result:
                 velocity_mode = result.get('velocity', 0)
-                mode_names = {
-                    0: "Fixed",
-                    1: "Peak Travel",
-                    2: "Speed",
-                    3: "Combined (Speed + Peak)"
-                }
-                mode_name = mode_names.get(velocity_mode, f"Unknown ({velocity_mode})")
-                self.velocity_mode_label.setText(
-                    tr("VelocityTab", f"Velocity Mode: {mode_name}")
-                )
+
+                # Update combo box without triggering change signal
+                self.velocity_mode_combo.blockSignals(True)
+                for i in range(self.velocity_mode_combo.count()):
+                    if self.velocity_mode_combo.itemData(i) == velocity_mode:
+                        self.velocity_mode_combo.setCurrentIndex(i)
+                        break
+                self.velocity_mode_combo.blockSignals(False)
 
                 # Show warning if mode doesn't use time settings
                 if velocity_mode in (0, 1):
@@ -601,6 +643,53 @@ class VelocityTab(BasicEditor):
         except Exception as e:
             print(f"Error loading velocity mode: {e}")
 
+    def on_velocity_mode_changed(self):
+        """Handle velocity mode change - send immediately to keyboard"""
+        if not self.keyboard:
+            return
+
+        velocity_mode = self.velocity_mode_combo.currentData()
+
+        # Show/hide warning based on mode
+        if velocity_mode in (0, 1):
+            self.time_warning_label.show()
+        else:
+            self.time_warning_label.hide()
+
+        try:
+            # Get current layer actuation settings
+            result = self.keyboard.get_layer_actuation(self.current_layer)
+            if not result:
+                print("Failed to get current layer actuation")
+                return
+
+            # Build payload with updated velocity mode
+            vibrato_decay = result.get('vibrato_decay_time', 200)
+            flags = 0
+            if result.get('rapidfire_enabled', False):
+                flags |= 0x01
+            if result.get('midi_rapidfire_enabled', False):
+                flags |= 0x02
+
+            payload = bytearray([
+                self.current_layer,
+                result.get('normal', 80),
+                result.get('midi', 80),
+                velocity_mode,  # Updated velocity mode
+                result.get('vel_speed', 10),
+                flags,
+                result.get('aftertouch_mode', 0),
+                result.get('aftertouch_cc', 255),
+                result.get('vibrato_sensitivity', 100),
+                vibrato_decay & 0xFF,
+                (vibrato_decay >> 8) & 0xFF
+            ])
+
+            if not self.keyboard.set_layer_actuation(payload):
+                print(f"Failed to set velocity mode for layer {self.current_layer}")
+        except Exception as e:
+            print(f"Error setting velocity mode: {e}")
+
     def on_save_curve(self):
         """Save velocity curve selection to keyboard"""
         if not self.keyboard:
@@ -609,9 +698,9 @@ class VelocityTab(BasicEditor):
         curve_index = self.curve_preset_combo.currentIndex()
 
         try:
-            # Use set_keyboard_param to set the velocity curve
+            # Use set_keyboard_param_single to set the velocity curve
             # PARAM_HE_VELOCITY_CURVE = 4 (from keyboard_comm.py constants)
-            success = self.keyboard.set_keyboard_param(4, curve_index)
+            success = self.keyboard.set_keyboard_param_single(4, curve_index)
             if success:
                 QMessageBox.information(
                     None,
