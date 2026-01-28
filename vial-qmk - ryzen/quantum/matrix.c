@@ -1768,11 +1768,19 @@ uint16_t analog_matrix_get_travel_time_ms(uint8_t row, uint8_t col) {
 }
 
 // Get final velocity (0-127, after curve application) for a key
-// This uses the raw_velocity and applies the velocity curve
+// This returns the LAST SENT velocity from when the key triggered a MIDI note
 uint8_t analog_matrix_get_final_velocity(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return 0;
     uint32_t key_idx = KEY_INDEX(row, col);
     return midi_key_states[key_idx].final_velocity;
+}
+
+// Store the final velocity when a MIDI note is sent
+// This should be called from process_midi when sending note-on
+void analog_matrix_store_final_velocity(uint8_t row, uint8_t col, uint8_t velocity) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    midi_key_states[key_idx].final_velocity = velocity;
 }
 
 bool analog_matrix_get_key_state(uint8_t row, uint8_t col) {

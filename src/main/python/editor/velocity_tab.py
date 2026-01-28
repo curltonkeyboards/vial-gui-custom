@@ -308,6 +308,12 @@ class VelocityTab(BasicEditor):
         preset_layout.addStretch()
         curve_layout.addLayout(preset_layout)
 
+        # Save curve button
+        save_curve_btn = QPushButton(tr("VelocityTab", "Save Curve to Keyboard"))
+        save_curve_btn.setMinimumHeight(30)
+        save_curve_btn.clicked.connect(self.on_save_curve)
+        curve_layout.addWidget(save_curve_btn)
+
         bottom_layout.addWidget(curve_group)
 
         # Time Calibration Group
@@ -317,6 +323,11 @@ class VelocityTab(BasicEditor):
         time_layout.setSpacing(15)
         time_group.setLayout(time_layout)
 
+        # Velocity mode display
+        self.velocity_mode_label = QLabel(tr("VelocityTab", "Velocity Mode: -"))
+        self.velocity_mode_label.setStyleSheet("font-weight: bold; color: #4a90d9;")
+        time_layout.addWidget(self.velocity_mode_label)
+
         # Description
         time_desc = QLabel(tr("VelocityTab",
             "Set the press speed range for velocity mapping.\n"
@@ -325,6 +336,14 @@ class VelocityTab(BasicEditor):
         time_desc.setStyleSheet("color: gray; font-size: 9pt;")
         time_desc.setWordWrap(True)
         time_layout.addWidget(time_desc)
+
+        # Warning label for modes that don't use time settings
+        self.time_warning_label = QLabel(tr("VelocityTab",
+            "⚠ Time settings only apply to Mode 2 (Speed) and Mode 3 (Combined)"))
+        self.time_warning_label.setStyleSheet("color: #ff9800; font-size: 9pt;")
+        self.time_warning_label.setWordWrap(True)
+        self.time_warning_label.hide()  # Hidden by default
+        time_layout.addWidget(self.time_warning_label)
 
         # Fast press time (max velocity)
         fast_layout = QHBoxLayout()
@@ -387,6 +406,10 @@ class VelocityTab(BasicEditor):
             self.keyboard_widget.set_keys(self.keyboard.keys, self.keyboard.encoders)
             # Load velocity time settings from keyboard
             self.load_time_settings()
+            # Load velocity curve from keyboard
+            self.load_velocity_curve()
+            # Load velocity mode for current layer
+            self.load_velocity_mode()
             # Scan for MIDI keys on current layer
             self.scan_midi_keys()
         except Exception as e:
@@ -409,6 +432,7 @@ class VelocityTab(BasicEditor):
         """Handle layer selection change"""
         self.current_layer = self.layer_buttons.id(button)
         self.scan_midi_keys()
+        self.load_velocity_mode()
 
     def scan_midi_keys(self):
         """Scan current layer for MIDI note keycodes"""
@@ -527,3 +551,82 @@ class VelocityTab(BasicEditor):
             # Load factory curve points into the curve editor
             points = CurveEditorWidget.FACTORY_CURVE_POINTS[index]
             self.curve_editor.set_points(points)
+
+    def load_velocity_curve(self):
+        """Load current velocity curve from keyboard"""
+        if not self.keyboard:
+            return
+
+        try:
+            # Get keyboard config which includes velocity curve
+            config = self.keyboard.get_keyboard_config()
+            if config:
+                curve_index = config.get('he_velocity_curve', 2)  # Default to Linear (2)
+                if 0 <= curve_index < len(CurveEditorWidget.FACTORY_CURVES):
+                    self.curve_preset_combo.blockSignals(True)
+                    self.curve_preset_combo.setCurrentIndex(curve_index)
+                    self.curve_preset_combo.blockSignals(False)
+                    # Update the curve editor display
+                    points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
+                    self.curve_editor.set_points(points)
+        except Exception as e:
+            print(f"Error loading velocity curve: {e}")
+
+    def load_velocity_mode(self):
+        """Load and display velocity mode for current layer"""
+        if not self.keyboard:
+            return
+
+        try:
+            # Get layer actuation settings which include velocity mode
+            result = self.keyboard.get_layer_actuation(self.current_layer)
+            if result:
+                velocity_mode = result.get('velocity', 0)
+                mode_names = {
+                    0: "Fixed",
+                    1: "Peak Travel",
+                    2: "Speed",
+                    3: "Combined (Speed + Peak)"
+                }
+                mode_name = mode_names.get(velocity_mode, f"Unknown ({velocity_mode})")
+                self.velocity_mode_label.setText(
+                    tr("VelocityTab", f"Velocity Mode: {mode_name}")
+                )
+
+                # Show warning if mode doesn't use time settings
+                if velocity_mode in (0, 1):
+                    self.time_warning_label.show()
+                else:
+                    self.time_warning_label.hide()
+        except Exception as e:
+            print(f"Error loading velocity mode: {e}")
+
+    def on_save_curve(self):
+        """Save velocity curve selection to keyboard"""
+        if not self.keyboard:
+            return
+
+        curve_index = self.curve_preset_combo.currentIndex()
+
+        try:
+            # Use set_keyboard_param to set the velocity curve
+            # PARAM_HE_VELOCITY_CURVE = 4 (from keyboard_comm.py constants)
+            success = self.keyboard.set_keyboard_param(4, curve_index)
+            if success:
+                QMessageBox.information(
+                    None,
+                    tr("VelocityTab", "Curve Saved"),
+                    tr("VelocityTab", f"Velocity curve '{CurveEditorWidget.FACTORY_CURVES[curve_index]}' saved to keyboard.")
+                )
+            else:
+                QMessageBox.warning(
+                    None,
+                    tr("VelocityTab", "Save Failed"),
+                    tr("VelocityTab", "Failed to save velocity curve.")
+                )
+        except Exception as e:
+            QMessageBox.warning(
+                None,
+                tr("VelocityTab", "Save Failed"),
+                tr("VelocityTab", f"Error saving curve: {e}")
+            )

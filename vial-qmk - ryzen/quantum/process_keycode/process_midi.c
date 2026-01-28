@@ -947,6 +947,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 }
 
                 uint8_t note = midi_compute_note(keycode);
+                // Store final velocity for GUI polling (shows actual sent velocity)
+                analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
                 midi_send_noteon_with_recording(channel, note, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, note, velocity);
                 tone_status[1][tone] += 1;
@@ -993,6 +995,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 }
 
                 uint8_t noteb = midi_compute_note2(keycode);
+                // Store final velocity for GUI polling (shows actual sent velocity)
+                analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
                 midi_send_noteon_with_recording(channel, noteb, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
                 toneb_status[1][toneb] += 1;
@@ -1038,6 +1042,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 }
 
                 uint8_t notec = midi_compute_note3(keycode);
+                // Store final velocity for GUI polling (shows actual sent velocity)
+                analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
                 midi_send_noteon_with_recording(channel, notec, velocity, raw_travel);
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, notec, velocity);
                 tonec_status[1][tonec] += 1;

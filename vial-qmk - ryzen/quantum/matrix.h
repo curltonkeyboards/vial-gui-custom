@@ -307,6 +307,9 @@ uint16_t analog_matrix_get_travel_time_ms(uint8_t row, uint8_t col);
 // Get final velocity (0-127, after curve application) for a key
 uint8_t analog_matrix_get_final_velocity(uint8_t row, uint8_t col);
 
+// Store final velocity when MIDI note is sent (called from process_midi)
+void analog_matrix_store_final_velocity(uint8_t row, uint8_t col, uint8_t velocity);
+
 #ifdef __cplusplus
 }
 #endif

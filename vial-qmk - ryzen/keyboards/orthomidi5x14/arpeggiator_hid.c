@@ -1059,8 +1059,9 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             uint8_t raw_velocity = 0;
 
             if (row < MATRIX_ROWS && col < MATRIX_COLS) {
-                // Get final velocity (after curve application)
-                final_velocity = get_he_velocity_from_position(row, col);
+                // Get the ACTUAL final velocity that was sent with the MIDI note
+                // This shows the real velocity assigned to the note, not the current position
+                final_velocity = analog_matrix_get_final_velocity(row, col);
                 // Get travel time in milliseconds
                 travel_time_ms = analog_matrix_get_travel_time_ms(row, col);
                 // Get raw velocity (before curve)
