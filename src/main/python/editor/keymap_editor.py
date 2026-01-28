@@ -1522,6 +1522,8 @@ class QuickActuationWidget(QWidget):
         """Handle combo box changes"""
         if not self.syncing:
             self.save_ui_to_memory()
+            # Immediately send velocity mode changes to keyboard
+            self.send_layer_actuation_to_keyboard()
     
     def save_ui_to_memory(self):
         """Save current UI state to memory (for current layer if per-layer, all if master)"""
@@ -1543,7 +1545,53 @@ class QuickActuationWidget(QWidget):
             }
             for i in range(12):
                 self.layer_data[i].update(data)
-    
+
+    def send_layer_actuation_to_keyboard(self):
+        """Send current layer actuation settings to keyboard immediately (for velocity mode changes)"""
+        if not self.device or not isinstance(self.device, VialKeyboard):
+            return
+
+        try:
+            if self.per_layer_enabled:
+                # Send only current layer
+                data = self.layer_data[self.current_layer]
+                vibrato_decay = data.get('vibrato_decay_time', 200)
+                payload = bytearray([
+                    self.current_layer,
+                    data['normal'],
+                    data['midi'],
+                    data['velocity'],
+                    data['vel_speed'],
+                    0,  # flags
+                    data.get('aftertouch_mode', 0),
+                    data.get('aftertouch_cc', 255),
+                    data.get('vibrato_sensitivity', 100),
+                    vibrato_decay & 0xFF,
+                    (vibrato_decay >> 8) & 0xFF
+                ])
+                self.device.keyboard.set_layer_actuation(payload)
+            else:
+                # Send to all 12 layers (master mode)
+                for layer in range(12):
+                    data = self.layer_data[layer]
+                    vibrato_decay = data.get('vibrato_decay_time', 200)
+                    payload = bytearray([
+                        layer,
+                        data['normal'],
+                        data['midi'],
+                        data['velocity'],
+                        data['vel_speed'],
+                        0,  # flags
+                        data.get('aftertouch_mode', 0),
+                        data.get('aftertouch_cc', 255),
+                        data.get('vibrato_sensitivity', 100),
+                        vibrato_decay & 0xFF,
+                        (vibrato_decay >> 8) & 0xFF
+                    ])
+                    self.device.keyboard.set_layer_actuation(payload)
+        except Exception as e:
+            print(f"Error sending layer actuation: {e}")
+
     def load_layer_from_memory(self):
         """Load layer settings from memory cache"""
         self.syncing = True

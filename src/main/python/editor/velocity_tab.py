@@ -65,17 +65,20 @@ def is_midi_note_keycode(keycode):
 
 
 class VelocityKeyboardWidget(KeyboardWidgetSimple):
-    """Extended keyboard widget that displays velocity values on keys"""
+    """Extended keyboard widget that displays velocity values and press times on keys"""
 
     def __init__(self, layout_editor):
         super().__init__(layout_editor)
         self.velocity_values = {}  # {(row, col): velocity}
+        self.travel_times = {}     # {(row, col): travel_time_ms}
         self.midi_keys = set()     # Set of (row, col) that have MIDI notes
         self.show_velocity = True
 
-    def set_velocity(self, row, col, velocity):
-        """Set velocity value for a specific key"""
+    def set_velocity(self, row, col, velocity, travel_time_ms=None):
+        """Set velocity value and optionally travel time for a specific key"""
         self.velocity_values[(row, col)] = velocity
+        if travel_time_ms is not None:
+            self.travel_times[(row, col)] = travel_time_ms
         self.update()
 
     def set_midi_keys(self, midi_keys):
@@ -84,8 +87,9 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
         self.update()
 
     def clear_velocities(self):
-        """Clear all velocity values"""
+        """Clear all velocity values and travel times"""
         self.velocity_values = {}
+        self.travel_times = {}
         self.update()
 
     def paintEvent(self, event):
@@ -132,6 +136,7 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
             if is_midi:
                 # Draw velocity value for MIDI keys
                 velocity = self.velocity_values.get((row, col), 0)
+                travel_time = self.travel_times.get((row, col), 0)
 
                 # Color based on velocity (low = blue, high = red)
                 if velocity > 0:
@@ -144,23 +149,46 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                 else:
                     color = QColor(100, 100, 100)  # Gray for 0
 
-                # Draw background circle
+                # Draw background rounded rectangle (larger to fit both values)
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(QBrush(color))
-                circle_size = min(rect_w, rect_h) * 0.6
-                painter.drawEllipse(
-                    int(center_x - circle_size/2),
-                    int(center_y - circle_size/2),
-                    int(circle_size),
-                    int(circle_size)
+                box_w = min(rect_w, rect_h) * 0.85
+                box_h = min(rect_w, rect_h) * 0.7
+                painter.drawRoundedRect(
+                    int(center_x - box_w/2),
+                    int(center_y - box_h/2),
+                    int(box_w),
+                    int(box_h),
+                    4, 4
                 )
 
-                # Draw velocity text
-                painter.setPen(QPen(QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)))
+                # Draw velocity text (top line)
+                text_color = QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)
+                painter.setPen(QPen(text_color))
+
+                font = QFont()
+                font.setBold(True)
+                font.setPointSize(9)
+                painter.setFont(font)
+
+                # Draw velocity value
+                vel_text = str(velocity) if velocity > 0 else "-"
                 painter.drawText(
-                    rect_x, rect_y, rect_w, rect_h,
+                    rect_x, int(rect_y - rect_h * 0.08), rect_w, rect_h,
                     Qt.AlignCenter,
-                    str(velocity) if velocity > 0 else "-"
+                    vel_text
+                )
+
+                # Draw travel time (smaller font, below velocity)
+                font.setPointSize(7)
+                font.setBold(False)
+                painter.setFont(font)
+
+                time_text = f"{travel_time}ms" if travel_time > 0 else ""
+                painter.drawText(
+                    rect_x, int(rect_y + rect_h * 0.15), rect_w, rect_h,
+                    Qt.AlignCenter,
+                    time_text
                 )
             else:
                 # Non-MIDI keys - show grayed out indicator
@@ -474,7 +502,8 @@ class VelocityTab(BasicEditor):
             if result:
                 for (row, col), data in result.items():
                     velocity = data.get('velocity', 0)
-                    self.keyboard_widget.set_velocity(row, col, velocity)
+                    travel_time_ms = data.get('travel_time_ms', 0)
+                    self.keyboard_widget.set_velocity(row, col, velocity, travel_time_ms)
 
     def load_time_settings(self):
         """Load velocity time settings from keyboard"""
@@ -559,7 +588,7 @@ class VelocityTab(BasicEditor):
 
         try:
             # Get keyboard config which includes velocity curve
-            config = self.keyboard.get_keyboard_config()
+            config = self.keyboard.get_midi_config()
             if config:
                 curve_index = config.get('he_velocity_curve', 2)  # Default to Linear (2)
                 if 0 <= curve_index < len(CurveEditorWidget.FACTORY_CURVES):
@@ -609,9 +638,9 @@ class VelocityTab(BasicEditor):
         curve_index = self.curve_preset_combo.currentIndex()
 
         try:
-            # Use set_keyboard_param to set the velocity curve
+            # Use set_keyboard_param_single to set the velocity curve
             # PARAM_HE_VELOCITY_CURVE = 4 (from keyboard_comm.py constants)
-            success = self.keyboard.set_keyboard_param(4, curve_index)
+            success = self.keyboard.set_keyboard_param_single(4, curve_index)
             if success:
                 QMessageBox.information(
                     None,
