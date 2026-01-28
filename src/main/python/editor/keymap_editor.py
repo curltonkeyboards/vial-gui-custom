@@ -75,8 +75,8 @@ class QuickActuationWidget(QWidget):
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'fastest_press_ms': 5,  # Fastest press time (ms) -> max velocity
-                'slowest_press_ms': 100,  # Slowest press time (ms) -> min velocity
+                'fastest_press_ms': 10,  # Fastest press time (ms) -> max velocity
+                'slowest_press_ms': 245,  # Slowest press time (ms) -> min velocity
                 'aftertouch_mode': 0,  # 0=Off, 1=Reverse, 2=Bottom-Out, 3=Post-Act, 4=Vibrato
                 'aftertouch_cc': 255,  # 255=Off (no CC), 0-127=CC number
                 'vibrato_sensitivity': 100,  # 50-200 (percentage)
@@ -356,12 +356,12 @@ class QuickActuationWidget(QWidget):
         self.fastest_press_slider = QSlider(Qt.Horizontal)
         self.fastest_press_slider.setMinimum(1)
         self.fastest_press_slider.setMaximum(254)
-        self.fastest_press_slider.setValue(5)
+        self.fastest_press_slider.setValue(10)
         self.fastest_press_slider.setMaximumHeight(20)
         self.fastest_press_slider.valueChanged.connect(self.on_speed_slider_changed)
         fastest_layout.addWidget(self.fastest_press_slider, 1)
 
-        self.fastest_press_value = QLabel("5 ms")
+        self.fastest_press_value = QLabel("10 ms")
         self.fastest_press_value.setMinimumWidth(45)
         self.fastest_press_value.setAlignment(Qt.AlignCenter)
         fastest_layout.addWidget(self.fastest_press_value)
@@ -379,12 +379,12 @@ class QuickActuationWidget(QWidget):
         self.slowest_press_slider = QSlider(Qt.Horizontal)
         self.slowest_press_slider.setMinimum(2)
         self.slowest_press_slider.setMaximum(255)
-        self.slowest_press_slider.setValue(100)
+        self.slowest_press_slider.setValue(245)
         self.slowest_press_slider.setMaximumHeight(20)
         self.slowest_press_slider.valueChanged.connect(self.on_speed_slider_changed)
         slowest_layout.addWidget(self.slowest_press_slider, 1)
 
-        self.slowest_press_value = QLabel("100 ms")
+        self.slowest_press_value = QLabel("245 ms")
         self.slowest_press_value.setMinimumWidth(45)
         self.slowest_press_value.setAlignment(Qt.AlignCenter)
         slowest_layout.addWidget(self.slowest_press_value)
@@ -1612,10 +1612,10 @@ class QuickActuationWidget(QWidget):
                 self.velocity_combo.setCurrentIndex(i)
                 break
 
-        self.fastest_press_slider.setValue(data.get('fastest_press_ms', 5))
-        self.fastest_press_value.setText(f"{data.get('fastest_press_ms', 5)} ms")
-        self.slowest_press_slider.setValue(data.get('slowest_press_ms', 100))
-        self.slowest_press_value.setText(f"{data.get('slowest_press_ms', 100)} ms")
+        self.fastest_press_slider.setValue(data.get('fastest_press_ms', 10))
+        self.fastest_press_value.setText(f"{data.get('fastest_press_ms', 10)} ms")
+        self.slowest_press_slider.setValue(data.get('slowest_press_ms', 245))
+        self.slowest_press_value.setText(f"{data.get('slowest_press_ms', 245)} ms")
 
         self.syncing = False
     
@@ -1928,14 +1928,14 @@ class QuickActuationWidget(QWidget):
                     data['normal'],
                     data['midi'],
                     data['velocity'],
-                    data.get('fastest_press_ms', 5),
+                    data.get('fastest_press_ms', 10),
                     flags,
                     data.get('aftertouch_mode', 0),
                     data.get('aftertouch_cc', 255),
                     data.get('vibrato_sensitivity', 100),
                     vibrato_decay & 0xFF,
                     (vibrato_decay >> 8) & 0xFF,
-                    data.get('slowest_press_ms', 100)
+                    data.get('slowest_press_ms', 245)
                 ])
 
                 if not self.device.keyboard.set_layer_actuation(payload):
@@ -1960,14 +1960,14 @@ class QuickActuationWidget(QWidget):
                         data['normal'],
                         data['midi'],
                         data['velocity'],
-                        data.get('fastest_press_ms', 5),
+                        data.get('fastest_press_ms', 10),
                         flags,
                         data.get('aftertouch_mode', 0),
                         data.get('aftertouch_cc', 255),
                         data.get('vibrato_sensitivity', 100),
                         vibrato_decay & 0xFF,
                         (vibrato_decay >> 8) & 0xFF,
-                        data.get('slowest_press_ms', 100)
+                        data.get('slowest_press_ms', 245)
                     ])
 
                     if not self.device.keyboard.set_layer_actuation(payload):
@@ -2104,8 +2104,8 @@ class QuickActuationWidget(QWidget):
                 break
 
         # Set fastest/slowest press time sliders
-        fastest = data.get('fastest_press_ms', 5)
-        slowest = data.get('slowest_press_ms', 100)
+        fastest = data.get('fastest_press_ms', 10)
+        slowest = data.get('slowest_press_ms', 245)
         self.fastest_press_slider.setValue(fastest)
         self.fastest_press_value.setText(f"{fastest} ms")
         self.slowest_press_slider.setValue(slowest)

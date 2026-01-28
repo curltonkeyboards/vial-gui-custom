@@ -2265,13 +2265,13 @@ void initialize_layer_actuations(void) {
         layer_actuations[i].normal_actuation = 30;
         layer_actuations[i].midi_actuation = 30;
         layer_actuations[i].velocity_mode = 2;      // Speed-Based (matches GUI default)
-        layer_actuations[i].fastest_press_ms = 5;   // 5ms = very fast press -> max velocity
+        layer_actuations[i].fastest_press_ms = 10;  // 10ms = very fast press -> max velocity
         layer_actuations[i].flags = 0;              // All flags off
         layer_actuations[i].aftertouch_mode = 0;    // Off
         layer_actuations[i].aftertouch_cc = 255;    // Off (no CC)
         layer_actuations[i].vibrato_sensitivity = 100;  // 100% (normal)
         layer_actuations[i].vibrato_decay_time = 200;   // 200ms
-        layer_actuations[i].slowest_press_ms = 100; // 100ms = slow press -> min velocity
+        layer_actuations[i].slowest_press_ms = 245; // 245ms = slow press -> min velocity
         // Note: Rapidfire settings are now per-key in per_key_actuations
         // Note: Velocity curve/min/max settings and aftertouch are now global in keyboard_settings
     }

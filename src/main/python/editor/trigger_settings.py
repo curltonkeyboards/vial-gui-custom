@@ -712,8 +712,8 @@ class TriggerSettingsTab(BasicEditor):
                 'normal': 80,
                 'midi': 80,
                 'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
-                'fastest_press_ms': 5,  # Fastest press time (ms) -> max velocity
-                'slowest_press_ms': 100  # Slowest press time (ms) -> min velocity
+                'fastest_press_ms': 10,  # Fastest press time (ms) -> max velocity
+                'slowest_press_ms': 245  # Slowest press time (ms) -> min velocity
             })
 
         # Track unsaved changes for global actuation settings
@@ -3273,8 +3273,8 @@ class TriggerSettingsTab(BasicEditor):
                         'normal': data['normal'],
                         'midi': data['midi'],
                         'velocity': data['velocity'],
-                        'fastest_press_ms': data.get('fastest_press_ms', 5),
-                        'slowest_press_ms': data.get('slowest_press_ms', 100)
+                        'fastest_press_ms': data.get('fastest_press_ms', 10),
+                        'slowest_press_ms': data.get('slowest_press_ms', 245)
                     }
         except Exception as e:
             print(f"Error loading layer actuations: {e}")

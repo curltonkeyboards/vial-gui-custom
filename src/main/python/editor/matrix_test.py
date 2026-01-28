@@ -301,12 +301,12 @@ class MatrixTest(BasicEditor):
         self.vel_fastest_slider = QSlider(Qt.Horizontal)
         self.vel_fastest_slider.setMinimum(1)
         self.vel_fastest_slider.setMaximum(254)
-        self.vel_fastest_slider.setValue(5)
+        self.vel_fastest_slider.setValue(10)
         self.vel_fastest_slider.setMaximumWidth(100)
         self.vel_fastest_slider.setVisible(False)
         self.vel_fastest_slider.valueChanged.connect(self.on_vel_speed_slider_changed)
         velocity_controls.addWidget(self.vel_fastest_slider)
-        self.vel_fastest_value = QLabel("5ms")
+        self.vel_fastest_value = QLabel("10ms")
         self.vel_fastest_value.setMinimumWidth(35)
         self.vel_fastest_value.setVisible(False)
         velocity_controls.addWidget(self.vel_fastest_value)
@@ -318,12 +318,12 @@ class MatrixTest(BasicEditor):
         self.vel_slowest_slider = QSlider(Qt.Horizontal)
         self.vel_slowest_slider.setMinimum(2)
         self.vel_slowest_slider.setMaximum(255)
-        self.vel_slowest_slider.setValue(100)
+        self.vel_slowest_slider.setValue(245)
         self.vel_slowest_slider.setMaximumWidth(100)
         self.vel_slowest_slider.setVisible(False)
         self.vel_slowest_slider.valueChanged.connect(self.on_vel_speed_slider_changed)
         velocity_controls.addWidget(self.vel_slowest_slider)
-        self.vel_slowest_value = QLabel("100ms")
+        self.vel_slowest_value = QLabel("245ms")
         self.vel_slowest_value.setMinimumWidth(40)
         self.vel_slowest_value.setVisible(False)
         velocity_controls.addWidget(self.vel_slowest_value)
@@ -1311,8 +1311,8 @@ class MatrixTest(BasicEditor):
         try:
             data = self.keyboard.get_layer_actuation(self.velocity_layer)
             if data:
-                fastest = data.get('fastest_press_ms', 5)
-                slowest = data.get('slowest_press_ms', 100)
+                fastest = data.get('fastest_press_ms', 10)
+                slowest = data.get('slowest_press_ms', 245)
                 self.vel_fastest_slider.blockSignals(True)
                 self.vel_slowest_slider.blockSignals(True)
                 self.vel_fastest_slider.setValue(fastest)
@@ -4002,8 +4002,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'rapid': 4,
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
-                'fastest_press_ms': 5,
-                'slowest_press_ms': 100,
+                'fastest_press_ms': 10,
+                'slowest_press_ms': 245,
                 'aftertouch_cc': 255,  # 255 = off (no CC sent)
                 'vibrato_sensitivity': 100,  # 100% = normal
                 'vibrato_decay_time': 200,   # 200ms decay
@@ -4427,10 +4427,10 @@ class LayerActuationConfigurator(BasicEditor):
         fastest_press_slider = QSlider(Qt.Horizontal)
         fastest_press_slider.setMinimum(1)
         fastest_press_slider.setMaximum(254)
-        fastest_press_slider.setValue(5)
+        fastest_press_slider.setValue(10)
         fastest_layout.addWidget(fastest_press_slider)
 
-        fastest_press_value = QLabel("5 ms")
+        fastest_press_value = QLabel("10 ms")
         fastest_press_value.setMinimumWidth(50)
         fastest_press_value.setStyleSheet("QLabel { font-weight: bold; }")
         fastest_layout.addWidget(fastest_press_value)
@@ -4449,10 +4449,10 @@ class LayerActuationConfigurator(BasicEditor):
         slowest_press_slider = QSlider(Qt.Horizontal)
         slowest_press_slider.setMinimum(2)
         slowest_press_slider.setMaximum(255)
-        slowest_press_slider.setValue(100)
+        slowest_press_slider.setValue(245)
         slowest_layout.addWidget(slowest_press_slider)
 
-        slowest_press_value = QLabel("100 ms")
+        slowest_press_value = QLabel("245 ms")
         slowest_press_value.setMinimumWidth(50)
         slowest_press_value.setStyleSheet("QLabel { font-weight: bold; }")
         slowest_layout.addWidget(slowest_press_value)
@@ -4919,10 +4919,10 @@ class LayerActuationConfigurator(BasicEditor):
         layer_fastest_slider = QSlider(Qt.Horizontal)
         layer_fastest_slider.setMinimum(1)
         layer_fastest_slider.setMaximum(254)
-        layer_fastest_slider.setValue(5)
+        layer_fastest_slider.setValue(10)
         fastest_layout.addWidget(layer_fastest_slider)
 
-        layer_fastest_label = QLabel("5 ms")
+        layer_fastest_label = QLabel("10 ms")
         layer_fastest_label.setMinimumWidth(50)
         layer_fastest_label.setStyleSheet("QLabel { font-weight: bold; }")
         fastest_layout.addWidget(layer_fastest_label)
@@ -4943,10 +4943,10 @@ class LayerActuationConfigurator(BasicEditor):
         layer_slowest_slider = QSlider(Qt.Horizontal)
         layer_slowest_slider.setMinimum(2)
         layer_slowest_slider.setMaximum(255)
-        layer_slowest_slider.setValue(100)
+        layer_slowest_slider.setValue(245)
         slowest_layout.addWidget(layer_slowest_slider)
 
-        layer_slowest_label = QLabel("100 ms")
+        layer_slowest_label = QLabel("245 ms")
         layer_slowest_label.setMinimumWidth(50)
         layer_slowest_label.setStyleSheet("QLabel { font-weight: bold; }")
         slowest_layout.addWidget(layer_slowest_label)
@@ -5228,10 +5228,10 @@ class LayerActuationConfigurator(BasicEditor):
                     break
 
         # Set fastest/slowest press time sliders
-        self.layer_widgets['fastest_press_slider'].setValue(data.get('fastest_press_ms', 5))
-        self.layer_widgets['fastest_press_label'].setText(f"{data.get('fastest_press_ms', 5)} ms")
-        self.layer_widgets['slowest_press_slider'].setValue(data.get('slowest_press_ms', 100))
-        self.layer_widgets['slowest_press_label'].setText(f"{data.get('slowest_press_ms', 100)} ms")
+        self.layer_widgets['fastest_press_slider'].setValue(data.get('fastest_press_ms', 10))
+        self.layer_widgets['fastest_press_label'].setText(f"{data.get('fastest_press_ms', 10)} ms")
+        self.layer_widgets['slowest_press_slider'].setValue(data.get('slowest_press_ms', 245))
+        self.layer_widgets['slowest_press_label'].setText(f"{data.get('slowest_press_ms', 245)} ms")
 
         # Set rapidfire
         self.layer_widgets['rapid_checkbox'].setChecked(data['rapidfire_enabled'])
@@ -5398,8 +5398,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'rapid': layer_data['rapid'],
                 'midi_rapid_sens': layer_data['midi_rapid_sens'],
                 'midi_rapid_vel': layer_data['midi_rapid_vel'],
-                'fastest_press_ms': layer_data.get('fastest_press_ms', 5),
-                'slowest_press_ms': layer_data.get('slowest_press_ms', 100),
+                'fastest_press_ms': layer_data.get('fastest_press_ms', 10),
+                'slowest_press_ms': layer_data.get('slowest_press_ms', 245),
                 'aftertouch_cc': layer_data.get('aftertouch_cc', 255),
                 'vibrato_sensitivity': layer_data.get('vibrato_sensitivity', 100),
                 'vibrato_decay_time': layer_data.get('vibrato_decay_time', 200),
@@ -5435,14 +5435,14 @@ class LayerActuationConfigurator(BasicEditor):
                     values['normal'],
                     values['midi'],
                     values['velocity'],
-                    values.get('fastest_press_ms', 5),
+                    values.get('fastest_press_ms', 10),
                     values['flags'],
                     values['aftertouch'],
                     values['aftertouch_cc'],
                     values['vibrato_sensitivity'],
                     vibrato_decay & 0xFF,           # Low byte
                     (vibrato_decay >> 8) & 0xFF,    # High byte
-                    values.get('slowest_press_ms', 100)
+                    values.get('slowest_press_ms', 245)
                 ])
 
                 if not self.device.keyboard.set_layer_actuation(data):
@@ -5533,10 +5533,10 @@ class LayerActuationConfigurator(BasicEditor):
                         break
 
             # Set fastest/slowest press time sliders
-            self.master_widgets['fastest_press_slider'].setValue(first_values.get('fastest_press_ms', 5))
-            self.master_widgets['fastest_press_label'].setText(f"{first_values.get('fastest_press_ms', 5)} ms")
-            self.master_widgets['slowest_press_slider'].setValue(first_values.get('slowest_press_ms', 100))
-            self.master_widgets['slowest_press_label'].setText(f"{first_values.get('slowest_press_ms', 100)} ms")
+            self.master_widgets['fastest_press_slider'].setValue(first_values.get('fastest_press_ms', 10))
+            self.master_widgets['fastest_press_label'].setText(f"{first_values.get('fastest_press_ms', 10)} ms")
+            self.master_widgets['slowest_press_slider'].setValue(first_values.get('slowest_press_ms', 245))
+            self.master_widgets['slowest_press_label'].setText(f"{first_values.get('slowest_press_ms', 245)} ms")
 
             # Vibrato sensitivity and decay
             self.master_widgets['vibrato_sensitivity_slider'].setValue(first_values['vibrato_sensitivity'])
@@ -5599,8 +5599,8 @@ class LayerActuationConfigurator(BasicEditor):
                     'rapid': 4,
                     'midi_rapid_sens': 10,
                     'midi_rapid_vel': 10,
-                    'fastest_press_ms': 5,
-                    'slowest_press_ms': 100,
+                    'fastest_press_ms': 10,
+                    'slowest_press_ms': 245,
                     'aftertouch_cc': 255,  # 255 = off (no CC sent)
                     'vibrato_sensitivity': 100,  # 100% = normal
                     'vibrato_decay_time': 200,   # 200ms decay
@@ -5624,10 +5624,10 @@ class LayerActuationConfigurator(BasicEditor):
                             break
 
                 # Reset fastest/slowest press time sliders
-                self.master_widgets['fastest_press_slider'].setValue(5)
-                self.master_widgets['fastest_press_label'].setText("5 ms")
-                self.master_widgets['slowest_press_slider'].setValue(100)
-                self.master_widgets['slowest_press_label'].setText("100 ms")
+                self.master_widgets['fastest_press_slider'].setValue(10)
+                self.master_widgets['fastest_press_label'].setText("10 ms")
+                self.master_widgets['slowest_press_slider'].setValue(245)
+                self.master_widgets['slowest_press_label'].setText("245 ms")
 
                 # Vibrato controls
                 self.master_widgets['vibrato_sensitivity_slider'].setValue(defaults['vibrato_sensitivity'])
@@ -5743,10 +5743,10 @@ class LayerActuationConfigurator(BasicEditor):
                     break
 
         # Set fastest/slowest press time sliders
-        self.master_widgets['fastest_press_slider'].setValue(first_values.get('fastest_press_ms', 5))
-        self.master_widgets['fastest_press_label'].setText(f"{first_values.get('fastest_press_ms', 5)} ms")
-        self.master_widgets['slowest_press_slider'].setValue(first_values.get('slowest_press_ms', 100))
-        self.master_widgets['slowest_press_label'].setText(f"{first_values.get('slowest_press_ms', 100)} ms")
+        self.master_widgets['fastest_press_slider'].setValue(first_values.get('fastest_press_ms', 10))
+        self.master_widgets['fastest_press_label'].setText(f"{first_values.get('fastest_press_ms', 10)} ms")
+        self.master_widgets['slowest_press_slider'].setValue(first_values.get('slowest_press_ms', 245))
+        self.master_widgets['slowest_press_label'].setText(f"{first_values.get('slowest_press_ms', 245)} ms")
 
         # Vibrato settings
         self.master_widgets['vibrato_sensitivity_slider'].setValue(first_values.get('vibrato_sensitivity', 100))
