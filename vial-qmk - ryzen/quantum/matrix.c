@@ -992,8 +992,25 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
     switch (analog_mode) {
         case 0:  // Fixed velocity
-            // raw_velocity stays at default (will be handled by get_he_velocity_from_position)
-            state->raw_velocity = 255;  // Max raw value, curve will determine actual velocity
+            // raw_velocity is always max (actual MIDI output uses fixed velocity_number)
+            state->raw_velocity = 255;
+            // Track travel time for velocity tab calibration display
+            {
+                if (state->last_travel == 0 && travel > 0) {
+                    state->move_start_time = (uint32_t)chVTGetSystemTimeX();
+                }
+                if (!state->velocity_captured && travel >= midi_threshold && state->last_travel < midi_threshold) {
+                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
+                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                    uint32_t elapsed_ms = elapsed_us / 1000;
+                    state->travel_time_ms = (elapsed_ms > 255) ? 255 : (uint8_t)elapsed_ms;
+                    state->velocity_captured = true;
+                }
+                if (state->was_pressed && !pressed) {
+                    state->velocity_captured = false;
+                }
+                state->last_travel = travel;
+            }
             break;
 
         case 1:  // Peak Travel at Apex
@@ -1570,7 +1587,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // incremental_load_per_key_cache();
 
     // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
-    if (midi_states_initialized && active_settings.velocity_mode > 0) {
+    // Always run regardless of velocity_mode so the velocity tab can display data
+    if (midi_states_initialized) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
             if (key_type_cache[i] == KEY_TYPE_MIDI) {
                 process_midi_key_analog(i, current_layer);

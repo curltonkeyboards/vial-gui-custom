@@ -294,6 +294,40 @@ class MatrixTest(BasicEditor):
         self.auto_calibrate_btn.clicked.connect(self.toggle_auto_calibrate)
         velocity_controls.addWidget(self.auto_calibrate_btn)
 
+        # Fastest press slider (only visible in velocity mode)
+        self.vel_fastest_label = QLabel("Fastest:")
+        self.vel_fastest_label.setVisible(False)
+        velocity_controls.addWidget(self.vel_fastest_label)
+        self.vel_fastest_slider = QSlider(Qt.Horizontal)
+        self.vel_fastest_slider.setMinimum(1)
+        self.vel_fastest_slider.setMaximum(254)
+        self.vel_fastest_slider.setValue(5)
+        self.vel_fastest_slider.setMaximumWidth(100)
+        self.vel_fastest_slider.setVisible(False)
+        self.vel_fastest_slider.valueChanged.connect(self.on_vel_speed_slider_changed)
+        velocity_controls.addWidget(self.vel_fastest_slider)
+        self.vel_fastest_value = QLabel("5ms")
+        self.vel_fastest_value.setMinimumWidth(35)
+        self.vel_fastest_value.setVisible(False)
+        velocity_controls.addWidget(self.vel_fastest_value)
+
+        # Slowest press slider (only visible in velocity mode)
+        self.vel_slowest_label = QLabel("Slowest:")
+        self.vel_slowest_label.setVisible(False)
+        velocity_controls.addWidget(self.vel_slowest_label)
+        self.vel_slowest_slider = QSlider(Qt.Horizontal)
+        self.vel_slowest_slider.setMinimum(2)
+        self.vel_slowest_slider.setMaximum(255)
+        self.vel_slowest_slider.setValue(100)
+        self.vel_slowest_slider.setMaximumWidth(100)
+        self.vel_slowest_slider.setVisible(False)
+        self.vel_slowest_slider.valueChanged.connect(self.on_vel_speed_slider_changed)
+        velocity_controls.addWidget(self.vel_slowest_slider)
+        self.vel_slowest_value = QLabel("100ms")
+        self.vel_slowest_value.setMinimumWidth(40)
+        self.vel_slowest_value.setVisible(False)
+        velocity_controls.addWidget(self.vel_slowest_value)
+
         # Calibration status label
         self.calibration_status = QLabel("")
         self.calibration_status.setStyleSheet("color: gray; font-size: 9pt;")
@@ -1114,6 +1148,12 @@ class MatrixTest(BasicEditor):
         self.velocity_layer_combo.setVisible(self.velocity_view_active)
         self.auto_calibrate_btn.setVisible(self.velocity_view_active)
         self.calibration_status.setVisible(self.velocity_view_active)
+        self.vel_fastest_label.setVisible(self.velocity_view_active)
+        self.vel_fastest_slider.setVisible(self.velocity_view_active)
+        self.vel_fastest_value.setVisible(self.velocity_view_active)
+        self.vel_slowest_label.setVisible(self.velocity_view_active)
+        self.vel_slowest_slider.setVisible(self.velocity_view_active)
+        self.vel_slowest_value.setVisible(self.velocity_view_active)
 
         # Clear overlay data from previous mode
         for w in self.KeyboardWidget2.widgets:
@@ -1127,6 +1167,8 @@ class MatrixTest(BasicEditor):
             self.velocity_timer.start(500)
             # Detect MIDI keys for the selected layer
             self.detect_midi_keys()
+            # Load speed settings for selected layer
+            self.load_velocity_speed_settings()
         else:
             # Switch from Velocity to ADC polling
             self.velocity_timer.stop()
@@ -1148,6 +1190,8 @@ class MatrixTest(BasicEditor):
             w.setVelocityData(None)
         # Re-detect MIDI keys for the new layer
         self.detect_midi_keys()
+        # Load speed settings for the new layer
+        self.load_velocity_speed_settings()
         self.KeyboardWidget2.update()
 
     def detect_midi_keys(self):
@@ -1260,6 +1304,78 @@ class MatrixTest(BasicEditor):
         self.velocity_poll_half = 1 - self.velocity_poll_half
         self.KeyboardWidget2.update()
 
+    def load_velocity_speed_settings(self):
+        """Load fastest/slowest press settings from the device for the current velocity layer"""
+        if not self.keyboard:
+            return
+        try:
+            data = self.keyboard.get_layer_actuation(self.velocity_layer)
+            if data:
+                fastest = data.get('fastest_press_ms', 5)
+                slowest = data.get('slowest_press_ms', 100)
+                self.vel_fastest_slider.blockSignals(True)
+                self.vel_slowest_slider.blockSignals(True)
+                self.vel_fastest_slider.setValue(fastest)
+                self.vel_slowest_slider.setValue(slowest)
+                self.vel_fastest_value.setText(f"{fastest}ms")
+                self.vel_slowest_value.setText(f"{slowest}ms")
+                self.vel_fastest_slider.blockSignals(False)
+                self.vel_slowest_slider.blockSignals(False)
+        except Exception:
+            pass
+
+    def on_vel_speed_slider_changed(self):
+        """Handle changes to the fastest/slowest press sliders"""
+        fastest = self.vel_fastest_slider.value()
+        slowest = self.vel_slowest_slider.value()
+
+        # Enforce fastest < slowest
+        if fastest >= slowest:
+            if self.sender() == self.vel_fastest_slider:
+                slowest = fastest + 1
+                self.vel_slowest_slider.blockSignals(True)
+                self.vel_slowest_slider.setValue(slowest)
+                self.vel_slowest_slider.blockSignals(False)
+            else:
+                fastest = slowest - 1
+                self.vel_fastest_slider.blockSignals(True)
+                self.vel_fastest_slider.setValue(fastest)
+                self.vel_fastest_slider.blockSignals(False)
+
+        self.vel_fastest_value.setText(f"{fastest}ms")
+        self.vel_slowest_value.setText(f"{slowest}ms")
+
+        # Save to device
+        self._save_velocity_speed_to_device(fastest, slowest)
+
+    def _save_velocity_speed_to_device(self, fastest, slowest):
+        """Save fastest/slowest press times to the device for the current velocity layer"""
+        if not self.keyboard:
+            return
+        try:
+            data = self.keyboard.get_layer_actuation(self.velocity_layer)
+            if not data:
+                return
+            decay_lo = data['vibrato_decay_time'] & 0xFF
+            decay_hi = (data['vibrato_decay_time'] >> 8) & 0xFF
+            payload = [
+                self.velocity_layer,
+                data['normal'],
+                data['midi'],
+                data['velocity'],
+                fastest,
+                data['flags'],
+                data['aftertouch_mode'],
+                data['aftertouch_cc'],
+                data['vibrato_sensitivity'],
+                decay_lo,
+                decay_hi,
+                slowest
+            ]
+            self.keyboard.set_layer_actuation(payload)
+        except Exception:
+            pass
+
     def toggle_auto_calibrate(self, checked):
         """Toggle auto-calibration mode"""
         if checked:
@@ -1276,10 +1392,20 @@ class MatrixTest(BasicEditor):
             self.auto_calibrate_btn.setText("Auto-Calibrate")
             self.auto_calibrate_btn.setStyleSheet("")
             if self.calibration_slowest_ms > 0 and self.calibration_fastest_ms < 255:
+                # Apply calibration results to sliders and save to device
+                self.vel_fastest_slider.blockSignals(True)
+                self.vel_slowest_slider.blockSignals(True)
+                self.vel_fastest_slider.setValue(self.calibration_fastest_ms)
+                self.vel_slowest_slider.setValue(self.calibration_slowest_ms)
+                self.vel_fastest_value.setText(f"{self.calibration_fastest_ms}ms")
+                self.vel_slowest_value.setText(f"{self.calibration_slowest_ms}ms")
+                self.vel_fastest_slider.blockSignals(False)
+                self.vel_slowest_slider.blockSignals(False)
+                self._save_velocity_speed_to_device(
+                    self.calibration_fastest_ms, self.calibration_slowest_ms)
                 self.calibration_status.setText(
-                    f"Result: Fastest={self.calibration_fastest_ms}ms  "
-                    f"Slowest={self.calibration_slowest_ms}ms  "
-                    f"(Set these in Advanced Settings)")
+                    f"Applied: Fastest={self.calibration_fastest_ms}ms  "
+                    f"Slowest={self.calibration_slowest_ms}ms")
             else:
                 self.calibration_status.setText("No key presses detected during calibration.")
 
