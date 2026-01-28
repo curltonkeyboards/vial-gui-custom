@@ -2486,16 +2486,33 @@ uint8_t get_midi_led_position(uint8_t layer, uint8_t note_index, uint8_t positio
     return optimized_midi_positions[array_index][note_index][position_index];
 }
 
-// Get stored velocity for a note
+// Get velocity for a note by looking up the first key position and using HE velocity
+// This function converts note_index to row/col and calls get_he_velocity_from_position()
+// which uses the actual calculated velocity from the analog matrix (speed/peak/combined modes)
 uint8_t get_midi_velocity(uint8_t layer, uint8_t note_index) {
-    if (optimized_midi_velocities == NULL) return 64;
+    if (optimized_midi_positions == NULL) return 64;
     if (layer >= 12) return 64;
-    
+
     uint8_t array_index = layer_to_index_map[layer];
     if (array_index == 255) return 64;
     if (note_index >= 72) return 64;
-    
-    return optimized_midi_velocities[array_index][note_index];
+
+    // Get the first valid LED position for this note
+    uint8_t led_index = optimized_midi_positions[array_index][note_index][0];
+    if (led_index >= 99) return 64;  // No valid position found
+
+    // Convert LED index back to row/col by scanning the matrix
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+            if (g_led_config.matrix_co[row][col] == led_index) {
+                // Found the row/col, now get the actual HE velocity
+                return get_he_velocity_from_position(row, col);
+            }
+        }
+    }
+
+    // Fallback if LED index not found in matrix
+    return 64;
 }
 
 // REPLACEMENT UPDATE FUNCTION
