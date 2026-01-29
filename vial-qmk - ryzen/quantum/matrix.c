@@ -201,6 +201,14 @@ uint8_t eq_bands[3][5] = {
 uint8_t eq_range_scale[3] = {55, 50, 53};
 
 // ============================================================================
+// VELOCITY DEBUG TRACKING
+// ============================================================================
+// Track the last velocity calculation for debug display
+uint8_t debug_last_raw_velocity = 0;
+uint16_t debug_last_travel_time_ms = 0;
+uint8_t debug_last_elapsed_ms = 0;  // For seeing if timer is working
+
+// ============================================================================
 // GLOBAL VELOCITY TIME SETTINGS
 // ============================================================================
 // Min/max travel time for velocity scaling - now uses global min_press_time/max_press_time
@@ -1118,6 +1126,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         state->raw_velocity = (uint8_t)raw;
                         state->velocity_captured = true;
 
+                        // Debug tracking
+                        debug_last_raw_velocity = state->raw_velocity;
+                        debug_last_travel_time_ms = state->travel_time_ms;
+                        debug_last_elapsed_ms = (uint8_t)(elapsed_ms > 255 ? 255 : elapsed_ms);
+
                         // Update base_velocity for RT
                         key->base_velocity = (state->raw_velocity * 127) / 255;
                         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
@@ -1127,6 +1140,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         state->velocity_captured = true;
                         key->base_velocity = MAX_VELOCITY;
                         state->travel_time_ms = 0;
+
+                        // Debug tracking for instant press
+                        debug_last_raw_velocity = 255;
+                        debug_last_travel_time_ms = 0;
+                        debug_last_elapsed_ms = 0;
                     }
                 }
 

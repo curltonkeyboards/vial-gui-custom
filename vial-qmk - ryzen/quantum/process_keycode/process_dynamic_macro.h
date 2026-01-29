@@ -413,6 +413,10 @@ extern uint8_t keysplit_he_velocity_min;
 extern uint8_t keysplit_he_velocity_max;
 extern uint8_t triplesplit_he_velocity_min;
 extern uint8_t triplesplit_he_velocity_max;
+// Velocity debug tracking (from matrix.c)
+extern uint8_t debug_last_raw_velocity;
+extern uint16_t debug_last_travel_time_ms;
+extern uint8_t debug_last_elapsed_ms;
 extern uint8_t base_sustain;
 extern uint8_t keysplit_sustain;
 extern uint8_t triplesplit_sustain;

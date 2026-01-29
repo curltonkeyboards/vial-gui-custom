@@ -11261,6 +11261,10 @@ void oled_render_keylog(void) {
 		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
 	}
 
+	// DEBUG: Show last raw velocity and travel time
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n RAW:%3d T:%3dms E:%3d",
+		debug_last_raw_velocity, debug_last_travel_time_ms, debug_last_elapsed_ms);
+
 	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
 	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
 	}else if (keysplitstatus == 3) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
