@@ -723,8 +723,14 @@ static void refresh_key_type_cache(uint8_t layer) {
                 key_type_cache[key_idx] = KEY_TYPE_DKS;
                 dks_keycode_cache[key_idx] = keycode;
             }
-            // Check if MIDI key (using existing midi_key_states which is set up at init)
+            // Check if MIDI key (position-based from midi_key_states)
             else if (midi_key_states[key_idx].is_midi_key) {
+                key_type_cache[key_idx] = KEY_TYPE_MIDI;
+                dks_keycode_cache[key_idx] = 0;
+            }
+            // Check if MIDI keycode (keycode-based: MI_C, MI_Cs, etc.)
+            // MIDI note keycodes are 0x7103 (QK_MIDI_NOTE_C_0) through 0x71FF
+            else if (keycode >= 0x7103 && keycode <= 0x71FF) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
                 dks_keycode_cache[key_idx] = 0;
             }
