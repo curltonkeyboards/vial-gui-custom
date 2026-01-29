@@ -1584,26 +1584,35 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 data = bytearray([param_id, value])
 
             packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, data)
+            print(f"[HID Debug] set_keyboard_param_single: param_id={param_id}, value={value}, data={list(data)}")
+            print(f"[HID Debug] Packet (first 10 bytes): {list(packet[:10])}")
 
             # Retry logic: 4 retries with 100ms delay
             for attempt in range(5):  # 1 initial + 4 retries = 5 total attempts
                 try:
                     response = self.usb_send(self.dev, packet, retries=1)
+                    print(f"[HID Debug] Attempt {attempt+1}: response={list(response[:10]) if response and len(response) >= 10 else response}")
                     if response and len(response) > 0 and response[5] == 0:
+                        print(f"[HID Debug] Success! response[5]={response[5]}")
                         return True
+                    else:
+                        print(f"[HID Debug] Failed: response[5]={response[5] if response and len(response) > 5 else 'N/A'}")
 
                     # If not last attempt, wait before retry
                     if attempt < 4:
                         time.sleep(0.1)  # 100ms delay
-                except Exception:
+                except Exception as e:
+                    print(f"[HID Debug] Exception on attempt {attempt+1}: {e}")
                     if attempt < 4:
                         time.sleep(0.1)
                     continue
 
             # All retries failed, return False (silent failure, UI will handle if needed)
+            print(f"[HID Debug] All retries failed for param_id={param_id}")
             return False
 
         except Exception as e:
+            print(f"[HID Debug] Exception in set_keyboard_param_single: {e}")
             return False
 
     def save_midi_slot(self, slot, config_data):

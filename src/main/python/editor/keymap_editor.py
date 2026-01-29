@@ -566,42 +566,77 @@ class QuickActuationWidget(QWidget):
             settings = self.global_midi_settings
             kb = self.device.keyboard
 
+            print(f"[Advanced Save] Starting save with settings: {settings}")
+            print(f"[Advanced Save] PARAM IDs: VELOCITY_MODE={PARAM_VELOCITY_MODE}, AFTERTOUCH_MODE={PARAM_AFTERTOUCH_MODE}, "
+                  f"AFTERTOUCH_CC={PARAM_AFTERTOUCH_CC}, VIBRATO_SENSITIVITY={PARAM_VIBRATO_SENSITIVITY}, "
+                  f"VIBRATO_DECAY_TIME={PARAM_VIBRATO_DECAY_TIME}, MIN_PRESS_TIME={PARAM_MIN_PRESS_TIME}, "
+                  f"MAX_PRESS_TIME={PARAM_MAX_PRESS_TIME}")
+
             # Save all global MIDI settings
-            success = True
+            failed_params = []
 
             # Velocity mode (0-3)
-            if not kb.set_keyboard_param_single(PARAM_VELOCITY_MODE, settings.get('velocity_mode', 2)):
-                success = False
+            vel_mode = settings.get('velocity_mode', 2)
+            print(f"[Advanced Save] Saving VELOCITY_MODE ({PARAM_VELOCITY_MODE}) = {vel_mode}")
+            result = kb.set_keyboard_param_single(PARAM_VELOCITY_MODE, vel_mode)
+            print(f"[Advanced Save] VELOCITY_MODE result: {result}")
+            if not result:
+                failed_params.append(f"VELOCITY_MODE({PARAM_VELOCITY_MODE})={vel_mode}")
 
             # Aftertouch mode (0-4)
-            if not kb.set_keyboard_param_single(PARAM_AFTERTOUCH_MODE, settings.get('aftertouch_mode', 0)):
-                success = False
+            at_mode = settings.get('aftertouch_mode', 0)
+            print(f"[Advanced Save] Saving AFTERTOUCH_MODE ({PARAM_AFTERTOUCH_MODE}) = {at_mode}")
+            result = kb.set_keyboard_param_single(PARAM_AFTERTOUCH_MODE, at_mode)
+            print(f"[Advanced Save] AFTERTOUCH_MODE result: {result}")
+            if not result:
+                failed_params.append(f"AFTERTOUCH_MODE({PARAM_AFTERTOUCH_MODE})={at_mode}")
 
             # Aftertouch CC (0-127, 255=off)
-            if not kb.set_keyboard_param_single(PARAM_AFTERTOUCH_CC, settings.get('aftertouch_cc', 255)):
-                success = False
+            at_cc = settings.get('aftertouch_cc', 255)
+            print(f"[Advanced Save] Saving AFTERTOUCH_CC ({PARAM_AFTERTOUCH_CC}) = {at_cc}")
+            result = kb.set_keyboard_param_single(PARAM_AFTERTOUCH_CC, at_cc)
+            print(f"[Advanced Save] AFTERTOUCH_CC result: {result}")
+            if not result:
+                failed_params.append(f"AFTERTOUCH_CC({PARAM_AFTERTOUCH_CC})={at_cc}")
 
             # Vibrato sensitivity (50-200)
-            if not kb.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, settings.get('vibrato_sensitivity', 100)):
-                success = False
+            vib_sens = settings.get('vibrato_sensitivity', 100)
+            print(f"[Advanced Save] Saving VIBRATO_SENSITIVITY ({PARAM_VIBRATO_SENSITIVITY}) = {vib_sens}")
+            result = kb.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, vib_sens)
+            print(f"[Advanced Save] VIBRATO_SENSITIVITY result: {result}")
+            if not result:
+                failed_params.append(f"VIBRATO_SENSITIVITY({PARAM_VIBRATO_SENSITIVITY})={vib_sens}")
 
             # Vibrato decay time (0-2000ms, 16-bit)
-            decay = settings.get('vibrato_decay_time', 200)
-            if not kb.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, decay):
-                success = False
+            vib_decay = settings.get('vibrato_decay_time', 200)
+            print(f"[Advanced Save] Saving VIBRATO_DECAY_TIME ({PARAM_VIBRATO_DECAY_TIME}) = {vib_decay}")
+            result = kb.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, vib_decay)
+            print(f"[Advanced Save] VIBRATO_DECAY_TIME result: {result}")
+            if not result:
+                failed_params.append(f"VIBRATO_DECAY_TIME({PARAM_VIBRATO_DECAY_TIME})={vib_decay}")
 
             # Min press time (50-500ms)
-            if not kb.set_keyboard_param_single(PARAM_MIN_PRESS_TIME, settings.get('min_press_time', 200)):
-                success = False
+            min_press = settings.get('min_press_time', 200)
+            print(f"[Advanced Save] Saving MIN_PRESS_TIME ({PARAM_MIN_PRESS_TIME}) = {min_press}")
+            result = kb.set_keyboard_param_single(PARAM_MIN_PRESS_TIME, min_press)
+            print(f"[Advanced Save] MIN_PRESS_TIME result: {result}")
+            if not result:
+                failed_params.append(f"MIN_PRESS_TIME({PARAM_MIN_PRESS_TIME})={min_press}")
 
             # Max press time (5-100ms)
-            if not kb.set_keyboard_param_single(PARAM_MAX_PRESS_TIME, settings.get('max_press_time', 20)):
-                success = False
+            max_press = settings.get('max_press_time', 20)
+            print(f"[Advanced Save] Saving MAX_PRESS_TIME ({PARAM_MAX_PRESS_TIME}) = {max_press}")
+            result = kb.set_keyboard_param_single(PARAM_MAX_PRESS_TIME, max_press)
+            print(f"[Advanced Save] MAX_PRESS_TIME result: {result}")
+            if not result:
+                failed_params.append(f"MAX_PRESS_TIME({PARAM_MAX_PRESS_TIME})={max_press}")
 
-            if success:
+            if len(failed_params) == 0:
+                print("[Advanced Save] All settings saved successfully!")
                 QMessageBox.information(None, "Success", "Global MIDI settings saved!")
             else:
-                raise RuntimeError("One or more settings failed to save")
+                print(f"[Advanced Save] FAILED params: {failed_params}")
+                raise RuntimeError(f"Failed to save: {', '.join(failed_params)}")
 
         except Exception as e:
             QMessageBox.critical(None, "Error",
