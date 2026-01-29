@@ -11944,10 +11944,8 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			send_hid_response(HID_CMD_RESET_LOOP_CONFIG, macro_num, 0, NULL, 0);
 			break;
 
-		case HID_CMD_CLEAR_ALL_LOOPS: // 0xCE
-			handle_clear_all_loops();
-			send_hid_response(HID_CMD_CLEAR_ALL_LOOPS, 0, 0, NULL, 0);
-			break;
+		// NOTE: HID_CMD_CLEAR_ALL_LOOPS (0xCE) was removed - command 0xCE is routed
+		// to arpeggiator_hid.c for gaming commands, so it would never reach here anyway
 
 		case HID_CMD_SET_KEYBOARD_CONFIG: // 0x50
             if (length >= 41) { // Header + 35 data bytes minimum (expanded for velocity curve/min/max)
