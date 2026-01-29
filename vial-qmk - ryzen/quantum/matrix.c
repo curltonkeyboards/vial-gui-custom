@@ -1074,13 +1074,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
             break;
 
-        case 2:  // Speed-based (threshold to actuation)
-            // Measures time from fixed threshold (~0.05mm) to actuation point
-            // User can adjust min/max press time to tune for their actuation preference
+        case 2:  // Speed-based (rest to actuation)
+            // Measures time from key starting to move to actuation point
+            // User can adjust min/max press time to tune velocity curve
             {
-                // Start timer when key crosses the noise threshold (~0.05mm)
+                // Start timer when key starts moving from rest
                 // Use ChibiOS system ticks (100kHz = 10µs resolution) for precise timing
-                if (state->last_travel < VELOCITY_START_THRESHOLD && travel >= VELOCITY_START_THRESHOLD) {
+                if (state->last_travel == 0 && travel > 0) {
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                     state->travel_at_actuation = 0;
                     state->velocity_captured = false;
