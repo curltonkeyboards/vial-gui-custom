@@ -639,7 +639,7 @@ class QuickActuationWidget(QWidget):
                 self.advanced_debug_console.log("  1. Check firmware supports HID_CMD_SET_KEYBOARD_PARAM_SINGLE (0xBD)", "WARN")
                 self.advanced_debug_console.log("  2. Verify parameter IDs are correct in firmware", "WARN")
                 self.advanced_debug_console.log("  3. Check for firmware version mismatch", "WARN")
-                self.advanced_debug_console.log("  4. status_byte=0 means success, non-zero means error", "WARN")
+                self.advanced_debug_console.log("  4. status_byte=1 means success, 0 or 0xFF means error", "WARN")
                 self.advanced_debug_console.mark_operation_end(success=False)
                 raise RuntimeError(f"Failed to save: {', '.join(failed_params)}")
 

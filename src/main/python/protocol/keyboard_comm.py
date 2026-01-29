@@ -1592,7 +1592,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 try:
                     response = self.usb_send(self.dev, packet, retries=1)
                     print(f"[HID Debug] Attempt {attempt+1}: response={list(response[:10]) if response and len(response) >= 10 else response}")
-                    if response and len(response) > 0 and response[5] == 0:
+                    if response and len(response) > 0 and response[5] == 1:
                         print(f"[HID Debug] Success! response[5]={response[5]}")
                         return True
                     else:
@@ -1676,11 +1676,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
                     if response and len(response) > 5:
                         debug_info['status_byte'] = response[5]
-                        # Interpret status byte
-                        if response[5] == 0:
+                        # Interpret status byte (1 = success for this command)
+                        if response[5] == 1:
                             return True, debug_info
-                        elif response[5] == 1:
-                            debug_info['error'] = f"Status=1: Check if firmware expects 0 or 1 for success"
+                        elif response[5] == 0:
+                            debug_info['error'] = f"Status=0: Firmware returned failure/not-ack"
                         elif response[5] == 0xFF:
                             debug_info['error'] = f"Status=0xFF: Command not recognized by firmware"
                         else:
