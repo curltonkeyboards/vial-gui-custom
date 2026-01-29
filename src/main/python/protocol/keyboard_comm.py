@@ -44,9 +44,12 @@ HID_SUB_ID = 0x00
 HID_DEVICE_ID = 0x4D
 HID_PACKET_SIZE = 32
 
+# Loop Operations (0xA7)
+HID_CMD_CLEAR_ALL_LOOPS = 0xA7        # Clear all loop content
+
 # ThruLoop Commands (0xB0-0xB5)
 HID_CMD_SET_LOOP_CONFIG = 0xB0
-HID_CMD_SET_MAIN_LOOP_CCS = 0xB1  
+HID_CMD_SET_MAIN_LOOP_CCS = 0xB1
 HID_CMD_SET_OVERDUB_CCS = 0xB2
 HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
 HID_CMD_GET_ALL_CONFIG = 0xB4
@@ -1512,6 +1515,19 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """Reset ThruLoop configuration to defaults"""
         try:
             packet = self._create_hid_packet(HID_CMD_RESET_LOOP_CONFIG, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0
+        except Exception as e:
+            return False
+
+    def clear_all_loops(self):
+        """Clear all loop content (equivalent to holding all macro buttons)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_CLEAR_ALL_LOOPS, 0, None)
             data = self.usb_send(self.dev, packet, retries=20)
             return data and len(data) > 0 and data[5] == 0
         except Exception as e:

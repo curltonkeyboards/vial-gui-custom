@@ -765,6 +765,161 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // =========================================================================
+    // GAMING/JOYSTICK COMMANDS (0xCE-0xD2)
+    // These handle gamepad/joystick functionality for the keyboard
+    // =========================================================================
+
+    // Check if this is a gaming command (0xCE-0xD2)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xCE && data[3] <= 0xD2) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xCE: {  // HID_CMD_GAMING_SET_MODE
+                #ifdef JOYSTICK_ENABLE
+                gaming_mode_active = data[6] != 0;
+                gaming_settings.gaming_mode_enabled = gaming_mode_active;
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                dprintf("Gaming mode set to: %s\n", gaming_mode_active ? "ON" : "OFF");
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xCF: {  // HID_CMD_GAMING_SET_KEY_MAP
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), control_id, row, col, enabled]
+                uint8_t control_id = data[6];
+                uint8_t row = data[7];
+                uint8_t col = data[8];
+                uint8_t enabled = data[9];
+
+                gaming_key_map_t* target = NULL;
+
+                // Map control_id to the correct structure member
+                switch (control_id) {
+                    case 0: target = &gaming_settings.ls_up; break;
+                    case 1: target = &gaming_settings.ls_down; break;
+                    case 2: target = &gaming_settings.ls_left; break;
+                    case 3: target = &gaming_settings.ls_right; break;
+                    case 4: target = &gaming_settings.rs_up; break;
+                    case 5: target = &gaming_settings.rs_down; break;
+                    case 6: target = &gaming_settings.rs_left; break;
+                    case 7: target = &gaming_settings.rs_right; break;
+                    case 8: target = &gaming_settings.lt; break;
+                    case 9: target = &gaming_settings.rt; break;
+                    default:
+                        if (control_id >= 10 && control_id < 26) {
+                            target = &gaming_settings.buttons[control_id - 10];
+                        }
+                        break;
+                }
+
+                if (target != NULL) {
+                    target->row = row;
+                    target->col = col;
+                    target->enabled = enabled;
+                    gaming_save_settings();
+                    response[5] = 0x00;  // Success
+                } else {
+                    response[5] = 0x01;  // Error - invalid control_id
+                }
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+                gaming_settings.ls_min_travel_mm_x10 = data[6];
+                gaming_settings.ls_max_travel_mm_x10 = data[7];
+                gaming_settings.rs_min_travel_mm_x10 = data[8];
+                gaming_settings.rs_max_travel_mm_x10 = data[9];
+                gaming_settings.trigger_min_travel_mm_x10 = data[10];
+                gaming_settings.trigger_max_travel_mm_x10 = data[11];
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD1: {  // HID_CMD_GAMING_GET_SETTINGS
+                #ifdef JOYSTICK_ENABLE
+                response[5] = 0x00;  // Success
+                response[6] = gaming_mode_active ? 1 : 0;
+                response[7] = gaming_settings.ls_min_travel_mm_x10;
+                response[8] = gaming_settings.ls_max_travel_mm_x10;
+                response[9] = gaming_settings.rs_min_travel_mm_x10;
+                response[10] = gaming_settings.rs_max_travel_mm_x10;
+                response[11] = gaming_settings.trigger_min_travel_mm_x10;
+                response[12] = gaming_settings.trigger_max_travel_mm_x10;
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD2: {  // HID_CMD_GAMING_RESET
+                #ifdef JOYSTICK_ENABLE
+                // Reset to defaults
+                gaming_mode_active = false;
+                gaming_settings.gaming_mode_enabled = false;
+                gaming_settings.ls_min_travel_mm_x10 = 5;   // 0.5mm
+                gaming_settings.ls_max_travel_mm_x10 = 35;  // 3.5mm
+                gaming_settings.rs_min_travel_mm_x10 = 5;
+                gaming_settings.rs_max_travel_mm_x10 = 35;
+                gaming_settings.trigger_min_travel_mm_x10 = 5;
+                gaming_settings.trigger_max_travel_mm_x10 = 35;
+
+                // Clear all key mappings
+                memset(&gaming_settings.ls_up, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.ls_down, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.ls_left, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.ls_right, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_up, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_down, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_left, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_right, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.lt, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rt, 0, sizeof(gaming_key_map_t));
+                memset(gaming_settings.buttons, 0, sizeof(gaming_settings.buttons));
+
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                dprintf("Gaming settings reset to defaults\n");
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            default:
+                response[5] = 0x01;  // Error - unknown command
+                break;
+        }
+
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is an ADC matrix tester command (0xDF)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&

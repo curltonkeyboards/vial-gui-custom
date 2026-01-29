@@ -61,7 +61,7 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_LOAD_CHUNK              0xA4  // was 0x05
 #define HID_CMD_LOAD_END                0xA5  // was 0x06
 #define HID_CMD_LOAD_OVERDUB_START      0xA6  // was 0x07
-// Reserved for future save/load operations: 0xA7
+#define HID_CMD_CLEAR_ALL_LOOPS         0xA7  // Clear all loop content
 
 // Request/Trigger Operations (0xA8-0xA9)
 #define HID_CMD_REQUEST_SAVE            0xA8  // was 0x10
@@ -11939,15 +11939,17 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			handle_get_all_config(macro_num);
 			break;
 
-		case HID_CMD_RESET_LOOP_CONFIG: // 0x45
+		case HID_CMD_RESET_LOOP_CONFIG: // 0xB5
 			handle_reset_loop_config();
 			send_hid_response(HID_CMD_RESET_LOOP_CONFIG, macro_num, 0, NULL, 0);
 			break;
 
-		// NOTE: HID_CMD_CLEAR_ALL_LOOPS (0xCE) was removed - command 0xCE is routed
-		// to arpeggiator_hid.c for gaming commands, so it would never reach here anyway
+		case HID_CMD_CLEAR_ALL_LOOPS: // 0xA7 - Clear all loop content
+			handle_clear_all_loops();
+			send_hid_response(HID_CMD_CLEAR_ALL_LOOPS, 0, 0, NULL, 0);
+			break;
 
-		case HID_CMD_SET_KEYBOARD_CONFIG: // 0x50
+		case HID_CMD_SET_KEYBOARD_CONFIG: // 0xB6
             if (length >= 41) { // Header + 35 data bytes minimum (expanded for velocity curve/min/max)
                 handle_set_keyboard_config(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG, 0, 0, NULL, 0); // Success
