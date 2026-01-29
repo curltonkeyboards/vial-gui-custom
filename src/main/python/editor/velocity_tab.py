@@ -228,6 +228,9 @@ class VelocityTab(BasicEditor):
         self.min_time = 100  # ms for min velocity (slow press)
         self.max_time = 10   # ms for max velocity (fast press)
 
+        # Current layer settings (loaded from keyboard)
+        self.current_layer_settings = None
+
         # Polling timer
         self.poll_timer = QTimer()
         self.poll_timer.timeout.connect(self.poll_velocity)
@@ -361,10 +364,22 @@ class VelocityTab(BasicEditor):
         time_layout.setSpacing(15)
         time_group.setLayout(time_layout)
 
-        # Velocity mode display
-        self.velocity_mode_label = QLabel(tr("VelocityTab", "Velocity Mode: -"))
-        self.velocity_mode_label.setStyleSheet("font-weight: bold; color: #4a90d9;")
-        time_layout.addWidget(self.velocity_mode_label)
+        # Velocity mode selector
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel(tr("VelocityTab", "Velocity Mode:"))
+        mode_label.setStyleSheet("font-weight: bold;")
+        mode_layout.addWidget(mode_label)
+
+        self.velocity_mode_combo = QComboBox()
+        self.velocity_mode_combo.addItem("Fixed", 0)
+        self.velocity_mode_combo.addItem("Peak Travel", 1)
+        self.velocity_mode_combo.addItem("Speed", 2)
+        self.velocity_mode_combo.addItem("Combined (Speed + Peak)", 3)
+        self.velocity_mode_combo.setMinimumWidth(180)
+        self.velocity_mode_combo.currentIndexChanged.connect(self.on_velocity_mode_changed)
+        mode_layout.addWidget(self.velocity_mode_combo)
+        mode_layout.addStretch()
+        time_layout.addLayout(mode_layout)
 
         # Description
         time_desc = QLabel(tr("VelocityTab",
@@ -621,17 +636,14 @@ class VelocityTab(BasicEditor):
             # Get layer actuation settings which include velocity mode
             result = self.keyboard.get_layer_actuation(self.current_layer)
             if result:
+                # Store the full layer settings for later use when saving
+                self.current_layer_settings = result
                 velocity_mode = result.get('velocity', 0)
-                mode_names = {
-                    0: "Fixed",
-                    1: "Peak Travel",
-                    2: "Speed",
-                    3: "Combined (Speed + Peak)"
-                }
-                mode_name = mode_names.get(velocity_mode, f"Unknown ({velocity_mode})")
-                self.velocity_mode_label.setText(
-                    tr("VelocityTab", f"Velocity Mode: {mode_name}")
-                )
+
+                # Block signals to prevent triggering on_velocity_mode_changed
+                self.velocity_mode_combo.blockSignals(True)
+                self.velocity_mode_combo.setCurrentIndex(velocity_mode if 0 <= velocity_mode <= 3 else 0)
+                self.velocity_mode_combo.blockSignals(False)
 
                 # Show warning if mode doesn't use time settings
                 if velocity_mode in (0, 1):
@@ -640,6 +652,64 @@ class VelocityTab(BasicEditor):
                     self.time_warning_label.hide()
         except Exception as e:
             print(f"Error loading velocity mode: {e}")
+
+    def on_velocity_mode_changed(self, index):
+        """Handle velocity mode dropdown change"""
+        if not self.keyboard:
+            return
+
+        velocity_mode = self.velocity_mode_combo.currentData()
+        if velocity_mode is None:
+            velocity_mode = index
+
+        try:
+            # Get current layer settings to preserve other values
+            if not hasattr(self, 'current_layer_settings') or self.current_layer_settings is None:
+                result = self.keyboard.get_layer_actuation(self.current_layer)
+                if result:
+                    self.current_layer_settings = result
+                else:
+                    # Use defaults if we can't get settings
+                    self.current_layer_settings = {
+                        'normal': 50, 'midi': 50, 'velocity': 0, 'vel_speed': 10,
+                        'flags': 0, 'aftertouch_mode': 0, 'aftertouch_cc': 1,
+                        'vibrato_sensitivity': 64, 'vibrato_decay_time': 500
+                    }
+
+            settings = self.current_layer_settings
+
+            # Build the data packet for set_layer_actuation
+            # [layer, normal, midi, velocity_mode, vel_speed, flags,
+            #  aftertouch_mode, aftertouch_cc, vibrato_sensitivity,
+            #  vibrato_decay_time_low, vibrato_decay_time_high]
+            vibrato_decay = settings.get('vibrato_decay_time', 500)
+            data = bytearray([
+                self.current_layer,
+                settings.get('normal', 50),
+                settings.get('midi', 50),
+                velocity_mode,  # New velocity mode
+                settings.get('vel_speed', 10),
+                settings.get('flags', 0),
+                settings.get('aftertouch_mode', 0),
+                settings.get('aftertouch_cc', 1),
+                settings.get('vibrato_sensitivity', 64),
+                vibrato_decay & 0xFF,
+                (vibrato_decay >> 8) & 0xFF
+            ])
+
+            success = self.keyboard.set_layer_actuation(data)
+            if success:
+                # Update stored settings
+                self.current_layer_settings['velocity'] = velocity_mode
+                # Update warning label visibility
+                if velocity_mode in (0, 1):
+                    self.time_warning_label.show()
+                else:
+                    self.time_warning_label.hide()
+            else:
+                print(f"Failed to set velocity mode for layer {self.current_layer}")
+        except Exception as e:
+            print(f"Error setting velocity mode: {e}")
 
     def on_save_curve(self):
         """Save velocity curve selection to keyboard"""
