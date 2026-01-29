@@ -46,6 +46,10 @@
 // Distance scale (0-255 for libhmk compatibility)
 #define DISTANCE_MAX 255
 
+// Velocity timer start threshold (~0.05mm to avoid noise)
+// With 4mm travel = 240 units, 0.05mm ≈ 3 units
+#define VELOCITY_START_THRESHOLD 3
+
 // Conversion: old travel (0-240) to new distance (0-255)
 #define TRAVEL_TO_DISTANCE(t) (((uint32_t)(t) * 255) / 240)
 #define DISTANCE_TO_TRAVEL(d) (((uint32_t)(d) * 240) / 255)
@@ -128,7 +132,6 @@ typedef struct {
     // Mode 2 & 3: Speed-based
     uint8_t last_travel;
     uint16_t last_time;
-    uint8_t calculated_velocity;
     uint8_t peak_velocity;
     uint16_t peak_speed;         // Peak speed (uint16_t to avoid overflow)
     uint8_t travel_at_actuation; // Travel when actuation point was crossed (for Mode 2)
@@ -1071,13 +1074,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
             break;
 
-        case 2:  // Speed-based (deadzone to actuation)
-            // Measures average speed from key rest/deadzone to actuation point
-            // Deeper actuation point = more travel distance = more reliable speed measurement
+        case 2:  // Speed-based (threshold to actuation)
+            // Measures time from fixed threshold (~0.05mm) to actuation point
+            // User can adjust min/max press time to tune for their actuation preference
             {
-                // Track when key starts moving from rest (crosses deadzone)
+                // Start timer when key crosses the noise threshold (~0.05mm)
                 // Use ChibiOS system ticks (100kHz = 10µs resolution) for precise timing
-                if (state->last_travel == 0 && travel > 0) {
+                if (state->last_travel < VELOCITY_START_THRESHOLD && travel >= VELOCITY_START_THRESHOLD) {
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                     state->travel_at_actuation = 0;
                     state->velocity_captured = false;
@@ -1659,7 +1662,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                         pressed = state->send_on_release;
                         break;
                     case 2:  // Speed
-                        pressed = (travel >= midi_threshold) && state->calculated_velocity > 0;
+                        pressed = (travel >= midi_threshold) && state->velocity_captured;
                         break;
                     case 3:  // Speed+Peak
                         pressed = state->send_on_release;

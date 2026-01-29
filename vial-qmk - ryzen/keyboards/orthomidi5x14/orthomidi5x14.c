@@ -496,9 +496,10 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     // This is the velocity calculated from peak travel, speed, or combined
     raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    // If raw_velocity is 0 (shouldn't happen - velocity should be captured before note-on),
+    // use a neutral middle value instead of travel (which would cause actuation-dependent floor)
     if (raw_value == 0) {
-        raw_value = analog_matrix_get_travel_normalized(row, col);
+        raw_value = 127;  // Neutral 50% value
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -536,9 +537,10 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Modes 1-3: Use pre-calculated raw velocity from matrix.c
     uint8_t raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    // If raw_velocity is 0 (shouldn't happen - velocity should be captured before note-on),
+    // use a neutral middle value instead of travel (which would cause actuation-dependent floor)
     if (raw_value == 0) {
-        raw_value = analog_matrix_get_travel_normalized(row, col);
+        raw_value = 127;  // Neutral 50% value
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -576,9 +578,10 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Modes 1-3: Use pre-calculated raw velocity from matrix.c
     uint8_t raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    // If raw_velocity is 0 (not yet captured), use neutral 50% value
+    // Note: Using travel as fallback causes actuation-dependent velocity floor
     if (raw_value == 0) {
-        raw_value = analog_matrix_get_travel_normalized(row, col);
+        raw_value = 127;  // Neutral value instead of travel
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
