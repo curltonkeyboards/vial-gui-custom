@@ -3386,8 +3386,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.midi_clock_source, config.get("midi_clock_source"), 0)
 
     def pack_basic_data(self, settings):
-        """Pack basic settings into 17-byte structure"""
-        data = bytearray(17)
+        """Pack basic settings into 22-byte structure"""
+        data = bytearray(22)
 
         struct.pack_into('<I', data, 0, settings["velocity_sensitivity"])
         struct.pack_into('<I', data, 4, settings["cc_sensitivity"])

@@ -59,7 +59,7 @@ HID_CMD_RESET_KEYBOARD_CONFIG = 0xB8
 HID_CMD_SAVE_KEYBOARD_SLOT = 0xB9
 HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
 HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
-HID_CMD_SET_KEYBOARD_PARAM_SINGLE = 0xF0  # Set individual parameter (changed from 0xBD to avoid conflict)
+HID_CMD_SET_KEYBOARD_PARAM_SINGLE = 0xFC  # Set individual parameter (changed from 0xF0 to avoid conflict with nullbind)
 
 # Parameter IDs for HID_CMD_SET_KEYBOARD_PARAM_SINGLE
 PARAM_CHANNEL_NUMBER = 0

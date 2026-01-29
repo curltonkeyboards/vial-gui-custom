@@ -1082,13 +1082,13 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a SET_KEYBOARD_PARAM_SINGLE command (0xF0)
+    // Check if this is a SET_KEYBOARD_PARAM_SINGLE command (0xFC)
     // Sets individual keyboard parameters in real-time (updates both RAM and keyboard_settings)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] == 0xF0) {
+        data[3] == 0xFC) {
 
         dprintf("raw_hid_receive_kb: SET_KEYBOARD_PARAM_SINGLE command detected\n");
 
@@ -1098,7 +1098,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         response[0] = HID_MANUFACTURER_ID;
         response[1] = HID_SUB_ID;
         response[2] = HID_DEVICE_ID;
-        response[3] = 0xF0;
+        response[3] = 0xFC;
 
         // Request format: [header(4), _, param_id, value...]
         uint8_t param_id = data[5];

@@ -84,7 +84,7 @@
 #define HID_CMD_SAVE_KEYBOARD_SLOT 0xB9
 #define HID_CMD_LOAD_KEYBOARD_SLOT 0xBA
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB
-#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xF0  // Changed from 0xBD to avoid conflict with vial_layer_rgb_load
+#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xFC  // Changed from 0xF0 to avoid conflict with nullbind commands
 
 // Per-Key Actuation Commands (0xE0-0xE6)
 #define HID_CMD_SET_PER_KEY_ACTUATION       0xE0
