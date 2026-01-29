@@ -1096,17 +1096,20 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     if (elapsed_ms > 0) {
                         // New min/max time-based velocity calculation:
                         // elapsed_ms <= max_time → raw = 255 (max velocity)
-                        // elapsed_ms >= min_time → raw = 0 (min velocity)
+                        // elapsed_ms >= min_time → raw = 1 (min velocity, NOT 0 - see below)
                         // Otherwise → linear interpolation
+                        // NOTE: We use 1 instead of 0 for minimum because raw_velocity=0
+                        // is reserved as "not yet captured" sentinel in get_he_velocity_from_position()
                         uint32_t raw;
                         if (elapsed_ms <= max_press_time) {
                             raw = 255;  // Fastest press = max velocity
                         } else if (elapsed_ms >= min_press_time) {
-                            raw = 0;    // Slowest press = min velocity
+                            raw = 1;    // Slowest press = min velocity (use 1, not 0!)
                         } else {
                             // Linear interpolation between max_time and min_time
                             // raw = 255 * (min_time - elapsed_ms) / (min_time - max_time)
                             raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
+                            if (raw < 1) raw = 1;  // Ensure minimum of 1
                         }
 
                         state->raw_velocity = (uint8_t)raw;
@@ -1165,15 +1168,17 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
 
                     // Calculate speed component using new min/max time settings
+                    // NOTE: Use 1 instead of 0 for minimum - raw_velocity=0 is "not captured" sentinel
                     uint32_t speed_raw;
                     if (elapsed_ms > 0) {
                         if (elapsed_ms <= max_press_time) {
                             speed_raw = 255;  // Fastest press = max velocity
                         } else if (elapsed_ms >= min_press_time) {
-                            speed_raw = 0;    // Slowest press = min velocity
+                            speed_raw = 1;    // Slowest press = min velocity (use 1, not 0!)
                         } else {
                             // Linear interpolation between max_time and min_time
                             speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
+                            if (speed_raw < 1) speed_raw = 1;  // Ensure minimum of 1
                         }
                     } else {
                         speed_raw = 255;  // Sub-1ms press = max speed
@@ -1185,7 +1190,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     if (travel_raw > 255) travel_raw = 255;
 
                     // Blend: 70% speed + 30% travel
-                    state->raw_velocity = (uint8_t)(((uint16_t)speed_raw * 70 + travel_raw * 30) / 100);
+                    uint8_t blended = (uint8_t)(((uint16_t)speed_raw * 70 + travel_raw * 30) / 100);
+                    state->raw_velocity = (blended < 1) ? 1 : blended;  // Ensure minimum of 1
                     state->velocity_captured = true;
 
                     // Update base_velocity for RT
