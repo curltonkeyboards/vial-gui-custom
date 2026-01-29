@@ -1086,6 +1086,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Measures time from key starting to move to actuation point
             // User can adjust min/max press time to tune velocity curve
             {
+                // DEBUG: Track values every time Mode 2 runs (shows most recent key's state)
+                // This updates even when velocity ISN'T captured, to help diagnose issues
+                debug_last_travel_time_ms = travel;  // Repurpose: show current travel value
+                debug_last_elapsed_ms = midi_threshold;  // Repurpose: show actuation threshold
+                debug_last_raw_velocity = state->last_travel;  // Repurpose: show last_travel
+
                 // Start timer when key starts moving from rest
                 // Use ChibiOS system ticks (100kHz = 10µs resolution) for precise timing
                 if (state->last_travel == 0 && travel > 0) {

@@ -11261,8 +11261,9 @@ void oled_render_keylog(void) {
 		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
 	}
 
-	// DEBUG: Show last raw velocity and travel time
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n RAW:%3d T:%3dms E:%3d",
+	// DEBUG: Show Mode 2 state (repurposed variables)
+	// LT = last_travel, TR = current travel, TH = actuation threshold
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n LT:%3d TR:%3d TH:%3d",
 		debug_last_raw_velocity, debug_last_travel_time_ms, debug_last_elapsed_ms);
 
 	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
