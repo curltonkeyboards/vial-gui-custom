@@ -11908,7 +11908,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-		case HID_CMD_SET_LOOP_CONFIG: // 0x40
+		case HID_CMD_SET_LOOP_CONFIG: // 0xB0
 			if (length >= 12) { // Header + 8 data bytes minimum
 				handle_set_loop_config(&data[6]); // Skip header bytes
 				send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, NULL, 0); // Success
@@ -11917,7 +11917,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_SET_MAIN_LOOP_CCS: // 0x41
+		case HID_CMD_SET_MAIN_LOOP_CCS: // 0xB1
 			if (length >= 26) { // Header + 20 data bytes
 				handle_set_main_loop_ccs(&data[6]);
 				send_hid_response(HID_CMD_SET_MAIN_LOOP_CCS, macro_num, 0, NULL, 0);
@@ -11926,7 +11926,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_SET_OVERDUB_CCS: // 0x42
+		case HID_CMD_SET_OVERDUB_CCS: // 0xB2
 			if (length >= 30) { // Header + 24 data bytes (CHANGED FROM 26)
 				handle_set_overdub_ccs(&data[6]);
 				send_hid_response(HID_CMD_SET_OVERDUB_CCS, macro_num, 0, NULL, 0);
@@ -11935,7 +11935,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_SET_NAVIGATION_CONFIG: // 0x43
+		case HID_CMD_SET_NAVIGATION_CONFIG: // 0xB3
 			if (length >= 16) { // Header + 10 data bytes
 				handle_set_navigation_config(&data[6]);
 				send_hid_response(HID_CMD_SET_NAVIGATION_CONFIG, macro_num, 0, NULL, 0);
@@ -11944,7 +11944,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_GET_ALL_CONFIG: // 0x44
+		case HID_CMD_GET_ALL_CONFIG: // 0xB4
 			handle_get_all_config(macro_num);
 			break;
 
@@ -12016,8 +12016,8 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        // DKS Commands
-        case HID_CMD_DKS_GET_SLOT: // 0xE5 - Get DKS slot configuration
+        // DKS Commands (0xAA-0xAF range, routed via dynamic_macro_hid_receive)
+        case HID_CMD_DKS_GET_SLOT: // 0xAA - Get DKS slot configuration
             if (length >= 7) { // Header + slot number
                 handle_dks_get_slot(&data[6]);
             } else {
@@ -12025,7 +12025,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_SET_ACTION: // 0xE6 - Set a single DKS action
+        case HID_CMD_DKS_SET_ACTION: // 0xAB - Set a single DKS action
             if (length >= 14) { // Header + slot + action data
                 handle_dks_set_action(&data[6]);
                 send_hid_response(HID_CMD_DKS_SET_ACTION, 0, 0, NULL, 0); // Success
@@ -12034,19 +12034,19 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_SAVE_EEPROM: // 0xE7 - Save all DKS configs to EEPROM
+        case HID_CMD_DKS_SAVE_EEPROM: // 0xAC - Save all DKS configs to EEPROM
             dks_save_to_eeprom();
             send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0); // Success
             break;
 
-        case HID_CMD_DKS_LOAD_EEPROM: // 0xE8 - Load all DKS configs from EEPROM
+        case HID_CMD_DKS_LOAD_EEPROM: // 0xAD - Load all DKS configs from EEPROM
             {
                 bool success = dks_load_from_eeprom();
                 send_hid_response(HID_CMD_DKS_LOAD_EEPROM, 0, success ? 0 : 1, NULL, 0);
             }
             break;
 
-        case HID_CMD_DKS_RESET_SLOT: // 0xE9 - Reset a slot to defaults
+        case HID_CMD_DKS_RESET_SLOT: // 0xAE - Reset a slot to defaults
             if (length >= 7) { // Header + slot number
                 handle_dks_reset_slot(&data[6]);
             } else {
@@ -12054,7 +12054,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_RESET_ALL: // 0xEA - Reset all slots to defaults
+        case HID_CMD_DKS_RESET_ALL: // 0xAF - Reset all slots to defaults
             dks_reset_all_slots();
             send_hid_response(HID_CMD_DKS_RESET_ALL, 0, 0, NULL, 0); // Success
             break;
