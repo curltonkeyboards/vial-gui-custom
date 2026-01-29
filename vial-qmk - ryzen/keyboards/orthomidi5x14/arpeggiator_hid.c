@@ -1150,6 +1150,95 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a Set Keyboard Param Single command (0xBD)
+    // Sets individual keyboard parameters for real-time updates
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xBD) {
+
+        dprintf("raw_hid_receive_kb: Set Keyboard Param Single command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xBD;
+
+        // Request format: [header(4), _, _, param_id, value_bytes...]
+        uint8_t param_id = data[6];
+        uint8_t value = data[7];
+
+        // Parameter IDs (matching keyboard_comm.py):
+        // 0 = CHANNEL_NUMBER
+        // 1 = TRANSPOSE_NUMBER
+        // 2 = TRANSPOSE_NUMBER2
+        // 3 = TRANSPOSE_NUMBER3
+        // 4 = HE_VELOCITY_CURVE
+        // 5 = HE_VELOCITY_MIN
+        // 6 = HE_VELOCITY_MAX
+        // ...
+
+        bool success = true;
+
+        switch (param_id) {
+            case 0:  // CHANNEL_NUMBER
+                channel_number = value;
+                keyboard_settings.channel_number = value;
+                break;
+            case 1:  // TRANSPOSE_NUMBER
+                transpose_number = (int8_t)value;
+                keyboard_settings.transpose_number = (int8_t)value;
+                break;
+            case 2:  // TRANSPOSE_NUMBER2
+                transpose_number2 = (int8_t)value;
+                keyboard_settings.transpose_number2 = (int8_t)value;
+                break;
+            case 3:  // TRANSPOSE_NUMBER3
+                transpose_number3 = (int8_t)value;
+                keyboard_settings.transpose_number3 = (int8_t)value;
+                break;
+            case 4:  // HE_VELOCITY_CURVE
+                if (value <= 4) {  // Valid curve indices: 0-4
+                    keyboard_settings.he_velocity_curve = value;
+                    dprintf("Set velocity curve to %d\n", value);
+                } else {
+                    success = false;
+                }
+                break;
+            case 5:  // HE_VELOCITY_MIN
+                if (value >= 1 && value <= 127) {
+                    keyboard_settings.he_velocity_min = value;
+                    dprintf("Set velocity min to %d\n", value);
+                } else {
+                    success = false;
+                }
+                break;
+            case 6:  // HE_VELOCITY_MAX
+                if (value >= 1 && value <= 127) {
+                    keyboard_settings.he_velocity_max = value;
+                    dprintf("Set velocity max to %d\n", value);
+                } else {
+                    success = false;
+                }
+                break;
+            default:
+                // Unknown parameter
+                dprintf("Unknown param_id: %d\n", param_id);
+                success = false;
+                break;
+        }
+
+        response[4] = 0x01;  // Success marker position
+        response[5] = success ? 0x00 : 0x01;  // 0 = success, 1 = error
+
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a GET EQ Curve Settings command (0xEF)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&

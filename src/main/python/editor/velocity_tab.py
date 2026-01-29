@@ -162,15 +162,17 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                     4, 4
                 )
 
-                # Draw velocity text (top line)
+                # Draw velocity text (top half of key)
                 text_color = QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)
                 painter.setPen(QPen(text_color))
 
-                # Velocity on top
                 vel_text = str(velocity) if velocity > 0 else "-"
+                # Draw in top portion of the key
+                top_rect_y = int(center_y - box_h * 0.4)
+                top_rect_h = int(box_h * 0.5)
                 painter.drawText(
-                    rect_x, int(rect_y - rect_h * 0.08), rect_w, rect_h,
-                    Qt.AlignCenter,
+                    rect_x, top_rect_y, rect_w, top_rect_h,
+                    Qt.AlignCenter | Qt.AlignBottom,
                     vel_text
                 )
 
@@ -180,10 +182,14 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
                 small_font.setPointSize(6)
                 painter.setFont(small_font)
 
-                time_text = f"{travel_time}ms" if travel_time > 0 else ""
+                # Always show travel time if available, show "0ms" if 0
+                time_text = f"{travel_time}ms"
+                # Draw in bottom portion of the key
+                bottom_rect_y = int(center_y - box_h * 0.1)
+                bottom_rect_h = int(box_h * 0.5)
                 painter.drawText(
-                    rect_x, int(rect_y + rect_h * 0.15), rect_w, rect_h,
-                    Qt.AlignCenter,
+                    rect_x, bottom_rect_y, rect_w, bottom_rect_h,
+                    Qt.AlignCenter | Qt.AlignTop,
                     time_text
                 )
 
