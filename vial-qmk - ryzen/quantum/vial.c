@@ -77,14 +77,14 @@
 #define HID_CMD_GET_ALL_CONFIG 0xB4
 #define HID_CMD_RESET_LOOP_CONFIG 0xB5
 
-// MIDIswitch Commands (0xB6-0xBF) - Update these in your firmware
+// MIDIswitch Commands (0xB6-0xBB, 0xE8)
 #define HID_CMD_SET_KEYBOARD_CONFIG 0xB6
 #define HID_CMD_GET_KEYBOARD_CONFIG 0xB7
 #define HID_CMD_RESET_KEYBOARD_CONFIG 0xB8
 #define HID_CMD_SAVE_KEYBOARD_SLOT 0xB9
 #define HID_CMD_LOAD_KEYBOARD_SLOT 0xBA
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB
-#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xBD
+#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xE8  // Changed from 0xBD (collision with vial_layer_rgb_load)
 
 // Per-Key Actuation Commands (0xE0-0xE6)
 #define HID_CMD_SET_PER_KEY_ACTUATION       0xE0
@@ -1015,6 +1015,56 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				msg[0] = 0x01; // Success
 			} else {
 				msg[0] = 0x00; // Error
+			}
+			break;
+		}
+
+		case HID_CMD_SET_KEYBOARD_PARAM_SINGLE: {  // 0xE8 - Set individual keyboard parameter
+			// Format: [param_id, value_byte(s)...]
+			// For 16-bit params: [param_id, low_byte, high_byte]
+			if (length >= 4) {
+				uint8_t param_id = msg[2];
+				uint8_t value8 = msg[3];
+				uint16_t value16 = msg[3] | (msg[4] << 8);  // Little-endian for 16-bit params
+
+				switch (param_id) {
+					case 13:  // PARAM_VELOCITY_MODE (0-3)
+						velocity_mode = value8;
+						msg[0] = 0x01;
+						break;
+					case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
+						aftertouch_mode = value8;
+						msg[0] = 0x01;
+						break;
+					case 39:  // PARAM_AFTERTOUCH_CC (0-127, 255=off)
+						aftertouch_cc = value8;
+						msg[0] = 0x01;
+						break;
+					case 40:  // PARAM_VIBRATO_SENSITIVITY (50-200)
+						vibrato_sensitivity = value8;
+						msg[0] = 0x01;
+						break;
+					case 41:  // PARAM_VIBRATO_DECAY_TIME (0-2000ms, 16-bit)
+						vibrato_decay_time = value16;
+						msg[0] = 0x01;
+						break;
+					case 42:  // PARAM_MIN_PRESS_TIME (50-500ms, 16-bit)
+						min_press_time = value16;
+						msg[0] = 0x01;
+						break;
+					case 43:  // PARAM_MAX_PRESS_TIME (5-100ms, 16-bit)
+						max_press_time = value16;
+						msg[0] = 0x01;
+						break;
+					default:
+						msg[0] = 0x00;  // Unknown param_id
+						break;
+				}
+				// Echo back the param_id and value for debugging
+				msg[1] = param_id;
+				msg[2] = value8;
+			} else {
+				msg[0] = 0x00; // Error - invalid length
 			}
 			break;
 		}
