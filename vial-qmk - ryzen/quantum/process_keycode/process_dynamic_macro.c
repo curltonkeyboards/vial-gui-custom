@@ -63,10 +63,10 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_LOAD_OVERDUB_START      0xA6  // was 0x07
 // Reserved for future save/load operations: 0xA7
 
-// Request/Trigger Operations (0xA8-0xAF)
+// Request/Trigger Operations (0xA8-0xA9)
 #define HID_CMD_REQUEST_SAVE            0xA8  // was 0x10
 #define HID_CMD_TRIGGER_SAVE_ALL        0xA9  // was 0x30
-// Reserved for future request/trigger operations: 0xAA-0xAF
+// NOTE: 0xAA-0xAF now used by DKS commands below
 
 // Loop Configuration (0xB0-0xB5)
 #define HID_CMD_SET_LOOP_CONFIG         0xB0  // was 0x40
@@ -76,16 +76,15 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_GET_ALL_CONFIG          0xB4  // was 0x44
 #define HID_CMD_RESET_LOOP_CONFIG       0xB5  // was 0x45
 
-// Additional Loop Commands (0xCE+)
-#define HID_CMD_CLEAR_ALL_LOOPS         0xCE  // Clear all loop content
-
-// DKS (Dynamic Keystroke) Commands (0xE5-0xEA)
-#define HID_CMD_DKS_GET_SLOT            0xE5  // Get DKS slot configuration
-#define HID_CMD_DKS_SET_ACTION          0xE6  // Set a single DKS action
-#define HID_CMD_DKS_SAVE_EEPROM         0xE7  // Save all DKS configs to EEPROM
-#define HID_CMD_DKS_LOAD_EEPROM         0xE8  // Load all DKS configs from EEPROM
-#define HID_CMD_DKS_RESET_SLOT          0xE9  // Reset a slot to defaults
-#define HID_CMD_DKS_RESET_ALL           0xEA  // Reset all slots to defaults
+// DKS (Dynamic Keystroke) Commands (0xAA-0xAF)
+// NOTE: Moved from 0xE5-0xEA to avoid conflict with arpeggiator_hid.c handlers
+// (0xE5-0xE6 used for per-key actuation, 0xE7-0xE9 for distance/calibration/EQ)
+#define HID_CMD_DKS_GET_SLOT            0xAA  // Get DKS slot configuration
+#define HID_CMD_DKS_SET_ACTION          0xAB  // Set a single DKS action
+#define HID_CMD_DKS_SAVE_EEPROM         0xAC  // Save all DKS configs to EEPROM
+#define HID_CMD_DKS_LOAD_EEPROM         0xAD  // Load all DKS configs from EEPROM
+#define HID_CMD_DKS_RESET_SLOT          0xAE  // Reset a slot to defaults
+#define HID_CMD_DKS_RESET_ALL           0xAF  // Reset all slots to defaults
 
 // Keyboard Configuration (0xB6-0xBF)
 #define HID_CMD_SET_KEYBOARD_CONFIG         0xB6  // was 0x50

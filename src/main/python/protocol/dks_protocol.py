@@ -10,13 +10,15 @@ actuation points and behaviors.
 import struct
 from typing import Optional, Dict, List, Tuple
 
-# DKS HID Command Codes (0xE5-0xEA)
-HID_CMD_DKS_GET_SLOT = 0xE5        # Get DKS slot configuration (32 bytes)
-HID_CMD_DKS_SET_ACTION = 0xE6      # Set a single DKS action
-HID_CMD_DKS_SAVE_EEPROM = 0xE7     # Save all DKS configs to EEPROM
-HID_CMD_DKS_LOAD_EEPROM = 0xE8     # Load all DKS configs from EEPROM
-HID_CMD_DKS_RESET_SLOT = 0xE9      # Reset a slot to defaults
-HID_CMD_DKS_RESET_ALL = 0xEA       # Reset all slots to defaults
+# DKS HID Command Codes (0xAA-0xAF)
+# NOTE: Moved from 0xE5-0xEA to avoid conflict with arpeggiator_hid.c handlers
+# (0xE5-0xE6 used for per-key actuation, 0xE7-0xE9 for distance/calibration/EQ)
+HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (32 bytes)
+HID_CMD_DKS_SET_ACTION = 0xAB      # Set a single DKS action
+HID_CMD_DKS_SAVE_EEPROM = 0xAC     # Save all DKS configs to EEPROM
+HID_CMD_DKS_LOAD_EEPROM = 0xAD     # Load all DKS configs from EEPROM
+HID_CMD_DKS_RESET_SLOT = 0xAE      # Reset a slot to defaults
+HID_CMD_DKS_RESET_ALL = 0xAF       # Reset all slots to defaults
 
 # DKS Constants
 DKS_NUM_SLOTS = 50                  # Number of DKS slots (DKS_00 - DKS_49)

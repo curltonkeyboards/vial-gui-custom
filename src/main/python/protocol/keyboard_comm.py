@@ -1614,13 +1614,20 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             # Send request for keyboard config
             packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            
+
             if not response or len(response) == 0 or response[5] != 0:
                 return None
-            
+
             # Collect response packets using proper HID read method
+            # IMPORTANT: Initialize with the first response packet!
             packets = {}
             expected_commands = [HID_CMD_GET_KEYBOARD_CONFIG, HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED]
+
+            # Add the initial response to packets if it's valid
+            if response and len(response) >= 4 and response[0] == HID_MANUFACTURER_ID:
+                cmd = response[3]
+                if cmd in expected_commands:
+                    packets[cmd] = response
             
             # Try multiple times to collect all expected packets
             for attempt in range(20):
