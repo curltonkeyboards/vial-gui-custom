@@ -46,10 +46,6 @@
 // Distance scale (0-255 for libhmk compatibility)
 #define DISTANCE_MAX 255
 
-// Velocity timer start threshold (~0.05mm to avoid noise)
-// With 4mm travel = 240 units, 0.05mm ≈ 3 units
-#define VELOCITY_START_THRESHOLD 3
-
 // Conversion: old travel (0-240) to new distance (0-255)
 #define TRAVEL_TO_DISTANCE(t) (((uint32_t)(t) * 255) / 240)
 #define DISTANCE_TO_TRAVEL(d) (((uint32_t)(d) * 240) / 255)
@@ -199,17 +195,6 @@ uint8_t eq_bands[3][5] = {
 // Value stored as half-percentage: actual_percent = value * 2
 // 110%, 100%, 106%
 uint8_t eq_range_scale[3] = {55, 50, 53};
-
-// ============================================================================
-// VELOCITY DEBUG TRACKING
-// ============================================================================
-// Track the last velocity calculation for debug display
-uint8_t debug_last_raw_velocity = 0;
-uint16_t debug_last_travel_time_ms = 0;
-uint8_t debug_last_elapsed_ms = 0;  // For seeing if timer is working
-// Additional debug: track if process_midi_key_analog is being called
-uint8_t debug_midi_keys_processed = 0;  // Count of MIDI keys processed per scan
-uint8_t debug_velocity_mode_active = 0;  // active_settings.velocity_mode value
 
 // ============================================================================
 // GLOBAL VELOCITY TIME SETTINGS
@@ -723,14 +708,8 @@ static void refresh_key_type_cache(uint8_t layer) {
                 key_type_cache[key_idx] = KEY_TYPE_DKS;
                 dks_keycode_cache[key_idx] = keycode;
             }
-            // Check if MIDI key (position-based from midi_key_states)
+            // Check if MIDI key (position-based from midi_key_states, set at init)
             else if (midi_key_states[key_idx].is_midi_key) {
-                key_type_cache[key_idx] = KEY_TYPE_MIDI;
-                dks_keycode_cache[key_idx] = 0;
-            }
-            // Check if MIDI keycode (keycode-based: MI_C, MI_Cs, etc.)
-            // MIDI note keycodes are 0x7103 (QK_MIDI_NOTE_C_0) through 0x71FF
-            else if (keycode >= 0x7103 && keycode <= 0x71FF) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
                 dks_keycode_cache[key_idx] = 0;
             }
@@ -1095,12 +1074,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Measures time from key starting to move to actuation point
             // User can adjust min/max press time to tune velocity curve
             {
-                // DEBUG: Track values every time Mode 2 runs (shows most recent key's state)
-                // This updates even when velocity ISN'T captured, to help diagnose issues
-                debug_last_travel_time_ms = travel;  // Repurpose: show current travel value
-                debug_last_elapsed_ms = midi_threshold;  // Repurpose: show actuation threshold
-                debug_last_raw_velocity = state->last_travel;  // Repurpose: show last_travel
-
                 // Start timer when key starts moving from rest
                 // Use ChibiOS system ticks (100kHz = 10µs resolution) for precise timing
                 if (state->last_travel == 0 && travel > 0) {
@@ -1141,11 +1114,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         state->raw_velocity = (uint8_t)raw;
                         state->velocity_captured = true;
 
-                        // Debug tracking
-                        debug_last_raw_velocity = state->raw_velocity;
-                        debug_last_travel_time_ms = state->travel_time_ms;
-                        debug_last_elapsed_ms = (uint8_t)(elapsed_ms > 255 ? 255 : elapsed_ms);
-
                         // Update base_velocity for RT
                         key->base_velocity = (state->raw_velocity * 127) / 255;
                         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
@@ -1155,11 +1123,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         state->velocity_captured = true;
                         key->base_velocity = MAX_VELOCITY;
                         state->travel_time_ms = 0;
-
-                        // Debug tracking for instant press
-                        debug_last_raw_velocity = 255;
-                        debug_last_travel_time_ms = 0;
-                        debug_last_elapsed_ms = 0;
                     }
                 }
 
@@ -1643,12 +1606,9 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // incremental_load_per_key_cache();
 
     // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
-    debug_velocity_mode_active = active_settings.velocity_mode;  // DEBUG: track velocity mode
-    debug_midi_keys_processed = 0;  // DEBUG: reset counter
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
             if (key_type_cache[i] == KEY_TYPE_MIDI) {
-                debug_midi_keys_processed++;  // DEBUG: count MIDI keys
                 process_midi_key_analog(i, current_layer);
             }
         }
