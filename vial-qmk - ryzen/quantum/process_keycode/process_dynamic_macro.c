@@ -109,8 +109,9 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE  10
 #define PARAM_TRIPLESPLIT_HE_VELOCITY_MIN    11
 #define PARAM_TRIPLESPLIT_HE_VELOCITY_MAX    12
-// PARAM_AFTERTOUCH_MODE (13) and PARAM_AFTERTOUCH_CC (14) are now per-layer
-// Use set_layer_actuation() / get_layer_actuation() instead (0xCA/0xCB commands)
+// Global MIDI Velocity/Aftertouch Settings
+#define PARAM_VELOCITY_MODE                  13
+#define PARAM_AFTERTOUCH_MODE                14
 #define PARAM_BASE_SUSTAIN                   15
 #define PARAM_KEYSPLIT_SUSTAIN               16
 #define PARAM_TRIPLESPLIT_SUSTAIN            17
@@ -131,6 +132,12 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_MIDI_IN_MODE                   36
 #define PARAM_USB_MIDI_MODE                  37
 #define PARAM_MIDI_CLOCK_SOURCE              38
+// Global MIDI Settings (continued)
+#define PARAM_AFTERTOUCH_CC                  39
+#define PARAM_VIBRATO_SENSITIVITY            40
+#define PARAM_VIBRATO_DECAY_TIME             41  // 16-bit, uses 2 bytes
+#define PARAM_MIN_PRESS_TIME                 42  // 16-bit, uses 2 bytes
+#define PARAM_MAX_PRESS_TIME                 43  // 16-bit, uses 2 bytes
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -12899,8 +12906,19 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_TRIPLESPLIT_HE_VELOCITY_MAX:
             keyboard_settings.triplesplit_he_velocity_max = *value_ptr;
             break;
-        // PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC are now per-layer
-        // Use layer actuation protocol (0xCA/0xCB) instead
+
+        // Global MIDI Velocity/Aftertouch Settings
+        case PARAM_VELOCITY_MODE:
+            velocity_mode = *value_ptr;
+            if (velocity_mode > 3) velocity_mode = 0;  // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+            keyboard_settings.velocity_mode = velocity_mode;
+            break;
+        case PARAM_AFTERTOUCH_MODE:
+            aftertouch_mode = *value_ptr;
+            if (aftertouch_mode > 4) aftertouch_mode = 0;  // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            keyboard_settings.aftertouch_mode = aftertouch_mode;
+            break;
+
         case PARAM_BASE_SUSTAIN:
             base_sustain = *value_ptr;
             keyboard_settings.base_sustain = base_sustain;
@@ -12975,6 +12993,38 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_MIDI_CLOCK_SOURCE:
             midi_clock_source = (midi_clock_source_t)(*value_ptr);
             keyboard_settings.midi_clock_source = midi_clock_source;
+            break;
+
+        // Global MIDI Settings (continued)
+        case PARAM_AFTERTOUCH_CC:
+            aftertouch_cc = *value_ptr;  // 0-127=CC number, 255=off
+            keyboard_settings.aftertouch_cc = aftertouch_cc;
+            break;
+        case PARAM_VIBRATO_SENSITIVITY:
+            vibrato_sensitivity = *value_ptr;
+            if (vibrato_sensitivity < 50) vibrato_sensitivity = 50;
+            if (vibrato_sensitivity > 200) vibrato_sensitivity = 200;
+            keyboard_settings.vibrato_sensitivity = vibrato_sensitivity;
+            break;
+        case PARAM_VIBRATO_DECAY_TIME:
+            // 16-bit value (little-endian)
+            vibrato_decay_time = value_ptr[0] | (value_ptr[1] << 8);
+            if (vibrato_decay_time > 2000) vibrato_decay_time = 2000;
+            keyboard_settings.vibrato_decay_time = vibrato_decay_time;
+            break;
+        case PARAM_MIN_PRESS_TIME:
+            // 16-bit value (little-endian) - slow press threshold
+            min_press_time = value_ptr[0] | (value_ptr[1] << 8);
+            if (min_press_time < 50) min_press_time = 50;
+            if (min_press_time > 500) min_press_time = 500;
+            keyboard_settings.min_press_time = min_press_time;
+            break;
+        case PARAM_MAX_PRESS_TIME:
+            // 16-bit value (little-endian) - fast press threshold
+            max_press_time = value_ptr[0] | (value_ptr[1] << 8);
+            if (max_press_time < 5) max_press_time = 5;
+            if (max_press_time > 100) max_press_time = 100;
+            keyboard_settings.max_press_time = max_press_time;
             break;
 
         default:

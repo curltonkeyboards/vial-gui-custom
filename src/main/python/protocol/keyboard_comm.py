@@ -78,8 +78,9 @@ PARAM_KEYSPLIT_HE_VELOCITY_MAX = 9
 PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE = 10
 PARAM_TRIPLESPLIT_HE_VELOCITY_MIN = 11
 PARAM_TRIPLESPLIT_HE_VELOCITY_MAX = 12
-# PARAM_AFTERTOUCH_MODE (13) and PARAM_AFTERTOUCH_CC (14) are now per-layer
-# Use set_layer_actuation() instead
+# Global MIDI Settings (velocity, aftertouch, vibrato)
+PARAM_VELOCITY_MODE = 13             # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+PARAM_AFTERTOUCH_MODE = 14           # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
 PARAM_BASE_SUSTAIN = 15
 PARAM_KEYSPLIT_SUSTAIN = 16
 PARAM_TRIPLESPLIT_SUSTAIN = 17
@@ -98,6 +99,12 @@ PARAM_TRANSPOSE_OVERRIDE = 35      # bool: Override transpose
 PARAM_MIDI_IN_MODE = 36            # 0=Process All, 1=Thru, 2=Clock Only, 3=Ignore
 PARAM_USB_MIDI_MODE = 37           # 0=Process All, 1=Thru, 2=Clock Only, 3=Ignore
 PARAM_MIDI_CLOCK_SOURCE = 38       # 0=Local, 1=USB, 2=MIDI IN
+# Global MIDI Settings (continued)
+PARAM_AFTERTOUCH_CC = 39           # 0-127 = CC number, 255 = off (poly AT only)
+PARAM_VIBRATO_SENSITIVITY = 40     # 50-200 (percentage, 100 = normal)
+PARAM_VIBRATO_DECAY_TIME = 41      # 0-2000 (milliseconds, 16-bit) - use 2-byte write
+PARAM_MIN_PRESS_TIME = 42          # 0-255 (ms) - minimum time for slow press (full velocity)
+PARAM_MAX_PRESS_TIME = 43          # 0-255 (ms) - maximum time for fast press (min velocity)
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off

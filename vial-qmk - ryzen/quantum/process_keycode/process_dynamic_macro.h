@@ -335,7 +335,14 @@ typedef struct {
 	int colorblindmode;
 	bool cclooprecording;
 	bool truesustain;
-    // aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuation_t)
+    // Global MIDI Velocity/Aftertouch Settings (not per-layer)
+    uint8_t velocity_mode;                // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+    uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_cc;                // 0-127=CC number, 255=off (poly AT only)
+    uint8_t vibrato_sensitivity;          // 50-200 (percentage, 100=normal)
+    uint16_t vibrato_decay_time;          // 0-2000 (milliseconds)
+    uint16_t min_press_time;              // 50-500ms (slow press threshold for min velocity)
+    uint16_t max_press_time;              // 5-100ms (fast press threshold for max velocity)
     // Base/Main MIDI HE Velocity curve and range
     uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)
@@ -391,7 +398,14 @@ extern bool alternate_restart_mode;
 extern int colorblindmode;
 extern bool cclooprecording;
 extern bool truesustain;
-// aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
+// Global MIDI Velocity/Aftertouch Settings
+extern uint8_t velocity_mode;
+extern uint8_t aftertouch_mode;
+extern uint8_t aftertouch_cc;
+extern uint8_t vibrato_sensitivity;
+extern uint16_t vibrato_decay_time;
+extern uint16_t min_press_time;
+extern uint16_t max_press_time;
 extern uint8_t he_velocity_curve;
 extern uint8_t he_velocity_min;
 extern uint8_t he_velocity_max;

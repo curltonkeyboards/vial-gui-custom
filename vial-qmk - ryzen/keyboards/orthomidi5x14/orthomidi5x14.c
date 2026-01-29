@@ -250,6 +250,14 @@ bool channeloverride = false;
 bool velocityoverride = false;
 bool transposeoverride = false;
 bool truesustain = false;
+// Global MIDI Velocity/Aftertouch Settings
+uint8_t velocity_mode = 2;           // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak (default: Speed-based)
+uint8_t aftertouch_mode = 0;         // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
+uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
+uint16_t vibrato_decay_time = 200;   // 0-2000 (milliseconds)
+uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
+uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
 bool keysplitmodifierheld = false;
 bool triplesplitmodifierheld = false;
 bool global_edit_modifier_held = false;

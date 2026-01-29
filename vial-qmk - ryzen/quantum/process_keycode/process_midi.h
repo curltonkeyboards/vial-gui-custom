@@ -893,24 +893,23 @@ uint8_t apply_velocity_mode(uint8_t base_velocity, uint8_t layer, uint8_t note_i
 // LAYER-SPECIFIC ACTUATION SETTINGS
 // ============================================================================
 
-// Layer actuation structure (per-layer settings)
-// Global MIDI settings (velocity, transpose, channel, etc) moved to keyboard_settings_t
+// Layer actuation structure (DEPRECATED - kept for backward compatibility)
+// Global MIDI settings (velocity_mode, aftertouch, etc) now in keyboard_settings_t
 //
-// NOTE: Actuation points (normal_actuation, midi_actuation) are DEPRECATED.
-// Firmware now uses per-key actuation exclusively via active_per_key_cache.
-// These fields are kept for EEPROM compatibility but are not used.
-// The HID commands 0xCA-0xCC for layer actuation conflict with arpeggiator and are disabled.
+// NOTE: This structure is DEPRECATED. Firmware now uses:
+// - Per-key actuation via active_per_key_cache (for actuation points)
+// - Global settings via keyboard_settings_t (for velocity_mode, aftertouch, etc)
+// The HID protocol still accepts this format but values are applied globally.
 typedef struct {
     uint8_t normal_actuation;              // DEPRECATED - per-key only now
     uint8_t midi_actuation;                // DEPRECATED - per-key only now
-    uint8_t velocity_mode;                 // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
-    uint8_t velocity_speed_scale;          // 1-20 (velocity scale multiplier)
-    uint8_t flags;                         // Bit 2: use_fixed_velocity (per-key velocity curve now moved to per-key flags)
-    // Per-layer aftertouch settings (moved from global)
-    uint8_t aftertouch_mode;               // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
-    uint8_t aftertouch_cc;                 // 0-127 = CC number, 255 = off (no CC sent, only poly AT)
-    uint8_t vibrato_sensitivity;           // 50-200 (percentage, 100 = normal)
-    uint16_t vibrato_decay_time;           // 0-2000 (milliseconds, 0 = instant drop)
+    uint8_t velocity_mode;                 // DEPRECATED - use global velocity_mode instead
+    uint8_t velocity_speed_scale;          // DEPRECATED - replaced with min/max_press_time
+    uint8_t flags;                         // DEPRECATED
+    uint8_t aftertouch_mode;               // DEPRECATED - use global aftertouch_mode instead
+    uint8_t aftertouch_cc;                 // DEPRECATED - use global aftertouch_cc instead
+    uint8_t vibrato_sensitivity;           // DEPRECATED - use global vibrato_sensitivity instead
+    uint16_t vibrato_decay_time;           // DEPRECATED - use global vibrato_decay_time instead
 } layer_actuation_t;
 
 
@@ -971,8 +970,8 @@ typedef struct {
 #define DEFAULT_RAPIDFIRE_VELOCITY_MOD 0        // No offset
 
 // External declarations
-extern layer_actuation_t layer_actuations[12];
-// aftertouch_mode is now per-layer in layer_actuations[].aftertouch_mode
+extern layer_actuation_t layer_actuations[12];  // DEPRECATED - use global settings instead
+// Global MIDI settings are in keyboard_settings_t (velocity_mode, aftertouch_mode, etc.)
 extern bool aftertouch_pedal_active;
 extern uint8_t analog_mode;  // Global analog mode
 
