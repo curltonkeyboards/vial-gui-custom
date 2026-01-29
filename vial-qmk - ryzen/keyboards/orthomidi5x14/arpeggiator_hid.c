@@ -847,12 +847,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
                 #ifdef JOYSTICK_ENABLE
                 // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
-                gaming_settings.ls_min_travel_mm_x10 = data[6];
-                gaming_settings.ls_max_travel_mm_x10 = data[7];
-                gaming_settings.rs_min_travel_mm_x10 = data[8];
-                gaming_settings.rs_max_travel_mm_x10 = data[9];
-                gaming_settings.trigger_min_travel_mm_x10 = data[10];
-                gaming_settings.trigger_max_travel_mm_x10 = data[11];
+                gaming_settings.ls_config.min_travel_mm_x10 = data[6];
+                gaming_settings.ls_config.max_travel_mm_x10 = data[7];
+                gaming_settings.rs_config.min_travel_mm_x10 = data[8];
+                gaming_settings.rs_config.max_travel_mm_x10 = data[9];
+                gaming_settings.trigger_config.min_travel_mm_x10 = data[10];
+                gaming_settings.trigger_config.max_travel_mm_x10 = data[11];
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
                 #else
@@ -865,12 +865,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 #ifdef JOYSTICK_ENABLE
                 response[5] = 0x00;  // Success
                 response[6] = gaming_mode_active ? 1 : 0;
-                response[7] = gaming_settings.ls_min_travel_mm_x10;
-                response[8] = gaming_settings.ls_max_travel_mm_x10;
-                response[9] = gaming_settings.rs_min_travel_mm_x10;
-                response[10] = gaming_settings.rs_max_travel_mm_x10;
-                response[11] = gaming_settings.trigger_min_travel_mm_x10;
-                response[12] = gaming_settings.trigger_max_travel_mm_x10;
+                response[7] = gaming_settings.ls_config.min_travel_mm_x10;
+                response[8] = gaming_settings.ls_config.max_travel_mm_x10;
+                response[9] = gaming_settings.rs_config.min_travel_mm_x10;
+                response[10] = gaming_settings.rs_config.max_travel_mm_x10;
+                response[11] = gaming_settings.trigger_config.min_travel_mm_x10;
+                response[12] = gaming_settings.trigger_config.max_travel_mm_x10;
                 #else
                 response[5] = 0x01;  // Error - joystick not enabled
                 #endif
@@ -882,12 +882,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 // Reset to defaults
                 gaming_mode_active = false;
                 gaming_settings.gaming_mode_enabled = false;
-                gaming_settings.ls_min_travel_mm_x10 = 5;   // 0.5mm
-                gaming_settings.ls_max_travel_mm_x10 = 35;  // 3.5mm
-                gaming_settings.rs_min_travel_mm_x10 = 5;
-                gaming_settings.rs_max_travel_mm_x10 = 35;
-                gaming_settings.trigger_min_travel_mm_x10 = 5;
-                gaming_settings.trigger_max_travel_mm_x10 = 35;
+                gaming_settings.ls_config.min_travel_mm_x10 = 10;   // 1.0mm
+                gaming_settings.ls_config.max_travel_mm_x10 = 20;   // 2.0mm
+                gaming_settings.rs_config.min_travel_mm_x10 = 10;
+                gaming_settings.rs_config.max_travel_mm_x10 = 20;
+                gaming_settings.trigger_config.min_travel_mm_x10 = 10;
+                gaming_settings.trigger_config.max_travel_mm_x10 = 20;
 
                 // Clear all key mappings
                 memset(&gaming_settings.ls_up, 0, sizeof(gaming_key_map_t));
