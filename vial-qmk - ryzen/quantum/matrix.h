@@ -294,12 +294,10 @@ void eq_curve_save_to_eeprom(void);
 void eq_curve_load_from_eeprom(void);
 
 // Global velocity time settings (min/max press time for velocity scaling)
-extern uint16_t velocity_min_time;  // Time in ms for min velocity (slow press, default 100ms)
-extern uint16_t velocity_max_time;  // Time in ms for max velocity (fast press, default 10ms)
-
-// Velocity time settings EEPROM persistence
-void velocity_time_save_to_eeprom(void);
-void velocity_time_load_from_eeprom(void);
+// NOTE: Now uses min_press_time/max_press_time from process_dynamic_macro.h (keyboard_settings_t)
+// These stub functions are kept for compatibility
+void velocity_time_save_to_eeprom(void);  // DEPRECATED - uses keyboard_settings now
+void velocity_time_load_from_eeprom(void);  // DEPRECATED - uses keyboard_settings now
 
 // Get last measured travel time for a key (in milliseconds)
 uint16_t analog_matrix_get_travel_time_ms(uint8_t row, uint8_t col);

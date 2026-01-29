@@ -1237,8 +1237,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a Global Velocity Time Settings command (0xE6)
-    // Get or Set the global velocity_min_time and velocity_max_time settings
+    // Check if this is a Global Velocity Time Settings command (0xD4)
+    // Get or Set the global min_press_time and max_press_time settings
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
@@ -1262,40 +1262,42 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         if (sub_cmd == 0) {
             // GET: Return current settings
             response[4] = 0x01;  // Success
-            response[5] = velocity_min_time & 0xFF;
-            response[6] = (velocity_min_time >> 8) & 0xFF;
-            response[7] = velocity_max_time & 0xFF;
-            response[8] = (velocity_max_time >> 8) & 0xFF;
-            dprintf("GET Velocity Time: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+            response[5] = min_press_time & 0xFF;
+            response[6] = (min_press_time >> 8) & 0xFF;
+            response[7] = max_press_time & 0xFF;
+            response[8] = (max_press_time >> 8) & 0xFF;
+            dprintf("GET Velocity Time: min=%d, max=%d\n", min_press_time, max_press_time);
         } else if (sub_cmd == 1) {
             // SET: Update settings from request
             uint16_t new_min = data[7] | (data[8] << 8);
             uint16_t new_max = data[9] | (data[10] << 8);
 
-            // Validate ranges
-            if (new_min >= 10 && new_min <= 400 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
-                velocity_min_time = new_min;
-                velocity_max_time = new_max;
+            // Validate ranges (50-500 for min, 5-100 for max)
+            if (new_min >= 50 && new_min <= 500 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
+                min_press_time = new_min;
+                max_press_time = new_max;
+                keyboard_settings.min_press_time = min_press_time;
+                keyboard_settings.max_press_time = max_press_time;
                 response[4] = 0x01;  // Success
-                dprintf("SET Velocity Time: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+                dprintf("SET Velocity Time: min=%d, max=%d\n", min_press_time, max_press_time);
             } else {
                 response[4] = 0x00;  // Error - invalid values
                 dprintf("SET Velocity Time: INVALID min=%d, max=%d\n", new_min, new_max);
             }
             // Return current values
-            response[5] = velocity_min_time & 0xFF;
-            response[6] = (velocity_min_time >> 8) & 0xFF;
-            response[7] = velocity_max_time & 0xFF;
-            response[8] = (velocity_max_time >> 8) & 0xFF;
+            response[5] = min_press_time & 0xFF;
+            response[6] = (min_press_time >> 8) & 0xFF;
+            response[7] = max_press_time & 0xFF;
+            response[8] = (max_press_time >> 8) & 0xFF;
         } else if (sub_cmd == 2) {
-            // SAVE: Save current settings to EEPROM
-            velocity_time_save_to_eeprom();
+            // SAVE: Save current settings to EEPROM (via keyboard_settings)
+            save_keyboard_settings();
             response[4] = 0x01;  // Success
-            response[5] = velocity_min_time & 0xFF;
-            response[6] = (velocity_min_time >> 8) & 0xFF;
-            response[7] = velocity_max_time & 0xFF;
-            response[8] = (velocity_max_time >> 8) & 0xFF;
-            dprintf("SAVE Velocity Time to EEPROM: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+            response[5] = min_press_time & 0xFF;
+            response[6] = (min_press_time >> 8) & 0xFF;
+            response[7] = max_press_time & 0xFF;
+            response[8] = (max_press_time >> 8) & 0xFF;
+            dprintf("SAVE Velocity Time to EEPROM: min=%d, max=%d\n", min_press_time, max_press_time);
         } else {
             response[4] = 0x00;  // Error - unknown sub-command
         }
