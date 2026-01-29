@@ -93,7 +93,9 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_SAVE_KEYBOARD_SLOT          0xB9  // was 0x53
 #define HID_CMD_LOAD_KEYBOARD_SLOT          0xBA  // was 0x54
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB  // was 0x55
-#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE    0xBD  // NEW: Set individual keyboard parameter
+// DEPRECATED: This handler is superseded by arpeggiator_hid.c which handles 0xE8 for custom HID protocol
+// This define and handler are kept for reference but are never reached in the current code path
+#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE    0xE8  // Set individual keyboard parameter (handled in arpeggiator_hid.c)
 
 // Parameter IDs for HID_CMD_SET_KEYBOARD_PARAM_SINGLE (1-byte parameters)
 #define PARAM_CHANNEL_NUMBER                 0
@@ -12002,7 +12004,10 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_SET_KEYBOARD_PARAM_SINGLE: // 0xBD - NEW: Set individual parameter
+        // DEPRECATED: This handler is never reached - custom HID protocol (0x7D prefix) is
+        // intercepted by raw_hid_receive_kb() in arpeggiator_hid.c which handles 0xE8 directly.
+        // Kept for reference only.
+        case HID_CMD_SET_KEYBOARD_PARAM_SINGLE: // 0xE8 - Set individual parameter (DEPRECATED)
             if (length >= 7) { // Header + param_id + at least 1 byte value
                 handle_set_keyboard_param_single(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, 0, NULL, 0); // Success

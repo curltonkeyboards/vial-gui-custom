@@ -119,8 +119,8 @@ HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
 # Distance Matrix Command (0xE7)
 HID_CMD_GET_DISTANCE_MATRIX = 0xE7        # Get distance (mm) values for specific keys
 
-# Calibration Debug Command (0xE8)
-HID_CMD_CALIBRATION_DEBUG = 0xE8          # Get calibration debug values
+# Calibration Debug Command (0xD5) - moved from 0xE8 to avoid collision with SET_KEYBOARD_PARAM_SINGLE
+HID_CMD_CALIBRATION_DEBUG = 0xD5          # Get calibration debug values
 
 # Sensitivity Curve Tuning Command (0xE9)
 HID_CMD_SET_CURVE_SETTINGS = 0xE9         # Set sensitivity curve tuning parameters
@@ -875,11 +875,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             dict: {(row, col): {'rest': int, 'bottom': int, 'raw': int}} or None on error
 
         Protocol:
-            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE8,
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD5,
                       num_keys, row0, col0, row1, col1, ...]
             Response: [header(4), num_keys, status, rest_lo, rest_hi, bottom_lo, bottom_hi, raw_lo, raw_hi, ...]
         """
-        HID_CMD_CALIBRATION_DEBUG = 0xE8
+        HID_CMD_CALIBRATION_DEBUG = 0xD5
         try:
             if not keys or len(keys) > 4:
                 return None

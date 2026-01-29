@@ -965,13 +965,121 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a Calibration Debug command (0xE8)
-    // Returns calibration values (rest, bottom, raw ADC) for specific keys
+    // Check if this is a SET_KEYBOARD_PARAM_SINGLE command (0xE8)
+    // Sets individual keyboard parameters (velocity curve, velocity mode, aftertouch, etc.)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
         data[3] == 0xE8) {
+
+        dprintf("raw_hid_receive_kb: SET_KEYBOARD_PARAM_SINGLE command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE8;
+
+        // Format: [header(6), param_id, value_byte(s)...]
+        // For 16-bit params: [header(6), param_id, low_byte, high_byte]
+        uint8_t param_id = data[6];
+        uint8_t value8 = data[7];
+        uint16_t value16 = data[7] | (data[8] << 8);  // Little-endian for 16-bit params
+        bool settings_changed = false;
+        bool success = true;
+
+        switch (param_id) {
+            // Velocity curve and range parameters (update keyboard_settings)
+            case 4:  // PARAM_HE_VELOCITY_CURVE (0-16)
+                keyboard_settings.he_velocity_curve = value8;
+                he_velocity_curve = value8;  // Also update global for OLED display
+                settings_changed = true;
+                dprintf("SET param 4 (velocity_curve) = %d\n", value8);
+                break;
+            case 5:  // PARAM_HE_VELOCITY_MIN (1-127)
+                keyboard_settings.he_velocity_min = value8;
+                he_velocity_min = value8;
+                settings_changed = true;
+                dprintf("SET param 5 (velocity_min) = %d\n", value8);
+                break;
+            case 6:  // PARAM_HE_VELOCITY_MAX (1-127)
+                keyboard_settings.he_velocity_max = value8;
+                he_velocity_max = value8;
+                settings_changed = true;
+                dprintf("SET param 6 (velocity_max) = %d\n", value8);
+                break;
+
+            // Global MIDI settings (update global variables)
+            case 13:  // PARAM_VELOCITY_MODE (0-3)
+                velocity_mode = value8;
+                settings_changed = true;
+                dprintf("SET param 13 (velocity_mode) = %d\n", value8);
+                break;
+            case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
+                aftertouch_mode = value8;
+                settings_changed = true;
+                dprintf("SET param 14 (aftertouch_mode) = %d\n", value8);
+                break;
+            case 39:  // PARAM_AFTERTOUCH_CC (0-127, 255=off)
+                aftertouch_cc = value8;
+                settings_changed = true;
+                dprintf("SET param 39 (aftertouch_cc) = %d\n", value8);
+                break;
+            case 40:  // PARAM_VIBRATO_SENSITIVITY (50-200)
+                vibrato_sensitivity = value8;
+                settings_changed = true;
+                dprintf("SET param 40 (vibrato_sensitivity) = %d\n", value8);
+                break;
+            case 41:  // PARAM_VIBRATO_DECAY_TIME (0-2000ms, 16-bit)
+                vibrato_decay_time = value16;
+                settings_changed = true;
+                dprintf("SET param 41 (vibrato_decay_time) = %d\n", value16);
+                break;
+            case 42:  // PARAM_MIN_PRESS_TIME (50-500ms, 16-bit)
+                min_press_time = value16;
+                keyboard_settings.min_press_time = value16;
+                settings_changed = true;
+                dprintf("SET param 42 (min_press_time) = %d\n", value16);
+                break;
+            case 43:  // PARAM_MAX_PRESS_TIME (5-100ms, 16-bit)
+                max_press_time = value16;
+                keyboard_settings.max_press_time = value16;
+                settings_changed = true;
+                dprintf("SET param 43 (max_press_time) = %d\n", value16);
+                break;
+            default:
+                success = false;
+                dprintf("SET param %d: UNKNOWN param_id\n", param_id);
+                break;
+        }
+
+        // Force refresh active_settings so changes take effect immediately
+        if (settings_changed) {
+            analog_matrix_refresh_settings();
+        }
+
+        // Response format: [header(4), status, param_id, value8]
+        response[4] = 0x00;  // Reserved
+        response[5] = success ? 0x01 : 0x00;  // Status
+        response[6] = param_id;
+        response[7] = value8;
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a Calibration Debug command (0xD5) - moved from 0xE8 to avoid collision
+    // with SET_KEYBOARD_PARAM_SINGLE which also uses 0xE8
+    // Returns calibration values (rest, bottom, raw ADC) for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xD5) {
 
         dprintf("raw_hid_receive_kb: Calibration Debug command detected\n");
 
@@ -981,7 +1089,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         response[0] = HID_MANUFACTURER_ID;
         response[1] = HID_SUB_ID;
         response[2] = HID_DEVICE_ID;
-        response[3] = 0xE8;
+        response[3] = 0xD5;
 
         // Request format: [header(4), _, num_keys, row0, col0, row1, col1, ...]
         uint8_t num_keys = data[6];
