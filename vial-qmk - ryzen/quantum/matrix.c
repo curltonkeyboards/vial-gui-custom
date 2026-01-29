@@ -1083,6 +1083,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->peak_travel >= 20 &&
                     travel < state->peak_travel - 5) {
 
+                    // Calculate elapsed time in microseconds for GUI display
+                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
+                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                    uint32_t elapsed_ms = elapsed_us / 1000;
+
+                    // Store travel time for GUI display
+                    state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
+
                     // Store raw velocity as normalized peak travel (0-255)
                     // peak_travel is in 0-240 range, scale to 0-255
                     uint16_t raw = ((uint16_t)state->peak_travel * 255) / 240;
