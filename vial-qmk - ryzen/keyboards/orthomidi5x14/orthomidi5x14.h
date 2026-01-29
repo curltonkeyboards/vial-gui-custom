@@ -137,6 +137,11 @@ extern uint8_t triplesplit_he_velocity_curve; // Curve index 0-16
 extern uint8_t triplesplit_he_velocity_min;  // 1-127
 extern uint8_t triplesplit_he_velocity_max;  // 1-127
 
+// Sustain settings (per-split)
+extern uint8_t base_sustain;
+extern uint8_t keysplit_sustain;
+extern uint8_t triplesplit_sustain;
+
 uint8_t apply_he_velocity_curve(uint8_t travel_value);
 void cycle_he_velocity_curve(bool forward);
 void set_he_velocity_range(uint8_t min, uint8_t max);

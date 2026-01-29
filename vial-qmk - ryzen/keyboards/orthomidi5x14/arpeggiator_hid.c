@@ -1082,6 +1082,151 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // Check if this is a SET_KEYBOARD_PARAM_SINGLE command (0xF0)
+    // Sets individual keyboard parameters in real-time (updates both RAM and keyboard_settings)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xF0) {
+
+        dprintf("raw_hid_receive_kb: SET_KEYBOARD_PARAM_SINGLE command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xF0;
+
+        // Request format: [header(4), _, param_id, value...]
+        uint8_t param_id = data[5];
+        uint8_t value = data[6];
+
+        response[4] = 0x01;  // Assume success
+
+        switch (param_id) {
+            case 0:  // PARAM_CHANNEL_NUMBER
+                channel_number = value;
+                keyboard_settings.channel_number = value;
+                dprintf("SET PARAM: channel_number = %d\n", value);
+                break;
+            case 1:  // PARAM_TRANSPOSE_NUMBER
+                transpose_number = (int8_t)value;
+                keyboard_settings.transpose_number = (int8_t)value;
+                dprintf("SET PARAM: transpose_number = %d\n", (int8_t)value);
+                break;
+            case 2:  // PARAM_TRANSPOSE_NUMBER2
+                transpose_number2 = (int8_t)value;
+                keyboard_settings.transpose_number2 = (int8_t)value;
+                dprintf("SET PARAM: transpose_number2 = %d\n", (int8_t)value);
+                break;
+            case 3:  // PARAM_TRANSPOSE_NUMBER3
+                transpose_number3 = (int8_t)value;
+                keyboard_settings.transpose_number3 = (int8_t)value;
+                dprintf("SET PARAM: transpose_number3 = %d\n", (int8_t)value);
+                break;
+            case 4:  // PARAM_HE_VELOCITY_CURVE
+                he_velocity_curve = value;
+                keyboard_settings.he_velocity_curve = value;
+                dprintf("SET PARAM: he_velocity_curve = %d\n", value);
+                break;
+            case 5:  // PARAM_HE_VELOCITY_MIN
+                he_velocity_min = value;
+                keyboard_settings.he_velocity_min = value;
+                dprintf("SET PARAM: he_velocity_min = %d\n", value);
+                break;
+            case 6:  // PARAM_HE_VELOCITY_MAX
+                he_velocity_max = value;
+                keyboard_settings.he_velocity_max = value;
+                dprintf("SET PARAM: he_velocity_max = %d\n", value);
+                break;
+            case 7:  // PARAM_KEYSPLIT_HE_VELOCITY_CURVE
+                keysplit_he_velocity_curve = value;
+                keyboard_settings.keysplit_he_velocity_curve = value;
+                dprintf("SET PARAM: keysplit_he_velocity_curve = %d\n", value);
+                break;
+            case 8:  // PARAM_KEYSPLIT_HE_VELOCITY_MIN
+                keysplit_he_velocity_min = value;
+                keyboard_settings.keysplit_he_velocity_min = value;
+                dprintf("SET PARAM: keysplit_he_velocity_min = %d\n", value);
+                break;
+            case 9:  // PARAM_KEYSPLIT_HE_VELOCITY_MAX
+                keysplit_he_velocity_max = value;
+                keyboard_settings.keysplit_he_velocity_max = value;
+                dprintf("SET PARAM: keysplit_he_velocity_max = %d\n", value);
+                break;
+            case 10:  // PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE
+                triplesplit_he_velocity_curve = value;
+                keyboard_settings.triplesplit_he_velocity_curve = value;
+                dprintf("SET PARAM: triplesplit_he_velocity_curve = %d\n", value);
+                break;
+            case 11:  // PARAM_TRIPLESPLIT_HE_VELOCITY_MIN
+                triplesplit_he_velocity_min = value;
+                keyboard_settings.triplesplit_he_velocity_min = value;
+                dprintf("SET PARAM: triplesplit_he_velocity_min = %d\n", value);
+                break;
+            case 12:  // PARAM_TRIPLESPLIT_HE_VELOCITY_MAX
+                triplesplit_he_velocity_max = value;
+                keyboard_settings.triplesplit_he_velocity_max = value;
+                dprintf("SET PARAM: triplesplit_he_velocity_max = %d\n", value);
+                break;
+            case 15:  // PARAM_BASE_SUSTAIN
+                base_sustain = value;
+                keyboard_settings.base_sustain = value;
+                dprintf("SET PARAM: base_sustain = %d\n", value);
+                break;
+            case 16:  // PARAM_KEYSPLIT_SUSTAIN
+                keysplit_sustain = value;
+                keyboard_settings.keysplit_sustain = value;
+                dprintf("SET PARAM: keysplit_sustain = %d\n", value);
+                break;
+            case 17:  // PARAM_TRIPLESPLIT_SUSTAIN
+                triplesplit_sustain = value;
+                keyboard_settings.triplesplit_sustain = value;
+                dprintf("SET PARAM: triplesplit_sustain = %d\n", value);
+                break;
+            case 18:  // PARAM_KEYSPLITCHANNEL
+                keysplitchannel = value;
+                keyboard_settings.keysplitchannel = value;
+                dprintf("SET PARAM: keysplitchannel = %d\n", value);
+                break;
+            case 19:  // PARAM_KEYSPLIT2CHANNEL
+                keysplit2channel = value;
+                keyboard_settings.keysplit2channel = value;
+                dprintf("SET PARAM: keysplit2channel = %d\n", value);
+                break;
+            case 20:  // PARAM_KEYSPLITSTATUS
+                keysplitstatus = value;
+                keyboard_settings.keysplitstatus = value;
+                dprintf("SET PARAM: keysplitstatus = %d\n", value);
+                break;
+            case 21:  // PARAM_KEYSPLITTRANSPOSESTATUS
+                keysplittransposestatus = value;
+                keyboard_settings.keysplittransposestatus = value;
+                dprintf("SET PARAM: keysplittransposestatus = %d\n", value);
+                break;
+            case 22:  // PARAM_KEYSPLITVELOCITYSTATUS
+                keysplitvelocitystatus = value;
+                keyboard_settings.keysplitvelocitystatus = value;
+                dprintf("SET PARAM: keysplitvelocitystatus = %d\n", value);
+                break;
+            default:
+                response[4] = 0x00;  // Error - unknown parameter
+                dprintf("SET PARAM: Unknown param_id %d\n", param_id);
+                break;
+        }
+
+        // Return the param_id and value in response
+        response[5] = param_id;
+        response[6] = value;
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a Global Velocity Time Settings command (0xE6)
     // Get or Set the global velocity_min_time and velocity_max_time settings
     if (length >= 32 &&
