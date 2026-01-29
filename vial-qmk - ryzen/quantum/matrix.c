@@ -1783,6 +1783,14 @@ void analog_matrix_store_final_velocity(uint8_t row, uint8_t col, uint8_t veloci
     midi_key_states[key_idx].final_velocity = velocity;
 }
 
+// Check if velocity has been captured for this key press
+// Returns true if velocity_captured flag is set
+bool analog_matrix_is_velocity_captured(uint8_t row, uint8_t col) {
+    if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return false;
+    uint32_t key_idx = KEY_INDEX(row, col);
+    return midi_key_states[key_idx].velocity_captured;
+}
+
 bool analog_matrix_get_key_state(uint8_t row, uint8_t col) {
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) return false;
     uint32_t key_idx = KEY_INDEX(row, col);

@@ -310,6 +310,9 @@ uint8_t analog_matrix_get_final_velocity(uint8_t row, uint8_t col);
 // Store final velocity when MIDI note is sent (called from process_midi)
 void analog_matrix_store_final_velocity(uint8_t row, uint8_t col, uint8_t velocity);
 
+// Check if velocity has been captured for this key press
+bool analog_matrix_is_velocity_captured(uint8_t row, uint8_t col);
+
 #ifdef __cplusplus
 }
 #endif
