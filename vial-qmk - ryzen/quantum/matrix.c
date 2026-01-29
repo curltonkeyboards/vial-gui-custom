@@ -207,6 +207,9 @@ uint8_t eq_range_scale[3] = {55, 50, 53};
 uint8_t debug_last_raw_velocity = 0;
 uint16_t debug_last_travel_time_ms = 0;
 uint8_t debug_last_elapsed_ms = 0;  // For seeing if timer is working
+// Additional debug: track if process_midi_key_analog is being called
+uint8_t debug_midi_keys_processed = 0;  // Count of MIDI keys processed per scan
+uint8_t debug_velocity_mode_active = 0;  // active_settings.velocity_mode value
 
 // ============================================================================
 // GLOBAL VELOCITY TIME SETTINGS
@@ -1634,9 +1637,12 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // incremental_load_per_key_cache();
 
     // Process MIDI keys (uses cached is_midi_key flag and per-key actuation - no EEPROM reads)
+    debug_velocity_mode_active = active_settings.velocity_mode;  // DEBUG: track velocity mode
+    debug_midi_keys_processed = 0;  // DEBUG: reset counter
     if (midi_states_initialized && active_settings.velocity_mode > 0) {
         for (uint32_t i = 0; i < NUM_KEYS; i++) {
             if (key_type_cache[i] == KEY_TYPE_MIDI) {
+                debug_midi_keys_processed++;  // DEBUG: count MIDI keys
                 process_midi_key_analog(i, current_layer);
             }
         }

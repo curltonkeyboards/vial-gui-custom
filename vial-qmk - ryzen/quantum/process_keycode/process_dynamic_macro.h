@@ -417,6 +417,8 @@ extern uint8_t triplesplit_he_velocity_max;
 extern uint8_t debug_last_raw_velocity;
 extern uint16_t debug_last_travel_time_ms;
 extern uint8_t debug_last_elapsed_ms;
+extern uint8_t debug_midi_keys_processed;
+extern uint8_t debug_velocity_mode_active;
 extern uint8_t base_sustain;
 extern uint8_t keysplit_sustain;
 extern uint8_t triplesplit_sustain;
