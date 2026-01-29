@@ -23,6 +23,8 @@
 #ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
 #include "orthomidi5x14.h"
 #include "process_midi.h"
+#include "process_dynamic_macro.h"  // For velocity_mode, min_press_time, etc. extern declarations
+#include "matrix.h"                 // For analog_matrix_refresh_settings()
 #include "../keyboards/orthomidi5x14/per_key_rgb.h"
 #endif
 
@@ -1026,40 +1028,75 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				uint8_t param_id = msg[2];
 				uint8_t value8 = msg[3];
 				uint16_t value16 = msg[3] | (msg[4] << 8);  // Little-endian for 16-bit params
+				bool settings_changed = false;
 
 				switch (param_id) {
+					// Velocity curve and range parameters (update keyboard_settings)
+					case 4:  // PARAM_HE_VELOCITY_CURVE (0-16)
+						keyboard_settings.he_velocity_curve = value8;
+						he_velocity_curve = value8;  // Also update global for OLED display
+						settings_changed = true;
+						msg[0] = 0x01;
+						break;
+					case 5:  // PARAM_HE_VELOCITY_MIN (1-127)
+						keyboard_settings.he_velocity_min = value8;
+						he_velocity_min = value8;
+						settings_changed = true;
+						msg[0] = 0x01;
+						break;
+					case 6:  // PARAM_HE_VELOCITY_MAX (1-127)
+						keyboard_settings.he_velocity_max = value8;
+						he_velocity_max = value8;
+						settings_changed = true;
+						msg[0] = 0x01;
+						break;
+
+					// Global MIDI settings (update global variables)
 					case 13:  // PARAM_VELOCITY_MODE (0-3)
 						velocity_mode = value8;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
 						aftertouch_mode = value8;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 39:  // PARAM_AFTERTOUCH_CC (0-127, 255=off)
 						aftertouch_cc = value8;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 40:  // PARAM_VIBRATO_SENSITIVITY (50-200)
 						vibrato_sensitivity = value8;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 41:  // PARAM_VIBRATO_DECAY_TIME (0-2000ms, 16-bit)
 						vibrato_decay_time = value16;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 42:  // PARAM_MIN_PRESS_TIME (50-500ms, 16-bit)
 						min_press_time = value16;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 43:  // PARAM_MAX_PRESS_TIME (5-100ms, 16-bit)
 						max_press_time = value16;
+						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					default:
 						msg[0] = 0x00;  // Unknown param_id
 						break;
 				}
+
+				// Force refresh active_settings so changes take effect immediately
+				if (settings_changed) {
+					analog_matrix_refresh_settings();
+				}
+
 				// Echo back the param_id and value for debugging
 				msg[1] = param_id;
 				msg[2] = value8;
