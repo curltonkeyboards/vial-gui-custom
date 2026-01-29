@@ -16,6 +16,7 @@ from widgets.square_button import SquareButton
 from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
+from editor.arpeggiator import DebugConsole
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
     PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
@@ -516,6 +517,10 @@ class QuickActuationWidget(QWidget):
         self.advanced_save_btn.clicked.connect(self.on_save_advanced)
         layout.addWidget(self.advanced_save_btn)
 
+        # Debug console for HID communication debugging
+        self.advanced_debug_console = DebugConsole("Advanced Settings Debug Console")
+        layout.addWidget(self.advanced_debug_console)
+
         return tab
 
     def on_aftertouch_mode_changed(self, index):
@@ -557,88 +562,90 @@ class QuickActuationWidget(QWidget):
         from protocol.keyboard_comm import (
             PARAM_VELOCITY_MODE, PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
             PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME,
-            PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME
+            PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME,
+            HID_CMD_SET_KEYBOARD_PARAM_SINGLE
         )
+
+        # Start debug console operation
+        self.advanced_debug_console.mark_operation_start()
+        self.advanced_debug_console.log("=" * 50, "DEBUG")
+        self.advanced_debug_console.log("SAVE ADVANCED SETTINGS - Starting", "INFO")
+        self.advanced_debug_console.log("=" * 50, "DEBUG")
+
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
+                self.advanced_debug_console.log("ERROR: Device not connected", "ERROR")
+                self.advanced_debug_console.mark_operation_end(success=False)
                 raise RuntimeError("Device not connected")
 
             settings = self.global_midi_settings
             kb = self.device.keyboard
 
-            print(f"[Advanced Save] Starting save with settings: {settings}")
-            print(f"[Advanced Save] PARAM IDs: VELOCITY_MODE={PARAM_VELOCITY_MODE}, AFTERTOUCH_MODE={PARAM_AFTERTOUCH_MODE}, "
-                  f"AFTERTOUCH_CC={PARAM_AFTERTOUCH_CC}, VIBRATO_SENSITIVITY={PARAM_VIBRATO_SENSITIVITY}, "
-                  f"VIBRATO_DECAY_TIME={PARAM_VIBRATO_DECAY_TIME}, MIN_PRESS_TIME={PARAM_MIN_PRESS_TIME}, "
-                  f"MAX_PRESS_TIME={PARAM_MAX_PRESS_TIME}")
+            # Log HID command info
+            self.advanced_debug_console.log(f"HID Command: SET_KEYBOARD_PARAM_SINGLE (0x{HID_CMD_SET_KEYBOARD_PARAM_SINGLE:02X})", "DEBUG")
+            self.advanced_debug_console.log(f"Device: {self.device.desc.get('name', 'Unknown')}", "DEBUG")
+            self.advanced_debug_console.log("-" * 50, "DEBUG")
 
-            # Save all global MIDI settings
+            # Define parameters to save with their names and value ranges
+            params_to_save = [
+                ("VELOCITY_MODE", PARAM_VELOCITY_MODE, settings.get('velocity_mode', 2), "0-3 (Fixed/Peak/Speed/Speed+Peak)"),
+                ("AFTERTOUCH_MODE", PARAM_AFTERTOUCH_MODE, settings.get('aftertouch_mode', 0), "0-4 (Off/Reverse/Bottom/Post/Vibrato)"),
+                ("AFTERTOUCH_CC", PARAM_AFTERTOUCH_CC, settings.get('aftertouch_cc', 255), "0-127 or 255=Off"),
+                ("VIBRATO_SENSITIVITY", PARAM_VIBRATO_SENSITIVITY, settings.get('vibrato_sensitivity', 100), "50-200 (percentage)"),
+                ("VIBRATO_DECAY_TIME", PARAM_VIBRATO_DECAY_TIME, settings.get('vibrato_decay_time', 200), "0-2000ms (16-bit)"),
+                ("MIN_PRESS_TIME", PARAM_MIN_PRESS_TIME, settings.get('min_press_time', 200), "50-500ms (16-bit)"),
+                ("MAX_PRESS_TIME", PARAM_MAX_PRESS_TIME, settings.get('max_press_time', 20), "5-100ms (16-bit)"),
+            ]
+
             failed_params = []
+            success_count = 0
 
-            # Velocity mode (0-3)
-            vel_mode = settings.get('velocity_mode', 2)
-            print(f"[Advanced Save] Saving VELOCITY_MODE ({PARAM_VELOCITY_MODE}) = {vel_mode}")
-            result = kb.set_keyboard_param_single(PARAM_VELOCITY_MODE, vel_mode)
-            print(f"[Advanced Save] VELOCITY_MODE result: {result}")
-            if not result:
-                failed_params.append(f"VELOCITY_MODE({PARAM_VELOCITY_MODE})={vel_mode}")
+            for param_name, param_id, value, value_range in params_to_save:
+                self.advanced_debug_console.log(f"[{param_name}] Sending param_id={param_id}, value={value} ({value_range})", "DEBUG")
 
-            # Aftertouch mode (0-4)
-            at_mode = settings.get('aftertouch_mode', 0)
-            print(f"[Advanced Save] Saving AFTERTOUCH_MODE ({PARAM_AFTERTOUCH_MODE}) = {at_mode}")
-            result = kb.set_keyboard_param_single(PARAM_AFTERTOUCH_MODE, at_mode)
-            print(f"[Advanced Save] AFTERTOUCH_MODE result: {result}")
-            if not result:
-                failed_params.append(f"AFTERTOUCH_MODE({PARAM_AFTERTOUCH_MODE})={at_mode}")
+                # Call the detailed version that returns debug info
+                success, debug_info = kb.set_keyboard_param_single_debug(param_id, value)
 
-            # Aftertouch CC (0-127, 255=off)
-            at_cc = settings.get('aftertouch_cc', 255)
-            print(f"[Advanced Save] Saving AFTERTOUCH_CC ({PARAM_AFTERTOUCH_CC}) = {at_cc}")
-            result = kb.set_keyboard_param_single(PARAM_AFTERTOUCH_CC, at_cc)
-            print(f"[Advanced Save] AFTERTOUCH_CC result: {result}")
-            if not result:
-                failed_params.append(f"AFTERTOUCH_CC({PARAM_AFTERTOUCH_CC})={at_cc}")
+                # Log the detailed debug info
+                if debug_info:
+                    self.advanced_debug_console.log(f"  TX Packet: {debug_info.get('tx_packet', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  TX Data: {debug_info.get('tx_data', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  RX Response: {debug_info.get('rx_response', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  Status byte (response[5]): {debug_info.get('status_byte', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  Attempts: {debug_info.get('attempts', 'N/A')}", "DEBUG")
 
-            # Vibrato sensitivity (50-200)
-            vib_sens = settings.get('vibrato_sensitivity', 100)
-            print(f"[Advanced Save] Saving VIBRATO_SENSITIVITY ({PARAM_VIBRATO_SENSITIVITY}) = {vib_sens}")
-            result = kb.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, vib_sens)
-            print(f"[Advanced Save] VIBRATO_SENSITIVITY result: {result}")
-            if not result:
-                failed_params.append(f"VIBRATO_SENSITIVITY({PARAM_VIBRATO_SENSITIVITY})={vib_sens}")
+                if success:
+                    self.advanced_debug_console.log(f"  -> SUCCESS", "INFO")
+                    success_count += 1
+                else:
+                    error_msg = debug_info.get('error', 'Unknown error') if debug_info else 'Unknown error'
+                    self.advanced_debug_console.log(f"  -> FAILED: {error_msg}", "ERROR")
+                    failed_params.append(f"{param_name}({param_id})={value}")
 
-            # Vibrato decay time (0-2000ms, 16-bit)
-            vib_decay = settings.get('vibrato_decay_time', 200)
-            print(f"[Advanced Save] Saving VIBRATO_DECAY_TIME ({PARAM_VIBRATO_DECAY_TIME}) = {vib_decay}")
-            result = kb.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, vib_decay)
-            print(f"[Advanced Save] VIBRATO_DECAY_TIME result: {result}")
-            if not result:
-                failed_params.append(f"VIBRATO_DECAY_TIME({PARAM_VIBRATO_DECAY_TIME})={vib_decay}")
+                self.advanced_debug_console.log("-" * 30, "DEBUG")
 
-            # Min press time (50-500ms)
-            min_press = settings.get('min_press_time', 200)
-            print(f"[Advanced Save] Saving MIN_PRESS_TIME ({PARAM_MIN_PRESS_TIME}) = {min_press}")
-            result = kb.set_keyboard_param_single(PARAM_MIN_PRESS_TIME, min_press)
-            print(f"[Advanced Save] MIN_PRESS_TIME result: {result}")
-            if not result:
-                failed_params.append(f"MIN_PRESS_TIME({PARAM_MIN_PRESS_TIME})={min_press}")
-
-            # Max press time (5-100ms)
-            max_press = settings.get('max_press_time', 20)
-            print(f"[Advanced Save] Saving MAX_PRESS_TIME ({PARAM_MAX_PRESS_TIME}) = {max_press}")
-            result = kb.set_keyboard_param_single(PARAM_MAX_PRESS_TIME, max_press)
-            print(f"[Advanced Save] MAX_PRESS_TIME result: {result}")
-            if not result:
-                failed_params.append(f"MAX_PRESS_TIME({PARAM_MAX_PRESS_TIME})={max_press}")
+            # Summary
+            self.advanced_debug_console.log("=" * 50, "DEBUG")
+            self.advanced_debug_console.log(f"SAVE COMPLETE: {success_count}/{len(params_to_save)} parameters saved", "INFO")
 
             if len(failed_params) == 0:
-                print("[Advanced Save] All settings saved successfully!")
+                self.advanced_debug_console.log("All settings saved successfully!", "INFO")
+                self.advanced_debug_console.mark_operation_end(success=True)
                 QMessageBox.information(None, "Success", "Global MIDI settings saved!")
             else:
-                print(f"[Advanced Save] FAILED params: {failed_params}")
+                self.advanced_debug_console.log(f"FAILED parameters: {failed_params}", "ERROR")
+                self.advanced_debug_console.log("", "DEBUG")
+                self.advanced_debug_console.log("TROUBLESHOOTING:", "WARN")
+                self.advanced_debug_console.log("  1. Check firmware supports HID_CMD_SET_KEYBOARD_PARAM_SINGLE (0xBD)", "WARN")
+                self.advanced_debug_console.log("  2. Verify parameter IDs are correct in firmware", "WARN")
+                self.advanced_debug_console.log("  3. Check for firmware version mismatch", "WARN")
+                self.advanced_debug_console.log("  4. status_byte=0 means success, non-zero means error", "WARN")
+                self.advanced_debug_console.mark_operation_end(success=False)
                 raise RuntimeError(f"Failed to save: {', '.join(failed_params)}")
 
         except Exception as e:
+            self.advanced_debug_console.log(f"EXCEPTION: {str(e)}", "ERROR")
+            self.advanced_debug_console.mark_operation_end(success=False)
             QMessageBox.critical(None, "Error",
                 f"Failed to save advanced settings: {str(e)}")
 
