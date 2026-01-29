@@ -200,15 +200,15 @@ uint8_t eq_range_scale[3] = {55, 50, 53};
 // ============================================================================
 // GLOBAL VELOCITY TIME SETTINGS
 // ============================================================================
-// Min/max travel time for velocity scaling (replaces velocity_speed_scale)
-// velocity_min_time: Time in ms for slowest press = minimum velocity (default 100ms, max 400ms)
-// velocity_max_time: Time in ms for fastest press = maximum velocity (default 10ms, min 5ms)
+// Min/max travel time for velocity scaling - now uses global min_press_time/max_press_time
+// from keyboard_settings_t (set via HID commands)
+// min_press_time: Time in ms for slowest press = minimum velocity (default 200ms)
+// max_press_time: Time in ms for fastest press = maximum velocity (default 20ms)
 // Linear interpolation between these two points:
-//   elapsed_ms <= max_time → velocity = 127 (max)
-//   elapsed_ms >= min_time → velocity = 1 (min)
+//   elapsed_ms <= max_press_time → velocity = 127 (max)
+//   elapsed_ms >= min_press_time → velocity = 1 (min)
 //   otherwise → linear interpolation
-uint16_t velocity_min_time = 100;  // 100ms = minimum velocity (slow press)
-uint16_t velocity_max_time = 10;   // 10ms = maximum velocity (fast press)
+// NOTE: Local variables removed - using global min_press_time/max_press_time from process_dynamic_macro.h
 
 // ============================================================================
 // EQ CURVE EEPROM PERSISTENCE
@@ -278,50 +278,17 @@ void eq_curve_load_from_eeprom(void) {
 // VELOCITY TIME SETTINGS EEPROM PERSISTENCE
 // ============================================================================
 
-// EEPROM address for velocity time settings (after EQ curve: 41300 + 24 = 41324)
-#ifndef VELOCITY_TIME_EEPROM_ADDR
-#define VELOCITY_TIME_EEPROM_ADDR 41324
-#endif
-#ifndef VELOCITY_TIME_MAGIC
-#define VELOCITY_TIME_MAGIC 0xVE01
-#endif
-
+// EEPROM functions for velocity time settings - DEPRECATED
+// Velocity time (min_press_time/max_press_time) is now saved via keyboard_settings_t
+// These stub functions are kept for compatibility but do nothing
 void velocity_time_save_to_eeprom(void) {
-    // Write magic number first
-    eeprom_update_word((uint16_t*)VELOCITY_TIME_EEPROM_ADDR, 0xBE01);  // Magic number
-
-    // Write min_time (2 bytes)
-    eeprom_update_word((uint16_t*)(VELOCITY_TIME_EEPROM_ADDR + 2), velocity_min_time);
-
-    // Write max_time (2 bytes)
-    eeprom_update_word((uint16_t*)(VELOCITY_TIME_EEPROM_ADDR + 4), velocity_max_time);
-
-    dprintf("Velocity time settings saved to EEPROM: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+    // Velocity time is now saved with keyboard_settings - this function is deprecated
+    dprintf("velocity_time_save_to_eeprom() deprecated - use keyboard settings\n");
 }
 
 void velocity_time_load_from_eeprom(void) {
-    // Check magic number
-    uint16_t magic = eeprom_read_word((uint16_t*)VELOCITY_TIME_EEPROM_ADDR);
-    if (magic != 0xBE01) {
-        dprintf("Velocity time EEPROM not initialized, using defaults\n");
-        return;
-    }
-
-    // Read min_time
-    velocity_min_time = eeprom_read_word((uint16_t*)(VELOCITY_TIME_EEPROM_ADDR + 2));
-
-    // Read max_time
-    velocity_max_time = eeprom_read_word((uint16_t*)(VELOCITY_TIME_EEPROM_ADDR + 4));
-
-    // Validate ranges
-    if (velocity_min_time < 10 || velocity_min_time > 400) {
-        velocity_min_time = 100;
-    }
-    if (velocity_max_time < 5 || velocity_max_time > 100) {
-        velocity_max_time = 10;
-    }
-
-    dprintf("Velocity time settings loaded from EEPROM: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+    // Velocity time is now loaded with keyboard_settings - this function is deprecated
+    dprintf("velocity_time_load_from_eeprom() deprecated - use keyboard settings\n");
 }
 
 // Layer caching (libhmk style optimization)
@@ -709,17 +676,15 @@ void analog_matrix_refresh_settings(void) {
 static inline void update_active_settings(uint8_t current_layer) {
     if (current_layer >= 12) current_layer = 0;
 
-    if (cached_layer_settings_layer != current_layer) {
-        // NOTE: normal_actuation and midi_actuation removed - per-key only now
-        active_settings.velocity_mode = layer_actuations[current_layer].velocity_mode;
-        active_settings.velocity_speed_scale = layer_actuations[current_layer].velocity_speed_scale;
-        // Per-layer aftertouch settings
-        active_settings.aftertouch_mode = layer_actuations[current_layer].aftertouch_mode;
-        active_settings.aftertouch_cc = layer_actuations[current_layer].aftertouch_cc;
-        active_settings.vibrato_sensitivity = layer_actuations[current_layer].vibrato_sensitivity;
-        active_settings.vibrato_decay_time = layer_actuations[current_layer].vibrato_decay_time;
-        cached_layer_settings_layer = current_layer;
-    }
+    // Global MIDI settings (not per-layer anymore)
+    // These are updated immediately when HID commands are received
+    active_settings.velocity_mode = velocity_mode;
+    active_settings.velocity_speed_scale = 10;  // Deprecated, using min/max_press_time now
+    active_settings.aftertouch_mode = aftertouch_mode;
+    active_settings.aftertouch_cc = aftertouch_cc;
+    active_settings.vibrato_sensitivity = vibrato_sensitivity;
+    active_settings.vibrato_decay_time = vibrato_decay_time;
+    cached_layer_settings_layer = current_layer;
 }
 
 // ============================================================================
@@ -1134,14 +1099,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         // elapsed_ms >= min_time → raw = 0 (min velocity)
                         // Otherwise → linear interpolation
                         uint32_t raw;
-                        if (elapsed_ms <= velocity_max_time) {
+                        if (elapsed_ms <= max_press_time) {
                             raw = 255;  // Fastest press = max velocity
-                        } else if (elapsed_ms >= velocity_min_time) {
+                        } else if (elapsed_ms >= min_press_time) {
                             raw = 0;    // Slowest press = min velocity
                         } else {
                             // Linear interpolation between max_time and min_time
                             // raw = 255 * (min_time - elapsed_ms) / (min_time - max_time)
-                            raw = (255 * (velocity_min_time - elapsed_ms)) / (velocity_min_time - velocity_max_time);
+                            raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
                         }
 
                         state->raw_velocity = (uint8_t)raw;
@@ -1202,13 +1167,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Calculate speed component using new min/max time settings
                     uint32_t speed_raw;
                     if (elapsed_ms > 0) {
-                        if (elapsed_ms <= velocity_max_time) {
+                        if (elapsed_ms <= max_press_time) {
                             speed_raw = 255;  // Fastest press = max velocity
-                        } else if (elapsed_ms >= velocity_min_time) {
+                        } else if (elapsed_ms >= min_press_time) {
                             speed_raw = 0;    // Slowest press = min velocity
                         } else {
                             // Linear interpolation between max_time and min_time
-                            speed_raw = (255 * (velocity_min_time - elapsed_ms)) / (velocity_min_time - velocity_max_time);
+                            speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
                         }
                     } else {
                         speed_raw = 255;  // Sub-1ms press = max speed

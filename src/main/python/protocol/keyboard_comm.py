@@ -1573,6 +1573,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             if param_id in [PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY]:
                 # 4-byte parameters
                 data = bytearray([param_id]) + struct.pack('<I', value)
+            elif param_id in [PARAM_VIBRATO_DECAY_TIME, PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME]:
+                # 16-bit parameters (little-endian)
+                data = bytearray([param_id, value & 0xFF, (value >> 8) & 0xFF])
             elif param_id in [PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3]:
                 # Signed byte parameters
                 data = bytearray([param_id, value & 0xFF])
