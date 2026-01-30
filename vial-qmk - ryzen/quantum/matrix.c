@@ -1035,9 +1035,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Velocity is based purely on how far the key traveled before stopping
             {
                 // Constants for stall detection
-                const uint8_t MIN_TRAVEL_PEAK = 20;       // ~0.33mm minimum to trigger
-                const uint8_t STALL_THRESHOLD = 3;        // Within 3 units of peak = stalled
-                const uint32_t STALL_TIME_MS = 15;        // Time to wait before triggering
+                const uint8_t MIN_TRAVEL_PEAK = 10;       // ~0.17mm minimum to trigger
+                const uint8_t STALL_THRESHOLD = 6;        // Within 6 units of peak = stalled
+                const uint32_t STALL_TIME_MS = 8;         // Time to wait before triggering
                 const uint8_t NOTE_OFF_THRESHOLD = 6;     // ~0.1mm - note off when below this
 
                 // Track when key starts moving from rest
@@ -1193,9 +1193,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Uses stall detection like Mode 1, but velocity combines distance AND speed
             {
                 // Constants for stall detection (same as Mode 1)
-                const uint8_t MIN_TRAVEL_PEAK3 = 20;      // ~0.33mm minimum to trigger
-                const uint8_t STALL_THRESHOLD3 = 3;       // Within 3 units of peak = stalled
-                const uint32_t STALL_TIME_MS3 = 15;       // Time to wait before triggering
+                const uint8_t MIN_TRAVEL_PEAK3 = 10;      // ~0.17mm minimum to trigger
+                const uint8_t STALL_THRESHOLD3 = 6;       // Within 6 units of peak = stalled
+                const uint32_t STALL_TIME_MS3 = 8;        // Time to wait before triggering
                 const uint8_t NOTE_OFF_THRESHOLD3 = 6;    // ~0.1mm - note off when below this
 
                 // Track when key starts moving from rest
