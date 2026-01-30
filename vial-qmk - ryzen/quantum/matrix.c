@@ -1132,10 +1132,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     }
                 }
 
-                // On release, reset
+                // On release, reset and prepare timer for next press
                 if (state->was_pressed && !pressed) {
                     state->velocity_captured = false;
                     state->travel_at_actuation = 0;
+                    // Start timer now so partial release + re-press gets fresh timing
+                    state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                 }
 
                 state->last_travel = travel;
