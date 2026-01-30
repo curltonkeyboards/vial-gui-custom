@@ -135,6 +135,7 @@ typedef struct {
 
     // Mode 1 & 3: Apex detection + timing
     uint32_t move_start_time;    // ChibiOS system ticks when key started moving (10µs resolution)
+    uint32_t stall_start_time;   // ChibiOS ticks when key stopped increasing (for stall detection)
 
     // Raw velocity for curve application (0-255)
     uint8_t raw_velocity;        // Raw velocity value before curve/scaling
@@ -1030,46 +1031,66 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             break;
 
         case 1:  // Peak Travel at Apex
-            // Measures peak travel distance, captures velocity when travel starts decreasing
-            // Uses travel-based apex detection (robust regardless of timer resolution)
+            // Measures peak travel distance, triggers when key STOPS increasing (stall detection)
+            // Velocity is based purely on how far the key traveled before stopping
             {
+                // Constants for stall detection
+                const uint8_t MIN_TRAVEL = 20;       // ~0.33mm minimum to trigger
+                const uint8_t STALL_THRESHOLD = 3;   // Within 3 units of peak = stalled
+                const uint32_t STALL_TIME_MS = 15;   // Time to wait before triggering
+                const uint8_t RELEASE_THRESHOLD = 6; // ~0.1mm - note off when below this
+
                 // Track when key starts moving from rest
-                // Use ChibiOS system ticks (100kHz = 10µs resolution) instead of
-                // timer_read() (1ms) for precise velocity timing
                 if (state->last_travel == 0 && travel > 0) {
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
+                    state->stall_start_time = 0;
+                    state->peak_travel = 0;
                 }
 
                 // Track peak travel during press
                 if (travel > state->peak_travel) {
                     state->peak_travel = travel;
+                    state->stall_start_time = 0;  // Still increasing, reset stall timer
                 }
 
-                // Apex detection: travel has decreased from peak
-                // Requirements:
-                // 1. Key reached minimum depth (avoid noise triggers)
-                // 2. Travel decreased meaningfully from peak (real reversal, not ADC jitter)
-                // 3. Velocity not already captured for this press
+                // Stall detection: key stopped increasing (within threshold of peak)
                 if (!state->velocity_captured &&
-                    state->peak_travel >= 20 &&
-                    travel < state->peak_travel - 5) {
+                    state->peak_travel >= MIN_TRAVEL &&
+                    travel >= state->peak_travel - STALL_THRESHOLD &&
+                    travel <= state->peak_travel) {
 
-                    // Store raw velocity as normalized peak travel (0-255)
-                    // peak_travel is in 0-240 range, scale to 0-255
-                    uint16_t raw = ((uint16_t)state->peak_travel * 255) / 240;
-                    if (raw > 255) raw = 255;
-                    state->raw_velocity = (uint8_t)raw;
-                    state->velocity_captured = true;
+                    // Start stall timer if not already started
+                    if (state->stall_start_time == 0) {
+                        state->stall_start_time = (uint32_t)chVTGetSystemTimeX();
+                    } else {
+                        // Check if stalled long enough
+                        uint32_t stall_ticks = (uint32_t)chVTGetSystemTimeX() - state->stall_start_time;
+                        uint32_t stall_ms = TIME_I2US(stall_ticks) / 1000;
 
-                    // Also update base_velocity for RT accumulation (scaled to 1-127)
-                    key->base_velocity = (state->raw_velocity * 127) / 255;
-                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                        if (stall_ms >= STALL_TIME_MS) {
+                            // Trigger! Calculate velocity from peak travel
+                            uint16_t raw = ((uint16_t)state->peak_travel * 255) / 240;
+                            if (raw > 255) raw = 255;
+                            state->raw_velocity = (uint8_t)raw;
+                            state->velocity_captured = true;
+                            state->send_on_release = true;  // Note ON
+
+                            // Update base_velocity for RT
+                            key->base_velocity = (state->raw_velocity * 127) / 255;
+                            if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                        }
+                    }
+                } else if (!state->velocity_captured && travel < state->peak_travel - STALL_THRESHOLD) {
+                    // Travel dropped significantly - user released before stall completed
+                    state->stall_start_time = 0;
                 }
 
-                // On release, reset tracking state
-                if (state->was_pressed && !pressed) {
+                // Release detection: note turns off when travel returns close to 0
+                if (state->send_on_release && travel < RELEASE_THRESHOLD) {
+                    state->send_on_release = false;  // Note OFF
                     state->peak_travel = 0;
                     state->velocity_captured = false;
+                    state->stall_start_time = 0;
                 }
 
                 state->last_travel = travel;
@@ -1168,71 +1189,94 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             break;
 
         case 3:  // Speed + Peak Combined
-            // Blends speed (70%) and peak travel (30%) for final velocity
-            // Uses travel-based apex detection and accumulated average speed
+            // Blends speed (50%) and peak travel (50%) for final velocity
+            // Uses stall detection like Mode 1, but velocity combines distance AND speed
             {
+                // Constants for stall detection (same as Mode 1)
+                const uint8_t MIN_TRAVEL = 20;       // ~0.33mm minimum to trigger
+                const uint8_t STALL_THRESHOLD = 3;   // Within 3 units of peak = stalled
+                const uint32_t STALL_TIME_MS = 15;   // Time to wait before triggering
+                const uint8_t RELEASE_THRESHOLD = 6; // ~0.1mm - note off when below this
+
                 // Track when key starts moving from rest
-                // Use ChibiOS system ticks (100kHz = 10µs resolution)
                 if (state->last_travel == 0 && travel > 0) {
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
+                    state->stall_start_time = 0;
+                    state->peak_travel = 0;
                 }
 
                 // Track peak travel during press
                 if (travel > state->peak_travel) {
                     state->peak_travel = travel;
+                    state->stall_start_time = 0;  // Still increasing, reset stall timer
                 }
 
-                // Apex detection: travel has decreased from peak
-                // Same approach as mode 1 - robust regardless of timer resolution
+                // Stall detection: key stopped increasing (within threshold of peak)
                 if (!state->velocity_captured &&
-                    state->peak_travel >= 20 &&
-                    travel < state->peak_travel - 5) {
+                    state->peak_travel >= MIN_TRAVEL &&
+                    travel >= state->peak_travel - STALL_THRESHOLD &&
+                    travel <= state->peak_travel) {
 
-                    // Calculate elapsed time in microseconds (10µs resolution)
-                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
-                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
-                    uint32_t elapsed_ms = elapsed_us / 1000;
-
-                    // Store travel time for GUI display
-                    state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
-
-                    // Calculate speed component using new min/max time settings
-                    // NOTE: Use 1 instead of 0 for minimum - raw_velocity=0 is "not captured" sentinel
-                    uint32_t speed_raw;
-                    if (elapsed_ms > 0) {
-                        if (elapsed_ms <= max_press_time) {
-                            speed_raw = 255;  // Fastest press = max velocity
-                        } else if (elapsed_ms >= min_press_time) {
-                            speed_raw = 1;    // Slowest press = min velocity (use 1, not 0!)
-                        } else {
-                            // Linear interpolation between max_time and min_time
-                            speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
-                            if (speed_raw < 1) speed_raw = 1;  // Ensure minimum of 1
-                        }
+                    // Start stall timer if not already started
+                    if (state->stall_start_time == 0) {
+                        state->stall_start_time = (uint32_t)chVTGetSystemTimeX();
                     } else {
-                        speed_raw = 255;  // Sub-1ms press = max speed
-                        state->travel_time_ms = 0;
+                        // Check if stalled long enough
+                        uint32_t stall_ticks = (uint32_t)chVTGetSystemTimeX() - state->stall_start_time;
+                        uint32_t stall_ms = TIME_I2US(stall_ticks) / 1000;
+
+                        if (stall_ms >= STALL_TIME_MS) {
+                            // Calculate elapsed time from start to stall point
+                            uint32_t elapsed_ticks = state->stall_start_time - state->move_start_time;
+                            uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                            uint32_t elapsed_ms = elapsed_us / 1000;
+
+                            // Store travel time for GUI display
+                            state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
+
+                            // Calculate speed component using min/max time settings
+                            uint32_t speed_raw;
+                            if (elapsed_ms > 0) {
+                                if (elapsed_ms <= max_press_time) {
+                                    speed_raw = 255;  // Fastest press = max velocity
+                                } else if (elapsed_ms >= min_press_time) {
+                                    speed_raw = 1;    // Slowest press = min velocity
+                                } else {
+                                    // Linear interpolation between max_time and min_time
+                                    speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
+                                    if (speed_raw < 1) speed_raw = 1;
+                                }
+                            } else {
+                                speed_raw = 255;  // Sub-1ms press = max speed
+                                state->travel_time_ms = 0;
+                            }
+
+                            // Calculate travel component (0-255)
+                            uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
+                            if (travel_raw > 255) travel_raw = 255;
+
+                            // Blend: 50% speed + 50% travel
+                            uint8_t blended = (uint8_t)(((uint16_t)speed_raw * 50 + travel_raw * 50) / 100);
+                            state->raw_velocity = (blended < 1) ? 1 : blended;
+                            state->velocity_captured = true;
+                            state->send_on_release = true;  // Note ON
+
+                            // Update base_velocity for RT
+                            key->base_velocity = (state->raw_velocity * 127) / 255;
+                            if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                        }
                     }
-
-                    // Calculate travel component (0-255)
-                    uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
-                    if (travel_raw > 255) travel_raw = 255;
-
-                    // Blend: 70% speed + 30% travel
-                    uint8_t blended = (uint8_t)(((uint16_t)speed_raw * 70 + travel_raw * 30) / 100);
-                    state->raw_velocity = (blended < 1) ? 1 : blended;  // Ensure minimum of 1
-                    state->velocity_captured = true;
-
-                    // Update base_velocity for RT
-                    key->base_velocity = (state->raw_velocity * 127) / 255;
-                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                } else if (!state->velocity_captured && travel < state->peak_travel - STALL_THRESHOLD) {
+                    // Travel dropped significantly - user released before stall completed
+                    state->stall_start_time = 0;
                 }
 
-                // On release, reset
-                if (state->was_pressed && !pressed) {
+                // Release detection: note turns off when travel returns close to 0
+                if (state->send_on_release && travel < RELEASE_THRESHOLD) {
+                    state->send_on_release = false;  // Note OFF
                     state->peak_travel = 0;
-                    state->peak_speed = 0;
                     state->velocity_captured = false;
+                    state->stall_start_time = 0;
                 }
 
                 state->last_travel = travel;
