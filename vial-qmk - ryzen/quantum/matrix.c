@@ -1035,10 +1035,10 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Velocity is based purely on how far the key traveled before stopping
             {
                 // Constants for stall detection
-                const uint8_t MIN_TRAVEL = 20;       // ~0.33mm minimum to trigger
-                const uint8_t STALL_THRESHOLD = 3;   // Within 3 units of peak = stalled
-                const uint32_t STALL_TIME_MS = 15;   // Time to wait before triggering
-                const uint8_t RELEASE_THRESHOLD = 6; // ~0.1mm - note off when below this
+                const uint8_t MIN_TRAVEL_PEAK = 20;       // ~0.33mm minimum to trigger
+                const uint8_t STALL_THRESHOLD = 3;        // Within 3 units of peak = stalled
+                const uint32_t STALL_TIME_MS = 15;        // Time to wait before triggering
+                const uint8_t NOTE_OFF_THRESHOLD = 6;     // ~0.1mm - note off when below this
 
                 // Track when key starts moving from rest
                 if (state->last_travel == 0 && travel > 0) {
@@ -1055,7 +1055,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
                 // Stall detection: key stopped increasing (within threshold of peak)
                 if (!state->velocity_captured &&
-                    state->peak_travel >= MIN_TRAVEL &&
+                    state->peak_travel >= MIN_TRAVEL_PEAK &&
                     travel >= state->peak_travel - STALL_THRESHOLD &&
                     travel <= state->peak_travel) {
 
@@ -1086,7 +1086,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 }
 
                 // Release detection: note turns off when travel returns close to 0
-                if (state->send_on_release && travel < RELEASE_THRESHOLD) {
+                if (state->send_on_release && travel < NOTE_OFF_THRESHOLD) {
                     state->send_on_release = false;  // Note OFF
                     state->peak_travel = 0;
                     state->velocity_captured = false;
@@ -1193,10 +1193,10 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Uses stall detection like Mode 1, but velocity combines distance AND speed
             {
                 // Constants for stall detection (same as Mode 1)
-                const uint8_t MIN_TRAVEL = 20;       // ~0.33mm minimum to trigger
-                const uint8_t STALL_THRESHOLD = 3;   // Within 3 units of peak = stalled
-                const uint32_t STALL_TIME_MS = 15;   // Time to wait before triggering
-                const uint8_t RELEASE_THRESHOLD = 6; // ~0.1mm - note off when below this
+                const uint8_t MIN_TRAVEL_PEAK3 = 20;      // ~0.33mm minimum to trigger
+                const uint8_t STALL_THRESHOLD3 = 3;       // Within 3 units of peak = stalled
+                const uint32_t STALL_TIME_MS3 = 15;       // Time to wait before triggering
+                const uint8_t NOTE_OFF_THRESHOLD3 = 6;    // ~0.1mm - note off when below this
 
                 // Track when key starts moving from rest
                 if (state->last_travel == 0 && travel > 0) {
@@ -1213,8 +1213,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
                 // Stall detection: key stopped increasing (within threshold of peak)
                 if (!state->velocity_captured &&
-                    state->peak_travel >= MIN_TRAVEL &&
-                    travel >= state->peak_travel - STALL_THRESHOLD &&
+                    state->peak_travel >= MIN_TRAVEL_PEAK3 &&
+                    travel >= state->peak_travel - STALL_THRESHOLD3 &&
                     travel <= state->peak_travel) {
 
                     // Start stall timer if not already started
@@ -1225,7 +1225,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         uint32_t stall_ticks = (uint32_t)chVTGetSystemTimeX() - state->stall_start_time;
                         uint32_t stall_ms = TIME_I2US(stall_ticks) / 1000;
 
-                        if (stall_ms >= STALL_TIME_MS) {
+                        if (stall_ms >= STALL_TIME_MS3) {
                             // Calculate elapsed time from start to stall point
                             uint32_t elapsed_ticks = state->stall_start_time - state->move_start_time;
                             uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
@@ -1266,13 +1266,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                             if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                         }
                     }
-                } else if (!state->velocity_captured && travel < state->peak_travel - STALL_THRESHOLD) {
+                } else if (!state->velocity_captured && travel < state->peak_travel - STALL_THRESHOLD3) {
                     // Travel dropped significantly - user released before stall completed
                     state->stall_start_time = 0;
                 }
 
                 // Release detection: note turns off when travel returns close to 0
-                if (state->send_on_release && travel < RELEASE_THRESHOLD) {
+                if (state->send_on_release && travel < NOTE_OFF_THRESHOLD3) {
                     state->send_on_release = false;  // Note OFF
                     state->peak_travel = 0;
                     state->velocity_captured = false;
