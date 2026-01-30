@@ -131,6 +131,7 @@ typedef struct {
     uint8_t peak_velocity;
     uint16_t peak_speed;         // Peak speed (uint16_t to avoid overflow)
     uint8_t travel_at_actuation; // Travel when actuation point was crossed (for Mode 2)
+    uint8_t release_travel;      // Travel position when key was released (for partial re-press scaling)
 
     // Mode 1 & 3: Apex detection + timing
     uint32_t move_start_time;    // ChibiOS system ticks when key started moving (10µs resolution)
@@ -1086,6 +1087,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                     state->travel_at_actuation = 0;
                     state->velocity_captured = false;
+                    state->release_travel = 0;  // Full press from rest
                 }
 
                 // Capture velocity when actuation point is crossed
@@ -1117,6 +1119,15 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                             if (raw < 1) raw = 1;  // Ensure minimum of 1
                         }
 
+                        // Scale velocity by fraction of distance traveled (for partial re-presses)
+                        // Full press from 0 to actuation = full velocity
+                        // Partial press (e.g., release at 1mm, actuation at 2mm) = scaled velocity
+                        if (state->release_travel > 0 && state->release_travel < midi_threshold) {
+                            uint16_t distance_traveled = midi_threshold - state->release_travel;
+                            raw = (raw * distance_traveled) / midi_threshold;
+                            if (raw < 1) raw = 1;  // Ensure minimum of 1
+                        }
+
                         state->raw_velocity = (uint8_t)raw;
                         state->velocity_captured = true;
 
@@ -1125,9 +1136,19 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                     } else {
                         // Instant press (sub-1ms) - max velocity
-                        state->raw_velocity = 255;
+                        uint32_t raw = 255;
+
+                        // Scale velocity for partial re-presses
+                        if (state->release_travel > 0 && state->release_travel < midi_threshold) {
+                            uint16_t distance_traveled = midi_threshold - state->release_travel;
+                            raw = (raw * distance_traveled) / midi_threshold;
+                            if (raw < 1) raw = 1;
+                        }
+
+                        state->raw_velocity = (uint8_t)raw;
                         state->velocity_captured = true;
-                        key->base_velocity = MAX_VELOCITY;
+                        key->base_velocity = (state->raw_velocity * 127) / 255;
+                        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                         state->travel_time_ms = 0;
                     }
                 }
@@ -1136,6 +1157,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 if (state->was_pressed && !pressed) {
                     state->velocity_captured = false;
                     state->travel_at_actuation = 0;
+                    state->release_travel = travel;  // Store release position for scaling
                     // Start timer now so partial release + re-press gets fresh timing
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
                 }
