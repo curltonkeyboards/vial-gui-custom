@@ -140,9 +140,9 @@ class QuickActuationWidget(QWidget):
         self.midi_tab = self.create_midi_tab()
         self.tab_widget.addTab(self.midi_tab, "MIDI Settings")
 
-        # Create Advanced tab (formerly Aftertouch) - rightmost position
+        # Create Advanced tab widgets for internal state management
+        # (Advanced settings are now in Velocity tab, but widgets needed for save/load)
         self.advanced_tab = self.create_advanced_tab()
-        self.tab_widget.addTab(self.advanced_tab, "Advanced")
 
     def create_help_label(self, tooltip_text):
         """Create a small question mark button with tooltip for help"""
